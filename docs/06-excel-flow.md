@@ -79,23 +79,57 @@ function parseExcelDate(value: unknown): Date | null {
 
 ### Employee normalization
 
-Source data has inconsistent diacritics: `DEJAN MILOVANOVIĆ` vs `DEJAN MILOVANOVIC`.
-Both must map to the same `employees` row.
+Source data has inconsistent spelling for the same person: diacritics vs ASCII, and Serbian **đ** written either as Unicode `đ`/`Đ` or as the ASCII digraph `dj`/`Dj`/`DJ`. The same physical employee must always resolve to one `employees` row.
 
-```ts
-// packages/shared/src/utils/normalize-name.ts
-export function normalizeName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[đĐ]/g, (c) => c === 'đ' ? 'd' : 'D')
-    .toUpperCase()
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-```
+We use **two functions** (both live in `packages/shared`):
 
-Store original as `full_name`, normalized as `normalized_name` (UNIQUE index).
+| Function | Purpose | Output shape |
+|---|---|---|
+| `toAsciiDisplay` | Human-readable ASCII for UI, Excel export, PDFs | Preserves word casing patterns; Serbian **đ/Đ** → **`dj`/`Dj`/`DJ`** per rules below |
+| `normalizeName` | Canonical **matching key** for DB `normalized_name`, import lookup, indexes | Single uppercase string; all đ/dj variants collapse to the same key |
+
+#### `toAsciiDisplay` (display / export)
+
+Serbian **đ** is not a single-letter transliteration like č/ć/š/ž. In ASCII it is the digraph **`dj`**, with casing:
+
+- `đ` → `dj`
+- `Đ` → `Dj` when it starts a word (or the usual title-case position); for **all-uppercase** input, `Đ` → `DJ` (so `ĐORĐE` → `DJORDJE`, `ĐUKIĆ` → `DJUKIC`).
+
+Other diacritics (strip combining marks after NFD, or direct mapping):
+
+- `ć` → `c`, `Ć` → `C`
+- `č` → `c`, `Č` → `C`
+- `š` → `s`, `Š` → `S`
+- `ž` → `z`, `Ž` → `Z`
+
+**Examples:**
+
+- `Đorđe Đukić` → `Djordje Djukic`
+- `ĐORĐE ĐUKIĆ` → `DJORDJE DJUKIC`
+- `đorđe đukić` → `djordje djukic`
+- `Milovanović` → `Milovanovic`
+
+#### `normalizeName` (matching key)
+
+Build the key used on `employees.normalized_name` (UNIQUE) so that every spelling variant below maps to **one** row:
+
+1. Apply the **same transliteration as `toAsciiDisplay`** (đ → dj digraph with correct case; other letters as above).
+2. **Collapse the digraph** everywhere it appears as ASCII after step 1: `dj` → `d`, `Dj` → `D`, `DJ` → `D` (single letter **đ** is represented as **d** in the key).
+3. **Uppercase** the whole string.
+4. **Collapse** internal whitespace to a single space and **trim**.
+
+**Examples (all produce the same key):**
+
+- `Đorđe Đukić` → `DORDE DUKIC`
+- `Djordje Djukic` → `DORDE DUKIC`
+- `Dorde Dukic` → `DORDE DUKIC`
+- `ĐORĐE ĐUKIĆ` → `DORDE DUKIC`
+- `Milovanović` / `MILOVANOVIĆ` → `MILOVANOVIC`
+- `Stanisavljević` → `STANISAVLJEVIC`
+
+Empty / whitespace-only strings follow the same edge rules as other utilities (trim; empty → empty or reject at call site).
+
+Store original as `full_name`, matching key as `normalized_name` (UNIQUE index).
 
 ### GRESKA resolver
 
@@ -108,7 +142,7 @@ The `GRESKA` column can contain:
 - Empty string (no fault attribution)
 
 Resolution priority (first match wins):
-1. Normalize the token (uppercase, strip diacritics)
+1. Normalize the token with **`normalizeName()`** (same canonical key as `employees.normalized_name`; see Employee normalization above)
 2. Check if matches an `employees.normalized_name`
 3. Check if matches a `departments.code` (after mapping `"GLAVE" → "GLAVE"`, `"SKLAPANJE" → "SKLAPANJE"`, etc.)
 4. Check if matches `departments.name_sr` normalized

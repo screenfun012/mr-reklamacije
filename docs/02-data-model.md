@@ -131,7 +131,7 @@ People who assemble engines. Separate from `users` (not every employee uses the 
 |---|---|---|
 | id | uuid PK | |
 | full_name | text | e.g. "IVICA STANISAVLJEVIĆ" |
-| normalized_name | text UNIQUE | uppercase, no diacritics, used for Excel import matching |
+| normalized_name | text UNIQUE | canonical **matching key** from `normalizeName()`: uppercase ASCII, diacritics removed, Serbian **đ** normalized via `dj` digraph then collapsed to **d** so `Đorđe`, `Djordje`, and `Dorde` spellings all match; used for Excel import and deduplication (see `docs/06-excel-flow.md` — Employee normalization) |
 | user_id | uuid NULL FK users | if this employee uses the app |
 | hire_date | date NULL | |
 | terminated_at | date NULL | |
@@ -139,20 +139,11 @@ People who assemble engines. Separate from `users` (not every employee uses the 
 | notes | text NULL | |
 | created_at, updated_at, deleted_at | | |
 
-**Normalization function** (used at insert and for imports):
+**Normalization** (used at insert and for imports):
 
-```ts
-// e.g. "Ivica Stanisavljević" → "IVICA STANISAVLJEVIC"
-function normalizeName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')  // strip diacritics
-    .replace(/[đĐ]/g, m => m === 'đ' ? 'D' : 'D')
-    .toUpperCase()
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-```
+- **`normalizeName(name)`** — produces `normalized_name`: transliterate Serbian text to ASCII using the same rules as `toAsciiDisplay` (including **đ → dj** digraph with correct casing), then collapse **`dj` / `Dj` / `DJ` → single `d` / `D`**, uppercase, collapse whitespace. See **`docs/06-excel-flow.md` (Employee normalization)** for full rules and examples (`Đorđe Đukić` and `Djordje Djukic` → same key `DORDE DUKIC`).
+
+- **`toAsciiDisplay(name)`** — used when a readable ASCII string is needed (exports, labels); **đ/Đ** map to **`dj` / `Dj` / `DJ`**, not to a single `d`.
 
 ### `departments`
 
