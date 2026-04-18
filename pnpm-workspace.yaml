@@ -4,3 +4,4 @@ packages:
   - 'packages/excel'
   - 'packages/shared'
   - 'packages/logger'
+  - 'packages/db'
