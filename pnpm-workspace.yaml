@@ -1,2 +1,4 @@
 packages:
   - 'tooling/typescript'
+  - 'tooling/eslint'
+  - 'packages/excel'

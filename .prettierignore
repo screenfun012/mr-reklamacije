@@ -1,0 +1,8 @@
+node_modules
+dist
+.turbo
+coverage
+docs
+.cursor
+pnpm-lock.yaml
+*.min.js

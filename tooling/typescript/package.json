@@ -2,14 +2,20 @@
   "name": "@mr/tsconfig",
   "version": "0.0.0",
   "private": true,
-  "files": ["base.json", "node.json"],
+  "files": [
+    "base.json",
+    "node.json"
+  ],
   "exports": {
     "./base.json": "./base.json",
     "./node.json": "./node.json"
   },
+  "devDependencies": {
+    "prettier": "^3.7.4"
+  },
   "scripts": {
     "build": "node -e \"process.exit(0)\"",
-    "lint": "node -e \"process.exit(0)\"",
+    "lint": "prettier -c \"**/*.json\" --ignore-path ../../.prettierignore",
     "typecheck": "node -e \"process.exit(0)\""
   }
 }
