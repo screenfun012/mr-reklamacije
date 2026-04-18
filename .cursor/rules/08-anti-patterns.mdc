@@ -1,0 +1,428 @@
+---
+description: Anti-patterns that must never appear in code. A checklist of "don'ts".
+alwaysApply: true
+---
+
+# Anti-patterns to never commit
+
+If you're about to do one of these, stop. Find another way, or ask Nikola.
+
+## 1. God objects
+
+A single file with > 500 lines of unrelated logic. Split it.
+
+## 2. Magic numbers
+
+```ts
+// BAD
+if (user.age > 18) { ... }
+setTimeout(fn, 86400000)
+
+// GOOD
+const ADULT_AGE = 18
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+if (user.age > ADULT_AGE) { ... }
+setTimeout(fn, ONE_DAY_MS)
+```
+
+## 3. Copy-pasted logic
+
+If the same block appears in 3 places, extract a function. If you can't easily name
+the function, the abstraction is wrong — think again.
+
+## 4. N+1 queries
+
+```ts
+// BAD
+const claims = await repo.list()
+for (const claim of claims) {
+  claim.employee = await employeesRepo.findById(claim.employeeId)  // N+1!
+}
+
+// GOOD
+const claims = await repo.listWithEmployees()  // single query with JOIN
+```
+
+## 5. Swallowed errors
+
+```ts
+// BAD
+try { risky() } catch (e) {}
+
+// BAD
+try { risky() } catch (e) { console.log('oops') }
+
+// GOOD
+try { risky() } catch (e) {
+  logger.error({ err: e, context: { ... } }, 'Failed to foo')
+  throw new AppError(...) // or handle meaningfully
+}
+```
+
+## 6. Mixing concerns
+
+```ts
+// BAD — controller doing DB, validation, business logic
+app.post('/api/claim', async (c) => {
+  const body = await c.req.json()
+  if (!body.mrNumber) return c.json({ error: 'No MR' }, 400)
+  const claim = await db.insert(...).values(body).returning()
+  await db.insert(auditLog).values({ ... })
+  sendEmail(...)
+  return c.json(claim[0])
+})
+
+// GOOD — thin controller, logic in service
+app.post('/api/claim',
+  requirePermission('claims.create'),
+  async (c) => {
+    const input = EmotiveClaimCreateInput.parse(await c.req.json())
+    const claim = await container.claimsService.create(input, c.get('user'))
+    return c.json(claim, 201)
+  }
+)
+```
+
+## 7. `// TODO: fix later`
+
+TODOs without an issue number or deadline rot forever. Rules:
+- Every TODO links to a GitHub issue: `// TODO(#142): handle concurrent edits`
+- Or includes a deadline: `// TODO(2026-05-01): remove compat shim`
+- Or is removed
+
+## 8. Implicit state
+
+```ts
+// BAD — module-level mutable state
+let currentUser: User | null = null
+
+export function setUser(u: User) { currentUser = u }
+export function getUser() { return currentUser }
+
+// GOOD — explicit context
+export interface AuthContext { user: User | null }
+export function createHandler(ctx: AuthContext) { ... }
+```
+
+Module-level mutable state makes tests unreliable and code hard to reason about.
+
+## 9. Global singletons
+
+```ts
+// BAD
+export const db = drizzle(new Pool({ connectionString: process.env.DATABASE_URL }))
+// every file imports this; tests can't swap it
+```
+
+Use DI container (`apps/api/src/core/container.ts`).
+
+## 10. Fat models
+
+Putting business logic on domain "model" classes that also know about persistence.
+Keep entities as plain data; logic lives in services.
+
+## 11. `any` to silence errors
+
+```ts
+// BAD
+const x: any = getThing()
+x.someMethod()
+
+// GOOD
+const x = getThing() as unknown
+if (isThingLike(x)) {
+  x.someMethod()
+}
+
+// BEST
+const x = ThingSchema.parse(getThing())
+x.someMethod()
+```
+
+## 12. Nested ternaries
+
+```ts
+// BAD
+const label = status === 'pending' ? 'U obradi' : status === 'accepted' ? 'Prihvaćeno' : status === 'rejected' ? 'Odbijeno' : 'Arhiva'
+
+// GOOD
+const LABELS = { pending: 'U obradi', accepted: 'Prihvaćeno', rejected: 'Odbijeno', archived: 'Arhiva' }
+const label = LABELS[status]
+```
+
+## 13. Comments that duplicate code
+
+```ts
+// BAD
+// Increment counter
+counter++
+
+// Return user
+return user
+```
+
+Comment **why**, not **what**.
+
+## 14. Commented-out code
+
+Delete it. Git remembers.
+
+## 15. "Util" dumping grounds
+
+A file called `utils.ts` with 40 unrelated functions is a code smell. Split into
+domain-named files: `date.ts`, `string.ts`, `normalize-name.ts`.
+
+## 16. Premature abstraction
+
+Don't create an abstract base class for a concept that only has one implementation.
+Don't add interfaces everywhere "just in case". The `StorageService` interface is
+justified because R2 is a real future implementation.
+
+## 17. Over-mocking
+
+```ts
+// BAD
+it('works', async () => {
+  const mockRepo = { findById: vi.fn().mockResolvedValue({ id: '1' }) }
+  const mockEvents = { emit: vi.fn() }
+  const mockAudit = { log: vi.fn() }
+  const service = new Service(mockRepo, mockEvents, mockAudit)
+  // what are we even testing?
+})
+
+// GOOD — integration test with real deps
+it('works', async () => {
+  const ctx = await createTestContext()
+  const claim = await ctx.container.claimsService.create(validInput, user)
+  expect(claim.id).toBeDefined()
+})
+```
+
+## 18. Timing-dependent tests
+
+```ts
+// BAD
+await page.click('Save')
+await page.waitForTimeout(2000)  // hope it's enough
+expect(toast).toBeVisible()
+
+// GOOD
+await page.click('Save')
+await expect(toast).toBeVisible({ timeout: 5000 })  // waits up to 5s, passes as soon as visible
+```
+
+## 19. Synchronous blocking in async context
+
+```ts
+// BAD
+const file = fs.readFileSync('./config.json')
+
+// GOOD
+const file = await fs.promises.readFile('./config.json')
+```
+
+## 20. Re-fetching in loops
+
+```ts
+// BAD
+for (const id of ids) {
+  const item = await fetch(`/api/items/${id}`)
+  // ...
+}
+
+// GOOD
+const items = await fetch('/api/items/batch', { body: { ids } })
+// or parallel:
+const items = await Promise.all(ids.map(id => fetch(`/api/items/${id}`)))
+```
+
+## 21. Hardcoded URLs or paths
+
+```ts
+// BAD
+fetch('https://api.mrengines.rs/users')
+fetch('http://localhost:3000/users')
+
+// GOOD — relative path (same-origin proxy) or configured base URL
+fetch('/api/users')
+```
+
+## 22. String HTML in components
+
+```tsx
+// BAD
+<div dangerouslySetInnerHTML={{ __html: userContent }} />
+
+// GOOD
+<div>{userContent}</div>  // React escapes automatically
+```
+
+## 23. Direct DOM manipulation
+
+```tsx
+// BAD
+useEffect(() => {
+  document.querySelector('.my-input')?.focus()
+}, [])
+
+// GOOD
+const inputRef = useRef<HTMLInputElement>(null)
+useEffect(() => { inputRef.current?.focus() }, [])
+return <input ref={inputRef} />
+```
+
+## 24. Prop drilling
+
+```tsx
+// BAD
+<A user={user}>
+  <B user={user}>
+    <C user={user}>
+      <D user={user} />
+    </C>
+  </B>
+</A>
+```
+
+Use a context or composition. But don't over-context either; 1–2 levels of drilling is fine.
+
+## 25. useEffect for derived state
+
+```ts
+// BAD
+const [fullName, setFullName] = useState('')
+useEffect(() => { setFullName(`${first} ${last}`) }, [first, last])
+
+// GOOD
+const fullName = `${first} ${last}`
+```
+
+## 26. Fetching in useEffect
+
+```ts
+// BAD
+useEffect(() => { fetch('/api/foo').then(r => r.json()).then(setData) }, [])
+
+// GOOD
+const { data } = useQuery({ queryKey: ['foo'], queryFn: () => fetchFoo() })
+```
+
+## 27. Reacting to render state
+
+```tsx
+// BAD — causes render loop
+if (user) {
+  setSomething(user.name)
+}
+```
+
+## 28. "Helper" types that are really just `Record<string, any>`
+
+Type safety dies here. Model your data properly.
+
+## 29. Disabling eslint inline without reason
+
+```ts
+// BAD
+// eslint-disable-next-line
+doSomething()
+
+// GOOD — with explanation and issue
+// eslint-disable-next-line no-console -- we need console in this CLI script
+console.log('...')
+```
+
+## 30. Reaching into internals
+
+```ts
+// BAD
+import { _internal } from '@some/library'
+
+// GOOD — respect public API
+```
+
+## 31. Forgetting the loading state
+
+```tsx
+// BAD
+{data && <Items data={data} />}
+
+// GOOD
+{isLoading ? <Skeleton /> : error ? <ErrorState /> : data ? <Items data={data} /> : <EmptyState />}
+```
+
+## 32. console.log left in code
+
+- `console.log` banned in production code (ESLint)
+- Use `logger.debug` / `logger.info` via pino
+- In React dev mode: `console.log` for debugging OK, but never committed
+
+## 33. Reliance on exceptions for flow control
+
+```ts
+// BAD
+try { parse(input) } catch (e) { return 'failed' }
+
+// GOOD
+const parsed = safeParse(input)
+if (!parsed.success) return 'failed'
+```
+
+Use Zod's `safeParse` for expected failures. Throw for exceptional cases.
+
+## 34. Boolean params (trap)
+
+```ts
+// BAD
+function fetchClaims(all, includeDeleted, paginated) { ... }
+fetchClaims(true, false, true)  // unreadable
+
+// GOOD
+function fetchClaims(opts: { scope: 'all' | 'mine'; includeDeleted?: boolean; pagination?: Pagination })
+fetchClaims({ scope: 'all', pagination: { page: 1, pageSize: 20 } })
+```
+
+## 35. "Just use a Map"
+
+`{}` is not `Map`. For dictionaries with dynamic keys, use `Map` to get iteration, size, and avoid prototype pitfalls.
+
+## 36. Re-inventing libraries
+
+Don't write a date formatter when `date-fns` works. Don't write a CSV parser when `papaparse` works. Don't write your own UUID generator.
+
+## 37. Race conditions in React
+
+```ts
+// BAD
+const [data, setData] = useState()
+useEffect(() => {
+  fetch().then(setData)  // stale data if user changes filter mid-flight
+}, [filter])
+
+// GOOD — use TanStack Query which cancels stale queries
+```
+
+## 38. Multiple sources of truth
+
+If the same data is in `useState` and in a query cache, they'll diverge. Pick one.
+
+## 39. Unbounded caches
+
+Cache without eviction = memory leak. Always LRU or TTL.
+
+## 40. Commit messages that say "fix"
+
+```
+git log:
+  fix
+  wip
+  stuff
+  oops
+```
+
+Useless. Follow conventional commits (see coding style rule).
+
+---
+
+If you're unsure whether something is an anti-pattern, ask Nikola before committing.
+It's cheaper to rewrite a draft than to untangle a habit that spread across 20 files.

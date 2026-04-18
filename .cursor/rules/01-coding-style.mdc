@@ -1,0 +1,155 @@
+---
+description: General coding style and formatting. Always apply.
+alwaysApply: true
+---
+
+# Coding style
+
+## Language conventions
+
+- **Technical code, files, identifiers:** English
+- **UI strings:** Serbian (Latin script), with English translations via Paraglide
+- **Error messages shown to users:** Serbian
+- **Internal log messages:** English
+- **Comments:** English or Serbian, developer's choice — but consistent within a file
+
+## File and identifier naming
+
+- Files: `kebab-case.ts` (e.g., `emotive-claim-form.tsx`, `normalize-name.ts`)
+- React components: `PascalCase` inside the file; file name matches (e.g., `EmotiveClaimForm` in `emotive-claim-form.tsx`)
+- Functions, variables: `camelCase`
+- Classes, types, interfaces: `PascalCase`
+- Constants (true constants): `SCREAMING_SNAKE_CASE`
+- Enums (TS enums avoided — use const objects + type; see TypeScript rule)
+
+## One concept per file
+
+A file exports one primary thing. Supporting types/helpers stay private to the file.
+If multiple primary exports make sense, they belong in a folder with an `index.ts`.
+
+## Imports
+
+- Absolute imports via path aliases (`@/`, `@mr/shared`, `@mr/db`) — never long relative paths like `../../../../`
+- Imports grouped: (1) node built-ins, (2) external packages, (3) monorepo packages (`@mr/*`), (4) local files
+- Sorted alphabetically within each group
+- No unused imports — ESLint enforces
+
+## Async/await
+
+- Always use `async/await` over `.then()`/`.catch()`
+- Don't return a `Promise<Promise<T>>` — TypeScript collapses it, but visually messy; `return await` in try/catch, plain `return` elsewhere
+- Never mix sync and async in the same function unless necessary
+- Always handle errors — either try/catch, `.catch()`, or let it bubble to a known handler
+
+## Early returns
+
+Prefer guard clauses at the top of functions over deep nesting:
+
+```ts
+// BAD
+function foo(user) {
+  if (user) {
+    if (user.isActive) {
+      if (user.role === 'admin') {
+        doStuff()
+      }
+    }
+  }
+}
+
+// GOOD
+function foo(user) {
+  if (!user) return
+  if (!user.isActive) return
+  if (user.role !== 'admin') return
+  doStuff()
+}
+```
+
+## Small functions
+
+- Aim for < 30 lines per function
+- If a function does two things, split it
+- Pure functions preferred wherever possible
+
+## No dead code
+
+- No commented-out code in committed files (git remembers it)
+- No TODO without a linked issue or a date by which it's resolved
+- No unused variables, imports, or exports — ESLint enforces
+
+## Comments
+
+- Comment **why**, not **what**. Code shows what; comments explain intent, tradeoffs, gotchas.
+- JSDoc only for public APIs (exported functions with non-obvious behavior)
+- Avoid inline comments inside function bodies unless absolutely necessary
+
+```ts
+// BAD
+// Increment counter by one
+counter++
+
+// GOOD
+// Legacy Excel rows had 'AUTO STANIĆ' with diacritics; normalize to match.
+const normalized = normalizeName(row.customer)
+```
+
+## Error handling
+
+- Never swallow errors silently (`catch (e) {}`) — always at least log
+- Throw typed domain errors (`NotFoundError`, `ForbiddenError`, `ValidationError`) — never throw plain `Error` from service/repository code
+- Catch at the boundary (error handler middleware), not deep inside
+- Log with context (what was the user trying to do, what input)
+
+## No `any`, no `@ts-ignore`
+
+- `any` is banned in production code (TypeScript rule elaborates)
+- `@ts-ignore` requires a comment explaining why, and must have an issue to remove it
+- `unknown` is OK as input type; narrow with type guards
+
+## Consistency over cleverness
+
+- Boring code that everyone on the team can read > clever one-liners
+- Same pattern solves same problem everywhere — don't invent new patterns for each module
+- If a pattern is copy-pasted 3 times, extract it
+
+## Conventional commits
+
+Every commit message follows the format:
+
+```
+<type>(<scope>): <short summary>
+
+<optional body>
+
+<optional footer>
+```
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `style`, `build`, `ci`.
+Scope: module/package name, optional (e.g., `emotive-claims`, `api`, `admin-web`).
+
+Examples:
+- `feat(emotive-claims): add fault attribution editor`
+- `fix(auth): session timeout reset on activity`
+- `test(excel): cover date parsing edge cases`
+
+## No partial PRs
+
+A PR is either complete (tests pass, coverage holds, docs updated if needed) or not opened.
+WIP PRs for early review are allowed but marked "Draft" and are NEVER merged.
+
+## No unrelated changes
+
+One PR = one logical change. If you find an unrelated bug while working on task X,
+file an issue; don't fix it in the same PR.
+
+## Formatting
+
+- Prettier config in `tooling/` applied everywhere
+- 2-space indent
+- Single quotes for strings (except where escaping would be worse)
+- Trailing commas everywhere possible (ES5)
+- Semicolons: NO (matches Paraglide and most modern TS code)
+- Line length: soft 100 chars, hard 120
+
+Your editor runs Prettier on save. CI blocks on formatting issues.

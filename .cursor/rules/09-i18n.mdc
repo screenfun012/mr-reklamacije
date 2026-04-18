@@ -1,0 +1,305 @@
+---
+description: Internationalization rules with Paraglide. Apply when adding user-visible text.
+globs: apps/**/*.{tsx,ts}, packages/i18n/**/*
+---
+
+# i18n (Paraglide) rules
+
+## One source of truth
+
+All user-visible strings live in `packages/i18n/src/messages/<locale>.json`.
+Paraglide generates type-safe accessors from these files.
+
+## Languages
+
+- `sr` — Serbian (Latin script), primary
+- `en` — English
+
+Both files are authoritative; every message must exist in both. CI checks for missing keys.
+
+## Usage
+
+```tsx
+import { m } from '@mr/i18n'
+
+function Foo() {
+  return <button>{m.action_save()}</button>
+}
+```
+
+## Key naming
+
+Convention: `<namespace>_<context>_<variant?>`
+
+Namespaces:
+- `nav_*` — navigation, sidebar
+- `action_*` — verbs (save, cancel, delete, export)
+- `field_*` — form field labels
+- `placeholder_*` — form placeholder text
+- `validation_*` — form error messages
+- `success_*` — success toasts
+- `error_*` — error toasts
+- `empty_*` — empty state copy
+- `claim_*` — claim-related general
+- `emotive_*` — EMOTIVE-specific
+- `domace_*` — DOMACE-specific
+- `stats_*` — statistics pages
+- `admin_*` — admin-only features
+- `portal_*` — client portal
+- `auth_*` — login/register/2FA
+
+Examples:
+- `action_save` → "Sačuvaj" / "Save"
+- `field_date_of_claim` → "Datum reklamacije" / "Date of claim"
+- `validation_required` → "Obavezno polje" / "Required"
+- `success_claim_created` → "Reklamacija kreirana" / "Claim created"
+- `nav_emotive_claims` → "Inostrane reklamacije" / "International claims"
+
+## Never hardcode strings
+
+```tsx
+// BAD
+<button>Save</button>
+<button>Sačuvaj</button>
+
+// GOOD
+<button>{m.action_save()}</button>
+```
+
+Every string visible to the user goes through `m.*`.
+
+## Exceptions (do NOT translate)
+
+- IDs (UUIDs, sequence numbers)
+- MR numbers, claim numbers
+- Employee names, customer names (proper nouns)
+- Technical identifiers
+- Dates/numbers (use `Intl.DateTimeFormat` / `Intl.NumberFormat` with user's locale)
+
+## Pluralization (ICU)
+
+```json
+{
+  "claim_count": "{count, plural, one {# reklamacija} few {# reklamacije} other {# reklamacija}}"
+}
+```
+
+```tsx
+<p>{m.claim_count({ count: 5 })}</p>
+```
+
+Serbian has three plural forms: one (1), few (2–4), other (5+).
+
+## Interpolation
+
+```json
+{
+  "welcome_user": "Dobro došao, {name}"
+}
+```
+
+```tsx
+<h1>{m.welcome_user({ name: user.name })}</h1>
+```
+
+## Dates and numbers
+
+Never interpolate a raw date or number into a translated string unless you format it first:
+
+```tsx
+// BAD
+<p>{m.claim_received_on({ date: '2026-04-17' })}</p>
+
+// GOOD
+<p>{m.claim_received_on({ date: formatDate(claim.dateOfClaim, userLocale) })}</p>
+```
+
+Helpers in `packages/shared/src/utils/format-date.ts` / `format-amount.ts` wrap `Intl.*`.
+
+## Language switching
+
+- User's preferred language stored in `users.preferred_language`
+- On login, SSR sets the locale
+- Client-side, `<LanguageSwitcher>` in TopBar toggles and persists to `users.preferred_language` via PATCH
+- After switch, `window.location.reload()` to re-render SSR with new locale (simplest approach for MVP)
+
+## Adding a new string
+
+1. Add to `packages/i18n/src/messages/sr.json` with Serbian value
+2. Add to `packages/i18n/src/messages/en.json` with English value
+3. Run `pnpm i18n:compile` (or it runs automatically in dev)
+4. Use `m.my_new_key()` in code
+5. Commit all three changes together
+
+## Translation discipline
+
+- Serbian is primary: write it first, then translate to English
+- English translations reviewed — not machine-translated
+- Consistent terminology: build a glossary for tricky words (see below)
+
+## Glossary (canonical translations)
+
+| Serbian | English |
+|---|---|
+| Reklamacija | Claim |
+| Inostrana reklamacija | International claim (EMOTIVE) |
+| Domaća reklamacija | Domestic claim |
+| Pregled | View |
+| Novo | New |
+| Obriši | Delete |
+| Izmeni | Edit |
+| Sačuvaj | Save |
+| Otkaži | Cancel |
+| U obradi | In progress / Pending |
+| Prihvaćeno | Accepted |
+| Odbijeno | Rejected |
+| Arhiva | Archive |
+| Zaposleni / Radnik | Employee |
+| Kupac / Stranka | Customer |
+| Motor | Engine |
+| Odeljenje | Department |
+| Greška | Fault |
+| Izvor | Source |
+| Prilog / Fajl | Attachment |
+| Zapažanje / Napomena | Observation / Note |
+| Prevod | Translation |
+| Uloga | Role |
+| Korisnik | User |
+| Permisija / Dozvola | Permission |
+| Statistika | Statistics |
+| Izveštaj | Report |
+| Export | Export (borrowed) |
+| Uvoz | Import |
+| Broj | Number |
+| Datum | Date |
+| Iznos | Amount |
+| Ukupno | Total |
+| Prihod | Revenue |
+| Trošak | Cost |
+| Prijava | Login |
+| Odjava | Logout |
+| Lozinka | Password |
+
+Adhere to this glossary — don't use synonyms (e.g., once "Prilog", always "Prilog").
+
+## Tone
+
+- Second person singular, informal ("ti" form): "Sačuvaj", not "Sačuvajte"
+- Friendly but professional
+- Match what operators actually say in the shop
+
+## Error messages
+
+Specific, actionable:
+
+- GOOD: "Broj MR je obavezan."
+- BAD: "Greška."
+
+```json
+{
+  "validation_mr_number_required": "Broj MR je obavezan.",
+  "error_network": "Nema veze sa serverom. Pokušaj ponovo.",
+  "error_generic": "Nešto je pošlo po zlu. Ako se ponovi, javi administratoru."
+}
+```
+
+## Success messages
+
+Short and celebratory:
+
+- "Reklamacija sačuvana"
+- "Fajl otpremljen"
+- "Korisnik kreiran"
+
+Not:
+- "The claim has been successfully saved and stored in the database." — too wordy
+
+## Time-based strings
+
+For relative time, use `date-fns` with `srLatn` locale:
+
+```ts
+import { formatDistance } from 'date-fns'
+import { srLatn, enUS } from 'date-fns/locale'
+
+formatDistance(date, new Date(), { locale: user.lang === 'sr' ? srLatn : enUS, addSuffix: true })
+// "pre 5 minuta" / "5 minutes ago"
+```
+
+## Testing i18n
+
+- E2E tests run in Serbian by default
+- Add explicit English-locale test for key flows (login, claim create) to catch missing translations
+
+## CI check
+
+```bash
+pnpm i18n:check
+```
+
+- Fails if any key exists in one language but not the other
+- Fails if unused keys exist (optional; can be noisy)
+
+## Empty states
+
+Always translated:
+
+```tsx
+<EmptyState
+  icon={ClipboardIcon}
+  title={m.empty_claims_title()}
+  description={m.empty_claims_description()}
+  actionLabel={m.action_new_claim()}
+  onAction={...}
+/>
+```
+
+## Sidebar labels
+
+Every nav item uses a translation key:
+
+```ts
+export const navItems = [
+  { labelKey: 'nav_dashboard', href: '/dashboard', icon: HomeIcon },
+  { labelKey: 'nav_emotive_claims', href: '/emotive-claims', icon: ClipboardIcon, permission: 'emotive_claims.view' },
+  // ...
+]
+```
+
+Rendered as:
+```tsx
+<span>{m[item.labelKey]()}</span>
+```
+
+## Locale fallback
+
+If a key is missing in English (shouldn't happen thanks to CI), Paraglide falls back to the Serbian value. Better than showing `[missing key]`.
+
+## Date input format
+
+- Serbian: `DD.MM.YYYY` (e.g., `17.04.2026`)
+- English: `DD/MM/YYYY` (e.g., `17/04/2026`)
+
+Both parsed as ISO on submit. `DatePicker` handles the display format based on locale.
+
+## Number format
+
+- Serbian: `1.234,56` (dot thousands, comma decimal)
+- English: `1,234.56`
+
+Use `Intl.NumberFormat(locale)` — don't parse/format manually.
+
+## Currency
+
+RSD stored and displayed without fractional dinars in summaries:
+- "1.234 RSD" (Serbian, integer)
+- "1,234 RSD" (English, integer)
+
+In detail views, two decimals:
+- "1.234,56 RSD"
+
+## Pitfalls
+
+- Don't concatenate translated strings: `m.foo() + ' ' + m.bar()` — word order differs per language. Use interpolation instead.
+- Don't nest translations: `m.label({ value: m.other_label() })` — messy; pre-compute.
+- Don't use `m.*` in object keys (they're functions, not stable strings).

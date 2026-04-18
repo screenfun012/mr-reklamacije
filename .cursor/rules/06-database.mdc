@@ -1,0 +1,307 @@
+---
+description: Database and Drizzle ORM rules. Apply when touching data layer.
+globs: packages/db/**/*.ts, apps/api/src/modules/**/*.repository.ts, apps/api/src/modules/**/*.service.ts
+---
+
+# Database rules
+
+## Single source of truth
+
+- Schema lives in `packages/db/src/schema/*.ts`
+- Every other layer (API, tests, scripts) imports from `@mr/db`
+- No ad-hoc SQL outside the repository layer
+
+## Drizzle ORM only
+
+- Use Drizzle query builder for all DB access
+- Raw SQL via `sql\`...\`` template literal when necessary (complex queries Drizzle can't express)
+- Never string-concatenate SQL
+- Parameterized queries always
+
+## Table conventions
+
+Every business table has (inside `pgTable(...)`; at the top of each schema file: `import { uuidv7 } from 'uuidv7'`):
+
+```ts
+id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+deletedAt: timestamp('deleted_at', { withTimezone: true }),
+createdBy: uuid('created_by').references(() => users.id),
+updatedBy: uuid('updated_by').references(() => users.id),
+```
+
+Exceptions: join tables (composite PK, no timestamps usually), auth tables (managed by Better-Auth).
+
+## UUID generation (primary keys)
+
+- **UUID v7 only** for every application-generated primary key (`id` columns on our Drizzle tables). Time-ordered UUIDs improve index locality.
+- **Package:** `uuidv7` — import `uuidv7` and call `uuidv7()` wherever a new row ID is generated in schema defaults or application code. *(Reference for Phase 0: add npm dependency `uuidv7` at `^1.2.1` in `packages/db`.)*
+- **`crypto.randomUUID()` is forbidden for primary keys** — Node’s built-in API produces UUID v4, not v7.
+
+Better-Auth–managed tables follow the library’s own ID strategy; our business tables use v7 as above.
+
+## Soft deletes
+
+- Never hard-delete business data; set `deleted_at`
+- Every repository method filters `deleted_at IS NULL` by default
+- Opt-in `includeDeleted` param for admin use cases
+
+```ts
+async findById(id: string, opts: { includeDeleted?: boolean } = {}) {
+  const q = db.select().from(emotiveClaims).where(eq(emotiveClaims.id, id))
+  if (!opts.includeDeleted) q.where(isNull(emotiveClaims.deletedAt))
+  return q.limit(1).then(r => r[0] ?? null)
+}
+```
+
+## Naming
+
+- Tables: snake_case, plural: `emotive_claims`, `customers`, `user_roles`
+- Columns: snake_case: `date_of_claim`, `warranty_report`
+- Foreign keys: `<singular>_id`: `employee_id`, `customer_id`
+- Join tables: alphabetical combo: `customer_users` (not `user_customers`)
+- Indexes: explicit names: `idx_emotive_claims_year_outcome`
+- Foreign key constraints: explicit names: `fk_emotive_claims_employee`
+
+## Drizzle schema template
+
+```ts
+// packages/db/src/schema/emotive-claims.ts
+import { pgTable, uuid, text, date, integer, timestamp, bigserial } from 'drizzle-orm/pg-core'
+import { uuidv7 } from 'uuidv7'
+import { employees } from './employees'
+import { engineTypes } from './engine-types'
+import { customers } from './customers'
+import { claimSources } from './claim-sources'
+import { users } from './users'
+
+export const emotiveClaims = pgTable('emotive_claims', {
+  id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+  sequenceNumber: bigserial('sequence_number', { mode: 'number' }).notNull().unique(),
+  claimNumber: text('claim_number'),
+  warrantyReport: text('warranty_report').notNull(),
+  engineTypeId: uuid('engine_type_id').notNull().references(() => engineTypes.id),
+  dateOfClaim: date('date_of_claim').notNull(),
+  mrNumber: text('mr_number').notNull(),
+  dateOfFinish: date('date_of_finish'),
+  employeeId: uuid('employee_id').notNull().references(() => employees.id),
+  sourceId: uuid('source_id').notNull().references(() => claimSources.id),
+  outcome: text('outcome').notNull().$type<ClaimOutcome>(),
+  claimYear: integer('claim_year').notNull(),
+  customerId: uuid('customer_id').references(() => customers.id),
+  internalNotes: text('internal_notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdBy: uuid('created_by').references(() => users.id),
+  updatedBy: uuid('updated_by').references(() => users.id),
+}, (t) => ({
+  idxDateOfClaim: index('idx_emotive_claims_date_of_claim').on(t.dateOfClaim.desc()),
+  idxYearOutcome: index('idx_emotive_claims_year_outcome').on(t.claimYear, t.outcome),
+  idxEmployeeYear: index('idx_emotive_claims_employee_year').on(t.employeeId, t.claimYear),
+  idxCustomer: index('idx_emotive_claims_customer').on(t.customerId),
+}))
+
+export type EmotiveClaim = typeof emotiveClaims.$inferSelect
+export type NewEmotiveClaim = typeof emotiveClaims.$inferInsert
+```
+
+## Indexes
+
+Index columns used in WHERE, ORDER BY, or JOIN:
+- Foreign keys (Drizzle does NOT auto-create these)
+- Dates used for ordering
+- Enum-like columns used in filters
+- Composite indexes for common filter combinations
+
+Don't over-index:
+- Don't index every column
+- Rely on EXPLAIN ANALYZE for real-world queries
+- Add indexes when slow queries appear in logs
+
+## Full-text search
+
+Postgres FTS for claim body text:
+
+```sql
+CREATE INDEX idx_emotive_claims_fts ON emotive_claims
+USING GIN (to_tsvector('serbian', warranty_report));
+```
+
+In queries:
+```ts
+where(sql`to_tsvector('serbian', ${emotiveClaims.warrantyReport}) @@ plainto_tsquery('serbian', ${searchQuery})`)
+```
+
+Use `'simple'` config if Serbian dictionary not configured.
+
+## Transactions
+
+Any multi-row write goes in a transaction:
+
+```ts
+await db.transaction(async (tx) => {
+  const claim = await tx.insert(emotiveClaims).values(input).returning()
+  await tx.insert(emotiveClaimFaults).values(faults)
+  await tx.insert(auditLog).values({ ... })
+  return claim[0]
+})
+```
+
+If any step fails, everything rolls back.
+
+## Optimistic concurrency
+
+For hot records that multiple users edit (future need), add `version` integer column and `WHERE version = ?` on updates. Not required in MVP.
+
+## Pagination
+
+```ts
+async list(filters, user) {
+  const offset = (filters.page - 1) * filters.pageSize
+  const [items, totalRow] = await Promise.all([
+    db.select().from(...).limit(filters.pageSize).offset(offset).orderBy(...),
+    db.select({ count: sql<number>`count(*)::int` }).from(...),
+  ])
+  return { items, total: totalRow[0].count, page: filters.page, pageSize: filters.pageSize }
+}
+```
+
+Offset pagination is fine for MVP. Switch to cursor pagination if we hit 100k+ rows in a common list.
+
+## Enum-like columns
+
+Stored as `text` with CHECK constraint, not Postgres `enum` type (easier to extend):
+
+```ts
+outcome: text('outcome').notNull().$type<'pending' | 'accepted' | 'rejected' | 'archived'>(),
+```
+
+And migration:
+```sql
+ALTER TABLE emotive_claims ADD CONSTRAINT chk_emotive_claims_outcome
+CHECK (outcome IN ('pending', 'accepted', 'rejected', 'archived'));
+```
+
+## Decimal / money
+
+Always `decimal(14, 2)` — never `real`, `float`, `double`, or `numeric` without precision. Fits large RSD sums safely.
+
+## Dates
+
+- `date` for date-only (e.g., `date_of_claim`) — stored as UTC midnight
+- `timestamp with time zone` for moments (e.g., `created_at`) — stored as UTC
+- Application code works in UTC internally; display formatting uses user's timezone (Europe/Belgrade)
+
+## Migrations
+
+### Generating
+
+```bash
+pnpm db:generate
+```
+
+Reviews the schema diff, produces a new migration file. Inspect before committing — never commit a migration you haven't read.
+
+### Running
+
+```bash
+pnpm db:migrate
+```
+
+Runs on `api` service startup in production.
+
+### Forward-only
+
+No rollbacks. To undo a migration, write a new one that reverses it.
+
+### Destructive migrations
+
+Any migration that:
+- Drops a column
+- Drops a table
+- Changes a column type in a non-backward-compatible way
+
+...must be split across releases:
+1. Release A: stop writing to the column (API stops reading it too)
+2. Release B: migration drops the column
+
+## Seeding
+
+`packages/db/src/seed/run.ts` orchestrates all seeds in order:
+1. Permissions (from code)
+2. System roles
+3. Departments
+4. Claim sources
+5. Initial EMOTIVE customers
+6. Engine types (extracted from CSV in repo)
+7. Admin user (from env)
+
+Seeds are **idempotent** — safe to run multiple times. Use `onConflictDoNothing` or check-then-insert.
+
+## Data migration vs. schema migration
+
+- **Schema migration:** DDL, structural changes
+- **Data migration:** UPDATE/INSERT of existing rows, one-time
+
+Data migrations live in `packages/db/src/data-migrations/` with their own runner. Not auto-run — admin triggers manually after schema migration deploys.
+
+## Repository interface
+
+Every repository offers at minimum:
+
+```ts
+class FooRepository {
+  async findById(id: string, opts?: { includeDeleted?: boolean }): Promise<Foo | null>
+  async list(filters: FooFilters, user: AuthUser): Promise<{ items: Foo[]; total: number }>
+  async create(input: FooCreateInput, actorId: string): Promise<Foo>
+  async update(id: string, patch: FooUpdateInput, actorId: string): Promise<Foo>
+  async softDelete(id: string, actorId: string): Promise<void>
+  async restore(id: string, actorId: string): Promise<void>
+}
+```
+
+Consistency lets other modules predict what a new repo looks like.
+
+## Querying only what you need
+
+- Select explicit columns when row is large and you only need a few fields
+- Default `SELECT *` is fine for small tables or when full row is used
+- Use `with` (common table expressions) for complex queries
+
+## Joins vs. multiple queries
+
+Prefer a single query with joins over N+1 queries. Drizzle's `with` relations:
+
+```ts
+await db.query.emotiveClaims.findMany({
+  with: {
+    employee: true,
+    engineType: true,
+    faults: { with: { department: true, employee: true, externalParty: true } },
+  },
+})
+```
+
+But check the generated SQL — sometimes two separate queries are faster than a complex join.
+
+## Connection management
+
+- Connection pool size: 10 per API instance
+- Don't open a new connection per request — use the pool
+- Never leave a client checked out (always use pool helpers or transactions)
+
+## Database tests
+
+Tests use real Postgres in a throwaway database (see `docs/10-testing.md`).
+Each test runs in a transaction that rolls back at the end — no cleanup needed.
+
+## NEVER
+
+- NEVER run `TRUNCATE` or `DROP TABLE` on production, even with `IF EXISTS`
+- NEVER connect to production DB from a local dev machine except read-only via SSH tunnel
+- NEVER ship a migration that deletes data without explicit Nikola approval
+- NEVER use `ON DELETE CASCADE` on business tables (except for clear parent-child like `emotive_claim_faults`)
+- NEVER store plaintext passwords (Better-Auth hashes them)
+- NEVER store API keys or secrets in non-settings tables

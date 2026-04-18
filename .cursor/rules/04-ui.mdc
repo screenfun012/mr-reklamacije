@@ -1,0 +1,290 @@
+---
+description: UI component and design rules. Apply when working in any web app.
+globs: apps/admin-web/**/*.{tsx,ts,css}, apps/internal-web/**/*.{tsx,ts,css}, apps/portal-web/**/*.{tsx,ts,css}, packages/ui/**/*.{tsx,ts,css}
+---
+
+# UI / UX rules
+
+## Stack
+
+- **Tailwind CSS v4** with `@mr/tailwind-preset`
+- **shadcn/ui** as base component layer
+- **lucide-react** for icons (never other icon libs)
+- **@tanstack/react-table** for data tables
+- **@tanstack/react-form** for forms
+- **@tanstack/react-query** for server state
+- **recharts** for charts
+- **sonner** for toasts
+- **Inter** font (400/500/600/700), **JetBrains Mono** for IDs/codes
+
+Other libraries require a conversation with Nikola before adding.
+
+## Styling
+
+### Tailwind
+
+- Use **utility classes only**; never write custom CSS beyond globals + keyframes
+- Use CSS variables from `globals.css` for all colors (`hsl(var(--primary))`)
+- Never use arbitrary color values (`bg-[#ff0000]`); extend the preset if a new color is needed
+
+### Dark mode
+
+- All components support dark mode via `dark:*` Tailwind variants
+- Use semantic tokens (`bg-background`, `text-foreground`), not literal colors (`bg-white`, `text-black`)
+
+### Spacing
+
+- 8px base grid (Tailwind default)
+- Prefer `gap-*` with flex/grid over `space-x-*`/`space-y-*`
+
+## Component structure
+
+### One file per component
+
+```tsx
+// apps/internal-web/src/modules/emotive-claims/components/emotive-claim-form.tsx
+'use client'
+
+import { useForm } from '@tanstack/react-form'
+import { zodValidator } from '@tanstack/zod-form-adapter'
+import type { EmotiveClaimCreateInput } from '@mr/shared/schemas'
+import { Button } from '@mr/ui/button'
+// ...
+
+interface EmotiveClaimFormProps {
+  defaultValues?: Partial<EmotiveClaimCreateInput>
+  onSubmit: (values: EmotiveClaimCreateInput) => Promise<void>
+}
+
+export function EmotiveClaimForm({ defaultValues, onSubmit }: EmotiveClaimFormProps) {
+  // ...
+}
+```
+
+### No inline components
+
+Extract any component used more than once, or any component > 50 lines.
+
+### Presentational vs. connected
+
+- "Container" components fetch data via hooks
+- "Presentational" components receive everything as props
+- Split when it makes sense (e.g., `EmotiveClaimsTable` connected; `DataTable` presentational)
+
+## Forms
+
+### TanStack Form + Zod
+
+```tsx
+const form = useForm({
+  defaultValues,
+  validators: { onChange: EmotiveClaimCreateInput },
+  onSubmit: async ({ value }) => {
+    await onSubmit(value)
+  },
+})
+```
+
+### Autosave drafts
+
+For multi-field forms, persist to localStorage every 5s while dirty. Hook:
+
+```ts
+useFormAutosave({ key: `draft:emotive-claim:new`, values, enabled: isDirty })
+```
+
+### Unsaved changes guard
+
+On navigation away from a dirty form, prompt the user.
+
+### Validation feedback
+
+- Errors appear below the input in red
+- Required fields marked with red asterisk after label
+- First error auto-scrolls into view on submit
+
+### Labels
+
+- Labels above inputs, never beside
+- Labels in Serbian for user-facing; English for internal types
+
+## Tables
+
+- Always use `<DataTable>` from `packages/ui` (or each app's local wrapper)
+- Server-side pagination, sorting, filtering — never client-side for 100+ rows
+- Show a skeleton during load, empty state when no data
+- Row click → detail page (if applicable)
+- Bulk select only where bulk operations are available
+
+## Buttons
+
+- Primary action: `variant="default"`, always the rightmost button in a form/dialog
+- Secondary action: `variant="outline"` or `variant="ghost"`
+- Destructive: `variant="destructive"`, always requires `<ConfirmDialog>`
+- Disabled state: always when action is unavailable (e.g., during submission)
+- Loading state: disable + inline spinner on submit buttons
+
+## Dialogs
+
+- Use shadcn `<Dialog>` or `<AlertDialog>` for confirmations
+- Never use browser `confirm()` or `alert()`
+- Always focus primary action on open
+- Esc closes (shadcn handles this)
+
+## Toasts
+
+- Use `sonner.toast.*` for success, error, info
+- Keep messages short: "Reklamacija sačuvana", "Greška prilikom čuvanja"
+- Error toasts stay until dismissed; success toasts auto-dismiss in 3s
+
+## Loading states
+
+- Per-element skeleton (shadcn `<Skeleton>`), not full-page spinners
+- Full-page spinner only when truly nothing else can be shown
+- Optimistic updates where safe (edits, toggles) with rollback on error
+
+## Empty states
+
+Every list/table has an empty state:
+- Icon
+- Headline ("Još nema reklamacija")
+- Optional body text
+- Optional CTA button
+
+## Error states
+
+- Error boundary at route level
+- Route-level errors show friendly page, not stack trace
+- Failed queries show retry button
+
+## Permission gating
+
+```tsx
+<Can permission="emotive_claims.delete">
+  <Button variant="destructive">Obriši</Button>
+</Can>
+```
+
+- UI hiding is a **courtesy**, not security — API enforces
+- Never gate entire routes purely on `<Can>`; also check in route `beforeLoad`
+
+## i18n
+
+- Every user-visible string via Paraglide: `m.claim_saved()`
+- Never hardcode Serbian/English strings in components
+- Keys in English: `claim_saved`, `confirm_delete_title`
+- ICU format for plurals: `{count, plural, one {# reklamacija} other {# reklamacija}}`
+
+## Responsive behavior
+
+- Desktop is primary; everything must also work on tablet
+- Mobile is minimal but functional
+- Use `md:` breakpoint as main pivot (tables become cards below)
+
+## Accessibility (required, not optional)
+
+- All interactive elements keyboard-reachable (tab order logical)
+- Focus ring always visible
+- Icon-only buttons have `aria-label`
+- Forms: labels associated via `htmlFor`
+- Color not the only signal (outcome badge has text + color)
+- Alt text on images (from caption or filename)
+- Lighthouse accessibility score ≥ 95 on all public pages
+
+## Icons
+
+- Import from `lucide-react` only
+- Size: `h-4 w-4` (16px) default, `h-5 w-5` (20px) for emphasis
+- Decorative icons: `aria-hidden="true"`
+- Functional icons: `aria-label` on the parent button
+
+## Performance
+
+- Lazy-load heavy routes (charts, ETL importer) via dynamic import
+- Memoize expensive computations (`useMemo`)
+- Use `React.memo` for pure presentational components inside large lists
+- Avoid re-renders: stable callback refs via `useCallback`, stable arrays via `useMemo`
+- Images: serve thumbnails by default; original only on demand
+
+## Layout
+
+- Use AppShell from `packages/ui` in admin-web and internal-web
+- Portal uses simpler centered layout
+- Sidebar items defined in `config/navigation.ts` per app
+- Breadcrumbs in TopBar reflect current route
+
+## Custom hooks
+
+Place in `hooks/` directory of the module:
+- `useEmotiveClaims.ts` — data fetch hook (TanStack Query)
+- `useCreateEmotiveClaim.ts` — mutation hook
+- `useMe.ts` — current user (one at app level)
+- `usePermissions.ts` — wraps `useMe`, memoized Set
+
+Custom hook naming: prefix `use`, camelCase.
+
+## No global state libs
+
+- No Redux, no Zustand, no Jotai
+- Server state: TanStack Query
+- UI state: local `useState` / `useReducer`
+- Cross-component UI state: React Context only when needed, kept minimal
+
+## No CSS-in-JS
+
+- No styled-components, no emotion
+- Tailwind + CSS variables is the only styling approach
+
+## No custom portals
+
+- Use shadcn's `<Portal>` (built on Radix) when needed
+- Don't reach for `createPortal` directly
+
+## Query patterns
+
+```ts
+const { data, isLoading, error } = useQuery({
+  queryKey: ['emotive-claims', filters],
+  queryFn: () => fetchEmotiveClaims(filters),
+})
+```
+
+- Query keys are arrays with descriptive strings and params
+- Mutations invalidate related queries via `queryClient.invalidateQueries`
+- Use `useSuspenseQuery` only where Suspense boundaries exist (route loaders)
+
+## Anti-patterns to avoid
+
+- Don't fetch in `useEffect` — use TanStack Query
+- Don't manipulate DOM directly (`document.querySelector`)
+- Don't use `dangerouslySetInnerHTML` unless content is sanitized
+- Don't use `any` for event handlers — React's types are fine
+- Don't use controlled components for huge forms — uncontrolled with react-form is better for performance
+
+## Component file template
+
+```tsx
+// apps/<app>/src/modules/<module>/components/<component-name>.tsx
+'use client'
+
+import { useQuery } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+
+import { Button } from '@mr/ui/button'
+import { m } from '@mr/i18n'
+
+import { fetchFoo } from '../api/foo.api'
+
+interface <ComponentName>Props {
+  // ...
+}
+
+export function <ComponentName>({ ... }: <ComponentName>Props): ReactNode {
+  // ...
+  return (
+    // ...
+  )
+}
+```
+
+Follow this skeleton for consistency.

@@ -1,0 +1,275 @@
+---
+description: Security rules. Non-negotiable; a security bug is always a SEV-1.
+alwaysApply: true
+---
+
+# Security rules
+
+## The golden rule
+
+**Every API route checks permission.** No exceptions.
+
+```ts
+// BAD — no permission check
+app.get('/api/emotive-claims', handler)
+
+// GOOD
+app.get('/api/emotive-claims', requirePermission('emotive_claims.view'), handler)
+```
+
+Even "obviously safe" routes (health checks are exempt but documented; everything else is protected).
+
+## Defense in depth
+
+Each layer assumes other layers could fail:
+
+1. **Cloudflare WAF** — blocks obvious attacks
+2. **Rate limiting** — throttles abuse
+3. **Auth middleware** — rejects unauthenticated
+4. **Permission middleware** — rejects unauthorized
+5. **Service layer** — enforces business rules (e.g., own-customer filter)
+6. **Repository layer** — queries with actor context
+7. **Zod validation** — rejects malformed input
+
+Never remove a layer because "the other layers will catch it". They all stay.
+
+## Input validation
+
+**Every** API endpoint validates input with Zod:
+
+```ts
+app.post('/api/emotive-claims',
+  requirePermission('emotive_claims.create'),
+  async (c) => {
+    const body = await c.req.json()
+    const input = EmotiveClaimCreateInput.parse(body)  // throws ValidationError
+    // ... safe to use input
+  }
+)
+```
+
+Never trust input type from `c.req.param('id')` — always parse to `z.string().uuid()` or similar.
+
+## Output filtering
+
+Never return fields the user shouldn't see:
+
+- `users.password_hash` — NEVER in response
+- `app_settings` where `is_secret = true` — only through admin-specific endpoint
+- `internal_notes` — filtered out for client role
+- `attachments.visibility = 'internal'` — filtered out for client role
+
+Define response Zod schemas per role if needed. Strict output: fields not in the schema are stripped.
+
+## Permission checks
+
+### Route-level
+
+```ts
+requirePermission('emotive_claims.view')
+```
+
+### Row-level (for data scoped to specific customers)
+
+```ts
+// In repository
+async list(user, filters) {
+  if (user.permissions.has('emotive_claims.view')) {
+    // full access
+  } else if (user.permissions.has('emotive_claims.view_own_customer')) {
+    const customerIds = await this.getUserCustomerIds(user.id)
+    // filter by customerIds
+  } else {
+    throw new ForbiddenError()
+  }
+}
+```
+
+### Always enforce on the server
+
+- UI hiding is courtesy
+- Route loaders are courtesy
+- API server is the judge
+
+## Authentication
+
+- All protected routes check session via `auth` middleware
+- Sessions stored server-side with 5-min cookie cache
+- `SameSite=Lax; HttpOnly; Secure` cookies
+- Session cookie named `mrr.session_token` (host-only)
+
+## 2FA
+
+- Forced for admin role — admins cannot disable
+- Optional for operator/viewer/client
+- TOTP only (Google Auth, Authy, 1Password)
+- Backup codes (10 one-time) issued at setup
+
+## Password requirements
+
+| Role | Min length | Requires |
+|---|---|---|
+| admin | 12 | upper + lower + digit + symbol |
+| operator, viewer | 10 | upper + lower + digit |
+| client | 8 | upper + lower + digit |
+
+zxcvbn meter shown on UI.
+
+## Rate limits
+
+Applied at multiple levels:
+- Cloudflare (coarse, per IP)
+- Better-Auth built-in (login, register, reset)
+- Hono middleware (per-user, per-endpoint)
+
+Login endpoint: 5/min/IP for admin, 10/min for others. After 10 failures in 15 min, account locked for 15 min.
+
+## SQL injection
+
+- Drizzle ORM uses parameterized queries everywhere
+- Never use `sql.raw(...)` with user input
+- If raw SQL is needed, use `sql\`... ${param}\`` (template literal escapes)
+
+## XSS
+
+- React escapes by default — rely on that
+- Never use `dangerouslySetInnerHTML` with user-provided content
+- If rich text is ever needed (future), sanitize with DOMPurify
+
+## CSRF
+
+- Better-Auth verifies Origin/Referer
+- `SameSite=Lax` cookies block standard CSRF
+- We use JSON content-type everywhere — no HTML form submissions cross-origin
+- Never add HTML `<form>` tags that POST to our API
+
+## Secrets
+
+- All secrets in Railway env vars, never in git
+- `.env.example` with placeholder values only
+- Pre-commit hook (`gitleaks`) in CI to catch accidental secrets
+
+## API key handling
+
+- OpenAI API key stored in `app_settings` with `is_secret=true`
+- Redacted from audit log
+- Admin-only endpoint to view/update
+- Never included in client-side bundle
+
+## Files and uploads
+
+- MIME type verified from file content (magic bytes), not trusted from header
+- File size limits enforced
+- Filenames sanitized before storage
+- No path traversal in storage_path (constructed from UUIDs only)
+- Files served via API with auth check — no public URLs
+
+## Downloads
+
+- `Content-Disposition: attachment` forces download (prevents auto-execution of malicious files)
+- `X-Content-Type-Options: nosniff` prevents browser from guessing MIME
+- Signed URLs for images valid 5 min only
+
+## Audit log
+
+- Every state change logged:
+  - Actor (user ID + IP + user agent)
+  - Action (create, update, delete, login, logout, permission change, etc.)
+  - Entity (type + ID)
+  - Diff (for updates)
+  - Timestamp
+
+Nothing bypasses audit. Even admin actions are logged.
+
+## Login auditing
+
+- Successful logins logged
+- Failed logins logged
+- After 5 failed logins, exponential backoff + email alert (future)
+
+## Permission changes
+
+- Every permission change triggers SSE to affected users (force re-fetch)
+- Every permission change logged in audit
+- `admin` role bypass is hard-coded — never broken by DB inconsistency
+
+## Session security
+
+- Session revocation on deactivation
+- Session revocation on password change
+- Session revocation on 2FA change
+- SSE event sent to deactivated user → browser redirects to login
+
+## Data exposure in logs
+
+- Never log full request body in production (might contain PII)
+- Never log cookies, headers, or session tokens
+- Log user IDs, not emails/names
+- Mask sensitive fields in error contexts
+
+## Error responses
+
+- Don't leak internal details
+- Generic 500 for unexpected errors ("Something went wrong"); detailed only in dev
+- 401 vs 403 distinguished but don't leak whether a user exists (for registration/login)
+
+## Cross-subdomain isolation
+
+- No cross-subdomain cookie sharing
+- A client's XSS on portal can never access admin session
+- Each subdomain has host-only cookies
+
+## Headers
+
+Set via Hono secure-headers middleware:
+
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Frame-Options: DENY  (portal: frame-ancestors)
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; ...
+```
+
+## Dependencies
+
+- `pnpm audit` in CI, blocks HIGH/CRITICAL
+- Renovate (or Dependabot) weekly PRs for updates
+- Major version updates reviewed by Nikola, not auto-merged
+
+## Third-party scripts
+
+- No external scripts loaded at runtime (no Google Analytics, no Sentry in MVP, no CDN fonts outside package)
+- Self-host everything
+
+## No eval, no new Function
+
+- `eval`, `new Function(...)` banned (ESLint enforced)
+- `setTimeout(string, ...)` banned
+- JSON.parse is OK; regex with dynamic parts must be reviewed
+
+## Injection surfaces
+
+Particular care around:
+- Excel cell values (user input shown in exported Excel — CSV injection)
+- Email subject/body (HTML injection — always HTML-escape)
+- Filenames in Content-Disposition (sanitize)
+- Log messages (no user input in format strings)
+
+## Reporting a vulnerability
+
+If you or anyone finds a vulnerability:
+- File privately with Nikola
+- Don't commit fix with vuln details in commit message
+- Coordinate disclosure timing
+
+## Checklist before merging a PR touching security
+
+- [ ] Every new route has `requirePermission(...)`
+- [ ] Every input is Zod-parsed
+- [ ] Row-level filters applied where the user shouldn't see all rows
+- [ ] Audit log entry written for state-changing operations
+- [ ] No sensitive data in response (check fields explicitly)
+- [ ] Tests cover permission denial cases
+- [ ] No new secrets committed

@@ -1,0 +1,348 @@
+---
+description: API design rules. Apply when adding or modifying API endpoints.
+globs: apps/api/**/*.ts
+---
+
+# API design rules
+
+## URL structure
+
+```
+/api/<resource>[/<id>][/<sub-resource>][/<action>]
+```
+
+Examples:
+- `/api/emotive-claims`
+- `/api/emotive-claims/:id`
+- `/api/emotive-claims/:id/attachments`
+- `/api/emotive-claims/:id/change-outcome`  (verb action)
+- `/api/users/:id/reset-password`
+- `/api/employees`
+- `/api/stats/emotive`
+
+## HTTP methods
+
+| Method | Purpose |
+|---|---|
+| `GET` | Retrieve, never mutates |
+| `POST` | Create or trigger action |
+| `PATCH` | Partial update (preferred over PUT) |
+| `PUT` | Full replace (rarely used) |
+| `DELETE` | Soft-delete (always soft, per database rules) |
+
+## Status codes
+
+| Code | Use |
+|---|---|
+| 200 | Successful GET/PATCH/PUT |
+| 201 | Successful POST creating resource (include `Location` header) |
+| 202 | Accepted async (e.g., large export job enqueued) |
+| 204 | Successful DELETE (no body) |
+| 400 | Validation error (Zod parse failed) |
+| 401 | Not authenticated |
+| 403 | Authenticated but lacks permission |
+| 404 | Resource not found (or user lacks row-level access — return 404 not 403 to avoid leaking existence) |
+| 409 | Conflict (duplicate, state mismatch) |
+| 413 | Payload too large |
+| 415 | Unsupported media type |
+| 422 | Semantic error (valid shape, invalid value combination) |
+| 429 | Rate limited |
+| 500 | Server error |
+| 502 | Upstream (e.g., OpenAI) failed |
+
+## Response format
+
+### Success (single resource)
+
+```json
+{
+  "id": "...",
+  "field1": "...",
+  "createdAt": "..."
+}
+```
+
+Direct object, no wrapper. Aligns with REST conventions.
+
+### Success (list)
+
+```json
+{
+  "items": [...],
+  "total": 123,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+### Error
+
+```json
+{
+  "error": "ValidationError",
+  "message": "Human-readable summary",
+  "code": "VALIDATION_ERROR",
+  "details": {
+    "fieldErrors": {
+      "dateOfClaim": "Required",
+      "mrNumber": "Must be non-empty"
+    }
+  }
+}
+```
+
+## Error consistency
+
+Custom errors in `apps/api/src/core/errors/` all extend `AppError`. Error handler middleware maps them to HTTP:
+
+```ts
+export class AppError extends Error {
+  constructor(message, public code, public httpStatus, public details?) {}
+}
+export class NotFoundError extends AppError {
+  constructor(entity, id) { super(`${entity} ${id} not found`, 'NOT_FOUND', 404, { entity, id }) }
+}
+export class ForbiddenError extends AppError {
+  constructor() { super('Forbidden', 'FORBIDDEN', 403) }
+}
+export class ValidationError extends AppError {
+  constructor(fieldErrors: Record<string, string>) { super('Validation failed', 'VALIDATION_ERROR', 400, { fieldErrors }) }
+}
+export class ConflictError extends AppError {
+  constructor(message, details?) { super(message, 'CONFLICT', 409, details) }
+}
+```
+
+Services throw these. Controllers let them bubble to the error handler.
+
+## Pagination
+
+Query params:
+- `page` (default 1, min 1)
+- `pageSize` (default 20, max 100)
+
+Response includes `total` so UI can render page count.
+
+## Filtering
+
+Query params, typed via Zod:
+
+```ts
+const listQuerySchema = z.object({
+  year: z.coerce.number().int().optional(),
+  outcome: z.enum(['pending', 'accepted', 'rejected', 'archived']).optional(),
+  employeeId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
+  search: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+```
+
+Filter names match DB column names in camelCase (e.g., `employeeId` — backend maps to `employee_id`).
+
+## Sorting
+
+Query params:
+- `sort` — field name
+- `order` — `asc` | `desc`
+
+Whitelist allowed sort fields per endpoint (prevent arbitrary column ordering).
+
+## Include relations
+
+For endpoints that can return shallow or deep responses:
+
+```
+GET /api/emotive-claims/:id?include=employee,engineType,faults
+```
+
+Only expose relation includes that are useful — don't make every relation opt-in/out.
+
+## Naming
+
+- URL paths: kebab-case (`/emotive-claims`, not `/emotiveClaims`)
+- Query params: camelCase (`employeeId`, not `employee_id`)
+- JSON fields: camelCase (API client side)
+- DB columns: snake_case (DB side)
+- Drizzle handles mapping
+
+## Verb endpoints (actions, not CRUD)
+
+When an operation doesn't fit REST CRUD:
+
+```
+POST /api/emotive-claims/:id/change-outcome
+Body: { outcome: 'accepted' }
+```
+
+```
+POST /api/users/:id/reset-password
+POST /api/roles/:id/copy-from
+POST /api/registration-requests/:id/approve
+POST /api/excel/export
+POST /api/excel/import/dry-run
+POST /api/excel/import/commit
+```
+
+Verb at the end, POST method.
+
+## Bulk operations
+
+Avoid bulk endpoints in MVP — let UI loop or use a dedicated "batch" endpoint when absolutely needed:
+
+```
+POST /api/attachments/batch-delete
+Body: { ids: [...] }
+```
+
+Wrapped in a transaction.
+
+## Idempotency
+
+- PATCH on same resource with same body: same result (idempotent)
+- DELETE on already-deleted: 404 (not 200)
+- POST create: not idempotent unless a client-provided `Idempotency-Key` header is supported (deferred for MVP)
+
+## Response envelope consistency
+
+- GET single: bare object
+- GET list: `{ items, total, page, pageSize }`
+- POST create: bare object, 201 + `Location`
+- PATCH/PUT: bare object, 200
+- DELETE: empty, 204
+- Action POST: bare object with new state, 200
+
+## Validation
+
+All input validated with Zod **before** the handler logic:
+
+```ts
+app.post('/api/emotive-claims',
+  requirePermission('emotive_claims.create'),
+  validate({ body: EmotiveClaimCreateInput }),  // middleware
+  async (c) => {
+    const input = c.get('validated').body
+    const claim = await container.emotiveClaimsService.create(input, c.get('user'))
+    return c.json(claim, 201)
+  }
+)
+```
+
+Or inline parse inside the handler — both acceptable.
+
+## Content type
+
+- All JSON endpoints: `Content-Type: application/json`
+- File uploads: `multipart/form-data`
+- File downloads: correct `Content-Type` from storage + `Content-Disposition: attachment`
+
+## CORS
+
+- API doesn't enable CORS for browsers — frontends proxy via private network
+- If ever exposing the API directly to browsers (mobile app, third-party integration), configure CORS explicitly per origin
+
+## Versioning
+
+- No `/v1/` prefix in MVP — we control both ends, can break together
+- If API becomes public, introduce `/v1/` at that point
+
+## Rate limits per endpoint
+
+Apply in route definition:
+
+```ts
+app.post('/api/excel/export',
+  requirePermission('export.workbook_full'),
+  exportLimiter,  // 3/min per user
+  handler
+)
+
+app.post('/api/translate',
+  requirePermission('translation.request'),
+  translateLimiter,  // 60/hour for client, 300 for internal
+  handler
+)
+```
+
+## Streaming responses
+
+- SSE: `streamSSE` from Hono
+- Large downloads: stream from source (don't buffer in memory)
+- Large uploads: streaming parser (busboy / Hono's built-in)
+
+## Authentication
+
+- Session cookie (Better-Auth) — primary
+- No API keys for MVP (no machine-to-machine callers)
+
+## Authorization
+
+- `requirePermission('...')` on every protected route
+- Row-level filtering in repository
+
+## Audit
+
+- Every state-changing endpoint writes audit log
+- Done in service layer (not controller) so direct service calls also audit
+- Failed permission checks also audited (in middleware)
+
+## Documentation
+
+- Each route documented in its module's `README.md` (path, method, permissions required, body shape, responses)
+- Consider OpenAPI generation later — not required for MVP
+
+## Examples of "wrong vs. right"
+
+### Wrong
+
+```ts
+// No permission check
+app.get('/api/emotive-claims', async (c) => {
+  const all = await db.select().from(emotiveClaims)  // direct DB call in controller!
+  return c.json(all)  // no pagination, no filters
+})
+```
+
+### Right
+
+```ts
+// apps/api/src/modules/emotive-claims/emotive-claims.routes.ts
+export function registerEmotiveClaimsRoutes(app: Hono) {
+  const base = new Hono()
+
+  base.get('/',
+    requirePermission('emotive_claims.view'),
+    validate({ query: listQuerySchema }),
+    async (c) => {
+      const user = c.get('user')!
+      const filters = c.get('validated').query
+      const result = await container.emotiveClaimsService.list(filters, user)
+      return c.json(result)
+    }
+  )
+
+  // ... more routes
+
+  app.route('/api/emotive-claims', base)
+}
+```
+
+## Test coverage
+
+Every endpoint must have integration tests for:
+- Happy path (correct role)
+- 403 when wrong role
+- 401 when no auth
+- 400 when invalid input
+- 404 when resource missing
+- Side effects (audit log, event emission)
+
+## Health endpoint
+
+```
+GET /api/health → { status: 'ok', timestamp, version }
+GET /api/health/detailed → admin-only, deeper checks
+```
+
+Health endpoint is NOT behind auth. All other endpoints are.

@@ -1,0 +1,288 @@
+---
+description: TypeScript-specific rules. Always apply.
+alwaysApply: true
+---
+
+# TypeScript rules
+
+## Strict mode (non-negotiable)
+
+`tsconfig.base.json` enables:
+
+- `strict: true`
+- `noUncheckedIndexedAccess: true`
+- `exactOptionalPropertyTypes: true`
+- `noImplicitOverride: true`
+- `noFallthroughCasesInSwitch: true`
+- `noImplicitReturns: true`
+- `noPropertyAccessFromIndexSignature: true`
+
+Every app extends this base. No app relaxes a rule without explicit approval from Nikola.
+
+## `any` is banned
+
+- `any` triggers ESLint error in production code
+- Allowed only in:
+  - Test files (with a comment explaining why)
+  - Third-party type declaration stubs (e.g., `*.d.ts` for untyped libraries)
+
+Use `unknown` when you need to accept any input, then narrow with type guards.
+
+## `unknown` narrowing
+
+```ts
+function handle(input: unknown) {
+  if (typeof input !== 'object' || input === null) return
+  if (!('id' in input) || typeof input.id !== 'string') return
+  // now `input` is narrowed
+}
+```
+
+Zod is our preferred narrowing tool — parse unknown JSON into validated shapes.
+
+## `never` for exhaustiveness
+
+When switching over a finite type:
+
+```ts
+function render(status: 'pending' | 'accepted' | 'rejected' | 'archived') {
+  switch (status) {
+    case 'pending': return renderPending()
+    case 'accepted': return renderAccepted()
+    case 'rejected': return renderRejected()
+    case 'archived': return renderArchived()
+    default:
+      // Compile error if we ever add a new status without handling it
+      const _exhaustive: never = status
+      throw new Error(`Unhandled status: ${_exhaustive}`)
+  }
+}
+```
+
+Do this everywhere we switch over an enum-like union. It catches bugs at compile time.
+
+## Enums → const objects + type
+
+TypeScript `enum` is avoided. Use `as const` objects with derived types:
+
+```ts
+// GOOD
+export const ClaimOutcome = {
+  Pending: 'pending',
+  Accepted: 'accepted',
+  Rejected: 'rejected',
+  Archived: 'archived',
+} as const
+
+export type ClaimOutcome = (typeof ClaimOutcome)[keyof typeof ClaimOutcome]
+// type ClaimOutcome = 'pending' | 'accepted' | 'rejected' | 'archived'
+
+// BAD
+export enum ClaimOutcome {
+  Pending = 'pending',
+  // ...
+}
+```
+
+Why: `enum` has quirky runtime behavior, imports, and tree-shaking issues.
+
+## Discriminated unions
+
+For polymorphic data (e.g., claim faults), use discriminated unions:
+
+```ts
+type Fault =
+  | { type: 'employee'; employeeId: string; notes?: string }
+  | { type: 'department'; departmentId: string; notes?: string }
+  | { type: 'external'; externalPartyId: string; notes?: string }
+
+function describe(f: Fault): string {
+  switch (f.type) {
+    case 'employee': return `Employee ${f.employeeId}`  // employeeId typed
+    case 'department': return `Dept ${f.departmentId}`
+    case 'external': return `External ${f.externalPartyId}`
+  }
+}
+```
+
+## Zod as source of truth
+
+For any data that crosses a boundary (API ↔ client, DB row ↔ domain object, file ↔ app):
+
+1. Define the Zod schema in `packages/shared/src/schemas/`
+2. Derive the TS type via `z.infer<typeof schema>`
+3. Parse at the boundary; work with parsed objects inside
+
+```ts
+export const EmotiveClaimCreateInput = z.object({
+  warrantyReport: z.string().min(1).max(4000),
+  engineTypeId: z.string().uuid(),
+  dateOfClaim: z.coerce.date(),
+  mrNumber: z.string().min(1).max(50),
+  employeeId: z.string().uuid(),
+  sourceId: z.string().uuid(),
+  outcome: z.enum(['pending', 'accepted', 'rejected', 'archived']),
+  faults: z.array(EmotiveClaimFaultInput).default([]),
+})
+export type EmotiveClaimCreateInput = z.infer<typeof EmotiveClaimCreateInput>
+```
+
+## Type narrowing with assertion functions
+
+For internal invariants, use assertion functions over non-null assertions (`!`):
+
+```ts
+function assertDefined<T>(value: T | undefined, message: string): asserts value is T {
+  if (value === undefined) throw new Error(message)
+}
+
+// usage
+assertDefined(user, 'User must be authenticated at this point')
+// `user` narrowed to non-undefined
+```
+
+Non-null assertions (`value!`) are banned. Every `!` is a lie to the type system.
+
+## Readonly by default
+
+- Mark arrays `readonly T[]` or `ReadonlyArray<T>` when the function won't mutate
+- Use `readonly` on object properties that shouldn't change
+- Prefer immutable updates (`[...arr, newItem]`, `{...obj, key: value}`) over in-place mutation
+
+## Utility types
+
+Use built-in utilities liberally: `Pick`, `Omit`, `Partial`, `Required`, `Readonly`, `Record`.
+Define custom ones in `packages/shared/src/types/` when used in multiple places.
+
+## Function return types
+
+Explicit return types for:
+- All public exports from packages
+- All service/repository methods
+- All React Query hooks (avoids inference surprises)
+
+Inline return types OK for:
+- Private/local helpers
+- Callbacks passed inline (e.g., `arr.map(x => x.id)`)
+
+## Async return types
+
+If a function is async and returns nothing meaningful, annotate as `Promise<void>` explicitly:
+
+```ts
+async function sendEmail(input: EmailInput): Promise<void> {
+  // ...
+}
+```
+
+## Branded types for IDs (for later, not MVP)
+
+Not required in MVP, but when type-safety of IDs matters (e.g., accidentally passing
+`userId` where `claimId` was expected), introduce branded types:
+
+```ts
+type UserId = string & { readonly __brand: 'UserId' }
+type ClaimId = string & { readonly __brand: 'ClaimId' }
+```
+
+Keep this in mind as a refactoring target if we see ID-confusion bugs.
+
+## No default exports from libraries
+
+- Always use named exports from packages (`export { foo }`)
+- Default exports OK for React components and TanStack Start route files (framework requires it)
+
+Why: named exports are grep-friendly, auto-importable, and refactor-safe.
+
+## No magic strings
+
+If a string value is referenced more than once, it's a constant:
+
+```ts
+// BAD
+if (user.role === 'admin') { ... }  // in 10 files
+// BAD
+events.emit('claim.created', ...)  // string typed in each emit call
+
+// GOOD
+import { SYSTEM_ROLE_ADMIN } from '@mr/shared/constants/roles'
+if (user.role === SYSTEM_ROLE_ADMIN) { ... }
+
+// GOOD
+import { EVENT_CLAIM_CREATED } from '@mr/shared/constants/events'
+events.emit(EVENT_CLAIM_CREATED, ...)
+```
+
+## JSX typing
+
+- Functional components: `function Foo(props: FooProps)` — don't use `React.FC` (deprecated pattern)
+- Props typed with `interface FooProps` (named interfaces play nicer with tooling)
+- Children typed as `ReactNode`, not `ReactElement`, unless specifically needed
+
+```tsx
+interface EmotiveClaimFormProps {
+  defaultValues?: Partial<EmotiveClaimCreateInput>
+  onSubmit: (values: EmotiveClaimCreateInput) => Promise<void>
+  children?: ReactNode
+}
+
+export function EmotiveClaimForm({ defaultValues, onSubmit, children }: EmotiveClaimFormProps) {
+  // ...
+}
+```
+
+## Generics
+
+- One generic parameter: `T` is OK
+- Multiple or domain-specific: use descriptive names (`TInput`, `TOutput`, `TId`)
+- Default generic params when a sensible default exists:
+
+```ts
+function useFetch<TData = unknown>(url: string): { data: TData | null }
+```
+
+## Error types
+
+Custom errors in `apps/api/src/core/errors/`:
+
+```ts
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly httpStatus: number,
+    public readonly details?: unknown,
+  ) {
+    super(message)
+    this.name = 'AppError'
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(entity: string, id: string) {
+    super(`${entity} ${id} not found`, 'NOT_FOUND', 404, { entity, id })
+    this.name = 'NotFoundError'
+  }
+}
+```
+
+Error handler middleware maps them to HTTP responses.
+
+## Module augmentation
+
+For extending Hono's Context or adding global types, use a dedicated file:
+
+```ts
+// apps/api/src/core/context.ts
+import 'hono'
+import type { AuthUser } from '@mr/auth'
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    user: AuthUser | null
+    requestId: string
+  }
+}
+```
+
+Never augment types inline in a random file — one declaration per concept, easy to find.

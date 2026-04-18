@@ -1,0 +1,272 @@
+---
+description: Testing requirements. Every module ships with tests; TDD is mandatory.
+alwaysApply: true
+---
+
+# Testing rules
+
+## TDD is mandatory
+
+Every task follows the cycle:
+1. Write a failing test describing the expected behavior
+2. Show Nikola the test (in the PR conversation or directly)
+3. Implement the minimum code to make it pass
+4. Refactor, keeping tests green
+
+If you find yourself writing a test after the code, stop and restart.
+
+## Coverage thresholds (CI-enforced)
+
+| Area | Minimum |
+|---|---|
+| Services | 90% branches |
+| Repositories | 85% branches |
+| Controllers | 80% branches |
+| Utilities | 100% |
+| Overall API | 85% |
+| Excel import/export | 95% |
+| Auth + permissions | 95% |
+
+CI fails below threshold. PRs with lower coverage don't merge.
+
+## Test layering
+
+### Unit tests
+
+- Pure functions, validators, parsers, utilities
+- Location: `__tests__/foo.test.ts` next to `foo.ts`
+- Fast (< 10 ms each)
+- No DB, no file system, no network
+- No mocking of internal dependencies — if you need mocks, it's probably an integration test
+
+### Integration tests
+
+- Service + repository + DB together
+- Location: `__tests__/foo.integration.test.ts`
+- Each test runs in a DB transaction that's rolled back
+- Cover permission boundaries: test that viewer can't write, client can only see own, etc.
+
+### E2E tests
+
+- Full user journey through browser
+- Location: `apps/*/tests/e2e/foo.e2e.ts`
+- Playwright
+- Reserve for critical user flows — not every feature
+- Flaky tests are banned: if one flakes, fix it or delete it
+
+## What to test
+
+### Service methods
+
+Test each public method:
+- Happy path
+- Each branch of the logic
+- Each error condition
+- Permission denial (call as wrong role, expect ForbiddenError)
+- Side effects (audit log written, event emitted)
+
+Example:
+
+```ts
+describe('EmotiveClaimsService.create', () => {
+  it('creates claim with correct computed fields', async () => { ... })
+  it('attaches multiple fault records', async () => { ... })
+  it('computes claim_year from date_of_claim', async () => { ... })
+  it('emits claim.created event', async () => { ... })
+  it('writes audit log entry', async () => { ... })
+  it('throws ForbiddenError when called without create permission', async () => { ... })
+  it('throws ValidationError for invalid engine type id', async () => { ... })
+})
+```
+
+### Controllers
+
+Thin layer, but still tested:
+- Correct status codes
+- Correct response shape
+- 401 when no auth
+- 403 when no permission
+- 400 on invalid body
+
+### Repositories
+
+Cover each method:
+- Basic CRUD works
+- Soft delete respected by default
+- Filters work correctly
+- Pagination returns expected slice
+- Ordering is stable
+
+### Utilities
+
+100% coverage. These are the foundation; a bug here shows up everywhere.
+
+### UI components
+
+Optional for purely presentational components. Required for components with logic:
+- Forms: submission, validation errors, disabled states
+- Data tables: sorting, filtering
+- Permission gates: renders/hides based on permissions
+
+Don't snapshot-test — snapshots rot. Assert on specific elements and behavior.
+
+## Test naming
+
+```ts
+describe('<ClassOrFunction>', () => {
+  describe('when <scenario>', () => {
+    it('<behavior in plain language>', () => { ... })
+  })
+})
+```
+
+Examples:
+- `describe('DomaceClaimsService', () => describe('when creating a claim', () => it('increments yearly sequence number')))`
+- `describe('normalizeName', () => it('strips diacritics'))`
+
+## Don't name tests "should"
+
+- BAD: `it('should create a claim')`
+- GOOD: `it('creates a claim')`
+
+## Test data
+
+- Use realistic values (Serbian names, proper MR numbers, real-looking dates)
+- Include edge cases: diacritics, Cyrillic, empty strings, whitespace-only
+- Never hardcode IDs — use fixtures that create and return
+
+## Fixtures
+
+```ts
+// In tests/helpers/fixtures.ts
+export async function createTestUser(ctx, opts?) { ... }
+export async function createTestEmotiveClaim(ctx, overrides?) { ... }
+export async function createTestCustomer(ctx, kind) { ... }
+```
+
+Reuse fixtures across tests. Don't duplicate setup.
+
+## Mocking policy
+
+### Never mock
+
+- Database (use real Postgres in test environment)
+- Zod schemas
+- Domain services (within the same app)
+- Hono app (test the real app)
+
+### Sometimes mock
+
+- OpenAI API (mock by default; tag `[real-api]` tests for weekly checks)
+- Email sending (always mock in tests; inspect via test collector)
+- Filesystem (unit tests only; integration tests use tmp dir)
+
+### Always mock
+
+- `new Date()` / time — use `vi.setSystemTime` so tests are deterministic
+- External APIs
+
+## Determinism
+
+- Set a fixed system time at test start: `vi.setSystemTime(new Date('2026-04-17T10:00:00Z'))`
+- Set a fixed PRNG seed if your code uses randomness
+- Tests must pass on any machine, any day
+
+## No `skip`, no `only`
+
+- `it.skip` and `describe.skip` are banned
+- `it.only` and `describe.only` are banned in committed code
+- ESLint catches these
+
+## Real DB in tests
+
+Every dev machine runs a throwaway Postgres container via Docker Compose.
+Tests spin up a fresh test database per test file (via `pg_isready` check).
+
+See `docs/10-testing.md` for setup.
+
+## E2E reliability
+
+- Use `getByRole`, `getByLabel` — stable selectors
+- Avoid `getByText` for dynamic content (can change with i18n)
+- Avoid CSS selectors (fragile)
+- `await expect(...).toBeVisible()` with generous timeout rather than arbitrary sleeps
+- Never use `page.waitForTimeout(...)` — it's a code smell
+
+## Regression tests
+
+Every bug fix ships with a test that would have caught the bug.
+No exceptions. This is how the test suite compounds over time.
+
+## Test speed
+
+- Unit tests: whole suite < 5 s
+- Integration tests: whole suite < 60 s
+- E2E tests: whole suite < 5 min
+
+If the suite gets slow, fix it. Don't let it fester.
+
+## CI gates
+
+PR can't merge if:
+- Any test failing
+- Coverage dropped
+- Lint/typecheck failing
+- New dependencies have HIGH/CRITICAL CVEs
+
+## Manual testing
+
+Automated tests do not replace manual testing. Before marking a task "done":
+- Run the feature end-to-end in local dev
+- Try the unhappy path (wrong permission, invalid input, slow network)
+- Ask yourself: "Would a grandfather of 80 be able to use this?"
+
+## Test what you break
+
+When editing existing code:
+1. Run existing tests; make sure they pass
+2. If tests break due to your change: fix them if the new behavior is correct, revert if not
+3. Don't modify a test without understanding why it's there
+
+## Writing E2E tests
+
+Focus on the critical path:
+- Login flow
+- Create a claim
+- Upload attachment
+- View claim
+- Edit claim
+- Export Excel
+- Role assignment propagation (via SSE)
+- Client sees only their claims
+
+Don't duplicate unit-level checks in E2E. Use E2E to verify integration only.
+
+## Test database reset
+
+Helper:
+```ts
+beforeEach(async () => {
+  ctx = await createTestContext()  // fresh transaction
+})
+afterEach(async () => {
+  await ctx.cleanup()  // rolls back
+})
+```
+
+No test should depend on another test's state.
+
+## Performance assertions (optional)
+
+For hot paths, add performance assertions:
+
+```ts
+it('lists 1000 claims in under 200ms', async () => {
+  // seed 1000 claims
+  const start = performance.now()
+  await service.list({ pageSize: 100 }, adminUser)
+  expect(performance.now() - start).toBeLessThan(200)
+})
+```
+
+Not required everywhere; used for known-critical paths.

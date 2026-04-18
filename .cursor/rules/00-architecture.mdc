@@ -1,0 +1,130 @@
+---
+description: High-level architectural rules. Always active. Violating any of these blocks the PR.
+alwaysApply: true
+---
+
+# Architecture rules (ALWAYS APPLY)
+
+## Monorepo layout
+
+This is a pnpm + Turborepo monorepo. Layout is fixed:
+
+```
+apps/
+  api/              # Hono API — the ONLY place that touches the DB directly
+  admin-web/        # TanStack Start — admin panel only
+  internal-web/     # TanStack Start — employees + viewers
+  portal-web/       # TanStack Start — clients
+packages/
+  db/               # Drizzle schema + migrations + client + seeds
+  shared/           # Zod schemas, types, enums, permissions, constants, pure utils
+  auth/             # Better-Auth config + permission resolver
+  excel/            # ExcelJS import/export logic
+  i18n/             # Paraglide-generated translations
+  ui/               # Shared React components (shadcn base layer)
+  logger/           # Pino setup
+```
+
+### Dependency direction (STRICT, no exceptions)
+
+- `apps/*` may depend on `packages/*`
+- `packages/*` may NEVER depend on `apps/*`
+- `packages/db` depends only on `packages/shared`
+- No circular dependencies — ever. CI enforces this.
+
+If you need shared logic between two apps, put it in `packages/shared`. If you're
+tempted to import from `apps/api` inside `apps/admin-web`, you're doing it wrong.
+
+## Module anatomy (mandatory for every API module)
+
+Every module under `apps/api/src/modules/<name>/` has:
+
+```
+<name>.schema.ts         # Re-exports from packages/db
+<name>.validators.ts     # Zod schemas for inputs
+<name>.repository.ts     # Data access only; no business logic
+<name>.service.ts        # Business logic; orchestrates repo, emits events, audit
+<name>.controller.ts     # HTTP adapter; thin; parses, calls service, formats response
+<name>.routes.ts         # Route registration with permission middleware
+<name>.types.ts          # Module-internal types (optional)
+__tests__/               # Tests for everything in the module
+```
+
+**DO NOT** collapse service + controller into one file. **DO NOT** skip validators.
+
+## Layer responsibilities (STRICT)
+
+| Layer | May do | May NOT do |
+|---|---|---|
+| Controller | Parse request, call service, format response | Call DB, implement business logic |
+| Service | Business logic, call repositories, emit events, audit log | Touch HTTP Context, read req headers |
+| Repository | Run DB queries, return plain objects, throw domain errors | Implement business logic, call other services |
+
+A controller that calls `db.select(...)` directly is a bug. Always go through the service → repository chain.
+
+## HTTP types stay in controllers
+
+`service.ts` and `repository.ts` must never import from `hono` or any HTTP-related module.
+They work with plain objects. This means services are easy to unit-test and easy to reuse (e.g., from a CLI script).
+
+## Three frontends, one API
+
+Never add admin-only endpoints to internal-web or vice versa.
+Protection is done via `requirePermission('…')` middleware on every route.
+
+The frontends proxy `/api/*` to the API via Railway's private network. Client-side code
+calls `/api/...` as same-origin — it never talks to `api.mrengines.rs` directly.
+
+## Subdomain isolation
+
+Admin, internal, and portal are **physically separate apps**. Never import UI
+components between them. Shared components live in `packages/ui`.
+
+Cookies are host-only (NOT cross-subdomain). A user authenticated on internal-web
+is NOT automatically authenticated on admin-web. This is intentional.
+
+## Dependency injection
+
+All services and repositories are instantiated in `apps/api/src/core/container.ts`.
+Never use module-level singletons or imported globals for stateful things.
+
+Tests build a container with fakes/stubs as needed. Production code never reaches into
+the container directly — it receives dependencies via constructor.
+
+## Events and real-time
+
+Cross-module notifications use the in-process `EventBus` (apps/api/src/modules/events/event-bus.ts).
+Services emit events; other services (or the SSE hub) subscribe.
+
+Never send a SSE event directly from a controller. Always go through the service.
+
+## Migrations
+
+- Database migrations live in `packages/db/migrations/`
+- Generated via `drizzle-kit generate`
+- Forward-only. To revert, write a new migration. Never rollback DB in production.
+- Every PR that changes `packages/db/src/schema/*` MUST include a migration file.
+
+## No magic paths
+
+- All file paths are constructed via utilities in `apps/api/src/infrastructure/storage/`
+- All URLs constructed via helpers, not string concatenation
+- All env vars read via a single validated `env.ts` using Zod
+
+If you see `process.env.FOO` outside `core/config/env.ts`, that's a bug.
+
+## Testing is not optional
+
+Every new module ships with tests. Coverage thresholds (per `docs/10-testing.md`)
+are CI-enforced. A feature is "done" when tests pass and coverage holds.
+
+## Read before coding
+
+Before starting any task, read:
+- docs/04-modules.md (if working on structure)
+- docs/02-data-model.md (if touching schema)
+- docs/03-permissions.md (if touching auth/access)
+- docs/10-testing.md (always)
+- This rule file + any others that apply
+
+Ask Nikola if anything conflicts.
