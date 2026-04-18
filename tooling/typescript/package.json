@@ -1,0 +1,15 @@
+{
+  "name": "@mr/tsconfig",
+  "version": "0.0.0",
+  "private": true,
+  "files": ["base.json", "node.json"],
+  "exports": {
+    "./base.json": "./base.json",
+    "./node.json": "./node.json"
+  },
+  "scripts": {
+    "build": "node -e \"process.exit(0)\"",
+    "lint": "node -e \"process.exit(0)\"",
+    "typecheck": "node -e \"process.exit(0)\""
+  }
+}
