@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mr-reklamacije-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mr
+      POSTGRES_PASSWORD: mr_dev_password
+      POSTGRES_DB: mr_reklamacije
+    ports:
+      - '5433:5432'
+    volumes:
+      - mr_postgres_data:/var/lib/postgresql/data
+      - ./scripts/db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mr -d mr_reklamacije']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mr_postgres_data:
+    name: mr_reklamacije_postgres_data

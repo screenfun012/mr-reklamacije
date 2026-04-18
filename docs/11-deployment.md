@@ -1,5 +1,7 @@
 # 11 — Deployment and Operations
 
+This document focuses on **Railway** (staging/production), DNS, backups, and production operations. For Docker Compose on your laptop, Postgres extensions, and local env setup, see **`docs/DEV_SETUP.md`**.
+
 ## Hosting: Railway
 
 One project, multiple environments, multiple services per environment.
