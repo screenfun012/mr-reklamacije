@@ -2,3 +2,4 @@ packages:
   - 'tooling/typescript'
   - 'tooling/eslint'
   - 'packages/excel'
+  - 'packages/shared'
