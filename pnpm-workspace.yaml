@@ -3,3 +3,4 @@ packages:
   - 'tooling/eslint'
   - 'packages/excel'
   - 'packages/shared'
+  - 'packages/logger'
