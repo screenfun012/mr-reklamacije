@@ -5,3 +5,4 @@ packages:
   - 'packages/shared'
   - 'packages/logger'
   - 'packages/db'
+  - 'packages/auth'

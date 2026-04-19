@@ -1,0 +1,32 @@
+{
+  "name": "@mr/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    "./generate-config": "./dist/better-auth.generate.config.js"
+  },
+  "scripts": {
+    "auth:generate": "npx auth@latest generate --config=./src/better-auth.generate.config.ts --adapter=drizzle --dialect=postgresql --yes --output=./.generated/better-auth.ts",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "1.6.5",
+    "better-auth": "1.6.5"
+  },
+  "devDependencies": {
+    "@mr/eslint-config": "workspace:*",
+    "@mr/tsconfig": "workspace:*",
+    "@types/node": "^20.19.39",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
