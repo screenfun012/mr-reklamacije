@@ -26,6 +26,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@mr/shared':
+        specifier: workspace:*
+        version: link:../shared
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)

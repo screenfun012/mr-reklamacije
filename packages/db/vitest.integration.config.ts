@@ -12,6 +12,7 @@ config({ path: resolve(repoRoot, '.env') })
 export default defineConfig({
   test: {
     environment: 'node',
+    fileParallelism: false,
     globals: false,
     include: ['src/__tests__/integration/**/*.test.ts'],
     passWithNoTests: false,
