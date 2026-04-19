@@ -1,3 +1,4 @@
+import { schema } from '@mr/db'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { describe, expect, it } from 'vitest'
 
@@ -6,7 +7,7 @@ import { createAuth } from '../better-auth.config.js'
 describe('createAuth factory', () => {
   it('returns a Better-Auth instance with api namespace', () => {
     // Mock DB - we don't call any queries, just verify factory works
-    const mockDb = {} as NodePgDatabase<Record<string, never>>
+    const mockDb = {} as unknown as NodePgDatabase<typeof schema>
 
     const auth = createAuth(mockDb)
 
@@ -16,7 +17,7 @@ describe('createAuth factory', () => {
   })
 
   it('returns auth with options including our additionalFields', () => {
-    const mockDb = {} as NodePgDatabase<Record<string, never>>
+    const mockDb = {} as unknown as NodePgDatabase<typeof schema>
     const auth = createAuth(mockDb)
 
     // Better-Auth exposes options on the instance
@@ -28,7 +29,7 @@ describe('createAuth factory', () => {
   })
 
   it('configures all BA tables with correct modelName', () => {
-    const mockDb = {} as NodePgDatabase<Record<string, never>>
+    const mockDb = {} as unknown as NodePgDatabase<typeof schema>
     const auth = createAuth(mockDb)
 
     expect(auth.options.user?.modelName).toBe('users')

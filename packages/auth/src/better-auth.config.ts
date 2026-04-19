@@ -3,6 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 
+import { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'
 import { sharedAuthOptions } from './options.js'
 
 /**
@@ -36,6 +37,13 @@ export function createAuth(db: NodePgDatabase<typeof schema>) {
         two_factor_secrets: schema.twoFactorSecrets,
       },
     }),
+    databaseHooks: {
+      session: {
+        create: {
+          before: createDeletedAtCheckHook(db),
+        },
+      },
+    },
     ...sharedAuthOptions,
   })
 }

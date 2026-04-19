@@ -1,2 +1,6 @@
 export { createAuth } from './better-auth.config.js'
 export type { Auth } from './better-auth.config.js'
+export { createPermissionResolver } from './permissions.js'
+export type { PermissionResolver } from './permissions.js'
+export { getSession, requireSession, getCurrentUser } from './session-helpers.js'
+export { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'

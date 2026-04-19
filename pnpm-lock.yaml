@@ -32,6 +32,9 @@ importers:
       '@mr/db':
         specifier: workspace:*
         version: link:../db
+      '@mr/shared':
+        specifier: workspace:*
+        version: link:../shared
       better-auth:
         specifier: 1.6.5
         version: 1.6.5(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.16)(pg@8.20.0))(pg@8.20.0)(vitest@3.2.4(@types/node@20.19.39)(tsx@4.21.0))
@@ -51,6 +54,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4(@types/node@20.19.39)(tsx@4.21.0))
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
       eslint:
         specifier: ^9.39.1
         version: 9.39.4
