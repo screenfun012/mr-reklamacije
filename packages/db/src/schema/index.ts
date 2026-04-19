@@ -11,9 +11,11 @@
  *   - attachments.ts (Phase C.3): attachments, claim_observations
  *   - translation-cache.ts (Phase C.3): translation_cache
  *   - settings.ts (Phase C.3): app_settings, employee_monthly_output
+ *   - auth-tables.ts (6.2): Better-Auth sessions, accounts, verification_tokens, two_factor_secrets
  */
 export * from './pg-types.js'
 export * from './access-control.js'
+export * from './auth-tables.js'
 export * from './customers.js'
 export * from './employees.js'
 export * from './audit.js'

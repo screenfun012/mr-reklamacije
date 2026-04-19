@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createDb, createPool, getDatabaseUrl } from '../../client.js'
 import {
+  accounts,
   appSettings,
   attachments,
   auditLog,
@@ -25,9 +26,12 @@ import {
   permissions,
   rolePermissions,
   roles,
+  sessions,
   translationCache,
+  twoFactorSecrets,
   userRoles,
   users,
+  verificationTokens,
 } from '../../schema/index.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -62,6 +66,10 @@ beforeAll(async () => {
       departments,
       customer_users,
       customers,
+      sessions,
+      accounts,
+      two_factor_secrets,
+      verification_tokens,
       user_roles,
       role_permissions,
       users,
@@ -567,5 +575,168 @@ describe('schema Phase C (integration)', () => {
         createdBy: user!.id,
       }),
     ).rejects.toThrow()
+  })
+})
+
+describe('schema Better-Auth (integration)', () => {
+  it('inserts session with valid userId (FK to users)', async () => {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: `ba-session-${Date.now()}@example.com`,
+        name: 'BA Session User',
+      })
+      .returning()
+
+    const [row] = await db
+      .insert(sessions)
+      .values({
+        userId: user!.id,
+        token: `session-token-${Date.now()}`,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      })
+      .returning()
+
+    expect(row?.userId).toBe(user!.id)
+    expect(row?.token).toBeDefined()
+  })
+
+  it('rejects duplicate session token (unique on token)', async () => {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: `ba-dup-token-${Date.now()}@example.com`,
+        name: 'BA Dup Token',
+      })
+      .returning()
+
+    const sharedToken = `shared-token-${Date.now()}`
+
+    await db.insert(sessions).values({
+      userId: user!.id,
+      token: sharedToken,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    })
+
+    await expect(
+      db.insert(sessions).values({
+        userId: user!.id,
+        token: sharedToken,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('inserts account as credential provider with password hash', async () => {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: `ba-credential-${Date.now()}@example.com`,
+        name: 'BA Credential',
+      })
+      .returning()
+
+    const [row] = await db
+      .insert(accounts)
+      .values({
+        userId: user!.id,
+        accountId: user!.id,
+        providerId: 'credential',
+        password: '$scrypt$N=16384,r=8,p=1$placeholder',
+      })
+      .returning()
+
+    expect(row?.providerId).toBe('credential')
+    expect(row?.password).toContain('scrypt')
+  })
+
+  it('inserts verification_token (email verification scenario)', async () => {
+    const [row] = await db
+      .insert(verificationTokens)
+      .values({
+        identifier: `verify-email-${Date.now()}@example.com`,
+        value: 'opaque-verification-token-value',
+        expiresAt: new Date(Date.now() + 3_600_000),
+      })
+      .returning()
+
+    expect(row?.identifier).toContain('@example.com')
+    expect(row?.value).toBe('opaque-verification-token-value')
+  })
+
+  it('inserts two_factor_secret with verified default false', async () => {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: `ba-2fa-${Date.now()}@example.com`,
+        name: 'BA 2FA',
+      })
+      .returning()
+
+    const [row] = await db
+      .insert(twoFactorSecrets)
+      .values({
+        userId: user!.id,
+        secret: 'encrypted-totp-secret',
+        backupCodes: 'encrypted-backup-codes-blob',
+      })
+      .returning()
+
+    expect(row?.verified).toBe(false)
+  })
+
+  it('CASCADE deletes sessions, accounts, two_factor_secrets when user is deleted', async () => {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: `cascade-test-${Date.now()}@example.com`,
+        name: 'CASCADE Test',
+      })
+      .returning()
+
+    const userId = user!.id
+
+    await db.insert(sessions).values({
+      userId,
+      token: `token-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    })
+
+    await db.insert(accounts).values({
+      userId,
+      accountId: 'credential-user-id',
+      providerId: 'credential',
+      password: 'hash-placeholder',
+    })
+
+    await db.insert(twoFactorSecrets).values({
+      userId,
+      secret: 'totp-secret-encrypted',
+      backupCodes: 'codes-encrypted',
+    })
+
+    await db.delete(users).where(eq(users.id, userId))
+
+    const sessionsAfter = await db.select().from(sessions).where(eq(sessions.userId, userId))
+    const accountsAfter = await db.select().from(accounts).where(eq(accounts.userId, userId))
+    const tfsAfter = await db.select().from(twoFactorSecrets).where(eq(twoFactorSecrets.userId, userId))
+
+    expect(sessionsAfter).toHaveLength(0)
+    expect(accountsAfter).toHaveLength(0)
+    expect(tfsAfter).toHaveLength(0)
+  })
+
+  it('inserts verification_token without user FK (multi-purpose table)', async () => {
+    const [row] = await db
+      .insert(verificationTokens)
+      .values({
+        identifier: `reset-pwd-${Date.now()}`,
+        value: 'reset-token-value',
+        expiresAt: new Date(Date.now() + 3_600_000),
+      })
+      .returning()
+
+    expect(row?.id).toBeDefined()
+    expect(row?.identifier).toContain('reset-pwd')
   })
 })

@@ -146,13 +146,6 @@ export const permissionsRelations = relations(permissions, ({ many }) => ({
   rolePermissions: many(rolePermissions),
 }))
 
-export const usersRelations = relations(users, ({ many }) => ({
-  userRoles: many(userRoles, { relationName: 'user_roles_user' }),
-  assignedUserRoles: many(userRoles, { relationName: 'user_roles_assigned_by' }),
-  rolesCreated: many(roles, { relationName: 'roles_created_by' }),
-  rolesUpdated: many(roles, { relationName: 'roles_updated_by' }),
-}))
-
 export const rolesRelations = relations(roles, ({ one, many }) => ({
   createdByUser: one(users, {
     fields: [roles.createdBy],
