@@ -15,6 +15,27 @@
       "when": 1776557660562,
       "tag": "0001_special_harry_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776560265915,
+      "tag": "0002_steep_marvel_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776560858476,
+      "tag": "0003_true_wong",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776561378556,
+      "tag": "0004_loud_husk",
+      "breakpoints": true
     }
   ]
 }

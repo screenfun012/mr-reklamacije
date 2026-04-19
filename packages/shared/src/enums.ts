@@ -81,6 +81,16 @@ export const ObservationVisibility = {
 export type ObservationVisibility =
   (typeof ObservationVisibility)[keyof typeof ObservationVisibility]
 
+export const AppSettingValueType = {
+  String: 'string',
+  Number: 'number',
+  Boolean: 'boolean',
+  Json: 'json',
+} as const
+
+export type AppSettingValueType =
+  (typeof AppSettingValueType)[keyof typeof AppSettingValueType]
+
 export const AuditAction = {
   Create: 'create',
   Update: 'update',

@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,14 +6,26 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createDb, createPool, getDatabaseUrl } from '../../client.js'
 import {
+  appSettings,
+  attachments,
   auditLog,
+  claimObservations,
+  claimSources,
+  clientRegistrationRequests,
   customerUsers,
   customers,
   departments,
+  domaceClaims,
+  employeeMonthlyOutput,
   employees,
+  emotiveClaimFaults,
+  emotiveClaims,
+  engineTypes,
+  externalParties,
   permissions,
   rolePermissions,
   roles,
+  translationCache,
   userRoles,
   users,
 } from '../../schema/index.js'
@@ -33,15 +45,27 @@ beforeAll(async () => {
 
   await db.execute(sql`
     TRUNCATE TABLE
+      employee_monthly_output,
+      app_settings,
+      translation_cache,
+      claim_observations,
+      attachments,
+      emotive_claim_faults,
+      emotive_claims,
+      domace_claims,
+      client_registration_requests,
+      claim_sources,
+      external_parties,
+      engine_types,
       audit_log,
-      customer_users,
       employees,
+      departments,
+      customer_users,
+      customers,
       user_roles,
       role_permissions,
-      roles,
-      customers,
-      departments,
       users,
+      roles,
       permissions
     RESTART IDENTITY CASCADE
   `)
@@ -195,5 +219,353 @@ describe('schema (integration)', () => {
 
     expect(entry?.id).toBeDefined()
     expect(entry?.action).toBe('create')
+  })
+})
+
+describe('schema Phase C (integration)', () => {
+  it('inserts engine_type (catalog)', async () => {
+    const [row] = await db
+      .insert(engineTypes)
+      .values({
+        code: 'INT_TEST_ENGINE',
+        manufacturer: 'Test Mfg',
+      })
+      .returning()
+
+    expect(row?.id).toBeDefined()
+    expect(row?.code).toBe('INT_TEST_ENGINE')
+  })
+
+  it('inserts external_party with kind supplier (CHECK)', async () => {
+    const [row] = await db
+      .insert(externalParties)
+      .values({
+        name: 'Supplier Co',
+        kind: 'supplier',
+      })
+      .returning()
+
+    expect(row?.id).toBeDefined()
+    expect(row?.kind).toBe('supplier')
+  })
+
+  it('inserts claim_source with FK to default customer', async () => {
+    const [customer] = await db.select().from(customers).limit(1)
+    expect(customer).toBeDefined()
+
+    const [source] = await db
+      .insert(claimSources)
+      .values({
+        code: 'INT_SRC',
+        name: 'Integration Source',
+        defaultCustomerId: customer!.id,
+      })
+      .returning()
+
+    expect(source?.id).toBeDefined()
+    expect(source?.defaultCustomerId).toBe(customer!.id)
+  })
+
+  it('inserts client_registration_request (pending, password_hash)', async () => {
+    const [row] = await db
+      .insert(clientRegistrationRequests)
+      .values({
+        email: 'registrant@example.com',
+        name: 'Registrant',
+        passwordHash: 'test_hash',
+        status: 'pending',
+      })
+      .returning()
+
+    expect(row?.id).toBeDefined()
+    expect(row?.status).toBe('pending')
+    expect(row?.passwordHash).toBe('test_hash')
+  })
+
+  it('inserts emotive_claim with FKs', async () => {
+    const [engine] = await db.select().from(engineTypes).where(eq(engineTypes.code, 'INT_TEST_ENGINE')).limit(1)
+    const [employee] = await db.select().from(employees).limit(1)
+    const [source] = await db.select().from(claimSources).where(eq(claimSources.code, 'INT_SRC')).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+
+    expect(engine && employee && source && user).toBeTruthy()
+
+    const [claim] = await db
+      .insert(emotiveClaims)
+      .values({
+        warrantyReport: 'Integration warranty text',
+        engineTypeId: engine!.id,
+        dateOfClaim: new Date('2026-04-01'),
+        mrNumber: '9999/26',
+        employeeId: employee!.id,
+        sourceId: source!.id,
+        outcome: 'pending',
+        claimYear: 2026,
+        createdBy: user!.id,
+      })
+      .returning()
+
+    expect(claim?.id).toBeDefined()
+  })
+
+  it('inserts emotive_claim_fault (employee one_of CHECK valid)', async () => {
+    const [claim] = await db.select().from(emotiveClaims).limit(1)
+    const [employee] = await db.select().from(employees).limit(1)
+    expect(claim && employee).toBeTruthy()
+
+    const [fault] = await db
+      .insert(emotiveClaimFaults)
+      .values({
+        claimId: claim!.id,
+        faultType: 'employee',
+        employeeId: employee!.id,
+      })
+      .returning()
+
+    expect(fault?.id).toBeDefined()
+  })
+
+  it('rejects invalid emotive_claim_fault (department kind with employee_id set)', async () => {
+    const [claim] = await db.select().from(emotiveClaims).limit(1)
+    const [employee] = await db.select().from(employees).limit(1)
+    expect(claim && employee).toBeTruthy()
+
+    await expect(
+      db.insert(emotiveClaimFaults).values({
+        claimId: claim!.id,
+        faultType: 'department',
+        employeeId: employee!.id,
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('inserts domace_claim', async () => {
+    const [user] = await db.select().from(users).limit(1)
+    expect(user).toBeDefined()
+
+    const [row] = await db
+      .insert(domaceClaims)
+      .values({
+        sequenceNumberYearly: 1,
+        dateReceived: new Date('2026-04-02'),
+        customerNameSnapshot: 'Snapshot Name',
+        vehicle: 'Test Vehicle',
+        workOrder: 'WO/26',
+        problemDescription: 'Problem',
+        outcome: 'pending',
+        claimYear: 2026,
+        createdBy: user!.id,
+      })
+      .returning()
+
+    expect(row?.id).toBeDefined()
+  })
+
+  it('inserts attachment (emotive polymorphic CHECK valid)', async () => {
+    const [claim] = await db.select().from(emotiveClaims).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(claim && user).toBeTruthy()
+
+    const [att] = await db
+      .insert(attachments)
+      .values({
+        claimKind: 'emotive',
+        emotiveClaimId: claim!.id,
+        fileName: 'x.jpg',
+        storagePath: `emotive/2026/${claim!.id}/f.jpg`,
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 1024,
+        uploadedBy: user!.id,
+      })
+      .returning()
+
+    expect(att?.id).toBeDefined()
+  })
+
+  it('rejects invalid attachment (emotive kind with domace_claim_id set)', async () => {
+    const [emo] = await db.select().from(emotiveClaims).limit(1)
+    const [dom] = await db.select().from(domaceClaims).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(emo && dom && user).toBeTruthy()
+
+    await expect(
+      db.insert(attachments).values({
+        claimKind: 'emotive',
+        domaceClaimId: dom!.id,
+        fileName: 'bad.jpg',
+        storagePath: 'bad',
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 1,
+        uploadedBy: user!.id,
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('CASCADE deletes attachment, claim_observations, emotive_claim_faults when emotive_claim deleted', async () => {
+    const [engine] = await db.select().from(engineTypes).where(eq(engineTypes.code, 'INT_TEST_ENGINE')).limit(1)
+    const [employee] = await db.select().from(employees).limit(1)
+    const [source] = await db.select().from(claimSources).where(eq(claimSources.code, 'INT_SRC')).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(engine && employee && source && user).toBeTruthy()
+
+    const [claim] = await db
+      .insert(emotiveClaims)
+      .values({
+        warrantyReport: 'Cascade parent',
+        engineTypeId: engine!.id,
+        dateOfClaim: new Date('2026-05-01'),
+        mrNumber: '8888/26',
+        employeeId: employee!.id,
+        sourceId: source!.id,
+        outcome: 'pending',
+        claimYear: 2026,
+        createdBy: user!.id,
+      })
+      .returning()
+
+    await db.insert(emotiveClaimFaults).values({
+      claimId: claim!.id,
+      faultType: 'employee',
+      employeeId: employee!.id,
+    })
+
+    await db.insert(attachments).values({
+      claimKind: 'emotive',
+      emotiveClaimId: claim!.id,
+      fileName: 'c.jpg',
+      storagePath: `emotive/cascade/${claim!.id}/c.jpg`,
+      mimeType: 'image/jpeg',
+      fileSizeBytes: 100,
+      uploadedBy: user!.id,
+    })
+
+    await db.insert(claimObservations).values({
+      claimKind: 'emotive',
+      emotiveClaimId: claim!.id,
+      body: 'Note',
+      visibility: 'internal',
+      authorId: user!.id,
+    })
+
+    await db.delete(emotiveClaims).where(eq(emotiveClaims.id, claim!.id))
+
+    const attRows = await db.select().from(attachments).where(eq(attachments.emotiveClaimId, claim!.id))
+    const obsRows = await db
+      .select()
+      .from(claimObservations)
+      .where(eq(claimObservations.emotiveClaimId, claim!.id))
+    const faultRows = await db
+      .select()
+      .from(emotiveClaimFaults)
+      .where(eq(emotiveClaimFaults.claimId, claim!.id))
+
+    expect(attRows.length).toBe(0)
+    expect(obsRows.length).toBe(0)
+    expect(faultRows.length).toBe(0)
+  })
+
+  it('inserts claim_observation (emotive polymorphic valid)', async () => {
+    const [claim] = await db.select().from(emotiveClaims).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(claim && user).toBeTruthy()
+
+    const [obs] = await db
+      .insert(claimObservations)
+      .values({
+        claimKind: 'emotive',
+        emotiveClaimId: claim!.id,
+        body: 'Observation body',
+        visibility: 'client_visible',
+        authorId: user!.id,
+      })
+      .returning()
+
+    expect(obs?.id).toBeDefined()
+  })
+
+  it('rejects invalid claim_observation (emotive kind with domace_claim_id set)', async () => {
+    const [dom] = await db.select().from(domaceClaims).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(dom && user).toBeTruthy()
+
+    await expect(
+      db.insert(claimObservations).values({
+        claimKind: 'emotive',
+        domaceClaimId: dom!.id,
+        body: 'Bad',
+        visibility: 'internal',
+        authorId: user!.id,
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('inserts translation_cache row (composite PK)', async () => {
+    const [row] = await db
+      .insert(translationCache)
+      .values({
+        sourceHash: 'a'.repeat(64),
+        sourceLanguage: 'sr',
+        targetLanguage: 'en',
+        sourceText: 'Zdravo',
+        translatedText: 'Hello',
+        model: 'gpt-4o-mini',
+      })
+      .returning()
+
+    expect(row?.sourceHash).toBeDefined()
+    expect(row?.translatedText).toBe('Hello')
+  })
+
+  it('inserts app_settings row', async () => {
+    const [user] = await db.select().from(users).limit(1)
+    expect(user).toBeDefined()
+
+    const [row] = await db
+      .insert(appSettings)
+      .values({
+        key: 'integration_test_key',
+        value: '42',
+        valueType: 'string',
+        updatedBy: user!.id,
+      })
+      .returning()
+
+    expect(row?.key).toBe('integration_test_key')
+  })
+
+  it('inserts employee_monthly_output row', async () => {
+    const [employee] = await db.select().from(employees).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(employee && user).toBeTruthy()
+
+    const [row] = await db
+      .insert(employeeMonthlyOutput)
+      .values({
+        employeeId: employee!.id,
+        year: 2026,
+        month: 4,
+        enginesAssembled: 100,
+        createdBy: user!.id,
+      })
+      .returning()
+
+    expect(row?.id).toBeDefined()
+    expect(row?.enginesAssembled).toBe(100)
+  })
+
+  it('rejects employee_monthly_output with month 13 (CHECK)', async () => {
+    const [employee] = await db.select().from(employees).limit(1)
+    const [user] = await db.select().from(users).limit(1)
+    expect(employee && user).toBeTruthy()
+
+    await expect(
+      db.insert(employeeMonthlyOutput).values({
+        employeeId: employee!.id,
+        year: 2026,
+        month: 13,
+        enginesAssembled: 1,
+        createdBy: user!.id,
+      }),
+    ).rejects.toThrow()
   })
 })
