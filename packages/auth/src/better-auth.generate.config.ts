@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
-import { twoFactor } from 'better-auth/plugins'
+
+import { sharedAuthOptions } from './options.js'
 
 /**
  * Generate-only Better Auth options for `pnpm auth:generate`.
@@ -11,52 +12,5 @@ import { twoFactor } from 'better-auth/plugins'
 export const auth = betterAuth({
   secret: 'generate-only-placeholder',
   baseURL: 'http://localhost:3000',
-  advanced: {
-    database: {
-      generateId: 'uuid',
-    },
-  },
-  user: {
-    modelName: 'users',
-    additionalFields: {
-      isActive: {
-        type: 'boolean',
-        required: true,
-        defaultValue: true,
-        input: false,
-      },
-      preferredLanguage: {
-        type: 'string',
-        required: true,
-        defaultValue: 'sr',
-        input: false,
-      },
-      deletedAt: {
-        type: 'date',
-        required: false,
-      },
-      lastLoginAt: {
-        type: 'date',
-        required: false,
-      },
-      lastLoginIp: {
-        type: 'string',
-        required: false,
-      },
-    },
-  },
-  session: {
-    modelName: 'sessions',
-  },
-  account: {
-    modelName: 'accounts',
-  },
-  verification: {
-    modelName: 'verification_tokens',
-  },
-  plugins: [
-    twoFactor({
-      twoFactorTable: 'two_factor_secrets',
-    }),
-  ],
+  ...sharedAuthOptions,
 })

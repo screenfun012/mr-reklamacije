@@ -6,6 +6,7 @@
   "sideEffects": false,
   "files": ["dist"],
   "exports": {
+    ".": "./dist/index.js",
     "./generate-config": "./dist/better-auth.generate.config.js"
   },
   "scripts": {
@@ -18,7 +19,9 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.6.5",
-    "better-auth": "1.6.5"
+    "@mr/db": "workspace:*",
+    "better-auth": "1.6.5",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@mr/eslint-config": "workspace:*",
