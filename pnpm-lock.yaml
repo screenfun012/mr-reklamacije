@@ -32,6 +32,9 @@ importers:
       '@mr/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@mr/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       hono:
         specifier: 4.12.14
         version: 4.12.14
