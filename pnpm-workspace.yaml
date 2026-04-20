@@ -6,3 +6,4 @@ packages:
   - 'packages/logger'
   - 'packages/db'
   - 'packages/auth'
+  - 'apps/*'
