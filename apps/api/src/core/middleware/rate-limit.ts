@@ -76,3 +76,8 @@ export const generalRateLimiter = createRateLimiter({
   windowMs: 60_000,
   max: 100,
 })
+
+export const loginRateLimiter = createRateLimiter({
+  windowMs: 15 * 60_000,
+  max: 5,
+})

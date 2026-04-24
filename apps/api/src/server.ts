@@ -1,13 +1,19 @@
+import { createAuth, createPermissionResolver } from '@mr/auth'
 import { serve } from '@hono/node-server'
 import { createLogger } from '@mr/logger'
 
 import { createApp } from './app.js'
 import { parseEnv } from './config/env.js'
+import { createDb } from './infrastructure/db.js'
 
 const env = parseEnv()
 const logger = createLogger('api')
 
-const app = createApp({ logger, env })
+const { db, pool } = createDb(env)
+const auth = createAuth(db)
+const permissionResolver = createPermissionResolver(db)
+
+const app = createApp({ logger, env, auth, permissionResolver })
 
 const server = serve(
   {
@@ -22,8 +28,10 @@ const server = serve(
 
 function shutdown(signal: string): void {
   logger.info({ signal }, 'Shutting down')
-  server.close(() => {
-    logger.info('Server closed')
+  server.close(async () => {
+    logger.info('HTTP server closed')
+    await pool.end()
+    logger.info('DB pool closed')
     process.exit(0)
   })
 }

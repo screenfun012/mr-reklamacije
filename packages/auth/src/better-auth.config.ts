@@ -1,10 +1,12 @@
 import { schema } from '@mr/db'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { betterAuth } from 'better-auth'
+import { betterAuth, type Auth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 
 import { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'
 import { sharedAuthOptions } from './options.js'
+
+export type { Auth }
 
 /**
  * Factory for Better-Auth runtime instance. Consumers (e.g. apps/api)
@@ -22,7 +24,7 @@ import { sharedAuthOptions } from './options.js'
  * customization (mrr.session_token), advanced cookie settings. Those
  * are runtime-specific and belong next to the API app.
  */
-export function createAuth(db: NodePgDatabase<typeof schema>) {
+export function createAuth(db: NodePgDatabase<typeof schema>): Auth {
   return betterAuth({
     secret: process.env['BETTER_AUTH_SECRET'] ?? 'dev-only-change-me',
     baseURL: process.env['BETTER_AUTH_URL'] ?? 'http://localhost:3000',
@@ -45,7 +47,5 @@ export function createAuth(db: NodePgDatabase<typeof schema>) {
       },
     },
     ...sharedAuthOptions,
-  })
+  }) as Auth
 }
-
-export type Auth = ReturnType<typeof createAuth>

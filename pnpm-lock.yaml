@@ -29,15 +29,27 @@ importers:
       '@hono/node-server':
         specifier: 1.19.14
         version: 1.19.14(hono@4.12.14)
+      '@mr/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@mr/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@mr/logger':
         specifier: workspace:*
         version: link:../../packages/logger
       '@mr/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.16)(pg@8.20.0)
       hono:
         specifier: 4.12.14
         version: 4.12.14
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
       zod:
         specifier: 4.3.6
         version: 4.3.6
@@ -51,6 +63,9 @@ importers:
       '@types/node':
         specifier: ^20.19.39
         version: 20.19.39
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.20.0
       eslint:
         specifier: ^9.39.1
         version: 9.39.4

@@ -1,4 +1,4 @@
-import type { Context, Hono } from 'hono'
+import type { Context, Env, Hono } from 'hono'
 
 const healthHandler = (c: Context) => {
   return c.json({
@@ -7,7 +7,7 @@ const healthHandler = (c: Context) => {
   })
 }
 
-export function registerHealthRoutes(app: Hono): void {
+export function registerHealthRoutes<E extends Env>(app: Hono<E>): void {
   app.get('/health', healthHandler)
   app.get('/api/health', healthHandler)
 }

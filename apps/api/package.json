@@ -13,15 +13,20 @@
   },
   "dependencies": {
     "@hono/node-server": "1.19.14",
+    "@mr/auth": "workspace:*",
+    "@mr/db": "workspace:*",
     "@mr/logger": "workspace:*",
     "@mr/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
     "hono": "4.12.14",
+    "pg": "^8.20.0",
     "zod": "4.3.6"
   },
   "devDependencies": {
     "@mr/eslint-config": "workspace:*",
     "@mr/tsconfig": "workspace:*",
     "@types/node": "^20.19.39",
+    "@types/pg": "^8.15.6",
     "eslint": "^9.39.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

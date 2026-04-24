@@ -1,35 +1,36 @@
+import type { BetterAuthOptions } from 'better-auth'
 import { twoFactor } from 'better-auth/plugins'
 
 /**
  * Shared Better-Auth options used by both CLI generate config and
  * runtime config. Do not import database or environment here.
  */
-export const sharedAuthOptions = {
+export const sharedAuthOptions: BetterAuthOptions = {
   user: {
     modelName: 'users',
     additionalFields: {
       isActive: {
-        type: 'boolean' as const,
+        type: 'boolean',
         required: true,
         defaultValue: true,
         input: false,
       },
       preferredLanguage: {
-        type: 'string' as const,
+        type: 'string',
         required: true,
         defaultValue: 'sr',
         input: false,
       },
       deletedAt: {
-        type: 'date' as const,
+        type: 'date',
         required: false,
       },
       lastLoginAt: {
-        type: 'date' as const,
+        type: 'date',
         required: false,
       },
       lastLoginIp: {
-        type: 'string' as const,
+        type: 'string',
         required: false,
       },
     },
@@ -50,7 +51,7 @@ export const sharedAuthOptions = {
   ],
   advanced: {
     database: {
-      generateId: 'uuid' as const,
+      generateId: 'uuid',
     },
   },
 }

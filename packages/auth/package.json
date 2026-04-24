@@ -6,8 +6,14 @@
   "sideEffects": false,
   "files": ["dist"],
   "exports": {
-    ".": "./dist/index.js",
-    "./generate-config": "./dist/better-auth.generate.config.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./generate-config": {
+      "types": "./dist/better-auth.generate.config.d.ts",
+      "import": "./dist/better-auth.generate.config.js"
+    }
   },
   "scripts": {
     "auth:generate": "npx auth@latest generate --config=./src/better-auth.generate.config.ts --adapter=drizzle --dialect=postgresql --yes --output=./.generated/better-auth.ts",

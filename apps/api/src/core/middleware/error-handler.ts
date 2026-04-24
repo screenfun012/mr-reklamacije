@@ -1,6 +1,6 @@
 import type { Logger } from '@mr/logger'
 import { ERROR_CODE } from '@mr/shared'
-import type { Hono } from 'hono'
+import type { Env, Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { AppError } from '../errors/app-error.js'
@@ -14,7 +14,7 @@ import { AppError } from '../errors/app-error.js'
  * Anything else → 500 with generic message, full error logged server-side.
  * Detail leaks are suppressed to avoid exposing internals to clients.
  */
-export function registerGlobalErrorHandler(app: Hono, logger: Logger): void {
+export function registerGlobalErrorHandler<E extends Env>(app: Hono<E>, logger: Logger): void {
   app.onError((err, c) => {
     if (err instanceof AppError) {
       logger.warn(
