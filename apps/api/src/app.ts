@@ -10,6 +10,7 @@ import {
   loginRateLimiter,
 } from './core/middleware/rate-limit.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
+import type { AuditService } from './modules/audit/index.js'
 import { registerHealthRoutes } from './routes/health.js'
 
 export interface AppDeps {
@@ -17,6 +18,7 @@ export interface AppDeps {
   env: Env
   auth: Auth
   permissionResolver: PermissionResolver
+  auditService: AuditService
 }
 
 type SessionPayload = NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>
@@ -51,6 +53,7 @@ export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
 
   void deps.env
   void deps.permissionResolver
+  void deps.auditService
 
   return app
 }

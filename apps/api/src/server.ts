@@ -5,6 +5,7 @@ import { createLogger } from '@mr/logger'
 import { createApp } from './app.js'
 import { parseEnv } from './config/env.js'
 import { createDb } from './infrastructure/db.js'
+import { AuditService } from './modules/audit/index.js'
 
 const env = parseEnv()
 const logger = createLogger('api')
@@ -12,8 +13,9 @@ const logger = createLogger('api')
 const { db, pool } = createDb(env)
 const auth = createAuth(db)
 const permissionResolver = createPermissionResolver(db)
+const auditService = new AuditService(db)
 
-const app = createApp({ logger, env, auth, permissionResolver })
+const app = createApp({ logger, env, auth, permissionResolver, auditService })
 
 const server = serve(
   {

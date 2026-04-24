@@ -4,6 +4,7 @@ import { betterAuth, type Auth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 
 import { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'
+import { createLoginAuditHook } from './hooks/login-audit.js'
 import { sharedAuthOptions } from './options.js'
 
 export type { Auth }
@@ -43,6 +44,7 @@ export function createAuth(db: NodePgDatabase<typeof schema>): Auth {
       session: {
         create: {
           before: createDeletedAtCheckHook(db),
+          after: createLoginAuditHook(db),
         },
       },
     },
