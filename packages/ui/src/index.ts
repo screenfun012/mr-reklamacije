@@ -10,3 +10,16 @@ export {
   CardContent,
 } from './primitives/card.js'
 export { Skeleton } from './primitives/skeleton.js'
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogTrigger,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from './primitives/dialog.js'
+export { Toaster, toast, type ToasterProps } from './primitives/sonner.js'
