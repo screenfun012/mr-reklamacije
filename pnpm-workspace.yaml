@@ -1,11 +1,4 @@
 packages:
-  - 'tooling/typescript'
-  - 'tooling/eslint'
-  - 'packages/excel'
-  - 'packages/shared'
-  - 'packages/logger'
-  - 'packages/db'
-  - 'packages/auth'
-  - 'packages/ui'
-  - 'packages/i18n'
+  - 'tooling/*'
+  - 'packages/*'
   - 'apps/*'

@@ -339,6 +339,8 @@ importers:
         specifier: ^8.50.0
         version: 8.58.2(eslint@9.39.4)(typescript@5.9.3)
 
+  tooling/tailwind: {}
+
   tooling/typescript:
     devDependencies:
       prettier:

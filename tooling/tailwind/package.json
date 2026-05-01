@@ -1,0 +1,11 @@
+{
+  "name": "@mr/tailwind-preset",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": ["index.css"],
+  "exports": {
+    ".": "./index.css"
+  }
+}
