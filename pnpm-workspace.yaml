@@ -7,4 +7,5 @@ packages:
   - 'packages/db'
   - 'packages/auth'
   - 'packages/ui'
+  - 'packages/i18n'
   - 'apps/*'

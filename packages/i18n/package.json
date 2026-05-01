@@ -1,0 +1,31 @@
+{
+  "name": "@mr/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist", "src/paraglide"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
+    "build": "pnpm compile && tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "pnpm compile && tsc --noEmit -p tsconfig.json",
+    "test": "pnpm compile && vitest run"
+  },
+  "dependencies": {
+    "@inlang/paraglide-js": "2.18.0"
+  },
+  "devDependencies": {
+    "@mr/eslint-config": "workspace:*",
+    "@mr/tsconfig": "workspace:*",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

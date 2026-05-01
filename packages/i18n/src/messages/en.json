@@ -1,0 +1,13 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "nav_dashboard": "Dashboard",
+  "nav_emotive_claims": "International claims",
+  "nav_domace_claims": "Domestic claims",
+  "nav_users": "Users",
+  "nav_profile": "Profile",
+  "action_save": "Save",
+  "action_cancel": "Cancel",
+  "action_delete": "Delete",
+  "action_edit": "Edit",
+  "action_confirm": "Confirm"
+}

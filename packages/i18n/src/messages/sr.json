@@ -1,0 +1,13 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "nav_dashboard": "Kontrolna tabla",
+  "nav_emotive_claims": "Inostrane reklamacije",
+  "nav_domace_claims": "Domaće reklamacije",
+  "nav_users": "Korisnici",
+  "nav_profile": "Profil",
+  "action_save": "Sačuvaj",
+  "action_cancel": "Otkaži",
+  "action_delete": "Obriši",
+  "action_edit": "Izmeni",
+  "action_confirm": "Potvrdi"
+}
