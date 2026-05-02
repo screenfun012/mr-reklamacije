@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
     "./generate-config": {
       "types": "./dist/better-auth.generate.config.d.ts",
       "import": "./dist/better-auth.generate.config.js"
@@ -30,6 +34,14 @@
     "@mr/shared": "workspace:*",
     "better-auth": "1.6.5",
     "drizzle-orm": "^0.45.2"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
   },
   "devDependencies": {
     "@mr/eslint-config": "workspace:*",
