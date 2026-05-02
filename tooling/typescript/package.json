@@ -4,11 +4,13 @@
   "private": true,
   "files": [
     "base.json",
-    "node.json"
+    "node.json",
+    "react-app.json"
   ],
   "exports": {
     "./base.json": "./base.json",
-    "./node.json": "./node.json"
+    "./node.json": "./node.json",
+    "./react-app.json": "./react-app.json"
   },
   "devDependencies": {
     "prettier": "^3.7.4"
