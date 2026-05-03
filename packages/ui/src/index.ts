@@ -23,3 +23,4 @@ export {
   DialogDescription,
 } from './primitives/dialog.js'
 export { Toaster, toast, type ToasterProps } from './primitives/sonner.js'
+export { AppShell, type AppShellProps } from './layouts/app-shell.js'
