@@ -2,8 +2,8 @@
 
 Shared Tailwind CSS v4 design tokens for MR Reklamacije frontends.
 
-Based on the shadcn/ui default `neutral` theme using the OKLCH color
-space and class-based dark mode.
+MR Reklamacije brand theme: red primary, neutral grays, 0.45rem
+base radius. Uses the OKLCH color space and class-based dark mode.
 
 ## Usage
 
@@ -21,23 +21,26 @@ the closest ancestor of the elements you want themed).
 
 ## What's included
 
-- shadcn/ui semantic color palette (light + dark) — background,
-  foreground, card, popover, primary, secondary, muted, accent,
-  destructive, border, input, ring
-- Chart palette (chart-1 through chart-5, light + dark)
-- Sidebar palette (sidebar, sidebar-foreground, sidebar-primary,
-  sidebar-accent, sidebar-border, sidebar-ring — light + dark)
-- Radius scale derived from a single `--radius` base (sm, md, lg, xl,
-  2xl, 3xl, 4xl)
+- MR Reklamacije brand palette (red primary, light + dark)
+- Destructive token deliberately distinct from primary (red-orange
+  vs brand red) so destructive actions remain visually clear in
+  admin UIs
+- Chart palette (chart-1 through chart-5) — red gradation matching
+  primary
+- Sidebar palette — uses primary red for active states, neutral
+  grays for surface
+- Radius scale derived from `--radius: 0.45rem` base (sm, md, lg,
+  xl, 2xl, 3xl, 4xl) using a linear `+4px` stepping
 - Class-based dark mode via `@custom-variant dark (&:is(.dark *))`
 - Global base layer applying default border + body colors
 
 ## What's NOT included (per-app)
 
-- **Fonts.** Each frontend installs `@fontsource/inter` and
-  `@fontsource/jetbrains-mono`, imports them, and defines
-  `--font-sans` / `--font-mono` in its own globals.css after the
-  preset.
+- **Fonts.** Each frontend installs
+  `@fontsource-variable/figtree` (variable font — all weights in
+  a single file) and `@fontsource/jetbrains-mono`, imports them
+  in the root layout, and defines `--font-sans` / `--font-mono`
+  in its own globals.css after the preset.
 - **Animations.** `tw-animate-css` is per-app
   (`@import "tw-animate-css"` after the preset). The shadcn Dialog and
   similar primitives in `@mr/ui` rely on those animation utilities.
@@ -80,3 +83,8 @@ but components that consume colors imperatively (charts, inline
 styles in JS) need access to the raw `var(--x)`. The two-layer
 pattern (`:root` for values, `@theme inline` for utility mapping) is
 the shadcn v4 standard and supports both consumption styles cleanly.
+
+## Theme history
+
+Originally derived from shadcn/ui neutral default. Rebranded to the
+MR Reklamacije palette (red primary, 0.45rem radius) in 9.1c.1.5a.
