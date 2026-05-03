@@ -9,6 +9,19 @@ import { sharedAuthOptions } from './options.js'
 
 export type { Auth }
 
+export interface CreateAuthOptions {
+  /**
+   * Origins allowed to make cross-origin requests against this auth instance.
+   * Required whenever the API is served from a different origin than the
+   * frontend (the normal case in dev — api :3000, admin-web :3001, etc.).
+   *
+   * Parsed from env.PUBLIC_ORIGINS by the caller (e.g. apps/api). Passed as
+   * an array here so the auth package does not need to know how the env
+   * variable is parsed.
+   */
+  trustedOrigins?: string[]
+}
+
 /**
  * Factory for Better-Auth runtime instance. Consumers (e.g. apps/api)
  * create their own db instance and pass it in.
@@ -25,10 +38,25 @@ export type { Auth }
  * customization (mrr.session_token), advanced cookie settings. Those
  * are runtime-specific and belong next to the API app.
  */
-export function createAuth(db: NodePgDatabase<typeof schema>): Auth {
+export function createAuth(
+  db: NodePgDatabase<typeof schema>,
+  opts: CreateAuthOptions = {},
+): Auth {
+  const trustedOrigins = opts.trustedOrigins ?? []
+  if (
+    trustedOrigins.length === 0 &&
+    process.env['NODE_ENV'] !== 'production' &&
+    process.env['NODE_ENV'] !== 'test'
+  ) {
+    console.warn(
+      '[@mr/auth] createAuth called without trustedOrigins — cross-origin requests may be rejected by Better-Auth origin validation',
+    )
+  }
+
   return betterAuth({
     secret: process.env['BETTER_AUTH_SECRET'] ?? 'dev-only-change-me',
     baseURL: process.env['BETTER_AUTH_URL'] ?? 'http://localhost:3000',
+    trustedOrigins,
     database: drizzleAdapter(db, {
       provider: 'pg',
       camelCase: true,

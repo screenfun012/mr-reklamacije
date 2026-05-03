@@ -11,7 +11,7 @@ const env = parseEnv()
 const logger = createLogger('api')
 
 const { db, pool } = createDb(env)
-const auth = createAuth(db)
+const auth = createAuth(db, { trustedOrigins: env.PUBLIC_ORIGINS })
 const permissionResolver = createPermissionResolver(db)
 const auditService = new AuditService(db)
 

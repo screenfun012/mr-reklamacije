@@ -37,4 +37,12 @@ describe('createAuth factory', () => {
     expect(auth.options.account?.modelName).toBe('accounts')
     expect(auth.options.verification?.modelName).toBe('verification_tokens')
   })
+
+  it('propagates trustedOrigins from opts to Better-Auth config', () => {
+    const mockDb = {} as unknown as NodePgDatabase<typeof schema>
+    const origins = ['http://localhost:3001', 'http://localhost:3002']
+    const auth = createAuth(mockDb, { trustedOrigins: origins })
+
+    expect(auth.options.trustedOrigins).toEqual(origins)
+  })
 })
