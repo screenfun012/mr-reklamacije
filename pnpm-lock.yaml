@@ -8,15 +8,30 @@ importers:
 
   .:
     devDependencies:
+      '@mr/auth':
+        specifier: workspace:*
+        version: link:packages/auth
+      '@mr/db':
+        specifier: workspace:*
+        version: link:packages/db
       '@mr/eslint-config':
         specifier: workspace:*
         version: link:tooling/eslint
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.16)(pg@8.20.0)
       eslint:
         specifier: ^9.39.1
         version: 9.39.4(jiti@2.6.1)
       prettier:
         specifier: ^3.7.4
         version: 3.8.3
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       turbo:
         specifier: ^2.9.6
         version: 2.9.6

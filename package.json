@@ -10,12 +10,18 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "create-admin": "tsx scripts/create-admin-user.mts"
   },
   "devDependencies": {
+    "@mr/auth": "workspace:*",
+    "@mr/db": "workspace:*",
     "@mr/eslint-config": "workspace:*",
+    "dotenv": "^16.6.1",
+    "drizzle-orm": "^0.45.2",
     "eslint": "^9.39.1",
     "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
     "turbo": "^2.9.6",
     "typescript": "^5.9.3"
   }

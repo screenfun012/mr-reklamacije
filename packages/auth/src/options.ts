@@ -44,6 +44,23 @@ export const sharedAuthOptions: BetterAuthOptions = {
   verification: {
     modelName: 'verification_tokens',
   },
+  // Email + password authentication.
+  // minPasswordLength follows the strictest role from docs/05-auth-realtime.md
+  // (admin: 12 chars). Complexity rules (upper/lower/digit/symbol) are enforced
+  // separately through a custom validator; Better-Auth does not support
+  // per-role length policies.
+  // requireEmailVerification is false in dev; production toggles this via an
+  // env-driven override or a separate prod config.
+  // autoSignIn is false so programmatic signups (admin bootstrap script,
+  // admin-created internal users) do not receive session tokens; the UI signup
+  // flow handles login as a separate step.
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 12,
+    maxPasswordLength: 128,
+    requireEmailVerification: false,
+    autoSignIn: false,
+  },
   plugins: [
     twoFactor({
       twoFactorTable: 'two_factor_secrets',
