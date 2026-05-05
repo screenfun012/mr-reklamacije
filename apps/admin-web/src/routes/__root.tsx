@@ -10,6 +10,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import type { ReactNode } from 'react';
 
+import { useLocale } from '~/lib/locale';
 import globalsCss from '~/styles/globals.css?url';
 
 // Inline FOUC-prevention script: applies the resolved theme class to
@@ -36,13 +37,14 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const { locale } = useLocale();
   return (
     <html lang="sr">
       <head>
         <HeadContent />
       </head>
       <body>
-        {children}
+        <div key={locale}>{children}</div>
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

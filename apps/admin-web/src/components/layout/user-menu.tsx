@@ -1,4 +1,4 @@
-import { m } from '@mr/i18n';
+import { m, type Locale } from '@mr/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +13,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@mr/ui';
-import { LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { Globe, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 
+import { useLocale } from '~/lib/locale';
 import { useTheme, type Theme } from '~/lib/theme';
 
 export interface UserMenuProps {
@@ -40,10 +41,15 @@ function getInitials(name: string, email: string): string {
 
 export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { locale, setLocale } = useLocale();
   const initials = getInitials(userName, userEmail);
 
   const handleThemeChange = (value: string): void => {
     setTheme(value as Theme);
+  };
+
+  const handleLocaleChange = (value: string): void => {
+    setLocale(value as Locale);
   };
 
   return (
@@ -96,6 +102,29 @@ export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
                 <DropdownMenuRadioItem value="dark">
                   <Moon aria-hidden="true" />
                   <span>{m.theme_dark()}</span>
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Globe aria-hidden="true" />
+            <span>{m.language_label()}</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="w-44">
+              <DropdownMenuRadioGroup value={locale} onValueChange={handleLocaleChange}>
+                <DropdownMenuRadioItem value="sr">
+                  <Globe aria-hidden="true" />
+                  <span>{m.language_serbian()}</span>
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="en">
+                  <Globe aria-hidden="true" />
+                  <span>{m.language_english()}</span>
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>

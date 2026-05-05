@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
+    "compile": "node ./scripts/compile-paraglide.mjs",
     "build": "pnpm compile && tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "pnpm compile && tsc --noEmit -p tsconfig.json",
