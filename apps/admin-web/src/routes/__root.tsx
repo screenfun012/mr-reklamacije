@@ -12,6 +12,12 @@ import type { ReactNode } from 'react';
 
 import globalsCss from '~/styles/globals.css?url';
 
+// Inline FOUC-prevention script: applies the resolved theme class to
+// <html> before React hydrates. Runs synchronously in <head> so the
+// first paint already matches the user's saved theme. Storage key
+// must stay in sync with apps/admin-web/src/lib/theme.ts (`mrr:theme`).
+const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('mrr:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -20,6 +26,11 @@ export const Route = createRootRoute({
       { title: 'MR Reklamacije Admin' },
     ],
     links: [{ rel: 'stylesheet', href: globalsCss }],
+    // `headScripts` (not `scripts`) is what HeadContent renders into
+    // the document <head>. TanStack's `scripts` array is rendered by
+    // <Scripts /> at the end of <body>, which would defeat FOUC
+    // prevention because the bootstrap script must run before paint.
+    headScripts: [{ children: themeBootstrapScript }],
   }),
   shellComponent: RootDocument,
 });

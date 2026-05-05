@@ -19,5 +19,10 @@
   "nav_domace_claims": "Domestic claims",
   "nav_emotive_claims": "International claims",
   "nav_profile": "Profile",
-  "nav_users": "Users"
+  "nav_users": "Users",
+  "theme_dark": "Dark",
+  "theme_label": "Theme",
+  "theme_light": "Light",
+  "theme_system": "System",
+  "user_menu_label": "User menu"
 }

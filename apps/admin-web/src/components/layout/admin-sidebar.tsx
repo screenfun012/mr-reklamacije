@@ -1,15 +1,8 @@
-import { m } from '@mr/i18n';
-import { Button } from '@mr/ui';
 import { Link } from '@tanstack/react-router';
-import { LogOut } from 'lucide-react';
 
 import { adminNavItems } from '~/config/navigation';
 
-export interface AdminSidebarProps {
-  onLogout: () => void;
-}
-
-export function AdminSidebar({ onLogout }: AdminSidebarProps) {
+export function AdminSidebar() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-5 border-b border-sidebar-border">
@@ -47,17 +40,6 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
           })}
         </ul>
       </nav>
-
-      <div className="p-2 border-t border-sidebar-border">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3"
-          onClick={onLogout}
-        >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          <span>{m.auth_logout()}</span>
-        </Button>
-      </div>
     </div>
   );
 }

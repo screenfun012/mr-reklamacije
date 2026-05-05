@@ -21,8 +21,8 @@ export interface AdminShellProps {
  * hydrates. Server-side session injection can replace this in
  * a later iteration if the flash becomes noticeable.
  *
- * Logout navigates to /login after signOut completes so the user
- * sees the login form instead of a stale shell.
+ * Logout lives in the topbar UserMenu (9.1c.1.5b). The sidebar
+ * footer was removed in the same step.
  */
 export function AdminShell({ children }: AdminShellProps) {
   const navigate = useNavigate();
@@ -40,8 +40,14 @@ export function AdminShell({ children }: AdminShellProps) {
 
   return (
     <AppShell
-      sidebar={<AdminSidebar onLogout={handleLogout} />}
-      topbar={<AdminTopbar userEmail={userEmail} userName={userName} />}
+      sidebar={<AdminSidebar />}
+      topbar={
+        <AdminTopbar
+          userEmail={userEmail}
+          userName={userName}
+          onLogout={handleLogout}
+        />
+      }
     >
       {children}
     </AppShell>

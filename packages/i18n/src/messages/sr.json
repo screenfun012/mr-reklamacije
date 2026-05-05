@@ -19,5 +19,10 @@
   "nav_domace_claims": "Domaće reklamacije",
   "nav_emotive_claims": "Inostrane reklamacije",
   "nav_profile": "Profil",
-  "nav_users": "Korisnici"
+  "nav_users": "Korisnici",
+  "theme_dark": "Tamna",
+  "theme_label": "Tema",
+  "theme_light": "Svetla",
+  "theme_system": "Sistem",
+  "user_menu_label": "Korisnički meni"
 }
