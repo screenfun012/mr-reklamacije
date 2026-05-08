@@ -34,6 +34,15 @@ describe('@mr/i18n messages', () => {
     expect(getLocale()).toBe('sr')
   })
 
+  it('returns portal-web auth title and subtitle per locale', () => {
+    setLocale('sr')
+    expect(m.auth_login_title_portal()).toBe('Prijava — Portal')
+    expect(m.portal_dashboard_subtitle()).toBe('Pregled vaših reklamacija')
+    setLocale('en')
+    expect(m.auth_login_title_portal()).toBe('Login — Portal')
+    expect(m.portal_dashboard_subtitle()).toBe('Overview of your claims')
+  })
+
   it('returns internal-web nav labels per locale', () => {
     setLocale('sr')
     expect(m.nav_pocetna()).toBe('Početna')

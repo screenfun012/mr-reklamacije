@@ -1,0 +1,16 @@
+# Build outputs
+dist/
+.output/
+.nitro/
+.tanstack/
+.vite/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+
+# TanStack auto-generated (regenerated on every dev/build)
+src/routeTree.gen.ts
