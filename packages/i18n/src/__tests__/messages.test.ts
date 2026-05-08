@@ -5,6 +5,7 @@ import { getLocale, m, setLocale } from '../index.js'
 describe('@mr/i18n messages', () => {
   it('exports messages module with all stub keys', () => {
     expect(typeof m.nav_dashboard).toBe('function')
+    expect(typeof m.nav_pocetna).toBe('function')
     expect(typeof m.action_save).toBe('function')
   })
 
@@ -31,6 +32,15 @@ describe('@mr/i18n messages', () => {
     expect(getLocale()).toBe('en')
     setLocale('sr')
     expect(getLocale()).toBe('sr')
+  })
+
+  it('returns internal-web nav labels per locale', () => {
+    setLocale('sr')
+    expect(m.nav_pocetna()).toBe('Početna')
+    expect(m.nav_pristiglo()).toBe('Pristiglo')
+    setLocale('en')
+    expect(m.nav_pocetna()).toBe('Home')
+    expect(m.nav_pristiglo()).toBe('Inbox')
   })
 
   it('returns translated emotive/domace nav labels per locale', () => {

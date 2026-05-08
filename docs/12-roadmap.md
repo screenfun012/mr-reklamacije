@@ -99,12 +99,25 @@ Goal: Empty but fully wired monorepo that builds, runs locally, and deploys to s
 
 ---
 
-## Phase 1 — Core claims (target: 3–5 days)
+## Phase 1 — Functional Modules (target: 3–5 days)
 
 Goal: Operators can create, view, edit EMOTIVE and DOMACE claims with attachments.
 Historical Excel data is imported.
 
-### Tasks
+### 1.0 Permissions System (PREREQUISITE)
+
+Before implementing module functionality, establish role-based access control across all three frontends.
+
+- Extend Better-Auth session payload to include user roles array (via Better-Auth `additionalFields` or custom plugin)
+- Add `requireRoles(...rolesAllowed)` helper to `@mr/auth` for use in TanStack Router `beforeLoad` callbacks
+- Apply role checks to all routes in admin-web (`admin`), internal-web (`operator` + `admin`), portal-web (`client`)
+- Add API-level permission checks per `.cursor/rules/05-security.mdc` (UI hiding is convenience layer, server is judge)
+- Replace `TODO(phase-1.0)` comments throughout codebase
+- Source of truth: roles seeded in `packages/db/src/seed/roles.ts` (`admin`, `operator`, `viewer`, `client`)
+
+Estimated: 1–2 sessions.
+
+### 1.1 Reklamacije CRUD
 
 1. **Reference catalogs (CRUD + read APIs)**
    - `employees` — create, list, update, deactivate
