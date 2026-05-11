@@ -1,0 +1,13 @@
+# Build context for `apps/api` image is the repo root (see docker-compose.yml).
+**/node_modules
+**/.pnpm-store
+**/.turbo
+**/dist
+**/.output
+**/.nitro
+**/.vite
+**/.tanstack
+**/coverage
+.git
+**/apps/**/*.env
+!**/apps/**/*.env.example

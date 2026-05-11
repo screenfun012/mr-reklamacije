@@ -52,15 +52,67 @@ See `docs/01-architecture.md` for full details.
 See `.cursor/rules/` for the complete set of `.mdc` files that Cursor must follow.
 **Read all of them before writing any code.**
 
-## Getting started
+## Local Development
+
+### Quick start
+
+1. **Install dependencies:**
 
 ```bash
 pnpm install
-docker compose up -d      # local Postgres
-pnpm db:migrate
-pnpm db:seed
-pnpm dev                  # starts all services via Turbo
 ```
+
+2. **Start backend (Postgres + API) in background:**
+
+```bash
+docker compose up -d
+```
+
+3. **Database migrations & seed** (uses `DATABASE_URL` in `apps/api/.env`; run after Postgres is reachable, whenever the schema is new or after `docker compose down -v`):
+
+```bash
+pnpm --filter @mr/db run db:migrate
+pnpm --filter @mr/db run db:seed
+```
+
+4. **Start all frontends in parallel:**
+
+```bash
+pnpm dev
+```
+
+Or compose backend + parallel frontends in one step (migrate/seed not included):
+
+```bash
+pnpm dev:all
+```
+
+### Service URLs
+
+| Service      | URL                                                          |
+| ------------ | ------------------------------------------------------------ |
+| admin-web    | http://localhost:3001                                       |
+| internal-web | http://localhost:3002                                       |
+| portal-web   | http://localhost:3003                                       |
+| API          | http://localhost:3000                                        |
+| Postgres     | localhost:5433 (`mr` / `mr_dev_password` / `mr_reklamacije`) |
+
+### Admin login
+
+- Email: `screenfun99@gmail.com`
+- Password: `MrAdmin2026!Pass`
+
+### Stop everything
+
+- `Ctrl+C` in `pnpm dev` terminal (stops frontends)
+- `docker compose down` (stops Postgres + API)
+
+### Common operations
+
+- **API logs:** `docker compose logs -f api`
+- **Postgres shell:** `docker exec -it mr-reklamacije-postgres psql -U mr -d mr_reklamacije`
+- **Rebuild API after dependency change:** `docker compose up -d --build api`
+- **Reset DB (DANGER — deletes all data):** `docker compose down -v && docker compose up -d`
 
 ## Language conventions
 

@@ -18,6 +18,30 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mr-reklamacije-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    environment:
+      # Override DATABASE_URL — Docker DNS host is `postgres`, not localhost
+      DATABASE_URL: postgresql://mr:mr_dev_password@postgres:5432/mr_reklamacije
+    env_file:
+      - apps/api/.env
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      # Required so `tsx --env-file=.env` inside `pnpm --filter api run dev` resolves a real file path
+      - ./apps/api/.env:/app/apps/api/.env:ro
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    restart: unless-stopped
+
 volumes:
   mr_postgres_data:
     name: mr_reklamacije_postgres_data

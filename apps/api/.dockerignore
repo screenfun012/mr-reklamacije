@@ -1,0 +1,2 @@
+# Docker reads `.dockerignore` from the compose build context (repo root — see /.dockerignore).
+# This file is kept next to Dockerfile for IDE convenience only.

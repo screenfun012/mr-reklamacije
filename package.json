@@ -11,7 +11,9 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "create-admin": "tsx scripts/create-admin-user.mts"
+    "create-admin": "tsx scripts/create-admin-user.mts",
+    "dev": "pnpm -r --filter \"./apps/*-web\" --parallel run dev",
+    "dev:all": "docker compose up -d && pnpm dev"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
