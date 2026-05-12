@@ -79,9 +79,9 @@ Goal: Empty but fully wired monorepo that builds, runs locally, and deploys to s
     - Root **`pnpm dev`** runs **admin-web**, **internal-web**, **portal-web** in parallel (`./apps/*-web`); **`pnpm dev:all`** runs `docker compose up -d` then **`pnpm dev`**
     - README Local Development section documents URLs, migrate/seed, logs, rebuild
 
-11. **CI pipeline**
-    - GitHub Actions: lint, typecheck, unit tests
-    - Fail on any issue
+11. ✅ **CI pipeline** — Tačka 11 done
+    - GitHub Actions `.github/workflows/ci.yml` on push/PR to **main**: format check, typecheck, lint, build, test (sequential); pnpm 9.15.9 + Node 20 with pnpm store caching
+    - Root `pnpm test` (`turbo run test`); Turbo `test` task depends on `^build`
 
 12. **Deploy skeleton to Railway staging**
     - All 5 services deployed

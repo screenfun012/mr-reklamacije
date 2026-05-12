@@ -7,13 +7,14 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
     "create-admin": "tsx scripts/create-admin-user.mts",
     "dev": "pnpm -r --filter \"./apps/*-web\" --parallel run dev",
-    "dev:all": "docker compose up -d && pnpm dev"
+    "dev:all": "docker compose up -d && pnpm dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
