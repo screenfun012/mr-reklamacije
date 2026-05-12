@@ -6,3 +6,11 @@ docs
 .cursor
 pnpm-lock.yaml
 *.min.js
+
+# Generated / tooling output (do not format — breaks CI vs generator output)
+**/routeTree.gen.ts
+packages/i18n/src/paraglide/**
+packages/db/migrations/meta/**
+**/.tanstack/**
+**/.nitro/**
+**/.output/**
