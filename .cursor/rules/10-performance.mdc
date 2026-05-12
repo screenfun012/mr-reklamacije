@@ -1,0 +1,333 @@
+---
+description:
+  Performance and UX standards for MR Reklamacije. Applies to all code in Phase 1 and beyond.
+globs:
+  - "apps/**"
+  - "packages/**"
+alwaysApply: true
+---
+
+# Performance and UX Standards
+
+## Core Principle
+
+Performance is not an afterthought. Every feature must feel instant to the user, never sluggish or "facepalmy". The following rules are mandatory unless explicitly waived for a specific case with documented reasoning.
+
+## A. Database Layer (PostgreSQL + Drizzle)
+
+### A1. Cursor-based pagination, never offset
+
+For any list that may grow beyond ~100 rows, use cursor-based pagination instead of LIMIT/OFFSET. Offset forces Postgres to scan and discard skipped rows — degrades linearly with offset size.
+
+Pattern:
+
+```typescript
+// API endpoint
+GET /api/claims?cursor=<last-seen-id>&limit=50
+// Returns: { items: [...], nextCursor: "uuid" | null }
+
+// Drizzle query
+const query = db
+  .select()
+  .from(claims)
+  .orderBy(desc(claims.createdAt))
+  .limit(pageSize + 1)
+if (cursor) query.where(lt(claims.createdAt, cursorDate))
+```
+
+### A2. Composite + partial indexes from day 1
+
+Every new table that will be queried with WHERE clauses on multiple columns needs composite indexes. Order columns by selectivity (most selective first).
+
+Use partial indexes for hot status filters (e.g., WHERE status = 'open'):
+
+```typescript
+// Up to 275x performance improvement vs full index
+index('claims_active_by_user')
+  .on(claims.assignedTo, claims.createdAt.desc())
+  .where(sql`${claims.status} IN ('open', 'in_progress')`)
+```
+
+### A3. Selective columns, never `SELECT *`
+
+Lists: only columns shown in the UI. Detail views: full row.
+
+```typescript
+// List endpoint — minimal columns
+db.select({
+  id: claims.id,
+  claimNumber: claims.claimNumber,
+  status: claims.status,
+  createdAt: claims.createdAt,
+}).from(claims)
+
+// Detail endpoint — full row + relations
+db.query.claims.findFirst({
+  where: eq(claims.id, id),
+  with: { customer: true, files: true, findings: true },
+})
+```
+
+### A4. Prepared statements for hot paths
+
+Queries that run on every request (session lookup, user role check) should use prepared statements:
+
+```typescript
+const getSessionByToken = db
+  .select()
+  .from(sessions)
+  .where(eq(sessions.token, sql.placeholder('token')))
+  .prepare('get_session_by_token')
+```
+
+### A5. Connection pooling (already configured in @mr/db)
+
+- max: 20 connections
+- idleTimeoutMillis: 30000
+- connectionTimeoutMillis: 2000
+
+### A6. JOINs, never N+1 queries
+
+Use Drizzle relations API (`with`) for related data. Never loop over results and query inside the loop.
+
+### A7. Indexes on FK + WHERE columns mandatory
+
+Every foreign key gets an index. Every column appearing in WHERE/JOIN/ORDER BY across the codebase gets an index. Schema PRs without indexes are rejected.
+
+## B. API Layer (Hono + Better-Auth)
+
+### B1. Structured logging with duration tracking
+
+Already configured via Pino. Every endpoint logs {method, path, status, durationMs}. Alert threshold: p95 > 200ms.
+
+### B2. Cursor-based response shape
+
+Standard list response:
+
+```typescript
+{
+  items: T[],
+  nextCursor: string | null,
+  hasMore: boolean
+}
+```
+
+### B3. Rate limiting on critical endpoints
+
+- Login: max 5 attempts/min/IP
+- Read endpoints: 100 req/sec/user
+- Write endpoints: 30 req/sec/user
+- File uploads: 10/min/user
+
+Use @hono/rate-limiter when added in Phase 1.0.
+
+## C. Frontend Data Layer (TanStack Query + Router)
+
+### C1. queryOptions factory pattern
+
+Define reusable query options once, use everywhere with type safety:
+
+```typescript
+// packages/shared/src/queries/claims.ts
+export function claimDetailOptions(id: string) {
+  return queryOptions({
+    queryKey: ['claims', id],
+    queryFn: () => fetch(`/api/claims/${id}`).then((r) => r.json()),
+    staleTime: 30_000,
+  })
+}
+
+// Component
+const { data } = useSuspenseQuery(claimDetailOptions(id))
+```
+
+### C2. Route loaders for prefetching
+
+Every route with data dependencies must use a loader to prefetch:
+
+```typescript
+const Route = createFileRoute('/claims/$id')({
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(claimDetailOptions(params.id)),
+  component: ClaimDetail,
+})
+```
+
+This enables "render-as-you-fetch" — data starts loading before the component mounts.
+
+### C3. useSuspenseQuery + React Suspense over isLoading checks
+
+Avoid:
+
+```typescript
+if (isLoading) return <Spinner /> // ❌
+```
+
+Prefer:
+
+```typescript
+// Component assumes data exists
+const { data } = useSuspenseQuery(options)
+
+// Parent has Suspense boundary
+<Suspense fallback={<SkeletonList />}>
+  <ClaimsList />
+</Suspense>
+```
+
+### C4. Optimistic updates for every mutation
+
+Every mutation that updates UI state must implement optimistic updates with rollback:
+
+```typescript
+useMutation({
+  mutationFn: updateClaim,
+  onMutate: async (newClaim) => {
+    await queryClient.cancelQueries({ queryKey: ['claims'] })
+    const previous = queryClient.getQueryData(['claims'])
+    queryClient.setQueryData(['claims'], (old) =>
+      old.map((c) => (c.id === newClaim.id ? newClaim : c)),
+    )
+    return { previous }
+  },
+  onError: (err, _, context) => {
+    queryClient.setQueryData(['claims'], context.previous)
+    toast.error('Greška pri ažuriranju')
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['claims'] })
+  },
+})
+```
+
+### C5. staleTime + gcTime tuning per query type
+
+- **List queries:** staleTime: 30s, gcTime: 5min
+- **Detail queries:** staleTime: 1min, gcTime: 5min
+- **Reference data (departments, statuses):** staleTime: Infinity, gcTime: Infinity
+- **Real-time data (notifications):** staleTime: 0
+
+### C6. Request deduplication + cancellation
+
+Native to TanStack Query — no manual work needed. Use AbortSignal in queryFn for fetch cancellation on unmount.
+
+## D. Frontend UI Layer
+
+### D1. Lazy-loaded routes
+
+TanStack Router code-splits routes by default. No manual work, but verify per-route bundle sizes stay reasonable (< 50KB gzipped per route).
+
+### D2. Skeleton loaders, never spinners
+
+Use the Skeleton component from @mr/ui. Skeleton must visually match the loading content's structure (not generic boxes).
+
+### D3. TanStack Virtual for lists > 100 items
+
+Add @tanstack/react-virtual when implementing claims list, findings list, files list. Render only visible rows.
+
+### D4. Debounced inputs
+
+Search, filter, and validation inputs use 300ms debounce. Use the useDebouncedValue hook from @mr/shared (create if missing).
+
+### D5. Image optimization on upload
+
+Client-side compression before upload using browser-image-compression:
+
+- Max width: 1920px
+- Max quality: 0.85
+- Convert HEIC to JPEG
+
+### D6. Form submission UX standards
+
+- Submit button: disabled + inline spinner during pending state
+- Form fields: disabled during pending state
+- Form does NOT reset until success confirmed
+- Toast notification on success/error
+- Error states inline on fields (not just toast)
+
+### D7. Animation timing standards
+
+- Microinteractions (hover, click feedback): 150-200ms
+- Component transitions (modal, drawer): 200-300ms
+- Page transitions: 200ms max
+- Respect prefers-reduced-motion media query
+
+## E. Bundle Size
+
+### E1. Tree-shaking discipline
+
+```typescript
+// ❌ Pulls entire lodash
+import _ from 'lodash'
+
+// ✅ Pulls only debounce
+import debounce from 'lodash/debounce'
+```
+
+### E2. Bundle size budgets per app
+
+- admin-web: < 250KB gzipped initial
+- internal-web: < 250KB gzipped initial
+- portal-web: < 150KB gzipped initial (simpler app)
+
+CI will fail builds that exceed budgets (add bundlewatch in Phase 1.0 or 1.1).
+
+### E3. Font loading
+
+Figtree Variable: font-display: swap (already configured). Preload font in <head> for critical text.
+
+## F. Performance Budgets (Targets)
+
+| Metric                    | Target |
+| ------------------------- | ------ |
+| Initial page load (3G)    | < 2s   |
+| Time to Interactive       | < 3s   |
+| API endpoint p95          | < 200ms |
+| Database query p95        | < 50ms |
+| First Contentful Paint    | < 1.5s |
+| Largest Contentful Paint  | < 2.5s |
+
+Measure with Lighthouse CI (add when staging is up — Tačka 12).
+
+## G. Future-Proofing (Prepare, Don't Implement Yet)
+
+### G1. Zustand standby
+
+When any React Context grows to > 5 values OR > 3 listeners, refactor to Zustand. Watch for this during Phase 1.2 (Dashboard) and Phase 1.5 (Statistics) — they will likely trigger the rule.
+
+Pattern when you migrate:
+
+```typescript
+// Before: Context with many values causes unnecessary re-renders
+const FilterContext = createContext({ status, dateRange, ... })
+
+// After: Zustand store with selective subscriptions
+const useFilterStore = create((set) => ({ ... }))
+const status = useFilterStore((s) => s.status) // only re-renders on status change
+```
+
+### G2. CDN-ready file API
+
+When implementing file uploads (Phase 1.3), the API must return public URLs that CAN be rerouted through a CDN later. Do NOT serve files from the application server. Use S3-compatible storage (Cloudflare R2, Backblaze B2) from day one with signed URLs for private files.
+
+This means Phase 1.3 file API design must include:
+
+- POST /api/files/sign-upload → returns presigned URL for direct client→S3 upload
+- File records in DB store the S3 key, not the URL
+- Public/private file access controlled by signed URLs with expiry
+
+### G3. PWA stand-by
+
+Vite PWA plugin can be added in Phase 2 if mobile use case becomes priority. Current stack is PWA-ready (Vite + service worker support). Do not enable yet.
+
+## H. Explicitly NOT Implementing (and Why)
+
+The following are intentionally out of scope. Adding any of these requires explicit architectural review.
+
+- **React Server Components (RSC)** — TanStack Start doesn't support yet. Would require migrating to Next.js. Not justified by our use case (highly interactive internal app).
+- **Edge runtime (Cloudflare Workers, Vercel Edge)** — All users in Serbia. Frankfurt region Railway has ~20-30ms latency. Edge benefit minimal, complexity high.
+- **GraphQL** — REST + Hono + Zod schemas + TanStack Query cover our needs. Migration possible later if 15+ heterogeneous clients emerge.
+- **Apollo / urql** — Only relevant if GraphQL adopted.
+- **Service Workers** — Internal app, users have stable office internet. Revisit if mobile-first phase emerges.
+
+If any of these become tempting, write the architectural justification first. Default: stay with current stack.

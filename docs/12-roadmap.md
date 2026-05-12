@@ -197,6 +197,28 @@ Estimated: 1–2 sessions.
 - [ ] Another operator editing the same claim triggers SSE refresh in the first operator's browser
 - [ ] Coverage on claim modules ≥ 90%
 
+## Architectural Checkpoints (Performance & Scaling)
+
+Pre-flight checks before specific Phase 1 sub-phases. Each checkpoint is a reminder to evaluate whether a "stand-by" technology should be activated.
+
+### Before Phase 1.2 (Dashboard with Statistics)
+
+- **Zustand evaluation:** Dashboard will introduce shared filter state (date range, status, user). If implementing with React Context, watch for re-render performance issues. Threshold: > 5 context values OR > 3 listeners → migrate to Zustand before merging Phase 1.2.
+
+### Before Phase 1.3 (Files and Findings)
+
+- **CDN-ready file architecture:** File uploads must use S3-compatible storage (Cloudflare R2 or Backblaze B2) with presigned URLs. Do NOT serve files from the API server. Decision must be made and storage account provisioned before starting 1.3.
+- **CDN provisioning:** Cloudflare in front of Railway (free tier sufficient initially). Configure DNS + cache rules for `/files/*` path.
+
+### Before Phase 1.6 (Email integration)
+
+- **Background job runner:** Email IMAP polling is a long-running background task. BullMQ is in the stack (already in @mr/db schema preparation). Activate Redis dependency in docker-compose, configure worker process.
+
+### Before Phase 2 (TBD)
+
+- **PWA evaluation:** If mobile use case becomes priority, add Vite PWA plugin and service worker.
+- **Multi-region evaluation:** If non-Serbia users emerge, evaluate Edge runtime or read replicas.
+
 ---
 
 ## Phase 2 — Employees and statistics (target: 2–3 days)
