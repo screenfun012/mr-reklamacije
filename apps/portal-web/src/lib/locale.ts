@@ -1,39 +1,34 @@
-import {
-  baseLocale,
-  getLocale,
-  setLocale as paraglideSetLocale,
-  type Locale,
-} from '@mr/i18n';
-import { useSyncExternalStore } from 'react';
+import { baseLocale, getLocale, setLocale as paraglideSetLocale, type Locale } from '@mr/i18n'
+import { useSyncExternalStore } from 'react'
 
-const subscribers = new Set<() => void>();
+const subscribers = new Set<() => void>()
 
 function notify(): void {
   for (const fn of subscribers) {
-    fn();
+    fn()
   }
 }
 
 function subscribe(cb: () => void): () => void {
-  subscribers.add(cb);
+  subscribers.add(cb)
   return () => {
-    subscribers.delete(cb);
-  };
+    subscribers.delete(cb)
+  }
 }
 
 function isLocale(value: unknown): value is Locale {
-  return typeof value === 'string' && ['sr', 'en'].includes(value);
+  return typeof value === 'string' && ['sr', 'en'].includes(value)
 }
 
 function getServerSnapshot(): Locale {
-  return baseLocale;
+  return baseLocale
 }
 
 function getSnapshot(): Locale {
   if (typeof window === 'undefined') {
-    return baseLocale;
+    return baseLocale
   }
-  return getLocale();
+  return getLocale()
 }
 
 /**
@@ -42,19 +37,19 @@ function getSnapshot(): Locale {
  * Paraglide strategies (`mrr:locale`); `notify()` re-renders subscribed hooks.
  */
 export function useLocale(): {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
+  locale: Locale
+  setLocale: (locale: Locale) => void
 } {
-  const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
   return {
     locale,
     setLocale: (newLocale: Locale) => {
       if (!isLocale(newLocale)) {
-        return;
+        return
       }
-      paraglideSetLocale(newLocale, { reload: false });
-      notify();
+      paraglideSetLocale(newLocale, { reload: false })
+      notify()
     },
-  };
+  }
 }

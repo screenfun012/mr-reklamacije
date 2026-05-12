@@ -1,6 +1,16 @@
 import type { AuditAction } from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
-import { check, foreignKey, index, inet, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import {
+  check,
+  foreignKey,
+  index,
+  inet,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 import { users } from './access-control.js'
 

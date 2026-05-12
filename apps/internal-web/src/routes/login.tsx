@@ -1,28 +1,28 @@
-import { m } from '@mr/i18n';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui';
-import { useForm } from '@tanstack/react-form';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
-import { z } from 'zod';
+import { m } from '@mr/i18n'
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui'
+import { useForm } from '@tanstack/react-form'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { z } from 'zod'
 
-import { authClient } from '~/lib/auth-client';
+import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/login')({
   component: LoginComponent,
-});
+})
 
 // Zod 4 is Standard-Schema-compliant, so TanStack Form v1 consumes it directly
 const loginSchema = z.object({
   email: z.email(m.field_email_invalid()),
   password: z.string().min(1, m.field_password_required()),
-});
+})
 
-type SignInData = { twoFactorRedirect?: boolean } | null | undefined;
+type SignInData = { twoFactorRedirect?: boolean } | null | undefined
 
 function LoginComponent(): React.ReactElement {
-  const navigate = useNavigate();
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [isPending, setIsPending] = useState(false);
+  const navigate = useNavigate()
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [isPending, setIsPending] = useState(false)
 
   const form = useForm({
     defaultValues: { email: '', password: '' },
@@ -31,39 +31,39 @@ function LoginComponent(): React.ReactElement {
       onSubmit: loginSchema,
     },
     onSubmit: async ({ value }) => {
-      setAuthError(null);
-      setIsPending(true);
+      setAuthError(null)
+      setIsPending(true)
 
       try {
         const result = await authClient.signIn.email({
           email: value.email,
           password: value.password,
-        });
+        })
 
         if (result.error) {
           if (result.error.code === 'INVALID_EMAIL_OR_PASSWORD') {
-            setAuthError(m.auth_login_error_invalid());
+            setAuthError(m.auth_login_error_invalid())
           } else {
-            setAuthError(m.auth_login_error_generic());
+            setAuthError(m.auth_login_error_generic())
           }
-          return;
+          return
         }
 
-        const data = result.data as SignInData;
+        const data = result.data as SignInData
         if (data?.twoFactorRedirect === true) {
-          setAuthError(m.auth_login_2fa_required());
-          return;
+          setAuthError(m.auth_login_2fa_required())
+          return
         }
 
-        await navigate({ to: '/' });
+        await navigate({ to: '/' })
       } catch (err) {
-        console.error('[login] unexpected error:', err);
-        setAuthError(m.auth_login_error_generic());
+        console.error('[login] unexpected error:', err)
+        setAuthError(m.auth_login_error_generic())
       } finally {
-        setIsPending(false);
+        setIsPending(false)
       }
     },
-  });
+  })
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -74,8 +74,8 @@ function LoginComponent(): React.ReactElement {
         <CardContent>
           <form
             onSubmit={(e) => {
-              e.preventDefault();
-              void form.handleSubmit();
+              e.preventDefault()
+              void form.handleSubmit()
             }}
             className="flex flex-col gap-4"
             noValidate
@@ -93,7 +93,7 @@ function LoginComponent(): React.ReactElement {
                     autoComplete="email"
                     value={field.state.value}
                     onChange={(e) => {
-                      field.handleChange(e.target.value);
+                      field.handleChange(e.target.value)
                     }}
                     onBlur={field.handleBlur}
                     disabled={isPending}
@@ -120,7 +120,7 @@ function LoginComponent(): React.ReactElement {
                     autoComplete="current-password"
                     value={field.state.value}
                     onChange={(e) => {
-                      field.handleChange(e.target.value);
+                      field.handleChange(e.target.value)
                     }}
                     onBlur={field.handleBlur}
                     disabled={isPending}
@@ -147,14 +147,14 @@ function LoginComponent(): React.ReactElement {
         </CardContent>
       </Card>
     </main>
-  );
+  )
 }
 
 function formatFieldError(err: unknown): string {
-  if (err === null || err === undefined) return '';
-  if (typeof err === 'string') return err;
+  if (err === null || err === undefined) return ''
+  if (typeof err === 'string') return err
   if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-    return err.message;
+    return err.message
   }
-  return String(err);
+  return String(err)
 }

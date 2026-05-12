@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "files": ["index.css"],
+  "files": [
+    "index.css"
+  ],
   "exports": {
     ".": "./index.css"
   }

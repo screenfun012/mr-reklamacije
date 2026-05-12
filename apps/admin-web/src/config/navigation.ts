@@ -1,21 +1,21 @@
-import { m } from '@mr/i18n';
-import { Briefcase, Globe, LayoutDashboard, Users } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { m } from '@mr/i18n'
+import { Briefcase, Globe, LayoutDashboard, Users } from 'lucide-react'
+import type { ComponentType } from 'react'
 
 export interface NavItem {
   /** Stable React key */
-  key: string;
+  key: string
   /**
    * i18n message function reference — called at render time to
    * pick up the currently active locale. Must NOT be invoked here
    * (that would freeze the label at module evaluation, defeating
    * locale switching).
    */
-  label: () => string;
+  label: () => string
   /** TanStack Router target path */
-  to: string;
+  to: string
   /** Lucide icon component */
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>
 }
 
 /**
@@ -47,4 +47,4 @@ export const adminNavItems: NavItem[] = [
     to: '/users',
     icon: Users,
   },
-];
+]

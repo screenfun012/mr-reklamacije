@@ -15,10 +15,7 @@ export const clientRegistrationRequests = pgTable(
     phone: text('phone'),
     companyName: text('company_name'),
     message: text('message'),
-    preferredLanguage: text('preferred_language')
-      .notNull()
-      .default('sr')
-      .$type<UserLanguage>(),
+    preferredLanguage: text('preferred_language').notNull().default('sr').$type<UserLanguage>(),
     passwordHash: text('password_hash').notNull(),
     status: text('status').notNull().default('pending').$type<ClientRegistrationStatus>(),
     adminNote: text('admin_note'),

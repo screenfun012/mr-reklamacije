@@ -1,27 +1,27 @@
-import { useNavigate } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 
-import { authClient } from '~/lib/auth-client';
+import { authClient } from '~/lib/auth-client'
 
-import { UserMenu } from './user-menu';
+import { UserMenu } from './user-menu'
 
 export interface PortalShellProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 export function PortalShell({ children }: PortalShellProps) {
-  const navigate = useNavigate();
-  const { data: session } = authClient.useSession();
+  const navigate = useNavigate()
+  const { data: session } = authClient.useSession()
 
   const handleLogout = (): void => {
     void (async () => {
-      await authClient.signOut();
-      await navigate({ to: '/login' });
-    })();
-  };
+      await authClient.signOut()
+      await navigate({ to: '/login' })
+    })()
+  }
 
-  const userEmail = session?.user.email ?? '';
-  const userName = session?.user.name ?? userEmail;
+  const userEmail = session?.user.email ?? ''
+  const userName = session?.user.name ?? userEmail
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,5 +38,5 @@ export function PortalShell({ children }: PortalShellProps) {
         {children}
       </main>
     </div>
-  );
+  )
 }

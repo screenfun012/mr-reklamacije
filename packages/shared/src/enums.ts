@@ -70,8 +70,7 @@ export const AttachmentVisibility = {
   ClientVisible: 'client_visible',
 } as const
 
-export type AttachmentVisibility =
-  (typeof AttachmentVisibility)[keyof typeof AttachmentVisibility]
+export type AttachmentVisibility = (typeof AttachmentVisibility)[keyof typeof AttachmentVisibility]
 
 export const ObservationVisibility = {
   Internal: 'internal',
@@ -88,8 +87,7 @@ export const AppSettingValueType = {
   Json: 'json',
 } as const
 
-export type AppSettingValueType =
-  (typeof AppSettingValueType)[keyof typeof AppSettingValueType]
+export type AppSettingValueType = (typeof AppSettingValueType)[keyof typeof AppSettingValueType]
 
 export const AuditAction = {
   Create: 'create',

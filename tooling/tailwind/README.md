@@ -10,8 +10,8 @@ base radius. Uses the OKLCH color space and class-based dark mode.
 In your frontend's root CSS file (e.g., `src/styles/globals.css`):
 
 ```css
-@import "tailwindcss";
-@import "@mr/tailwind-preset";
+@import 'tailwindcss';
+@import '@mr/tailwind-preset';
 
 /* per-app overrides go below this line */
 ```

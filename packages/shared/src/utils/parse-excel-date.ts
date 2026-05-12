@@ -104,9 +104,7 @@ export function parseExcelDate(value: unknown): Date | null {
       return null
     }
 
-    return (
-      parseDdMmYyyyDot(trimmed) ?? parseDdMmYyyyDash(trimmed) ?? parseSlashDate(trimmed)
-    )
+    return parseDdMmYyyyDot(trimmed) ?? parseDdMmYyyyDash(trimmed) ?? parseSlashDate(trimmed)
   }
 
   return null

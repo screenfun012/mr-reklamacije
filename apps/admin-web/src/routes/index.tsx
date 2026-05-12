@@ -1,38 +1,29 @@
-import { m } from '@mr/i18n';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@mr/ui';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { m } from '@mr/i18n'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { AdminShell } from '~/components/layout/admin-shell';
-import { authClient } from '~/lib/auth-client';
+import { AdminShell } from '~/components/layout/admin-shell'
+import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
-    const { data: session } = await authClient.getSession();
+    const { data: session } = await authClient.getSession()
     if (session === null) {
-      throw redirect({ to: '/login' });
+      throw redirect({ to: '/login' })
     }
   },
   component: HomeComponent,
-});
+})
 
 function HomeComponent() {
-  const { data: session } = authClient.useSession();
-  const userName =
-    session?.user?.name ?? session?.user?.email ?? '';
+  const { data: session } = authClient.useSession()
+  const userName = session?.user?.name ?? session?.user?.email ?? ''
 
   return (
     <AdminShell>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">
-            {m.dashboard_welcome({ userName })}
-          </h1>
+          <h1 className="text-3xl font-bold mb-2">{m.dashboard_welcome({ userName })}</h1>
           <p className="text-muted-foreground">{m.nav_dashboard()}</p>
         </div>
 
@@ -43,9 +34,7 @@ function HomeComponent() {
               <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-muted-foreground">
-                0
-              </div>
+              <div className="text-4xl font-bold text-muted-foreground">0</div>
             </CardContent>
           </Card>
 
@@ -55,9 +44,7 @@ function HomeComponent() {
               <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-muted-foreground">
-                0
-              </div>
+              <div className="text-4xl font-bold text-muted-foreground">0</div>
             </CardContent>
           </Card>
 
@@ -67,9 +54,7 @@ function HomeComponent() {
               <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-muted-foreground">
-                0
-              </div>
+              <div className="text-4xl font-bold text-muted-foreground">0</div>
             </CardContent>
           </Card>
 
@@ -85,5 +70,5 @@ function HomeComponent() {
         </div>
       </div>
     </AdminShell>
-  );
+  )
 }

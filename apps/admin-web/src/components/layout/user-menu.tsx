@@ -1,4 +1,4 @@
-import { m, type Locale } from '@mr/i18n';
+import { m, type Locale } from '@mr/i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,45 +12,45 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from '@mr/ui';
-import { Globe, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+} from '@mr/ui'
+import { Globe, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 
-import { useLocale } from '~/lib/locale';
-import { useTheme, type Theme } from '~/lib/theme';
+import { useLocale } from '~/lib/locale'
+import { useTheme, type Theme } from '~/lib/theme'
 
 export interface UserMenuProps {
-  userName: string;
-  userEmail: string;
-  onLogout: () => void;
+  userName: string
+  userEmail: string
+  onLogout: () => void
 }
 
 function getInitials(name: string, email: string): string {
-  const source = (name.trim().length > 0 ? name : email).trim();
+  const source = (name.trim().length > 0 ? name : email).trim()
   if (source.length === 0) {
-    return '?';
+    return '?'
   }
-  const parts = source.split(/\s+/).filter((part) => part.length > 0);
-  let initials: string;
+  const parts = source.split(/\s+/).filter((part) => part.length > 0)
+  let initials: string
   if (parts.length >= 2) {
-    initials = `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`;
+    initials = `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`
   } else {
-    initials = source.slice(0, 2);
+    initials = source.slice(0, 2)
   }
-  return initials.toUpperCase();
+  return initials.toUpperCase()
 }
 
 export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
-  const { theme, resolvedTheme, setTheme } = useTheme();
-  const { locale, setLocale } = useLocale();
-  const initials = getInitials(userName, userEmail);
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const { locale, setLocale } = useLocale()
+  const initials = getInitials(userName, userEmail)
 
   const handleThemeChange = (value: string): void => {
-    setTheme(value as Theme);
-  };
+    setTheme(value as Theme)
+  }
 
   const handleLocaleChange = (value: string): void => {
-    setLocale(value as Locale);
-  };
+    setLocale(value as Locale)
+  }
 
   return (
     <DropdownMenu>
@@ -73,19 +73,13 @@ export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="text-sm font-medium">{userName}</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            {userEmail}
-          </span>
+          <span className="text-xs font-normal text-muted-foreground">{userEmail}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            {resolvedTheme === 'dark' ? (
-              <Moon aria-hidden="true" />
-            ) : (
-              <Sun aria-hidden="true" />
-            )}
+            {resolvedTheme === 'dark' ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />}
             <span>{m.theme_label()}</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
@@ -139,5 +133,5 @@ export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

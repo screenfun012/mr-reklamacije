@@ -35,10 +35,7 @@ export const users = pgTable(
     name: text('name').notNull(),
     image: text('image'),
     isActive: boolean('is_active').notNull().default(true),
-    preferredLanguage: text('preferred_language')
-      .notNull()
-      .default('sr')
-      .$type<UserLanguage>(),
+    preferredLanguage: text('preferred_language').notNull().default('sr').$type<UserLanguage>(),
     twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'date' }),
     lastLoginIp: inet('last_login_ip'),
@@ -51,10 +48,7 @@ export const users = pgTable(
   },
   (t) => [
     uniqueIndex('users_email_key').on(t.email),
-    check(
-      'users_preferred_language_check',
-      sql`${t.preferredLanguage} IN ('sr', 'en')`,
-    ),
+    check('users_preferred_language_check', sql`${t.preferredLanguage} IN ('sr', 'en')`),
   ],
 )
 
@@ -118,7 +112,9 @@ export const userRoles = pgTable(
   {
     userId: uuid('user_id').notNull(),
     roleId: uuid('role_id').notNull(),
-    assignedAt: timestamp('assigned_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    assignedAt: timestamp('assigned_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
     assignedBy: uuid('assigned_by').notNull(),
   },
   (t) => [

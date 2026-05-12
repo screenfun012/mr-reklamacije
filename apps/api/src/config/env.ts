@@ -10,9 +10,12 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
   API_BASE_URL: z.url(),
-  PUBLIC_ORIGINS: z
-    .string()
-    .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
+  PUBLIC_ORIGINS: z.string().transform((s) =>
+    s
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean),
+  ),
 
   // Database
   DATABASE_URL: z.string().min(1),
@@ -40,9 +43,7 @@ export type Env = z.infer<typeof EnvSchema>
 export function parseEnv(): Env {
   const result = EnvSchema.safeParse(process.env)
   if (!result.success) {
-    throw new Error(
-      `Environment validation failed:\n${z.prettifyError(result.error)}`,
-    )
+    throw new Error(`Environment validation failed:\n${z.prettifyError(result.error)}`)
   }
   return result.data
 }

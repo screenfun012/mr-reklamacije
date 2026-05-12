@@ -14,8 +14,7 @@ export type { Logger }
  */
 export function createLogger(name: string, destination?: DestinationStream): Logger {
   const level =
-    process.env['LOG_LEVEL'] ??
-    (process.env['NODE_ENV'] === 'development' ? 'debug' : 'info')
+    process.env['LOG_LEVEL'] ?? (process.env['NODE_ENV'] === 'development' ? 'debug' : 'info')
 
   return pino({ name, level }, destination ?? pino.destination(1))
 }

@@ -49,7 +49,9 @@ export const customerUsers = pgTable(
   {
     customerId: uuid('customer_id').notNull(),
     userId: uuid('user_id').notNull(),
-    assignedAt: timestamp('assigned_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    assignedAt: timestamp('assigned_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
     assignedBy: uuid('assigned_by').notNull(),
   },
   (t) => [

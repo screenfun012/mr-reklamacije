@@ -1,22 +1,18 @@
 /// <reference types="vite/client" />
-import '@fontsource-variable/figtree/index.css';
-import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource-variable/figtree/index.css'
+import '@fontsource/jetbrains-mono/400.css'
 
-import {
-  HeadContent,
-  Scripts,
-  createRootRoute,
-} from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
-import type { ReactNode } from 'react';
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import type { ReactNode } from 'react'
 
-import { useLocale } from '~/lib/locale';
-import globalsCss from '~/styles/globals.css?url';
+import { useLocale } from '~/lib/locale'
+import globalsCss from '~/styles/globals.css?url'
 
 // Inline FOUC-prevention script: applies the resolved theme class to
 // <html> before React hydrates. Storage key must stay in sync with
 // apps/portal-web/src/lib/theme.ts (`mrr:theme`).
-const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('mrr:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('mrr:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`
 
 export const Route = createRootRoute({
   head: () => ({
@@ -29,10 +25,10 @@ export const Route = createRootRoute({
     headScripts: [{ children: themeBootstrapScript }],
   }),
   shellComponent: RootDocument,
-});
+})
 
 function RootDocument({ children }: { children: ReactNode }) {
-  const { locale } = useLocale();
+  const { locale } = useLocale()
   return (
     <html lang="sr">
       <head>
@@ -44,5 +40,5 @@ function RootDocument({ children }: { children: ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }

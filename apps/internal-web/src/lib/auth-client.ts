@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { authClientPlugins, createAuthClient } from '@mr/auth/client';
+import { authClientPlugins, createAuthClient } from '@mr/auth/client'
 
 /**
  * Better-Auth client instance for internal-web frontend.
@@ -24,17 +24,15 @@ import { authClientPlugins, createAuthClient } from '@mr/auth/client';
  *   the canonical override; the localhost fallback matches the
  *   default apps/api PORT.
  */
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = typeof window !== 'undefined'
 
-const apiOrigin = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3000';
+const apiOrigin = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3000'
 
-const baseURL = isBrowser
-  ? `${window.location.origin}/api/auth`
-  : `${apiOrigin}/api/auth`;
+const baseURL = isBrowser ? `${window.location.origin}/api/auth` : `${apiOrigin}/api/auth`
 
 export const authClient = createAuthClient({
   baseURL,
   plugins: authClientPlugins,
-});
+})
 
-export type AuthClient = typeof authClient;
+export type AuthClient = typeof authClient

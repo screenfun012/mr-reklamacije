@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router'
 
-import { internalNavItems } from '~/config/navigation';
+import { internalNavItems } from '~/config/navigation'
 
 export function InternalSidebar() {
   return (
@@ -13,7 +13,7 @@ export function InternalSidebar() {
       <nav className="flex-1 p-2" aria-label="Main navigation">
         <ul className="flex flex-col gap-1">
           {internalNavItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = item.icon
             return (
               <li key={item.key}>
                 <Link
@@ -29,10 +29,10 @@ export function InternalSidebar() {
                   <span>{item.label()}</span>
                 </Link>
               </li>
-            );
+            )
           })}
         </ul>
       </nav>
     </div>
-  );
+  )
 }

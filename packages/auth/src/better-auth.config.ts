@@ -38,10 +38,7 @@ export interface CreateAuthOptions {
  * customization (mrr.session_token), advanced cookie settings. Those
  * are runtime-specific and belong next to the API app.
  */
-export function createAuth(
-  db: NodePgDatabase<typeof schema>,
-  opts: CreateAuthOptions = {},
-): Auth {
+export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOptions = {}): Auth {
   const trustedOrigins = opts.trustedOrigins ?? []
   if (
     trustedOrigins.length === 0 &&

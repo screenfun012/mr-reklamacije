@@ -36,12 +36,7 @@ export interface AppShellProps {
  * Mobile responsiveness is deferred to a future iteration that
  * adds a collapsible sidebar drawer.
  */
-export function AppShell({
-  sidebar,
-  topbar,
-  children,
-  className,
-}: AppShellProps) {
+export function AppShell({ sidebar, topbar, children, className }: AppShellProps) {
   return (
     <div
       className={cn(

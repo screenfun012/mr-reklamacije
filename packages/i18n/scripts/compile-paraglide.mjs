@@ -22,11 +22,6 @@ const pkgRoot = join(scriptDir, '..')
 await compile({
   project: join(pkgRoot, 'project.inlang'),
   outdir: join(pkgRoot, 'src/paraglide'),
-  strategy: [
-    'localStorage',
-    'globalVariable',
-    'preferredLanguage',
-    'baseLocale',
-  ],
+  strategy: ['localStorage', 'globalVariable', 'preferredLanguage', 'baseLocale'],
   localStorageKey: 'mrr:locale',
 })

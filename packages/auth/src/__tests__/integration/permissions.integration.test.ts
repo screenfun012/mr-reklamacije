@@ -1,9 +1,5 @@
 import { createDb, createPool, getDatabaseUrl, schema } from '@mr/db'
-import {
-  ADMIN_PERMISSIONS,
-  SYSTEM_ROLE_ADMIN,
-  SYSTEM_ROLE_OPERATOR,
-} from '@mr/shared'
+import { ADMIN_PERMISSIONS, SYSTEM_ROLE_ADMIN, SYSTEM_ROLE_OPERATOR } from '@mr/shared'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { sql } from 'drizzle-orm'

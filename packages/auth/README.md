@@ -9,10 +9,10 @@ Shared **Better Auth** configuration and (later) RBAC helpers for MR Reklamacije
 
 ## Config layout
 
-| File | Phase | Purpose |
-|------|--------|---------|
-| `better-auth.generate.config.ts` | **6.1a** | CLI only — `pnpm auth:generate`. No `@mr/db`, no `DATABASE_URL`. Used with `--adapter drizzle`. |
-| `better-auth.config.ts` (runtime) | **6.1b** | Real pool + Drizzle from `@mr/db`; used by `apps/api` later. |
+| File                              | Phase    | Purpose                                                                                         |
+| --------------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `better-auth.generate.config.ts`  | **6.1a** | CLI only — `pnpm auth:generate`. No `@mr/db`, no `DATABASE_URL`. Used with `--adapter drizzle`. |
+| `better-auth.config.ts` (runtime) | **6.1b** | Real pool + Drizzle from `@mr/db`; used by `apps/api` later.                                    |
 
 Keep model names, `additionalFields`, and plugins aligned between generate and runtime configs (or deduplicate in a follow-up).
 

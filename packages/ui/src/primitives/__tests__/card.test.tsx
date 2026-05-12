@@ -1,14 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '../card.js'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../card.js'
 
 describe('Card', () => {
   it('renders Card with content', () => {

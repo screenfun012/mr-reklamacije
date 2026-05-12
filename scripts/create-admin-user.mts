@@ -85,9 +85,7 @@ async function main(): Promise<void> {
 
     const role = adminRole[0]
     if (role === undefined) {
-      throw new Error(
-        'Admin role not found. Run `pnpm --filter @mr/db db:seed` first.',
-      )
+      throw new Error('Admin role not found. Run `pnpm --filter @mr/db db:seed` first.')
     }
 
     await db

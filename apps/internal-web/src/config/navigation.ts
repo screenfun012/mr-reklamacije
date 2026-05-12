@@ -1,13 +1,13 @@
-import { BarChart3, Briefcase, Inbox, LayoutDashboard } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { BarChart3, Briefcase, Inbox, LayoutDashboard } from 'lucide-react'
+import type { ComponentType } from 'react'
 
-import { m } from '@mr/i18n';
+import { m } from '@mr/i18n'
 
 export interface NavItem {
-  key: string;
-  label: () => string;
-  to: string;
-  icon: ComponentType<{ className?: string }>;
+  key: string
+  label: () => string
+  to: string
+  icon: ComponentType<{ className?: string }>
 }
 
 export const internalNavItems: NavItem[] = [
@@ -35,4 +35,4 @@ export const internalNavItems: NavItem[] = [
     to: '/statistika',
     icon: BarChart3,
   },
-];
+]

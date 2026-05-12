@@ -1,31 +1,25 @@
-import { m } from '@mr/i18n';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@mr/ui';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { m } from '@mr/i18n'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { PortalShell } from '~/components/layout/portal-shell';
-import { authClient } from '~/lib/auth-client';
+import { PortalShell } from '~/components/layout/portal-shell'
+import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
-    const { data: session } = await authClient.getSession();
+    const { data: session } = await authClient.getSession()
     if (!session) {
-      throw redirect({ to: '/login' });
+      throw redirect({ to: '/login' })
     }
     // TODO(phase-1.0): Add role check — require 'client' role
     // See docs/12-roadmap.md Phase 1.0 — Permissions
   },
   component: HomeComponent,
-});
+})
 
 function HomeComponent() {
-  const { data: session } = authClient.useSession();
-  const userName = session?.user?.name ?? session?.user?.email ?? '';
+  const { data: session } = authClient.useSession()
+  const userName = session?.user?.name ?? session?.user?.email ?? ''
 
   return (
     <PortalShell>
@@ -39,5 +33,5 @@ function HomeComponent() {
         </CardContent>
       </Card>
     </PortalShell>
-  );
+  )
 }

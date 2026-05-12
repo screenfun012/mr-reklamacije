@@ -5,10 +5,7 @@ import { Hono } from 'hono'
 import type { Env } from './config/env.js'
 import { createSessionMiddleware } from './core/auth/session-middleware.js'
 import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
-import {
-  generalRateLimiter,
-  loginRateLimiter,
-} from './core/middleware/rate-limit.js'
+import { generalRateLimiter, loginRateLimiter } from './core/middleware/rate-limit.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
 import type { AuditService } from './modules/audit/index.js'
 import { registerHealthRoutes } from './routes/health.js'

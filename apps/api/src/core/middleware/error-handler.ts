@@ -36,9 +36,7 @@ export function registerGlobalErrorHandler<E extends Env>(app: Hono<E>, logger: 
     logger.error(
       {
         err:
-          err instanceof Error
-            ? { name: err.name, message: err.message, stack: err.stack }
-            : err,
+          err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
       },
       'unhandled server error',
     )

@@ -9,10 +9,7 @@ export const ALLOWED_IMAGE_MIME_TYPES = [
   'image/heic',
 ] as const
 
-export const ALLOWED_VIDEO_MIME_TYPES = [
-  'video/mp4',
-  'video/quicktime',
-] as const
+export const ALLOWED_VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime'] as const
 
 export const ALLOWED_DOCUMENT_MIME_TYPES = [
   'application/pdf',

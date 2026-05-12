@@ -91,9 +91,9 @@ pnpm dev:all
 
 | Service      | URL                                                          |
 | ------------ | ------------------------------------------------------------ |
-| admin-web    | http://localhost:3001                                       |
-| internal-web | http://localhost:3002                                       |
-| portal-web   | http://localhost:3003                                       |
+| admin-web    | http://localhost:3001                                        |
+| internal-web | http://localhost:3002                                        |
+| portal-web   | http://localhost:3003                                        |
 | API          | http://localhost:3000                                        |
 | Postgres     | localhost:5433 (`mr` / `mr_dev_password` / `mr_reklamacije`) |
 

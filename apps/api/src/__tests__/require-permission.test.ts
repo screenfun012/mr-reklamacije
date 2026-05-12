@@ -34,11 +34,7 @@ describe('requirePermission', () => {
       c.set('user', null)
       await next()
     })
-    app.get(
-      '/protected',
-      requirePermission('emotive_claims.view', resolver),
-      (c) => c.text('ok'),
-    )
+    app.get('/protected', requirePermission('emotive_claims.view', resolver), (c) => c.text('ok'))
 
     const res = await app.request('/protected')
     expect(res.status).toBe(401)
@@ -57,11 +53,7 @@ describe('requirePermission', () => {
       c.set('user', { id: 'u-1' })
       await next()
     })
-    app.get(
-      '/protected',
-      requirePermission('emotive_claims.view', resolver),
-      (c) => c.text('ok'),
-    )
+    app.get('/protected', requirePermission('emotive_claims.view', resolver), (c) => c.text('ok'))
 
     const res = await app.request('/protected')
     expect(res.status).toBe(403)
@@ -80,11 +72,7 @@ describe('requirePermission', () => {
       c.set('user', { id: 'u-1' })
       await next()
     })
-    app.get(
-      '/protected',
-      requirePermission('emotive_claims.view', resolver),
-      (c) => c.text('ok'),
-    )
+    app.get('/protected', requirePermission('emotive_claims.view', resolver), (c) => c.text('ok'))
 
     const res = await app.request('/protected')
     expect(res.status).toBe(200)

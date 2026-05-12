@@ -19,9 +19,7 @@ export interface PermissionResolver {
   hasPermission(userId: string, permission: Permission): Promise<boolean>
 }
 
-export function createPermissionResolver(
-  db: NodePgDatabase<typeof schema>,
-): PermissionResolver {
+export function createPermissionResolver(db: NodePgDatabase<typeof schema>): PermissionResolver {
   async function getEffectiveForUser(userId: string): Promise<Set<Permission>> {
     const userRolesRows = await db
       .select({

@@ -10,11 +10,7 @@ const DIACRITIC_TO_ASCII: Readonly<Record<string, string>> = {
 }
 
 function isUppercaseLetter(ch: string | undefined): boolean {
-  return (
-    ch !== undefined &&
-    ch !== ch.toLowerCase() &&
-    ch === ch.toUpperCase()
-  )
+  return ch !== undefined && ch !== ch.toLowerCase() && ch === ch.toUpperCase()
 }
 
 /**
@@ -76,8 +72,7 @@ export function toAsciiDisplay(name: string): string {
     }
 
     if (ch === '\u0110') {
-      const next =
-        i + 1 < withSpaces.length ? withSpaces.charAt(i + 1) : undefined
+      const next = i + 1 < withSpaces.length ? withSpaces.charAt(i + 1) : undefined
       out += isUppercaseLetter(next) ? 'DJ' : 'Dj'
       continue
     }

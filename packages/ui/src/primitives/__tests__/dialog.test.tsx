@@ -2,13 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from '../dialog.js'
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '../dialog.js'
 
 describe('Dialog', () => {
   it('does not render content when open is false', () => {

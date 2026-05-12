@@ -21,11 +21,7 @@ export function requirePermission(
     }
     const allowed = await resolver.hasPermission(user.id, permission)
     if (!allowed) {
-      throw new AppError(
-        ERROR_CODE.Forbidden,
-        403,
-        `Missing permission: ${permission}`,
-      )
+      throw new AppError(ERROR_CODE.Forbidden, 403, `Missing permission: ${permission}`)
     }
     await next()
   }

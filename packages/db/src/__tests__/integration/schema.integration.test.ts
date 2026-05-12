@@ -291,9 +291,17 @@ describe('schema Phase C (integration)', () => {
   })
 
   it('inserts emotive_claim with FKs', async () => {
-    const [engine] = await db.select().from(engineTypes).where(eq(engineTypes.code, 'INT_TEST_ENGINE')).limit(1)
+    const [engine] = await db
+      .select()
+      .from(engineTypes)
+      .where(eq(engineTypes.code, 'INT_TEST_ENGINE'))
+      .limit(1)
     const [employee] = await db.select().from(employees).limit(1)
-    const [source] = await db.select().from(claimSources).where(eq(claimSources.code, 'INT_SRC')).limit(1)
+    const [source] = await db
+      .select()
+      .from(claimSources)
+      .where(eq(claimSources.code, 'INT_SRC'))
+      .limit(1)
     const [user] = await db.select().from(users).limit(1)
 
     expect(engine && employee && source && user).toBeTruthy()
@@ -410,9 +418,17 @@ describe('schema Phase C (integration)', () => {
   })
 
   it('CASCADE deletes attachment, claim_observations, emotive_claim_faults when emotive_claim deleted', async () => {
-    const [engine] = await db.select().from(engineTypes).where(eq(engineTypes.code, 'INT_TEST_ENGINE')).limit(1)
+    const [engine] = await db
+      .select()
+      .from(engineTypes)
+      .where(eq(engineTypes.code, 'INT_TEST_ENGINE'))
+      .limit(1)
     const [employee] = await db.select().from(employees).limit(1)
-    const [source] = await db.select().from(claimSources).where(eq(claimSources.code, 'INT_SRC')).limit(1)
+    const [source] = await db
+      .select()
+      .from(claimSources)
+      .where(eq(claimSources.code, 'INT_SRC'))
+      .limit(1)
     const [user] = await db.select().from(users).limit(1)
     expect(engine && employee && source && user).toBeTruthy()
 
@@ -457,7 +473,10 @@ describe('schema Phase C (integration)', () => {
 
     await db.delete(emotiveClaims).where(eq(emotiveClaims.id, claim!.id))
 
-    const attRows = await db.select().from(attachments).where(eq(attachments.emotiveClaimId, claim!.id))
+    const attRows = await db
+      .select()
+      .from(attachments)
+      .where(eq(attachments.emotiveClaimId, claim!.id))
     const obsRows = await db
       .select()
       .from(claimObservations)
@@ -719,7 +738,10 @@ describe('schema Better-Auth (integration)', () => {
 
     const sessionsAfter = await db.select().from(sessions).where(eq(sessions.userId, userId))
     const accountsAfter = await db.select().from(accounts).where(eq(accounts.userId, userId))
-    const tfsAfter = await db.select().from(twoFactorSecrets).where(eq(twoFactorSecrets.userId, userId))
+    const tfsAfter = await db
+      .select()
+      .from(twoFactorSecrets)
+      .where(eq(twoFactorSecrets.userId, userId))
 
     expect(sessionsAfter).toHaveLength(0)
     expect(accountsAfter).toHaveLength(0)

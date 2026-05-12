@@ -17,10 +17,7 @@ describe('request logger', () => {
     await app.request('/health')
 
     expect(infoMock).toHaveBeenCalledTimes(1)
-    const [payload, message] = infoMock.mock.calls[0] as [
-      Record<string, unknown>,
-      string,
-    ]
+    const [payload, message] = infoMock.mock.calls[0] as [Record<string, unknown>, string]
     expect(payload['method']).toBe('GET')
     expect(payload['path']).toBe('/health')
     expect(payload['status']).toBe(200)

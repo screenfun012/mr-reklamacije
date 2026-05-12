@@ -1,18 +1,18 @@
-import { m } from '@mr/i18n';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { m } from '@mr/i18n'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { AdminShell } from '~/components/layout/admin-shell';
-import { authClient } from '~/lib/auth-client';
+import { AdminShell } from '~/components/layout/admin-shell'
+import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/users')({
   beforeLoad: async () => {
-    const { data: session } = await authClient.getSession();
+    const { data: session } = await authClient.getSession()
     if (session === null) {
-      throw redirect({ to: '/login' });
+      throw redirect({ to: '/login' })
     }
   },
   component: UsersComponent,
-});
+})
 
 function UsersComponent() {
   return (
@@ -22,5 +22,5 @@ function UsersComponent() {
         <p className="text-muted-foreground">Coming soon — Phase 1</p>
       </div>
     </AdminShell>
-  );
+  )
 }

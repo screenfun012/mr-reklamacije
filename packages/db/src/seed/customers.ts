@@ -40,7 +40,5 @@ export async function seedCustomers(db: NodePgDatabase<typeof schema>): Promise<
     }
   }
 
-  console.log(
-    `[seed:customers] Inserted ${inserted} / ${EMOTIVE_PARTNERS.length} EMOTIVE partners`,
-  )
+  console.log(`[seed:customers] Inserted ${inserted} / ${EMOTIVE_PARTNERS.length} EMOTIVE partners`)
 }

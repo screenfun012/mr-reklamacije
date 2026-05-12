@@ -1,14 +1,14 @@
-import { AppShell } from '@mr/ui';
-import { useNavigate } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { AppShell } from '@mr/ui'
+import { useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 
-import { authClient } from '~/lib/auth-client';
+import { authClient } from '~/lib/auth-client'
 
-import { AdminSidebar } from './admin-sidebar';
-import { AdminTopbar } from './admin-topbar';
+import { AdminSidebar } from './admin-sidebar'
+import { AdminTopbar } from './admin-topbar'
 
 export interface AdminShellProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 /**
@@ -25,31 +25,25 @@ export interface AdminShellProps {
  * footer was removed in the same step.
  */
 export function AdminShell({ children }: AdminShellProps) {
-  const navigate = useNavigate();
-  const { data: session } = authClient.useSession();
+  const navigate = useNavigate()
+  const { data: session } = authClient.useSession()
 
   const handleLogout = (): void => {
     void (async () => {
-      await authClient.signOut();
-      await navigate({ to: '/login' });
-    })();
-  };
+      await authClient.signOut()
+      await navigate({ to: '/login' })
+    })()
+  }
 
-  const userEmail = session?.user.email ?? '';
-  const userName = session?.user.name ?? userEmail;
+  const userEmail = session?.user.email ?? ''
+  const userName = session?.user.name ?? userEmail
 
   return (
     <AppShell
       sidebar={<AdminSidebar />}
-      topbar={
-        <AdminTopbar
-          userEmail={userEmail}
-          userName={userName}
-          onLogout={handleLogout}
-        />
-      }
+      topbar={<AdminTopbar userEmail={userEmail} userName={userName} onLogout={handleLogout} />}
     >
       {children}
     </AppShell>
-  );
+  )
 }

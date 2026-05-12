@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "files": ["dist", "src/paraglide"],
+  "files": [
+    "dist",
+    "src/paraglide"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

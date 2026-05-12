@@ -1,8 +1,4 @@
-import type {
-  AttachmentVisibility,
-  ClaimKind,
-  ObservationVisibility,
-} from '@mr/shared'
+import type { AttachmentVisibility, ClaimKind, ObservationVisibility } from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
 import {
   bigint,
@@ -41,14 +37,13 @@ export const attachments = pgTable(
     caption: text('caption'),
     visibility: text('visibility').notNull().default('internal').$type<AttachmentVisibility>(),
     uploadedBy: uuid('uploaded_by'),
-    uploadedAt: timestamp('uploaded_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   },
   (t) => [
-    check(
-      'attachments_claim_kind_check',
-      sql`${t.claimKind} IN ('emotive', 'domace')`,
-    ),
+    check('attachments_claim_kind_check', sql`${t.claimKind} IN ('emotive', 'domace')`),
     check(
       'attachments_one_of_claim_check',
       sql`
@@ -59,10 +54,7 @@ export const attachments = pgTable(
          AND ${t.domaceClaimId} IS NOT NULL)
       `,
     ),
-    check(
-      'attachments_visibility_check',
-      sql`${t.visibility} IN ('internal', 'client_visible')`,
-    ),
+    check('attachments_visibility_check', sql`${t.visibility} IN ('internal', 'client_visible')`),
     foreignKey({
       name: 'attachments_emotive_claim_id_fkey',
       columns: [t.emotiveClaimId],
@@ -103,10 +95,7 @@ export const claimObservations = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   },
   (t) => [
-    check(
-      'claim_observations_claim_kind_check',
-      sql`${t.claimKind} IN ('emotive', 'domace')`,
-    ),
+    check('claim_observations_claim_kind_check', sql`${t.claimKind} IN ('emotive', 'domace')`),
     check(
       'claim_observations_one_of_claim_check',
       sql`

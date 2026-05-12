@@ -1,8 +1,8 @@
-import type { BetterAuthClientPlugin } from 'better-auth/client';
-import { twoFactorClient } from 'better-auth/client/plugins';
+import type { BetterAuthClientPlugin } from 'better-auth/client'
+import { twoFactorClient } from 'better-auth/client/plugins'
 
-export { createAuthClient } from 'better-auth/react';
-export { twoFactorClient };
+export { createAuthClient } from 'better-auth/react'
+export { twoFactorClient }
 
 /**
  * Standard MR Reklamacije client plugin set.
@@ -40,6 +40,4 @@ export { twoFactorClient };
  * while `@mr/auth/client` remains the single source of truth
  * for the plugin list.
  */
-export const authClientPlugins: BetterAuthClientPlugin[] = [
-  twoFactorClient(),
-];
+export const authClientPlugins: BetterAuthClientPlugin[] = [twoFactorClient()]

@@ -1,9 +1,9 @@
-import { UserMenu } from './user-menu';
+import { UserMenu } from './user-menu'
 
 export interface AdminTopbarProps {
-  userEmail: string;
-  userName: string;
-  onLogout: () => void;
+  userEmail: string
+  userName: string
+  onLogout: () => void
 }
 
 /**
@@ -14,11 +14,7 @@ export interface AdminTopbarProps {
 export function AdminTopbar({ userEmail, userName, onLogout }: AdminTopbarProps) {
   return (
     <div className="flex items-center gap-3">
-      <UserMenu
-        userName={userName}
-        userEmail={userEmail}
-        onLogout={onLogout}
-      />
+      <UserMenu userName={userName} userEmail={userEmail} onLogout={onLogout} />
     </div>
-  );
+  )
 }

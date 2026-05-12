@@ -30,20 +30,14 @@ describe('AppShell', () => {
     // `complementary` landmark; <header> becomes `banner`; <main>
     // is `main`. Asserting by role keeps the test focused on
     // accessibility semantics rather than DOM structure.
-    expect(
-      screen.getByRole('complementary', { name: /sidebar navigation/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: /sidebar navigation/i })).toBeInTheDocument()
     expect(screen.getByRole('banner')).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
   })
 
   it('accepts and applies className passthrough', () => {
     const { container } = render(
-      <AppShell
-        sidebar={<>s</>}
-        topbar={<>t</>}
-        className="custom-class"
-      >
+      <AppShell sidebar={<>s</>} topbar={<>t</>} className="custom-class">
         <>c</>
       </AppShell>,
     )
