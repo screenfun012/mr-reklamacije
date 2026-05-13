@@ -45,4 +45,11 @@ describe('createAuth factory', () => {
 
     expect(auth.options.trustedOrigins).toEqual(origins)
   })
+
+  it('registers twoFactor plus customSession for session enrichment', () => {
+    const mockDb = {} as unknown as NodePgDatabase<typeof schema>
+    const auth = createAuth(mockDb)
+
+    expect(auth.options.plugins?.length).toBeGreaterThanOrEqual(2)
+  })
 })

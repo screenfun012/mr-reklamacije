@@ -1,5 +1,7 @@
 import type { BetterAuthClientPlugin } from 'better-auth/client'
-import { twoFactorClient } from 'better-auth/client/plugins'
+import { customSessionClient, twoFactorClient } from 'better-auth/client/plugins'
+
+import type { Auth } from './better-auth.config.js'
 
 export { createAuthClient } from 'better-auth/react'
 export { twoFactorClient }
@@ -8,10 +10,8 @@ export { twoFactorClient }
  * Standard MR Reklamacije client plugin set.
  *
  * Matches the server-side plugin list configured in
- * `sharedAuthOptions` (see `better-auth.config.ts`). Phase 0
- * exposes only the two-factor plugin; additional plugins (e.g.
- * `organizationClient`, `magicLinkClient`) are added here when
- * the server enables the corresponding server plugin.
+ * `better-auth.config.ts`: twoFactor + customSession (roles/permissions
+ * on session user object).
  *
  * Each frontend (admin-web, internal-web, portal-web) should
  * instantiate its own auth client at module scope:
@@ -40,4 +40,7 @@ export { twoFactorClient }
  * while `@mr/auth/client` remains the single source of truth
  * for the plugin list.
  */
-export const authClientPlugins: BetterAuthClientPlugin[] = [twoFactorClient()]
+export const authClientPlugins: BetterAuthClientPlugin[] = [
+  twoFactorClient(),
+  customSessionClient<Auth>(),
+]

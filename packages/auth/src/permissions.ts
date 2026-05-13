@@ -17,36 +17,53 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 export interface PermissionResolver {
   getEffectiveForUser(userId: string): Promise<Set<Permission>>
   hasPermission(userId: string, permission: Permission): Promise<boolean>
+  /**
+   * Effective permissions for the given role codes (session enrichment fast path).
+   * Same semantics as resolving via user_roles for a user carrying these roles only.
+   */
+  getEffectiveForRoleCodes(roleCodes: readonly string[]): Promise<readonly Permission[]>
 }
 
 export function createPermissionResolver(db: NodePgDatabase<typeof schema>): PermissionResolver {
-  async function getEffectiveForUser(userId: string): Promise<Set<Permission>> {
-    const userRolesRows = await db
-      .select({
-        roleId: schema.roles.id,
-        roleCode: schema.roles.code,
-      })
-      .from(schema.userRoles)
-      .innerJoin(schema.roles, eq(schema.roles.id, schema.userRoles.roleId))
-      .where(eq(schema.userRoles.userId, userId))
-
-    const isAdmin = userRolesRows.some((r) => r.roleCode === SYSTEM_ROLE_ADMIN)
-    if (isAdmin) {
-      return new Set(ADMIN_PERMISSIONS)
+  async function getEffectiveForRoleCodes(
+    roleCodes: readonly string[],
+  ): Promise<readonly Permission[]> {
+    const distinctCodes = [...new Set(roleCodes)]
+    if (distinctCodes.includes(SYSTEM_ROLE_ADMIN)) {
+      return [...ADMIN_PERMISSIONS]
+    }
+    if (distinctCodes.length === 0) {
+      return []
     }
 
-    if (userRolesRows.length === 0) {
-      return new Set<Permission>()
+    const roleRows = await db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(inArray(schema.roles.code, distinctCodes))
+
+    if (roleRows.length === 0) {
+      return []
     }
 
-    const roleIds = userRolesRows.map((r) => r.roleId)
-
+    const roleIds = roleRows.map((r) => r.id)
     const permissionRows = await db
       .select({ permissionId: schema.rolePermissions.permissionId })
       .from(schema.rolePermissions)
       .where(inArray(schema.rolePermissions.roleId, roleIds))
 
-    return new Set(permissionRows.map((r) => r.permissionId as Permission))
+    const unique = new Set(permissionRows.map((r) => r.permissionId as Permission))
+    return [...unique]
+  }
+
+  async function getEffectiveForUser(userId: string): Promise<Set<Permission>> {
+    const codes = await db
+      .select({ code: schema.roles.code })
+      .from(schema.userRoles)
+      .innerJoin(schema.roles, eq(schema.roles.id, schema.userRoles.roleId))
+      .where(eq(schema.userRoles.userId, userId))
+
+    const effective = await getEffectiveForRoleCodes(codes.map((r) => r.code))
+    return new Set(effective)
   }
 
   async function hasPermission(userId: string, permission: Permission): Promise<boolean> {
@@ -54,5 +71,5 @@ export function createPermissionResolver(db: NodePgDatabase<typeof schema>): Per
     return effective.has(permission)
   }
 
-  return { getEffectiveForUser, hasPermission }
+  return { getEffectiveForUser, hasPermission, getEffectiveForRoleCodes }
 }

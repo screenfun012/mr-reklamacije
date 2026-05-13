@@ -1,11 +1,15 @@
 import { schema } from '@mr/db'
+import { eq } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { betterAuth, type Auth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { customSession } from 'better-auth/plugins'
 
 import { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'
 import { createLoginAuditHook } from './hooks/login-audit.js'
 import { sharedAuthOptions } from './options.js'
+import { createPermissionResolver } from './permissions.js'
+import { createCachedPermissionResolver } from './server/permission-cache.js'
 
 export type { Auth }
 
@@ -50,6 +54,14 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
     )
   }
 
+  const { plugins: sharedPlugins = [], ...sharedWithoutPlugins } = sharedAuthOptions
+  const resolver = createPermissionResolver(db)
+
+  const cachedByRoles = createCachedPermissionResolver({
+    resolveForRoles: async (roleCodes) =>
+      resolver.getEffectiveForRoleCodes(roleCodes).then((p) => p.map(String)),
+  })
+
   return betterAuth({
     secret: process.env['BETTER_AUTH_SECRET'] ?? 'dev-only-change-me',
     baseURL: process.env['BETTER_AUTH_URL'] ?? 'http://localhost:3000',
@@ -73,6 +85,28 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
         },
       },
     },
-    ...sharedAuthOptions,
-  }) as Auth
+    ...sharedWithoutPlugins,
+    plugins: [
+      ...sharedPlugins,
+      customSession(async ({ user, session }) => {
+        const roleRows = await db
+          .select({ code: schema.roles.code })
+          .from(schema.userRoles)
+          .innerJoin(schema.roles, eq(schema.roles.id, schema.userRoles.roleId))
+          .where(eq(schema.userRoles.userId, user.id))
+
+        const roleCodes = roleRows.map((r) => r.code)
+        const permissions = await cachedByRoles.resolveForRoles(roleCodes)
+
+        return {
+          session,
+          user: {
+            ...user,
+            roles: roleCodes,
+            permissions,
+          },
+        }
+      }),
+    ],
+  }) as unknown as Auth
 }

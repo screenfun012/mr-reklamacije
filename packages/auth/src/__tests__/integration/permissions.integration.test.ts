@@ -83,6 +83,9 @@ describe('PermissionResolver (integration)', () => {
 
     expect(effective.size).toBe(ADMIN_PERMISSIONS.length)
     expect(effective.has('emotive_claims.view')).toBe(true)
+
+    const byCodes = await resolver.getEffectiveForRoleCodes([SYSTEM_ROLE_ADMIN])
+    expect(byCodes.length).toBe(ADMIN_PERMISSIONS.length)
   })
 
   it('returns union of role_permissions for non-admin user', async () => {
@@ -126,6 +129,10 @@ describe('PermissionResolver (integration)', () => {
 
     expect(effective.size).toBe(1)
     expect(effective.has('emotive_claims.view')).toBe(true)
+
+    const byCodes = await resolver.getEffectiveForRoleCodes([SYSTEM_ROLE_OPERATOR])
+    expect(byCodes).toContain('emotive_claims.view')
+    expect(byCodes.length).toBe(1)
   })
 
   it('hasPermission returns true for admin on any permission', async () => {
