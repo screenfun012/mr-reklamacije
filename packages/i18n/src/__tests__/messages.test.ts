@@ -60,4 +60,15 @@ describe('@mr/i18n messages', () => {
     expect(m.nav_emotive_claims()).toBe('International claims')
     expect(m.nav_domace_claims()).toBe('Domestic claims')
   })
+
+  it('returns insufficient-role login banner message per locale', () => {
+    setLocale('sr')
+    expect(m.auth_login_insufficient_role()).toBe(
+      'Ova aplikacija zahteva drugačiju ulogu. Prijavite se sa odgovarajućim nalogom.',
+    )
+    setLocale('en')
+    expect(m.auth_login_insufficient_role()).toBe(
+      'This application requires a different role. Please sign in with an appropriate account.',
+    )
+  })
 })

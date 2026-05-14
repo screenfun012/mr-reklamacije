@@ -1,16 +1,13 @@
+import { createFileRoute } from '@tanstack/react-router'
+
+import { requireRoles } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { AdminShell } from '~/components/layout/admin-shell'
 import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/users')({
-  beforeLoad: async () => {
-    const { data: session } = await authClient.getSession()
-    if (session === null) {
-      throw redirect({ to: '/login' })
-    }
-  },
+  beforeLoad: requireRoles(authClient, ['admin']),
   component: UsersComponent,
 })
 

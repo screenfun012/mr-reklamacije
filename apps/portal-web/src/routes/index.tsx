@@ -1,19 +1,14 @@
+import { createFileRoute } from '@tanstack/react-router'
+
+import { requireRoles } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
-import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { PortalShell } from '~/components/layout/portal-shell'
 import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/')({
-  beforeLoad: async () => {
-    const { data: session } = await authClient.getSession()
-    if (!session) {
-      throw redirect({ to: '/login' })
-    }
-    // TODO(phase-1.0): Add role check — require 'client' role
-    // See docs/12-roadmap.md Phase 1.0 — Permissions
-  },
+  beforeLoad: requireRoles(authClient, ['client', 'admin']),
   component: HomeComponent,
 })
 

@@ -9,6 +9,7 @@
   "auth_login_email": "Email",
   "auth_login_error_generic": "Login failed",
   "auth_login_error_invalid": "Invalid email or password",
+  "auth_login_insufficient_role": "This application requires a different role. Please sign in with an appropriate account.",
   "auth_login_password": "Password",
   "auth_login_submit": "Sign in",
   "auth_login_title": "Sign in",

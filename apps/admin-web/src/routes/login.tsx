@@ -1,13 +1,21 @@
-import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui'
+import { useState } from 'react'
+
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
 import { z } from 'zod'
+
+import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE } from '@mr/auth/route-guards'
+import { m } from '@mr/i18n'
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui'
 
 import { authClient } from '~/lib/auth-client'
 
+const loginSearchSchema = z.object({
+  reason: z.literal(LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE).optional(),
+})
+
 export const Route = createFileRoute('/login')({
+  validateSearch: (search) => loginSearchSchema.parse(search),
   component: LoginComponent,
 })
 
@@ -25,6 +33,7 @@ type SignInData = { twoFactorRedirect?: boolean } | null | undefined
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
+  const { reason } = Route.useSearch()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
@@ -76,6 +85,14 @@ function LoginComponent(): React.ReactElement {
           <CardTitle>{m.auth_login_title()}</CardTitle>
         </CardHeader>
         <CardContent>
+          {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground"
+            >
+              {m.auth_login_insufficient_role()}
+            </div>
+          ) : null}
           <form
             onSubmit={(e) => {
               e.preventDefault()

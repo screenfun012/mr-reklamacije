@@ -16,6 +16,10 @@
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"
     },
+    "./route-guards": {
+      "types": "./dist/route-guards.d.ts",
+      "import": "./dist/route-guards.js"
+    },
     "./generate-config": {
       "types": "./dist/better-auth.generate.config.d.ts",
       "import": "./dist/better-auth.generate.config.js"
@@ -38,10 +42,14 @@
     "drizzle-orm": "^0.45.2"
   },
   "peerDependencies": {
+    "@tanstack/react-router": ">=1.116.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
   "peerDependenciesMeta": {
+    "@tanstack/react-router": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
@@ -50,6 +58,7 @@
     }
   },
   "devDependencies": {
+    "@tanstack/react-router": "1.169.1",
     "@mr/eslint-config": "workspace:*",
     "@mr/tsconfig": "workspace:*",
     "@types/node": "^20.19.39",

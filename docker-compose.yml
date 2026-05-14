@@ -40,6 +40,15 @@ services:
       - ./packages:/app/packages
       - /app/node_modules
       - /app/apps/api/node_modules
+      # Preserve Linux pnpm installs: host `./packages` mount would overwrite
+      # `packages/*/node_modules` with macOS store symlinks (wrong hashes in the container).
+      - /app/packages/auth/node_modules
+      - /app/packages/db/node_modules
+      - /app/packages/excel/node_modules
+      - /app/packages/i18n/node_modules
+      - /app/packages/logger/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/ui/node_modules
     restart: unless-stopped
 
 volumes:
