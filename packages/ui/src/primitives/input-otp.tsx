@@ -19,11 +19,12 @@ const InputOTP = React.forwardRef<
 ))
 InputOTP.displayName = 'InputOTP'
 
-const InputOTPGroup = React.forwardRef<React.ElementRef<'div'>, React.ComponentPropsWithoutRef<'div'>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center gap-1.5', className)} {...props} />
-  ),
-)
+const InputOTPGroup = React.forwardRef<
+  React.ElementRef<'div'>,
+  React.ComponentPropsWithoutRef<'div'>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn('flex items-center gap-1.5', className)} {...props} />
+))
 InputOTPGroup.displayName = 'InputOTPGroup'
 
 const InputOTPSlot = React.forwardRef<
@@ -36,7 +37,10 @@ const InputOTPSlot = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn('relative flex h-9 w-9 items-center justify-center rounded-md border bg-background text-sm', className)}
+        className={cn(
+          'relative flex h-9 w-9 items-center justify-center rounded-md border bg-background text-sm',
+          className,
+        )}
         {...props}
       />
     )
@@ -63,13 +67,27 @@ const InputOTPSlot = React.forwardRef<
 })
 InputOTPSlot.displayName = 'InputOTPSlot'
 
-const InputOTPSeparator = React.forwardRef<React.ElementRef<'div'>, React.ComponentPropsWithoutRef<'div'>>(
-  ({ ...props }, ref) => (
-    <div ref={ref} role="separator" aria-hidden className="select-none text-muted-foreground" {...props}>
-      —
-    </div>
-  ),
-)
+const InputOTPSeparator = React.forwardRef<
+  React.ElementRef<'div'>,
+  React.ComponentPropsWithoutRef<'div'>
+>(({ ...props }, ref) => (
+  <div
+    ref={ref}
+    role="separator"
+    aria-hidden
+    className="select-none text-muted-foreground"
+    {...props}
+  >
+    —
+  </div>
+))
 InputOTPSeparator.displayName = 'InputOTPSeparator'
 
-export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot, OTPInputContext, REGEXP_ONLY_DIGITS }
+export {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+  OTPInputContext,
+  REGEXP_ONLY_DIGITS,
+}

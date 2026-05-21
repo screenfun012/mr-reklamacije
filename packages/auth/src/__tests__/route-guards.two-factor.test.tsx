@@ -75,10 +75,13 @@ function createTwoFactorStub(overrides: {
     twoFactor: {
       enable:
         overrides.enable ??
-        vi.fn().mockResolvedValue({ data: { totpURI: 'otpauth://totp/x?secret=ABC', backupCodes: ['1', '2'] } }),
+        vi.fn().mockResolvedValue({
+          data: { totpURI: 'otpauth://totp/x?secret=ABC', backupCodes: ['1', '2'] },
+        }),
       verifyTotp: overrides.verifyTotp ?? vi.fn().mockResolvedValue({ data: { status: true } }),
       verifyBackupCode:
-        overrides.verifyBackupCode ?? vi.fn().mockResolvedValue({ data: { user: { id: 'u' }, session: { token: 't' } } }),
+        overrides.verifyBackupCode ??
+        vi.fn().mockResolvedValue({ data: { user: { id: 'u' }, session: { token: 't' } } }),
       disable: overrides.disable ?? vi.fn().mockResolvedValue({ data: { status: true } }),
     },
     getSession: overrides.getSession ?? vi.fn().mockResolvedValue({}),

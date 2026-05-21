@@ -11,7 +11,7 @@ TanStack Start SSR frontend for the MR Reklamacije admin panel.
 3. Run `pnpm --filter admin-web dev`.
 4. Open <http://localhost:3001>.
 
-`vite.config.ts` registers a **dev-only** proxy (`mr-api-proxy`) that forwards **`/api/**`** to `http://localhost:3000` so same-origin browser calls hit the Hono API. **`pnpm start` / production** does not use this middleware; the host must **reverse-proxy `/api`** to the `api` service (see `docs/11-deployment.md`).
+`vite.config.ts` registers a **dev-only** proxy (`mr-api-proxy`) that forwards **`/api/**`** to `http://localhost:3000` so same-origin browser calls hit the Hono API. **`pnpm start`/ production** does not use this middleware; the host must **reverse-proxy`/api`** to the `api`service (see`docs/11-deployment.md`).
 
 ## Stack
 

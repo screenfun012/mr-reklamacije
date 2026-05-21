@@ -29,10 +29,13 @@ const loginSchema = z.object({
 // Better-Auth may return `twoFactorRedirect` + `twoFactorMethods` on sign-in when
 // the account has 2FA enabled (see two-factor plugin). Typings may not surface
 // these fields; we narrow manually at the sign-in boundary.
-type SignInData = {
-  twoFactorRedirect?: boolean
-  twoFactorMethods?: string[]
-} | null | undefined
+type SignInData =
+  | {
+      twoFactorRedirect?: boolean
+      twoFactorMethods?: string[]
+    }
+  | null
+  | undefined
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
@@ -105,84 +108,86 @@ function LoginComponent(): React.ReactElement {
                 onError={(message: string) => setAuthError(message)}
               />
               {authError !== null ? (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">{authError}</div>
+                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                  {authError}
+                </div>
               ) : null}
             </div>
           ) : null}
 
           {!showTwoFactorStep ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              void form.handleSubmit()
-            }}
-            className="flex flex-col gap-4"
-            noValidate
-          >
-            <form.Field
-              name="email"
-              children={(field) => (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    {m.auth_login_email()}
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={field.state.value}
-                    onChange={(e) => {
-                      field.handleChange(e.target.value)
-                    }}
-                    onBlur={field.handleBlur}
-                    disabled={isPending}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <span className="text-sm text-destructive">
-                      {formatFieldError(field.state.meta.errors[0])}
-                    </span>
-                  )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void form.handleSubmit()
+              }}
+              className="flex flex-col gap-4"
+              noValidate
+            >
+              <form.Field
+                name="email"
+                children={(field) => (
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="email" className="text-sm font-medium">
+                      {m.auth_login_email()}
+                    </label>
+                    <Input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      value={field.state.value}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value)
+                      }}
+                      onBlur={field.handleBlur}
+                      disabled={isPending}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <span className="text-sm text-destructive">
+                        {formatFieldError(field.state.meta.errors[0])}
+                      </span>
+                    )}
+                  </div>
+                )}
+              />
+
+              <form.Field
+                name="password"
+                children={(field) => (
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="password" className="text-sm font-medium">
+                      {m.auth_login_password()}
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={field.state.value}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value)
+                      }}
+                      onBlur={field.handleBlur}
+                      disabled={isPending}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <span className="text-sm text-destructive">
+                        {formatFieldError(field.state.meta.errors[0])}
+                      </span>
+                    )}
+                  </div>
+                )}
+              />
+
+              {authError !== null && (
+                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                  {authError}
                 </div>
               )}
-            />
 
-            <form.Field
-              name="password"
-              children={(field) => (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="password" className="text-sm font-medium">
-                    {m.auth_login_password()}
-                  </label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={field.state.value}
-                    onChange={(e) => {
-                      field.handleChange(e.target.value)
-                    }}
-                    onBlur={field.handleBlur}
-                    disabled={isPending}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <span className="text-sm text-destructive">
-                      {formatFieldError(field.state.meta.errors[0])}
-                    </span>
-                  )}
-                </div>
-              )}
-            />
-
-            {authError !== null && (
-              <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
-                {authError}
-              </div>
-            )}
-
-            <Button type="submit" disabled={isPending} className="w-full">
-              {m.auth_login_submit()}
-            </Button>
-          </form>
+              <Button type="submit" disabled={isPending} className="w-full">
+                {m.auth_login_submit()}
+              </Button>
+            </form>
           ) : null}
         </CardContent>
       </Card>

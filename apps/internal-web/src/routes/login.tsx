@@ -25,10 +25,13 @@ const loginSchema = z.object({
   password: z.string().min(1, m.field_password_required()),
 })
 
-type SignInData = {
-  twoFactorRedirect?: boolean
-  twoFactorMethods?: string[]
-} | null | undefined
+type SignInData =
+  | {
+      twoFactorRedirect?: boolean
+      twoFactorMethods?: string[]
+    }
+  | null
+  | undefined
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
@@ -101,7 +104,9 @@ function LoginComponent(): React.ReactElement {
                 onError={(message: string) => setAuthError(message)}
               />
               {authError !== null ? (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">{authError}</div>
+                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                  {authError}
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -170,7 +175,9 @@ function LoginComponent(): React.ReactElement {
               />
 
               {authError !== null && (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">{authError}</div>
+                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                  {authError}
+                </div>
               )}
 
               <Button type="submit" disabled={isPending} className="w-full">

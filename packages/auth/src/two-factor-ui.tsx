@@ -38,7 +38,10 @@ export type TwoFactorMutationResult = {
 export type MRAuthClientTwoFactorApi = {
   enable: (input: { password: string }) => Promise<TwoFactorMutationResult>
   verifyTotp: (input: { code: string; trustDevice?: boolean }) => Promise<TwoFactorMutationResult>
-  verifyBackupCode: (input: { code: string; trustDevice?: boolean }) => Promise<TwoFactorMutationResult>
+  verifyBackupCode: (input: {
+    code: string
+    trustDevice?: boolean
+  }) => Promise<TwoFactorMutationResult>
   disable: (input: { password: string }) => Promise<TwoFactorMutationResult>
 }
 
@@ -59,7 +62,9 @@ export function useTwoFactor(authClient: MRAuthClientForPermissions): {
   const { data: session, isPending } = authClient.useSession()
   return {
     isEnabled: Boolean(
-      session?.user && 'twoFactorEnabled' in session.user && session.user['twoFactorEnabled'] === true,
+      session?.user &&
+      'twoFactorEnabled' in session.user &&
+      session.user['twoFactorEnabled'] === true,
     ),
     isLoading: isPending,
   }
@@ -104,20 +109,26 @@ function formatTwoFactorClientError(err: { code?: string } | undefined | null): 
   return m.auth_login_2fa_invalid_code()
 }
 
-function isTwoFactorSessionExpiredError(err: { code?: string; status?: number } | undefined | null): boolean {
+function isTwoFactorSessionExpiredError(
+  err: { code?: string; status?: number } | undefined | null,
+): boolean {
   if (!err) return false
   if (err.status === 401) return true
   return err.code === 'INVALID_TWO_FACTOR_COOKIE'
 }
 
-function messageForTotpVerifyFailure(err: { code?: string; status?: number } | undefined | null): string {
+function messageForTotpVerifyFailure(
+  err: { code?: string; status?: number } | undefined | null,
+): string {
   if (isTwoFactorSessionExpiredError(err)) {
     return m.auth_login_2fa_session_expired()
   }
   return formatTwoFactorClientError(err)
 }
 
-function messageForBackupVerifyFailure(err: { code?: string; status?: number } | undefined | null): string {
+function messageForBackupVerifyFailure(
+  err: { code?: string; status?: number } | undefined | null,
+): string {
   if (isTwoFactorSessionExpiredError(err)) {
     return m.auth_login_2fa_session_expired()
   }
@@ -207,7 +218,9 @@ export function TwoFactorEnrollFlow(props: {
       <CardContent className="flex flex-col gap-4 pt-6">
         {step === 'password' ? (
           <>
-            <p className="text-sm text-muted-foreground">{m.security_two_factor_enroll_step_password_label()}</p>
+            <p className="text-sm text-muted-foreground">
+              {m.security_two_factor_enroll_step_password_label()}
+            </p>
             <div className="flex flex-col gap-1">
               <label htmlFor="twof-enroll-pw" className="text-sm font-medium">
                 {m.auth_login_password()}
@@ -225,7 +238,11 @@ export function TwoFactorEnrollFlow(props: {
             </div>
             {error ? <div className="text-sm text-destructive">{error}</div> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={pending || password.length === 0} onClick={() => void handleEnable()}>
+              <Button
+                type="button"
+                disabled={pending || password.length === 0}
+                onClick={() => void handleEnable()}
+              >
                 {pending ? m.common_loading() : m.common_confirm()}
               </Button>
               {onCancel ? (
@@ -241,7 +258,9 @@ export function TwoFactorEnrollFlow(props: {
           <>
             <div>
               <p className="text-sm font-medium">{m.security_two_factor_enroll_step_qr_title()}</p>
-              <p className="text-sm text-muted-foreground">{m.security_two_factor_enroll_step_qr_description()}</p>
+              <p className="text-sm text-muted-foreground">
+                {m.security_two_factor_enroll_step_qr_description()}
+              </p>
             </div>
             <div className="flex justify-center rounded-md border bg-background p-4">
               <QRCodeSVG value={totpURI} size={192} level="M" />
@@ -254,7 +273,9 @@ export function TwoFactorEnrollFlow(props: {
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">{m.security_2fa_verify_title()}</span>
-              <span className="text-sm text-muted-foreground">{m.security_2fa_verify_description()}</span>
+              <span className="text-sm text-muted-foreground">
+                {m.security_2fa_verify_description()}
+              </span>
               <InputOTP
                 maxLength={6}
                 pattern={REGEXP_ONLY_DIGITS}
@@ -279,7 +300,11 @@ export function TwoFactorEnrollFlow(props: {
             </div>
             {error ? <div className="text-sm text-destructive">{error}</div> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={pending || totpDigits.length !== 6} onClick={() => void handleVerifyTotp()}>
+              <Button
+                type="button"
+                disabled={pending || totpDigits.length !== 6}
+                onClick={() => void handleVerifyTotp()}
+              >
                 {pending ? m.common_loading() : m.security_two_factor_enroll_step_verify_button()}
               </Button>
               {onCancel ? (
@@ -323,7 +348,6 @@ export function TwoFactorEnrollFlow(props: {
             </Button>
           </>
         ) : null}
-
       </CardContent>
     </Card>
   )
@@ -645,7 +669,11 @@ export function TwoFactorDisableFlow(props: {
             </div>
             {error ? <div className="text-sm text-destructive">{error}</div> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={pending || password.length === 0} onClick={handlePasswordContinue}>
+              <Button
+                type="button"
+                disabled={pending || password.length === 0}
+                onClick={handlePasswordContinue}
+              >
                 {pending ? m.common_loading() : m.common_confirm()}
               </Button>
               {onCancel ? (
@@ -685,7 +713,11 @@ export function TwoFactorDisableFlow(props: {
             </div>
             {error ? <div className="text-sm text-destructive">{error}</div> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={pending || totpDigits.length !== 6} onClick={() => void handleTotpContinue()}>
+              <Button
+                type="button"
+                disabled={pending || totpDigits.length !== 6}
+                onClick={() => void handleTotpContinue()}
+              >
                 {pending ? m.common_loading() : m.common_confirm()}
               </Button>
               {onCancel ? (
@@ -702,7 +734,12 @@ export function TwoFactorDisableFlow(props: {
             <p className="text-sm">{m.security_two_factor_disable_warning()}</p>
             {error ? <div className="text-sm text-destructive">{error}</div> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="destructive" disabled={pending} onClick={() => void handleDisable()}>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={pending}
+                onClick={() => void handleDisable()}
+              >
                 {pending ? m.common_loading() : m.security_two_factor_disable_confirm_button()}
               </Button>
               {onCancel ? (
@@ -714,7 +751,9 @@ export function TwoFactorDisableFlow(props: {
           </>
         ) : null}
 
-        {step === 'complete' ? <p className="text-sm text-muted-foreground">{m.security_two_factor_status_disabled()}</p> : null}
+        {step === 'complete' ? (
+          <p className="text-sm text-muted-foreground">{m.security_two_factor_status_disabled()}</p>
+        ) : null}
       </CardContent>
     </Card>
   )
