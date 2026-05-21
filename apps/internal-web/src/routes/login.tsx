@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE } from '@mr/auth/route-guards'
+import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE, TwoFactorVerifyForm } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui'
 
@@ -25,13 +25,17 @@ const loginSchema = z.object({
   password: z.string().min(1, m.field_password_required()),
 })
 
-type SignInData = { twoFactorRedirect?: boolean } | null | undefined
+type SignInData = {
+  twoFactorRedirect?: boolean
+  twoFactorMethods?: string[]
+} | null | undefined
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
   const { reason } = Route.useSearch()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [showTwoFactorStep, setShowTwoFactorStep] = useState(false)
 
   const form = useForm({
     defaultValues: { email: '', password: '' },
@@ -60,7 +64,7 @@ function LoginComponent(): React.ReactElement {
 
         const data = result.data as SignInData
         if (data?.twoFactorRedirect === true) {
-          setAuthError(m.auth_login_2fa_required())
+          setShowTwoFactorStep(true)
           return
         }
 
@@ -89,78 +93,91 @@ function LoginComponent(): React.ReactElement {
               {m.auth_login_insufficient_role()}
             </div>
           ) : null}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              void form.handleSubmit()
-            }}
-            className="flex flex-col gap-4"
-            noValidate
-          >
-            <form.Field
-              name="email"
-              children={(field) => (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    {m.auth_login_email()}
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={field.state.value}
-                    onChange={(e) => {
-                      field.handleChange(e.target.value)
-                    }}
-                    onBlur={field.handleBlur}
-                    disabled={isPending}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <span className="text-sm text-destructive">
-                      {formatFieldError(field.state.meta.errors[0])}
-                    </span>
-                  )}
-                </div>
+          {showTwoFactorStep ? (
+            <div className="flex flex-col gap-4">
+              <TwoFactorVerifyForm
+                authClient={authClient}
+                onSuccess={async () => navigate({ to: '/' })}
+                onError={(message: string) => setAuthError(message)}
+              />
+              {authError !== null ? (
+                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">{authError}</div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!showTwoFactorStep ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void form.handleSubmit()
+              }}
+              className="flex flex-col gap-4"
+              noValidate
+            >
+              <form.Field
+                name="email"
+                children={(field) => (
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="email" className="text-sm font-medium">
+                      {m.auth_login_email()}
+                    </label>
+                    <Input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      value={field.state.value}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value)
+                      }}
+                      onBlur={field.handleBlur}
+                      disabled={isPending}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <span className="text-sm text-destructive">
+                        {formatFieldError(field.state.meta.errors[0])}
+                      </span>
+                    )}
+                  </div>
+                )}
+              />
+
+              <form.Field
+                name="password"
+                children={(field) => (
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="password" className="text-sm font-medium">
+                      {m.auth_login_password()}
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={field.state.value}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value)
+                      }}
+                      onBlur={field.handleBlur}
+                      disabled={isPending}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <span className="text-sm text-destructive">
+                        {formatFieldError(field.state.meta.errors[0])}
+                      </span>
+                    )}
+                  </div>
+                )}
+              />
+
+              {authError !== null && (
+                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">{authError}</div>
               )}
-            />
 
-            <form.Field
-              name="password"
-              children={(field) => (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="password" className="text-sm font-medium">
-                    {m.auth_login_password()}
-                  </label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={field.state.value}
-                    onChange={(e) => {
-                      field.handleChange(e.target.value)
-                    }}
-                    onBlur={field.handleBlur}
-                    disabled={isPending}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <span className="text-sm text-destructive">
-                      {formatFieldError(field.state.meta.errors[0])}
-                    </span>
-                  )}
-                </div>
-              )}
-            />
-
-            {authError !== null && (
-              <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
-                {authError}
-              </div>
-            )}
-
-            <Button type="submit" disabled={isPending} className="w-full">
-              {m.auth_login_submit()}
-            </Button>
-          </form>
+              <Button type="submit" disabled={isPending} className="w-full">
+                {m.auth_login_submit()}
+              </Button>
+            </form>
+          ) : null}
         </CardContent>
       </Card>
     </main>

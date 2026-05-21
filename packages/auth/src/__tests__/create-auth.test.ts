@@ -16,6 +16,15 @@ describe('createAuth factory', () => {
     expect(typeof auth.api).toBe('object')
   })
 
+  it('includes appName so Better-Auth derives cookie namespace and OTP issuer defaults', () => {
+    const mockDb = {} as unknown as NodePgDatabase<typeof schema>
+    const auth = createAuth(mockDb)
+
+    expect(auth.options.appName).toBe('MR Reklamacije')
+    expect(auth.options.advanced?.defaultCookieAttributes?.sameSite).toBe('lax')
+    expect(auth.options.advanced?.defaultCookieAttributes?.httpOnly).toBe(true)
+  })
+
   it('returns auth with options including our additionalFields', () => {
     const mockDb = {} as unknown as NodePgDatabase<typeof schema>
     const auth = createAuth(mockDb)

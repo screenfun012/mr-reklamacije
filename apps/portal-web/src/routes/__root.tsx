@@ -30,11 +30,11 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { children: ReactNode }) {
   const { locale } = useLocale()
   return (
-    <html lang="sr">
+    <html lang="sr" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div key={locale}>{children}</div>
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />

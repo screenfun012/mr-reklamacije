@@ -43,7 +43,7 @@ function isPublicPath(path: string): boolean {
  * 2. Request logger
  * 3. General rate limiter
  * 4. Login rate limiter (sign-in email only)
- * 5. Session middleware (sets user / session vars)
+ * 5. Session middleware
  * 6. Global requireAuth with opt-out for public prefixes (auth + health)
  * 7. Better-Auth `/api/auth/*`
  * 8. Routes (health, future modules)

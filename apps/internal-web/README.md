@@ -11,6 +11,8 @@ TanStack Start SSR frontend for MR Reklamacije — internal (employee) panel.
 3. Run `pnpm --filter internal-web dev`.
 4. Open <http://localhost:3002>.
 
+**Dev proxy:** `vite.config.ts` forwards **`/api/**`** to `apps/api` (`http://localhost:3000`) while `pnpm dev` is running. Production requires routing **`/api`** to the API at the edge (not this Vite plugin). See `docs/11-deployment.md`.
+
 ## Scripts
 
 Same as admin-web (`dev`, `build`, `preview`, `start`, `typecheck`, `lint`). TanStack Router generates `src/routeTree.gen.ts` on dev/build — run `pnpm dev` once if `typecheck` complains until the file exists.

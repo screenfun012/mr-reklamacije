@@ -14,13 +14,14 @@ import { authClientPlugins, createAuthClient } from '@mr/auth/client'
  * a relative path like `/api/auth` throws ERR_INVALID_URL under
  * Node (SSR). Concretely:
  *
- * - Browser: `window.location.origin + '/api/auth'` goes through
- *   the TanStack Start server file route proxy (src/routes/api.$.ts)
- *   to apps/api on :3000, keeping requests same-origin so Better-Auth
- *   cookies and CSRF checks work unmodified.
+ * - Browser: `window.location.origin + '/api/auth'` is same-origin;
+ *   in dev, `vite.config.ts` (`mr-api-proxy` + http-proxy-middleware)
+ *   forwards `/api/**` to apps/api on :3000 before TanStack SSR, so
+ *   Better-Auth cookies and CSRF checks work unmodified.
  * - SSR (Nitro/Node): no `window`; must resolve to an absolute URL
- *   that Node can reach directly. VITE_API_URL is the canonical
- *   override; the localhost fallback matches the default apps/api PORT.
+ *   that Node can reach directly (Vite dev proxy does not run here).
+ *   VITE_API_URL is the canonical override; the localhost fallback
+ *   matches the default apps/api PORT.
  */
 const isBrowser = typeof window !== 'undefined'
 
@@ -31,6 +32,9 @@ const baseURL = isBrowser ? `${window.location.origin}/api/auth` : `${apiOrigin}
 export const authClient = createAuthClient({
   baseURL,
   plugins: authClientPlugins,
+  fetchOptions: {
+    credentials: 'include',
+  },
 })
 
 export type AuthClient = typeof authClient

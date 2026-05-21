@@ -2,10 +2,18 @@ import type { BetterAuthOptions } from 'better-auth'
 import { twoFactor } from 'better-auth/plugins'
 
 /**
- * Shared Better-Auth options used by both CLI generate config and
- * runtime config. Do not import database or environment here.
+ * Shared Better-Auth options used by both CLI generate config and runtime
+ * `betterAuth(...)` merge in `better-auth.config.ts`.
+ *
+ * Do not put `secret` here: `pnpm auth:generate` spreads this object beside a
+ * generate-only placeholder secret (`better-auth.generate.config.ts`).
+ * Runtime signing secret is injected in `createAuth()` from `BETTER_AUTH_SECRET`.
+ *
+ * `defaultCookieAttributes.secure` keys off NODE_ENV — this file stays free of app env.ts.
  */
 export const sharedAuthOptions: BetterAuthOptions = {
+  appName: 'MR Reklamacije',
+
   user: {
     modelName: 'users',
     additionalFields: {
@@ -37,6 +45,11 @@ export const sharedAuthOptions: BetterAuthOptions = {
   },
   session: {
     modelName: 'sessions',
+    cookieCache: {
+      // Default JWE-backed cookie cache can serve stale session after 2FA
+      // sign-in clears the session token until verify completes.
+      enabled: false,
+    },
   },
   account: {
     modelName: 'accounts',
@@ -64,11 +77,19 @@ export const sharedAuthOptions: BetterAuthOptions = {
   plugins: [
     twoFactor({
       twoFactorTable: 'two_factor_secrets',
+      issuer: 'MR Reklamacije',
     }),
   ],
   advanced: {
     database: {
       generateId: 'uuid',
+    },
+    defaultCookieAttributes: {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      // localhost dev is HTTP-only; Railway/production must align with HTTPS cookies.
+      secure: process.env['NODE_ENV'] === 'production',
     },
   },
 }

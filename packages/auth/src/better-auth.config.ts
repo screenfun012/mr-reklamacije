@@ -39,8 +39,7 @@ export interface CreateAuthOptions {
  * lookups match.
  *
  * TODO(apps/api): add session timeouts (per-role idle), cookie name
- * customization (mrr.session_token), advanced cookie settings. Those
- * are runtime-specific and belong next to the API app.
+ * customization (`mrr.session_token`). Default cookie attributes live in shared `options.ts`.
  */
 export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOptions = {}): Auth {
   const trustedOrigins = opts.trustedOrigins ?? []
@@ -63,6 +62,7 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
   })
 
   return betterAuth({
+    // apps/api parses BETTER_AUTH_SECRET via env.ts (min length 32) before bootstrap.
     secret: process.env['BETTER_AUTH_SECRET'] ?? 'dev-only-change-me',
     baseURL: process.env['BETTER_AUTH_URL'] ?? 'http://localhost:3000',
     trustedOrigins,

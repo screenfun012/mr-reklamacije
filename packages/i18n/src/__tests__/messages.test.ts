@@ -61,6 +61,40 @@ describe('@mr/i18n messages', () => {
     expect(m.nav_domace_claims()).toBe('Domestic claims')
   })
 
+  it('exports common_loading for pending UI strings', () => {
+    setLocale('sr')
+    expect(m.common_loading()).toContain('itavanje')
+    setLocale('en')
+    expect(m.common_loading()).toContain('Loading')
+  })
+
+  it('returns security dialog 2FA copy per locale', () => {
+    setLocale('sr')
+    expect(m.security_2fa_enable_title()).toBe('Uključi dvofaktorsku potvrdu')
+    expect(m.security_2fa_disable_title()).toBe('Isključi dvofaktorsku potvrdu')
+    setLocale('en')
+    expect(m.security_2fa_enable_title()).toBe('Enable two-factor authentication')
+    expect(m.security_2fa_disable_title()).toBe('Disable two-factor authentication')
+  })
+
+  it('returns 2FA unavailable message per locale', () => {
+    setLocale('sr')
+    expect(m.security_two_factor_unavailable()).toContain('nije dostupna')
+    setLocale('en')
+    expect(m.security_two_factor_unavailable()).toContain('not available')
+  })
+
+  it('returns 2FA trust/session/network copy per locale', () => {
+    setLocale('sr')
+    expect(m.auth_login_2fa_trust_device()).toBe('Zapamti ovaj uređaj 30 dana')
+    expect(m.auth_login_2fa_session_expired()).toBe('Sesija je istekla. Prijavite se ponovo.')
+    expect(m.auth_login_2fa_network_error()).toBe('Greška u mreži. Pokušajte ponovo.')
+    setLocale('en')
+    expect(m.auth_login_2fa_trust_device()).toBe('Trust this device for 30 days')
+    expect(m.auth_login_2fa_session_expired()).toBe('Session expired. Please sign in again.')
+    expect(m.auth_login_2fa_network_error()).toBe('Network error. Please try again.')
+  })
+
   it('returns insufficient-role login banner message per locale', () => {
     setLocale('sr')
     expect(m.auth_login_insufficient_role()).toBe(

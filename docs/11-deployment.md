@@ -25,6 +25,12 @@ Each environment contains these 5 services, all defined in one repo:
 | `internal-web` | `apps/internal-web` | same pattern | same pattern | 3000 |
 | `portal-web` | `apps/portal-web` | same pattern | same pattern | 3000 |
 
+### Web app ↔ API routing (dev vs production)
+
+In **local development**, each TanStack Start app (`*-web`) uses a small Vite plugin in `vite.config.ts` (`mr-api-proxy`, built on `http-proxy-middleware`) that forwards **`/api/**`** to **`apps/api`** (e.g. `http://localhost:3000`). That plugin runs only in `pnpm dev`; it is **not** part of the Nitro production bundle. It exists mainly so the browser can call same-origin `/api/...` (including Better-Auth with multiple `Set-Cookie` headers during 2FA) while the API runs as a separate process.
+
+In **production** (Railway `pnpm start` / Nitro), the same **`/api/**`** path must be **routed at the edge or load balancer** to the **`api`** service — e.g. Cloudflare, nginx, or Caddy in front of the web service, or Railway private networking between services. Do not rely on Vite dev middleware in production.
+
 ### Monorepo configuration
 
 Each web service has a `railway.json` in its app dir:

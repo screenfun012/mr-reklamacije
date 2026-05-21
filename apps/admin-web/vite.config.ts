@@ -1,8 +1,36 @@
+import { createProxyMiddleware } from 'http-proxy-middleware'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import viteReact from '@vitejs/plugin-react'
 import { nitro } from 'nitro/vite'
+import type { PluginOption } from 'vite'
 import { defineConfig } from 'vite'
+
+/**
+ * Dev-only: forward `/api/**` to apps/api before TanStack Start SSR.
+ * Vite `server.proxy` is skipped by Start (TanStack intercepts first; #2399).
+ * `http-proxy-middleware` preserves multiple `Set-Cookie` lines (2FA flows).
+ * All browser calls to same-origin `/api/*` (auth + business) use this path.
+ *
+ * Production: reverse proxy / edge routes `/api` to the API service (see README).
+ */
+function apiProxyPlugin(): PluginOption {
+  return {
+    name: 'mr-api-proxy',
+    enforce: 'pre',
+    configureServer(server) {
+      // Mount without path prefix — use pathFilter only. A connect mount like
+      // `.use('/api', ...)` strips the prefix so upstream would see wrong paths.
+      server.middlewares.use(
+        createProxyMiddleware({
+          pathFilter: '/api/**',
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        }),
+      )
+    },
+  }
+}
 
 export default defineConfig({
   server: {
@@ -13,5 +41,11 @@ export default defineConfig({
       '~': new URL('./src', import.meta.url).pathname,
     },
   },
-  plugins: [tailwindcss(), tanstackStart({ srcDirectory: 'src' }), viteReact(), nitro()],
+  plugins: [
+    apiProxyPlugin(),
+    tailwindcss(),
+    tanstackStart({ srcDirectory: 'src' }),
+    viteReact(),
+    nitro(),
+  ],
 })

@@ -2,6 +2,13 @@ export { cn } from './lib/cn.js'
 export { Button, buttonVariants, type ButtonProps } from './primitives/button.js'
 export { Input, type InputProps } from './primitives/input.js'
 export {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+  REGEXP_ONLY_DIGITS,
+} from './primitives/input-otp.js'
+export {
   Card,
   CardHeader,
   CardFooter,

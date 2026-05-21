@@ -13,7 +13,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@mr/ui'
-import { Globe, LogOut, Monitor, Moon, Sun } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Globe, LogOut, Monitor, Moon, Shield, Sun } from 'lucide-react'
 
 import { useLocale } from '~/lib/locale'
 import { useTheme, type Theme } from '~/lib/theme'
@@ -124,6 +125,18 @@ export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
             </DropdownMenuSubContent>
           </DropdownMenuPortal>
         </DropdownMenuSub>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link
+            to="/settings/security"
+            className="flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent"
+          >
+            <Shield aria-hidden="true" className="h-4 w-4" />
+            <span>{m.nav_security()}</span>
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 

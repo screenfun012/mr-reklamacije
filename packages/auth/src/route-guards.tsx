@@ -18,10 +18,8 @@ export type MRAuthClientForPermissions = {
   useSession: () => {
     data:
       | {
-          user?: {
-            roles?: unknown
-            permissions?: unknown
-          } | null
+          /** Better-Auth user payload; fields depend on plugins (e.g. roles, twoFactorEnabled). */
+          user?: Record<string, unknown> | null
         }
       | null
       | undefined
@@ -123,7 +121,7 @@ export function usePermissions(authClient: MRAuthClientForPermissions): {
   isLoading: boolean
 } {
   const { data: session, isPending } = authClient.useSession()
-  const permissions = normalizePermissions(session?.user?.permissions)
+  const permissions = normalizePermissions(session?.user?.['permissions'])
   const permissionSet = new Set(permissions)
 
   return {
@@ -144,7 +142,7 @@ export function useHasRole(
   roleOrRoles: string | readonly string[],
 ): boolean {
   const { data: session } = authClient.useSession()
-  const userRoles = normalizeRoles(session?.user?.roles)
+  const userRoles = normalizeRoles(session?.user?.['roles'])
   const required = Array.isArray(roleOrRoles) ? roleOrRoles : [roleOrRoles]
   return required.some((r) => userRoles.includes(r))
 }
@@ -195,7 +193,7 @@ export function Can(
 
   const permissions = usePermissions(authClient)
   const { data: session } = authClient.useSession()
-  const userRoles = normalizeRoles(session?.user?.roles)
+  const userRoles = normalizeRoles(session?.user?.['roles'])
 
   let allowed = false
 
@@ -213,3 +211,5 @@ export function Can(
 
   return allowed ? <>{children}</> : <>{fallback}</>
 }
+
+export * from './two-factor-ui.js'
