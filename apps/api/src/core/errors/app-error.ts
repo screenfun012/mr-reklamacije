@@ -5,7 +5,7 @@ import type { ErrorCode } from '@mr/shared'
  * Caught by app.onError() and mapped to standard JSON response.
  */
 export class AppError extends Error {
-  public override readonly name = 'AppError' as const
+  public override readonly name = 'AppError'
 
   constructor(
     public readonly code: ErrorCode,

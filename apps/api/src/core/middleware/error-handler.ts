@@ -2,6 +2,7 @@ import type { Logger } from '@mr/logger'
 import { ERROR_CODE } from '@mr/shared'
 import type { Env, Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
+import { ZodError } from 'zod'
 
 import { AppError } from '../errors/app-error.js'
 
@@ -16,6 +17,20 @@ import { AppError } from '../errors/app-error.js'
  */
 export function registerGlobalErrorHandler<E extends Env>(app: Hono<E>, logger: Logger): void {
   app.onError((err, c) => {
+    if (err instanceof ZodError) {
+      logger.warn({ issues: err.issues }, 'validation error')
+      return c.json(
+        {
+          error: {
+            code: ERROR_CODE.ValidationError,
+            message: 'Validation failed',
+            status: 400,
+          },
+        },
+        400,
+      )
+    }
+
     if (err instanceof AppError) {
       logger.warn(
         { code: err.code, status: err.status, message: err.message },

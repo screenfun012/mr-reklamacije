@@ -8,6 +8,12 @@ import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
 import { generalRateLimiter, loginRateLimiter } from './core/middleware/rate-limit.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
 import { registerHealthRoutes } from './routes/health.js'
+import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
+import { registerCustomersRoutes } from './modules/customers/index.js'
+import { registerDepartmentsRoutes } from './modules/departments/index.js'
+import { registerEmployeesRoutes } from './modules/employees/index.js'
+import { registerEngineTypesRoutes } from './modules/engine-types/index.js'
+import { registerExternalPartiesRoutes } from './modules/external-parties/index.js'
 
 export type { MRSessionUser }
 
@@ -57,9 +63,12 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
 
   registerHealthRoutes(app)
 
-  void container.env
-  void container.permissionResolver
-  void container.auditService
+  registerEmployeesRoutes(app, container)
+  registerEngineTypesRoutes(app, container)
+  registerExternalPartiesRoutes(app, container)
+  registerCustomersRoutes(app, container)
+  registerClaimSourcesRoutes(app, container)
+  registerDepartmentsRoutes(app, container)
 
   return app
 }

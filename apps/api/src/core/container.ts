@@ -1,4 +1,4 @@
-import { createAuth, createPermissionResolver, type Auth, type PermissionResolver } from '@mr/auth'
+import { createAuth, createPermissionResolver } from '@mr/auth'
 import { schema } from '@mr/db'
 import type { Logger } from '@mr/logger'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
@@ -7,6 +7,12 @@ import type { Pool } from 'pg'
 import type { Env } from '../config/env.js'
 import { createDb } from '../infrastructure/db.js'
 import { AuditService } from '../modules/audit/index.js'
+import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
+import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
+import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
+import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
+import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
+import { ExternalPartiesRepository, ExternalPartiesService } from '../modules/external-parties/index.js'
 
 /**
  * Application DI container. All stateful services are constructed here once
@@ -17,16 +23,58 @@ export interface Container {
   logger: Logger
   db: NodePgDatabase<typeof schema>
   pool: Pool
-  auth: Auth
-  permissionResolver: PermissionResolver
+  auth: ReturnType<typeof createAuth>
+  permissionResolver: ReturnType<typeof createPermissionResolver>
   auditService: AuditService
+  employeesRepository: EmployeesRepository
+  employeesService: EmployeesService
+  engineTypesRepository: EngineTypesRepository
+  engineTypesService: EngineTypesService
+  externalPartiesRepository: ExternalPartiesRepository
+  externalPartiesService: ExternalPartiesService
+  customersRepository: CustomersRepository
+  customersService: CustomersService
+  claimSourcesRepository: ClaimSourcesRepository
+  claimSourcesService: ClaimSourcesService
+  departmentsRepository: DepartmentsRepository
+  departmentsService: DepartmentsService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
   const { db, pool } = createDb(env)
+  return buildContainer(env, logger, db, pool)
+}
+
+export function buildContainer(
+  env: Env,
+  logger: Logger,
+  db: NodePgDatabase<typeof schema>,
+  pool: Pool,
+): Container {
   const auth = createAuth(db, { trustedOrigins: env.PUBLIC_ORIGINS })
   const permissionResolver = createPermissionResolver(db)
   const auditService = new AuditService(db)
+
+  const employeesRepository = new EmployeesRepository(db)
+  const employeesService = new EmployeesService(employeesRepository)
+
+  const engineTypesRepository = new EngineTypesRepository(db)
+  const engineTypesService = new EngineTypesService(engineTypesRepository, auditService)
+
+  const externalPartiesRepository = new ExternalPartiesRepository(db)
+  const externalPartiesService = new ExternalPartiesService(
+    externalPartiesRepository,
+    auditService,
+  )
+
+  const customersRepository = new CustomersRepository(db)
+  const customersService = new CustomersService(customersRepository)
+
+  const claimSourcesRepository = new ClaimSourcesRepository(db)
+  const claimSourcesService = new ClaimSourcesService(claimSourcesRepository)
+
+  const departmentsRepository = new DepartmentsRepository(db)
+  const departmentsService = new DepartmentsService(departmentsRepository)
 
   return {
     env,
@@ -36,5 +84,17 @@ export function createContainer(env: Env, logger: Logger): Container {
     auth,
     permissionResolver,
     auditService,
+    employeesRepository,
+    employeesService,
+    engineTypesRepository,
+    engineTypesService,
+    externalPartiesRepository,
+    externalPartiesService,
+    customersRepository,
+    customersService,
+    claimSourcesRepository,
+    claimSourcesService,
+    departmentsRepository,
+    departmentsService,
   }
 }
