@@ -133,6 +133,7 @@ People who assemble engines. Separate from `users` (not every employee uses the 
 | full_name | text | e.g. "IVICA STANISAVLJEVIĆ" |
 | normalized_name | text UNIQUE | canonical **matching key** from `normalizeName()`: uppercase ASCII, diacritics removed, Serbian **đ** normalized via `dj` digraph then collapsed to **d** so `Đorđe`, `Djordje`, and `Dorde` spellings all match; used for Excel import and deduplication (see `docs/06-excel-flow.md` — Employee normalization) |
 | user_id | uuid NULL FK users | if this employee uses the app |
+| department_id | uuid NULL FK departments | primary department (assembly team); used for employee picker filters |
 | hire_date | date NULL | |
 | terminated_at | date NULL | |
 | is_active | boolean | default true |
@@ -611,8 +612,8 @@ All entities 1─M audit_log (by entity_type + entity_id)
 ## Migration notes
 
 - All tables created in a single initial migration.
-- Seeds provided for: permissions, system roles, departments, claim_sources,
-  initial admin user (from env var).
+- Seeds provided for: permissions, system roles, departments, employees (dev dummy),
+  claim_sources, initial admin user (from env var).
 - Engine types seeded from extracted Excel codes (see `docs/06-excel-flow.md`).
 - EMOTIVE partners seeded with initial list.
 - Historical Excel data imported via separate ETL job, not initial migration

@@ -8,6 +8,7 @@ import * as schema from '../schema/index.js'
 import { seedClaimSources } from './claim-sources.js'
 import { seedCustomers } from './customers.js'
 import { seedDepartments } from './departments.js'
+import { seedEmployees } from './employees.js'
 import { seedPermissions } from './permissions.js'
 import { seedRoles } from './roles.js'
 
@@ -21,8 +22,9 @@ config({ path: resolve(repoRoot, '.env') })
  * 1. permissions (no FK)
  * 2. roles + role_permissions (FK to permissions)
  * 3. departments (no FK)
- * 4. customers (no FK, but claim_sources depends on them)
- * 5. claim_sources (FK to customers)
+ * 4. employees (FK to departments)
+ * 5. customers (no FK, but claim_sources depends on them)
+ * 6. claim_sources (FK to customers)
  *
  * All seeds are idempotent — safe to run multiple times.
  */
@@ -35,6 +37,7 @@ async function main(): Promise<void> {
     await seedPermissions(db)
     await seedRoles(db)
     await seedDepartments(db)
+    await seedEmployees(db)
     await seedCustomers(db)
     await seedClaimSources(db)
     console.log('[seed] All seeds completed successfully')

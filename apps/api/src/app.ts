@@ -1,24 +1,13 @@
-import type { Auth, PermissionResolver } from '@mr/auth'
-import type { Logger } from '@mr/logger'
 import { Hono } from 'hono'
 
-import type { Env } from './config/env.js'
+import type { Container } from './core/container.js'
 import { requireAuth } from './core/auth/require-auth.js'
 import { createSessionMiddleware } from './core/auth/session-middleware.js'
 import type { BetterAuthFullSession, MRSessionUser } from './core/auth/session-types.js'
 import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
 import { generalRateLimiter, loginRateLimiter } from './core/middleware/rate-limit.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
-import type { AuditService } from './modules/audit/index.js'
 import { registerHealthRoutes } from './routes/health.js'
-
-export interface AppDeps {
-  logger: Logger
-  env: Env
-  auth: Auth
-  permissionResolver: PermissionResolver
-  auditService: AuditService
-}
 
 export type { MRSessionUser }
 
@@ -48,14 +37,14 @@ function isPublicPath(path: string): boolean {
  * 7. Better-Auth `/api/auth/*`
  * 8. Routes (health, future modules)
  */
-export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
+export function createApp(container: Container): Hono<{ Variables: AppVariables }> {
   const app = new Hono<{ Variables: AppVariables }>()
 
-  registerGlobalErrorHandler(app, deps.logger)
-  app.use('*', createRequestLogger(deps.logger))
+  registerGlobalErrorHandler(app, container.logger)
+  app.use('*', createRequestLogger(container.logger))
   app.use('*', generalRateLimiter)
   app.use('/api/auth/sign-in/email', loginRateLimiter)
-  app.use('*', createSessionMiddleware(deps.auth))
+  app.use('*', createSessionMiddleware(container.auth))
 
   app.use('*', async (c, next) => {
     if (isPublicPath(c.req.path)) {
@@ -64,13 +53,13 @@ export function createApp(deps: AppDeps): Hono<{ Variables: AppVariables }> {
     return requireAuth()(c, next)
   })
 
-  app.on(['POST', 'GET'], '/api/auth/*', (c) => deps.auth.handler(c.req.raw))
+  app.on(['POST', 'GET'], '/api/auth/*', (c) => container.auth.handler(c.req.raw))
 
   registerHealthRoutes(app)
 
-  void deps.env
-  void deps.permissionResolver
-  void deps.auditService
+  void container.env
+  void container.permissionResolver
+  void container.auditService
 
   return app
 }

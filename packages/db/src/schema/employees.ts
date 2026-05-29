@@ -3,6 +3,7 @@ import {
   boolean,
   date,
   foreignKey,
+  index,
   integer,
   pgTable,
   text,
@@ -38,6 +39,7 @@ export const employees = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     fullName: text('full_name').notNull(),
     normalizedName: text('normalized_name').notNull(),
+    departmentId: uuid('department_id'),
     userId: uuid('user_id'),
     hireDate: date('hire_date', { mode: 'date' }),
     terminatedAt: date('terminated_at', { mode: 'date' }),
@@ -53,14 +55,28 @@ export const employees = pgTable(
   (t) => [
     uniqueIndex('employees_normalized_name_key').on(t.normalizedName),
     foreignKey({
+      name: 'employees_department_id_fkey',
+      columns: [t.departmentId],
+      foreignColumns: [departments.id],
+    }).onDelete('set null'),
+    foreignKey({
       name: 'employees_user_id_fkey',
       columns: [t.userId],
       foreignColumns: [users.id],
     }).onDelete('set null'),
+    index('idx_employees_department_id').on(t.departmentId),
   ],
 )
 
+export const departmentsRelations = relations(departments, ({ many }) => ({
+  employees: many(employees),
+}))
+
 export const employeesRelations = relations(employees, ({ one }) => ({
+  department: one(departments, {
+    fields: [employees.departmentId],
+    references: [departments.id],
+  }),
   user: one(users, {
     fields: [employees.userId],
     references: [users.id],

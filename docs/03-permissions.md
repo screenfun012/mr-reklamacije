@@ -154,6 +154,7 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `settings.departments.manage` | CRUD on departments |
 | `settings.engine_types.manage` | CRUD on engine types |
 | `settings.engine_types.create` | Create-only (for employees adding from claim form) |
+| `settings.external_parties.create` | Create-only (inline from claim fault form; mirrors engine_types.create) |
 | `settings.external_parties.manage` | CRUD on external parties |
 | `settings.claim_sources.manage` | CRUD on claim sources |
 | `settings.app_settings.view` | View app settings (excludes secrets) |
@@ -219,6 +220,7 @@ statistics.view_financial
 export.workbook_full
 export.workbook_partial
 settings.engine_types.create
+settings.external_parties.create
 translation.request
 ```
 

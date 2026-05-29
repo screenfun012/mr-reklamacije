@@ -1,21 +1,15 @@
-import { createAuth, createPermissionResolver } from '@mr/auth'
 import { serve } from '@hono/node-server'
 import { createLogger } from '@mr/logger'
 
 import { createApp } from './app.js'
 import { parseEnv } from './config/env.js'
-import { createDb } from './infrastructure/db.js'
-import { AuditService } from './modules/audit/index.js'
+import { createContainer } from './core/container.js'
 
 const env = parseEnv()
 const logger = createLogger('api')
+const container = createContainer(env, logger)
 
-const { db, pool } = createDb(env)
-const auth = createAuth(db, { trustedOrigins: env.PUBLIC_ORIGINS })
-const permissionResolver = createPermissionResolver(db)
-const auditService = new AuditService(db)
-
-const app = createApp({ logger, env, auth, permissionResolver, auditService })
+const app = createApp(container)
 
 const server = serve(
   {
@@ -32,7 +26,7 @@ function shutdown(signal: string): void {
   logger.info({ signal }, 'Shutting down')
   server.close(async () => {
     logger.info('HTTP server closed')
-    await pool.end()
+    await container.pool.end()
     logger.info('DB pool closed')
     process.exit(0)
   })

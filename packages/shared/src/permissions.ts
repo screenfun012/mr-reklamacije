@@ -104,6 +104,7 @@ export const PERMISSIONS = [
   'settings.departments.manage',
   'settings.engine_types.manage',
   'settings.engine_types.create',
+  'settings.external_parties.create',
   'settings.external_parties.manage',
   'settings.claim_sources.manage',
   'settings.app_settings.view',
@@ -171,6 +172,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'export.workbook_full',
   'export.workbook_partial',
   'settings.engine_types.create',
+  'settings.external_parties.create',
   'translation.request',
 ] as const
 
