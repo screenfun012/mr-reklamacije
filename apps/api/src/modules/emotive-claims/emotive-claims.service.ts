@@ -3,7 +3,6 @@ import {
   ClaimKind,
   type ClaimEventPayload,
   type EmotiveClaimFaultInput,
-  type Permission,
 } from '@mr/shared'
 
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -20,12 +19,6 @@ import type {
   EmotiveClaimListResponse,
   EmotiveClaimUpdateInput,
 } from './emotive-claims.validators.js'
-
-function assertPermission(actor: EmotiveClaimsActor, permission: Permission): void {
-  if (!actor.permissions.includes(permission)) {
-    throw new ForbiddenError()
-  }
-}
 
 function resolveListScope(actor: EmotiveClaimsActor): EmotiveClaimsListScope {
   if (actor.permissions.includes('emotive_claims.view')) {
@@ -55,8 +48,6 @@ export class EmotiveClaimsService {
     actor: EmotiveClaimsActor,
     auditContext: HttpActorContext,
   ): Promise<EmotiveClaimDetail> {
-    assertPermission(actor, 'emotive_claims.create')
-
     await this.validateCreateReferences(input)
 
     const customerId =
@@ -104,8 +95,6 @@ export class EmotiveClaimsService {
     actor: EmotiveClaimsActor,
     auditContext: HttpActorContext,
   ): Promise<EmotiveClaimDetail> {
-    assertPermission(actor, 'emotive_claims.update')
-
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
@@ -136,8 +125,6 @@ export class EmotiveClaimsService {
     actor: EmotiveClaimsActor,
     auditContext: HttpActorContext,
   ): Promise<void> {
-    assertPermission(actor, 'emotive_claims.delete')
-
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
@@ -165,8 +152,6 @@ export class EmotiveClaimsService {
     actor: EmotiveClaimsActor,
     auditContext: HttpActorContext,
   ): Promise<EmotiveClaimDetail> {
-    assertPermission(actor, 'emotive_claims.change_outcome')
-
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {

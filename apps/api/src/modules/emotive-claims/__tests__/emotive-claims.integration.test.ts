@@ -379,12 +379,22 @@ describe('EmotiveClaimsService integration', () => {
           userId: TEST_USER_ID,
           assignedBy: TEST_USER_ID,
         })
-        .onConflictDoNothing()
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+
+      const linkedCustomerIds = await container.emotiveClaimsRepository.getUserCustomerIds(
+        TEST_USER_ID,
+      )
+      expect(linkedCustomerIds).toContain(customerSelman)
+
+      const ownCustomerSearchToken = `view-own-customer-service-${crypto.randomUUID().slice(0, 8)}`
 
       const visible = await container.emotiveClaimsService.create(
         await buildCreateInput({
           customerId: customerSelman,
-          mrNumber: 'OWN-1/26',
+          mrNumber: `OWN-${crypto.randomUUID().slice(0, 8)}/26`,
+          warrantyReport: `${ownCustomerSearchToken} filter test`,
         }),
         FULL_OPERATOR,
         auditContext,
@@ -393,13 +403,23 @@ describe('EmotiveClaimsService integration', () => {
       await container.emotiveClaimsService.create(
         await buildCreateInput({
           customerId: customerVitobello,
-          mrNumber: 'OWN-2/26',
+          mrNumber: `OWN-OTHER-${crypto.randomUUID().slice(0, 8)}/26`,
         }),
         FULL_OPERATOR,
         auditContext,
       )
 
-      const list = await container.emotiveClaimsService.list(listQuery(), OWN_CUSTOMER_VIEWER)
+      expect(visible.customerId).toBe(customerSelman)
+
+      const list = await container.emotiveClaimsService.list(
+        listQuery({
+          customerId: customerSelman,
+          search: ownCustomerSearchToken,
+          dateFrom: new Date('2026-04-17'),
+          dateTo: new Date('2026-04-17'),
+        }),
+        OWN_CUSTOMER_VIEWER,
+      )
       expect(list.items.some((item) => item.id === visible.id)).toBe(true)
       expect(list.items.every((item) => item.customerId === customerSelman)).toBe(true)
     })

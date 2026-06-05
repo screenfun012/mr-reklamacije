@@ -1,5 +1,6 @@
 export { EmotiveClaimsRepository } from './emotive-claims.repository.js'
 export { EmotiveClaimsService } from './emotive-claims.service.js'
+export { registerEmotiveClaimsRoutes } from './emotive-claims.routes.js'
 export type {
   EmotiveClaimsActor,
   EmotiveClaimsAuditContext,

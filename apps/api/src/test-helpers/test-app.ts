@@ -13,6 +13,7 @@ import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
 import { registerCustomersRoutes } from '../modules/customers/index.js'
 import { registerDepartmentsRoutes } from '../modules/departments/index.js'
 import { registerEmployeesRoutes } from '../modules/employees/index.js'
+import { registerEmotiveClaimsRoutes } from '../modules/emotive-claims/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
 import { registerExternalPartiesRoutes } from '../modules/external-parties/index.js'
 
@@ -50,12 +51,34 @@ export function fakeLogger(): Logger {
 
 import { TEST_USER_ID } from './fixtures.js'
 
-export function testUser(permissions: Permission[], id = TEST_USER_ID): MRSessionUser {
+export function testUser(
+  permissions: Permission[],
+  id = TEST_USER_ID,
+  roles: string[] = ['operator'],
+): MRSessionUser {
   return {
     id,
-    roles: ['operator'],
+    roles,
     permissions,
   } as MRSessionUser
+}
+
+export function createEmotiveClaimsTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerEmotiveClaimsRoutes(app, container)
+
+  return app
 }
 
 export function createReferenceTestApp(
@@ -77,6 +100,7 @@ export function createReferenceTestApp(
   registerCustomersRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
+  registerEmotiveClaimsRoutes(app, container)
 
   return app
 }
