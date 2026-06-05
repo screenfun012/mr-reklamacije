@@ -91,6 +91,7 @@ export const emotiveClaims = pgTable(
       foreignColumns: [users.id],
     }).onDelete('set null'),
     index('idx_emotive_claims_date_of_claim').on(t.dateOfClaim.desc()),
+    index('idx_emotive_claims_date_of_claim_id').on(t.dateOfClaim.desc(), t.id.desc()),
     index('idx_emotive_claims_claim_year_outcome').on(t.claimYear, t.outcome),
     index('idx_emotive_claims_employee_id_claim_year').on(t.employeeId, t.claimYear),
     index('idx_emotive_claims_source_id').on(t.sourceId),

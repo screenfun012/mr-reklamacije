@@ -6,6 +6,7 @@ import { vi } from 'vitest'
 import type { AppVariables } from '../app.js'
 import type { MRSessionUser } from '../core/auth/session-types.js'
 import { buildContainer, type Container } from '../core/container.js'
+import type { EventBus } from '../modules/events/index.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
@@ -84,6 +85,7 @@ export function buildTestContainer(
   db: Container['db'],
   pool: Container['pool'],
   databaseUrl: string,
+  eventBus?: EventBus,
 ): Container {
-  return buildContainer(createTestEnv(databaseUrl), fakeLogger(), db, pool)
+  return buildContainer(createTestEnv(databaseUrl), fakeLogger(), db, pool, eventBus)
 }

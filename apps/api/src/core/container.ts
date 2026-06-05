@@ -12,7 +12,10 @@ import { CustomersRepository, CustomersService } from '../modules/customers/inde
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
+import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
 import { ExternalPartiesRepository, ExternalPartiesService } from '../modules/external-parties/index.js'
+import type { EventBus } from '../modules/events/index.js'
+import { NoOpEventBus } from '../modules/events/index.js'
 
 /**
  * Application DI container. All stateful services are constructed here once
@@ -38,6 +41,9 @@ export interface Container {
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
   departmentsService: DepartmentsService
+  eventBus: EventBus
+  emotiveClaimsRepository: EmotiveClaimsRepository
+  emotiveClaimsService: EmotiveClaimsService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
@@ -50,6 +56,7 @@ export function buildContainer(
   logger: Logger,
   db: NodePgDatabase<typeof schema>,
   pool: Pool,
+  eventBus: EventBus = new NoOpEventBus(),
 ): Container {
   const auth = createAuth(db, { trustedOrigins: env.PUBLIC_ORIGINS })
   const permissionResolver = createPermissionResolver(db)
@@ -76,6 +83,13 @@ export function buildContainer(
   const departmentsRepository = new DepartmentsRepository(db)
   const departmentsService = new DepartmentsService(departmentsRepository)
 
+  const emotiveClaimsRepository = new EmotiveClaimsRepository(db)
+  const emotiveClaimsService = new EmotiveClaimsService(
+    emotiveClaimsRepository,
+    auditService,
+    eventBus,
+  )
+
   return {
     env,
     logger,
@@ -96,5 +110,8 @@ export function buildContainer(
     claimSourcesService,
     departmentsRepository,
     departmentsService,
+    eventBus,
+    emotiveClaimsRepository,
+    emotiveClaimsService,
   }
 }

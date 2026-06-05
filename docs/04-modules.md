@@ -251,7 +251,7 @@ export class EmotiveClaimsService {
       await this.faults.attachMultiple(claim.id, input.faults, user.id)
     }
     await this.audit.log({ entity_type: 'emotive_claim', entity_id: claim.id, action: 'create', actor_user_id: user.id })
-    this.events.emit('emotive_claim.created', { id: claim.id, year: claim.claimYear })
+    this.events.publishClaimCreated({ kind: 'emotive', id: claim.id })
     return this.repo.findById(claim.id)  // full object with joins
   }
 }
