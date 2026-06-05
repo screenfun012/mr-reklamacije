@@ -1,6 +1,6 @@
 import type { ClaimEventPayload } from '@mr/shared'
 
-import type { EventBus } from '../modules/events/event-bus.js'
+import type { EventBus } from '../core/ports/event-bus-port.js'
 
 export type RecordedClaimEvent =
   | { type: 'created'; payload: ClaimEventPayload }

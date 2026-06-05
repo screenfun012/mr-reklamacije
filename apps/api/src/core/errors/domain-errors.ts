@@ -29,3 +29,17 @@ export class ConflictError extends AppError {
     Object.setPrototypeOf(this, ConflictError.prototype)
   }
 }
+
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Authentication required') {
+    super(ERROR_CODE.Unauthorized, 401, message)
+    Object.setPrototypeOf(this, UnauthorizedError.prototype)
+  }
+}
+
+export class InternalError extends AppError {
+  constructor(message = 'Something went wrong') {
+    super(ERROR_CODE.InternalError, 500, message)
+    Object.setPrototypeOf(this, InternalError.prototype)
+  }
+}

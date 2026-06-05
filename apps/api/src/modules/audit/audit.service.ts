@@ -1,30 +1,14 @@
 import { schema } from '@mr/db'
-import type { AuditAction } from '@mr/shared'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
-export interface AuditEntry {
-  entityType: string
-  entityId: string
-  action: AuditAction
-  actorUserId?: string | null
-  actorIp?: string | null
-  actorUserAgent?: string | null
-  changes?: Record<string, unknown> | null
-  context?: Record<string, unknown> | null
-}
+import type { AuditEntry, AuditPort } from '../../core/ports/audit-port.js'
+
+export type { AuditEntry } from '../../core/ports/audit-port.js'
 
 /**
  * AuditService — writes audit_log rows for business mutations.
- *
- * Usage patterns:
- * - From route handler: pass actor context extracted from Hono c.
- * - From Better-Auth hook: used for login audit (no Hono c available).
- * - From background job: actorUserId = null (system action).
- *
- * This is a write-only API in Phase 0. Query/export operations come in
- * Phase 3 (admin audit log UI).
  */
-export class AuditService {
+export class AuditService implements AuditPort {
   constructor(private readonly db: NodePgDatabase<typeof schema>) {}
 
   async log(entry: AuditEntry): Promise<void> {

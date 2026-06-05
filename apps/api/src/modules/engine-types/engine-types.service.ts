@@ -1,6 +1,7 @@
 import { AuditAction } from '@mr/shared'
 
-import type { AuditService } from '../audit/audit.service.js'
+import type { HttpActorContext } from '../../core/http/actor-context.js'
+import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EngineTypesRepository } from './engine-types.repository.js'
 import type {
   EngineTypeCreateInput,
@@ -9,16 +10,12 @@ import type {
   ReferenceListResponse,
 } from './engine-types.validators.js'
 
-export interface CreateEngineTypeActorContext {
-  actorUserId: string
-  actorIp?: string | null
-  actorUserAgent?: string | null
-}
+export type CreateEngineTypeActorContext = HttpActorContext
 
 export class EngineTypesService {
   constructor(
     private readonly repo: EngineTypesRepository,
-    private readonly audit: AuditService,
+    private readonly audit: AuditPort,
   ) {}
 
   async list(query: ReferenceListQuery): Promise<ReferenceListResponse<EngineTypeListItem>> {
@@ -27,7 +24,7 @@ export class EngineTypesService {
 
   async create(
     input: EngineTypeCreateInput,
-    actor: CreateEngineTypeActorContext,
+    actor: HttpActorContext,
   ): Promise<EngineTypeListItem> {
     const created = await this.repo.create(input)
 
@@ -36,8 +33,8 @@ export class EngineTypesService {
       entityId: created.id,
       action: AuditAction.Create,
       actorUserId: actor.actorUserId,
-      actorIp: actor.actorIp ?? null,
-      actorUserAgent: actor.actorUserAgent ?? null,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
       changes: { after: created },
     })
 

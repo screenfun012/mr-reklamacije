@@ -18,7 +18,7 @@ import {
   parseOptionalKeysetCursor,
   type KeysetCursor,
 } from '../../core/utils/pagination.js'
-import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { claimYearFromDate } from './claim-year.js'
 import {
   claimSources,
@@ -56,7 +56,7 @@ function keysetBeforeDateOfClaim(
   }
 
   const dateValue =
-    typeof cursor.primary === 'string' ? cursor.primary : formatDate(cursor.primary as Date)
+    typeof cursor.primary === 'string' ? cursor.primary : formatDate(new Date(cursor.primary))
 
   return sql`(${emotiveClaims.dateOfClaim}, ${emotiveClaims.id}) < (${dateValue}::date, ${cursor.id}::uuid)`
 }
@@ -118,9 +118,10 @@ function mapListItem(row: {
 }
 
 export class EmotiveClaimsRepository {
-  private readonly faultsRepo = new FaultsRepository()
-
-  constructor(private readonly db: ApiDatabase) {}
+  constructor(
+    private readonly db: ApiDatabase,
+    private readonly faultsRepo: FaultsRepository,
+  ) {}
 
   async getSourceDefaultCustomerId(sourceId: string): Promise<string | null> {
     const [row] = await this.db
@@ -141,7 +142,7 @@ export class EmotiveClaimsRepository {
     return rows.map((row) => row.customerId)
   }
 
-  async assertActiveEngineType(engineTypeId: string): Promise<void> {
+  async isEngineTypeActive(engineTypeId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: engineTypes.id })
       .from(engineTypes)
@@ -153,12 +154,10 @@ export class EmotiveClaimsRepository {
         ),
       )
       .limit(1)
-    if (row === undefined) {
-      throw new ValidationError('Invalid or inactive engine type')
-    }
+    return row !== undefined
   }
 
-  async assertActiveEmployee(employeeId: string): Promise<void> {
+  async isEmployeeActive(employeeId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: employees.id })
       .from(employees)
@@ -166,12 +165,10 @@ export class EmotiveClaimsRepository {
         and(eq(employees.id, employeeId), isNull(employees.deletedAt), eq(employees.isActive, true)),
       )
       .limit(1)
-    if (row === undefined) {
-      throw new ValidationError('Invalid or inactive employee')
-    }
+    return row !== undefined
   }
 
-  async assertActiveClaimSource(sourceId: string): Promise<void> {
+  async isClaimSourceActive(sourceId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: claimSources.id })
       .from(claimSources)
@@ -179,12 +176,10 @@ export class EmotiveClaimsRepository {
         and(eq(claimSources.id, sourceId), isNull(claimSources.deletedAt), eq(claimSources.isActive, true)),
       )
       .limit(1)
-    if (row === undefined) {
-      throw new ValidationError('Invalid or inactive claim source')
-    }
+    return row !== undefined
   }
 
-  async assertActiveCustomer(customerId: string): Promise<void> {
+  async isCustomerActive(customerId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: customers.id })
       .from(customers)
@@ -192,12 +187,10 @@ export class EmotiveClaimsRepository {
         and(eq(customers.id, customerId), isNull(customers.deletedAt), eq(customers.isActive, true)),
       )
       .limit(1)
-    if (row === undefined) {
-      throw new ValidationError('Invalid or inactive customer')
-    }
+    return row !== undefined
   }
 
-  async assertActiveDepartment(departmentId: string): Promise<void> {
+  async isDepartmentActive(departmentId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: departments.id })
       .from(departments)
@@ -209,12 +202,10 @@ export class EmotiveClaimsRepository {
         ),
       )
       .limit(1)
-    if (row === undefined) {
-      throw new ValidationError('Invalid or inactive department')
-    }
+    return row !== undefined
   }
 
-  async assertActiveExternalParty(externalPartyId: string): Promise<void> {
+  async isExternalPartyActive(externalPartyId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: externalParties.id })
       .from(externalParties)
@@ -226,9 +217,7 @@ export class EmotiveClaimsRepository {
         ),
       )
       .limit(1)
-    if (row === undefined) {
-      throw new ValidationError('Invalid or inactive external party')
-    }
+    return row !== undefined
   }
 
   async create(
@@ -261,7 +250,7 @@ export class EmotiveClaimsRepository {
 
       const claimId = created?.id
       if (claimId === undefined) {
-        throw new Error('Failed to insert emotive claim')
+        throw new InternalError('Failed to insert emotive claim')
       }
 
       await this.faultsRepo.insertMany(tx, claimId, input.faults)
@@ -276,7 +265,7 @@ export class EmotiveClaimsRepository {
 
     const detail = await this.findById(createdId, { type: 'all' })
     if (detail === null) {
-      throw new Error('Created emotive claim not found')
+      throw new InternalError('Created emotive claim not found')
     }
 
     return detail
@@ -463,15 +452,6 @@ export class EmotiveClaimsRepository {
     }
 
     return updated
-  }
-
-  async replaceFaults(
-    claimId: string,
-    faults: NonNullable<EmotiveClaimUpdateInput['faults']>,
-    actorId: string,
-    scope: EmotiveClaimsListScope,
-  ): Promise<EmotiveClaimDetail> {
-    return this.update(claimId, { faults }, actorId, scope)
   }
 
   async softDelete(id: string, actorId: string, scope: EmotiveClaimsListScope): Promise<void> {

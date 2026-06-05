@@ -6,15 +6,12 @@ import {
   type Permission,
 } from '@mr/shared'
 
-import { ForbiddenError, NotFoundError } from '../../core/errors/domain-errors.js'
-import type { AuditService } from '../audit/audit.service.js'
-import type { EventBus } from '../events/event-bus.js'
+import type { HttpActorContext } from '../../core/http/actor-context.js'
+import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { EmotiveClaimsRepository } from './emotive-claims.repository.js'
-import type {
-  EmotiveClaimsActor,
-  EmotiveClaimsAuditContext,
-  EmotiveClaimsListScope,
-} from './emotive-claims.types.js'
+import type { EmotiveClaimsActor, EmotiveClaimsListScope } from './emotive-claims.types.js'
 import type {
   EmotiveClaimChangeOutcomeInput,
   EmotiveClaimCreateInput,
@@ -49,22 +46,21 @@ function emotiveEventPayload(id: string): ClaimEventPayload {
 export class EmotiveClaimsService {
   constructor(
     private readonly repo: EmotiveClaimsRepository,
-    private readonly audit: AuditService,
+    private readonly audit: AuditPort,
     private readonly events: EventBus,
   ) {}
 
   async create(
     input: EmotiveClaimCreateInput,
     actor: EmotiveClaimsActor,
-    auditContext: EmotiveClaimsAuditContext,
+    auditContext: HttpActorContext,
   ): Promise<EmotiveClaimDetail> {
     assertPermission(actor, 'emotive_claims.create')
 
     await this.validateCreateReferences(input)
 
     const customerId =
-      input.customerId ??
-      (await this.repo.getSourceDefaultCustomerId(input.sourceId))
+      input.customerId ?? (await this.repo.getSourceDefaultCustomerId(input.sourceId))
 
     const created = await this.repo.create(input, auditContext.actorUserId, customerId)
 
@@ -73,8 +69,8 @@ export class EmotiveClaimsService {
       entityId: created.id,
       action: AuditAction.Create,
       actorUserId: auditContext.actorUserId,
-      actorIp: auditContext.actorIp ?? null,
-      actorUserAgent: auditContext.actorUserAgent ?? null,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
       changes: { after: created },
     })
 
@@ -106,7 +102,7 @@ export class EmotiveClaimsService {
     id: string,
     input: EmotiveClaimUpdateInput,
     actor: EmotiveClaimsActor,
-    auditContext: EmotiveClaimsAuditContext,
+    auditContext: HttpActorContext,
   ): Promise<EmotiveClaimDetail> {
     assertPermission(actor, 'emotive_claims.update')
 
@@ -125,8 +121,8 @@ export class EmotiveClaimsService {
       entityId: id,
       action: AuditAction.Update,
       actorUserId: auditContext.actorUserId,
-      actorIp: auditContext.actorIp ?? null,
-      actorUserAgent: auditContext.actorUserAgent ?? null,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
       changes: { before, after: updated },
     })
 
@@ -138,7 +134,7 @@ export class EmotiveClaimsService {
   async softDelete(
     id: string,
     actor: EmotiveClaimsActor,
-    auditContext: EmotiveClaimsAuditContext,
+    auditContext: HttpActorContext,
   ): Promise<void> {
     assertPermission(actor, 'emotive_claims.delete')
 
@@ -155,8 +151,8 @@ export class EmotiveClaimsService {
       entityId: id,
       action: AuditAction.Delete,
       actorUserId: auditContext.actorUserId,
-      actorIp: auditContext.actorIp ?? null,
-      actorUserAgent: auditContext.actorUserAgent ?? null,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
       changes: { before },
     })
 
@@ -167,7 +163,7 @@ export class EmotiveClaimsService {
     id: string,
     input: EmotiveClaimChangeOutcomeInput,
     actor: EmotiveClaimsActor,
-    auditContext: EmotiveClaimsAuditContext,
+    auditContext: HttpActorContext,
   ): Promise<EmotiveClaimDetail> {
     assertPermission(actor, 'emotive_claims.change_outcome')
 
@@ -184,8 +180,8 @@ export class EmotiveClaimsService {
       entityId: id,
       action: AuditAction.Update,
       actorUserId: auditContext.actorUserId,
-      actorIp: auditContext.actorIp ?? null,
-      actorUserAgent: auditContext.actorUserAgent ?? null,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
       changes: { before, after: updated, outcome: input.outcome },
     })
 
@@ -195,29 +191,39 @@ export class EmotiveClaimsService {
   }
 
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
-    await this.repo.assertActiveEngineType(input.engineTypeId)
-    await this.repo.assertActiveEmployee(input.employeeId)
-    await this.repo.assertActiveClaimSource(input.sourceId)
+    if (!(await this.repo.isEngineTypeActive(input.engineTypeId))) {
+      throw new ValidationError('Invalid or inactive engine type')
+    }
+    if (!(await this.repo.isEmployeeActive(input.employeeId))) {
+      throw new ValidationError('Invalid or inactive employee')
+    }
+    if (!(await this.repo.isClaimSourceActive(input.sourceId))) {
+      throw new ValidationError('Invalid or inactive claim source')
+    }
 
-    if (input.customerId !== undefined) {
-      await this.repo.assertActiveCustomer(input.customerId)
+    if (input.customerId !== undefined && !(await this.repo.isCustomerActive(input.customerId))) {
+      throw new ValidationError('Invalid or inactive customer')
     }
 
     await this.validateFaults(input.faults)
   }
 
   private async validateUpdateReferences(input: EmotiveClaimUpdateInput): Promise<void> {
-    if (input.engineTypeId !== undefined) {
-      await this.repo.assertActiveEngineType(input.engineTypeId)
+    if (input.engineTypeId !== undefined && !(await this.repo.isEngineTypeActive(input.engineTypeId))) {
+      throw new ValidationError('Invalid or inactive engine type')
     }
-    if (input.employeeId !== undefined) {
-      await this.repo.assertActiveEmployee(input.employeeId)
+    if (input.employeeId !== undefined && !(await this.repo.isEmployeeActive(input.employeeId))) {
+      throw new ValidationError('Invalid or inactive employee')
     }
-    if (input.sourceId !== undefined) {
-      await this.repo.assertActiveClaimSource(input.sourceId)
+    if (input.sourceId !== undefined && !(await this.repo.isClaimSourceActive(input.sourceId))) {
+      throw new ValidationError('Invalid or inactive claim source')
     }
-    if (input.customerId !== undefined && input.customerId !== null) {
-      await this.repo.assertActiveCustomer(input.customerId)
+    if (
+      input.customerId !== undefined &&
+      input.customerId !== null &&
+      !(await this.repo.isCustomerActive(input.customerId))
+    ) {
+      throw new ValidationError('Invalid or inactive customer')
     }
     if (input.faults !== undefined) {
       await this.validateFaults(input.faults)
@@ -228,13 +234,19 @@ export class EmotiveClaimsService {
     for (const fault of faults) {
       switch (fault.faultType) {
         case 'employee':
-          await this.repo.assertActiveEmployee(fault.employeeId)
+          if (!(await this.repo.isEmployeeActive(fault.employeeId))) {
+            throw new ValidationError('Invalid or inactive employee')
+          }
           break
         case 'department':
-          await this.repo.assertActiveDepartment(fault.departmentId)
+          if (!(await this.repo.isDepartmentActive(fault.departmentId))) {
+            throw new ValidationError('Invalid or inactive department')
+          }
           break
         case 'external':
-          await this.repo.assertActiveExternalParty(fault.externalPartyId)
+          if (!(await this.repo.isExternalPartyActive(fault.externalPartyId))) {
+            throw new ValidationError('Invalid or inactive external party')
+          }
           break
       }
     }

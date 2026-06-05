@@ -59,7 +59,11 @@ describe('EngineTypes reference module', () => {
     it('creates engine type with defaults and writes audit log', async () => {
       const created = await container.engineTypesService.create(
         { code: 'TEST-N47', manufacturer: 'BMW' },
-        { actorUserId: testUser(['settings.engine_types.create']).id },
+        {
+          actorUserId: testUser(['settings.engine_types.create']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
       )
 
       expect(created.code).toBe('TEST-N47')
@@ -82,7 +86,11 @@ describe('EngineTypes reference module', () => {
       await expect(
         container.engineTypesService.create(
           { code: 'DUP-CODE' },
-          { actorUserId: testUser(['settings.engine_types.create']).id },
+          {
+          actorUserId: testUser(['settings.engine_types.create']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
         ),
       ).rejects.toMatchObject({ status: 409 })
     })

@@ -44,5 +44,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Dependency layer rules (api)
+        run: pnpm --filter api depcruise
+
       - name: Test
         run: pnpm test

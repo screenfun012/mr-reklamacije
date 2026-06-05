@@ -1,6 +1,7 @@
 import { AuditAction } from '@mr/shared'
 
-import type { AuditService } from '../audit/audit.service.js'
+import type { HttpActorContext } from '../../core/http/actor-context.js'
+import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ExternalPartiesRepository } from './external-parties.repository.js'
 import type {
   ExternalPartyCreateInput,
@@ -9,16 +10,12 @@ import type {
   ReferenceListResponse,
 } from './external-parties.validators.js'
 
-export interface CreateExternalPartyActorContext {
-  actorUserId: string
-  actorIp?: string | null
-  actorUserAgent?: string | null
-}
+export type CreateExternalPartyActorContext = HttpActorContext
 
 export class ExternalPartiesService {
   constructor(
     private readonly repo: ExternalPartiesRepository,
-    private readonly audit: AuditService,
+    private readonly audit: AuditPort,
   ) {}
 
   async list(query: ReferenceListQuery): Promise<ReferenceListResponse<ExternalPartyListItem>> {
@@ -27,7 +24,7 @@ export class ExternalPartiesService {
 
   async create(
     input: ExternalPartyCreateInput,
-    actor: CreateExternalPartyActorContext,
+    actor: HttpActorContext,
   ): Promise<ExternalPartyListItem> {
     const created = await this.repo.create(input)
 
@@ -36,8 +33,8 @@ export class ExternalPartiesService {
       entityId: created.id,
       action: AuditAction.Create,
       actorUserId: actor.actorUserId,
-      actorIp: actor.actorIp ?? null,
-      actorUserAgent: actor.actorUserAgent ?? null,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
       changes: { after: created },
     })
 

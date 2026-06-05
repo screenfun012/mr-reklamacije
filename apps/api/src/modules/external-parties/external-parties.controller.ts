@@ -1,19 +1,12 @@
 import type { Context } from 'hono'
 
-import type { MRSessionUser } from '../../core/auth/session-types.js'
+import { getActorContext } from '../../core/http/actor-context.js'
+import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import type { Container } from '../../core/container.js'
 import {
   ExternalPartyCreateInputSchema,
   ReferenceListQuerySchema,
 } from './external-parties.validators.js'
-
-function getActorContext(c: Context, user: MRSessionUser) {
-  return {
-    actorUserId: user.id,
-    actorIp: c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? null,
-    actorUserAgent: c.req.header('user-agent') ?? null,
-  }
-}
 
 export function createExternalPartiesController(container: Container) {
   return {
@@ -26,7 +19,7 @@ export function createExternalPartiesController(container: Container) {
     create: async (c: Context) => {
       const user = c.get('user')
       if (user === null) {
-        throw new Error('User must be authenticated')
+        throw new UnauthorizedError()
       }
 
       const body: unknown = await c.req.json()

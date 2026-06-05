@@ -49,7 +49,11 @@ const OWN_CUSTOMER_VIEWER: EmotiveClaimsActor = {
   permissions: ['emotive_claims.view_own_customer'],
 }
 
-const auditContext = { actorUserId: TEST_USER_ID }
+const auditContext = {
+  actorUserId: TEST_USER_ID,
+  actorIp: null,
+  actorUserAgent: null,
+}
 
 describe('EmotiveClaimsService integration', () => {
   let ctx: TestDbContext

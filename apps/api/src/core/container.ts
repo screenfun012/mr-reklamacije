@@ -6,6 +6,8 @@ import type { Pool } from 'pg'
 
 import type { Env } from '../config/env.js'
 import { createDb } from '../infrastructure/db.js'
+import type { AuditPort } from './ports/audit-port.js'
+import type { EventBus } from './ports/event-bus-port.js'
 import { AuditService } from '../modules/audit/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
@@ -13,8 +15,8 @@ import { DepartmentsRepository, DepartmentsService } from '../modules/department
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
+import { FaultsRepository } from '../modules/emotive-claims/faults/faults.repository.js'
 import { ExternalPartiesRepository, ExternalPartiesService } from '../modules/external-parties/index.js'
-import type { EventBus } from '../modules/events/index.js'
 import { NoOpEventBus } from '../modules/events/index.js'
 
 /**
@@ -28,7 +30,7 @@ export interface Container {
   pool: Pool
   auth: ReturnType<typeof createAuth>
   permissionResolver: ReturnType<typeof createPermissionResolver>
-  auditService: AuditService
+  auditService: AuditPort
   employeesRepository: EmployeesRepository
   employeesService: EmployeesService
   engineTypesRepository: EngineTypesRepository
@@ -83,7 +85,8 @@ export function buildContainer(
   const departmentsRepository = new DepartmentsRepository(db)
   const departmentsService = new DepartmentsService(departmentsRepository)
 
-  const emotiveClaimsRepository = new EmotiveClaimsRepository(db)
+  const faultsRepository = new FaultsRepository()
+  const emotiveClaimsRepository = new EmotiveClaimsRepository(db, faultsRepository)
   const emotiveClaimsService = new EmotiveClaimsService(
     emotiveClaimsRepository,
     auditService,
