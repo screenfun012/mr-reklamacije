@@ -14,6 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    env:
+      DATABASE_URL: postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mr
+          POSTGRES_PASSWORD: mr_dev_password
+          POSTGRES_DB: mr_reklamacije
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,6 +64,18 @@ jobs:
 
       - name: Dependency layer rules (api)
         run: pnpm --filter api depcruise
+
+      - name: Install Postgres extensions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/db-init/01-extensions.sql
+
+      - name: Database migrate
+        run: pnpm --filter @mr/db db:migrate
+
+      - name: Database seed
+        run: pnpm --filter @mr/db db:seed
 
       - name: Test
         run: pnpm test
