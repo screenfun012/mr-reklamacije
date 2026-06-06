@@ -19,7 +19,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        # Docker Library mirror — avoids Docker Hub anonymous pull rate limits on GHA runners
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: mr
           POSTGRES_PASSWORD: mr_dev_password
