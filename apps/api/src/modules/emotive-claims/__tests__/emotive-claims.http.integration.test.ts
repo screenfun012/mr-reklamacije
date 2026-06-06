@@ -81,8 +81,7 @@ describe('EmotiveClaims HTTP', () => {
     const employeeId =
       overrides.employeeId ??
       (await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')))
-    const sourceId =
-      overrides.sourceId ?? (await getClaimSourceIdByCode(ctx.db, 'SELMAN'))
+    const sourceId = overrides.sourceId ?? (await getClaimSourceIdByCode(ctx.db, 'SELMAN'))
 
     return {
       warrantyReport: 'Kvar na motoru pri hladnom startu',
@@ -97,9 +96,12 @@ describe('EmotiveClaims HTTP', () => {
     }
   }
 
-  async function createClaimViaHttp(
-    overrides: Partial<EmotiveClaimCreateInput> = {},
-  ): Promise<{ id: string; customerId: string | null; sourceId: string; internalNotes: string | null }> {
+  async function createClaimViaHttp(overrides: Partial<EmotiveClaimCreateInput> = {}): Promise<{
+    id: string
+    customerId: string | null
+    sourceId: string
+    internalNotes: string | null
+  }> {
     const app = createEmotiveClaimsTestApp(container, testUser([...FULL_OPERATOR_PERMS]))
     const input = await buildCreateInput(overrides)
     const res = await app.request('/api/emotive-claims', {

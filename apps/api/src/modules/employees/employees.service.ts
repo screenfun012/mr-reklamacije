@@ -1,5 +1,9 @@
 import type { EmployeesRepository } from './employees.repository.js'
-import type { EmployeeListItem, EmployeesListQuery, ReferenceListResponse } from './employees.validators.js'
+import type {
+  EmployeeListItem,
+  EmployeesListQuery,
+  ReferenceListResponse,
+} from './employees.validators.js'
 
 export class EmployeesService {
   constructor(private readonly repo: EmployeesRepository) {}

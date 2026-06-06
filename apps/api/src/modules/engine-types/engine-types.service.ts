@@ -22,10 +22,7 @@ export class EngineTypesService {
     return this.repo.list(query)
   }
 
-  async create(
-    input: EngineTypeCreateInput,
-    actor: HttpActorContext,
-  ): Promise<EngineTypeListItem> {
+  async create(input: EngineTypeCreateInput, actor: HttpActorContext): Promise<EngineTypeListItem> {
     const created = await this.repo.create(input)
 
     await this.audit.log({

@@ -1,3 +1,7 @@
+# Daily dev: Postgres only — `docker compose up -d postgres`
+# API + frontends run on the host (`pnpm --filter api dev`, `pnpm dev`).
+# Production-like API in Docker: `docker compose --profile prod-like up -d api`
+# Rebuild after dependency changes: `docker compose --profile prod-like build api`
 services:
   postgres:
     image: postgres:16-alpine
@@ -19,6 +23,8 @@ services:
       retries: 10
 
   api:
+    profiles:
+      - prod-like
     build:
       context: .
       dockerfile: apps/api/Dockerfile

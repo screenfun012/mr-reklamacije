@@ -25,7 +25,8 @@ module.exports = {
     {
       name: 'no-sibling-modules',
       severity: 'error',
-      comment: 'Domain modules must not import sibling modules directly (use core ports + container)',
+      comment:
+        'Domain modules must not import sibling modules directly (use core ports + container)',
       from: { path: '^src/modules/([^/]+)/' },
       to: { path: '^src/modules/', pathNot: '^src/modules/$1/' },
     },

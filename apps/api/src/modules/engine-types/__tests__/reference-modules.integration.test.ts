@@ -3,7 +3,11 @@ import { AuditAction, CustomerKind, ERROR_CODE, ExternalPartyKind } from '@mr/sh
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createReferenceTestApp, buildTestContainer, testUser } from '../../../test-helpers/test-app.js'
+import {
+  createReferenceTestApp,
+  buildTestContainer,
+  testUser,
+} from '../../../test-helpers/test-app.js'
 import { ensureTestUser } from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { Container } from '../../../core/container.js'
@@ -87,10 +91,10 @@ describe('EngineTypes reference module', () => {
         container.engineTypesService.create(
           { code: 'DUP-CODE' },
           {
-          actorUserId: testUser(['settings.engine_types.create']).id,
-          actorIp: null,
-          actorUserAgent: null,
-        },
+            actorUserId: testUser(['settings.engine_types.create']).id,
+            actorIp: null,
+            actorUserAgent: null,
+          },
         ),
       ).rejects.toMatchObject({ status: 409 })
     })

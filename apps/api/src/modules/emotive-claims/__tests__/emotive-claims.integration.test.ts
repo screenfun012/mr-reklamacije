@@ -24,7 +24,10 @@ import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { Container } from '../../../core/container.js'
 import type { EmotiveClaimsActor } from '../emotive-claims.types.js'
-import type { EmotiveClaimCreateInput, EmotiveClaimListQuery } from '../emotive-claims.validators.js'
+import type {
+  EmotiveClaimCreateInput,
+  EmotiveClaimListQuery,
+} from '../emotive-claims.validators.js'
 
 function listQuery(overrides: Partial<EmotiveClaimListQuery> = {}): EmotiveClaimListQuery {
   return { limit: 50, includeDeleted: false, ...overrides }
@@ -83,8 +86,7 @@ describe('EmotiveClaimsService integration', () => {
     const employeeId =
       overrides.employeeId ??
       (await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')))
-    const sourceId =
-      overrides.sourceId ?? (await getClaimSourceIdByCode(ctx.db, 'SELMAN'))
+    const sourceId = overrides.sourceId ?? (await getClaimSourceIdByCode(ctx.db, 'SELMAN'))
 
     return {
       warrantyReport: 'Kvar na motoru pri hladnom startu',
@@ -383,9 +385,8 @@ describe('EmotiveClaimsService integration', () => {
           target: [schema.customerUsers.customerId, schema.customerUsers.userId],
         })
 
-      const linkedCustomerIds = await container.emotiveClaimsRepository.getUserCustomerIds(
-        TEST_USER_ID,
-      )
+      const linkedCustomerIds =
+        await container.emotiveClaimsRepository.getUserCustomerIds(TEST_USER_ID)
       expect(linkedCustomerIds).toContain(customerSelman)
 
       const ownCustomerSearchToken = `view-own-customer-service-${crypto.randomUUID().slice(0, 8)}`
@@ -469,10 +470,7 @@ describe('EmotiveClaimsService integration', () => {
         auditContext,
       )
 
-      const employeeId = await getEmployeeIdByNormalizedName(
-        ctx.db,
-        normalizeName('Nikola Jović'),
-      )
+      const employeeId = await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Nikola Jović'))
 
       const updated = await container.emotiveClaimsService.update(
         created.id,

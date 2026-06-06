@@ -11,7 +11,10 @@ import { ValidationError } from '../../../core/errors/domain-errors.js'
 
 describe('pagination utilities', () => {
   it('encodes and decodes keyset cursor', () => {
-    const encoded = encodeKeysetCursor({ primary: 'ABC', id: '00000000-0000-4000-8000-000000000001' })
+    const encoded = encodeKeysetCursor({
+      primary: 'ABC',
+      id: '00000000-0000-4000-8000-000000000001',
+    })
     expect(decodeKeysetCursor(encoded)).toEqual({
       primary: 'ABC',
       id: '00000000-0000-4000-8000-000000000001',

@@ -35,6 +35,7 @@ function apiProxyPlugin(): PluginOption {
 export default defineConfig({
   server: {
     port: 3001,
+    strictPort: true,
   },
   resolve: {
     alias: {

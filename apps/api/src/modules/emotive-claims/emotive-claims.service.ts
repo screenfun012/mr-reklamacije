@@ -194,7 +194,10 @@ export class EmotiveClaimsService {
   }
 
   private async validateUpdateReferences(input: EmotiveClaimUpdateInput): Promise<void> {
-    if (input.engineTypeId !== undefined && !(await this.repo.isEngineTypeActive(input.engineTypeId))) {
+    if (
+      input.engineTypeId !== undefined &&
+      !(await this.repo.isEngineTypeActive(input.engineTypeId))
+    ) {
       throw new ValidationError('Invalid or inactive engine type')
     }
     if (input.employeeId !== undefined && !(await this.repo.isEmployeeActive(input.employeeId))) {

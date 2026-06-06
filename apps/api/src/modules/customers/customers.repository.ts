@@ -2,10 +2,7 @@ import { and, eq, ilike, isNull, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
 
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
-import {
-  buildPaginatedSlice,
-  parseOptionalKeysetCursor,
-} from '../../core/utils/pagination.js'
+import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { customers } from './customers.schema.js'
 import type {
   CustomerListItem,

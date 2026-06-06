@@ -3,10 +3,7 @@ import type { ApiDatabase } from '../../core/database.js'
 
 import { ConflictError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
-import {
-  buildPaginatedSlice,
-  parseOptionalKeysetCursor,
-} from '../../core/utils/pagination.js'
+import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { engineTypes } from './engine-types.schema.js'
 import type {
   EngineTypeCreateInput,
@@ -48,7 +45,9 @@ export class EngineTypesRepository {
 
     if (query.search !== undefined) {
       const pattern = `%${query.search}%`
-      conditions.push(or(ilike(engineTypes.code, pattern), ilike(engineTypes.manufacturer, pattern))!)
+      conditions.push(
+        or(ilike(engineTypes.code, pattern), ilike(engineTypes.manufacturer, pattern))!,
+      )
     }
 
     const keysetCondition = keysetAfter(engineTypes.code, engineTypes.id, cursor)

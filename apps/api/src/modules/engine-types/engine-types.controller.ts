@@ -3,10 +3,7 @@ import type { Context } from 'hono'
 import { getActorContext } from '../../core/http/actor-context.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import type { Container } from '../../core/container.js'
-import {
-  EngineTypeCreateInputSchema,
-  ReferenceListQuerySchema,
-} from './engine-types.validators.js'
+import { EngineTypeCreateInputSchema, ReferenceListQuerySchema } from './engine-types.validators.js'
 
 export function createEngineTypesController(container: Container) {
   return {

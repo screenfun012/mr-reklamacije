@@ -1,15 +1,5 @@
 import { schema } from '@mr/db'
-import {
-  and,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNull,
-  lte,
-  sql,
-  type SQL,
-} from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
@@ -48,9 +38,7 @@ function formatDate(value: Date | string): string {
   return value.toISOString().slice(0, 10)
 }
 
-function keysetBeforeDateOfClaim(
-  cursor: KeysetCursor | null,
-): SQL | undefined {
+function keysetBeforeDateOfClaim(cursor: KeysetCursor | null): SQL | undefined {
   if (cursor === null) {
     return undefined
   }
@@ -162,7 +150,11 @@ export class EmotiveClaimsRepository {
       .select({ id: employees.id })
       .from(employees)
       .where(
-        and(eq(employees.id, employeeId), isNull(employees.deletedAt), eq(employees.isActive, true)),
+        and(
+          eq(employees.id, employeeId),
+          isNull(employees.deletedAt),
+          eq(employees.isActive, true),
+        ),
       )
       .limit(1)
     return row !== undefined
@@ -173,7 +165,11 @@ export class EmotiveClaimsRepository {
       .select({ id: claimSources.id })
       .from(claimSources)
       .where(
-        and(eq(claimSources.id, sourceId), isNull(claimSources.deletedAt), eq(claimSources.isActive, true)),
+        and(
+          eq(claimSources.id, sourceId),
+          isNull(claimSources.deletedAt),
+          eq(claimSources.isActive, true),
+        ),
       )
       .limit(1)
     return row !== undefined
@@ -184,7 +180,11 @@ export class EmotiveClaimsRepository {
       .select({ id: customers.id })
       .from(customers)
       .where(
-        and(eq(customers.id, customerId), isNull(customers.deletedAt), eq(customers.isActive, true)),
+        and(
+          eq(customers.id, customerId),
+          isNull(customers.deletedAt),
+          eq(customers.isActive, true),
+        ),
       )
       .limit(1)
     return row !== undefined

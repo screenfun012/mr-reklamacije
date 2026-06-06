@@ -9,24 +9,31 @@
     "build": "turbo run build",
     "create-admin": "tsx scripts/create-admin-user.mts",
     "dev": "pnpm -r --filter \"./apps/*-web\" --parallel run dev",
-    "dev:all": "docker compose up -d && pnpm dev",
+    "dev:db": "docker compose up -d postgres",
     "format": "prettier --write .",
+    "format:write": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@types/node": "^20.19.39",
     "@mr/auth": "workspace:*",
     "@mr/db": "workspace:*",
     "@mr/eslint-config": "workspace:*",
+    "@types/node": "^20.19.39",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.2",
     "eslint": "^9.39.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "prettier": "^3.7.4",
     "tsx": "^4.21.0",
     "turbo": "^2.9.6",
     "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,cjs,json,md}": "prettier --write"
   }
 }

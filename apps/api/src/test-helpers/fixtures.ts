@@ -61,10 +61,7 @@ export async function getCustomerIdByName(db: ApiDatabase, name: string): Promis
   return customer.id
 }
 
-export async function getDepartmentIdByCode(
-  db: ApiDatabase,
-  code: string,
-): Promise<string> {
+export async function getDepartmentIdByCode(db: ApiDatabase, code: string): Promise<string> {
   const [department] = await db
     .select({ id: schema.departments.id })
     .from(schema.departments)

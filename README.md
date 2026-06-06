@@ -54,6 +54,10 @@ See `.cursor/rules/` for the complete set of `.mdc` files that Cursor must follo
 
 ## Local Development
 
+**Standard flow:** Postgres in Docker; API and frontends on the host (hot reload, no stale container deps).
+
+See also [`CONTRIBUTING.md`](CONTRIBUTING.md) for pre-commit checks and [`docs/DEV_SETUP.md`](docs/DEV_SETUP.md) for troubleshooting.
+
 ### Quick start
 
 1. **Install dependencies:**
@@ -62,10 +66,10 @@ See `.cursor/rules/` for the complete set of `.mdc` files that Cursor must follo
 pnpm install
 ```
 
-2. **Start backend (Postgres + API) in background:**
+2. **Start Postgres:**
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
 3. **Database migrations & seed** (uses `DATABASE_URL` in `apps/api/.env`; run after Postgres is reachable, whenever the schema is new or after `docker compose down -v`):
@@ -75,17 +79,19 @@ pnpm --filter @mr/db run db:migrate
 pnpm --filter @mr/db run db:seed
 ```
 
-4. **Start all frontends in parallel:**
+4. **Start API** (terminal 1):
+
+```bash
+pnpm --filter api dev
+```
+
+5. **Start all frontends** (terminal 2):
 
 ```bash
 pnpm dev
 ```
 
-Or compose backend + parallel frontends in one step (migrate/seed not included):
-
-```bash
-pnpm dev:all
-```
+Frontends proxy `/api/*` to `http://localhost:3000`. Vite uses fixed ports with `strictPort: true` — if a port is busy, stop the duplicate process instead of silently switching ports.
 
 ### Service URLs
 
@@ -104,15 +110,23 @@ pnpm dev:all
 
 ### Stop everything
 
-- `Ctrl+C` in `pnpm dev` terminal (stops frontends)
-- `docker compose down` (stops Postgres + API)
+- `Ctrl+C` in `pnpm dev` / `pnpm --filter api dev` terminals
+- `docker compose down` (stops Postgres; data persists in volume)
+
+### Docker API (production-like smoke test only)
+
+Not used for daily dev. Optional Compose profile:
+
+```bash
+docker compose --profile prod-like build api   # after package.json / lockfile changes
+docker compose --profile prod-like up -d api
+```
 
 ### Common operations
 
-- **API logs:** `docker compose logs -f api`
 - **Postgres shell:** `docker exec -it mr-reklamacije-postgres psql -U mr -d mr_reklamacije`
-- **Rebuild API after dependency change:** `docker compose up -d --build api`
-- **Reset DB (DANGER — deletes all data):** `docker compose down -v && docker compose up -d`
+- **Reset DB (DANGER — deletes all data):** `docker compose down -v && docker compose up -d postgres`
+- **Format + verify before PR:** see `CONTRIBUTING.md`
 
 ## Language conventions
 

@@ -5,6 +5,4 @@ export interface EmotiveClaimsActor {
   permissions: readonly string[]
 }
 
-export type EmotiveClaimsListScope =
-  | { type: 'all' }
-  | { type: 'own_customer'; userId: string }
+export type EmotiveClaimsListScope = { type: 'all' } | { type: 'own_customer'; userId: string }

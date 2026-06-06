@@ -62,7 +62,8 @@ export function buildPaginatedSlice<T>(
   const hasMore = rows.length > limit
   const items = hasMore ? rows.slice(0, limit) : rows
   const lastItem = items.at(-1)
-  const nextCursor = hasMore && lastItem !== undefined ? encodeKeysetCursor(getCursor(lastItem)) : null
+  const nextCursor =
+    hasMore && lastItem !== undefined ? encodeKeysetCursor(getCursor(lastItem)) : null
 
   return { items, nextCursor, hasMore }
 }

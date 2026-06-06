@@ -76,7 +76,7 @@ Goal: Empty but fully wired monorepo that builds, runs locally, and deploys to s
 
 10. ✅ **Docker Compose** — Tačka 10 done
     - `docker-compose.yml`: Postgres (unchanged) plus **api** service built from `apps/api/Dockerfile`, hot-reload binds for `apps/api/src` + `packages`, Compose `DATABASE_URL` overrides host `localhost` with Docker DNS `postgres:5432`
-    - Root **`pnpm dev`** runs **admin-web**, **internal-web**, **portal-web** in parallel (`./apps/*-web`); **`pnpm dev:all`** runs `docker compose up -d` then **`pnpm dev`**
+    - Daily dev: **`docker compose up -d postgres`**, **`pnpm --filter api dev`**, **`pnpm dev`** (three frontends on :3001/:3002/:3003); Compose **api** service is **`prod-like` profile** only (not daily dev)
     - README Local Development section documents URLs, migrate/seed, logs, rebuild
 
 11. ✅ **CI pipeline** — Tačka 11 done

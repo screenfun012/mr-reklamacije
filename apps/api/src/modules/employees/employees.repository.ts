@@ -3,12 +3,13 @@ import { and, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
 
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
-import {
-  buildPaginatedSlice,
-  parseOptionalKeysetCursor,
-} from '../../core/utils/pagination.js'
+import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { employees } from './employees.schema.js'
-import type { EmployeeListItem, EmployeesListQuery, ReferenceListResponse } from './employees.validators.js'
+import type {
+  EmployeeListItem,
+  EmployeesListQuery,
+  ReferenceListResponse,
+} from './employees.validators.js'
 
 interface EmployeeRow {
   id: string
@@ -34,10 +35,7 @@ function buildSearchCondition(search: string | undefined): SQL | undefined {
   const pattern = `%${search}%`
   const normalized = normalizeName(search)
 
-  return or(
-    ilike(employees.fullName, pattern),
-    ilike(employees.normalizedName, `%${normalized}%`),
-  )
+  return or(ilike(employees.fullName, pattern), ilike(employees.normalizedName, `%${normalized}%`))
 }
 
 export class EmployeesRepository {

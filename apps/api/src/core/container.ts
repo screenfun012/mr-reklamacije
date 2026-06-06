@@ -16,7 +16,10 @@ import { EmployeesRepository, EmployeesService } from '../modules/employees/inde
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
 import { FaultsRepository } from '../modules/emotive-claims/faults/faults.repository.js'
-import { ExternalPartiesRepository, ExternalPartiesService } from '../modules/external-parties/index.js'
+import {
+  ExternalPartiesRepository,
+  ExternalPartiesService,
+} from '../modules/external-parties/index.js'
 import { NoOpEventBus } from '../modules/events/index.js'
 
 /**
@@ -71,10 +74,7 @@ export function buildContainer(
   const engineTypesService = new EngineTypesService(engineTypesRepository, auditService)
 
   const externalPartiesRepository = new ExternalPartiesRepository(db)
-  const externalPartiesService = new ExternalPartiesService(
-    externalPartiesRepository,
-    auditService,
-  )
+  const externalPartiesService = new ExternalPartiesService(externalPartiesRepository, auditService)
 
   const customersRepository = new CustomersRepository(db)
   const customersService = new CustomersService(customersRepository)

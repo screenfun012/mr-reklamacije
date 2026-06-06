@@ -2,7 +2,11 @@ import { schema } from '@mr/db'
 import { ERROR_CODE, normalizeName } from '@mr/shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createReferenceTestApp, buildTestContainer, testUser } from '../../../test-helpers/test-app.js'
+import {
+  createReferenceTestApp,
+  buildTestContainer,
+  testUser,
+} from '../../../test-helpers/test-app.js'
 import { getDepartmentIdByCode } from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { Container } from '../../../core/container.js'
@@ -16,7 +20,8 @@ describe('Employees reference module', () => {
     container = buildTestContainer(
       ctx.db,
       ctx.pool,
-      process.env['DATABASE_URL'] ?? 'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije',
+      process.env['DATABASE_URL'] ??
+        'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije',
     )
   })
 
@@ -96,7 +101,12 @@ describe('Employees reference module', () => {
       expect(res.status).toBe(200)
 
       const body = (await res.json()) as {
-        items: Array<{ id: string; full_name: string; is_active: boolean; department_id: string | null }>
+        items: Array<{
+          id: string
+          full_name: string
+          is_active: boolean
+          department_id: string | null
+        }>
         nextCursor: string | null
         hasMore: boolean
       }
