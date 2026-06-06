@@ -20,7 +20,7 @@ import {
   ExternalPartiesRepository,
   ExternalPartiesService,
 } from '../modules/external-parties/index.js'
-import { NoOpEventBus } from '../modules/events/index.js'
+import { InProcessEventBus } from '../modules/events/index.js'
 
 /**
  * Application DI container. All stateful services are constructed here once
@@ -61,7 +61,7 @@ export function buildContainer(
   logger: Logger,
   db: NodePgDatabase<typeof schema>,
   pool: Pool,
-  eventBus: EventBus = new NoOpEventBus(),
+  eventBus: EventBus = new InProcessEventBus(),
 ): Container {
   const auth = createAuth(db, { trustedOrigins: env.PUBLIC_ORIGINS })
   const permissionResolver = createPermissionResolver(db)

@@ -1,2 +1,4 @@
 export type { EventBus } from '../../core/ports/event-bus-port.js'
+export { InProcessEventBus } from './in-process-event-bus.js'
 export { NoOpEventBus } from './event-bus.js'
+export { registerEventsRoutes } from './sse.routes.js'

@@ -1,11 +1,13 @@
 import { schema } from '@mr/db'
 import {
   AuditAction,
+  ClaimEventType,
   ClaimKind,
   ClaimOutcome,
   EmotiveClaimCreateInputSchema,
   FaultType,
   normalizeName,
+  type AppEvent,
 } from '@mr/shared'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -19,7 +21,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
-import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
+import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { Container } from '../../../core/container.js'
@@ -61,16 +63,24 @@ const auditContext = {
 describe('EmotiveClaimsService integration', () => {
   let ctx: TestDbContext
   let container: Container
-  let eventBus: RecordingEventBus
+  let eventBus: InProcessEventBus
+  let receivedEvents: AppEvent[]
+  let unsubscribeEvents: (() => void) | null
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    eventBus = new RecordingEventBus()
+    eventBus = new InProcessEventBus()
+    receivedEvents = []
+    unsubscribeEvents = eventBus.subscribeUser(TEST_USER_ID, ['operator'], (event) => {
+      receivedEvents.push(event)
+    })
     container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL, eventBus)
     await ensureTestUser(ctx.db)
   })
 
   afterEach(async () => {
+    unsubscribeEvents?.()
+    unsubscribeEvents = null
     await ctx.cleanup()
   })
 
@@ -157,8 +167,11 @@ describe('EmotiveClaimsService integration', () => {
       expect(auditRows[0]?.action).toBe(AuditAction.Create)
       expect(auditRows[0]?.entityType).toBe('emotive_claim')
 
-      expect(eventBus.events).toEqual([
-        { type: 'created', payload: { kind: ClaimKind.Emotive, id: created.id } },
+      expect(receivedEvents).toEqual([
+        {
+          type: ClaimEventType.Created,
+          payload: { kind: ClaimKind.Emotive, id: created.id },
+        },
       ])
     })
 
@@ -433,7 +446,7 @@ describe('EmotiveClaimsService integration', () => {
         FULL_OPERATOR,
         auditContext,
       )
-      eventBus.events.length = 0
+      receivedEvents.length = 0
 
       const updated = await container.emotiveClaimsService.changeOutcome(
         created.id,
@@ -452,8 +465,8 @@ describe('EmotiveClaimsService integration', () => {
       expect(auditRows.length).toBeGreaterThanOrEqual(2)
       expect(auditRows.some((row) => row.action === AuditAction.Update)).toBe(true)
 
-      expect(eventBus.events).toContainEqual({
-        type: 'updated',
+      expect(receivedEvents).toContainEqual({
+        type: ClaimEventType.Updated,
         payload: { kind: ClaimKind.Emotive, id: created.id },
       })
     })
