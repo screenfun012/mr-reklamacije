@@ -21,6 +21,7 @@
   "auth_login_email": "Email",
   "auth_login_error_generic": "Login failed",
   "auth_login_error_invalid": "Invalid email or password",
+  "auth_login_error_rate_limited": "Too many login attempts. Wait a minute or restart the API: pnpm dev:api",
   "auth_login_insufficient_role": "This application requires a different role. Please sign in with an appropriate account.",
   "auth_login_password": "Password",
   "auth_login_submit": "Sign in",
@@ -85,5 +86,9 @@
   "theme_label": "Theme",
   "theme_light": "Light",
   "theme_system": "System",
-  "user_menu_label": "User menu"
+  "user_menu_label": "User menu",
+  "outcome_pending": "In progress",
+  "outcome_accepted": "Accepted",
+  "outcome_rejected": "Rejected",
+  "outcome_archived": "Archived"
 }

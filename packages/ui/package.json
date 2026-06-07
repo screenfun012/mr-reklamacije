@@ -20,6 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@mr/i18n": "workspace:*",
     "@mr/shared": "workspace:*",
     "@radix-ui/react-dialog": "1.1.15",
     "@radix-ui/react-dropdown-menu": "2.1.16",

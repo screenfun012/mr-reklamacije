@@ -95,6 +95,19 @@ describe('@mr/i18n messages', () => {
     expect(m.auth_login_2fa_network_error()).toBe('Network error. Please try again.')
   })
 
+  it('returns claim outcome labels per locale', () => {
+    setLocale('sr')
+    expect(m.outcome_pending()).toBe('U obradi')
+    expect(m.outcome_accepted()).toBe('Prihvaćeno')
+    expect(m.outcome_rejected()).toBe('Odbijeno')
+    expect(m.outcome_archived()).toBe('Arhiva')
+    setLocale('en')
+    expect(m.outcome_pending()).toBe('In progress')
+    expect(m.outcome_accepted()).toBe('Accepted')
+    expect(m.outcome_rejected()).toBe('Rejected')
+    expect(m.outcome_archived()).toBe('Archived')
+  })
+
   it('returns insufficient-role login banner message per locale', () => {
     setLocale('sr')
     expect(m.auth_login_insufficient_role()).toBe(

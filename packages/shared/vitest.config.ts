@@ -22,6 +22,7 @@ export default defineConfig({
         'src/constants/**',
         'src/errors/**',
         'src/schemas/**',
+        'src/queries/index.ts',
       ],
       thresholds: {
         lines: 100,

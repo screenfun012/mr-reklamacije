@@ -47,3 +47,4 @@ export {
   DropdownMenuRadioGroup,
 } from './primitives/dropdown-menu.js'
 export { AppShell, type AppShellProps } from './layouts/app-shell.js'
+export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'

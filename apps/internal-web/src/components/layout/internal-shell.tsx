@@ -4,6 +4,8 @@ import type { ReactNode } from 'react'
 
 import { authClient } from '~/lib/auth-client'
 
+import { QueryProvider } from '~/components/providers/query-provider'
+
 import { InternalSidebar } from './internal-sidebar'
 import { InternalTopbar } from './internal-topbar'
 
@@ -30,11 +32,15 @@ export function InternalShell({ children }: InternalShellProps) {
   const userName = session?.user.name ?? userEmail
 
   return (
-    <AppShell
-      sidebar={<InternalSidebar />}
-      topbar={<InternalTopbar userEmail={userEmail} userName={userName} onLogout={handleLogout} />}
-    >
-      {children}
-    </AppShell>
+    <QueryProvider>
+      <AppShell
+        sidebar={<InternalSidebar />}
+        topbar={
+          <InternalTopbar userEmail={userEmail} userName={userName} onLogout={handleLogout} />
+        }
+      >
+        {children}
+      </AppShell>
+    </QueryProvider>
   )
 }

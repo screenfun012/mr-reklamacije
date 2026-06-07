@@ -20,6 +20,7 @@
     "@mr/tailwind-preset": "workspace:*",
     "@mr/ui": "workspace:*",
     "@tanstack/react-form": "1.29.1",
+    "@tanstack/react-query": "5.90.5",
     "@tanstack/react-router": "1.169.1",
     "@tanstack/react-router-devtools": "1.166.13",
     "@tanstack/react-start": "1.167.59",
