@@ -1,14 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { requireRoles } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
 
 import { AdminShell } from '~/components/layout/admin-shell'
+import { adminRequireRoles } from '~/lib/auth-guard'
 import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/')({
-  beforeLoad: requireRoles(authClient, ['admin']),
+  beforeLoad: adminRequireRoles(['admin']),
   component: HomeComponent,
 })
 

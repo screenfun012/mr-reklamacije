@@ -117,15 +117,58 @@ describe('requireRoles', () => {
       vi.unstubAllGlobals()
     })
 
-    it('resolves without calling getSession when window is absent', async () => {
-      const getSession = vi.fn()
-      const authClient = { getSession, signOut: vi.fn() }
+    it('redirects to login when no server session loader is provided', async () => {
+      const authClient = createAuthStub({})
 
-      await expect(requireRoles(authClient, ['admin'])()).resolves.toBeUndefined()
+      await expect(requireRoles(authClient, ['admin'])()).rejects.toThrow('REDIRECT')
 
-      expect(getSession).not.toHaveBeenCalled()
+      expect(authClient.getSession).not.toHaveBeenCalled()
+      expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
+    })
+
+    it('redirects to login when server loader returns no user', async () => {
+      const authClient = createAuthStub({})
+      const loadServerSession = vi.fn().mockResolvedValue(null)
+
+      await expect(requireRoles(authClient, ['admin'], loadServerSession)()).rejects.toThrow(
+        'REDIRECT',
+      )
+
+      expect(loadServerSession).toHaveBeenCalledTimes(1)
+      expect(authClient.getSession).not.toHaveBeenCalled()
+      expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
+    })
+
+    it('resolves when server loader returns a user with an allowed role', async () => {
+      const authClient = createAuthStub({})
+      const loadServerSession = vi.fn().mockResolvedValue({
+        user: { roles: ['operator'] },
+      })
+
+      await expect(
+        requireRoles(authClient, ['operator', 'admin'], loadServerSession)(),
+      ).resolves.toBeUndefined()
+
+      expect(loadServerSession).toHaveBeenCalledTimes(1)
       expect(authClient.signOut).not.toHaveBeenCalled()
       expect(redirectMock).not.toHaveBeenCalled()
+    })
+
+    it('redirects with insufficient-role without calling signOut on the server', async () => {
+      const authClient = createAuthStub({})
+      const loadServerSession = vi.fn().mockResolvedValue({
+        user: { roles: ['client'] },
+      })
+
+      await expect(requireRoles(authClient, ['admin'], loadServerSession)()).rejects.toThrow(
+        'REDIRECT',
+      )
+
+      expect(authClient.signOut).not.toHaveBeenCalled()
+      expect(redirectMock.mock.calls[0]?.[0]).toEqual({
+        to: '/login',
+        search: { reason: LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE },
+      })
     })
   })
 })

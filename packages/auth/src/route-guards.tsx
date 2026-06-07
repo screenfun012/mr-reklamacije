@@ -28,7 +28,7 @@ export type MRAuthClientForPermissions = {
   }
 }
 
-function parseSessionPayload(raw: unknown): SessionLike | null {
+function parseClientSessionPayload(raw: unknown): SessionLike | null {
   if (!raw || typeof raw !== 'object' || !('data' in raw)) {
     return null
   }
@@ -40,6 +40,29 @@ function parseSessionPayload(raw: unknown): SessionLike | null {
     return null
   }
   return data as SessionLike
+}
+
+/** Normalizes Better-Auth client `{ data }` and direct API `{ user }` shapes. */
+function resolveSessionPayload(raw: unknown): SessionLike | null {
+  const fromClient = parseClientSessionPayload(raw)
+  if (fromClient) {
+    return fromClient
+  }
+
+  if (raw === null || raw === undefined) {
+    return null
+  }
+
+  if (typeof raw !== 'object' || !('user' in raw)) {
+    return null
+  }
+
+  const user = (raw as { user?: unknown }).user
+  if (user === null || user === undefined || typeof user !== 'object') {
+    return null
+  }
+
+  return { user: user as UserLike }
 }
 
 type SessionLike = {
@@ -60,32 +83,41 @@ function normalizePermissions(perms: unknown): readonly string[] {
   return perms.filter((p): p is string => typeof p === 'string')
 }
 
+export type ServerSessionLoader = () => Promise<unknown>
+
+function isBrowser(): boolean {
+  const g = globalThis as typeof globalThis & { window?: unknown }
+  return typeof g.window !== 'undefined'
+}
+
 /**
  * TanStack Router `beforeLoad` guard factory (ANY logic across role codes).
  *
- * Runs only in the browser. During SSR/Vite/RSC, Better-Auth's client pulls
- * Node-only primitives (Buffer/events) incorrectly when bundled — so we noop
- * on the server; the guard runs immediately after hydration.
+ * - Browser: `authClient.getSession()`
+ * - SSR: `loadServerSession` (pass `createServerSessionLoader(apiOrigin)` from
+ *   the app). Without a loader, SSR redirects to `/login` so protected HTML
+ *   never leaks to unauthenticated users.
  *
  * - No session → redirect to `/login`
- * - Session without allowed role → `signOut()` then redirect to
+ * - Session without allowed role → `signOut()` (client only) then redirect to
  *   `/login?reason=insufficient-role`
- *
- * Reads `user.roles` from the Better-Auth + customSession client payload.
  */
 export function requireRoles(
   authClient: MRAuthClientForRouteRoles,
   allowedRoles: readonly string[],
+  loadServerSession?: ServerSessionLoader,
 ): () => Promise<void> {
   const allowed = new Set(allowedRoles)
   return async () => {
-    const g = globalThis as typeof globalThis & { window?: unknown }
-    if (typeof g.window === 'undefined') {
-      return
+    const onServer = !isBrowser()
+
+    if (onServer && !loadServerSession) {
+      throw redirect({ to: '/login' })
     }
 
-    const raw = await authClient.getSession()
-    const sessionData = parseSessionPayload(raw)
+    const raw = onServer ? await loadServerSession!() : await authClient.getSession()
+
+    const sessionData = resolveSessionPayload(raw)
     const user = sessionData?.user
     if (!user) {
       throw redirect({ to: '/login' })
@@ -94,7 +126,9 @@ export function requireRoles(
     const roles = normalizeRoles(user.roles)
     const hasAllowedRole = roles.some((r) => allowed.has(r))
     if (!hasAllowedRole) {
-      await authClient.signOut()
+      if (!onServer) {
+        await authClient.signOut()
+      }
       throw redirect({
         to: '/login',
         search: { reason: LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE },
@@ -102,6 +136,8 @@ export function requireRoles(
     }
   }
 }
+
+export { createServerSessionLoader } from './server-session-loader.js'
 
 /**
  * Hook that returns the current user's permissions from the Better-Auth session.
@@ -210,6 +246,37 @@ export function Can(
   }
 
   return allowed ? <>{children}</> : <>{fallback}</>
+}
+
+export type LoginAuthErrorKind = 'invalid' | 'rate_limited' | 'generic'
+
+/** Maps Better-Auth / API error codes to login UI message keys. */
+export function loginAuthErrorKind(code: string | undefined): LoginAuthErrorKind {
+  if (code === 'INVALID_EMAIL_OR_PASSWORD') {
+    return 'invalid'
+  }
+  if (code === 'RATE_LIMITED') {
+    return 'rate_limited'
+  }
+  return 'generic'
+}
+
+export function loginAuthErrorMessage(
+  code: string | undefined,
+  messages: {
+    invalid: string
+    rateLimited: string
+    generic: string
+  },
+): string {
+  switch (loginAuthErrorKind(code)) {
+    case 'invalid':
+      return messages.invalid
+    case 'rate_limited':
+      return messages.rateLimited
+    default:
+      return messages.generic
+  }
 }
 
 export * from './two-factor-ui.js'

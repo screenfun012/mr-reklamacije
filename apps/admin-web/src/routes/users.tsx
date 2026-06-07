@@ -1,13 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { requireRoles } from '@mr/auth/route-guards'
+import { adminRequireRoles } from '~/lib/auth-guard'
 import { m } from '@mr/i18n'
 
 import { AdminShell } from '~/components/layout/admin-shell'
-import { authClient } from '~/lib/auth-client'
-
 export const Route = createFileRoute('/users')({
-  beforeLoad: requireRoles(authClient, ['admin']),
+  beforeLoad: adminRequireRoles(['admin']),
   component: UsersComponent,
 })
 

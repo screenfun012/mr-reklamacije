@@ -2,12 +2,7 @@ import { useState } from 'react'
 
 import { createFileRoute } from '@tanstack/react-router'
 
-import {
-  requireRoles,
-  TwoFactorDisableFlow,
-  TwoFactorEnrollFlow,
-  useTwoFactor,
-} from '@mr/auth/route-guards'
+import { TwoFactorDisableFlow, TwoFactorEnrollFlow, useTwoFactor } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 import {
   Button,
@@ -24,10 +19,11 @@ import {
 } from '@mr/ui'
 
 import { InternalShell } from '~/components/layout/internal-shell'
+import { internalRequireRoles } from '~/lib/auth-guard'
 import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/settings/security')({
-  beforeLoad: requireRoles(authClient, ['operator', 'admin']),
+  beforeLoad: internalRequireRoles(['operator', 'admin']),
   component: SecuritySettingsComponent,
 })
 

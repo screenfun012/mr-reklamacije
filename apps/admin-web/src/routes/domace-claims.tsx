@@ -1,13 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { requireRoles } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 
 import { AdminShell } from '~/components/layout/admin-shell'
-import { authClient } from '~/lib/auth-client'
+import { adminRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/domace-claims')({
-  beforeLoad: requireRoles(authClient, ['admin']),
+  beforeLoad: adminRequireRoles(['admin']),
   component: DomaceClaimsComponent,
 })
 

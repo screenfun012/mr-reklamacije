@@ -1,13 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { requireRoles } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 
 import { InternalShell } from '~/components/layout/internal-shell'
-import { authClient } from '~/lib/auth-client'
+import { internalRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/reklamacije')({
-  beforeLoad: requireRoles(authClient, ['operator', 'admin']),
+  beforeLoad: internalRequireRoles(['operator', 'admin']),
   component: ReklamacijeComponent,
 })
 

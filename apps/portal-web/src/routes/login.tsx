@@ -4,7 +4,10 @@ import { useForm } from '@tanstack/react-form'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE } from '@mr/auth/route-guards'
+import {
+  LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE,
+  loginAuthErrorMessage,
+} from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui'
 
@@ -49,11 +52,13 @@ function LoginComponent(): React.ReactElement {
         })
 
         if (result.error) {
-          if (result.error.code === 'INVALID_EMAIL_OR_PASSWORD') {
-            setAuthError(m.auth_login_error_invalid())
-          } else {
-            setAuthError(m.auth_login_error_generic())
-          }
+          setAuthError(
+            loginAuthErrorMessage(result.error.code, {
+              invalid: m.auth_login_error_invalid(),
+              rateLimited: m.auth_login_error_rate_limited(),
+              generic: m.auth_login_error_generic(),
+            }),
+          )
           return
         }
 
