@@ -71,6 +71,41 @@ export function freePort(port: number): boolean {
   return true
 }
 
+export function isPortFree(port: number): boolean {
+  return getPortListenerPid(port) === null
+}
+
+/**
+ * Wait until nothing is listening on `port`. Optionally SIGTERM stale listeners first.
+ */
+export async function waitForPortFree(
+  port: number,
+  options?: { timeoutMs?: number; killFirst?: boolean },
+): Promise<boolean> {
+  const timeoutMs = options?.timeoutMs ?? 10_000
+  const killFirst = options?.killFirst ?? false
+  const deadline = Date.now() + timeoutMs
+
+  if (killFirst) {
+    freePort(port)
+  }
+
+  while (Date.now() < deadline) {
+    if (isPortFree(port)) return true
+    await sleep(150)
+  }
+
+  return isPortFree(port)
+}
+
+/** Free port and block until the listener is gone (or timeout). */
+export async function ensurePortFree(port: number, timeoutMs = 10_000): Promise<boolean> {
+  if (!isPortFree(port)) {
+    freePort(port)
+  }
+  return waitForPortFree(port, { timeoutMs })
+}
+
 export function freePorts(ports: readonly number[]): number[] {
   const freed: number[] = []
   for (const port of ports) {

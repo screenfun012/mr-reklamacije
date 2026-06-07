@@ -48,7 +48,7 @@ pnpm dev                 # terminal 2 — admin :3001, internal :3002, portal :3
 
 1. **Dev servers live in Nikola’s terminal** — run `pnpm dev:all` (or manual trio) in iTerm/Terminal.app. **Cursor agents must not start or kill long-running dev servers.** If an agent needs to verify something, it uses a one-off command that exits (e.g. `pnpm dev:check`, unit tests) and does not touch Nikola’s `dev:all` session.
 2. **Never interrupt `pnpm install`** — a partial install corrupts `node_modules` (e.g. `nf3 2/` duplicate dirs, missing `package.json`). If install fails with EPERM on `.claude/settings.local.json`, run `pnpm install` **manually outside Cursor** (sandbox cannot unlink those files).
-3. **504 / connection refused / login flicker** almost always means API or Vite died underneath — run `pnpm dev:check`, then `pnpm dev:all`. The app code is usually fine; the environment is not.
+3. **504 / connection refused / login flicker** almost always means API or Vite died underneath — run `pnpm dev:check`, then `pnpm dev:all`. The app code is usually fine; the environment is not. In dev, workspace packages (`@mr/ui`, `@mr/auth`, …) resolve from **`src/`** via the package `"development"` export and Vite `ssr.noExternal` — not from `dist/`. If Vite logs `page reload packages/ui/dist/...`, restart `dev:all` after `pnpm install`; stale dist watchers cause full SSR reloads and can starve the API on `:3000`.
 4. Do **not** use `docker compose up -d api` for daily dev — Compose API is for prod-like smoke tests only (`--profile prod-like`).
 
 See `README.md` and `docs/DEV_SETUP.md` for first-time setup, migrations, and troubleshooting.

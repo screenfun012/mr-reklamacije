@@ -5,7 +5,15 @@
  */
 import { type ChildProcess } from 'node:child_process'
 
-import { DEV_PORTS, REPO_ROOT, freePort, sleep, spawnInherit, stopDockerApi } from './dev-lib.mts'
+import {
+  DEV_PORTS,
+  REPO_ROOT,
+  ensurePortFree,
+  freePort,
+  sleep,
+  spawnInherit,
+  stopDockerApi,
+} from './dev-lib.mts'
 
 const MAX_RESTARTS = 50
 const RESTART_DELAY_MS = 2000
@@ -42,6 +50,13 @@ async function main(): Promise<void> {
   let restarts = 0
 
   while (!shuttingDown && restarts <= MAX_RESTARTS) {
+    const portReady = await ensurePortFree(DEV_PORTS.api, 10_000)
+    if (!portReady) {
+      console.error(`[api] Port ${DEV_PORTS.api} still in use after 10s — forcing kill`)
+      freePort(DEV_PORTS.api)
+      await sleep(500)
+    }
+
     child = startApi()
 
     const exitCode = await new Promise<number | null>((resolve) => {

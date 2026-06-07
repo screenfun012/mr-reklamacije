@@ -43,7 +43,8 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from './primitives/dropdown-menu.js'
-export { AppShell, type AppShellProps } from './layouts/app-shell.js'
+export { AppShell } from './layouts/app-shell.js'
+export type { AppShellProps } from './layouts/app-shell.types.js'
 export { MrEnginesLogo, type MrEnginesLogoProps } from './components/mr-engines-logo.js'
 export { RouteNotFound } from './components/route-not-found.js'
 export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'
