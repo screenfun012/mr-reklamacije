@@ -1,58 +1,22 @@
 #!/usr/bin/env tsx
 /**
  * Dev API bootstrap: free port 3000, stop stray Docker API, start host API with hot reload.
- *
- * Usage: pnpm dev:api
+ * For supervised restart-on-crash, use dev:all or dev-api-supervisor.mts.
  */
-import { execSync, spawn } from 'node:child_process'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { spawn } from 'node:child_process'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const repoRoot = resolve(__dirname, '..')
+import { DEV_PORTS, REPO_ROOT, freePort, stopDockerApi } from './dev-lib.mts'
 
-function freePort(port: number): void {
-  try {
-    const pids = execSync(`lsof -ti :${port}`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    }).trim()
-    if (!pids) {
-      return
-    }
-    for (const pid of pids.split('\n').filter(Boolean)) {
-      try {
-        process.kill(Number(pid), 'SIGTERM')
-      } catch {
-        try {
-          process.kill(Number(pid), 'SIGKILL')
-        } catch {
-          /* already gone */
-        }
-      }
-    }
-    console.log(`✓ Freed port ${port}`)
-  } catch {
-    /* port already free */
-  }
+if (freePort(DEV_PORTS.api)) {
+  console.log(`✓ Freed port ${DEV_PORTS.api}`)
 }
-
-function stopDockerApi(): void {
-  try {
-    execSync('docker stop mr-reklamacije-api', { stdio: 'ignore' })
-    console.log('✓ Stopped Docker API container (mr-reklamacije-api)')
-  } catch {
-    /* not running */
-  }
-}
-
-freePort(3000)
 stopDockerApi()
+console.log('✓ Stopped Docker API container if it was running')
 
-console.log('→ Starting API on http://localhost:3000 …\n')
+console.log(`→ Starting API on http://localhost:${DEV_PORTS.api} …\n`)
 
 const child = spawn('pnpm', ['--filter', 'api', 'dev'], {
-  cwd: repoRoot,
+  cwd: REPO_ROOT,
   stdio: 'inherit',
   shell: true,
 })

@@ -85,13 +85,15 @@ pnpm --filter @mr/db run db:seed
 pnpm create-admin
 ```
 
-5. **Start API** (terminal 1 — frees port 3000 and stops stray Docker API):
+5. **Start everything** (one terminal — Postgres, API, all frontends):
 
 ```bash
-pnpm dev:api
+pnpm dev:all
 ```
 
-6. **Start all frontends** (terminal 2):
+Preflight: `pnpm dev:check`. Manual split: `pnpm dev:api` + `pnpm dev` in separate terminals.
+
+6. **Or start frontends only** (if API already running):
 
 ```bash
 pnpm dev
