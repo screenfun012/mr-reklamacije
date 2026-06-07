@@ -13,15 +13,20 @@
  * - baseLocale: final fallback (sr).
  */
 import { compile } from '@inlang/paraglide-js'
+import { rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const pkgRoot = join(scriptDir, '..')
+const outdir = join(pkgRoot, 'src/paraglide')
+
+// Recursive remove — plain rmdir fails with ENOTEMPTY when the outdir still has files (CI fresh checkout + concurrent compiles).
+rmSync(outdir, { recursive: true, force: true })
 
 await compile({
   project: join(pkgRoot, 'project.inlang'),
-  outdir: join(pkgRoot, 'src/paraglide'),
+  outdir,
   strategy: ['localStorage', 'globalVariable', 'preferredLanguage', 'baseLocale'],
   localStorageKey: 'mrr:locale',
 })
