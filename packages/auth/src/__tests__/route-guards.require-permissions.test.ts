@@ -14,8 +14,8 @@ vi.mock('@tanstack/react-router', () => ({
   redirect: (opts: unknown) => redirectMock(opts),
 }))
 
-import type { MRAuthClientForRouteRoles } from '../route-guards.js'
-import { requirePermissions } from '../route-guards.js'
+import type { MRAuthClientForRouteRoles } from '../auth-client-types.js'
+import { requirePermissions } from '../protected-routes.js'
 
 function createAuthStub(
   sessionPayload: {
@@ -38,13 +38,14 @@ describe('requirePermissions', () => {
     vi.unstubAllGlobals()
   })
 
-  it('redirects to login without session', async () => {
+  it('redirects to login without session in router context', async () => {
     const authClient = createAuthStub(null)
 
-    await expect(requirePermissions(authClient, ['emotive_claims.view'])()).rejects.toThrow(
-      'REDIRECT',
-    )
+    await expect(
+      requirePermissions(authClient, ['emotive_claims.view'])({ context: {} }),
+    ).rejects.toThrow('REDIRECT')
 
+    expect(authClient.getSession).not.toHaveBeenCalled()
     expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
   })
 
@@ -54,7 +55,11 @@ describe('requirePermissions', () => {
     })
 
     await expect(
-      requirePermissions(authClient, ['emotive_claims.view', 'emotive_claims.view_own_customer'])(),
+      requirePermissions(authClient, ['emotive_claims.view', 'emotive_claims.view_own_customer'])({
+        context: {
+          authSession: { user: { permissions: ['domace_claims.view'] } },
+        },
+      }),
     ).rejects.toThrow('REDIRECT')
 
     expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/' })
@@ -66,7 +71,11 @@ describe('requirePermissions', () => {
     })
 
     await expect(
-      requirePermissions(authClient, ['emotive_claims.view', 'emotive_claims.view_own_customer'])(),
+      requirePermissions(authClient, ['emotive_claims.view', 'emotive_claims.view_own_customer'])({
+        context: {
+          authSession: { user: { permissions: ['emotive_claims.view_own_customer'] } },
+        },
+      }),
     ).resolves.toBeUndefined()
 
     expect(redirectMock).not.toHaveBeenCalled()

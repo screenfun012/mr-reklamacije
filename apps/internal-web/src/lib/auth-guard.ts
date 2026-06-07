@@ -4,7 +4,7 @@ import { EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
 import { authClient } from './auth-client'
 
 const apiOrigin = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3000'
-const loadServerSession = createServerSessionLoader(apiOrigin)
+export const loadServerSession = createServerSessionLoader(apiOrigin)
 
 export function internalRequireRoles(allowedRoles: readonly string[]) {
   return requireRoles(authClient, allowedRoles, loadServerSession)

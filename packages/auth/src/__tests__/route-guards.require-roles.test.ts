@@ -14,8 +14,9 @@ vi.mock('@tanstack/react-router', () => ({
   redirect: (opts: unknown) => redirectMock(opts),
 }))
 
-import type { MRAuthClientForRouteRoles } from '../route-guards.js'
-import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE, requireRoles } from '../route-guards.js'
+import type { MRAuthClientForRouteRoles } from '../auth-client-types.js'
+import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE } from '../auth-client-types.js'
+import { requireRoles } from '../protected-routes.js'
 
 function createAuthStub(
   overrides: Partial<MRAuthClientForRouteRoles> & {
@@ -44,52 +45,61 @@ describe('requireRoles', () => {
     vi.clearAllMocks()
   })
 
-  it('redirects to login when session data is null', async () => {
-    const authClient = createAuthStub({ sessionPayload: null })
+  it('redirects to login when router context has no session on the client', async () => {
+    const authClient = createAuthStub({})
 
-    await expect(requireRoles(authClient, ['admin'])()).rejects.toThrow('REDIRECT')
+    await expect(requireRoles(authClient, ['admin'])({ context: {} })).rejects.toThrow('REDIRECT')
 
-    expect(authClient.signOut).not.toHaveBeenCalled()
-    expect(redirectMock).toHaveBeenCalledTimes(1)
-    expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
-  })
-
-  it('redirects to login when session has no user', async () => {
-    const authClient = createAuthStub({ sessionPayload: {} })
-
-    await expect(requireRoles(authClient, ['operator'])()).rejects.toThrow('REDIRECT')
-
+    expect(authClient.getSession).not.toHaveBeenCalled()
     expect(authClient.signOut).not.toHaveBeenCalled()
     expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
   })
 
-  it('resolves when user has one of the allowed roles', async () => {
-    const authClient = createAuthStub({
-      sessionPayload: { user: { roles: ['admin'] } },
-    })
+  it('redirects to login when authSession has no user', async () => {
+    const authClient = createAuthStub({})
 
-    await expect(requireRoles(authClient, ['admin', 'operator'])()).resolves.toBeUndefined()
+    await expect(
+      requireRoles(authClient, ['operator'])({ context: { authSession: {} } }),
+    ).rejects.toThrow('REDIRECT')
 
+    expect(authClient.getSession).not.toHaveBeenCalled()
+    expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
+  })
+
+  it('resolves when user has one of the allowed roles from router context', async () => {
+    const authClient = createAuthStub({})
+
+    await expect(
+      requireRoles(authClient, ['admin', 'operator'])({
+        context: { authSession: { user: { roles: ['admin'] } } },
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(authClient.getSession).not.toHaveBeenCalled()
     expect(authClient.signOut).not.toHaveBeenCalled()
     expect(redirectMock).not.toHaveBeenCalled()
   })
 
   it('resolves when user has multiple roles and one matches', async () => {
-    const authClient = createAuthStub({
-      sessionPayload: { user: { roles: ['viewer', 'operator'] } },
-    })
+    const authClient = createAuthStub({})
 
-    await expect(requireRoles(authClient, ['operator', 'admin'])()).resolves.toBeUndefined()
+    await expect(
+      requireRoles(authClient, ['operator', 'admin'])({
+        context: { authSession: { user: { roles: ['viewer', 'operator'] } } },
+      }),
+    ).resolves.toBeUndefined()
 
     expect(redirectMock).not.toHaveBeenCalled()
   })
 
   it('signs out and redirects with insufficient-role when user lacks allowed roles', async () => {
-    const authClient = createAuthStub({
-      sessionPayload: { user: { roles: ['client'] } },
-    })
+    const authClient = createAuthStub({})
 
-    await expect(requireRoles(authClient, ['admin'])()).rejects.toThrow('REDIRECT')
+    await expect(
+      requireRoles(authClient, ['admin'])({
+        context: { authSession: { user: { roles: ['client'] } } },
+      }),
+    ).rejects.toThrow('REDIRECT')
 
     expect(authClient.signOut).toHaveBeenCalledTimes(1)
     expect(redirectMock.mock.calls[0]?.[0]).toEqual({
@@ -99,11 +109,13 @@ describe('requireRoles', () => {
   })
 
   it('treats missing or invalid roles array as empty for authorization', async () => {
-    const authClient = createAuthStub({
-      sessionPayload: { user: { roles: 'not-an-array' } },
-    })
+    const authClient = createAuthStub({})
 
-    await expect(requireRoles(authClient, ['admin'])()).rejects.toThrow('REDIRECT')
+    await expect(
+      requireRoles(authClient, ['admin'])({
+        context: { authSession: { user: { roles: 'not-an-array' } } },
+      }),
+    ).rejects.toThrow('REDIRECT')
 
     expect(authClient.signOut).toHaveBeenCalled()
     expect(redirectMock.mock.calls[0]?.[0]).toMatchObject({
@@ -120,7 +132,7 @@ describe('requireRoles', () => {
     it('redirects to login when no server session loader is provided', async () => {
       const authClient = createAuthStub({})
 
-      await expect(requireRoles(authClient, ['admin'])()).rejects.toThrow('REDIRECT')
+      await expect(requireRoles(authClient, ['admin'])({ context: {} })).rejects.toThrow('REDIRECT')
 
       expect(authClient.getSession).not.toHaveBeenCalled()
       expect(redirectMock.mock.calls[0]?.[0]).toEqual({ to: '/login' })
@@ -130,9 +142,9 @@ describe('requireRoles', () => {
       const authClient = createAuthStub({})
       const loadServerSession = vi.fn().mockResolvedValue(null)
 
-      await expect(requireRoles(authClient, ['admin'], loadServerSession)()).rejects.toThrow(
-        'REDIRECT',
-      )
+      await expect(
+        requireRoles(authClient, ['admin'], loadServerSession)({ context: {} }),
+      ).rejects.toThrow('REDIRECT')
 
       expect(loadServerSession).toHaveBeenCalledTimes(1)
       expect(authClient.getSession).not.toHaveBeenCalled()
@@ -146,7 +158,7 @@ describe('requireRoles', () => {
       })
 
       await expect(
-        requireRoles(authClient, ['operator', 'admin'], loadServerSession)(),
+        requireRoles(authClient, ['operator', 'admin'], loadServerSession)({ context: {} }),
       ).resolves.toBeUndefined()
 
       expect(loadServerSession).toHaveBeenCalledTimes(1)
@@ -160,15 +172,32 @@ describe('requireRoles', () => {
         user: { roles: ['client'] },
       })
 
-      await expect(requireRoles(authClient, ['admin'], loadServerSession)()).rejects.toThrow(
-        'REDIRECT',
-      )
+      await expect(
+        requireRoles(authClient, ['admin'], loadServerSession)({ context: {} }),
+      ).rejects.toThrow('REDIRECT')
 
       expect(authClient.signOut).not.toHaveBeenCalled()
       expect(redirectMock.mock.calls[0]?.[0]).toEqual({
         to: '/login',
         search: { reason: LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE },
       })
+    })
+
+    it('uses authSession from context without calling server loader', async () => {
+      const authClient = createAuthStub({})
+      const loadServerSession = vi.fn().mockResolvedValue(null)
+
+      await expect(
+        requireRoles(
+          authClient,
+          ['admin'],
+          loadServerSession,
+        )({
+          context: { authSession: { user: { roles: ['admin'] } } },
+        }),
+      ).resolves.toBeUndefined()
+
+      expect(loadServerSession).not.toHaveBeenCalled()
     })
   })
 })

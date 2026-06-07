@@ -2,11 +2,15 @@
 import '@fontsource-variable/figtree/index.css'
 import '@fontsource/jetbrains-mono/400.css'
 
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
+import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
 
+import { authClient } from '~/lib/auth-client'
+import { loadServerSession } from '~/lib/auth-guard'
 import { useLocale } from '~/lib/locale'
+import type { PortalRouterContext } from '~/router-context'
 import globalsCss from '~/styles/globals.css?url'
 
 // Inline FOUC-prevention script: applies the resolved theme class to
@@ -14,7 +18,9 @@ import globalsCss from '~/styles/globals.css?url'
 // apps/portal-web/src/lib/theme.ts (`mrr:theme`).
 const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('mrr:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<PortalRouterContext>()({
+  staleTime: SESSION_ROUTE_STALE_MS,
+  beforeLoad: createRootAuthBeforeLoad(authClient, loadServerSession),
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

@@ -44,3 +44,14 @@ export const authClientPlugins: BetterAuthClientPlugin[] = [
   twoFactorClient(),
   customSessionClient<Auth>(),
 ]
+
+/** 5 min — matches root route staleTime; session is not refreshed on tab focus. */
+export const AUTH_SESSION_STALE_MS = 300_000
+
+/**
+ * Better-Auth client session options. Disables focus refetch so tab switches do not
+ * trigger session reload; real logout is driven by API 401 handling instead.
+ */
+export const authClientSessionOptions = {
+  refetchOnWindowFocus: false,
+} as const

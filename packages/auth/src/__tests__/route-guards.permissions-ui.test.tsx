@@ -29,6 +29,21 @@ describe('usePermissions', () => {
     expect(result.current.isLoading).toBe(true)
   })
 
+  it('returns empty list while session is refetching after tab focus', () => {
+    const authClient = createPermissionsClient({
+      data: { user: { permissions: ['claims.read'] } },
+      isPending: false,
+      isRefetching: true,
+      error: null,
+    })
+
+    const { result } = renderHook(() => usePermissions(authClient))
+
+    expect(result.current.list).toEqual([])
+    expect(result.current.has('claims.read')).toBe(false)
+    expect(result.current.isLoading).toBe(true)
+  })
+
   it('returns empty list when no session', () => {
     const authClient = createPermissionsClient({
       data: null,

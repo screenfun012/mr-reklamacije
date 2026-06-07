@@ -1,0 +1,70 @@
+export type AuthSessionUser = {
+  roles?: unknown
+  permissions?: unknown
+}
+
+export type AuthSessionPayload = {
+  user?: AuthSessionUser | null
+}
+
+/** Router-context shape — JSON-serializable fields only (TanStack beforeLoad). */
+export type SerializableAuthSession = {
+  user: {
+    roles: readonly string[]
+    permissions: readonly string[]
+  } | null
+}
+
+export function toSerializableAuthSession(
+  session: AuthSessionPayload | null,
+): SerializableAuthSession | null {
+  if (!session?.user || typeof session.user !== 'object') {
+    return null
+  }
+
+  const roles = Array.isArray(session.user.roles)
+    ? session.user.roles.filter((r): r is string => typeof r === 'string')
+    : []
+  const permissions = Array.isArray(session.user.permissions)
+    ? session.user.permissions.filter((p): p is string => typeof p === 'string')
+    : []
+
+  return { user: { roles, permissions } }
+}
+
+function parseClientSessionPayload(raw: unknown): AuthSessionPayload | null {
+  if (!raw || typeof raw !== 'object' || !('data' in raw)) {
+    return null
+  }
+  const data = (raw as { data: unknown }).data
+  if (data === null || data === undefined) {
+    return null
+  }
+  if (typeof data !== 'object') {
+    return null
+  }
+  return data as AuthSessionPayload
+}
+
+/** Normalizes Better-Auth client `{ data }` and direct API `{ user }` shapes. */
+export function resolveSessionPayload(raw: unknown): AuthSessionPayload | null {
+  const fromClient = parseClientSessionPayload(raw)
+  if (fromClient) {
+    return fromClient
+  }
+
+  if (raw === null || raw === undefined) {
+    return null
+  }
+
+  if (typeof raw !== 'object' || !('user' in raw)) {
+    return null
+  }
+
+  const user = (raw as { user?: unknown }).user
+  if (user === null || user === undefined || typeof user !== 'object') {
+    return null
+  }
+
+  return { user: user as AuthSessionUser }
+}
