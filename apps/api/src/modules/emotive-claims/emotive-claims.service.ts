@@ -176,17 +176,25 @@ export class EmotiveClaimsService {
   }
 
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
-    if (!(await this.repo.isEngineTypeActive(input.engineTypeId))) {
+    const [engineTypeActive, employeeActive, sourceActive, customerActive] = await Promise.all([
+      this.repo.isEngineTypeActive(input.engineTypeId),
+      this.repo.isEmployeeActive(input.employeeId),
+      this.repo.isClaimSourceActive(input.sourceId),
+      input.customerId !== undefined
+        ? this.repo.isCustomerActive(input.customerId)
+        : Promise.resolve(true),
+    ])
+
+    if (!engineTypeActive) {
       throw new ValidationError('Invalid or inactive engine type')
     }
-    if (!(await this.repo.isEmployeeActive(input.employeeId))) {
+    if (!employeeActive) {
       throw new ValidationError('Invalid or inactive employee')
     }
-    if (!(await this.repo.isClaimSourceActive(input.sourceId))) {
+    if (!sourceActive) {
       throw new ValidationError('Invalid or inactive claim source')
     }
-
-    if (input.customerId !== undefined && !(await this.repo.isCustomerActive(input.customerId))) {
+    if (!customerActive) {
       throw new ValidationError('Invalid or inactive customer')
     }
 
@@ -194,49 +202,70 @@ export class EmotiveClaimsService {
   }
 
   private async validateUpdateReferences(input: EmotiveClaimUpdateInput): Promise<void> {
-    if (
-      input.engineTypeId !== undefined &&
-      !(await this.repo.isEngineTypeActive(input.engineTypeId))
-    ) {
-      throw new ValidationError('Invalid or inactive engine type')
+    type ReferenceCheck = { active: Promise<boolean>; message: string }
+    const checks: ReferenceCheck[] = []
+
+    if (input.engineTypeId !== undefined) {
+      checks.push({
+        active: this.repo.isEngineTypeActive(input.engineTypeId),
+        message: 'Invalid or inactive engine type',
+      })
     }
-    if (input.employeeId !== undefined && !(await this.repo.isEmployeeActive(input.employeeId))) {
-      throw new ValidationError('Invalid or inactive employee')
+    if (input.employeeId !== undefined) {
+      checks.push({
+        active: this.repo.isEmployeeActive(input.employeeId),
+        message: 'Invalid or inactive employee',
+      })
     }
-    if (input.sourceId !== undefined && !(await this.repo.isClaimSourceActive(input.sourceId))) {
-      throw new ValidationError('Invalid or inactive claim source')
+    if (input.sourceId !== undefined) {
+      checks.push({
+        active: this.repo.isClaimSourceActive(input.sourceId),
+        message: 'Invalid or inactive claim source',
+      })
     }
-    if (
-      input.customerId !== undefined &&
-      input.customerId !== null &&
-      !(await this.repo.isCustomerActive(input.customerId))
-    ) {
-      throw new ValidationError('Invalid or inactive customer')
+    if (input.customerId !== undefined && input.customerId !== null) {
+      checks.push({
+        active: this.repo.isCustomerActive(input.customerId),
+        message: 'Invalid or inactive customer',
+      })
     }
+
+    const results = await Promise.all(checks.map((check) => check.active))
+    for (const [index, active] of results.entries()) {
+      if (!active) {
+        const failed = checks[index]
+        if (failed !== undefined) {
+          throw new ValidationError(failed.message)
+        }
+      }
+    }
+
     if (input.faults !== undefined) {
       await this.validateFaults(input.faults)
     }
   }
 
   private async validateFaults(faults: readonly EmotiveClaimFaultInput[]): Promise<void> {
-    for (const fault of faults) {
-      switch (fault.faultType) {
-        case 'employee':
-          if (!(await this.repo.isEmployeeActive(fault.employeeId))) {
-            throw new ValidationError('Invalid or inactive employee')
-          }
-          break
-        case 'department':
-          if (!(await this.repo.isDepartmentActive(fault.departmentId))) {
-            throw new ValidationError('Invalid or inactive department')
-          }
-          break
-        case 'external':
-          if (!(await this.repo.isExternalPartyActive(fault.externalPartyId))) {
-            throw new ValidationError('Invalid or inactive external party')
-          }
-          break
-      }
-    }
+    await Promise.all(
+      faults.map(async (fault) => {
+        switch (fault.faultType) {
+          case 'employee':
+            if (!(await this.repo.isEmployeeActive(fault.employeeId))) {
+              throw new ValidationError('Invalid or inactive employee')
+            }
+            break
+          case 'department':
+            if (!(await this.repo.isDepartmentActive(fault.departmentId))) {
+              throw new ValidationError('Invalid or inactive department')
+            }
+            break
+          case 'external':
+            if (!(await this.repo.isExternalPartyActive(fault.externalPartyId))) {
+              throw new ValidationError('Invalid or inactive external party')
+            }
+            break
+        }
+      }),
+    )
   }
 }
