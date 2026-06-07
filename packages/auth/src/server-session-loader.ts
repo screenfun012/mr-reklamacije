@@ -4,22 +4,27 @@
  */
 export function createServerSessionLoader(apiOrigin: string): () => Promise<unknown> {
   return async (): Promise<unknown> => {
-    const { getRequestHeaders } = await import('@tanstack/react-start/server')
-    const cookie = getRequestHeaders().get('cookie') ?? ''
+    try {
+      const { getRequestHeaders } = await import('@tanstack/react-start/server')
+      const cookie = getRequestHeaders().get('cookie') ?? ''
 
-    const res = await fetch(`${apiOrigin}/api/auth/get-session`, {
-      headers: cookie ? { cookie } : {},
-    })
+      const res = await fetch(`${apiOrigin}/api/auth/get-session`, {
+        headers: cookie ? { cookie } : {},
+      })
 
-    if (!res.ok) {
+      if (!res.ok) {
+        return null
+      }
+
+      const text = await res.text()
+      if (!text || text === 'null') {
+        return null
+      }
+
+      return JSON.parse(text) as unknown
+    } catch {
+      // API unreachable during SSR — unauthenticated; public routes must still render.
       return null
     }
-
-    const text = await res.text()
-    if (!text || text === 'null') {
-      return null
-    }
-
-    return JSON.parse(text) as unknown
   }
 }

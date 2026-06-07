@@ -30,6 +30,16 @@ describe('createRootAuthBeforeLoad', () => {
     expect(authClient.getSession).toHaveBeenCalledTimes(1)
     expect(result.authSession).toEqual({ user: { roles: ['operator'], permissions: [] } })
   })
+
+  it('returns null session when getSession fails so login route still renders', async () => {
+    const authClient: MRAuthClientForRouteRoles = {
+      getSession: vi.fn().mockRejectedValue(new TypeError('fetch failed')),
+      signOut: vi.fn(),
+    }
+    const beforeLoad = createRootAuthBeforeLoad(authClient)
+
+    await expect(beforeLoad()).resolves.toEqual({ authSession: null })
+  })
 })
 
 describe('resolveAuthSessionForGuard', () => {

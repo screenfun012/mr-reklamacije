@@ -39,8 +39,13 @@ export function createRootAuthBeforeLoad(
       return { authSession: null }
     }
 
-    const raw = onServer ? await loadServerSession!() : await authClient.getSession()
-    return { authSession: toSerializableAuthSession(resolveSessionPayload(raw)) }
+    try {
+      const raw = onServer ? await loadServerSession!() : await authClient.getSession()
+      return { authSession: toSerializableAuthSession(resolveSessionPayload(raw)) }
+    } catch {
+      // Network/API unavailable — treat as unauthenticated so public routes (e.g. /login) still render.
+      return { authSession: null }
+    }
   }
 }
 

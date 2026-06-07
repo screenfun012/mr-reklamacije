@@ -46,4 +46,12 @@ describe('createServerSessionLoader', () => {
     const load = createServerSessionLoader('http://localhost:3000')
     await expect(load()).resolves.toBeNull()
   })
+
+  it('returns null when fetch fails so SSR login page still renders', async () => {
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'))
+
+    const load = createServerSessionLoader('http://localhost:3000')
+    await expect(load()).resolves.toBeNull()
+  })
 })

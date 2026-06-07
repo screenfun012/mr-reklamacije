@@ -20,6 +20,7 @@
     "@mr/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "hono": "4.12.14",
+    "kysely": "^0.28.14",
     "pg": "^8.20.0",
     "zod": "4.3.6"
   },

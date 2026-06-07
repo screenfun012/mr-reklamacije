@@ -168,6 +168,9 @@ importers:
       hono:
         specifier: 4.12.14
         version: 4.12.14
+      kysely:
+        specifier: ^0.28.14
+        version: 0.28.17
       pg:
         specifier: ^8.20.0
         version: 8.21.0
