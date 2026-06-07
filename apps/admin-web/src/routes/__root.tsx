@@ -47,7 +47,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body suppressHydrationWarning>
         <div key={locale}>{children}</div>
-        <TanStackRouterDevtools position="bottom-right" />
+        {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />
       </body>
     </html>
