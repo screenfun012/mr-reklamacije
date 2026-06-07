@@ -21,6 +21,7 @@ describe('EmotiveClaimsTable', () => {
         total={1}
         items={[
           {
+            kind: 'emotive',
             id: '11111111-1111-4111-8111-111111111111',
             sequenceNumber: 1,
             claimNumber: 'EM-2026-001',

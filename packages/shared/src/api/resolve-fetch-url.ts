@@ -1,7 +1,11 @@
 const DEFAULT_API_ORIGIN = 'http://localhost:3000'
 
 function isBrowser(): boolean {
-  return typeof window !== 'undefined'
+  return (
+    typeof globalThis !== 'undefined' &&
+    'window' in globalThis &&
+    (globalThis as { window?: unknown }).window !== undefined
+  )
 }
 
 function isAbsoluteUrl(url: string): boolean {

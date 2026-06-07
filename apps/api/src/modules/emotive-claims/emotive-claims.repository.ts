@@ -1,4 +1,5 @@
 import { schema } from '@mr/db'
+import { ClaimKind } from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
@@ -74,6 +75,7 @@ function mapListItem(row: {
   createdAt: Date
 }): EmotiveClaimListItem {
   return {
+    kind: ClaimKind.Emotive,
     id: row.id,
     sequenceNumber: row.sequenceNumber,
     claimNumber: row.claimNumber,

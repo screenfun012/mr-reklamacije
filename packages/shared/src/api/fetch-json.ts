@@ -2,7 +2,11 @@ import { ApiError, parseApiErrorBody } from './api-error.js'
 import { resolveFetchUrl } from './resolve-fetch-url.js'
 
 function isBrowser(): boolean {
-  return typeof window !== 'undefined'
+  return (
+    typeof globalThis !== 'undefined' &&
+    'window' in globalThis &&
+    (globalThis as { window?: unknown }).window !== undefined
+  )
 }
 
 async function buildRequestHeaders(init?: RequestInit): Promise<Headers> {

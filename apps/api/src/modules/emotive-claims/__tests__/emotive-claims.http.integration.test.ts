@@ -143,6 +143,7 @@ describe('EmotiveClaims HTTP', () => {
       expect(res.status).toBe(200)
       const body = (await res.json()) as {
         items: Array<{
+          kind: string
           customerName: string | null
           engineTypeCode: string
           employeeName: string
@@ -155,6 +156,7 @@ describe('EmotiveClaims HTTP', () => {
       expect(body.total).toBeGreaterThan(0)
       expect(body.page).toBe(1)
       expect(body.pageSize).toBe(10)
+      expect(body.items[0]?.kind).toBe('emotive')
       expect(body.items[0]?.engineTypeCode).toBeTruthy()
       expect(body.items[0]?.employeeName).toBeTruthy()
     })

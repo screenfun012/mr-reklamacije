@@ -9,7 +9,6 @@ const ENGINE_TYPES = [
   'Range rover 448DT',
   'Ford YMF',
   'Opel A20DTH',
-  'BMW N47D20C',
 ] as const
 
 export async function seedEngineTypes(db: NodePgDatabase<typeof schema>): Promise<void> {

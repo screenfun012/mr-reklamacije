@@ -368,6 +368,7 @@ describe('EmotiveClaimsService integration', () => {
       expect(firstPage.page).toBe(1)
       expect(firstPage.pageSize).toBe(10)
       expect(firstPage.items).toHaveLength(2)
+      expect(firstPage.items[0]?.kind).toBe('emotive')
       expect(firstPage.items[0]?.mrNumber).toBe('7865/25')
       expect(firstPage.items[0]?.customerName).toBe('SELMAN')
       expect(firstPage.items[0]?.employeeName).toBeTruthy()

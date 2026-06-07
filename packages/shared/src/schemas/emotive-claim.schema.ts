@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { ClaimOutcome, FaultType } from '../enums.js'
+import { ClaimKind, ClaimOutcome, FaultType } from '../enums.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -110,6 +110,7 @@ export const EmotiveClaimFaultItemSchema = z.object({
 export type EmotiveClaimFaultItem = z.infer<typeof EmotiveClaimFaultItemSchema>
 
 export const EmotiveClaimListItemSchema = z.object({
+  kind: z.literal(ClaimKind.Emotive),
   id: z.string().uuid(),
   sequenceNumber: z.number().int(),
   claimNumber: z.string().nullable(),

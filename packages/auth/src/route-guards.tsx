@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react'
 
-import {
-  LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE,
-  type MRAuthClientForPermissions,
-} from './auth-client-types.js'
-import { requirePermissions, requireRoles } from './protected-routes.js'
+import type { MRAuthClientForPermissions } from './auth-client-types.js'
 
 export {
   LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE,
