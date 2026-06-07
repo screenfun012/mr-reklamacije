@@ -1,4 +1,5 @@
 import { usePermissions } from '@mr/auth/route-guards'
+import { MrEnginesLogo } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
 
 import { internalNavItems } from '~/config/navigation'
@@ -13,8 +14,7 @@ export function InternalSidebar() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-5 border-b border-sidebar-border">
-        <h1 className="text-lg font-semibold">MR Reklamacije</h1>
-        <p className="text-xs text-muted-foreground font-medium">Internal</p>
+        <MrEnginesLogo />
       </div>
 
       <nav className="flex-1 p-2" aria-label="Main navigation">

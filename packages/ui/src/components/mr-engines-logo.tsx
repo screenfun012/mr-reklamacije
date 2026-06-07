@@ -1,0 +1,20 @@
+export interface MrEnginesLogoProps {
+  className?: string
+}
+
+export function MrEnginesLogo({ className }: MrEnginesLogoProps) {
+  return (
+    <>
+      <img
+        src="/mr-engines-logo-light.png"
+        alt="MR Engines"
+        className={`h-8 w-auto dark:hidden ${className ?? ''}`}
+      />
+      <img
+        src="/mr-engines-logo-dark.png"
+        alt="MR Engines"
+        className={`hidden h-8 w-auto dark:block ${className ?? ''}`}
+      />
+    </>
+  )
+}

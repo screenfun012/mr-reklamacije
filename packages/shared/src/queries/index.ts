@@ -1,14 +1,17 @@
+export { emotiveClaimKeys } from './emotive-claim-keys.js'
 export {
-  emotiveClaimsListNextCursor,
   emotiveClaimsListOptions,
   emotiveClaimsListQueryKey,
   normalizeEmotiveClaimsListFilters,
   type EmotiveClaimsListFilters,
+  type EmotiveClaimsPageSize,
 } from './emotive-claims.js'
 export {
   EmotiveClaimsSearchSchema,
   emotiveClaimsFiltersFromSearch,
+  emotiveClaimsListOptionsFromSearch,
   emotiveClaimsListQueryKeyFromSearch,
+  emotiveClaimsPaginationFromSearch,
   emotiveClaimsSearchFromFilters,
   type EmotiveClaimsSearch,
 } from './emotive-claims-search.js'

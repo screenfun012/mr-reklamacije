@@ -100,7 +100,7 @@ describe('@mr/i18n messages', () => {
     expect(m.outcome_pending()).toBe('U obradi')
     expect(m.outcome_accepted()).toBe('Prihvaćeno')
     expect(m.outcome_rejected()).toBe('Odbijeno')
-    expect(m.outcome_archived()).toBe('Arhiva')
+    expect(m.outcome_archived()).toBe('Arhivirano')
     setLocale('en')
     expect(m.outcome_pending()).toBe('In progress')
     expect(m.outcome_accepted()).toBe('Accepted')

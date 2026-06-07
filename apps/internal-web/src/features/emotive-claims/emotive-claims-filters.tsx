@@ -1,4 +1,4 @@
-import { ClaimOutcome, type EmotiveClaimsSearch } from '@mr/shared'
+import { OUTCOME_REGISTRY, type EmotiveClaimsSearch, type OutcomeLabelKey } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Input } from '@mr/ui'
 import { useEffect, useState } from 'react'
@@ -6,6 +6,13 @@ import { useEffect, useState } from 'react'
 import { useDebouncedValue } from '~/lib/use-debounced-value'
 
 const SEARCH_DEBOUNCE_MS = 300
+
+const OUTCOME_LABELS: Record<OutcomeLabelKey, () => string> = {
+  outcome_pending: () => m.outcome_pending(),
+  outcome_accepted: () => m.outcome_accepted(),
+  outcome_rejected: () => m.outcome_rejected(),
+  outcome_archived: () => m.outcome_archived(),
+}
 
 export interface EmotiveClaimsFiltersProps {
   search: EmotiveClaimsSearch
@@ -30,6 +37,7 @@ export function EmotiveClaimsFilters({ search, onSearchChange }: EmotiveClaimsFi
     onSearchChange({
       ...search,
       search: nextSearch,
+      page: 1,
     })
   }, [debouncedSearch, onSearchChange, search])
 
@@ -45,14 +53,16 @@ export function EmotiveClaimsFilters({ search, onSearchChange }: EmotiveClaimsFi
             onSearchChange({
               ...search,
               outcome: value.length > 0 ? (value as EmotiveClaimsSearch['outcome']) : undefined,
+              page: 1,
             })
           }}
         >
           <option value="">{m.emotive_claims_filter_outcome_all()}</option>
-          <option value={ClaimOutcome.Pending}>{m.outcome_pending()}</option>
-          <option value={ClaimOutcome.Accepted}>{m.outcome_accepted()}</option>
-          <option value={ClaimOutcome.Rejected}>{m.outcome_rejected()}</option>
-          <option value={ClaimOutcome.Archived}>{m.outcome_archived()}</option>
+          {OUTCOME_REGISTRY.map((definition) => (
+            <option key={definition.key} value={definition.key}>
+              {OUTCOME_LABELS[definition.labelKey]()}
+            </option>
+          ))}
         </select>
       </label>
 
@@ -66,6 +76,7 @@ export function EmotiveClaimsFilters({ search, onSearchChange }: EmotiveClaimsFi
             onSearchChange({
               ...search,
               dateFrom: value.length > 0 ? value : undefined,
+              page: 1,
             })
           }}
         />
@@ -81,6 +92,7 @@ export function EmotiveClaimsFilters({ search, onSearchChange }: EmotiveClaimsFi
             onSearchChange({
               ...search,
               dateTo: value.length > 0 ? value : undefined,
+              page: 1,
             })
           }}
         />

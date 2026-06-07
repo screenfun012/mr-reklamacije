@@ -1,34 +1,28 @@
 import {
   EmotiveClaimsSearchSchema,
-  claimSourcesReferenceOptions,
-  customersReferenceOptions,
   emotiveClaimsFiltersFromSearch,
   emotiveClaimsListOptions,
-  engineTypesReferenceOptions,
+  emotiveClaimsPaginationFromSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button } from '@mr/ui'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
 import { useCallback } from 'react'
 
 import { InternalShell } from '~/components/layout/internal-shell'
 import { EmotiveClaimsListContent } from '~/features/emotive-claims/emotive-claims-list-content'
 import { EmotiveClaimsTableSkeleton } from '~/features/emotive-claims/emotive-claims-table'
 import { internalRequireEmotiveClaimsView } from '~/lib/auth-guard'
-import { queryClient } from '~/lib/query-client'
 
 export const Route = createFileRoute('/reklamacije')({
   validateSearch: (search) => EmotiveClaimsSearchSchema.parse(search),
   beforeLoad: internalRequireEmotiveClaimsView(),
   loaderDeps: ({ search }) => search,
-  loader: async ({ deps: search }) => {
+  loader: async ({ context: { queryClient }, deps: search }) => {
     const filters = emotiveClaimsFiltersFromSearch(search)
-    await Promise.all([
-      queryClient.ensureInfiniteQueryData(emotiveClaimsListOptions(filters)),
-      queryClient.ensureQueryData(customersReferenceOptions()),
-      queryClient.ensureQueryData(claimSourcesReferenceOptions()),
-      queryClient.ensureQueryData(engineTypesReferenceOptions()),
-    ])
+    const { page, pageSize } = emotiveClaimsPaginationFromSearch(search)
+    await queryClient.ensureQueryData(emotiveClaimsListOptions(filters, page, pageSize))
   },
   component: ReklamacijeComponent,
   pendingComponent: ReklamacijePending,
@@ -52,9 +46,15 @@ function ReklamacijeComponent() {
   return (
     <InternalShell>
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
+          </div>
+          <Button type="button" disabled className="gap-2 self-start">
+            <Plus className="size-4" />
+            {m.emotive_claims_new_claim()}
+          </Button>
         </div>
         <EmotiveClaimsListContent search={search} onSearchChange={handleSearchChange} />
       </div>

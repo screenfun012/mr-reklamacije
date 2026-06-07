@@ -47,4 +47,5 @@ export {
   DropdownMenuRadioGroup,
 } from './primitives/dropdown-menu.js'
 export { AppShell, type AppShellProps } from './layouts/app-shell.js'
+export { MrEnginesLogo, type MrEnginesLogoProps } from './components/mr-engines-logo.js'
 export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'

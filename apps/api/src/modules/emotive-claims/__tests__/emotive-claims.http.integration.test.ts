@@ -139,10 +139,24 @@ describe('EmotiveClaims HTTP', () => {
     it('returns 200 for emotive_claims.view', async () => {
       await createClaimViaHttp()
       const app = createEmotiveClaimsTestApp(container, testUser(['emotive_claims.view']))
-      const res = await app.request('/api/emotive-claims?limit=10')
+      const res = await app.request('/api/emotive-claims?page=1&pageSize=10')
       expect(res.status).toBe(200)
-      const body = (await res.json()) as { items: unknown[]; hasMore: boolean }
+      const body = (await res.json()) as {
+        items: Array<{
+          customerName: string | null
+          engineTypeCode: string
+          employeeName: string
+        }>
+        total: number
+        page: number
+        pageSize: number
+      }
       expect(body.items.length).toBeGreaterThan(0)
+      expect(body.total).toBeGreaterThan(0)
+      expect(body.page).toBe(1)
+      expect(body.pageSize).toBe(10)
+      expect(body.items[0]?.engineTypeCode).toBeTruthy()
+      expect(body.items[0]?.employeeName).toBeTruthy()
     })
 
     it('limits rows to linked customers for view_own_customer', async () => {
@@ -175,7 +189,7 @@ describe('EmotiveClaims HTTP', () => {
         testUser(['emotive_claims.view_own_customer']),
       )
       const res = await app.request(
-        `/api/emotive-claims?limit=50&customerId=${customerSelman}&sourceId=${visible.sourceId}&search=view-own-customer&dateFrom=2026-04-17&dateTo=2026-04-17`,
+        `/api/emotive-claims?page=1&pageSize=50&customerId=${customerSelman}&sourceId=${visible.sourceId}&search=view-own-customer&dateFrom=2026-04-17&dateTo=2026-04-17`,
       )
       expect(res.status).toBe(200)
 
@@ -351,7 +365,7 @@ describe('EmotiveClaims HTTP', () => {
       const deleteRes = await app.request(`/api/emotive-claims/${created.id}`, { method: 'DELETE' })
       expect(deleteRes.status).toBe(204)
 
-      const listRes = await app.request('/api/emotive-claims?limit=50')
+      const listRes = await app.request('/api/emotive-claims?page=1&pageSize=50')
       expect(listRes.status).toBe(200)
       const listBody = (await listRes.json()) as { items: Array<{ id: string }> }
       expect(listBody.items.some((item) => item.id === created.id)).toBe(false)

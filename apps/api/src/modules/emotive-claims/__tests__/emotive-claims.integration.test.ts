@@ -32,7 +32,7 @@ import type {
 } from '../emotive-claims.validators.js'
 
 function listQuery(overrides: Partial<EmotiveClaimListQuery> = {}): EmotiveClaimListQuery {
-  return { limit: 50, includeDeleted: false, ...overrides }
+  return { page: 1, pageSize: 50, includeDeleted: false, ...overrides }
 }
 
 const DATABASE_URL =
@@ -317,7 +317,7 @@ describe('EmotiveClaimsService integration', () => {
       expect(bySearch.items.some((item) => item.warrantyReport.includes('alfa'))).toBe(true)
     })
 
-    it('paginates with keyset cursor ordered by date_of_claim desc', async () => {
+    it('paginates with offset ordered by date_of_claim desc', async () => {
       const [pageSource] = await ctx.db
         .insert(schema.claimSources)
         .values({
@@ -333,11 +333,18 @@ describe('EmotiveClaimsService integration', () => {
         throw new Error('Failed to create pagination test claim source')
       }
 
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+
       await container.emotiveClaimsService.create(
         await buildCreateInput({
           sourceId: pageSourceId,
-          dateOfClaim: new Date('2099-03-01'),
-          mrNumber: 'PAGE-1/26',
+          customerId: customerSelman,
+          dateOfClaim: new Date('2026-03-15'),
+          mrNumber: '7865/25',
         }),
         FULL_OPERATOR,
         auditContext,
@@ -345,29 +352,35 @@ describe('EmotiveClaimsService integration', () => {
       await container.emotiveClaimsService.create(
         await buildCreateInput({
           sourceId: pageSourceId,
-          dateOfClaim: new Date('2099-01-01'),
-          mrNumber: 'PAGE-2/26',
+          customerId: customerSelman,
+          dateOfClaim: new Date('2026-01-10'),
+          mrNumber: '7448/25',
         }),
         FULL_OPERATOR,
         auditContext,
       )
 
       const firstPage = await container.emotiveClaimsService.list(
-        listQuery({ sourceId: pageSourceId, limit: 1 }),
+        listQuery({ sourceId: pageSourceId, page: 1, pageSize: 10 }),
         FULL_OPERATOR,
       )
-      expect(firstPage.hasMore).toBe(true)
-      expect(firstPage.items[0]?.mrNumber).toBe('PAGE-1/26')
+      expect(firstPage.total).toBe(2)
+      expect(firstPage.page).toBe(1)
+      expect(firstPage.pageSize).toBe(10)
+      expect(firstPage.items).toHaveLength(2)
+      expect(firstPage.items[0]?.mrNumber).toBe('7865/25')
+      expect(firstPage.items[0]?.customerName).toBe('SELMAN')
+      expect(firstPage.items[0]?.employeeName).toBeTruthy()
+      expect(firstPage.items[1]?.mrNumber).toBe('7448/25')
 
-      const secondPage = await container.emotiveClaimsService.list(
-        listQuery({
-          sourceId: pageSourceId,
-          limit: 1,
-          cursor: firstPage.nextCursor ?? undefined,
-        }),
+      const emptyPage = await container.emotiveClaimsService.list(
+        listQuery({ sourceId: pageSourceId, page: 2, pageSize: 10 }),
         FULL_OPERATOR,
       )
-      expect(secondPage.items[0]?.mrNumber).toBe('PAGE-2/26')
+      expect(emptyPage.items).toHaveLength(0)
+      expect(emptyPage.total).toBe(2)
+
+      expect(employeeId).toBeDefined()
     })
 
     it('excludes soft-deleted claims by default', async () => {

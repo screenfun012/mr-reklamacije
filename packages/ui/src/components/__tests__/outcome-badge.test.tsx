@@ -9,7 +9,7 @@ const OUTCOME_LABELS_SR: Record<(typeof ClaimOutcome)[keyof typeof ClaimOutcome]
   pending: 'U obradi',
   accepted: 'Prihvaćeno',
   rejected: 'Odbijeno',
-  archived: 'Arhiva',
+  archived: 'Arhivirano',
 }
 
 describe('OutcomeBadge', () => {

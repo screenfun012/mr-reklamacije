@@ -2,12 +2,6 @@ import { schema } from '@mr/db'
 import { and, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
-import {
-  buildPaginatedSlice,
-  encodeKeysetCursor,
-  parseOptionalKeysetCursor,
-  type KeysetCursor,
-} from '../../core/utils/pagination.js'
 import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { claimYearFromDate } from './claim-year.js'
 import {
@@ -38,17 +32,6 @@ function formatDate(value: Date | string): string {
   return value.toISOString().slice(0, 10)
 }
 
-function keysetBeforeDateOfClaim(cursor: KeysetCursor | null): SQL | undefined {
-  if (cursor === null) {
-    return undefined
-  }
-
-  const dateValue =
-    typeof cursor.primary === 'string' ? cursor.primary : formatDate(new Date(cursor.primary))
-
-  return sql`(${emotiveClaims.dateOfClaim}, ${emotiveClaims.id}) < (${dateValue}::date, ${cursor.id}::uuid)`
-}
-
 function formatTimestamp(value: Date): string {
   return value.toISOString()
 }
@@ -77,14 +60,17 @@ function mapListItem(row: {
   claimNumber: string | null
   warrantyReport: string
   engineTypeId: string
+  engineTypeCode: string
   dateOfClaim: Date | string
   mrNumber: string
   dateOfFinish: Date | string | null
   employeeId: string
+  employeeName: string
   sourceId: string
   outcome: string
   claimYear: number
   customerId: string | null
+  customerName: string | null
   createdAt: Date
 }): EmotiveClaimListItem {
   return {
@@ -93,14 +79,17 @@ function mapListItem(row: {
     claimNumber: row.claimNumber,
     warrantyReport: row.warrantyReport,
     engineTypeId: row.engineTypeId,
+    engineTypeCode: row.engineTypeCode,
     dateOfClaim: formatDate(row.dateOfClaim),
     mrNumber: row.mrNumber,
     dateOfFinish: row.dateOfFinish === null ? null : formatDate(row.dateOfFinish),
     employeeId: row.employeeId,
+    employeeName: row.employeeName,
     sourceId: row.sourceId,
     outcome: row.outcome as EmotiveClaimListItem['outcome'],
     claimYear: row.claimYear,
     customerId: row.customerId,
+    customerName: row.customerName,
     createdAt: formatTimestamp(row.createdAt),
   }
 }
@@ -275,7 +264,6 @@ export class EmotiveClaimsRepository {
     query: EmotiveClaimListQuery,
     scope: EmotiveClaimsListScope,
   ): Promise<EmotiveClaimListResponse> {
-    const cursor = parseOptionalKeysetCursor(query.cursor)
     const conditions: SQL[] = []
 
     if (!query.includeDeleted) {
@@ -311,15 +299,20 @@ export class EmotiveClaimsRepository {
     if (scope.type === 'own_customer') {
       const customerIds = await this.getUserCustomerIds(scope.userId)
       if (customerIds.length === 0) {
-        return { items: [], nextCursor: null, hasMore: false }
+        return { items: [], total: 0, page: query.page, pageSize: query.pageSize }
       }
       conditions.push(inArray(emotiveClaims.customerId, customerIds))
     }
 
-    const keysetCondition = keysetBeforeDateOfClaim(cursor)
-    if (keysetCondition !== undefined) {
-      conditions.push(keysetCondition)
-    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+    const offset = (query.page - 1) * query.pageSize
+
+    const [countRow] = await this.db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(emotiveClaims)
+      .where(whereClause)
+
+    const total = countRow?.total ?? 0
 
     const rows = await this.db
       .select({
@@ -328,37 +321,64 @@ export class EmotiveClaimsRepository {
         claimNumber: emotiveClaims.claimNumber,
         warrantyReport: emotiveClaims.warrantyReport,
         engineTypeId: emotiveClaims.engineTypeId,
+        engineTypeCode: engineTypes.code,
         dateOfClaim: emotiveClaims.dateOfClaim,
         mrNumber: emotiveClaims.mrNumber,
         dateOfFinish: emotiveClaims.dateOfFinish,
         employeeId: emotiveClaims.employeeId,
+        employeeName: employees.fullName,
         sourceId: emotiveClaims.sourceId,
         outcome: emotiveClaims.outcome,
         claimYear: emotiveClaims.claimYear,
         customerId: emotiveClaims.customerId,
+        customerName: customers.name,
         createdAt: emotiveClaims.createdAt,
       })
       .from(emotiveClaims)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
+      .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+      .innerJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+      .where(whereClause)
       .orderBy(desc(emotiveClaims.dateOfClaim), desc(emotiveClaims.id))
-      .limit(query.limit + 1)
-
-    const page = buildPaginatedSlice(rows, query.limit, (row) => ({
-      primary: formatDate(row.dateOfClaim),
-      id: row.id,
-    }))
+      .limit(query.pageSize)
+      .offset(offset)
 
     return {
-      items: page.items.map(mapListItem),
-      nextCursor: page.nextCursor,
-      hasMore: page.hasMore,
+      items: rows.map(mapListItem),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
     }
   }
 
   async findById(id: string, scope: EmotiveClaimsListScope): Promise<EmotiveClaimDetail | null> {
     const [row] = await this.db
-      .select()
+      .select({
+        id: emotiveClaims.id,
+        sequenceNumber: emotiveClaims.sequenceNumber,
+        claimNumber: emotiveClaims.claimNumber,
+        warrantyReport: emotiveClaims.warrantyReport,
+        engineTypeId: emotiveClaims.engineTypeId,
+        engineTypeCode: engineTypes.code,
+        dateOfClaim: emotiveClaims.dateOfClaim,
+        mrNumber: emotiveClaims.mrNumber,
+        dateOfFinish: emotiveClaims.dateOfFinish,
+        employeeId: emotiveClaims.employeeId,
+        employeeName: employees.fullName,
+        sourceId: emotiveClaims.sourceId,
+        outcome: emotiveClaims.outcome,
+        claimYear: emotiveClaims.claimYear,
+        customerId: emotiveClaims.customerId,
+        customerName: customers.name,
+        createdAt: emotiveClaims.createdAt,
+        internalNotes: emotiveClaims.internalNotes,
+        updatedBy: emotiveClaims.updatedBy,
+        updatedAt: emotiveClaims.updatedAt,
+      })
       .from(emotiveClaims)
+      .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
+      .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+      .innerJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
       .limit(1)
 
@@ -382,11 +402,13 @@ export class EmotiveClaimsRepository {
       .from(emotiveClaimFaults)
       .where(eq(emotiveClaimFaults.claimId, id))
 
+    const { internalNotes, updatedBy, updatedAt, ...listFields } = row
+
     return {
-      ...mapListItem(row),
-      internalNotes: row.internalNotes,
-      updatedBy: row.updatedBy,
-      updatedAt: formatTimestamp(row.updatedAt),
+      ...mapListItem(listFields),
+      internalNotes,
+      updatedBy,
+      updatedAt: formatTimestamp(updatedAt),
       faults: faults.map(mapFaultRow),
     }
   }
@@ -506,9 +528,3 @@ export class EmotiveClaimsRepository {
     return allowed.includes(customerId)
   }
 }
-
-export function listCursorFromItem(item: EmotiveClaimListItem): KeysetCursor {
-  return { primary: item.dateOfClaim, id: item.id }
-}
-
-export { encodeKeysetCursor }

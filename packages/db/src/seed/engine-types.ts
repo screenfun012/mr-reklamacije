@@ -1,0 +1,35 @@
+import { eq } from 'drizzle-orm'
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
+
+import * as schema from '../schema/index.js'
+
+const ENGINE_TYPES = [
+  'BMW N47D20D',
+  'Mercedes OM651',
+  'Range rover 448DT',
+  'Ford YMF',
+  'Opel A20DTH',
+  'BMW N47D20C',
+] as const
+
+export async function seedEngineTypes(db: NodePgDatabase<typeof schema>): Promise<void> {
+  let inserted = 0
+
+  for (const code of ENGINE_TYPES) {
+    const existing = await db
+      .select({ id: schema.engineTypes.id })
+      .from(schema.engineTypes)
+      .where(eq(schema.engineTypes.code, code))
+      .limit(1)
+
+    if (existing.length === 0) {
+      await db.insert(schema.engineTypes).values({
+        code,
+        isActive: true,
+      })
+      inserted++
+    }
+  }
+
+  console.log(`[seed:engine-types] Inserted ${inserted} / ${ENGINE_TYPES.length} engine types`)
+}

@@ -88,8 +88,12 @@ export const EmotiveClaimListQuerySchema = z.object({
   dateTo: z.coerce.date().optional(),
   search: z.string().trim().min(1).optional(),
   includeDeleted: boolQueryParam.default(false),
-  limit: z.coerce.number().int().min(1).max(50).default(50),
-  cursor: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .pipe(z.union([z.literal(10), z.literal(25), z.literal(50)]))
+    .default(10),
 })
 
 export type EmotiveClaimListQuery = z.infer<typeof EmotiveClaimListQuerySchema>
@@ -111,14 +115,17 @@ export const EmotiveClaimListItemSchema = z.object({
   claimNumber: z.string().nullable(),
   warrantyReport: z.string(),
   engineTypeId: z.string().uuid(),
+  engineTypeCode: z.string(),
   dateOfClaim: z.string(),
   mrNumber: z.string(),
   dateOfFinish: z.string().nullable(),
   employeeId: z.string().uuid(),
+  employeeName: z.string(),
   sourceId: z.string().uuid(),
   outcome: z.enum(claimOutcomeValues),
   claimYear: z.number().int(),
   customerId: z.string().uuid().nullable(),
+  customerName: z.string().nullable(),
   createdAt: z.string(),
 })
 
@@ -135,6 +142,7 @@ export type EmotiveClaimDetail = z.infer<typeof EmotiveClaimDetailSchema>
 
 export interface EmotiveClaimListResponse {
   items: EmotiveClaimListItem[]
-  nextCursor: string | null
-  hasMore: boolean
+  total: number
+  page: number
+  pageSize: 10 | 25 | 50
 }

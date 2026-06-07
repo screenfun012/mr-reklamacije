@@ -7,7 +7,6 @@ function appendDateParam(params: URLSearchParams, key: string, value: Date | und
 
 export function serializeEmotiveClaimsListParams(
   filters: Record<string, string | number | boolean | Date | undefined>,
-  cursor?: string,
 ): string {
   const params = new URLSearchParams()
 
@@ -27,10 +26,6 @@ export function serializeEmotiveClaimsListParams(
     }
 
     params.set(key, String(value))
-  }
-
-  if (cursor) {
-    params.set('cursor', cursor)
   }
 
   return params.toString()

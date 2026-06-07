@@ -12,11 +12,13 @@ function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   return failureCount < MAX_QUERY_RETRIES
 }
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: DEFAULT_STALE_MS,
-      retry: shouldRetryQuery,
+export function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: DEFAULT_STALE_MS,
+        retry: shouldRetryQuery,
+      },
     },
-  },
-})
+  })
+}
