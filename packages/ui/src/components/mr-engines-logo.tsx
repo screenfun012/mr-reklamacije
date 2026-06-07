@@ -4,7 +4,7 @@ export interface MrEnginesLogoProps {
 
 export function MrEnginesLogo({ className }: MrEnginesLogoProps) {
   return (
-    <>
+    <div className="flex justify-center">
       <img
         src="/mr-engines-logo-light.png"
         alt="MR Engines"
@@ -15,6 +15,6 @@ export function MrEnginesLogo({ className }: MrEnginesLogoProps) {
         alt="MR Engines"
         className={`hidden h-9 w-auto dark:block ${className ?? ''}`}
       />
-    </>
+    </div>
   )
 }
