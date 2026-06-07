@@ -608,6 +608,9 @@ importers:
       '@mr/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tanstack/react-start':
+        specifier: 1.167.59
+        version: 1.167.59(crossws@0.4.5(srvx@0.11.16))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vite@8.0.16(@types/node@20.19.42)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@types/node':
         specifier: ^20.19.39
         version: 20.19.42
