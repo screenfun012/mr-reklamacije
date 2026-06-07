@@ -43,6 +43,9 @@ pnpm-debug.log*
 tmp/
 .cache/
 
+# Cursor agent artifacts (local verification output)
+.cursor/verify-output/
+
 # Local backup, not tracked
 files/mr-reklamacije-mvp-spec.zip
 mr-reklamacije-mvp-spec.zip
