@@ -31,11 +31,21 @@ Do **not** use `docker compose up -d api` for daily dev — the Compose API imag
 
 See `README.md` and `docs/DEV_SETUP.md` for first-time setup, migrations, and troubleshooting.
 
-## Nitro beta phantom dependency (`youch`)
+## Phantom dependencies (pnpm + ESM)
 
-TanStack Start apps use **Nitro `3.0.260429-beta`**, which dynamically imports `youch` / `youch-core` for dev error HTML but does not declare them as runtime dependencies. pnpm does not install them where Nitro expects → **500 on all `*-web` apps in dev**.
+Some upstream packages **import** modules they only list as `peerDependencies` (or dynamic-import without declaring them). pnpm’s strict layout does not hoist those into the consumer’s resolver path → `ERR_MODULE_NOT_FOUND` at runtime (API crash / 504 on proxied auth, or 500 on `*-web` dev servers).
 
-Root `package.json` pins `youch@4.1.1` and `youch-core@0.3.3` (same range as Nitro’s internal devDeps). When bumping Nitro, grep its `package.json` for `youch` and adjust or remove these pins if upstream fixes the declaration.
+We pin them explicitly until upstream fixes declarations. After bumping **better-auth**, **Nitro**, or **@tanstack/react-start**, grep their `dist/**/*.mjs` for bare `import` / `import()` specifiers not in that package’s `dependencies`, and adjust pins.
+
+| Package                    | Pinned in           | Imported by                                                                            | Remove on upgrade when…                                                              |
+| -------------------------- | ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `@opentelemetry/api@1.9.1` | `apps/api`          | `@better-auth/core` → `dist/instrumentation/tracer.mjs` (peer `^1.9.0`, static import) | `@better-auth/core` lists it in `dependencies`, or API boots without the pin         |
+| `jose@6.2.3`               | `apps/api`          | `@better-auth/core` JWT helpers (peer `^6.1.0`, static import)                         | peer becomes a regular `dependency` of core, or API auth routes work without the pin |
+| `kysely@^0.28.14`          | `apps/api`          | `better-auth` / `@better-auth/kysely-adapter` (peer `^0.28.5`, static import)          | adapter stops importing kysely at runtime, or Drizzle-only path needs no pin         |
+| `youch@4.1.1`              | root `package.json` | **Nitro `3.0.260429-beta`** → dynamic `import('youch')` for dev error HTML             | Nitro declares `youch` as a runtime `dependency`                                     |
+| `youch-core@0.3.3`         | root `package.json` | Nitro → dynamic `import('youch-core')` (transitive of youch)                           | same as `youch`                                                                      |
+
+`@opentelemetry/semantic-conventions` is imported by `@better-auth/core` but declared in its own `dependencies` — no consumer pin needed. `@tanstack/react-start` has no extra phantom imports beyond its declared deps (`pathe`, `react`, etc.).
 
 ## Commit messages
 
