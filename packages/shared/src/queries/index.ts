@@ -6,6 +6,13 @@ export {
   type EmotiveClaimsListFilters,
 } from './emotive-claims.js'
 export {
+  EmotiveClaimsSearchSchema,
+  emotiveClaimsFiltersFromSearch,
+  emotiveClaimsListQueryKeyFromSearch,
+  emotiveClaimsSearchFromFilters,
+  type EmotiveClaimsSearch,
+} from './emotive-claims-search.js'
+export {
   claimSourcesReferenceOptions,
   claimSourcesReferenceQueryKey,
   customersReferenceOptions,

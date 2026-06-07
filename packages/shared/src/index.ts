@@ -1,5 +1,6 @@
 export { ApiError, parseApiErrorBody } from './api/api-error.js'
 export { fetchJson } from './api/fetch-json.js'
+export { formatListDate } from './utils/format-list-date.js'
 export { normalizeName, toAsciiDisplay } from './utils/normalize-name.js'
 export { parseExcelDate } from './utils/parse-excel-date.js'
 

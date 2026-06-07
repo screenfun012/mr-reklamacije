@@ -1,4 +1,5 @@
-import { createServerSessionLoader, requireRoles } from '@mr/auth/route-guards'
+import { createServerSessionLoader, requirePermissions, requireRoles } from '@mr/auth/route-guards'
+import { EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
 
 import { authClient } from './auth-client'
 
@@ -7,4 +8,8 @@ const loadServerSession = createServerSessionLoader(apiOrigin)
 
 export function internalRequireRoles(allowedRoles: readonly string[]) {
   return requireRoles(authClient, allowedRoles, loadServerSession)
+}
+
+export function internalRequireEmotiveClaimsView() {
+  return requirePermissions(authClient, EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
 }

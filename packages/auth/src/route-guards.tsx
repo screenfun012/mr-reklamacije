@@ -71,6 +71,7 @@ type SessionLike = {
 
 type UserLike = {
   roles?: unknown
+  permissions?: unknown
 }
 
 function normalizeRoles(userRoles: unknown): readonly string[] {
@@ -246,6 +247,38 @@ export function Can(
   }
 
   return allowed ? <>{children}</> : <>{fallback}</>
+}
+
+/**
+ * TanStack Router `beforeLoad` guard — user must have ANY of the listed permissions.
+ * Unauthenticated users redirect to `/login`; authenticated without permission to `/`.
+ */
+export function requirePermissions(
+  authClient: MRAuthClientForRouteRoles,
+  requiredPermissions: readonly string[],
+  loadServerSession?: ServerSessionLoader,
+): () => Promise<void> {
+  return async () => {
+    const onServer = !isBrowser()
+
+    if (onServer && !loadServerSession) {
+      throw redirect({ to: '/login' })
+    }
+
+    const raw = onServer ? await loadServerSession!() : await authClient.getSession()
+
+    const sessionData = resolveSessionPayload(raw)
+    const user = sessionData?.user
+    if (!user) {
+      throw redirect({ to: '/login' })
+    }
+
+    const permissions = normalizePermissions(user['permissions'])
+    const hasAny = requiredPermissions.some((p) => permissions.includes(p))
+    if (!hasAny) {
+      throw redirect({ to: '/' })
+    }
+  }
 }
 
 export type LoginAuthErrorKind = 'invalid' | 'rate_limited' | 'generic'

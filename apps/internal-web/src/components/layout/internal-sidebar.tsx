@@ -1,8 +1,15 @@
+import { usePermissions } from '@mr/auth/route-guards'
 import { Link } from '@tanstack/react-router'
 
 import { internalNavItems } from '~/config/navigation'
+import { authClient } from '~/lib/auth-client'
 
 export function InternalSidebar() {
+  const { has } = usePermissions(authClient)
+  const visibleItems = internalNavItems.filter(
+    (item) => item.permission === undefined || has(item.permission),
+  )
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-5 border-b border-sidebar-border">
@@ -12,7 +19,7 @@ export function InternalSidebar() {
 
       <nav className="flex-1 p-2" aria-label="Main navigation">
         <ul className="flex flex-col gap-1">
-          {internalNavItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon
             return (
               <li key={item.key}>

@@ -8,6 +8,8 @@ export interface NavItem {
   label: () => string
   to: string
   icon: ComponentType<{ className?: string }>
+  /** When set, nav link is hidden unless the user has this permission. */
+  permission?: string
 }
 
 export const internalNavItems: NavItem[] = [
@@ -28,6 +30,7 @@ export const internalNavItems: NavItem[] = [
     label: m.nav_reklamacije,
     to: '/reklamacije',
     icon: Briefcase,
+    permission: 'emotive_claims.view',
   },
   {
     key: 'statistika',

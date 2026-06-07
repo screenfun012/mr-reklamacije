@@ -192,6 +192,12 @@ export const VIEWER_PERMISSIONS: readonly Permission[] = [
   'export.workbook_partial',
 ] as const
 
+/** Permissions that allow viewing the EMOTIVE claims list (API + internal-web route). */
+export const EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS = [
+  'emotive_claims.view',
+  'emotive_claims.view_own_customer',
+] as const satisfies readonly Permission[]
+
 export const CLIENT_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view_own_customer',
   'domace_claims.view_own_customer',
