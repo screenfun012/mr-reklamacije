@@ -90,6 +90,14 @@ docker compose down -v
 docker compose up -d postgres
 ```
 
+**All frontends return 500 / `ERR_MODULE_NOT_FOUND: Cannot find package 'youch'`:**
+
+Nitro `3.0.260429-beta` (TanStack Start) imports `youch` and `youch-core` in dev error pages (`dist/_dev.mjs`) but lists them only in Nitro’s own `devDependencies`, not `dependencies`. With pnpm strict `node_modules`, the packages are not hoisted to where Nitro resolves them.
+
+**Workaround (repo root):** explicit `youch@4.1.1` and `youch-core@0.3.3` in root `devDependencies` (versions match Nitro’s devDeps). After upgrading Nitro, check whether they can be removed — see `CONTRIBUTING.md`.
+
+If 500 persists after `pnpm install`, restart all three Vite dev servers (`pnpm dev`).
+
 **Docker API `ERR_MODULE_NOT_FOUND` (e.g. zod) or login always fails:**
 
 The Compose API service is not for daily dev. Stop it and use the host API:

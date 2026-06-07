@@ -31,6 +31,12 @@ Do **not** use `docker compose up -d api` for daily dev — the Compose API imag
 
 See `README.md` and `docs/DEV_SETUP.md` for first-time setup, migrations, and troubleshooting.
 
+## Nitro beta phantom dependency (`youch`)
+
+TanStack Start apps use **Nitro `3.0.260429-beta`**, which dynamically imports `youch` / `youch-core` for dev error HTML but does not declare them as runtime dependencies. pnpm does not install them where Nitro expects → **500 on all `*-web` apps in dev**.
+
+Root `package.json` pins `youch@4.1.1` and `youch-core@0.3.3` (same range as Nitro’s internal devDeps). When bumping Nitro, grep its `package.json` for `youch` and adjust or remove these pins if upstream fixes the declaration.
+
 ## Commit messages
 
 Conventional commits in English: `feat(scope): summary`, `fix(scope): …`, `chore(dx): …`, etc.
