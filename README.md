@@ -79,13 +79,19 @@ pnpm --filter @mr/db run db:migrate
 pnpm --filter @mr/db run db:seed
 ```
 
-4. **Start API** (terminal 1):
+4. **Create dev admin** (once per fresh DB):
 
 ```bash
-pnpm --filter api dev
+pnpm create-admin
 ```
 
-5. **Start all frontends** (terminal 2):
+5. **Start API** (terminal 1 — frees port 3000 and stops stray Docker API):
+
+```bash
+pnpm dev:api
+```
+
+6. **Start all frontends** (terminal 2):
 
 ```bash
 pnpm dev
@@ -112,6 +118,15 @@ Frontends proxy `/api/*` to `http://localhost:3000`. Vite uses fixed ports with 
 
 - `Ctrl+C` in `pnpm dev` / `pnpm --filter api dev` terminals
 - `docker compose down` (stops Postgres; data persists in volume)
+
+### Troubleshooting login
+
+| Symptom                              | Fix                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `Greška pri prijavi` / network error | API not running — `pnpm dev:api`                                         |
+| `RATE_LIMITED` / 429                 | Restart API: `pnpm dev:api` (dev limit is relaxed; prod stays strict)    |
+| `Neispravan e-mail ili lozinka`      | Run `pnpm create-admin` after fresh DB, or check password in table above |
+| Port 3000 busy / stale API           | `pnpm dev:api` kills old process and Docker API container                |
 
 ### Docker API (production-like smoke test only)
 

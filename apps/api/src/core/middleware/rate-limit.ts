@@ -77,7 +77,9 @@ export const generalRateLimiter = createRateLimiter({
   max: 100,
 })
 
-export const loginRateLimiter = createRateLimiter({
-  windowMs: 15 * 60_000,
-  max: 5,
-})
+const isDevelopment = process.env['NODE_ENV'] === 'development'
+
+/** Production: 5 attempts / 15 min (docs/05). Dev: relaxed so local login retries do not lock you out. */
+export const loginRateLimiter = createRateLimiter(
+  isDevelopment ? { windowMs: 60_000, max: 100 } : { windowMs: 15 * 60_000, max: 5 },
+)

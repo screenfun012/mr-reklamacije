@@ -43,7 +43,13 @@ This document covers the **local machine**: Docker Compose Postgres, env files, 
    pnpm --filter @mr/db run db:seed
    ```
 
-6. Verify connectivity:
+6. Create the dev admin user:
+
+   ```bash
+   pnpm create-admin
+   ```
+
+7. Verify connectivity:
 
    ```bash
    docker exec mr-reklamacije-postgres psql -U mr -d mr_reklamacije -c "\dx"
@@ -56,8 +62,8 @@ This document covers the **local machine**: Docker Compose Postgres, env files, 
 Three terminals (or two if API already running):
 
 ```bash
-docker compose up -d postgres
-pnpm --filter api dev    # :3000
+pnpm dev:db              # Postgres; also stops Docker API if it stole :3000
+pnpm dev:api             # :3000 — frees port, then host API with hot reload
 pnpm dev                 # :3001 admin, :3002 internal, :3003 portal
 ```
 
@@ -84,6 +90,25 @@ docker compose down -v
 docker compose up -d postgres
 ```
 
-**Docker API `ERR_MODULE_NOT_FOUND` (e.g. zod):**
+**Docker API `ERR_MODULE_NOT_FOUND` (e.g. zod) or login always fails:**
 
-Do not use the Compose API service for daily dev. Run `pnpm --filter api dev` on the host. If you need the container for smoke tests, rebuild: `docker compose --profile prod-like build api`.
+The Compose API service is not for daily dev. Stop it and use the host API:
+
+```bash
+docker stop mr-reklamacije-api
+pnpm dev:api
+```
+
+`pnpm dev:api` frees port 3000, stops the Docker API container if running, then starts `pnpm --filter api dev`. For smoke tests only: `docker compose --profile prod-like build api`.
+
+**Login `RATE_LIMITED` (429):**
+
+In development the login limit is relaxed (100/min). If you still hit it from an old API process, restart with `pnpm dev:api`. The login form shows a clear message instead of a generic error.
+
+**`Neispravan e-mail ili lozinka` on first login:**
+
+Run `pnpm create-admin` after migrate + seed on a fresh database.
+
+**Protected pages visible before login on first load (SSR flash):**
+
+Fixed by SSR session check in `requireRoles` + `createServerSessionLoader`. Each web app uses `internalRequireRoles` / `adminRequireRoles` / `portalRequireRoles` from `src/lib/auth-guard.ts`. Restart dev servers after pulling auth changes.

@@ -20,10 +20,12 @@ Staged files are auto-formatted on commit via **lint-staged** + Prettier (see `.
 Postgres in Docker; API and frontends on the host:
 
 ```bash
-docker compose up -d postgres
-pnpm --filter api dev    # terminal 1 — http://localhost:3000
+pnpm dev:db              # Postgres + stops stray Docker API on :3000
+pnpm dev:api             # terminal 1 — frees :3000, starts host API
 pnpm dev                 # terminal 2 — admin :3001, internal :3002, portal :3003
 ```
+
+After a fresh DB: `pnpm --filter @mr/db run db:migrate && pnpm --filter @mr/db run db:seed && pnpm create-admin`
 
 Do **not** use `docker compose up -d api` for daily dev — the Compose API image is for production-like smoke tests only (`--profile prod-like`). Rebuild after dependency changes: `docker compose --profile prod-like build api`.
 
