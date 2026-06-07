@@ -25,6 +25,12 @@ const mrWebDevSettings = {
   ssr: {
     noExternal: ['@mr/ui', '@mr/auth', '@mr/i18n', '@mr/shared'],
   },
+  resolve: {
+    // Nitro/rolldown SSR: tslib CJS via __toESM yields undefined .default → prod 500.
+    alias: {
+      tslib: 'tslib/tslib.es6.mjs',
+    },
+  },
 } as const
 
 /**
