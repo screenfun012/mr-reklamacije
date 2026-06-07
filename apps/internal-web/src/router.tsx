@@ -1,3 +1,4 @@
+import { RouteNotFound } from '@mr/ui'
 import { createRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 
@@ -11,6 +12,7 @@ export function getRouter() {
   const router = createRouter({
     routeTree,
     context: { queryClient },
+    defaultNotFoundComponent: RouteNotFound,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     scrollRestoration: true,

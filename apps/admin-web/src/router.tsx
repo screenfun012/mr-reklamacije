@@ -1,3 +1,4 @@
+import { RouteNotFound } from '@mr/ui'
 import { createRouter } from '@tanstack/react-router'
 
 import type { AdminRouterContext } from '~/router-context'
@@ -8,6 +9,7 @@ export function getRouter() {
   return createRouter({
     routeTree,
     context: {} as AdminRouterContext,
+    defaultNotFoundComponent: RouteNotFound,
     defaultPreload: 'intent',
     scrollRestoration: true,
   })

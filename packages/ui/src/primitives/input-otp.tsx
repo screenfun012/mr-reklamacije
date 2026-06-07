@@ -1,4 +1,4 @@
-import { OTPInput, OTPInputContext, REGEXP_ONLY_DIGITS } from 'input-otp'
+import { OTPInput, OTPInputContext } from 'input-otp'
 import * as React from 'react'
 
 import { cn } from '../lib/cn.js'
@@ -83,11 +83,4 @@ const InputOTPSeparator = React.forwardRef<
 ))
 InputOTPSeparator.displayName = 'InputOTPSeparator'
 
-export {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-  OTPInputContext,
-  REGEXP_ONLY_DIGITS,
-}
+export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot }

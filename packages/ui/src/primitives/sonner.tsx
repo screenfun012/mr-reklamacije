@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Toaster as SonnerToaster, type ToasterProps, toast } from 'sonner'
+import { Toaster as SonnerToaster, type ToasterProps } from 'sonner'
 
 /**
  * Thin wrapper around Sonner's Toaster.
@@ -14,4 +14,4 @@ const Toaster = (props: ToasterProps): React.JSX.Element => {
   return <SonnerToaster className="toaster group" {...props} />
 }
 
-export { Toaster, toast, type ToasterProps }
+export { Toaster }
