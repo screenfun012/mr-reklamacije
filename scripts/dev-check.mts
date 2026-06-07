@@ -11,6 +11,7 @@ import {
   POSTGRES_CONTAINER,
   REPO_ROOT,
   checkNodeModulesIntegrity,
+  findWorkspaceJunk,
   getPortListenerCommand,
   getPortListenerPid,
   isPostgresHealthy,
@@ -72,6 +73,18 @@ for (const [name, port] of Object.entries(DEV_PORTS)) {
   const cmd = getPortListenerCommand(port) ?? `PID ${pid}`
   const expected = name === 'api' ? 'warn' : 'warn'
   add(`Port :${port}`, expected, `in use — ${cmd}`)
+}
+
+// macOS Finder duplicates / .DS_Store
+const junk = findWorkspaceJunk()
+if (junk.length === 0) {
+  add('Workspace junk', 'ok', 'No macOS duplicate copies or .DS_Store outside node_modules')
+} else {
+  const sample = junk
+    .slice(0, 3)
+    .map((p) => p.replace(REPO_ROOT + '/', ''))
+    .join('; ')
+  add('Workspace junk', 'warn', `${junk.length} path(s) — ${sample}. Fix: pnpm cleanup:junk`)
 }
 
 // node_modules integrity
@@ -142,6 +155,9 @@ if (failures.length === 0 && warnings.length === 0) {
     )
   }
   console.log('  4. Re-scan phantom deps after bumping better-auth/nitro: pnpm dev:audit-deps')
+  if (warnings.some((c) => c.name === 'Workspace junk')) {
+    console.log('  5. Remove macOS duplicate copies: pnpm cleanup:junk')
+  }
 }
 
 process.exit(failures.length > 0 ? 1 : 0)

@@ -1,5 +1,5 @@
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
-import { existsSync, readdirSync, readlinkSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readlinkSync, rmSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -240,6 +240,89 @@ export function checkNodeModulesIntegrity(): { ok: boolean; issues: NodeModulesI
   }
 
   return { ok: issues.length === 0, issues }
+}
+
+const JUNK_SKIP_DIRS = new Set(['node_modules', '.git'])
+
+/** Finder copies: "index 2.js", "README 2.md", "server 2/" */
+export function isMacOsDuplicateName(name: string): boolean {
+  return / 2$/.test(name) || / 2\./.test(name)
+}
+
+function shouldSkipJunkScan(relativePath: string): boolean {
+  return relativePath.split('/').some((p) => JUNK_SKIP_DIRS.has(p))
+}
+
+export function findWorkspaceJunk(root = REPO_ROOT): string[] {
+  const found: string[] = []
+
+  function walk(dir: string, relative = ''): void {
+    if (!existsSync(dir)) return
+
+    for (const entry of readdirSync(dir)) {
+      const rel = relative ? `${relative}/${entry}` : entry
+      if (shouldSkipJunkScan(rel)) continue
+
+      const full = join(dir, entry)
+      let st
+      try {
+        st = statSync(full)
+      } catch {
+        continue
+      }
+
+      if (entry === '.DS_Store' || isMacOsDuplicateName(entry)) {
+        found.push(full)
+        continue
+      }
+
+      if (st.isDirectory()) {
+        walk(full, rel)
+      }
+    }
+  }
+
+  walk(root)
+
+  const gitLogs = join(root, '.git', 'logs', 'refs', 'remotes', 'origin')
+  if (existsSync(gitLogs)) {
+    for (const entry of readdirSync(gitLogs)) {
+      if (isMacOsDuplicateName(entry)) {
+        found.push(join(gitLogs, entry))
+      }
+    }
+  }
+
+  const gitIndexDup = join(root, '.git', 'index 2')
+  if (existsSync(gitIndexDup)) {
+    found.push(gitIndexDup)
+  }
+
+  return found
+}
+
+export function removeWorkspaceJunk(root = REPO_ROOT): string[] {
+  const paths = findWorkspaceJunk(root)
+  for (const path of paths) {
+    rmSync(path, { recursive: true, force: true })
+  }
+  return paths
+}
+
+export function removePackageDistDirs(root = REPO_ROOT): string[] {
+  const removed: string[] = []
+  for (const parent of ['packages', 'apps'] as const) {
+    const base = join(root, parent)
+    if (!existsSync(base)) continue
+    for (const entry of readdirSync(base)) {
+      const dist = join(base, entry, 'dist')
+      if (existsSync(dist)) {
+        rmSync(dist, { recursive: true, force: true })
+        removed.push(dist)
+      }
+    }
+  }
+  return removed
 }
 
 export function spawnInherit(

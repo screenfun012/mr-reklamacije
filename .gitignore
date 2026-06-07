@@ -23,6 +23,9 @@ test-results/
 
 # OS / editor
 .DS_Store
+# macOS Finder duplicate copies (e.g. "index 2.js")
+* 2
+* 2.*
 Thumbs.db
 *.swp
 *.swo
