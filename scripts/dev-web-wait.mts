@@ -15,7 +15,9 @@ console.log(`[web:${label}] Waiting for API ${API_HEALTH_URL} …`)
 
 const ready = await waitForHttp(API_HEALTH_URL, { timeoutMs: 120_000 })
 if (!ready) {
-  console.error(`[web:${label}] API not ready after 120s — starting anyway (expect 504 until API is up)`)
+  console.error(
+    `[web:${label}] API not ready after 120s — starting anyway (expect 504 until API is up)`,
+  )
 } else {
   console.log(`[web:${label}] API ready — starting Vite`)
 }

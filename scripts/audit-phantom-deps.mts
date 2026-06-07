@@ -59,7 +59,8 @@ function extractImports(source: string): string[] {
     let m: RegExpExecArray | null
     while ((m = re.exec(source))) {
       const spec = m[1]
-      if (!spec || spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('#')) continue
+      if (!spec || spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('#'))
+        continue
       const base = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]
       names.push(base)
     }
@@ -71,7 +72,10 @@ let hasMissing = false
 
 console.log('=== Known pins (CONTRIBUTING.md) ===\n')
 for (const { consumer, packages } of KNOWN_PINS) {
-  const pkgPath = consumer === 'root' ? join(REPO_ROOT, 'package.json') : join(REPO_ROOT, consumer, 'package.json')
+  const pkgPath =
+    consumer === 'root'
+      ? join(REPO_ROOT, 'package.json')
+      : join(REPO_ROOT, consumer, 'package.json')
   const declared = deps(readJson(pkgPath))
   for (const name of packages) {
     const status = declared.has(name) ? 'PINNED' : 'MISSING'

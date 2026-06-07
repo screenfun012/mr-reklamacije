@@ -43,7 +43,11 @@ if (!tryRun(`docker inspect ${POSTGRES_CONTAINER} 2>/dev/null`)) {
 } else if (isPostgresHealthy()) {
   add('Postgres', 'ok', `${POSTGRES_CONTAINER} healthy`)
 } else {
-  add('Postgres', 'warn', `${POSTGRES_CONTAINER} running but not healthy yet — wait or: docker compose up -d postgres`)
+  add(
+    'Postgres',
+    'warn',
+    `${POSTGRES_CONTAINER} running but not healthy yet — wait or: docker compose up -d postgres`,
+  )
 }
 
 // API
@@ -77,7 +81,10 @@ if (!existsSync(join(REPO_ROOT, 'node_modules'))) {
 } else if (nm.ok) {
   add('node_modules', 'ok', 'No corrupted package directories detected')
 } else {
-  const sample = nm.issues.slice(0, 3).map((i) => `${i.kind}: ${i.path}`).join('; ')
+  const sample = nm.issues
+    .slice(0, 3)
+    .map((i) => `${i.kind}: ${i.path}`)
+    .join('; ')
   add(
     'node_modules',
     'fail',
@@ -122,13 +129,17 @@ if (failures.length === 0 && warnings.length === 0) {
   console.log('Suggested fix:')
   if (failures.some((c) => c.name === 'node_modules')) {
     console.log('  1. Clean reinstall (run in your terminal, not Cursor sandbox):')
-    console.log('     rm -rf node_modules apps/*/node_modules packages/*/node_modules && pnpm install')
+    console.log(
+      '     rm -rf node_modules apps/*/node_modules packages/*/node_modules && pnpm install',
+    )
   }
   if (failures.some((c) => c.name.startsWith('API') || c.name === 'Postgres')) {
     console.log('  2. Start everything: pnpm dev:all')
   }
   if (warnings.some((c) => c.name.startsWith('Port'))) {
-    console.log('  3. Free stuck ports: pnpm dev:all (auto-frees :3000–:3003) or lsof -ti :PORT | xargs kill -9')
+    console.log(
+      '  3. Free stuck ports: pnpm dev:all (auto-frees :3000–:3003) or lsof -ti :PORT | xargs kill -9',
+    )
   }
   console.log('  4. Re-scan phantom deps after bumping better-auth/nitro: pnpm dev:audit-deps')
 }

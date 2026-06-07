@@ -32,7 +32,11 @@ export function run(command: string, options?: { cwd?: string; stdio?: 'inherit'
 
 export function tryRun(command: string): string | null {
   try {
-    return execSync(command, { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] })
+    return execSync(command, {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    })
   } catch {
     return null
   }

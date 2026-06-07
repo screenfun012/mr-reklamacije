@@ -5,14 +5,7 @@
  */
 import { type ChildProcess } from 'node:child_process'
 
-import {
-  DEV_PORTS,
-  REPO_ROOT,
-  freePort,
-  sleep,
-  spawnInherit,
-  stopDockerApi,
-} from './dev-lib.mts'
+import { DEV_PORTS, REPO_ROOT, freePort, sleep, spawnInherit, stopDockerApi } from './dev-lib.mts'
 
 const MAX_RESTARTS = 50
 const RESTART_DELAY_MS = 2000
