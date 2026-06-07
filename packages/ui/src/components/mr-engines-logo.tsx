@@ -8,12 +8,12 @@ export function MrEnginesLogo({ className }: MrEnginesLogoProps) {
       <img
         src="/mr-engines-logo-light.png"
         alt="MR Engines"
-        className={`h-8 w-auto dark:hidden ${className ?? ''}`}
+        className={`h-9 w-auto dark:hidden ${className ?? ''}`}
       />
       <img
         src="/mr-engines-logo-dark.png"
         alt="MR Engines"
-        className={`hidden h-8 w-auto dark:block ${className ?? ''}`}
+        className={`hidden h-9 w-auto dark:block ${className ?? ''}`}
       />
     </>
   )

@@ -1,8 +1,9 @@
 import { ClaimOutcome } from '@mr/shared'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull, notInArray, sql } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import * as schema from '../schema/index.js'
+import { CANONICAL_ENGINE_TYPE_CODES } from './engine-types.js'
 
 const ADMIN_EMAIL = process.env['SEED_ADMIN_EMAIL'] ?? 'screenfun99@gmail.com'
 
@@ -494,7 +495,26 @@ async function lookupIdByName(
   return row?.id ?? null
 }
 
+async function resetEmotiveClaimsSeedData(db: NodePgDatabase<typeof schema>): Promise<void> {
+  await db.delete(schema.emotiveClaimFaults)
+  const deletedClaims = await db
+    .delete(schema.emotiveClaims)
+    .returning({ id: schema.emotiveClaims.id })
+  const deletedEngineTypes = await db
+    .delete(schema.engineTypes)
+    .where(notInArray(schema.engineTypes.code, [...CANONICAL_ENGINE_TYPE_CODES]))
+    .returning({ id: schema.engineTypes.id })
+
+  await db.update(schema.engineTypes).set({ usageCount: 0 })
+
+  console.log(
+    `[seed:emotive-claims] Reset — removed ${deletedClaims.length} claims, ${deletedEngineTypes.length} non-canonical engine types`,
+  )
+}
+
 export async function seedEmotiveClaims(db: NodePgDatabase<typeof schema>): Promise<void> {
+  await resetEmotiveClaimsSeedData(db)
+
   const [admin] = await db
     .select({ id: schema.users.id })
     .from(schema.users)
