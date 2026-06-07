@@ -450,6 +450,53 @@ export const navItems: NavItem[] = [
 
 ---
 
+## Claims module rules (locked)
+
+These rules are mandatory for all claims-related features. Do not deviate without an explicit architectural review.
+
+### 1. Separate detail routes per claim kind
+
+EMOTIVE and DOMACE each have their own detail route, form, and loader
+(`/reklamacije/emotive/$id`, `/reklamacije/domace/$id`). They share only small
+primitives (`OutcomeBadge`, file upload, layout shell, status registry).
+**Never** build a shared `ClaimDetail` component that branches on `kind`.
+
+*Why:* the two claim types diverge in fields, validation, and workflows; a
+shared detail page becomes an unmaintainable `if (kind)` tree.
+
+### 2. Unified list, `kind` from the API only
+
+The claims list is one table with a type column. Each row carries `kind` from the
+list API (query reads both tables and stamps origin). Row links branch once to
+pick the correct detail route. **`kind` is never inferred from field shape in the
+UI.**
+
+*Why:* guessing kind from nullable columns breaks when schemas evolve; the server
+is the only authority on which table a row came from.
+
+### 3. One aggregate detail fetch per claim
+
+One detail endpoint per claim returns the full aggregate (claim + faults + customer
+and worker names + attachment list + status history), assembled on the server
+(JOIN in repository). Load it via the route `loader`; prefetch on hover
+(`defaultPreload: 'intent'`). No per-section fetches, no request waterfalls.
+
+*Why:* detail views need many related slices at once; a single round-trip keeps
+loaders simple and avoids slow staggered rendering.
+
+### 4. Atomic mutations for create and update
+
+One submit → one endpoint → one transaction (claim + faults together). Client and
+server share the same Zod DTO for the body. **No optimistic updates** for create
+or edit — use a fast endpoint, a disabled “Saving…” button state, and redirect on
+success. Optimistic updates are allowed **only** for small actions (e.g. status
+change), always with rollback.
+
+*Why:* create/update touch multiple rows; optimistic UI risks showing inconsistent
+fault data until rollback, with little UX gain if the API responds quickly.
+
+---
+
 # `packages/` contents
 
 ## `packages/db/`

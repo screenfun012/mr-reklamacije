@@ -185,6 +185,18 @@ Server → client events:
 | `registration_request_new` | `{ requestId }` | Admin-only: new client registration pending |
 | `export_ready` | `{ jobId, url }` | Long-running export completed |
 
+### SSE cache invalidation rule (locked)
+
+SSE events carry **only a signal** (`type` + `kind` + `id`) — never full entity
+payloads. On receipt, the client calls `invalidateQueries` (e.g.
+`emotiveClaimKeys.lists()` / `.detail(id)`); TanStack Query refetches only
+active queries. Use `placeholderData: keepPreviousData` on list queries so the
+table stays visible while refetch runs. **Never** write fetched rows into the
+cache manually from SSE — the server is the single source of truth.
+
+*Why:* pushing partial payloads through SSE duplicates server logic, causes stale
+merges, and races with in-flight mutations; invalidation keeps one fetch path.
+
 ### Event bus architecture
 
 In-process `EventEmitter`-based pub/sub. One instance per API process.
@@ -318,11 +330,17 @@ export function useAuthEventStream() {
         case 'claim_updated':
         case 'claim_created':
         case 'claim_deleted':
-          queryClient.invalidateQueries({ queryKey: [event.payload.kind + '-claims'] })
+          // Signal only — refetch via query keys; never patch cache from payload.
+          queryClient.invalidateQueries({ queryKey: claimKeys.lists(event.payload.kind) })
+          if (event.payload.id) {
+            queryClient.invalidateQueries({ queryKey: claimKeys.detail(event.payload.kind, event.payload.id) })
+          }
           break
         case 'attachment_added':
         case 'observation_added':
-          queryClient.invalidateQueries({ queryKey: ['claim', event.payload.claimKind, event.payload.claimId] })
+          queryClient.invalidateQueries({
+            queryKey: claimKeys.detail(event.payload.claimKind, event.payload.claimId),
+          })
           break
         // ...
       }
