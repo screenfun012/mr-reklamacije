@@ -1,7 +1,7 @@
 import { and, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
 
-import { ConflictError } from '../../core/errors/domain-errors.js'
+import { ConflictError, InternalError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { engineTypes } from './engine-types.schema.js'
@@ -112,7 +112,7 @@ export class EngineTypesRepository {
       })
 
     if (created === undefined) {
-      throw new Error('Failed to create engine type')
+      throw new InternalError('Failed to create engine type')
     }
 
     return mapEngineTypeRow(created)

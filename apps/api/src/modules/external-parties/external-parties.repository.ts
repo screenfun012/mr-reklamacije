@@ -1,5 +1,6 @@
 import { and, eq, ilike, isNull, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
+import { InternalError } from '../../core/errors/domain-errors.js'
 
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
@@ -87,7 +88,7 @@ export class ExternalPartiesRepository {
       })
 
     if (created === undefined) {
-      throw new Error('Failed to create external party')
+      throw new InternalError('Failed to create external party')
     }
 
     return mapExternalPartyRow(created)

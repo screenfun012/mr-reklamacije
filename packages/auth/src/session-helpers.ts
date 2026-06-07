@@ -1,4 +1,5 @@
 import type { Auth } from './better-auth.config.js'
+import { UnauthorizedError } from './unauthorized-error.js'
 
 /**
  * Session helpers for consuming Better-Auth from different contexts.
@@ -16,7 +17,7 @@ export async function getSession(auth: Auth, request: Request) {
 export async function requireSession(auth: Auth, request: Request) {
   const session = await getSession(auth, request)
   if (!session) {
-    throw new Error('Unauthorized: no active session')
+    throw new UnauthorizedError('No active session')
   }
   return session
 }
