@@ -4,7 +4,11 @@ import type {
   ClaimSourceListItem,
   CustomerListItem,
   CustomersListQuery,
+  DepartmentListItem,
+  EmployeeListItem,
+  EmployeesListQuery,
   EngineTypeListItem,
+  ExternalPartyListItem,
   ReferenceListQuery,
 } from '../schemas/reference-data.schema.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
@@ -17,6 +21,10 @@ export type CustomersReferenceFilters = Partial<
 >
 
 export type ReferenceLookupFilters = Partial<Pick<ReferenceListQuery, 'search' | 'activeOnly'>>
+
+export type EmployeesReferenceFilters = Partial<
+  Pick<EmployeesListQuery, 'search' | 'activeOnly' | 'departmentId'>
+>
 
 export function customersReferenceQueryKey(
   filters: CustomersReferenceFilters = {},
@@ -68,6 +76,64 @@ export function engineTypesReferenceOptions(filters: ReferenceLookupFilters = {}
     queryKey: engineTypesReferenceQueryKey(filters),
     queryFn: () =>
       fetchAllReferencePages<EngineTypeListItem>('/api/engine-types', {
+        activeOnly: filters.activeOnly ?? true,
+        search: filters.search,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
+export function employeesReferenceQueryKey(
+  filters: EmployeesReferenceFilters = {},
+): readonly ['employees', 'reference', EmployeesReferenceFilters] {
+  return ['employees', 'reference', filters] as const
+}
+
+export function employeesReferenceOptions(filters: EmployeesReferenceFilters = {}) {
+  return queryOptions({
+    queryKey: employeesReferenceQueryKey(filters),
+    queryFn: () =>
+      fetchAllReferencePages<EmployeeListItem>('/api/employees', {
+        activeOnly: filters.activeOnly ?? true,
+        search: filters.search,
+        departmentId: filters.departmentId,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
+export function departmentsReferenceQueryKey(
+  filters: ReferenceLookupFilters = {},
+): readonly ['departments', 'reference', ReferenceLookupFilters] {
+  return ['departments', 'reference', filters] as const
+}
+
+export function departmentsReferenceOptions(filters: ReferenceLookupFilters = {}) {
+  return queryOptions({
+    queryKey: departmentsReferenceQueryKey(filters),
+    queryFn: () =>
+      fetchAllReferencePages<DepartmentListItem>('/api/departments', {
+        activeOnly: filters.activeOnly ?? true,
+        search: filters.search,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
+export function externalPartiesReferenceQueryKey(
+  filters: ReferenceLookupFilters = {},
+): readonly ['external-parties', 'reference', ReferenceLookupFilters] {
+  return ['external-parties', 'reference', filters] as const
+}
+
+export function externalPartiesReferenceOptions(filters: ReferenceLookupFilters = {}) {
+  return queryOptions({
+    queryKey: externalPartiesReferenceQueryKey(filters),
+    queryFn: () =>
+      fetchAllReferencePages<ExternalPartyListItem>('/api/external-parties', {
         activeOnly: filters.activeOnly ?? true,
         search: filters.search,
       }),

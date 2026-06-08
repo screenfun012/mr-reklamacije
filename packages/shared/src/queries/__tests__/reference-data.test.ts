@@ -5,8 +5,14 @@ import {
   claimSourcesReferenceQueryKey,
   customersReferenceOptions,
   customersReferenceQueryKey,
+  departmentsReferenceOptions,
+  departmentsReferenceQueryKey,
+  employeesReferenceOptions,
+  employeesReferenceQueryKey,
   engineTypesReferenceOptions,
   engineTypesReferenceQueryKey,
+  externalPartiesReferenceOptions,
+  externalPartiesReferenceQueryKey,
 } from '../reference-data.js'
 
 describe('reference query options', () => {
@@ -30,5 +36,28 @@ describe('reference query options', () => {
     expect(engineTypesReferenceQueryKey()).toEqual(['engine-types', 'reference', {}])
     expect(claimSourcesReferenceOptions().queryKey[0]).toBe('claim-sources')
     expect(engineTypesReferenceOptions().queryKey[0]).toBe('engine-types')
+  })
+
+  it('uses infinite stale time for employee, department, and external party lookups', () => {
+    expect(employeesReferenceQueryKey({ departmentId: 'dept-1' })).toEqual([
+      'employees',
+      'reference',
+      { departmentId: 'dept-1' },
+    ])
+    expect(departmentsReferenceQueryKey()).toEqual(['departments', 'reference', {}])
+    expect(externalPartiesReferenceQueryKey({ search: 'acme' })).toEqual([
+      'external-parties',
+      'reference',
+      { search: 'acme' },
+    ])
+
+    for (const options of [
+      employeesReferenceOptions(),
+      departmentsReferenceOptions(),
+      externalPartiesReferenceOptions(),
+    ]) {
+      expect(options.staleTime).toBe(Number.POSITIVE_INFINITY)
+      expect(options.gcTime).toBe(Number.POSITIVE_INFINITY)
+    }
   })
 })
