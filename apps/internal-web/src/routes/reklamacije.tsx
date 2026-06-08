@@ -6,7 +6,8 @@ import {
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button } from '@mr/ui'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { getRouteApi } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { useCallback } from 'react'
 
@@ -29,9 +30,13 @@ export const Route = createFileRoute('/reklamacije')({
   errorComponent: ReklamacijeError,
 })
 
+const rootRoute = getRouteApi('__root__')
+
 function ReklamacijeComponent() {
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
+  const { authSession } = rootRoute.useRouteContext()
+  const canCreate = authSession?.user?.permissions.includes('emotive_claims.create') === true
 
   const handleSearchChange = useCallback(
     (next: typeof search) => {
@@ -51,10 +56,14 @@ function ReklamacijeComponent() {
             <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
           </div>
-          <Button type="button" disabled className="gap-2 self-start">
-            <Plus className="size-4" />
-            {m.emotive_claims_new_claim()}
-          </Button>
+          {canCreate ? (
+            <Button asChild className="gap-2 self-start">
+              <Link to="/reklamacije/emotive/nova" search={search}>
+                <Plus className="size-4" />
+                {m.emotive_claims_new_claim()}
+              </Link>
+            </Button>
+          ) : null}
         </div>
         <EmotiveClaimsListContent search={search} onSearchChange={handleSearchChange} />
       </div>

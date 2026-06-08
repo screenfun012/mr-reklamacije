@@ -13,3 +13,7 @@ export function internalRequireRoles(allowedRoles: readonly string[]) {
 export function internalRequireEmotiveClaimsView() {
   return requirePermissions(authClient, EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
 }
+
+export function internalRequireEmotiveClaimsCreate() {
+  return requirePermissions(authClient, ['emotive_claims.create'], loadServerSession)
+}
