@@ -51,7 +51,10 @@ export class EmotiveClaimsService {
     await this.validateCreateReferences(input)
 
     const customerId =
-      input.customerId ?? (await this.repo.getSourceDefaultCustomerId(input.sourceId))
+      input.customerId ??
+      (input.sourceId !== undefined
+        ? await this.repo.getSourceDefaultCustomerId(input.sourceId)
+        : null)
 
     const created = await this.repo.create(input, auditContext.actorUserId, customerId)
 
@@ -178,8 +181,12 @@ export class EmotiveClaimsService {
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
     const [engineTypeActive, employeeActive, sourceActive, customerActive] = await Promise.all([
       this.repo.isEngineTypeActive(input.engineTypeId),
-      this.repo.isEmployeeActive(input.employeeId),
-      this.repo.isClaimSourceActive(input.sourceId),
+      input.employeeId !== undefined
+        ? this.repo.isEmployeeActive(input.employeeId)
+        : Promise.resolve(true),
+      input.sourceId !== undefined
+        ? this.repo.isClaimSourceActive(input.sourceId)
+        : Promise.resolve(true),
       input.customerId !== undefined
         ? this.repo.isCustomerActive(input.customerId)
         : Promise.resolve(true),

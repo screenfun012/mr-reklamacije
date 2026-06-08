@@ -72,7 +72,7 @@ export function EmotiveClaimsTable({ items, total }: EmotiveClaimsTableProps) {
                 </td>
                 <td className="px-4 py-3">{claim.customerName ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs">{claim.engineTypeCode}</td>
-                <td className="px-4 py-3">{claim.employeeName}</td>
+                <td className="px-4 py-3">{claim.employeeName ?? '—'}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   {claim.dateOfFinish ? formatListDate(claim.dateOfFinish) : '—'}
                 </td>

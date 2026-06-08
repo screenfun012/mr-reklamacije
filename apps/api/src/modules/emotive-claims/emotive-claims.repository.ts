@@ -59,15 +59,16 @@ function mapListItem(row: {
   id: string
   sequenceNumber: number
   claimNumber: string | null
-  warrantyReport: string
+  warrantyReport: string | null
   engineTypeId: string
   engineTypeCode: string
+  engineCode: string | null
   dateOfClaim: Date | string
   mrNumber: string
   dateOfFinish: Date | string | null
-  employeeId: string
-  employeeName: string
-  sourceId: string
+  employeeId: string | null
+  employeeName: string | null
+  sourceId: string | null
   outcome: string
   claimYear: number
   customerId: string | null
@@ -82,6 +83,7 @@ function mapListItem(row: {
     warrantyReport: row.warrantyReport,
     engineTypeId: row.engineTypeId,
     engineTypeCode: row.engineTypeCode,
+    engineCode: row.engineCode,
     dateOfClaim: formatDate(row.dateOfClaim),
     mrNumber: row.mrNumber,
     dateOfFinish: row.dateOfFinish === null ? null : formatDate(row.dateOfFinish),
@@ -222,13 +224,14 @@ export class EmotiveClaimsRepository {
       const [created] = await tx
         .insert(emotiveClaims)
         .values({
-          warrantyReport: input.warrantyReport,
+          warrantyReport: input.warrantyReport ?? null,
           engineTypeId: input.engineTypeId,
+          engineCode: input.engineCode ?? null,
           dateOfClaim: input.dateOfClaim,
           mrNumber: input.mrNumber,
           dateOfFinish: input.dateOfFinish ?? null,
-          employeeId: input.employeeId,
-          sourceId: input.sourceId,
+          employeeId: input.employeeId ?? null,
+          sourceId: input.sourceId ?? null,
           outcome: input.outcome,
           claimYear,
           customerId,
@@ -324,6 +327,7 @@ export class EmotiveClaimsRepository {
         warrantyReport: emotiveClaims.warrantyReport,
         engineTypeId: emotiveClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
+        engineCode: emotiveClaims.engineCode,
         dateOfClaim: emotiveClaims.dateOfClaim,
         mrNumber: emotiveClaims.mrNumber,
         dateOfFinish: emotiveClaims.dateOfFinish,
@@ -339,7 +343,7 @@ export class EmotiveClaimsRepository {
       .from(emotiveClaims)
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
-      .innerJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+      .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .where(whereClause)
       .orderBy(desc(emotiveClaims.dateOfClaim), desc(emotiveClaims.id))
       .limit(query.pageSize)
@@ -362,6 +366,7 @@ export class EmotiveClaimsRepository {
         warrantyReport: emotiveClaims.warrantyReport,
         engineTypeId: emotiveClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
+        engineCode: emotiveClaims.engineCode,
         dateOfClaim: emotiveClaims.dateOfClaim,
         mrNumber: emotiveClaims.mrNumber,
         dateOfFinish: emotiveClaims.dateOfFinish,
@@ -380,7 +385,7 @@ export class EmotiveClaimsRepository {
       .from(emotiveClaims)
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
-      .innerJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+      .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
       .limit(1)
 

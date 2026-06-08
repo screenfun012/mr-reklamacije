@@ -31,13 +31,14 @@ export const emotiveClaims = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     sequenceNumber: bigserial('sequence_number', { mode: 'number' }).notNull().unique(),
     claimNumber: text('claim_number'),
-    warrantyReport: text('warranty_report').notNull(),
+    warrantyReport: text('warranty_report'),
     engineTypeId: uuid('engine_type_id').notNull(),
+    engineCode: text('engine_code'),
     dateOfClaim: date('date_of_claim', { mode: 'date' }).notNull(),
     mrNumber: text('mr_number').notNull(),
     dateOfFinish: date('date_of_finish', { mode: 'date' }),
-    employeeId: uuid('employee_id').notNull(),
-    sourceId: uuid('source_id').notNull(),
+    employeeId: uuid('employee_id'),
+    sourceId: uuid('source_id'),
     outcome: text('outcome').notNull().$type<ClaimOutcome>(),
     // claim_year is set by repository layer on INSERT/UPDATE
     // (year extracted from date_of_claim / date_received).

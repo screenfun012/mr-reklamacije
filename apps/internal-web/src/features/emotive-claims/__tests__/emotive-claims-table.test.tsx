@@ -28,6 +28,7 @@ describe('EmotiveClaimsTable', () => {
             warrantyReport: 'Test',
             engineTypeId: '22222222-2222-4222-8222-222222222222',
             engineTypeCode: 'BMW N47D20D',
+            engineCode: null,
             dateOfClaim: '2026-04-17',
             mrNumber: '5376/26',
             dateOfFinish: '2025-12-15',

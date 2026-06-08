@@ -94,17 +94,21 @@ describe('EmotiveClaimsService integration', () => {
   ): Promise<EmotiveClaimCreateInput> {
     const engineTypeId = overrides.engineTypeId ?? (await createEngineType(`ENG-${Date.now()}`))
     const employeeId =
-      overrides.employeeId ??
-      (await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')))
-    const sourceId = overrides.sourceId ?? (await getClaimSourceIdByCode(ctx.db, 'SELMAN'))
+      'employeeId' in overrides
+        ? overrides.employeeId
+        : await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović'))
+    const sourceId =
+      'sourceId' in overrides ? overrides.sourceId : await getClaimSourceIdByCode(ctx.db, 'SELMAN')
+    const warrantyReport =
+      'warrantyReport' in overrides ? overrides.warrantyReport : 'Kvar na motoru pri hladnom startu'
 
     return {
-      warrantyReport: 'Kvar na motoru pri hladnom startu',
       engineTypeId,
       dateOfClaim: new Date('2026-04-17'),
       mrNumber: '5376/26',
       employeeId,
       sourceId,
+      warrantyReport,
       outcome: ClaimOutcome.Pending,
       faults: [],
       ...overrides,
@@ -133,6 +137,55 @@ describe('EmotiveClaimsService integration', () => {
       )
 
       expect(created.claimNumber).toBeNull()
+    })
+
+    it('creates claim without warrantyReport, employeeId, or sourceId', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          warrantyReport: undefined,
+          employeeId: undefined,
+          sourceId: undefined,
+          customerId,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.warrantyReport).toBeNull()
+      expect(created.employeeId).toBeNull()
+      expect(created.employeeName).toBeNull()
+      expect(created.sourceId).toBeNull()
+      expect(created.customerId).toBe(customerId)
+    })
+
+    it('stores engine_code when provided', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ engineCode: 'WW328394203' }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.engineCode).toBe('WW328394203')
+    })
+
+    it('returns claim without assigned employee from findById', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          employeeId: undefined,
+          sourceId: undefined,
+          customerId,
+          mrNumber: `NO-EMP-${Date.now()}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const detail = await container.emotiveClaimsService.findById(created.id, FULL_OPERATOR)
+
+      expect(detail.employeeId).toBeNull()
+      expect(detail.employeeName).toBeNull()
     })
 
     it('increments engine type usage_count', async () => {
@@ -314,7 +367,7 @@ describe('EmotiveClaimsService integration', () => {
         listQuery({ search: 'alfa' }),
         FULL_OPERATOR,
       )
-      expect(bySearch.items.some((item) => item.warrantyReport.includes('alfa'))).toBe(true)
+      expect(bySearch.items.some((item) => item.warrantyReport?.includes('alfa'))).toBe(true)
     })
 
     it('paginates with offset ordered by date_of_claim desc', async () => {

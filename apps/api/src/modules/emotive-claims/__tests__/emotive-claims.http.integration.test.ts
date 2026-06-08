@@ -41,6 +41,7 @@ function serializeCreateBody(input: EmotiveClaimCreateInput): Record<string, unk
   return {
     warrantyReport: input.warrantyReport,
     engineTypeId: input.engineTypeId,
+    engineCode: input.engineCode,
     dateOfClaim: input.dateOfClaim.toISOString().slice(0, 10),
     mrNumber: input.mrNumber,
     employeeId: input.employeeId,
@@ -79,17 +80,21 @@ describe('EmotiveClaims HTTP', () => {
   ): Promise<EmotiveClaimCreateInput> {
     const engineTypeId = overrides.engineTypeId ?? (await createEngineType())
     const employeeId =
-      overrides.employeeId ??
-      (await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')))
-    const sourceId = overrides.sourceId ?? (await getClaimSourceIdByCode(ctx.db, 'SELMAN'))
+      'employeeId' in overrides
+        ? overrides.employeeId
+        : await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović'))
+    const sourceId =
+      'sourceId' in overrides ? overrides.sourceId : await getClaimSourceIdByCode(ctx.db, 'SELMAN')
+    const warrantyReport =
+      'warrantyReport' in overrides ? overrides.warrantyReport : 'Kvar na motoru pri hladnom startu'
 
     return {
-      warrantyReport: 'Kvar na motoru pri hladnom startu',
       engineTypeId,
       dateOfClaim: new Date('2026-04-17'),
       mrNumber: `HTTP-${Date.now()}/26`,
       employeeId,
       sourceId,
+      warrantyReport,
       outcome: ClaimOutcome.Pending,
       faults: [],
       ...overrides,
