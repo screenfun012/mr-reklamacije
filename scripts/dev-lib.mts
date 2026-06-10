@@ -118,6 +118,24 @@ export function stopDockerApi(): void {
   tryRun('docker stop mr-reklamacije-api')
 }
 
+export function isDockerDaemonReady(): boolean {
+  return tryRun('docker info --format "{{.ServerVersion}}"') !== null
+}
+
+/**
+ * Docker Desktop on macOS takes 30–60s to boot; `docker compose` fails hard
+ * until the daemon socket is up. Poll every 2s instead of failing immediately.
+ */
+export async function waitForDockerDaemon(timeoutMs = 60_000): Promise<boolean> {
+  if (isDockerDaemonReady()) return true
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    await sleep(2000)
+    if (isDockerDaemonReady()) return true
+  }
+  return false
+}
+
 export function startPostgres(): void {
   run('docker compose up -d postgres', { stdio: 'inherit' })
   stopDockerApi()

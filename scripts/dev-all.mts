@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * One-command dev: Postgres → API (supervised) → 3 frontends, single terminal.
+ * One-command dev: Docker wait → Postgres → i18n compile → API (supervised) → 3 frontends.
  *
  * Usage: pnpm dev:all
  * Preflight only: pnpm dev:check
@@ -13,8 +13,11 @@ import {
   REPO_ROOT,
   checkNodeModulesIntegrity,
   freePorts,
+  isDockerDaemonReady,
+  run,
   sleep,
   startPostgres,
+  waitForDockerDaemon,
   waitForHttp,
   waitForPostgres,
 } from './dev-lib.mts'
@@ -47,6 +50,18 @@ if (freed.length > 0) {
   await sleep(500)
 }
 
+// --- Docker daemon (Docker Desktop boots 30–60s on M1; compose fails until socket is up) ---
+if (!isDockerDaemonReady()) {
+  log('docker', 'Docker daemon not ready — waiting up to 60s (is Docker Desktop starting?)…')
+  const dockerReady = await waitForDockerDaemon(60_000)
+  if (!dockerReady) {
+    console.error('\n[docker] Docker daemon nije dostupan ni posle 60s.')
+    console.error('[docker] Upali Docker Desktop i pokušaj ponovo: pnpm dev:all\n')
+    process.exit(1)
+  }
+}
+log('docker', 'Docker daemon ready')
+
 // --- Postgres ---
 log('db', 'Starting Postgres (docker compose up -d postgres)…')
 startPostgres()
@@ -58,6 +73,17 @@ if (!pgReady) {
   process.exit(1)
 }
 log('db', 'Postgres healthy')
+
+// --- i18n compile (frontends 500 on missing src/paraglide/messages.js otherwise) ---
+log('i18n', 'Compiling Paraglide messages (@mr/i18n)…')
+try {
+  run('pnpm --filter @mr/i18n compile', { stdio: 'inherit' })
+  log('i18n', 'Paraglide compile done')
+} catch {
+  console.error('\n[i18n] Paraglide compile failed — frontends would 500 on missing messages.js.')
+  console.error('[i18n] Run manually for details: pnpm --filter @mr/i18n compile\n')
+  process.exit(1)
+}
 
 // --- API first (background), then frontends after health ---
 log('api', 'Starting supervised API…')
