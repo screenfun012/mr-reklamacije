@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@mr/i18n#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "src/paraglide/**"]
+    },
     "lint": {},
     "typecheck": {
       "dependsOn": ["^build"]
