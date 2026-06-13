@@ -16,6 +16,10 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
+    },
+    "@mr/i18n#test": {
+      "dependsOn": ["build", "^build"],
+      "outputs": ["coverage/**"]
     }
   }
 }

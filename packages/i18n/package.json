@@ -21,7 +21,7 @@
     "build": "pnpm compile && tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "pnpm compile && tsc --noEmit -p tsconfig.json",
-    "test": "pnpm compile && vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@inlang/paraglide-js": "2.18.0"
