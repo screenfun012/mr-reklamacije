@@ -13,7 +13,7 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const mrWebDevSettings = {
   server: {
     watch: {
-      ignored: ['**/dist/**', '**/.turbo/**'],
+      ignored: ['**/dist/**', '**/.turbo/**', '**/packages/i18n/src/paraglide/**'],
     },
     fs: {
       allow: [repoRoot],
