@@ -2,6 +2,7 @@ export { ApiError, parseApiErrorBody } from './api/api-error.js'
 export { fetchJson } from './api/fetch-json.js'
 export { resolveFetchUrl } from './api/resolve-fetch-url.js'
 export { formatListDate } from './utils/format-list-date.js'
+export { formatListDateTime } from './utils/format-list-date-time.js'
 export { normalizeName, toAsciiDisplay } from './utils/normalize-name.js'
 export { parseExcelDate } from './utils/parse-excel-date.js'
 

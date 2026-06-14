@@ -2,6 +2,7 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
 import type {
+  EmotiveClaimDetail,
   EmotiveClaimListQuery,
   EmotiveClaimListResponse,
 } from '../schemas/emotive-claim.schema.js'
@@ -16,6 +17,7 @@ export type { EmotiveClaimsListFilters } from './emotive-claims-filters.js'
 export { normalizeEmotiveClaimsListFilters } from './emotive-claims-filters.js'
 
 const EMOTIVE_CLAIMS_STALE_MS = 30_000
+const EMOTIVE_CLAIM_DETAIL_STALE_MS = 60_000
 
 export function emotiveClaimsListQueryKey(
   filters: EmotiveClaimsListFilters,
@@ -46,5 +48,13 @@ export function emotiveClaimsListOptions(
     },
     staleTime: EMOTIVE_CLAIMS_STALE_MS,
     placeholderData: keepPreviousData,
+  })
+}
+
+export function emotiveClaimDetailOptions(id: string) {
+  return queryOptions({
+    queryKey: emotiveClaimKeys.detail(id),
+    queryFn: () => fetchJson<EmotiveClaimDetail>(`/api/emotive-claims/${id}`),
+    staleTime: EMOTIVE_CLAIM_DETAIL_STALE_MS,
   })
 }

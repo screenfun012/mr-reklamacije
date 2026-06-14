@@ -1,5 +1,6 @@
 export { emotiveClaimKeys } from './emotive-claim-keys.js'
 export {
+  emotiveClaimDetailOptions,
   emotiveClaimsListOptions,
   emotiveClaimsListQueryKey,
   normalizeEmotiveClaimsListFilters,

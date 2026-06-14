@@ -1,22 +1,45 @@
 import { setLocale } from '@mr/i18n'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { EmotiveClaimsTable } from '../emotive-claims-table.js'
+
+async function renderWithRouter(node: ReactElement): Promise<void> {
+  const rootRoute = createRootRoute({ component: () => node })
+  const detailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/reklamacije/emotive/$id',
+    component: () => null,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([detailRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+  render(<RouterProvider router={router as never} />)
+}
 
 describe('EmotiveClaimsTable', () => {
   beforeEach(() => {
     setLocale('sr')
   })
 
-  it('renders empty state when there are no rows', () => {
-    render(<EmotiveClaimsTable items={[]} total={0} />)
+  it('renders empty state when there are no rows', async () => {
+    await renderWithRouter(<EmotiveClaimsTable items={[]} total={0} />)
 
     expect(screen.getByRole('status')).toHaveTextContent('Nema reklamacija')
   })
 
-  it('renders claim rows with embedded list fields', () => {
-    render(
+  it('renders claim rows with embedded list fields', async () => {
+    await renderWithRouter(
       <EmotiveClaimsTable
         total={1}
         items={[
@@ -45,12 +68,18 @@ describe('EmotiveClaimsTable', () => {
       />,
     )
 
-    expect(screen.getByText('5376/26')).toBeInTheDocument()
+    expect(await screen.findByText('5376/26')).toBeInTheDocument()
     expect(screen.getByText('EM-2026-001')).toBeInTheDocument()
     expect(screen.getByText('SELMAN')).toBeInTheDocument()
     expect(screen.getByText('BMW N47D20D')).toBeInTheDocument()
     expect(screen.getByText('Petar Nikolić')).toBeInTheDocument()
     expect(screen.getByText('U obradi')).toBeInTheDocument()
     expect(screen.getByText('15.12.2025.')).toBeInTheDocument()
+
+    const viewLink = screen.getByRole('link', { name: 'Pregled' })
+    expect(viewLink).toHaveAttribute(
+      'href',
+      '/reklamacije/emotive/11111111-1111-4111-8111-111111111111',
+    )
   })
 })

@@ -1,6 +1,7 @@
 import { formatListDate, type EmotiveClaimListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { OutcomeBadge, Skeleton } from '@mr/ui'
+import { Link } from '@tanstack/react-router'
 import { Eye, Trash2 } from 'lucide-react'
 
 export interface EmotiveClaimsTableProps {
@@ -79,14 +80,14 @@ export function EmotiveClaimsTable({ items, total }: EmotiveClaimsTableProps) {
                 <td className="px-4 py-3 whitespace-nowrap">{formatListDate(claim.dateOfClaim)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 opacity-60"
-                      disabled
-                      aria-label="Pregled"
+                    <Link
+                      to="/reklamacije/emotive/$id"
+                      params={{ id: claim.id }}
+                      className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                      aria-label={m.emotive_claims_detail_view_action()}
                     >
                       <Eye className="size-4" />
-                    </button>
+                    </Link>
                     <button
                       type="button"
                       className="inline-flex size-8 items-center justify-center rounded-md text-destructive opacity-60"
