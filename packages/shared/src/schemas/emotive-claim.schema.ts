@@ -103,8 +103,11 @@ export const EmotiveClaimFaultItemSchema = z.object({
   id: z.string().uuid(),
   faultType: z.enum(faultTypeValues),
   employeeId: z.string().uuid().nullable(),
+  employeeName: z.string().nullable(),
   departmentId: z.string().uuid().nullable(),
+  departmentName: z.string().nullable(),
   externalPartyId: z.string().uuid().nullable(),
+  externalPartyName: z.string().nullable(),
   notes: z.string().nullable(),
 })
 
@@ -135,6 +138,9 @@ export const EmotiveClaimListItemSchema = z.object({
 export type EmotiveClaimListItem = z.infer<typeof EmotiveClaimListItemSchema>
 
 export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
+  engineTypeManufacturer: z.string().nullable(),
+  sourceCode: z.string().nullable(),
+  sourceName: z.string().nullable(),
   internalNotes: z.string().nullable(),
   updatedBy: z.string().uuid().nullable(),
   updatedAt: z.string(),

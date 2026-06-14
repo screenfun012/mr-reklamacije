@@ -41,16 +41,22 @@ function mapFaultRow(row: {
   id: string
   faultType: string
   employeeId: string | null
+  employeeName: string | null
   departmentId: string | null
+  departmentName: string | null
   externalPartyId: string | null
+  externalPartyName: string | null
   notes: string | null
 }): EmotiveClaimFaultItem {
   return {
     id: row.id,
     faultType: row.faultType as EmotiveClaimFaultItem['faultType'],
     employeeId: row.employeeId,
+    employeeName: row.employeeName,
     departmentId: row.departmentId,
+    departmentName: row.departmentName,
     externalPartyId: row.externalPartyId,
+    externalPartyName: row.externalPartyName,
     notes: row.notes,
   }
 }
@@ -366,6 +372,7 @@ export class EmotiveClaimsRepository {
         warrantyReport: emotiveClaims.warrantyReport,
         engineTypeId: emotiveClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
+        engineTypeManufacturer: engineTypes.manufacturer,
         engineCode: emotiveClaims.engineCode,
         dateOfClaim: emotiveClaims.dateOfClaim,
         mrNumber: emotiveClaims.mrNumber,
@@ -373,6 +380,8 @@ export class EmotiveClaimsRepository {
         employeeId: emotiveClaims.employeeId,
         employeeName: employees.fullName,
         sourceId: emotiveClaims.sourceId,
+        sourceCode: claimSources.code,
+        sourceName: claimSources.name,
         outcome: emotiveClaims.outcome,
         claimYear: emotiveClaims.claimYear,
         customerId: emotiveClaims.customerId,
@@ -386,6 +395,7 @@ export class EmotiveClaimsRepository {
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+      .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
       .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
       .limit(1)
 
@@ -402,17 +412,34 @@ export class EmotiveClaimsRepository {
         id: emotiveClaimFaults.id,
         faultType: emotiveClaimFaults.faultType,
         employeeId: emotiveClaimFaults.employeeId,
+        employeeName: employees.fullName,
         departmentId: emotiveClaimFaults.departmentId,
+        departmentName: departments.nameSr,
         externalPartyId: emotiveClaimFaults.externalPartyId,
+        externalPartyName: externalParties.name,
         notes: emotiveClaimFaults.notes,
       })
       .from(emotiveClaimFaults)
+      .leftJoin(employees, eq(emotiveClaimFaults.employeeId, employees.id))
+      .leftJoin(departments, eq(emotiveClaimFaults.departmentId, departments.id))
+      .leftJoin(externalParties, eq(emotiveClaimFaults.externalPartyId, externalParties.id))
       .where(eq(emotiveClaimFaults.claimId, id))
 
-    const { internalNotes, updatedBy, updatedAt, ...listFields } = row
+    const {
+      internalNotes,
+      updatedBy,
+      updatedAt,
+      engineTypeManufacturer,
+      sourceCode,
+      sourceName,
+      ...listFields
+    } = row
 
     return {
       ...mapListItem(listFields),
+      engineTypeManufacturer,
+      sourceCode,
+      sourceName,
       internalNotes,
       updatedBy,
       updatedAt: formatTimestamp(updatedAt),

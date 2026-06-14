@@ -289,6 +289,66 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('when fetching detail', () => {
+    it('resolves source, manufacturer, and per-fault reference names on the server', async () => {
+      const engineTypeId = await createEngineType(`MFG-${Date.now()}`)
+      await ctx.db
+        .update(schema.engineTypes)
+        .set({ manufacturer: 'Briggs & Stratton' })
+        .where(eq(schema.engineTypes.id, engineTypeId))
+
+      const sourceId = await getClaimSourceIdByCode(ctx.db, 'SELMAN')
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+      const departmentId = await getDepartmentIdByCode(ctx.db, 'GLAVE')
+
+      const [externalParty] = await ctx.db
+        .insert(schema.externalParties)
+        .values({
+          kind: 'supplier',
+          name: `Eksterni dobavljač ${Date.now()}`,
+          isActive: true,
+        })
+        .returning({ id: schema.externalParties.id, name: schema.externalParties.name })
+
+      if (externalParty === undefined) {
+        throw new Error('Failed to create external party fixture')
+      }
+
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId,
+          sourceId,
+          mrNumber: `DETAIL-NAMES-${Date.now()}/26`,
+          faults: [
+            { faultType: FaultType.Employee, employeeId },
+            { faultType: FaultType.Department, departmentId },
+            { faultType: FaultType.External, externalPartyId: externalParty.id },
+          ],
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const detail = await container.emotiveClaimsService.findById(created.id, FULL_OPERATOR)
+
+      expect(detail.engineTypeManufacturer).toBe('Briggs & Stratton')
+      expect(detail.sourceCode).toBe('SELMAN')
+      expect(detail.sourceName).toBeTruthy()
+      expect(detail.faults).toHaveLength(3)
+
+      const employeeFault = detail.faults.find((f) => f.faultType === FaultType.Employee)
+      const departmentFault = detail.faults.find((f) => f.faultType === FaultType.Department)
+      const externalFault = detail.faults.find((f) => f.faultType === FaultType.External)
+
+      expect(employeeFault?.employeeName).toBeTruthy()
+      expect(departmentFault?.departmentName).toBeTruthy()
+      expect(externalFault?.externalPartyName).toBe(externalParty.name)
+    })
+  })
+
   describe('EmotiveClaimCreateInputSchema', () => {
     it('rejects create input without mr_number', () => {
       const result = EmotiveClaimCreateInputSchema.safeParse({
