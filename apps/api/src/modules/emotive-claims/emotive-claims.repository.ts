@@ -468,6 +468,9 @@ export class EmotiveClaimsRepository {
     if (input.engineTypeId !== undefined) {
       patch.engineTypeId = input.engineTypeId
     }
+    if (input.engineCode !== undefined) {
+      patch.engineCode = input.engineCode
+    }
     if (input.dateOfClaim !== undefined) {
       patch.dateOfClaim = input.dateOfClaim
       patch.claimYear = claimYearFromDate(input.dateOfClaim)

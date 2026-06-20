@@ -59,6 +59,7 @@ export const EmotiveClaimUpdateInputSchema = z
   .object({
     warrantyReport: z.string().trim().min(1).max(8000).optional(),
     engineTypeId: z.string().uuid().optional(),
+    engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().optional(),
     mrNumber: z.string().trim().min(1).max(50).optional(),
     employeeId: z.string().uuid().optional(),

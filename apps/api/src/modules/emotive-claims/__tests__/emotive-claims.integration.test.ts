@@ -800,6 +800,31 @@ describe('EmotiveClaimsService integration', () => {
 
       expect(updated.claimYear).toBe(2026)
     })
+
+    it('adds an engine code that was missing at intake and can clear it again', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ engineCode: undefined }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.engineCode).toBeNull()
+
+      const withCode = await container.emotiveClaimsService.update(
+        created.id,
+        { engineCode: 'MR-ENG-7788' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(withCode.engineCode).toBe('MR-ENG-7788')
+
+      const cleared = await container.emotiveClaimsService.update(
+        created.id,
+        { engineCode: null },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(cleared.engineCode).toBeNull()
+    })
   })
 
   describe('sequence_number', () => {
