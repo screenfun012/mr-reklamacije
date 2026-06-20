@@ -146,6 +146,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view',
   'emotive_claims.create',
   'emotive_claims.update',
+  'emotive_claims.delete',
   'emotive_claims.change_outcome',
   'domace_claims.view',
   'domace_claims.create',
