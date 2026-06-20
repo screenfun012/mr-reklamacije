@@ -2,71 +2,65 @@ import {
   AuditAction,
   ClaimKind,
   type ClaimEventPayload,
-  type EmotiveClaimFaultInput,
+  type DomaceClaimFaultInput,
 } from '@mr/shared'
 
-import type { HttpActorContext } from '../../core/http/actor-context.js'
 import {
   assertClaimEditable,
   assertCompletedActionAllowed,
   assertOutcomeTransitionAllowed,
 } from '../../core/claims/claim-lock.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
-import type { EmotiveClaimsRepository } from './emotive-claims.repository.js'
-import type { EmotiveClaimsActor, EmotiveClaimsListScope } from './emotive-claims.types.js'
+import type { DomaceClaimsRepository } from './domace-claims.repository.js'
+import type { DomaceClaimsActor, DomaceClaimsListScope } from './domace-claims.types.js'
 import type {
-  EmotiveClaimChangeOutcomeInput,
-  EmotiveClaimCreateInput,
-  EmotiveClaimDetail,
-  EmotiveClaimListQuery,
-  EmotiveClaimListResponse,
-  EmotiveClaimUpdateInput,
-} from './emotive-claims.validators.js'
+  DomaceClaimChangeOutcomeInput,
+  DomaceClaimCreateInput,
+  DomaceClaimDetail,
+  DomaceClaimListQuery,
+  DomaceClaimListResponse,
+  DomaceClaimUpdateInput,
+} from './domace-claims.validators.js'
 
-function resolveListScope(actor: EmotiveClaimsActor): EmotiveClaimsListScope {
-  if (actor.permissions.includes('emotive_claims.view')) {
+function resolveListScope(actor: DomaceClaimsActor): DomaceClaimsListScope {
+  if (actor.permissions.includes('domace_claims.view')) {
     return { type: 'all' }
   }
 
-  if (actor.permissions.includes('emotive_claims.view_own_customer')) {
+  if (actor.permissions.includes('domace_claims.view_own_customer')) {
     return { type: 'own_customer', userId: actor.id }
   }
 
   throw new ForbiddenError()
 }
 
-function emotiveEventPayload(id: string): ClaimEventPayload {
-  return { kind: ClaimKind.Emotive, id }
+function domaceEventPayload(id: string): ClaimEventPayload {
+  return { kind: ClaimKind.Domace, id }
 }
 
-const EMOTIVE_REOPEN_PERMISSION = 'emotive_claims.reopen'
+const DOMACE_REOPEN_PERMISSION = 'domace_claims.reopen'
 
-export class EmotiveClaimsService {
+export class DomaceClaimsService {
   constructor(
-    private readonly repo: EmotiveClaimsRepository,
+    private readonly repo: DomaceClaimsRepository,
     private readonly audit: AuditPort,
     private readonly events: EventBus,
   ) {}
 
   async create(
-    input: EmotiveClaimCreateInput,
-    actor: EmotiveClaimsActor,
+    input: DomaceClaimCreateInput,
+    actor: DomaceClaimsActor,
     auditContext: HttpActorContext,
-  ): Promise<EmotiveClaimDetail> {
+  ): Promise<DomaceClaimDetail> {
     await this.validateCreateReferences(input)
 
-    const customerId =
-      input.customerId ??
-      (input.sourceId !== undefined
-        ? await this.repo.getSourceDefaultCustomerId(input.sourceId)
-        : null)
-
-    const created = await this.repo.create(input, auditContext.actorUserId, customerId)
+    const created = await this.repo.create(input, auditContext.actorUserId)
 
     await this.audit.log({
-      entityType: 'emotive_claim',
+      entityType: 'domace_claim',
       entityId: created.id,
       action: AuditAction.Create,
       actorUserId: auditContext.actorUserId,
@@ -75,25 +69,25 @@ export class EmotiveClaimsService {
       changes: { after: created },
     })
 
-    this.events.publishClaimCreated(emotiveEventPayload(created.id))
+    this.events.publishClaimCreated(domaceEventPayload(created.id))
 
     return created
   }
 
   async list(
-    query: EmotiveClaimListQuery,
-    actor: EmotiveClaimsActor,
-  ): Promise<EmotiveClaimListResponse> {
+    query: DomaceClaimListQuery,
+    actor: DomaceClaimsActor,
+  ): Promise<DomaceClaimListResponse> {
     const scope = resolveListScope(actor)
     return this.repo.list(query, scope)
   }
 
-  async findById(id: string, actor: EmotiveClaimsActor): Promise<EmotiveClaimDetail> {
+  async findById(id: string, actor: DomaceClaimsActor): Promise<DomaceClaimDetail> {
     const scope = resolveListScope(actor)
     const claim = await this.repo.findById(id, scope)
 
     if (claim === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('Domace claim', id)
     }
 
     return claim
@@ -101,14 +95,14 @@ export class EmotiveClaimsService {
 
   async update(
     id: string,
-    input: EmotiveClaimUpdateInput,
-    actor: EmotiveClaimsActor,
+    input: DomaceClaimUpdateInput,
+    actor: DomaceClaimsActor,
     auditContext: HttpActorContext,
-  ): Promise<EmotiveClaimDetail> {
+  ): Promise<DomaceClaimDetail> {
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('Domace claim', id)
     }
 
     assertClaimEditable(before)
@@ -118,7 +112,7 @@ export class EmotiveClaimsService {
     const updated = await this.repo.update(id, input, auditContext.actorUserId, scope)
 
     await this.audit.log({
-      entityType: 'emotive_claim',
+      entityType: 'domace_claim',
       entityId: id,
       action: AuditAction.Update,
       actorUserId: auditContext.actorUserId,
@@ -127,34 +121,34 @@ export class EmotiveClaimsService {
       changes: { before, after: updated },
     })
 
-    this.events.publishClaimUpdated(emotiveEventPayload(id))
+    this.events.publishClaimUpdated(domaceEventPayload(id))
 
     return updated
   }
 
   async softDelete(
     id: string,
-    actor: EmotiveClaimsActor,
+    actor: DomaceClaimsActor,
     auditContext: HttpActorContext,
   ): Promise<void> {
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('Domace claim', id)
     }
 
     // A completed (locked) claim is frozen for drastic actions; only the
-    // unlock-key holder (admin, via emotive_claims.reopen) may delete it.
+    // unlock-key holder (admin, via domace_claims.reopen) may delete it.
     assertCompletedActionAllowed(
       before,
-      { reopenPermission: EMOTIVE_REOPEN_PERMISSION, permissions: actor.permissions },
+      { reopenPermission: DOMACE_REOPEN_PERMISSION, permissions: actor.permissions },
       'Deleting a completed claim requires reopen permission',
     )
 
     await this.repo.softDelete(id, auditContext.actorUserId, scope)
 
     await this.audit.log({
-      entityType: 'emotive_claim',
+      entityType: 'domace_claim',
       entityId: id,
       action: AuditAction.Delete,
       actorUserId: auditContext.actorUserId,
@@ -163,30 +157,30 @@ export class EmotiveClaimsService {
       changes: { before },
     })
 
-    this.events.publishClaimDeleted(emotiveEventPayload(id))
+    this.events.publishClaimDeleted(domaceEventPayload(id))
   }
 
   async changeOutcome(
     id: string,
-    input: EmotiveClaimChangeOutcomeInput,
-    actor: EmotiveClaimsActor,
+    input: DomaceClaimChangeOutcomeInput,
+    actor: DomaceClaimsActor,
     auditContext: HttpActorContext,
-  ): Promise<EmotiveClaimDetail> {
+  ): Promise<DomaceClaimDetail> {
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('Domace claim', id)
     }
 
     const isReopen = assertOutcomeTransitionAllowed(before.outcome, input.outcome, {
-      reopenPermission: EMOTIVE_REOPEN_PERMISSION,
+      reopenPermission: DOMACE_REOPEN_PERMISSION,
       permissions: actor.permissions,
     })
 
     const updated = await this.repo.changeOutcome(id, input, auditContext.actorUserId, scope)
 
     await this.audit.log({
-      entityType: 'emotive_claim',
+      entityType: 'domace_claim',
       entityId: id,
       action: AuditAction.Update,
       actorUserId: auditContext.actorUserId,
@@ -197,22 +191,18 @@ export class EmotiveClaimsService {
         : { before, after: updated, outcome: input.outcome },
     })
 
-    this.events.publishClaimUpdated(emotiveEventPayload(id))
+    this.events.publishClaimUpdated(domaceEventPayload(id))
 
     return updated
   }
 
-  private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
-    const [engineTypeActive, employeeActive, sourceActive, customerActive] = await Promise.all([
-      this.repo.isEngineTypeActive(input.engineTypeId),
+  private async validateCreateReferences(input: DomaceClaimCreateInput): Promise<void> {
+    const [engineTypeActive, employeeActive] = await Promise.all([
+      input.engineTypeId !== undefined
+        ? this.repo.isEngineTypeActive(input.engineTypeId)
+        : Promise.resolve(true),
       input.employeeId !== undefined
         ? this.repo.isEmployeeActive(input.employeeId)
-        : Promise.resolve(true),
-      input.sourceId !== undefined
-        ? this.repo.isClaimSourceActive(input.sourceId)
-        : Promise.resolve(true),
-      input.customerId !== undefined
-        ? this.repo.isCustomerActive(input.customerId)
         : Promise.resolve(true),
     ])
 
@@ -222,42 +212,24 @@ export class EmotiveClaimsService {
     if (!employeeActive) {
       throw new ValidationError('Invalid or inactive employee')
     }
-    if (!sourceActive) {
-      throw new ValidationError('Invalid or inactive claim source')
-    }
-    if (!customerActive) {
-      throw new ValidationError('Invalid or inactive customer')
-    }
 
     await this.validateFaults(input.faults)
   }
 
-  private async validateUpdateReferences(input: EmotiveClaimUpdateInput): Promise<void> {
+  private async validateUpdateReferences(input: DomaceClaimUpdateInput): Promise<void> {
     type ReferenceCheck = { active: Promise<boolean>; message: string }
     const checks: ReferenceCheck[] = []
 
-    if (input.engineTypeId !== undefined) {
+    if (input.engineTypeId !== undefined && input.engineTypeId !== null) {
       checks.push({
         active: this.repo.isEngineTypeActive(input.engineTypeId),
         message: 'Invalid or inactive engine type',
       })
     }
-    if (input.employeeId !== undefined) {
+    if (input.employeeId !== undefined && input.employeeId !== null) {
       checks.push({
         active: this.repo.isEmployeeActive(input.employeeId),
         message: 'Invalid or inactive employee',
-      })
-    }
-    if (input.sourceId !== undefined) {
-      checks.push({
-        active: this.repo.isClaimSourceActive(input.sourceId),
-        message: 'Invalid or inactive claim source',
-      })
-    }
-    if (input.customerId !== undefined && input.customerId !== null) {
-      checks.push({
-        active: this.repo.isCustomerActive(input.customerId),
-        message: 'Invalid or inactive customer',
       })
     }
 
@@ -276,7 +248,7 @@ export class EmotiveClaimsService {
     }
   }
 
-  private async validateFaults(faults: readonly EmotiveClaimFaultInput[]): Promise<void> {
+  private async validateFaults(faults: readonly DomaceClaimFaultInput[]): Promise<void> {
     await Promise.all(
       faults.map(async (fault) => {
         switch (fault.faultType) {

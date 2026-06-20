@@ -31,6 +31,7 @@ export const PERMISSIONS = [
   'domace_claims.delete',
   'domace_claims.restore',
   'domace_claims.change_outcome',
+  'domace_claims.reopen',
   'domace_claims.unarchive',
 
   // observations
@@ -151,6 +152,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'domace_claims.view',
   'domace_claims.create',
   'domace_claims.update',
+  'domace_claims.delete',
   'domace_claims.change_outcome',
   'observations.view_internal',
   'observations.create_internal',

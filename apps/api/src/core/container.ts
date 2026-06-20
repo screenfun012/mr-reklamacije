@@ -11,11 +11,12 @@ import type { EventBus } from './ports/event-bus-port.js'
 import { AuditService } from '../modules/audit/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
+import { FaultsRepository } from './claims/faults.repository.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
+import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
-import { FaultsRepository } from '../modules/emotive-claims/faults/faults.repository.js'
 import {
   ExternalPartiesRepository,
   ExternalPartiesService,
@@ -49,6 +50,8 @@ export interface Container {
   eventBus: EventBus
   emotiveClaimsRepository: EmotiveClaimsRepository
   emotiveClaimsService: EmotiveClaimsService
+  domaceClaimsRepository: DomaceClaimsRepository
+  domaceClaimsService: DomaceClaimsService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
@@ -85,10 +88,18 @@ export function buildContainer(
   const departmentsRepository = new DepartmentsRepository(db)
   const departmentsService = new DepartmentsService(departmentsRepository)
 
-  const faultsRepository = new FaultsRepository()
-  const emotiveClaimsRepository = new EmotiveClaimsRepository(db, faultsRepository)
+  const emotiveFaultsRepository = new FaultsRepository(schema.emotiveClaimFaults)
+  const emotiveClaimsRepository = new EmotiveClaimsRepository(db, emotiveFaultsRepository)
   const emotiveClaimsService = new EmotiveClaimsService(
     emotiveClaimsRepository,
+    auditService,
+    eventBus,
+  )
+
+  const domaceFaultsRepository = new FaultsRepository(schema.domaceClaimFaults)
+  const domaceClaimsRepository = new DomaceClaimsRepository(db, domaceFaultsRepository)
+  const domaceClaimsService = new DomaceClaimsService(
+    domaceClaimsRepository,
     auditService,
     eventBus,
   )
@@ -116,5 +127,7 @@ export function buildContainer(
     eventBus,
     emotiveClaimsRepository,
     emotiveClaimsService,
+    domaceClaimsRepository,
+    domaceClaimsService,
   }
 }

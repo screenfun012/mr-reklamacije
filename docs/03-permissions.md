@@ -48,8 +48,9 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `domace_claims.update` | Edit an existing DOMACE claim |
 | `domace_claims.delete` | Soft-delete |
 | `domace_claims.restore` | Restore soft-deleted |
-| `domace_claims.change_outcome` | |
-| `domace_claims.unarchive` | |
+| `domace_claims.change_outcome` | Change the outcome (pending/accepted/rejected/archived) |
+| `domace_claims.reopen` | Reopen a completed (accepted/rejected) DOMACE claim back to `pending` (admin only) |
+| `domace_claims.unarchive` | Move a claim out of `archived` into `pending` (admin/senior only) |
 
 ### Module: `observations` — claim observations / internal notes
 

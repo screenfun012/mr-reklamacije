@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
-import { ClaimKind, ClaimOutcome, FaultType } from '../enums.js'
+import { ClaimKind, ClaimOutcome } from '../enums.js'
+import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -9,30 +10,12 @@ const claimOutcomeValues = [
   ClaimOutcome.Archived,
 ] as const
 
-const faultTypeValues = [FaultType.Employee, FaultType.Department, FaultType.External] as const
-
 const boolQueryParam = z
   .string()
   .optional()
   .transform((value: string | undefined) => value !== 'false')
 
-export const EmotiveClaimFaultInputSchema = z.discriminatedUnion('faultType', [
-  z.object({
-    faultType: z.literal(FaultType.Employee),
-    employeeId: z.string().uuid(),
-    notes: z.string().trim().max(4000).optional(),
-  }),
-  z.object({
-    faultType: z.literal(FaultType.Department),
-    departmentId: z.string().uuid(),
-    notes: z.string().trim().max(4000).optional(),
-  }),
-  z.object({
-    faultType: z.literal(FaultType.External),
-    externalPartyId: z.string().uuid(),
-    notes: z.string().trim().max(4000).optional(),
-  }),
-])
+export const EmotiveClaimFaultInputSchema = ClaimFaultInputSchema
 
 export type EmotiveClaimFaultInput = z.infer<typeof EmotiveClaimFaultInputSchema>
 
@@ -100,17 +83,7 @@ export const EmotiveClaimListQuerySchema = z.object({
 
 export type EmotiveClaimListQuery = z.infer<typeof EmotiveClaimListQuerySchema>
 
-export const EmotiveClaimFaultItemSchema = z.object({
-  id: z.string().uuid(),
-  faultType: z.enum(faultTypeValues),
-  employeeId: z.string().uuid().nullable(),
-  employeeName: z.string().nullable(),
-  departmentId: z.string().uuid().nullable(),
-  departmentName: z.string().nullable(),
-  externalPartyId: z.string().uuid().nullable(),
-  externalPartyName: z.string().nullable(),
-  notes: z.string().nullable(),
-})
+export const EmotiveClaimFaultItemSchema = ClaimFaultItemSchema
 
 export type EmotiveClaimFaultItem = z.infer<typeof EmotiveClaimFaultItemSchema>
 

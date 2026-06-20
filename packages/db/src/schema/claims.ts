@@ -164,37 +164,38 @@ export const emotiveClaimFaults = pgTable(
 )
 
 /**
- * Domestic market claims — unifies pre-2026 and 2026+ Excel formats.
- * sequence_number_yearly and claim_year are set in repository (transaction + FOR UPDATE), not triggers.
+ * DOMACE (domestic) claims — mirrors the EMOTIVE claim shape (Phase 1.2a).
+ *
+ * Differences from EMOTIVE:
+ *   - customer is free text (`customer_name`), not a customers FK
+ *   - no `source_id` (domestic claims have no external claim sources)
+ *   - retains `total_amount` for financial tracking
+ *   - all business fields are nullable; the service enforces "at least one of
+ *     {mr_number, customer_name}" via Zod. sequence_number, outcome, claim_year,
+ *     and audit columns are always set server-side.
+ *
+ * sequence_number is a GLOBAL bigserial (same as EMOTIVE); the user-facing year
+ * lives in mr_number. claim_year is set by the repository on INSERT/UPDATE
+ * (year from date_of_claim, falling back to the current year).
  */
 export const domaceClaims = pgTable(
   'domace_claims',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    sequenceNumberYearly: integer('sequence_number_yearly').notNull(),
-    dateReceived: date('date_received', { mode: 'date' }).notNull(),
-    customerId: uuid('customer_id'),
-    customerNameSnapshot: text('customer_name_snapshot').notNull(),
-    vehicle: text('vehicle').notNull(),
-    workOrder: text('work_order').notNull(),
-    oldWorkOrder: text('old_work_order'),
-    originalInvoiceAmount: decimal('original_invoice_amount', {
-      precision: 14,
-      scale: 2,
-      mode: 'number',
-    }),
-    invoiceNumber: text('invoice_number'),
-    problemDescription: text('problem_description').notNull(),
+    sequenceNumber: bigserial('sequence_number', { mode: 'number' }).notNull().unique(),
+    claimNumber: text('claim_number'),
+    customerName: text('customer_name'),
+    warrantyReport: text('warranty_report'),
+    engineTypeId: uuid('engine_type_id'),
+    engineCode: text('engine_code'),
+    dateOfClaim: date('date_of_claim', { mode: 'date' }),
+    mrNumber: text('mr_number'),
+    dateOfFinish: date('date_of_finish', { mode: 'date' }),
+    employeeId: uuid('employee_id'),
     outcome: text('outcome').notNull().$type<ClaimOutcome>(),
-    partsAmountNoVat: decimal('parts_amount_no_vat', { precision: 14, scale: 2, mode: 'number' }),
-    laborAmountNoVat: decimal('labor_amount_no_vat', { precision: 14, scale: 2, mode: 'number' }),
-    totalAmount: decimal('total_amount', { precision: 14, scale: 2, mode: 'number' }),
-    assignedEmployeeId: uuid('assigned_employee_id'),
-    faultDepartmentId: uuid('fault_department_id'),
-    notes: text('notes'),
-    internalNotes: text('internal_notes'),
-    // claim_year: same application-layer rule as emotive_claims (year from date_received).
     claimYear: integer('claim_year').notNull(),
+    totalAmount: decimal('total_amount', { precision: 14, scale: 2, mode: 'number' }),
+    internalNotes: text('internal_notes'),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
@@ -210,20 +211,15 @@ export const domaceClaims = pgTable(
       sql`${t.outcome} IN ('pending', 'accepted', 'rejected', 'archived')`,
     ),
     foreignKey({
-      name: 'domace_claims_customer_id_fkey',
-      columns: [t.customerId],
-      foreignColumns: [customers.id],
-    }).onDelete('set null'),
+      name: 'domace_claims_engine_type_id_fkey',
+      columns: [t.engineTypeId],
+      foreignColumns: [engineTypes.id],
+    }).onDelete('restrict'),
     foreignKey({
-      name: 'domace_claims_assigned_employee_id_fkey',
-      columns: [t.assignedEmployeeId],
+      name: 'domace_claims_employee_id_fkey',
+      columns: [t.employeeId],
       foreignColumns: [employees.id],
-    }).onDelete('set null'),
-    foreignKey({
-      name: 'domace_claims_fault_department_id_fkey',
-      columns: [t.faultDepartmentId],
-      foreignColumns: [departments.id],
-    }).onDelete('set null'),
+    }).onDelete('restrict'),
     foreignKey({
       name: 'domace_claims_created_by_fkey',
       columns: [t.createdBy],
@@ -234,16 +230,69 @@ export const domaceClaims = pgTable(
       columns: [t.updatedBy],
       foreignColumns: [users.id],
     }).onDelete('set null'),
-    index('idx_domace_claims_date_received').on(t.dateReceived.desc()),
+    index('idx_domace_claims_date_of_claim').on(t.dateOfClaim.desc()),
+    index('idx_domace_claims_date_of_claim_id').on(t.dateOfClaim.desc(), t.id.desc()),
     index('idx_domace_claims_claim_year_outcome').on(t.claimYear, t.outcome),
-    index('idx_domace_claims_customer_id').on(t.customerId),
-    index('idx_domace_claims_assigned_employee_claim_year').on(t.assignedEmployeeId, t.claimYear),
-    index('idx_domace_claims_fault_department_claim_year').on(t.faultDepartmentId, t.claimYear),
+    index('idx_domace_claims_employee_id_claim_year').on(t.employeeId, t.claimYear),
+    index('idx_domace_claims_engine_type_id').on(t.engineTypeId),
     // Same `simple` FTS config as emotive_claims; Serbian stemmer TODO applies here too.
-    index('idx_domace_claims_problem_customer_fts').using(
+    index('idx_domace_claims_warranty_customer_fts').using(
       'gin',
-      sql`to_tsvector('simple', coalesce(${t.problemDescription}, '') || ' ' || coalesce(${t.customerNameSnapshot}, ''))`,
+      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || coalesce(${t.customerName}, ''))`,
     ),
+  ],
+)
+
+export const domaceClaimFaults = pgTable(
+  'domace_claim_faults',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    claimId: uuid('claim_id').notNull(),
+    faultType: text('fault_type').notNull().$type<FaultType>(),
+    employeeId: uuid('employee_id'),
+    departmentId: uuid('department_id'),
+    externalPartyId: uuid('external_party_id'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+  },
+  (t) => [
+    check(
+      'domace_claim_faults_fault_type_check',
+      sql`${t.faultType} IN ('employee', 'department', 'external')`,
+    ),
+    check(
+      'domace_claim_faults_one_of_check',
+      sql`
+        (${t.faultType} = 'employee' AND ${t.employeeId} IS NOT NULL
+          AND ${t.departmentId} IS NULL AND ${t.externalPartyId} IS NULL)
+        OR
+        (${t.faultType} = 'department' AND ${t.employeeId} IS NULL
+          AND ${t.departmentId} IS NOT NULL AND ${t.externalPartyId} IS NULL)
+        OR
+        (${t.faultType} = 'external' AND ${t.employeeId} IS NULL
+          AND ${t.departmentId} IS NULL AND ${t.externalPartyId} IS NOT NULL)
+      `,
+    ),
+    foreignKey({
+      name: 'domace_claim_faults_claim_id_fkey',
+      columns: [t.claimId],
+      foreignColumns: [domaceClaims.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'domace_claim_faults_employee_id_fkey',
+      columns: [t.employeeId],
+      foreignColumns: [employees.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'domace_claim_faults_department_id_fkey',
+      columns: [t.departmentId],
+      foreignColumns: [departments.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'domace_claim_faults_external_party_id_fkey',
+      columns: [t.externalPartyId],
+      foreignColumns: [externalParties.id],
+    }).onDelete('restrict'),
   ],
 )
 
@@ -296,20 +345,15 @@ export const emotiveClaimFaultsRelations = relations(emotiveClaimFaults, ({ one 
   }),
 }))
 
-export const domaceClaimsRelations = relations(domaceClaims, ({ one }) => ({
-  customer: one(customers, {
-    fields: [domaceClaims.customerId],
-    references: [customers.id],
+export const domaceClaimsRelations = relations(domaceClaims, ({ many, one }) => ({
+  faults: many(domaceClaimFaults),
+  engineType: one(engineTypes, {
+    fields: [domaceClaims.engineTypeId],
+    references: [engineTypes.id],
   }),
-  assignedEmployee: one(employees, {
-    relationName: 'domace_claims_assigned_employee',
-    fields: [domaceClaims.assignedEmployeeId],
+  employee: one(employees, {
+    fields: [domaceClaims.employeeId],
     references: [employees.id],
-  }),
-  faultDepartment: one(departments, {
-    relationName: 'domace_claims_fault_department',
-    fields: [domaceClaims.faultDepartmentId],
-    references: [departments.id],
   }),
   creator: one(users, {
     relationName: 'domace_claims_created_by',
@@ -320,5 +364,24 @@ export const domaceClaimsRelations = relations(domaceClaims, ({ one }) => ({
     relationName: 'domace_claims_updated_by',
     fields: [domaceClaims.updatedBy],
     references: [users.id],
+  }),
+}))
+
+export const domaceClaimFaultsRelations = relations(domaceClaimFaults, ({ one }) => ({
+  claim: one(domaceClaims, {
+    fields: [domaceClaimFaults.claimId],
+    references: [domaceClaims.id],
+  }),
+  employee: one(employees, {
+    fields: [domaceClaimFaults.employeeId],
+    references: [employees.id],
+  }),
+  department: one(departments, {
+    fields: [domaceClaimFaults.departmentId],
+    references: [departments.id],
+  }),
+  externalParty: one(externalParties, {
+    fields: [domaceClaimFaults.externalPartyId],
+    references: [externalParties.id],
   }),
 }))

@@ -8,6 +8,7 @@ import * as schema from '../schema/index.js'
 import { seedClaimSources } from './claim-sources.js'
 import { seedCustomers } from './customers.js'
 import { seedDepartments } from './departments.js'
+import { seedDomaceClaims } from './domace-claims.js'
 import { seedEmotiveClaims } from './emotive-claims.js'
 import { seedEmployees } from './employees.js'
 import { seedEngineTypes } from './engine-types.js'
@@ -44,6 +45,7 @@ async function main(): Promise<void> {
     await seedClaimSources(db)
     await seedEngineTypes(db)
     await seedEmotiveClaims(db)
+    await seedDomaceClaims(db)
     console.log('[seed] All seeds completed successfully')
   } catch (error) {
     console.error('[seed] Failed:', error)

@@ -362,12 +362,10 @@ describe('schema Phase C (integration)', () => {
     const [row] = await db
       .insert(domaceClaims)
       .values({
-        sequenceNumberYearly: 1,
-        dateReceived: new Date('2026-04-02'),
-        customerNameSnapshot: 'Snapshot Name',
-        vehicle: 'Test Vehicle',
-        workOrder: 'WO/26',
-        problemDescription: 'Problem',
+        customerName: 'Snapshot Name',
+        mrNumber: 'MR1234/26',
+        warrantyReport: 'Problem',
+        dateOfClaim: new Date('2026-04-02'),
         outcome: 'pending',
         claimYear: 2026,
         createdBy: user!.id,
