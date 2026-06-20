@@ -1,20 +1,11 @@
-import {
-  EmotiveClaimCreateInputSchema,
-  EmotiveClaimFaultInputSchema,
-  FaultType,
-  type EmotiveClaimFaultInput,
-} from '@mr/shared'
+import { EmotiveClaimCreateInputSchema } from '@mr/shared'
 import { z } from 'zod'
 
 import { m } from '@mr/i18n'
 
-export type EmotiveClaimFaultDraft = {
-  faultType: (typeof FaultType)[keyof typeof FaultType]
-  employeeId?: string
-  departmentId?: string
-  externalPartyId?: string
-  notes?: string
-}
+import { faultDraftsToInput, type EmotiveClaimFaultDraft } from '../faults/fault-draft.js'
+
+export { validateFaultDrafts, type EmotiveClaimFaultDraft } from '../faults/fault-draft.js'
 
 function isValidDateString(value: string): boolean {
   if (value.trim() === '') {
@@ -80,48 +71,6 @@ export const EMOTIVE_CLAIM_FORM_DEFAULTS: EmotiveClaimFormValues = {
   faults: [],
 }
 
-function faultDraftToPayload(fault: EmotiveClaimFaultDraft): unknown {
-  if (fault.faultType === FaultType.Employee) {
-    return { faultType: fault.faultType, employeeId: fault.employeeId, notes: fault.notes }
-  }
-  if (fault.faultType === FaultType.Department) {
-    return { faultType: fault.faultType, departmentId: fault.departmentId, notes: fault.notes }
-  }
-  return { faultType: fault.faultType, externalPartyId: fault.externalPartyId, notes: fault.notes }
-}
-
-function parseFaultDrafts(faults: EmotiveClaimFaultDraft[]): EmotiveClaimFaultInput[] {
-  return faults.map((fault) => {
-    const result = EmotiveClaimFaultInputSchema.safeParse(faultDraftToPayload(fault))
-    if (!result.success) {
-      throw result.error
-    }
-    return result.data
-  })
-}
-
-export function validateFaultDrafts(faults: EmotiveClaimFaultDraft[]): z.ZodError | null {
-  const issues: z.ZodIssue[] = []
-
-  faults.forEach((fault, index) => {
-    const result = EmotiveClaimFaultInputSchema.safeParse(faultDraftToPayload(fault))
-    if (!result.success) {
-      for (const issue of result.error.issues) {
-        issues.push({
-          ...issue,
-          path: ['faults', index, ...issue.path],
-        })
-      }
-    }
-  })
-
-  if (issues.length === 0) {
-    return null
-  }
-
-  return new z.ZodError(issues)
-}
-
 export function formValuesToCreateInput(values: EmotiveClaimFormValues) {
   return EmotiveClaimCreateInputSchema.parse({
     mrNumber: values.mrNumber,
@@ -132,7 +81,7 @@ export function formValuesToCreateInput(values: EmotiveClaimFormValues) {
     dateOfClaim: values.dateOfClaim,
     dateOfFinish: values.dateOfFinish.trim() === '' ? undefined : values.dateOfFinish,
     warrantyReport: values.warrantyReport.trim() === '' ? undefined : values.warrantyReport,
-    faults: parseFaultDrafts(values.faults),
+    faults: faultDraftsToInput(values.faults),
   })
 }
 

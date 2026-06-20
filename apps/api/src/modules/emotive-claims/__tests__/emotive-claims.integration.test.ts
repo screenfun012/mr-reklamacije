@@ -645,6 +645,20 @@ describe('EmotiveClaimsService integration', () => {
       ).rejects.toBeInstanceOf(ConflictError)
     })
 
+    it('rejects a faults-only replace on a completed claim with ConflictError', async () => {
+      const id = await createCompletedClaim()
+      const departmentId = await getDepartmentIdByCode(ctx.db, 'GLAVE')
+
+      await expect(
+        container.emotiveClaimsService.update(
+          id,
+          { faults: [{ faultType: FaultType.Department, departmentId }] },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+
     it('blocks a direct accepted → rejected transition with ConflictError', async () => {
       const id = await createCompletedClaim()
 

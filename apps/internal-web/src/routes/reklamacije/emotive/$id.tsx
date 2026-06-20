@@ -1,4 +1,10 @@
-import { ApiError, emotiveClaimDetailOptions } from '@mr/shared'
+import {
+  ApiError,
+  departmentsReferenceOptions,
+  emotiveClaimDetailOptions,
+  employeesReferenceOptions,
+  externalPartiesReferenceOptions,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -11,6 +17,11 @@ import { internalRequireEmotiveClaimsView } from '~/lib/auth-guard'
 export const Route = createFileRoute('/reklamacije/emotive/$id')({
   beforeLoad: internalRequireEmotiveClaimsView(),
   loader: async ({ context: { queryClient }, params: { id } }) => {
+    // Detail blocks navigation; reference data is prefetched in the background so
+    // entering fault edit mode renders without a waterfall.
+    void queryClient.ensureQueryData(departmentsReferenceOptions())
+    void queryClient.ensureQueryData(employeesReferenceOptions())
+    void queryClient.ensureQueryData(externalPartiesReferenceOptions())
     await queryClient.ensureQueryData(emotiveClaimDetailOptions(id))
   },
   component: EmotiveClaimDetailPage,
