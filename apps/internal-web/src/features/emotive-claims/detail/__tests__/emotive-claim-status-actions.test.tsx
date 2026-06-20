@@ -30,6 +30,7 @@ describe('EmotiveClaimStatusActions', () => {
         claimId={CLAIM_ID}
         currentOutcome="pending"
         canChangeOutcome={false}
+        canReopen={false}
       />,
     )
 
@@ -38,13 +39,50 @@ describe('EmotiveClaimStatusActions', () => {
 
   it('offers the other flow outcomes (registry-driven, archived excluded) for a pending claim', () => {
     renderWithClient(
-      <EmotiveClaimStatusActions claimId={CLAIM_ID} currentOutcome="pending" canChangeOutcome />,
+      <EmotiveClaimStatusActions
+        claimId={CLAIM_ID}
+        currentOutcome="pending"
+        canChangeOutcome
+        canReopen={false}
+      />,
     )
 
     expect(screen.getByRole('button', { name: 'Prihvati' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Odbij' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Vrati u obradu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Arhivirano' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('emotive-claim-lock-indicator')).not.toBeInTheDocument()
+  })
+
+  it('shows the lock indicator and no reopen button for an operator on a completed claim', () => {
+    renderWithClient(
+      <EmotiveClaimStatusActions
+        claimId={CLAIM_ID}
+        currentOutcome="accepted"
+        canChangeOutcome
+        canReopen={false}
+      />,
+    )
+
+    expect(screen.getByTestId('emotive-claim-lock-indicator')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vrati u obradu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
+  })
+
+  it('shows the reopen button for an admin on a completed claim', () => {
+    renderWithClient(
+      <EmotiveClaimStatusActions
+        claimId={CLAIM_ID}
+        currentOutcome="rejected"
+        canChangeOutcome
+        canReopen
+      />,
+    )
+
+    expect(screen.getByTestId('emotive-claim-lock-indicator')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vrati u obradu' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
   })
 
   it('requires a two-step confirmation before rejecting', () => {
@@ -52,7 +90,12 @@ describe('EmotiveClaimStatusActions', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     renderWithClient(
-      <EmotiveClaimStatusActions claimId={CLAIM_ID} currentOutcome="pending" canChangeOutcome />,
+      <EmotiveClaimStatusActions
+        claimId={CLAIM_ID}
+        currentOutcome="pending"
+        canChangeOutcome
+        canReopen={false}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Odbij' }))

@@ -12,7 +12,11 @@ import {
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { ValidationError } from '../../../core/errors/domain-errors.js'
+import {
+  ConflictError,
+  ForbiddenError,
+  ValidationError,
+} from '../../../core/errors/domain-errors.js'
 import {
   ensureTestUser,
   getClaimSourceIdByCode,
@@ -52,6 +56,19 @@ const FULL_OPERATOR: EmotiveClaimsActor = {
 const OWN_CUSTOMER_VIEWER: EmotiveClaimsActor = {
   id: TEST_USER_ID,
   permissions: ['emotive_claims.view_own_customer'],
+}
+
+// Admin carries the unlock key (emotive_claims.reopen) on top of operator rights.
+const ADMIN_ACTOR: EmotiveClaimsActor = {
+  id: TEST_USER_ID,
+  permissions: [
+    'emotive_claims.view',
+    'emotive_claims.create',
+    'emotive_claims.update',
+    'emotive_claims.delete',
+    'emotive_claims.change_outcome',
+    'emotive_claims.reopen',
+  ],
 }
 
 const auditContext = {
@@ -596,6 +613,133 @@ describe('EmotiveClaimsService integration', () => {
         type: ClaimEventType.Updated,
         payload: { kind: ClaimKind.Emotive, id: created.id },
       })
+    })
+  })
+
+  describe('claim locking (completed claims)', () => {
+    async function createCompletedClaim(): Promise<string> {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `LOCK-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.emotiveClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Accepted },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('rejects field/fault edits on a completed claim with ConflictError', async () => {
+      const id = await createCompletedClaim()
+
+      await expect(
+        container.emotiveClaimsService.update(
+          id,
+          { warrantyReport: 'pokusaj izmene' },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+
+    it('blocks a direct accepted → rejected transition with ConflictError', async () => {
+      const id = await createCompletedClaim()
+
+      await expect(
+        container.emotiveClaimsService.changeOutcome(
+          id,
+          { outcome: ClaimOutcome.Rejected },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+
+    it('forbids reopen for an operator without the reopen permission', async () => {
+      const id = await createCompletedClaim()
+
+      await expect(
+        container.emotiveClaimsService.changeOutcome(
+          id,
+          { outcome: ClaimOutcome.Pending },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('lets an admin reopen a completed claim and audits the transition', async () => {
+      const id = await createCompletedClaim()
+
+      const reopened = await container.emotiveClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Pending },
+        ADMIN_ACTOR,
+        auditContext,
+      )
+
+      expect(reopened.outcome).toBe(ClaimOutcome.Pending)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, id))
+
+      const reopenAudited = auditRows.some(
+        (row) =>
+          row.action === AuditAction.Update &&
+          (row.changes as { transition?: string } | null)?.transition === 'reopen',
+      )
+      expect(reopenAudited).toBe(true)
+    })
+
+    it('allows editing again once an admin has reopened the claim', async () => {
+      const id = await createCompletedClaim()
+      await container.emotiveClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Pending },
+        ADMIN_ACTOR,
+        auditContext,
+      )
+
+      const updated = await container.emotiveClaimsService.update(
+        id,
+        { warrantyReport: 'izmena posle otkljucavanja' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(updated.warrantyReport).toBe('izmena posle otkljucavanja')
+    })
+
+    it('forbids an operator from deleting a completed claim', async () => {
+      const id = await createCompletedClaim()
+
+      await expect(
+        container.emotiveClaimsService.softDelete(id, FULL_OPERATOR, auditContext),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('lets an admin delete a completed claim', async () => {
+      const id = await createCompletedClaim()
+
+      await expect(
+        container.emotiveClaimsService.softDelete(id, ADMIN_ACTOR, auditContext),
+      ).resolves.toBeUndefined()
+    })
+
+    it('lets an operator delete a pending claim', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `DEL-PENDING-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.emotiveClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext),
+      ).resolves.toBeUndefined()
     })
   })
 

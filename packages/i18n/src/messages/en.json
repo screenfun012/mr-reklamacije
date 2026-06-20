@@ -179,6 +179,7 @@
   "emotive_claims_detail_status_reject_confirm_yes": "Confirm rejection",
   "emotive_claims_detail_status_cancel": "Cancel",
   "emotive_claims_detail_status_error": "Failed to change status. Please try again.",
+  "emotive_claims_detail_status_locked": "Locked — claim is completed",
   "outcome_pending": "In progress",
   "outcome_accepted": "Accepted",
   "outcome_rejected": "Rejected",

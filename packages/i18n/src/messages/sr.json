@@ -179,6 +179,7 @@
   "emotive_claims_detail_status_reject_confirm_yes": "Potvrdi odbijanje",
   "emotive_claims_detail_status_cancel": "Otkaži",
   "emotive_claims_detail_status_error": "Greška pri promeni statusa. Pokušajte ponovo.",
+  "emotive_claims_detail_status_locked": "Zaključano — reklamacija je završena",
   "outcome_pending": "U obradi",
   "outcome_accepted": "Prihvaćeno",
   "outcome_rejected": "Odbijeno",

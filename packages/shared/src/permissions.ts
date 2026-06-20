@@ -20,6 +20,7 @@ export const PERMISSIONS = [
   'emotive_claims.delete',
   'emotive_claims.restore',
   'emotive_claims.change_outcome',
+  'emotive_claims.reopen',
   'emotive_claims.unarchive',
 
   // domace_claims

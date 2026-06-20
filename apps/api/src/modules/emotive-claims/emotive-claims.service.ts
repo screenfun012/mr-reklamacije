@@ -1,12 +1,18 @@
 import {
   AuditAction,
   ClaimKind,
+  ClaimOutcome,
   type ClaimEventPayload,
   type EmotiveClaimFaultInput,
 } from '@mr/shared'
 
 import type { HttpActorContext } from '../../core/http/actor-context.js'
-import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { EmotiveClaimsRepository } from './emotive-claims.repository.js'
@@ -104,6 +110,8 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
+    this.assertClaimEditable(before)
+
     await this.validateUpdateReferences(input)
 
     const updated = await this.repo.update(id, input, auditContext.actorUserId, scope)
@@ -134,6 +142,15 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
+    // A completed (locked) claim is frozen for drastic actions; only the
+    // unlock-key holder (admin, via emotive_claims.reopen) may delete it.
+    if (
+      before.outcome !== ClaimOutcome.Pending &&
+      !actor.permissions.includes('emotive_claims.reopen')
+    ) {
+      throw new ForbiddenError('Deleting a completed claim requires reopen permission')
+    }
+
     await this.repo.softDelete(id, auditContext.actorUserId, scope)
 
     await this.audit.log({
@@ -161,6 +178,8 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
+    const isReopen = this.assertOutcomeTransitionAllowed(before.outcome, input.outcome, actor)
+
     const updated = await this.repo.changeOutcome(id, input, auditContext.actorUserId, scope)
 
     await this.audit.log({
@@ -170,12 +189,50 @@ export class EmotiveClaimsService {
       actorUserId: auditContext.actorUserId,
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
-      changes: { before, after: updated, outcome: input.outcome },
+      changes: isReopen
+        ? { before, after: updated, outcome: input.outcome, transition: 'reopen' }
+        : { before, after: updated, outcome: input.outcome },
     })
 
     this.events.publishClaimUpdated(emotiveEventPayload(id))
 
     return updated
+  }
+
+  /**
+   * The single editability wall: every content mutation (fields, faults,
+   * later attachments) must pass through here. A claim is editable only while
+   * `pending`; once accepted/rejected it is locked until an admin reopens it.
+   */
+  private assertClaimEditable(claim: { outcome: ClaimOutcome }): void {
+    if (claim.outcome !== ClaimOutcome.Pending) {
+      throw new ConflictError('Claim is locked; reopen it before editing')
+    }
+  }
+
+  /**
+   * Authorizes an outcome transition and reports whether it is a reopen.
+   * - pending → accepted/rejected: allowed (route already enforces change_outcome)
+   * - accepted/rejected → pending (reopen): requires emotive_claims.reopen (admin)
+   * - accepted/rejected → accepted/rejected (direct): blocked; reopen first
+   */
+  private assertOutcomeTransitionAllowed(
+    from: ClaimOutcome,
+    to: ClaimOutcome,
+    actor: EmotiveClaimsActor,
+  ): boolean {
+    if (from === ClaimOutcome.Pending) {
+      return false
+    }
+
+    if (to === ClaimOutcome.Pending) {
+      if (!actor.permissions.includes('emotive_claims.reopen')) {
+        throw new ForbiddenError('Reopening a completed claim requires reopen permission')
+      }
+      return true
+    }
+
+    throw new ConflictError('Claim is locked; reopen it before changing the outcome')
   }
 
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {

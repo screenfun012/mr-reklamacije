@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 import { ClaimOutcome, OUTCOME_REGISTRY, type ClaimOutcome as ClaimOutcomeType } from '@mr/shared'
 import { Button } from '@mr/ui'
+import { Lock } from 'lucide-react'
 import { useState } from 'react'
 
 import { useChangeEmotiveClaimOutcome } from './use-change-emotive-claim-outcome'
@@ -8,12 +9,14 @@ import { useChangeEmotiveClaimOutcome } from './use-change-emotive-claim-outcome
 export interface EmotiveClaimStatusActionsProps {
   claimId: string
   currentOutcome: ClaimOutcomeType
+  /** Holder of emotive_claims.change_outcome (operator + admin). */
   canChangeOutcome: boolean
+  /** Holder of emotive_claims.reopen — the admin-only unlock key. */
+  canReopen: boolean
 }
 
-/** Outcomes reachable through the operator status flow. `archived` is out of scope. */
-const FLOW_OUTCOMES: readonly ClaimOutcomeType[] = [
-  ClaimOutcome.Pending,
+/** Outcomes a pending claim can move to. */
+const COMPLETION_OUTCOMES: readonly ClaimOutcomeType[] = [
   ClaimOutcome.Accepted,
   ClaimOutcome.Rejected,
 ]
@@ -38,19 +41,31 @@ export function EmotiveClaimStatusActions({
   claimId,
   currentOutcome,
   canChangeOutcome,
+  canReopen,
 }: EmotiveClaimStatusActionsProps): React.ReactElement | null {
   const mutation = useChangeEmotiveClaimOutcome(claimId)
   const [confirmingReject, setConfirmingReject] = useState(false)
 
-  if (!canChangeOutcome) {
+  // A completed (accepted/rejected) claim is locked: editing is frozen and the
+  // only available action is an admin reopen back to pending.
+  const isLocked = currentOutcome !== ClaimOutcome.Pending
+
+  // Render the section for anyone who can act on the claim: change_outcome
+  // holders (pending or locked), or reopen holders on a locked claim.
+  if (!canChangeOutcome && !(canReopen && isLocked)) {
     return null
   }
 
-  // Registry-driven: the set of reachable statuses comes from the outcome
-  // registry, not hardcoded values, so custom statuses can slot in later.
-  const targets = OUTCOME_REGISTRY.filter(
-    (definition) => FLOW_OUTCOMES.includes(definition.key) && definition.key !== currentOutcome,
-  )
+  // Registry-driven: reachable statuses come from the outcome registry, not
+  // hardcoded values. A pending claim offers accept/reject (change_outcome);
+  // a locked claim offers only reopen (admin-only).
+  const targets = isLocked
+    ? canReopen
+      ? OUTCOME_REGISTRY.filter((definition) => definition.key === ClaimOutcome.Pending)
+      : []
+    : canChangeOutcome
+      ? OUTCOME_REGISTRY.filter((definition) => COMPLETION_OUTCOMES.includes(definition.key))
+      : []
 
   const isPending = mutation.isPending
 
@@ -72,6 +87,17 @@ export function EmotiveClaimStatusActions({
       <h2 className="text-sm font-semibold text-foreground">
         {m.emotive_claims_detail_status_section()}
       </h2>
+
+      {isLocked ? (
+        <div
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          role="status"
+          data-testid="emotive-claim-lock-indicator"
+        >
+          <Lock className="h-4 w-4" aria-hidden="true" />
+          <span>{m.emotive_claims_detail_status_locked()}</span>
+        </div>
+      ) : null}
 
       {confirmingReject ? (
         <div className="flex flex-wrap items-center gap-3">

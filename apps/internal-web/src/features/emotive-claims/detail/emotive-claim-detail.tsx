@@ -23,8 +23,9 @@ const rootRoute = getRouteApi('__root__')
 export function EmotiveClaimDetailView({ id }: EmotiveClaimDetailViewProps): React.ReactElement {
   const { data: claim } = useSuspenseQuery(emotiveClaimDetailOptions(id))
   const { authSession } = rootRoute.useRouteContext()
-  const canChangeOutcome =
-    authSession?.user?.permissions.includes('emotive_claims.change_outcome') === true
+  const permissions = authSession?.user?.permissions
+  const canChangeOutcome = permissions?.includes('emotive_claims.change_outcome') === true
+  const canReopen = permissions?.includes('emotive_claims.reopen') === true
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,6 +78,7 @@ export function EmotiveClaimDetailView({ id }: EmotiveClaimDetailViewProps): Rea
         claimId={claim.id}
         currentOutcome={claim.outcome}
         canChangeOutcome={canChangeOutcome}
+        canReopen={canReopen}
       />
 
       <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
