@@ -378,6 +378,91 @@ describe('DomaceClaimsService integration', () => {
     })
   })
 
+  describe('when updating repair amount', () => {
+    async function createAccepted(): Promise<string> {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.domaceClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Accepted },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('sets total_amount on an accepted claim', async () => {
+      const id = await createAccepted()
+      const updated = await container.domaceClaimsService.updateAmount(
+        id,
+        { totalAmount: 1234.56 },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(updated.totalAmount).toBe(1234.56)
+    })
+
+    it('rejects amount updates on a pending claim', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await expect(
+        container.domaceClaimsService.updateAmount(
+          created.id,
+          { totalAmount: 500 },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+
+    it('rejects amount updates on a rejected claim', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.domaceClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Rejected },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await expect(
+        container.domaceClaimsService.updateAmount(
+          created.id,
+          { totalAmount: 500 },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+
+    it('keeps total_amount in the database after reopen', async () => {
+      const id = await createAccepted()
+      await container.domaceClaimsService.updateAmount(
+        id,
+        { totalAmount: 2500 },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.domaceClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Pending },
+        ADMIN_ACTOR,
+        auditContext,
+      )
+      const detail = await container.domaceClaimsService.findById(id, FULL_OPERATOR)
+      expect(detail.outcome).toBe(ClaimOutcome.Pending)
+      expect(detail.totalAmount).toBe(2500)
+    })
+  })
+
   describe('authorization', () => {
     it('throws NotFoundError for an own_customer actor fetching a real claim', async () => {
       const created = await container.domaceClaimsService.create(

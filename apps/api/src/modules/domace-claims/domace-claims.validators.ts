@@ -1,4 +1,5 @@
 export {
+  DomaceClaimAmountInputSchema,
   DomaceClaimChangeOutcomeInputSchema,
   DomaceClaimCreateInputSchema,
   DomaceClaimDetailSchema,
@@ -7,6 +8,7 @@ export {
   DomaceClaimListItemSchema,
   DomaceClaimListQuerySchema,
   DomaceClaimUpdateInputSchema,
+  type DomaceClaimAmountInput,
   type DomaceClaimChangeOutcomeInput,
   type DomaceClaimCreateInput,
   type DomaceClaimDetail,

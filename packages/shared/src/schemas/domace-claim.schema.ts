@@ -58,7 +58,6 @@ export const DomaceClaimUpdateInputSchema = z
     employeeId: z.string().uuid().nullable().optional(),
     claimNumber: z.string().trim().max(50).nullable().optional(),
     dateOfFinish: z.coerce.date().nullable().optional(),
-    totalAmount: z.number().nonnegative().nullable().optional(),
     internalNotes: z.string().trim().max(8000).nullable().optional(),
     faults: z.array(DomaceClaimFaultInputSchema).optional(),
   })
@@ -67,6 +66,13 @@ export const DomaceClaimUpdateInputSchema = z
   })
 
 export type DomaceClaimUpdateInput = z.infer<typeof DomaceClaimUpdateInputSchema>
+
+/** Repair cost in EUR — only via PATCH /domace-claims/:id/amount on accepted claims. */
+export const DomaceClaimAmountInputSchema = z.object({
+  totalAmount: z.number().nonnegative().nullable(),
+})
+
+export type DomaceClaimAmountInput = z.infer<typeof DomaceClaimAmountInputSchema>
 
 export const DomaceClaimChangeOutcomeInputSchema = z.object({
   outcome: z.enum(claimOutcomeValues),

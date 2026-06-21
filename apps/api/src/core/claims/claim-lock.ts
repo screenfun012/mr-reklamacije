@@ -27,6 +27,17 @@ export function assertClaimEditable(claim: { outcome: ClaimOutcome }): void {
 }
 
 /**
+ * Repair cost (`total_amount`) is recorded only after a claim is accepted.
+ * Unlike general edits, amount updates are allowed on accepted (locked) claims
+ * via a dedicated endpoint — see DOMACE `updateAmount`.
+ */
+export function assertAcceptedClaimAmountEditable(claim: { outcome: ClaimOutcome }): void {
+  if (claim.outcome !== ClaimOutcome.Accepted) {
+    throw new ConflictError('Repair amount can only be set on accepted claims')
+  }
+}
+
+/**
  * Authorizes an outcome transition and reports whether it is a reopen.
  * - pending → accepted/rejected: allowed (route already enforces change_outcome)
  * - accepted/rejected → pending (reopen): requires the module reopen permission

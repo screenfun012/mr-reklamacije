@@ -6,6 +6,7 @@ import {
 } from '@mr/shared'
 
 import {
+  assertAcceptedClaimAmountEditable,
   assertClaimEditable,
   assertCompletedActionAllowed,
   assertOutcomeTransitionAllowed,
@@ -17,6 +18,7 @@ import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { DomaceClaimsRepository } from './domace-claims.repository.js'
 import type { DomaceClaimsActor, DomaceClaimsListScope } from './domace-claims.types.js'
 import type {
+  DomaceClaimAmountInput,
   DomaceClaimChangeOutcomeInput,
   DomaceClaimCreateInput,
   DomaceClaimDetail,
@@ -119,6 +121,42 @@ export class DomaceClaimsService {
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
       changes: { before, after: updated },
+    })
+
+    this.events.publishClaimUpdated(domaceEventPayload(id))
+
+    return updated
+  }
+
+  async updateAmount(
+    id: string,
+    input: DomaceClaimAmountInput,
+    actor: DomaceClaimsActor,
+    auditContext: HttpActorContext,
+  ): Promise<DomaceClaimDetail> {
+    const scope = resolveListScope(actor)
+    const before = await this.repo.findById(id, scope)
+    if (before === null) {
+      throw new NotFoundError('Domace claim', id)
+    }
+
+    assertAcceptedClaimAmountEditable(before)
+
+    const updated = await this.repo.updateAmount(
+      id,
+      input.totalAmount,
+      auditContext.actorUserId,
+      scope,
+    )
+
+    await this.audit.log({
+      entityType: 'domace_claim',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { before, after: updated, field: 'totalAmount' },
     })
 
     this.events.publishClaimUpdated(domaceEventPayload(id))

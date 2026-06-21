@@ -405,9 +405,6 @@ export class DomaceClaimsRepository {
     if (input.dateOfFinish !== undefined) {
       patch.dateOfFinish = input.dateOfFinish
     }
-    if (input.totalAmount !== undefined) {
-      patch.totalAmount = input.totalAmount
-    }
     if (input.internalNotes !== undefined) {
       patch.internalNotes = input.internalNotes
     }
@@ -419,6 +416,30 @@ export class DomaceClaimsRepository {
         await this.faultsRepo.replaceForClaim(tx, id, input.faults)
       }
     })
+
+    const updated = await this.findById(id, scope)
+    if (updated === null) {
+      throw new NotFoundError('Domace claim', id)
+    }
+
+    return updated
+  }
+
+  async updateAmount(
+    id: string,
+    totalAmount: number | null,
+    actorId: string,
+    scope: DomaceClaimsListScope,
+  ): Promise<DomaceClaimDetail> {
+    const existing = await this.findById(id, scope)
+    if (existing === null) {
+      throw new NotFoundError('Domace claim', id)
+    }
+
+    await this.db
+      .update(domaceClaims)
+      .set({ totalAmount, updatedBy: actorId })
+      .where(eq(domaceClaims.id, id))
 
     const updated = await this.findById(id, scope)
     if (updated === null) {

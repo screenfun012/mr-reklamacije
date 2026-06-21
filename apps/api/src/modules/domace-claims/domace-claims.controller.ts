@@ -9,6 +9,7 @@ import { getActorContext } from '../../core/http/actor-context.js'
 import type { DomaceClaimsActor } from './domace-claims.types.js'
 import type { DomaceClaimDetail } from './domace-claims.validators.js'
 import {
+  DomaceClaimAmountInputSchema,
   DomaceClaimChangeOutcomeInputSchema,
   DomaceClaimCreateInputSchema,
   DomaceClaimListQuerySchema,
@@ -103,6 +104,20 @@ export function createDomaceClaimsController(container: Container) {
       const body: unknown = await c.req.json()
       const input = DomaceClaimChangeOutcomeInputSchema.parse(body)
       const updated = await container.domaceClaimsService.changeOutcome(
+        id,
+        input,
+        toActor(user),
+        getActorContext(c, user),
+      )
+      return c.json(serializeClaimDetail(updated, user))
+    },
+
+    updateAmount: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = DomaceClaimIdParamSchema.parse(c.req.param())
+      const body: unknown = await c.req.json()
+      const input = DomaceClaimAmountInputSchema.parse(body)
+      const updated = await container.domaceClaimsService.updateAmount(
         id,
         input,
         toActor(user),
