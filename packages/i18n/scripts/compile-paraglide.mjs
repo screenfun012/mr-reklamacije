@@ -21,12 +21,25 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const pkgRoot = join(scriptDir, '..')
 const outdir = join(pkgRoot, 'src/paraglide')
 
-// Recursive remove — plain rmdir fails with ENOTEMPTY when the outdir still has files (CI fresh checkout + concurrent compiles).
-rmSync(outdir, { recursive: true, force: true })
+// Turbo runs `@mr/i18n#typecheck` (which calls `pnpm compile`) and
+// `@mr/i18n#build` (which also calls `pnpm compile`) without an ordering
+// dependency, so two compile processes can hit this same outdir at once. A
+// plain `rmdir` (and even a recursive remove without retries) then races: one
+// process empties the tree while the other writes into it, producing
+// `ENOTEMPTY: ... rmdir '.../paraglide'`.
+//
+// Make the clean the *single* remover and tolerant of that inter-process race:
+//   - recursive + force: remove a non-empty dir, and don't fail if it's absent
+//   - maxRetries/retryDelay: retry the transient ENOTEMPTY/EBUSY/EPERM that a
+//     concurrent writer triggers, instead of crashing the build
+//   - cleanOutdir: false below disables Paraglide's own (un-retried) cleanup so
+//     there is exactly one cleaner, not two racing ones.
+rmSync(outdir, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
 
 await compile({
   project: join(pkgRoot, 'project.inlang'),
   outdir,
+  cleanOutdir: false,
   strategy: ['localStorage', 'globalVariable', 'preferredLanguage', 'baseLocale'],
   localStorageKey: 'mrr:locale',
 })
