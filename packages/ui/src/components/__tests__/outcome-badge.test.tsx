@@ -1,4 +1,4 @@
-import { OUTCOME_BADGE_CLASSES, ClaimOutcome } from '@mr/shared'
+import { ClaimOutcome, OUTCOME_BADGE_CLASSES, OUTCOME_ICON_CLASSES } from '@mr/shared'
 import { setLocale } from '@mr/i18n'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -25,5 +25,34 @@ describe('OutcomeBadge', () => {
       expect(badge.tagName).toBe('SPAN')
       expect(badge.className).toContain(OUTCOME_BADGE_CLASSES[outcome].split(' ')[0])
     })
+
+    it(`renders ${outcome} icon`, () => {
+      const { container } = render(<OutcomeBadge outcome={outcome} />)
+
+      const icon = container.querySelector('svg')
+      expect(icon).not.toBeNull()
+      expect(icon).toHaveClass(OUTCOME_ICON_CLASSES[outcome])
+    })
   }
+
+  it('pulses icon only for pending outcome', () => {
+    const { container: pendingContainer } = render(<OutcomeBadge outcome={ClaimOutcome.Pending} />)
+    const pendingIcon = pendingContainer.querySelector('svg')
+    expect(pendingIcon).toHaveClass('animate-pulse')
+
+    const { container: acceptedContainer } = render(
+      <OutcomeBadge outcome={ClaimOutcome.Accepted} />,
+    )
+    const acceptedIcon = acceptedContainer.querySelector('svg')
+    expect(acceptedIcon).not.toHaveClass('animate-pulse')
+  })
+
+  it('plays enter animation once when outcome changes', () => {
+    const { rerender } = render(<OutcomeBadge outcome={ClaimOutcome.Pending} />)
+
+    rerender(<OutcomeBadge outcome={ClaimOutcome.Accepted} />)
+
+    const badge = screen.getByText('Prihvaćeno')
+    expect(badge.className).toContain('animate-fade-in-scale')
+  })
 })

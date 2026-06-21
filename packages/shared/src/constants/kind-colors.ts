@@ -1,14 +1,21 @@
 import { ClaimKind, type ClaimKind as ClaimKindType } from '../enums.js'
 
-/** Tailwind classes for unified claim kind badges (docs/09-ui-ux.md). */
+/** Tailwind classes for unified claim kind badges (MR brandbook colors). */
 export const KIND_BADGE_CLASSES: Record<ClaimKindType, string> = {
   [ClaimKind.Domace]:
-    'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100',
+    'border-mr-brand/40 bg-mr-brand-subtle text-mr-brand-strong shadow-sm shadow-mr-brand/15 dark:border-mr-brand/55 dark:bg-mr-brand/20 dark:text-mr-brand-400 dark:shadow-mr-brand/10',
   [ClaimKind.Emotive]:
-    'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100',
+    'border-mr-info/45 bg-mr-info-subtle text-mr-info-strong shadow-sm shadow-mr-info/15 dark:border-mr-info/55 dark:bg-mr-info/20 dark:text-mr-info dark:shadow-mr-info/10',
 }
 
+/** Saturated icon tint per claim kind. */
+export const KIND_ICON_CLASSES: Record<ClaimKindType, string> = {
+  [ClaimKind.Domace]: 'text-mr-brand',
+  [ClaimKind.Emotive]: 'text-mr-info',
+}
+
+/** @deprecated Dots replaced by Lucide icons in ClaimKindBadge. Kept for registry compatibility. */
 export const KIND_DOT_CLASSES: Record<ClaimKindType, string> = {
-  [ClaimKind.Domace]: 'bg-sky-500',
-  [ClaimKind.Emotive]: 'bg-emerald-500',
+  [ClaimKind.Domace]: 'bg-mr-brand',
+  [ClaimKind.Emotive]: 'bg-mr-info',
 }
