@@ -7,37 +7,37 @@ import { buttonVariants } from './button-variants.js'
 
 export type CalendarProps = DayPickerProps
 
+const navButtonClassName = cn(
+  buttonVariants({ variant: 'outline' }),
+  'size-7 shrink-0 p-0 opacity-60 hover:opacity-100',
+)
+
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  navLayout = 'around',
   ...props
 }: CalendarProps): React.ReactElement {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      navLayout={navLayout}
       className={cn('p-3', className)}
       classNames={{
         months: 'flex flex-col gap-4 sm:flex-row',
-        month: 'flex flex-col gap-4',
-        month_caption: 'relative flex items-center justify-center pt-1',
-        caption_label: 'text-sm font-medium',
-        nav: 'flex items-center gap-1',
-        button_previous: cn(
-          buttonVariants({ variant: 'outline', size: 'icon' }),
-          'absolute left-1 size-7 bg-transparent p-0 opacity-60 hover:opacity-100',
-        ),
-        button_next: cn(
-          buttonVariants({ variant: 'outline', size: 'icon' }),
-          'absolute right-1 size-7 bg-transparent p-0 opacity-60 hover:opacity-100',
-        ),
-        month_grid: 'w-full border-collapse',
+        month: 'grid grid-cols-[2.25rem_1fr_2.25rem] items-center gap-x-1 gap-y-3',
+        month_caption: 'col-start-2 row-start-1 flex items-center justify-center',
+        caption_label: 'text-sm font-medium capitalize',
+        button_previous: cn(navButtonClassName, 'col-start-1 row-start-1'),
+        button_next: cn(navButtonClassName, 'col-start-3 row-start-1'),
+        month_grid: 'col-span-3 row-start-2 w-full border-collapse',
         weekdays: 'flex',
         weekday: 'w-9 rounded-md text-[0.8rem] font-normal text-muted-foreground',
         week: 'mt-2 flex w-full',
         day: 'relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:rounded-md [&:has([aria-selected])]:bg-accent',
         day_button: cn(
-          buttonVariants({ variant: 'ghost', size: 'icon' }),
+          buttonVariants({ variant: 'ghost' }),
           'size-9 p-0 font-normal aria-selected:opacity-100',
         ),
         selected:
