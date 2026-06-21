@@ -12,10 +12,9 @@ import {
   DEV_PORTS,
   REPO_ROOT,
   checkNodeModulesIntegrity,
-  freePorts,
+  freeDevStack,
   isDockerDaemonReady,
   run,
-  sleep,
   startPostgres,
   waitForDockerDaemon,
   waitForHttp,
@@ -43,11 +42,13 @@ if (!nm.ok && !force) {
   process.exit(1)
 }
 
-// --- Free ports ---
-const freed = freePorts(Object.values(DEV_PORTS))
-if (freed.length > 0) {
-  log('preflight', `Freed ports: ${freed.join(', ')}`)
-  await sleep(500)
+// --- Kill stale dev:all / tsx watch trees, then free ports ---
+const { killedPids, freedPorts } = await freeDevStack()
+if (killedPids.length > 0) {
+  log('preflight', `Stopped stale dev processes: ${killedPids.length}`)
+}
+if (freedPorts.length > 0) {
+  log('preflight', `Freed ports: ${freedPorts.join(', ')}`)
 }
 
 // --- Docker daemon (Docker Desktop boots 30–60s on M1; compose fails until socket is up) ---

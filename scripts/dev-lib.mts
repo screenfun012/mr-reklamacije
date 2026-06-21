@@ -114,6 +114,117 @@ export function freePorts(ports: readonly number[]): number[] {
   return freed
 }
 
+function getProcessCommand(pid: number): string | null {
+  return tryRun(`ps -p ${pid} -o command=`)?.trim() ?? null
+}
+
+function isRepoDevProcess(command: string): boolean {
+  return (
+    command.includes(REPO_ROOT) ||
+    command.includes('scripts/dev-all.mts') ||
+    command.includes('scripts/dev-api-supervisor.mts') ||
+    command.includes('scripts/dev-web-wait.mts') ||
+    (command.includes('apps/api') && command.includes('src/server.ts'))
+  )
+}
+
+function listPgrepPids(pattern: string): number[] {
+  const out = tryRun(`pgrep -f ${JSON.stringify(pattern)}`)
+  if (!out?.trim()) return []
+  return out
+    .trim()
+    .split('\n')
+    .map((line) => Number(line.trim()))
+    .filter((pid) => Number.isFinite(pid) && pid > 0)
+}
+
+function collectAncestorPids(pid: number, exclude: ReadonlySet<number>, maxDepth = 12): number[] {
+  const chain: number[] = []
+  let current = pid
+
+  for (let depth = 0; depth < maxDepth; depth += 1) {
+    if (exclude.has(current)) break
+    const command = getProcessCommand(current)
+    if (!command || !isRepoDevProcess(command)) break
+    chain.push(current)
+    const ppidRaw = tryRun(`ps -p ${current} -o ppid=`)?.trim()
+    const ppid = ppidRaw ? Number(ppidRaw) : NaN
+    if (!Number.isFinite(ppid) || ppid <= 1) break
+    current = ppid
+  }
+
+  return chain
+}
+
+function killPid(pid: number, signal: NodeJS.Signals): boolean {
+  try {
+    process.kill(pid, signal)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Stale `dev:all` leaves orphaned `tsx watch` / supervisors when only port
+ * listeners are SIGTERM'd. Kill the full dev stack for this repo before boot.
+ */
+export async function freeDevStack(options?: {
+  excludePids?: readonly number[]
+}): Promise<{ killedPids: number[]; freedPorts: number[] }> {
+  const exclude = new Set<number>(options?.excludePids ?? [process.pid, process.ppid])
+  const targetPids = new Set<number>()
+
+  const patterns = [
+    'scripts/dev-all.mts',
+    'scripts/dev-api-supervisor.mts',
+    'scripts/dev-web-wait.mts',
+    'watch --env-file=.env src/server.ts',
+    'Reklamacije/apps/admin-web',
+    'Reklamacije/apps/internal-web',
+    'Reklamacije/apps/portal-web',
+  ]
+
+  for (const pattern of patterns) {
+    for (const pid of listPgrepPids(pattern)) {
+      if (exclude.has(pid)) continue
+      const command = getProcessCommand(pid)
+      if (!command || !isRepoDevProcess(command)) continue
+      for (const ancestor of collectAncestorPids(pid, exclude)) {
+        targetPids.add(ancestor)
+      }
+      targetPids.add(pid)
+    }
+  }
+
+  for (const port of Object.values(DEV_PORTS)) {
+    const listenerPid = getPortListenerPid(port)
+    if (!listenerPid || exclude.has(listenerPid)) continue
+    for (const ancestor of collectAncestorPids(listenerPid, exclude)) {
+      targetPids.add(ancestor)
+    }
+    targetPids.add(listenerPid)
+  }
+
+  const killedPids: number[] = []
+  for (const pid of targetPids) {
+    if (killPid(pid, 'SIGTERM')) killedPids.push(pid)
+  }
+
+  if (killedPids.length > 0) {
+    await sleep(1500)
+  }
+
+  for (const pid of targetPids) {
+    killPid(pid, 'SIGKILL')
+  }
+
+  const freedPorts = freePorts(Object.values(DEV_PORTS))
+  await Promise.all(Object.values(DEV_PORTS).map((port) => waitForPortFree(port, { timeoutMs: 8000 })))
+
+  return { killedPids, freedPorts }
+}
+
 export function stopDockerApi(): void {
   tryRun('docker stop mr-reklamacije-api')
 }
