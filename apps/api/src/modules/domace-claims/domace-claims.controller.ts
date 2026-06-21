@@ -98,6 +98,17 @@ export function createDomaceClaimsController(container: Container) {
       return c.body(null, 204)
     },
 
+    restore: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = DomaceClaimIdParamSchema.parse(c.req.param())
+      const restored = await container.domaceClaimsService.restore(
+        id,
+        toActor(user),
+        getActorContext(c, user),
+      )
+      return c.json(serializeClaimDetail(restored, user))
+    },
+
     changeOutcome: async (c: Context) => {
       const user = requireUser(c)
       const { id } = DomaceClaimIdParamSchema.parse(c.req.param())

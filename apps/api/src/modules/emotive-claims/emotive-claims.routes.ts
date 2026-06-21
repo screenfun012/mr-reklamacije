@@ -23,6 +23,7 @@ export function registerEmotiveClaimsRoutes(
   routes.post('/', requirePermission('emotive_claims.create'), controller.create)
   routes.patch('/:id', requirePermission('emotive_claims.update'), controller.update)
   routes.delete('/:id', requirePermission('emotive_claims.delete'), controller.softDelete)
+  routes.post('/:id/restore', requirePermission('emotive_claims.restore'), controller.restore)
   routes.post(
     '/:id/change-outcome',
     requirePermission('emotive_claims.change_outcome'),

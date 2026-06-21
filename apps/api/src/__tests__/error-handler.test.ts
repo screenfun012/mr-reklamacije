@@ -1,9 +1,10 @@
 import type { Logger } from '@mr/logger'
-import { ERROR_CODE } from '@mr/shared'
+import { ClaimKind, ERROR_CODE } from '@mr/shared'
 import { Hono } from 'hono'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AppError } from '../core/errors/app-error.js'
+import { MrKeyConflictError } from '../core/errors/domain-errors.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 
 function makeApp() {
@@ -41,6 +42,33 @@ describe('global error handler', () => {
         status: 404,
       },
     })
+  })
+
+  it('includes existing claim details for MrKeyConflictError', async () => {
+    const { app } = makeApp()
+    app.get('/mr-conflict', () => {
+      throw new MrKeyConflictError({
+        kind: ClaimKind.Emotive,
+        claimId: '11111111-1111-1111-1111-111111111111',
+      })
+    })
+
+    const res = await app.request('/mr-conflict')
+
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as {
+      error: {
+        code: string
+        message: string
+        status: number
+        details?: { kind: string; claimId: string }
+      }
+    }
+    expect(body.error.details).toEqual({
+      kind: ClaimKind.Emotive,
+      claimId: '11111111-1111-1111-1111-111111111111',
+    })
+    expect(body.error.code).toBe(ERROR_CODE.Conflict)
   })
 
   it('maps unknown error to generic 500', async () => {

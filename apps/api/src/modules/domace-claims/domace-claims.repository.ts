@@ -1,10 +1,11 @@
 import { schema } from '@mr/db'
 import { ClaimKind } from '@mr/shared'
-import { and, desc, eq, gte, isNull, lte, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { FaultsRepository } from '../../core/claims/faults.repository.js'
 import type { ApiDatabase } from '../../core/database.js'
 import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
+import type { MrRegistryService } from '../../core/mr-registry/index.js'
 import { domaceClaimYearFromDate } from './claim-year.js'
 import { domaceClaimFaults, domaceClaims } from './domace-claims.schema.js'
 import type { DomaceClaimsListScope } from './domace-claims.types.js'
@@ -101,6 +102,7 @@ export class DomaceClaimsRepository {
   constructor(
     private readonly db: ApiDatabase,
     private readonly faultsRepo: FaultsRepository<typeof domaceClaimFaults>,
+    private readonly mrRegistry: MrRegistryService,
   ) {}
 
   async isEngineTypeActive(engineTypeId: string): Promise<boolean> {
@@ -194,6 +196,8 @@ export class DomaceClaimsRepository {
       }
 
       await this.faultsRepo.insertMany(tx, claimId, input.faults)
+
+      await this.mrRegistry.claimMr(input.mrNumber ?? null, ClaimKind.Domace, claimId, tx)
 
       if (input.engineTypeId !== undefined) {
         await tx
@@ -294,9 +298,27 @@ export class DomaceClaimsRepository {
   }
 
   async findById(id: string, scope: DomaceClaimsListScope): Promise<DomaceClaimDetail | null> {
+    return this.fetchById(id, scope, 'active')
+  }
+
+  async findDeletedById(
+    id: string,
+    scope: DomaceClaimsListScope,
+  ): Promise<DomaceClaimDetail | null> {
+    return this.fetchById(id, scope, 'deleted')
+  }
+
+  private async fetchById(
+    id: string,
+    scope: DomaceClaimsListScope,
+    mode: 'active' | 'deleted',
+  ): Promise<DomaceClaimDetail | null> {
     if (scope.type === 'own_customer') {
       return null
     }
+
+    const deletedCondition =
+      mode === 'active' ? isNull(domaceClaims.deletedAt) : isNotNull(domaceClaims.deletedAt)
 
     const [row] = await this.db
       .select({
@@ -325,7 +347,7 @@ export class DomaceClaimsRepository {
       .from(domaceClaims)
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
-      .where(and(eq(domaceClaims.id, id), isNull(domaceClaims.deletedAt)))
+      .where(and(eq(domaceClaims.id, id), deletedCondition))
       .limit(1)
 
     if (row === undefined) {
@@ -415,6 +437,16 @@ export class DomaceClaimsRepository {
       if (input.faults !== undefined) {
         await this.faultsRepo.replaceForClaim(tx, id, input.faults)
       }
+
+      if (input.mrNumber !== undefined) {
+        await this.mrRegistry.syncMrNumberChange(
+          tx,
+          ClaimKind.Domace,
+          id,
+          existing.mrNumber,
+          input.mrNumber,
+        )
+      }
     })
 
     const updated = await this.findById(id, scope)
@@ -455,10 +487,41 @@ export class DomaceClaimsRepository {
       throw new NotFoundError('Domace claim', id)
     }
 
-    await this.db
-      .update(domaceClaims)
-      .set({ deletedAt: new Date(), updatedBy: actorId })
-      .where(eq(domaceClaims.id, id))
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(domaceClaims)
+        .set({ deletedAt: new Date(), updatedBy: actorId })
+        .where(eq(domaceClaims.id, id))
+
+      await this.mrRegistry.releaseMr(existing.mrNumber, tx)
+    })
+  }
+
+  async restore(
+    id: string,
+    actorId: string,
+    scope: DomaceClaimsListScope,
+  ): Promise<DomaceClaimDetail> {
+    const existing = await this.findDeletedById(id, scope)
+    if (existing === null) {
+      throw new NotFoundError('Domace claim', id)
+    }
+
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(domaceClaims)
+        .set({ deletedAt: null, updatedBy: actorId })
+        .where(eq(domaceClaims.id, id))
+
+      await this.mrRegistry.claimMr(existing.mrNumber, ClaimKind.Domace, id, tx)
+    })
+
+    const restored = await this.findById(id, scope)
+    if (restored === null) {
+      throw new NotFoundError('Domace claim', id)
+    }
+
+    return restored
   }
 
   async changeOutcome(

@@ -1,9 +1,10 @@
 import { schema } from '@mr/db'
 import { ClaimKind } from '@mr/shared'
-import { and, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
+import type { MrRegistryService } from '../../core/mr-registry/index.js'
 import { claimYearFromDate } from './claim-year.js'
 import {
   claimSources,
@@ -108,6 +109,7 @@ export class EmotiveClaimsRepository {
   constructor(
     private readonly db: ApiDatabase,
     private readonly faultsRepo: FaultsRepository,
+    private readonly mrRegistry: MrRegistryService,
   ) {}
 
   async getSourceDefaultCustomerId(sourceId: string): Promise<string | null> {
@@ -255,6 +257,8 @@ export class EmotiveClaimsRepository {
 
       await this.faultsRepo.insertMany(tx, claimId, input.faults)
 
+      await this.mrRegistry.claimMr(input.mrNumber, ClaimKind.Emotive, claimId, tx)
+
       await tx
         .update(engineTypes)
         .set({ usageCount: sql`${engineTypes.usageCount} + 1` })
@@ -364,6 +368,24 @@ export class EmotiveClaimsRepository {
   }
 
   async findById(id: string, scope: EmotiveClaimsListScope): Promise<EmotiveClaimDetail | null> {
+    return this.fetchById(id, scope, 'active')
+  }
+
+  async findDeletedById(
+    id: string,
+    scope: EmotiveClaimsListScope,
+  ): Promise<EmotiveClaimDetail | null> {
+    return this.fetchById(id, scope, 'deleted')
+  }
+
+  private async fetchById(
+    id: string,
+    scope: EmotiveClaimsListScope,
+    mode: 'active' | 'deleted',
+  ): Promise<EmotiveClaimDetail | null> {
+    const deletedCondition =
+      mode === 'active' ? isNull(emotiveClaims.deletedAt) : isNotNull(emotiveClaims.deletedAt)
+
     const [row] = await this.db
       .select({
         id: emotiveClaims.id,
@@ -396,7 +418,7 @@ export class EmotiveClaimsRepository {
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
-      .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
+      .where(and(eq(emotiveClaims.id, id), deletedCondition))
       .limit(1)
 
     if (row === undefined) {
@@ -503,6 +525,16 @@ export class EmotiveClaimsRepository {
       if (input.faults !== undefined) {
         await this.faultsRepo.replaceForClaim(tx, id, input.faults)
       }
+
+      if (input.mrNumber !== undefined) {
+        await this.mrRegistry.syncMrNumberChange(
+          tx,
+          ClaimKind.Emotive,
+          id,
+          existing.mrNumber,
+          input.mrNumber,
+        )
+      }
     })
 
     const updated = await this.findById(id, scope)
@@ -519,10 +551,41 @@ export class EmotiveClaimsRepository {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    await this.db
-      .update(emotiveClaims)
-      .set({ deletedAt: new Date(), updatedBy: actorId })
-      .where(eq(emotiveClaims.id, id))
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(emotiveClaims)
+        .set({ deletedAt: new Date(), updatedBy: actorId })
+        .where(eq(emotiveClaims.id, id))
+
+      await this.mrRegistry.releaseMr(existing.mrNumber, tx)
+    })
+  }
+
+  async restore(
+    id: string,
+    actorId: string,
+    scope: EmotiveClaimsListScope,
+  ): Promise<EmotiveClaimDetail> {
+    const existing = await this.findDeletedById(id, scope)
+    if (existing === null) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(emotiveClaims)
+        .set({ deletedAt: null, updatedBy: actorId })
+        .where(eq(emotiveClaims.id, id))
+
+      await this.mrRegistry.claimMr(existing.mrNumber, ClaimKind.Emotive, id, tx)
+    })
+
+    const restored = await this.findById(id, scope)
+    if (restored === null) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
+    return restored
   }
 
   async changeOutcome(

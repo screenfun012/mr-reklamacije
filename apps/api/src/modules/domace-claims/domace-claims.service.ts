@@ -198,6 +198,38 @@ export class DomaceClaimsService {
     this.events.publishClaimDeleted(domaceEventPayload(id))
   }
 
+  async restore(
+    id: string,
+    actor: DomaceClaimsActor,
+    auditContext: HttpActorContext,
+  ): Promise<DomaceClaimDetail> {
+    if (!actor.permissions.includes('domace_claims.restore')) {
+      throw new ForbiddenError()
+    }
+
+    const scope = resolveListScope(actor)
+    const before = await this.repo.findDeletedById(id, scope)
+    if (before === null) {
+      throw new NotFoundError('Domace claim', id)
+    }
+
+    const restored = await this.repo.restore(id, auditContext.actorUserId, scope)
+
+    await this.audit.log({
+      entityType: 'domace_claim',
+      entityId: id,
+      action: AuditAction.Restore,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { before, after: restored },
+    })
+
+    this.events.publishClaimUpdated(domaceEventPayload(id))
+
+    return restored
+  }
+
   async changeOutcome(
     id: string,
     input: DomaceClaimChangeOutcomeInput,

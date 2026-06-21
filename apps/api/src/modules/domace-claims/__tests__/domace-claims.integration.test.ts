@@ -11,10 +11,16 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { ConflictError, ForbiddenError, NotFoundError } from '../../../core/errors/domain-errors.js'
+import {
+  ConflictError,
+  ForbiddenError,
+  MrKeyConflictError,
+  NotFoundError,
+} from '../../../core/errors/domain-errors.js'
 import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import {
   ensureTestUser,
+  getClaimSourceIdByCode,
   getDepartmentIdByCode,
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
@@ -43,6 +49,11 @@ const OWN_CUSTOMER_VIEWER: DomaceClaimsActor = {
 const ADMIN_ACTOR: DomaceClaimsActor = {
   id: TEST_USER_ID,
   permissions: [...FULL_OPERATOR.permissions, 'domace_claims.reopen'],
+}
+
+const RESTORE_ACTOR: DomaceClaimsActor = {
+  id: TEST_USER_ID,
+  permissions: [...FULL_OPERATOR.permissions, 'domace_claims.restore'],
 }
 
 const auditContext = {
@@ -113,6 +124,57 @@ describe('DomaceClaimsService integration', () => {
 
       expect(created.mrNumber).toBeNull()
       expect(created.customerName).toBe('Servis Petrović')
+      expect(await container.mrRegistryService.findByMr(null)).toBeNull()
+    })
+
+    it('registers MR key on create when mr_number is provided', async () => {
+      const mrNumber = `DOM-REG-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Domace,
+        claimId: created.id,
+      })
+    })
+
+    it('rejects create when MR matches an existing emotive claim', async () => {
+      const mrNumber = `CROSS-${crypto.randomUUID().slice(0, 8)}/26`
+      const engineTypeId = (
+        await container.engineTypesRepository.create({ code: `DOM-X-${Date.now()}` })
+      ).id
+      const emotive = await container.emotiveClaimsService.create(
+        {
+          engineTypeId,
+          dateOfClaim: new Date('2026-04-17'),
+          mrNumber,
+          employeeId: await getEmployeeIdByNormalizedName(
+            ctx.db,
+            normalizeName('Dejan Milovanović'),
+          ),
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          outcome: ClaimOutcome.Pending,
+          faults: [],
+        },
+        {
+          id: TEST_USER_ID,
+          permissions: ['emotive_claims.create'],
+        },
+        auditContext,
+      )
+
+      await expect(
+        container.domaceClaimsService.create(
+          baseCreateInput({ mrNumber: `  ${mrNumber.toUpperCase()}  ` }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toMatchObject({
+        existingClaim: { kind: ClaimKind.Emotive, claimId: emotive.id },
+      } satisfies Partial<MrKeyConflictError>)
     })
 
     it('retains total_amount for financial tracking', async () => {
@@ -287,6 +349,129 @@ describe('DomaceClaimsService integration', () => {
 
       expect(updated.customerName).toBe('Novi Kupac')
       expect(updated.claimYear).toBe(2026)
+    })
+
+    it('clears MR registry entry when mr_number is removed', async () => {
+      const mrNumber = `DOM-CLEAR-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.domaceClaimsService.update(
+        created.id,
+        { mrNumber: null },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toBeNull()
+    })
+  })
+
+  describe('when soft-deleting and restoring MR registry', () => {
+    it('releases MR on soft-delete so another claim can take it (A)', async () => {
+      const mrNumber = `DOM-REL-A-${crypto.randomUUID().slice(0, 8)}/26`
+      const deleted = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.domaceClaimsService.softDelete(deleted.id, FULL_OPERATOR, auditContext)
+
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toBeNull()
+
+      const replacement = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(replacement.id).not.toBe(deleted.id)
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Domace,
+        claimId: replacement.id,
+      })
+    })
+
+    it('restores MR registry entry when MR is free again (B)', async () => {
+      const mrNumber = `DOM-REL-B-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.domaceClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toBeNull()
+
+      const restored = await container.domaceClaimsService.restore(
+        created.id,
+        RESTORE_ACTOR,
+        auditContext,
+      )
+
+      expect(restored.id).toBe(created.id)
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Domace,
+        claimId: created.id,
+      })
+    })
+
+    it('keeps claim soft-deleted when restore fails because MR is taken (C)', async () => {
+      const mrNumber = `DOM-REL-C-${crypto.randomUUID().slice(0, 8)}/26`
+      const first = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.domaceClaimsService.softDelete(first.id, FULL_OPERATOR, auditContext)
+
+      const second = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.domaceClaimsService.restore(first.id, RESTORE_ACTOR, auditContext),
+      ).rejects.toMatchObject({
+        existingClaim: { kind: ClaimKind.Domace, claimId: second.id },
+      } satisfies Partial<MrKeyConflictError>)
+
+      const [row] = await ctx.db
+        .select({ deletedAt: schema.domaceClaims.deletedAt })
+        .from(schema.domaceClaims)
+        .where(eq(schema.domaceClaims.id, first.id))
+      expect(row?.deletedAt).not.toBeNull()
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Domace,
+        claimId: second.id,
+      })
+    })
+
+    it('does not touch mr_registry when claim has no mr_number (D)', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ customerName: 'Servis Petrović', mrNumber: undefined }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.domaceClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+      expect(await container.mrRegistryService.findByMr(null)).toBeNull()
+
+      const restored = await container.domaceClaimsService.restore(
+        created.id,
+        RESTORE_ACTOR,
+        auditContext,
+      )
+
+      expect(restored.mrNumber).toBeNull()
+      expect(await container.mrRegistryService.findByMr(null)).toBeNull()
+      expect(await container.domaceClaimsService.findById(created.id, FULL_OPERATOR)).toEqual(
+        restored,
+      )
     })
   })
 

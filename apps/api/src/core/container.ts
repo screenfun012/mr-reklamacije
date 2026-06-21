@@ -12,6 +12,7 @@ import { AuditService } from '../modules/audit/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { FaultsRepository } from './claims/faults.repository.js'
+import { MrRegistryRepository, MrRegistryService } from './mr-registry/index.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
@@ -55,6 +56,7 @@ export interface Container {
   domaceClaimsService: DomaceClaimsService
   claimsRepository: ClaimsRepository
   claimsService: ClaimsService
+  mrRegistryService: MrRegistryService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
@@ -92,7 +94,13 @@ export function buildContainer(
   const departmentsService = new DepartmentsService(departmentsRepository)
 
   const emotiveFaultsRepository = new FaultsRepository(schema.emotiveClaimFaults)
-  const emotiveClaimsRepository = new EmotiveClaimsRepository(db, emotiveFaultsRepository)
+  const mrRegistryRepository = new MrRegistryRepository(db)
+  const mrRegistryService = new MrRegistryService(mrRegistryRepository)
+  const emotiveClaimsRepository = new EmotiveClaimsRepository(
+    db,
+    emotiveFaultsRepository,
+    mrRegistryService,
+  )
   const emotiveClaimsService = new EmotiveClaimsService(
     emotiveClaimsRepository,
     auditService,
@@ -100,7 +108,11 @@ export function buildContainer(
   )
 
   const domaceFaultsRepository = new FaultsRepository(schema.domaceClaimFaults)
-  const domaceClaimsRepository = new DomaceClaimsRepository(db, domaceFaultsRepository)
+  const domaceClaimsRepository = new DomaceClaimsRepository(
+    db,
+    domaceFaultsRepository,
+    mrRegistryService,
+  )
   const domaceClaimsService = new DomaceClaimsService(
     domaceClaimsRepository,
     auditService,
@@ -137,5 +149,6 @@ export function buildContainer(
     domaceClaimsService,
     claimsRepository,
     claimsService,
+    mrRegistryService,
   }
 }

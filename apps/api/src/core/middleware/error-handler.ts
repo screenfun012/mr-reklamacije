@@ -5,6 +5,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { ZodError } from 'zod'
 
 import { AppError } from '../errors/app-error.js'
+import { MrKeyConflictError } from '../errors/domain-errors.js'
 
 /**
  * Registers global error handler via app.onError().
@@ -36,16 +37,23 @@ export function registerGlobalErrorHandler<E extends Env>(app: Hono<E>, logger: 
         { code: err.code, status: err.status, message: err.message },
         'handled application error',
       )
-      return c.json(
-        {
-          error: {
-            code: err.code,
-            message: err.message,
-            status: err.status,
-          },
-        },
-        err.status as ContentfulStatusCode,
-      )
+
+      const errorBody: {
+        code: string
+        message: string
+        status: number
+        details?: unknown
+      } = {
+        code: err.code,
+        message: err.message,
+        status: err.status,
+      }
+
+      if (err instanceof MrKeyConflictError) {
+        errorBody.details = err.existingClaim
+      }
+
+      return c.json({ error: errorBody }, err.status as ContentfulStatusCode)
     }
 
     logger.error(

@@ -166,6 +166,38 @@ export class EmotiveClaimsService {
     this.events.publishClaimDeleted(emotiveEventPayload(id))
   }
 
+  async restore(
+    id: string,
+    actor: EmotiveClaimsActor,
+    auditContext: HttpActorContext,
+  ): Promise<EmotiveClaimDetail> {
+    if (!actor.permissions.includes('emotive_claims.restore')) {
+      throw new ForbiddenError()
+    }
+
+    const scope = resolveListScope(actor)
+    const before = await this.repo.findDeletedById(id, scope)
+    if (before === null) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
+    const restored = await this.repo.restore(id, auditContext.actorUserId, scope)
+
+    await this.audit.log({
+      entityType: 'emotive_claim',
+      entityId: id,
+      action: AuditAction.Restore,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { before, after: restored },
+    })
+
+    this.events.publishClaimUpdated(emotiveEventPayload(id))
+
+    return restored
+  }
+
   async changeOutcome(
     id: string,
     input: EmotiveClaimChangeOutcomeInput,

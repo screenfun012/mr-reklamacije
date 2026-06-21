@@ -18,6 +18,7 @@ import { registerEmotiveClaimsRoutes } from './modules/emotive-claims/index.js'
 import { registerEngineTypesRoutes } from './modules/engine-types/index.js'
 import { registerEventsRoutes } from './modules/events/index.js'
 import { registerExternalPartiesRoutes } from './modules/external-parties/index.js'
+import { registerMrRegistryRoutes } from './modules/mr-registry/index.js'
 
 export type { MRSessionUser }
 
@@ -75,6 +76,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
   registerDomaceClaimsRoutes(app, container)
+  registerMrRegistryRoutes(app, container)
   registerClaimsRoutes(app, container)
   registerEventsRoutes(app, container)
 

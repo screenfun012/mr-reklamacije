@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   ConflictError,
   ForbiddenError,
+  MrKeyConflictError,
   ValidationError,
 } from '../../../core/errors/domain-errors.js'
 import {
@@ -68,6 +69,11 @@ const ADMIN_ACTOR: EmotiveClaimsActor = {
   ],
 }
 
+const RESTORE_ACTOR: EmotiveClaimsActor = {
+  id: TEST_USER_ID,
+  permissions: [...FULL_OPERATOR.permissions, 'emotive_claims.restore'],
+}
+
 const auditContext = {
   actorUserId: TEST_USER_ID,
   actorIp: null,
@@ -119,7 +125,7 @@ describe('EmotiveClaimsService integration', () => {
     return {
       engineTypeId,
       dateOfClaim: new Date('2026-04-17'),
-      mrNumber: '5376/26',
+      mrNumber: `TST-${crypto.randomUUID().slice(0, 8)}/26`,
       employeeId,
       sourceId,
       warrantyReport,
@@ -131,7 +137,10 @@ describe('EmotiveClaimsService integration', () => {
 
   describe('when creating', () => {
     it('assigns sequence_number from database and claim_year from date_of_claim', async () => {
-      const input = await buildCreateInput({ dateOfClaim: new Date('2025-06-01') })
+      const input = await buildCreateInput({
+        dateOfClaim: new Date('2025-06-01'),
+        mrNumber: '5376/26',
+      })
       const created = await container.emotiveClaimsService.create(
         input,
         FULL_OPERATOR,
@@ -301,6 +310,194 @@ describe('EmotiveClaimsService integration', () => {
         .where(eq(schema.emotiveClaims.mrNumber, 'ROLLBACK-FAULT/26'))
       expect(claims).toHaveLength(0)
     })
+
+    it('registers MR key on create', async () => {
+      const mrNumber = `REG-HOOK-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const existing = await container.mrRegistryService.findByMr(mrNumber)
+      expect(existing).toEqual({ kind: ClaimKind.Emotive, claimId: created.id })
+    })
+
+    it('rejects create when normalized MR is already taken', async () => {
+      const mrNumber = `REG-TAKEN-${crypto.randomUUID().slice(0, 8)}/26`
+      const first = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({ mrNumber: `  ${mrNumber.toUpperCase()}  ` }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toMatchObject({
+        existingClaim: { kind: ClaimKind.Emotive, claimId: first.id },
+      } satisfies Partial<MrKeyConflictError>)
+    })
+  })
+
+  describe('when updating mr_number', () => {
+    it('moves MR registry entry when mr_number changes', async () => {
+      const oldMrNumber = `REG-OLD-${crypto.randomUUID().slice(0, 8)}/26`
+      const newMrNumber = `REG-NEW-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: oldMrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { mrNumber: newMrNumber },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(await container.mrRegistryService.findByMr(oldMrNumber)).toBeNull()
+      expect(await container.mrRegistryService.findByMr(newMrNumber)).toEqual({
+        kind: ClaimKind.Emotive,
+        claimId: created.id,
+      })
+    })
+
+    it('rejects update when new MR is already taken by another claim', async () => {
+      const keepMrNumber = `REG-KEEP-${crypto.randomUUID().slice(0, 8)}/26`
+      const mineMrNumber = `REG-MINE-${crypto.randomUUID().slice(0, 8)}/26`
+      const first = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: keepMrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const second = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: mineMrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.emotiveClaimsService.update(
+          second.id,
+          { mrNumber: keepMrNumber },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toMatchObject({
+        existingClaim: { kind: ClaimKind.Emotive, claimId: first.id },
+      } satisfies Partial<MrKeyConflictError>)
+    })
+  })
+
+  describe('when soft-deleting and restoring MR registry', () => {
+    it('releases MR on soft-delete so another claim can take it (A)', async () => {
+      const mrNumber = `REL-A-${crypto.randomUUID().slice(0, 8)}/26`
+      const deleted = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.softDelete(deleted.id, FULL_OPERATOR, auditContext)
+
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toBeNull()
+
+      const replacement = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(replacement.id).not.toBe(deleted.id)
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Emotive,
+        claimId: replacement.id,
+      })
+    })
+
+    it('restores MR registry entry when MR is free again (B)', async () => {
+      const mrNumber = `REL-B-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toBeNull()
+
+      const restored = await container.emotiveClaimsService.restore(
+        created.id,
+        RESTORE_ACTOR,
+        auditContext,
+      )
+
+      expect(restored.id).toBe(created.id)
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Emotive,
+        claimId: created.id,
+      })
+    })
+
+    it('keeps claim soft-deleted when restore fails because MR is taken (C)', async () => {
+      const mrNumber = `REL-C-${crypto.randomUUID().slice(0, 8)}/26`
+      const first = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.emotiveClaimsService.softDelete(first.id, FULL_OPERATOR, auditContext)
+
+      const second = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.emotiveClaimsService.restore(first.id, RESTORE_ACTOR, auditContext),
+      ).rejects.toMatchObject({
+        existingClaim: { kind: ClaimKind.Emotive, claimId: second.id },
+      } satisfies Partial<MrKeyConflictError>)
+
+      const [row] = await ctx.db
+        .select({ deletedAt: schema.emotiveClaims.deletedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, first.id))
+      expect(row?.deletedAt).not.toBeNull()
+      expect(await container.mrRegistryService.findByMr(mrNumber)).toEqual({
+        kind: ClaimKind.Emotive,
+        claimId: second.id,
+      })
+    })
+
+    it('writes audit log with restore action', async () => {
+      const mrNumber = `REL-AUDIT-${crypto.randomUUID().slice(0, 8)}/26`
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.emotiveClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+
+      await container.emotiveClaimsService.restore(created.id, RESTORE_ACTOR, auditContext)
+
+      const [entry] = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(
+          and(
+            eq(schema.auditLog.entityType, 'emotive_claim'),
+            eq(schema.auditLog.entityId, created.id),
+            eq(schema.auditLog.action, AuditAction.Restore),
+          ),
+        )
+      expect(entry).toBeDefined()
+    })
   })
 
   describe('when fetching detail', () => {
@@ -382,6 +579,8 @@ describe('EmotiveClaimsService integration', () => {
       const sourceSelman = await getClaimSourceIdByCode(ctx.db, 'SELMAN')
       const sourceVitobello = await getClaimSourceIdByCode(ctx.db, 'VITOBELLO')
       const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const mrPending = `LIST-P-${crypto.randomUUID().slice(0, 8)}/26`
+      const mrAccepted = `LIST-A-${crypto.randomUUID().slice(0, 8)}/26`
 
       await container.emotiveClaimsService.create(
         await buildCreateInput({
@@ -390,7 +589,7 @@ describe('EmotiveClaimsService integration', () => {
           outcome: ClaimOutcome.Pending,
           warrantyReport: 'jedinstvena reklamacija alfa',
           dateOfClaim: new Date('2026-01-10'),
-          mrNumber: '1001/26',
+          mrNumber: mrPending,
         }),
         FULL_OPERATOR,
         auditContext,
@@ -402,7 +601,7 @@ describe('EmotiveClaimsService integration', () => {
           outcome: ClaimOutcome.Accepted,
           warrantyReport: 'druga reklamacija beta',
           dateOfClaim: new Date('2026-02-10'),
-          mrNumber: '1002/26',
+          mrNumber: mrAccepted,
         }),
         FULL_OPERATOR,
         auditContext,
@@ -413,7 +612,7 @@ describe('EmotiveClaimsService integration', () => {
         FULL_OPERATOR,
       )
       expect(byOutcome.items.every((item) => item.outcome === ClaimOutcome.Accepted)).toBe(true)
-      expect(byOutcome.items.some((item) => item.mrNumber === '1002/26')).toBe(true)
+      expect(byOutcome.items.some((item) => item.mrNumber === mrAccepted)).toBe(true)
 
       const bySource = await container.emotiveClaimsService.list(
         listQuery({ sourceId: sourceSelman }),
@@ -434,8 +633,8 @@ describe('EmotiveClaimsService integration', () => {
         }),
         FULL_OPERATOR,
       )
-      expect(byDate.items.some((item) => item.mrNumber === '1001/26')).toBe(true)
-      expect(byDate.items.some((item) => item.mrNumber === '1002/26')).toBe(false)
+      expect(byDate.items.some((item) => item.mrNumber === mrPending)).toBe(true)
+      expect(byDate.items.some((item) => item.mrNumber === mrAccepted)).toBe(false)
 
       const bySearch = await container.emotiveClaimsService.list(
         listQuery({ search: 'alfa' }),
@@ -465,13 +664,15 @@ describe('EmotiveClaimsService integration', () => {
         ctx.db,
         normalizeName('Dejan Milovanović'),
       )
+      const mrNewer = `PAGE-NEW-${crypto.randomUUID().slice(0, 8)}/26`
+      const mrOlder = `PAGE-OLD-${crypto.randomUUID().slice(0, 8)}/26`
 
       await container.emotiveClaimsService.create(
         await buildCreateInput({
           sourceId: pageSourceId,
           customerId: customerSelman,
           dateOfClaim: new Date('2026-03-15'),
-          mrNumber: '7865/25',
+          mrNumber: mrNewer,
         }),
         FULL_OPERATOR,
         auditContext,
@@ -481,7 +682,7 @@ describe('EmotiveClaimsService integration', () => {
           sourceId: pageSourceId,
           customerId: customerSelman,
           dateOfClaim: new Date('2026-01-10'),
-          mrNumber: '7448/25',
+          mrNumber: mrOlder,
         }),
         FULL_OPERATOR,
         auditContext,
@@ -496,10 +697,10 @@ describe('EmotiveClaimsService integration', () => {
       expect(firstPage.pageSize).toBe(10)
       expect(firstPage.items).toHaveLength(2)
       expect(firstPage.items[0]?.kind).toBe('emotive')
-      expect(firstPage.items[0]?.mrNumber).toBe('7865/25')
+      expect(firstPage.items[0]?.mrNumber).toBe(mrNewer)
       expect(firstPage.items[0]?.customerName).toBe('SELMAN')
       expect(firstPage.items[0]?.employeeName).toBeTruthy()
-      expect(firstPage.items[1]?.mrNumber).toBe('7448/25')
+      expect(firstPage.items[1]?.mrNumber).toBe(mrOlder)
 
       const emptyPage = await container.emotiveClaimsService.list(
         listQuery({ sourceId: pageSourceId, page: 2, pageSize: 10 }),

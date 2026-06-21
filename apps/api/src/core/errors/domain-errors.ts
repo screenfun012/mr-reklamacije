@@ -1,6 +1,11 @@
-import { ERROR_CODE } from '@mr/shared'
+import { ERROR_CODE, type ClaimKind } from '@mr/shared'
 
 import { AppError } from './app-error.js'
+
+export interface MrKeyConflictExistingClaim {
+  kind: ClaimKind
+  claimId: string
+}
 
 export class NotFoundError extends AppError {
   constructor(entity: string, id: string) {
@@ -27,6 +32,13 @@ export class ConflictError extends AppError {
   constructor(message: string) {
     super(ERROR_CODE.Conflict, 409, message)
     Object.setPrototypeOf(this, ConflictError.prototype)
+  }
+}
+
+export class MrKeyConflictError extends ConflictError {
+  constructor(public readonly existingClaim: MrKeyConflictExistingClaim) {
+    super('MR broj je već dodeljen drugoj reklamaciji')
+    Object.setPrototypeOf(this, MrKeyConflictError.prototype)
   }
 }
 

@@ -97,6 +97,17 @@ export function createEmotiveClaimsController(container: Container) {
       return c.body(null, 204)
     },
 
+    restore: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = EmotiveClaimIdParamSchema.parse(c.req.param())
+      const restored = await container.emotiveClaimsService.restore(
+        id,
+        toActor(user),
+        getActorContext(c, user),
+      )
+      return c.json(serializeClaimDetail(restored, user))
+    },
+
     changeOutcome: async (c: Context) => {
       const user = requireUser(c)
       const { id } = EmotiveClaimIdParamSchema.parse(c.req.param())
