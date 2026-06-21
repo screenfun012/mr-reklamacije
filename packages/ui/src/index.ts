@@ -8,6 +8,21 @@ export {
 export { Button, type ButtonProps } from './primitives/button.js'
 export { buttonVariants, type ButtonVariantProps } from './primitives/button-variants.js'
 export { Input, type InputProps } from './primitives/input.js'
+export {
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
+} from './primitives/select.js'
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from './primitives/popover.js'
+export { Calendar, type CalendarProps } from './primitives/calendar.js'
+export { DatePicker, type DatePickerProps } from './primitives/date-picker.js'
 export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from './primitives/input-otp.js'
 export { REGEXP_ONLY_DIGITS } from './primitives/input-otp-patterns.js'
 export {
