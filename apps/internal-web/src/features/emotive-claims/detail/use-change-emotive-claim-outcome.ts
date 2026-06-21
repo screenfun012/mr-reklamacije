@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
-import { emotiveClaimKeys, fetchJson, type ClaimOutcome, type EmotiveClaimDetail } from '@mr/shared'
+import {
+  claimKeys,
+  emotiveClaimKeys,
+  fetchJson,
+  type ClaimOutcome,
+  type EmotiveClaimDetail,
+} from '@mr/shared'
 
 interface ChangeOutcomeContext {
   previous: EmotiveClaimDetail | undefined
@@ -46,6 +52,7 @@ export function useChangeEmotiveClaimOutcome(
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
+      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
     },
   })
 }

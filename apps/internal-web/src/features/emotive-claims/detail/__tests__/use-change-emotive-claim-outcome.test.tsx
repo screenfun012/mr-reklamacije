@@ -1,4 +1,4 @@
-import { emotiveClaimKeys, type EmotiveClaimDetail } from '@mr/shared'
+import { claimKeys, emotiveClaimKeys, type EmotiveClaimDetail } from '@mr/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -52,7 +52,7 @@ function createHarness() {
   const cached = (): EmotiveClaimDetail | undefined =>
     queryClient.getQueryData<EmotiveClaimDetail>(detailKey)
 
-  return { result, cached }
+  return { result, cached, queryClient }
 }
 
 afterEach(() => {
@@ -119,4 +119,46 @@ describe('useChangeEmotiveClaimOutcome', () => {
     })
     expect(cached()?.outcome).toBe('pending')
   })
+
+  it.each(['accepted', 'rejected'] as const)(
+    'invalidates unified and emotive list keys after %s',
+    async (outcome) => {
+      const serverDetail: EmotiveClaimDetail = {
+        ...BASE_DETAIL,
+        outcome,
+        updatedAt: '2026-06-15T20:00:00.000Z',
+      }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => serverDetail,
+        }),
+      )
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      })
+      const detailKey = emotiveClaimKeys.detail(CLAIM_ID)
+      queryClient.setQueryData<EmotiveClaimDetail>(detailKey, BASE_DETAIL)
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+      const wrapper = ({ children }: { children: ReactNode }): React.ReactElement => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      )
+
+      const { result } = renderHook(() => useChangeEmotiveClaimOutcome(CLAIM_ID), { wrapper })
+
+      act(() => {
+        result.current.mutate(outcome)
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: emotiveClaimKeys.lists() })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: claimKeys.lists() })
+    },
+  )
 })
