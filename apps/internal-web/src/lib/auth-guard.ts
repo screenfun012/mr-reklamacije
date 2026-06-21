@@ -17,3 +17,7 @@ export function internalRequireEmotiveClaimsView() {
 export function internalRequireEmotiveClaimsCreate() {
   return requirePermissions(authClient, ['emotive_claims.create'], loadServerSession)
 }
+
+export function internalRequireDomaceClaimsCreate() {
+  return requirePermissions(authClient, ['domace_claims.create'], loadServerSession)
+}

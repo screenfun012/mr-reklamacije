@@ -34,6 +34,7 @@ function ReklamacijeComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { authSession } = rootRoute.useRouteContext()
   const canCreate = authSession?.user?.permissions.includes('emotive_claims.create') === true
+  const canCreateDomace = authSession?.user?.permissions.includes('domace_claims.create') === true
 
   const handleSearchChange = useCallback(
     (next: typeof search) => {
@@ -53,14 +54,24 @@ function ReklamacijeComponent() {
             <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
           </div>
-          {canCreate ? (
-            <Button asChild className="gap-2 self-start">
-              <Link to="/reklamacije/emotive/nova">
-                <Plus className="size-4" />
-                {m.emotive_claims_new_claim()}
-              </Link>
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2 self-start">
+            {canCreate ? (
+              <Button asChild className="gap-2">
+                <Link to="/reklamacije/emotive/nova">
+                  <Plus className="size-4" />
+                  {m.emotive_claims_new_claim()}
+                </Link>
+              </Button>
+            ) : null}
+            {canCreateDomace ? (
+              <Button asChild variant="outline" className="gap-2">
+                <Link to="/reklamacije/domace/nova">
+                  <Plus className="size-4" />
+                  {m.domace_claims_new_claim()}
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         </div>
         <EmotiveClaimsListContent search={search} onSearchChange={handleSearchChange} />
       </div>
