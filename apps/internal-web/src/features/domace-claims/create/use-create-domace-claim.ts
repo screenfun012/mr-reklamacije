@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import {
   ApiError,
+  claimKeys,
   domaceClaimKeys,
   fetchJson,
   type DomaceClaimCreateInput,
@@ -22,6 +23,7 @@ export function useCreateDomaceClaim() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
+      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
     },
   })
 }

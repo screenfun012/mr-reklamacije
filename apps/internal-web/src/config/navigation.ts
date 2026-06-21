@@ -1,3 +1,4 @@
+import { CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
 import { BarChart3, Briefcase, Inbox, LayoutDashboard } from 'lucide-react'
 import type { ComponentType } from 'react'
 
@@ -10,6 +11,8 @@ export interface NavItem {
   icon: ComponentType<{ className?: string }>
   /** When set, nav link is hidden unless the user has this permission. */
   permission?: string
+  /** When set, nav link is shown if the user has any of these permissions. */
+  permissions?: readonly string[]
 }
 
 export const internalNavItems: NavItem[] = [
@@ -30,7 +33,7 @@ export const internalNavItems: NavItem[] = [
     label: m.nav_reklamacije,
     to: '/reklamacije',
     icon: Briefcase,
-    permission: 'emotive_claims.view',
+    permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
     key: 'statistika',

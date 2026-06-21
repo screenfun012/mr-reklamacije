@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
-import { internalRequireEmotiveClaimsView } from '~/lib/auth-guard'
+import { internalRequireClaimsListView } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/reklamacije')({
-  beforeLoad: internalRequireEmotiveClaimsView(),
+  beforeLoad: internalRequireClaimsListView(),
   component: Outlet,
 })

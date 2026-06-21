@@ -7,9 +7,15 @@ import { authClient } from '~/lib/auth-client'
 
 export function InternalSidebar() {
   const { has } = usePermissions(authClient)
-  const visibleItems = internalNavItems.filter(
-    (item) => item.permission === undefined || has(item.permission),
-  )
+  const visibleItems = internalNavItems.filter((item) => {
+    if (item.permissions !== undefined) {
+      return item.permissions.some((permission) => has(permission))
+    }
+    if (item.permission !== undefined) {
+      return has(item.permission)
+    }
+    return true
+  })
 
   return (
     <div className="flex flex-col h-full">

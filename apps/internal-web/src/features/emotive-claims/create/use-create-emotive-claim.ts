@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import {
   ApiError,
+  claimKeys,
   emotiveClaimKeys,
   fetchJson,
   type EmotiveClaimCreateInput,
@@ -24,6 +25,7 @@ export function useCreateEmotiveClaim() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
+      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
       await navigate({ to: '/reklamacije', search: { page: 1, pageSize: 10 } })
     },
   })

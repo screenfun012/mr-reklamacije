@@ -1,8 +1,8 @@
 import {
-  EmotiveClaimsSearchSchema,
-  emotiveClaimsFiltersFromSearch,
-  emotiveClaimsListOptions,
-  emotiveClaimsPaginationFromSearch,
+  ClaimsSearchSchema,
+  claimsFiltersFromSearch,
+  claimsListOptions,
+  claimsPaginationFromSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button } from '@mr/ui'
@@ -11,16 +11,16 @@ import { Plus } from 'lucide-react'
 import { useCallback } from 'react'
 
 import { InternalShell } from '~/components/layout/internal-shell'
-import { EmotiveClaimsListContent } from '~/features/emotive-claims/emotive-claims-list-content'
-import { EmotiveClaimsTableSkeleton } from '~/features/emotive-claims/emotive-claims-table'
+import { ClaimsListContent } from '~/features/claims/claims-list-content'
+import { ClaimsTableSkeleton } from '~/features/claims/claims-table'
 
 export const Route = createFileRoute('/reklamacije/')({
-  validateSearch: (search) => EmotiveClaimsSearchSchema.parse(search),
+  validateSearch: (search) => ClaimsSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: async ({ context: { queryClient }, deps: search }) => {
-    const filters = emotiveClaimsFiltersFromSearch(search)
-    const { page, pageSize } = emotiveClaimsPaginationFromSearch(search)
-    await queryClient.ensureQueryData(emotiveClaimsListOptions(filters, page, pageSize))
+    const filters = claimsFiltersFromSearch(search)
+    const { page, pageSize } = claimsPaginationFromSearch(search)
+    await queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize))
   },
   component: ReklamacijeComponent,
   pendingComponent: ReklamacijePending,
@@ -73,7 +73,7 @@ function ReklamacijeComponent() {
             ) : null}
           </div>
         </div>
-        <EmotiveClaimsListContent search={search} onSearchChange={handleSearchChange} />
+        <ClaimsListContent search={search} onSearchChange={handleSearchChange} />
       </div>
     </InternalShell>
   )
@@ -87,7 +87,7 @@ function ReklamacijePending() {
           <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
         </div>
-        <EmotiveClaimsTableSkeleton />
+        <ClaimsTableSkeleton />
       </div>
     </InternalShell>
   )
