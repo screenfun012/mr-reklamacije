@@ -8,8 +8,10 @@ const DEFAULT_STALE_MS = 30_000
 const MAX_QUERY_RETRIES = 3
 
 function shouldRetryQuery(failureCount: number, error: unknown): boolean {
-  if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-    return false
+  if (error instanceof ApiError) {
+    if (error.status === 401 || error.status === 403 || error.status === 429) {
+      return false
+    }
   }
 
   return failureCount < MAX_QUERY_RETRIES

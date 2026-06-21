@@ -1,11 +1,4 @@
-import {
-  ApiError,
-  departmentsReferenceOptions,
-  domaceClaimDetailOptions,
-  employeesReferenceOptions,
-  engineTypesReferenceOptions,
-  externalPartiesReferenceOptions,
-} from '@mr/shared'
+import { ApiError, domaceClaimDetailOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Heading, Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -18,10 +11,6 @@ import { internalRequireDomaceClaimsView } from '~/lib/auth-guard'
 export const Route = createFileRoute('/reklamacije/domace/$id')({
   beforeLoad: internalRequireDomaceClaimsView(),
   loader: async ({ context: { queryClient }, params: { id } }) => {
-    void queryClient.ensureQueryData(departmentsReferenceOptions({ activeOnly: true }))
-    void queryClient.ensureQueryData(employeesReferenceOptions({ activeOnly: true }))
-    void queryClient.ensureQueryData(externalPartiesReferenceOptions({ activeOnly: true }))
-    void queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: true }))
     await queryClient.ensureQueryData(domaceClaimDetailOptions(id))
   },
   component: DomaceClaimDetailPage,

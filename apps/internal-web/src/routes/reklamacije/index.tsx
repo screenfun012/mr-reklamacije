@@ -3,6 +3,7 @@ import {
   claimsFiltersFromSearch,
   claimsListOptions,
   claimsPaginationFromSearch,
+  prefetchClaimEditReferences,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Heading } from '@mr/ui'
@@ -20,7 +21,10 @@ export const Route = createFileRoute('/reklamacije/')({
   loader: async ({ context: { queryClient }, deps: search }) => {
     const filters = claimsFiltersFromSearch(search)
     const { page, pageSize } = claimsPaginationFromSearch(search)
-    await queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize))
+    await Promise.all([
+      queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize)),
+      prefetchClaimEditReferences(queryClient),
+    ])
   },
   component: ReklamacijeComponent,
   pendingComponent: ReklamacijePending,

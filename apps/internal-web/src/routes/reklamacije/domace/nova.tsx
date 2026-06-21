@@ -1,11 +1,6 @@
 import { Suspense } from 'react'
 
-import {
-  departmentsReferenceOptions,
-  employeesReferenceOptions,
-  engineTypesReferenceOptions,
-  externalPartiesReferenceOptions,
-} from '@mr/shared'
+import { prefetchClaimEditReferences } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Heading, Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -17,12 +12,7 @@ import { internalRequireDomaceClaimsCreate } from '~/lib/auth-guard'
 export const Route = createFileRoute('/reklamacije/domace/nova')({
   beforeLoad: internalRequireDomaceClaimsCreate(),
   loader: async ({ context: { queryClient } }) => {
-    await Promise.all([
-      queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: true })),
-      queryClient.ensureQueryData(employeesReferenceOptions({ activeOnly: true })),
-      queryClient.ensureQueryData(departmentsReferenceOptions({ activeOnly: true })),
-      queryClient.ensureQueryData(externalPartiesReferenceOptions({ activeOnly: true })),
-    ])
+    await prefetchClaimEditReferences(queryClient)
   },
   component: DomaceClaimNovaPage,
   pendingComponent: DomaceClaimNovaPending,

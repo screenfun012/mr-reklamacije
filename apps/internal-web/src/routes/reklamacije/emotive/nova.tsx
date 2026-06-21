@@ -1,13 +1,6 @@
 import { Suspense } from 'react'
 
-import {
-  CustomerKind,
-  customersReferenceOptions,
-  departmentsReferenceOptions,
-  employeesReferenceOptions,
-  engineTypesReferenceOptions,
-  externalPartiesReferenceOptions,
-} from '@mr/shared'
+import { prefetchClaimEditReferences } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Heading, Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -19,15 +12,7 @@ import { internalRequireEmotiveClaimsCreate } from '~/lib/auth-guard'
 export const Route = createFileRoute('/reklamacije/emotive/nova')({
   beforeLoad: internalRequireEmotiveClaimsCreate(),
   loader: async ({ context: { queryClient } }) => {
-    await Promise.all([
-      queryClient.ensureQueryData(
-        customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
-      ),
-      queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: true })),
-      queryClient.ensureQueryData(employeesReferenceOptions({ activeOnly: true })),
-      queryClient.ensureQueryData(departmentsReferenceOptions({ activeOnly: true })),
-      queryClient.ensureQueryData(externalPartiesReferenceOptions({ activeOnly: true })),
-    ])
+    await prefetchClaimEditReferences(queryClient)
   },
   component: EmotiveClaimNovaPage,
   pendingComponent: EmotiveClaimNovaPending,
