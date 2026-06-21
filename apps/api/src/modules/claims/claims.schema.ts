@@ -1,1 +1,4 @@
-export { emotiveClaims, domaceClaims } from '@mr/db'
+import { schema } from '@mr/db'
+
+export const emotiveClaims = schema.emotiveClaims
+export const domaceClaims = schema.domaceClaims

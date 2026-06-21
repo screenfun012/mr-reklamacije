@@ -14,6 +14,7 @@ import type { ClaimListQuery, ClaimListResponse } from './claims.validators.js'
 const { customers, customerUsers, employees, engineTypes } = schema
 
 interface UnifiedListRow {
+  [key: string]: unknown
   kind: string
   id: string
   sequence_number: number
@@ -147,15 +148,13 @@ export class ClaimsRepository {
     const branches: SQL[] = []
 
     if (scope.includeEmotive && (query.kind === undefined || query.kind === ClaimKind.Emotive)) {
-      const customerIds =
-        scope.emotiveCustomerScope === 'own_customer'
-          ? await this.getUserCustomerIds(scope.userId)
-          : null
-
-      if (scope.emotiveCustomerScope === 'own_customer' && customerIds.length === 0) {
-        // No linked customers — emotive branch contributes zero rows.
+      if (scope.emotiveCustomerScope === 'own_customer') {
+        const customerIds = await this.getUserCustomerIds(scope.userId)
+        if (customerIds.length > 0) {
+          branches.push(this.buildEmotiveBranch(query, customerIds))
+        }
       } else {
-        branches.push(this.buildEmotiveBranch(query, customerIds))
+        branches.push(this.buildEmotiveBranch(query, null))
       }
     }
 

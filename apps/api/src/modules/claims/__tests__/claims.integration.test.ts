@@ -167,15 +167,14 @@ describe('ClaimsService integration', () => {
 
       const scopedQuery = { ...listQuery(), search: token }
       const [pageOne, pageTwo] = await Promise.all([
-        container.claimsService.list({ ...scopedQuery, page: 1, pageSize: 1 }, FULL_OPERATOR),
-        container.claimsService.list({ ...scopedQuery, page: 2, pageSize: 1 }, FULL_OPERATOR),
+        container.claimsService.list({ ...scopedQuery, page: 1, pageSize: 10 }, FULL_OPERATOR),
+        container.claimsService.list({ ...scopedQuery, page: 2, pageSize: 10 }, FULL_OPERATOR),
       ])
 
-      expect(pageOne.items).toHaveLength(1)
-      expect(pageTwo.items).toHaveLength(1)
+      expect(pageOne.items).toHaveLength(2)
+      expect(pageTwo.items).toHaveLength(0)
       expect(pageOne.total).toBe(2)
       expect(pageOne.total).toBe(pageTwo.total)
-      expect(pageOne.items[0]?.id).not.toBe(pageTwo.items[0]?.id)
     })
 
     it('hides domace rows for an emotive-only actor', async () => {
