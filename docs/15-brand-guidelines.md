@@ -138,13 +138,28 @@ Phase 2 applies this scale in components.
 | Disabled bg | `#C8C9CC` (neutral-200) | PDF p.16 + p.22 **confirmed (Nikola)** |
 | Disabled text | `#7F8084` (neutral-400 derived) | **derived (Nikola visual confirm pending)** |
 
-### Sizes (Phase 3 — not yet in Button component)
+### Sizes (Phase 3 — `Button` in `@mr/ui`)
 
-| Size | Height | Pad X | Text | Source |
-|------|--------|-------|------|--------|
-| Small | 32px | 12px | 14px / 600 | PDF p.23 |
-| Medium | 40px | 16px | 16px / 600 | PDF p.23 |
-| Large | 48px | 24px | 16–18px / 600 | PDF p.23 |
+| shadcn `size` | Height | Pad X | Text | Source |
+|---------------|--------|-------|------|--------|
+| `sm` | 32px (`h-8`) | 12px | 14px / 600 | PDF p.23 |
+| `default` | 40px (`h-10`) | 16px | 16px / 600 | PDF p.23 |
+| `lg` | 48px (`h-12`) | 24px | 16px / 600 | PDF p.23 |
+| `icon` | 44×44px (`size-11`) | — | — | PDF p.23 touch target |
+
+### shadcn variant mapping (call sites unchanged)
+
+| shadcn `variant` | Brand role |
+|------------------|------------|
+| `default` | Primary |
+| `outline`, `secondary` | Secondary (shared CVA — red border + wash hover) |
+| `ghost` | Tertiary |
+| `destructive` | Destructive |
+| `link` | Link style (underline; not part of CTA set) |
+
+### Loading (Phase 3)
+
+Use `<Button loading={isPending}>` — spinner inline, label kept for fixed width (`aria-busy`). Do not swap button text to “Saving…” / `common_loading`.
 
 Touch target min **44×44px** (PDF p.23).
 
@@ -204,7 +219,7 @@ Wired in Phase 1 preset; **do not change badge `*-strong` / `mr-brand-subtle`**.
 | **0** | Done | This doc + source audit |
 | **1** | Done | Preset tokens + shadcn mapping |
 | **2** | Done | Typography scale in UI (`Heading`, page H1, section H3, list H2, body 16px) |
-| **3** | Pending | Button sizes/states |
+| **3** | Done | Button sizes/states + loading API |
 | **4** | Pending | Card, input, table surfaces |
 | **5** | Pending | Page audit |
 

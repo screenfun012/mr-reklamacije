@@ -492,7 +492,7 @@ When a list has zero items:
 
 - Tables: skeleton rows (shadcn's `<Skeleton />`)
 - Detail pages: skeleton header + skeleton tabs content
-- Buttons during mutation: disabled + spinner inline
+- Buttons during mutation: `<Button loading={isPending}>` — spinner inline, label unchanged (no “Saving…” text swap); `aria-busy` set automatically
 
 ### Error state
 
