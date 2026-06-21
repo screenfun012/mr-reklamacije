@@ -220,8 +220,8 @@ Wired in Phase 1 preset; **do not change badge `*-strong` / `mr-brand-subtle`**.
 | **1** | Done | Preset tokens + shadcn mapping |
 | **2** | Done | Typography scale in UI (`Heading`, page H1, section H3, list H2, body 16px) |
 | **3** | Done | Button sizes/states + loading API |
-| **4** | Pending | Card, input, table surfaces |
-| **5** | Pending | Page audit |
+| **4** | Done | Card, input, table surfaces; `@mr/ui` Select, Calendar, DatePicker; native controls migrated |
+| **5** | Done | Full page audit (Početna, Bezbednost, lista, detalj, create, fault editor) — Nikola 2026-06-21 |
 
 ---
 
