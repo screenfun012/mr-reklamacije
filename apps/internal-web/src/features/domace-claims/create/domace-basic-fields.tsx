@@ -1,9 +1,17 @@
 import type { EngineTypeListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Input } from '@mr/ui'
+import {
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@mr/ui'
 
 import {
-  SELECT_FIELD_CLASS,
+  SELECT_EMPTY_SENTINEL,
   TEXTAREA_FIELD_CLASS,
 } from '../../emotive-claims/create/form-field-styles.js'
 import { formatFieldError } from '../../emotive-claims/create/format-field-error.js'
@@ -90,21 +98,31 @@ export function DomaceBasicFields({
         name="engineTypeId"
         children={(field) => (
           <FieldGroup id="engineTypeId" label={m.domace_claims_create_field_engine_type()}>
-            <select
-              id="engineTypeId"
-              className={SELECT_FIELD_CLASS}
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+            <Select
+              value={field.state.value.length > 0 ? field.state.value : SELECT_EMPTY_SENTINEL}
+              onValueChange={(value) => {
+                field.handleChange(value === SELECT_EMPTY_SENTINEL ? '' : value)
+              }}
               disabled={disabled}
             >
-              <option value="">{m.domace_claims_create_select_placeholder()}</option>
-              {engineTypes.map((engineType) => (
-                <option key={engineType.id} value={engineType.id}>
-                  {engineType.code}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id="engineTypeId"
+                aria-label={m.domace_claims_create_field_engine_type()}
+                onBlur={field.handleBlur}
+              >
+                <SelectValue placeholder={m.domace_claims_create_select_placeholder()} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SELECT_EMPTY_SENTINEL}>
+                  {m.domace_claims_create_select_placeholder()}
+                </SelectItem>
+                {engineTypes.map((engineType) => (
+                  <SelectItem key={engineType.id} value={engineType.id}>
+                    {engineType.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FieldGroup>
         )}
       />
@@ -132,13 +150,14 @@ export function DomaceBasicFields({
             label={m.domace_claims_create_field_date_finish()}
             error={stepErrors['dateOfFinish'] ?? formatFieldError(field.state.meta.errors[0])}
           >
-            <Input
+            <DatePicker
               id="dateOfFinish"
-              type="date"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+              value={field.state.value.length > 0 ? field.state.value : undefined}
+              onChange={(value) => {
+                field.handleChange(value ?? '')
+              }}
               disabled={disabled}
+              aria-label={m.domace_claims_create_field_date_finish()}
             />
           </FieldGroup>
         )}
@@ -152,13 +171,14 @@ export function DomaceBasicFields({
             label={m.domace_claims_create_field_date_claim()}
             error={stepErrors['dateOfClaim'] ?? formatFieldError(field.state.meta.errors[0])}
           >
-            <Input
+            <DatePicker
               id="dateOfClaim"
-              type="date"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+              value={field.state.value.length > 0 ? field.state.value : undefined}
+              onChange={(value) => {
+                field.handleChange(value ?? '')
+              }}
               disabled={disabled}
+              aria-label={m.domace_claims_create_field_date_claim()}
             />
           </FieldGroup>
         )}

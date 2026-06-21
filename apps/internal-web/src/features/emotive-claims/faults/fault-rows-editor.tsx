@@ -5,11 +5,11 @@ import {
   type ExternalPartyListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button } from '@mr/ui'
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { SELECT_FIELD_CLASS } from '../create/form-field-styles.js'
+import { SELECT_EMPTY_SENTINEL } from '../create/form-field-styles.js'
 import type { EmotiveClaimFaultDraft } from './fault-draft.js'
 
 interface FaultRowsEditorProps {
@@ -80,32 +80,38 @@ export function FaultRowsEditor({
             <label htmlFor={`fault-type-${index}`} className="text-sm font-medium">
               {m.emotive_claims_create_fault_type()}
             </label>
-            <select
-              id={`fault-type-${index}`}
-              className={SELECT_FIELD_CLASS}
+            <Select
               value={fault.faultType}
               disabled={disabled}
-              onChange={(e) => {
-                const faultType = e.target.value as EmotiveClaimFaultDraft['faultType']
-                if (faultType === FaultType.Employee) {
-                  replaceAt(index, { faultType, employeeId: '' })
-                } else if (faultType === FaultType.Department) {
-                  replaceAt(index, { faultType, departmentId: '' })
+              onValueChange={(faultType) => {
+                const nextType = faultType as EmotiveClaimFaultDraft['faultType']
+                if (nextType === FaultType.Employee) {
+                  replaceAt(index, { faultType: nextType, employeeId: '' })
+                } else if (nextType === FaultType.Department) {
+                  replaceAt(index, { faultType: nextType, departmentId: '' })
                 } else {
-                  replaceAt(index, { faultType, externalPartyId: '' })
+                  replaceAt(index, { faultType: nextType, externalPartyId: '' })
                 }
               }}
             >
-              <option value={FaultType.Department}>
-                {m.emotive_claims_create_fault_type_department()}
-              </option>
-              <option value={FaultType.Employee}>
-                {m.emotive_claims_create_fault_type_employee()}
-              </option>
-              <option value={FaultType.External}>
-                {m.emotive_claims_create_fault_type_external()}
-              </option>
-            </select>
+              <SelectTrigger
+                id={`fault-type-${index}`}
+                aria-label={m.emotive_claims_create_fault_type()}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={FaultType.Department}>
+                  {m.emotive_claims_create_fault_type_department()}
+                </SelectItem>
+                <SelectItem value={FaultType.Employee}>
+                  {m.emotive_claims_create_fault_type_employee()}
+                </SelectItem>
+                <SelectItem value={FaultType.External}>
+                  {m.emotive_claims_create_fault_type_external()}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {fault.faultType === FaultType.Department ? (
@@ -246,20 +252,27 @@ function FaultReferenceSelect({
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <select
-        id={id}
-        className={SELECT_FIELD_CLASS}
-        value={value}
+      <Select
+        value={value.length > 0 ? value : SELECT_EMPTY_SENTINEL}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onValueChange={(next) => {
+          onChange(next === SELECT_EMPTY_SENTINEL ? '' : next)
+        }}
       >
-        <option value="">{m.emotive_claims_create_select_placeholder()}</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger id={id} aria-label={label}>
+          <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={SELECT_EMPTY_SENTINEL}>
+            {m.emotive_claims_create_select_placeholder()}
+          </SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {error ? <span className="text-sm text-destructive">{error}</span> : null}
     </div>
   )

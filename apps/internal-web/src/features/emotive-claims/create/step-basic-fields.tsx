@@ -1,8 +1,16 @@
 import type { CustomerListItem, EngineTypeListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Input } from '@mr/ui'
+import {
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@mr/ui'
 
-import { SELECT_FIELD_CLASS } from './form-field-styles.js'
+import { SELECT_EMPTY_SENTINEL } from './form-field-styles.js'
 import { formatFieldError } from './format-field-error.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
 
@@ -74,21 +82,31 @@ export function StepBasicFields({
             label={m.emotive_claims_create_field_customer()}
             error={stepErrors['customerId'] ?? formatFieldError(field.state.meta.errors[0])}
           >
-            <select
-              id="customerId"
-              className={SELECT_FIELD_CLASS}
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+            <Select
+              value={field.state.value.length > 0 ? field.state.value : SELECT_EMPTY_SENTINEL}
+              onValueChange={(value) => {
+                field.handleChange(value === SELECT_EMPTY_SENTINEL ? '' : value)
+              }}
               disabled={disabled}
             >
-              <option value="">{m.emotive_claims_create_select_placeholder()}</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id="customerId"
+                aria-label={m.emotive_claims_create_field_customer()}
+                onBlur={field.handleBlur}
+              >
+                <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SELECT_EMPTY_SENTINEL}>
+                  {m.emotive_claims_create_select_placeholder()}
+                </SelectItem>
+                {customers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FieldGroup>
         )}
       />
@@ -101,21 +119,31 @@ export function StepBasicFields({
             label={m.emotive_claims_create_field_engine_type()}
             error={stepErrors['engineTypeId'] ?? formatFieldError(field.state.meta.errors[0])}
           >
-            <select
-              id="engineTypeId"
-              className={SELECT_FIELD_CLASS}
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+            <Select
+              value={field.state.value.length > 0 ? field.state.value : SELECT_EMPTY_SENTINEL}
+              onValueChange={(value) => {
+                field.handleChange(value === SELECT_EMPTY_SENTINEL ? '' : value)
+              }}
               disabled={disabled}
             >
-              <option value="">{m.emotive_claims_create_select_placeholder()}</option>
-              {engineTypes.map((engineType) => (
-                <option key={engineType.id} value={engineType.id}>
-                  {engineType.code}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id="engineTypeId"
+                aria-label={m.emotive_claims_create_field_engine_type()}
+                onBlur={field.handleBlur}
+              >
+                <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SELECT_EMPTY_SENTINEL}>
+                  {m.emotive_claims_create_select_placeholder()}
+                </SelectItem>
+                {engineTypes.map((engineType) => (
+                  <SelectItem key={engineType.id} value={engineType.id}>
+                    {engineType.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FieldGroup>
         )}
       />
@@ -143,13 +171,14 @@ export function StepBasicFields({
             label={m.emotive_claims_create_field_date_finish()}
             error={stepErrors['dateOfFinish'] ?? formatFieldError(field.state.meta.errors[0])}
           >
-            <Input
+            <DatePicker
               id="dateOfFinish"
-              type="date"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+              value={field.state.value.length > 0 ? field.state.value : undefined}
+              onChange={(value) => {
+                field.handleChange(value ?? '')
+              }}
               disabled={disabled}
+              aria-label={m.emotive_claims_create_field_date_finish()}
             />
           </FieldGroup>
         )}
@@ -163,13 +192,14 @@ export function StepBasicFields({
             label={m.emotive_claims_create_field_date_claim()}
             error={stepErrors['dateOfClaim'] ?? formatFieldError(field.state.meta.errors[0])}
           >
-            <Input
+            <DatePicker
               id="dateOfClaim"
-              type="date"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
+              value={field.state.value.length > 0 ? field.state.value : undefined}
+              onChange={(value) => {
+                field.handleChange(value ?? '')
+              }}
               disabled={disabled}
+              aria-label={m.emotive_claims_create_field_date_claim()}
             />
           </FieldGroup>
         )}

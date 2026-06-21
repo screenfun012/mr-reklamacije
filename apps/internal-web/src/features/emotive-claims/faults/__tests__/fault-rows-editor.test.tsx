@@ -5,7 +5,8 @@ import {
   type ExternalPartyListItem,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -47,19 +48,26 @@ describe('FaultRowsEditor', () => {
     setLocale('sr')
   })
 
-  it('adds a fault row defaulting to a department culprit', () => {
+  it('adds a fault row defaulting to a department culprit', async () => {
+    const user = userEvent.setup()
     render(<Harness />)
 
-    expect(screen.queryByLabelText(m.emotive_claims_create_fault_type())).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+    ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_create_fault_add() }))
+    await user.click(screen.getByRole('button', { name: m.emotive_claims_create_fault_add() }))
 
-    const typeSelect = screen.getByLabelText(m.emotive_claims_create_fault_type())
-    expect(typeSelect).toHaveValue(FaultType.Department)
-    expect(screen.getByLabelText(m.emotive_claims_create_fault_department())).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+    ).toHaveTextContent(m.emotive_claims_create_fault_type_department())
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_fault_department() }),
+    ).toBeInTheDocument()
   })
 
-  it('removes a fault row', () => {
+  it('removes a fault row', async () => {
+    const user = userEvent.setup()
     render(
       <Harness
         initial={[
@@ -69,46 +77,60 @@ describe('FaultRowsEditor', () => {
       />,
     )
 
-    expect(screen.getAllByLabelText(m.emotive_claims_create_fault_type())).toHaveLength(2)
+    expect(
+      screen.getAllByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+    ).toHaveLength(2)
 
-    fireEvent.click(
+    await user.click(
       screen.getAllByRole('button', { name: m.emotive_claims_create_fault_remove() })[0]!,
     )
 
-    expect(screen.getAllByLabelText(m.emotive_claims_create_fault_type())).toHaveLength(1)
+    expect(
+      screen.getAllByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+    ).toHaveLength(1)
   })
 
-  it('keeps the employee select disabled until a department is chosen, then filters by it', () => {
+  it('keeps the employee select disabled until a department is chosen, then filters by it', async () => {
+    const user = userEvent.setup()
     render(<Harness initial={[{ faultType: FaultType.Employee, employeeId: '' }]} />)
 
-    const employeeSelect = screen.getByLabelText(m.emotive_claims_create_fault_employee())
+    const employeeSelect = screen.getByRole('combobox', {
+      name: m.emotive_claims_create_fault_employee(),
+    })
     expect(employeeSelect).toBeDisabled()
 
-    fireEvent.change(screen.getByLabelText(m.emotive_claims_create_fault_department()), {
-      target: { value: 'dep-1' },
-    })
+    await user.click(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_fault_department() }),
+    )
+    await user.click(screen.getByRole('option', { name: 'Glave' }))
 
     expect(employeeSelect).toBeEnabled()
-    const optionLabels = within(employeeSelect)
-      .getAllByRole('option')
-      .map((option) => option.textContent)
+
+    await user.click(employeeSelect)
+    const optionLabels = screen.getAllByRole('option').map((option) => option.textContent?.trim())
     expect(optionLabels).toContain('Ana Anić')
     expect(optionLabels).toContain('Bojan Bojić')
     expect(optionLabels).not.toContain('Vera Verić')
   })
 
-  it('resets the culprit field when the fault type changes', () => {
+  it('resets the culprit field when the fault type changes', async () => {
+    const user = userEvent.setup()
     render(<Harness initial={[{ faultType: FaultType.Department, departmentId: 'dep-1' }]} />)
 
-    expect(screen.getByLabelText(m.emotive_claims_create_fault_department())).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_fault_department() }),
+    ).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText(m.emotive_claims_create_fault_type()), {
-      target: { value: FaultType.External },
-    })
+    await user.click(screen.getByRole('combobox', { name: m.emotive_claims_create_fault_type() }))
+    await user.click(
+      screen.getByRole('option', { name: m.emotive_claims_create_fault_type_external() }),
+    )
 
     expect(
-      screen.queryByLabelText(m.emotive_claims_create_fault_department()),
+      screen.queryByRole('combobox', { name: m.emotive_claims_create_fault_department() }),
     ).not.toBeInTheDocument()
-    expect(screen.getByLabelText(m.emotive_claims_create_fault_external())).toHaveValue('')
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_fault_external() }),
+    ).toHaveTextContent(m.emotive_claims_create_select_placeholder())
   })
 })

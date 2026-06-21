@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { Button } from '@mr/ui'
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const
@@ -45,25 +45,32 @@ export function EmotiveClaimsPagination({
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{m.emotive_claims_pagination_per_page()}</span>
-          <select
-            className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            value={pageSize}
-            onChange={(event) => {
-              const next = Number(event.target.value)
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              const next = Number(value)
               if (next === 10 || next === 25 || next === 50) {
                 onPageSizeChange(next)
               }
             }}
           >
-            {PAGE_SIZE_OPTIONS.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger
+              className="h-8 w-[4.5rem]"
+              aria-label={m.emotive_claims_pagination_per_page()}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <p className="text-sm text-muted-foreground">
           {m.emotive_claims_pagination_page_of({ page, totalPages })}
