@@ -10,7 +10,8 @@
     "depcruise": "dependency-cruiser --validate --config .dependency-cruiser.cjs --ts-config tsconfig.json --output-type err src/server.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@hono/node-server": "1.19.14",

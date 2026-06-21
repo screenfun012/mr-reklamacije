@@ -15,9 +15,6 @@ import { createTestDbContext, type TestDbContext } from '../../../test-helpers/t
 import type { ClaimsActor } from '../claims.types.js'
 import type { ClaimListQuery } from '../claims.validators.js'
 
-const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije'
-
 const FULL_OPERATOR: ClaimsActor = {
   id: TEST_USER_ID,
   permissions: [
@@ -54,7 +51,7 @@ describe('ClaimsService integration', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL, new InProcessEventBus())
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new InProcessEventBus())
     await ensureTestUser(ctx.db)
   })
 

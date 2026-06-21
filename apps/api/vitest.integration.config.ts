@@ -7,10 +7,10 @@ import {
   integrationVitestPaths,
   loadRepoEnv,
   repoRootFromDbPackage,
-} from './src/test-helpers/integration-vitest-env.js'
+} from '../../packages/db/src/test-helpers/integration-vitest-env.js'
 
 const packageDir = dirname(fileURLToPath(import.meta.url))
-const repoRoot = repoRootFromDbPackage(resolve(packageDir, 'src/test-helpers'))
+const repoRoot = repoRootFromDbPackage(resolve(packageDir, '../../packages/db/src/test-helpers'))
 
 loadRepoEnv(repoRoot)
 applyIntegrationDatabaseEnv()
@@ -20,11 +20,16 @@ const { globalSetup, setupFiles } = integrationVitestPaths(repoRoot)
 export default defineConfig({
   test: {
     environment: 'node',
-    fileParallelism: false,
     globals: false,
+    fileParallelism: false,
     globalSetup: [globalSetup],
     setupFiles,
-    include: ['src/__tests__/integration/**/*.test.ts'],
+    include: [
+      'src/**/__tests__/**/*.integration.test.ts',
+      'src/**/__tests__/**/*.http.integration.test.ts',
+      'src/**/__tests__/**/*.http.test.ts',
+    ],
     passWithNoTests: false,
+    testTimeout: 30_000,
   },
 })

@@ -1,11 +1,12 @@
 import { sql } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
-import { createDb, createPool, getDatabaseUrl } from '../../client.js'
+import { createDb, createPool } from '../../client.js'
+import { getIntegrationDatabaseUrl } from '../../test-helpers/integration-db.js'
 
 describe('database (integration)', () => {
-  it('connects with DATABASE_URL and runs SELECT 1 via Drizzle', async () => {
-    const pool = createPool(getDatabaseUrl())
+  it('connects with integration DATABASE_URL and runs SELECT 1 via Drizzle', async () => {
+    const pool = createPool(getIntegrationDatabaseUrl())
     const db = createDb(pool)
 
     try {

@@ -26,9 +26,6 @@ import { createTestDbContext, type TestDbContext } from '../../../test-helpers/t
 import type { Container } from '../../../core/container.js'
 import type { EmotiveClaimCreateInput } from '../emotive-claims.validators.js'
 
-const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije'
-
 const FULL_OPERATOR_PERMS = [
   'emotive_claims.view',
   'emotive_claims.create',
@@ -61,7 +58,7 @@ describe('EmotiveClaims HTTP', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL, new RecordingEventBus())
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new RecordingEventBus())
     await ensureTestUser(ctx.db)
   })
 

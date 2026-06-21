@@ -8,6 +8,7 @@ Run the full local verification suite (matches CI):
 pnpm format:write
 pnpm typecheck
 pnpm test
+pnpm test:integration   # requires Postgres; uses mr_reklamacije_test only
 pnpm lint
 pnpm --filter api depcruise
 pnpm format:check   # must exit 0 — confirms nothing was missed

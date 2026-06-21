@@ -262,28 +262,18 @@ export default defineConfig({
 
 ### Test database strategy
 
-**Option chosen: real Postgres via Docker Compose**, fresh database per test file.
+**Chosen approach:** dedicated Postgres database `mr_reklamacije_test`, separate from dev `mr_reklamacije`.
 
-`tests/setup.ts`:
-```ts
-import { beforeAll, afterAll } from 'vitest'
-import { execSync } from 'child_process'
+- **`pnpm test`** — unit tests only (no integration DB access).
+- **`pnpm test:integration`** — `@mr/db`, `@mr/auth`, and `api` integration suites.
+- **`assertIntegrationDatabase()`** — refuses dev DB name and any URL whose database name does not end with `_test` (fail-fast before TRUNCATE/migrate/seed).
+- **Global setup** (`packages/db/src/test-helpers/integration-global-setup.ts`) — once per run: create test DB if missing, extensions, migrate, seed.
+- **API integration tests** — `createTestDbContext()` wraps each test in `BEGIN` / `ROLLBACK` on the test DB.
+- **`schema.integration.test.ts`** — may TRUNCATE freely; runs only against `mr_reklamacije_test`.
 
-beforeAll(async () => {
-  // Start a fresh test database
-  process.env.DATABASE_URL = `postgresql://test:test@localhost:5433/mr_test_${process.pid}`
-  execSync(`createdb mr_test_${process.pid}`)
-  execSync('pnpm db:migrate')
-  execSync('pnpm db:seed:test')
-})
+Default URL: `TEST_DATABASE_URL=postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije_test` (see `apps/api/.env.example`).
 
-afterAll(async () => {
-  execSync(`dropdb mr_test_${process.pid}`)
-})
-```
-
-Each test runs inside a transaction that's rolled back, so tests don't
-interfere with each other.
+Implementation: `packages/db/src/test-helpers/integration-db.ts`, `integration-global-setup.ts`, `integration-setup-env.ts`.
 
 ### Test fixtures
 

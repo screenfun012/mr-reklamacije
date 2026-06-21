@@ -17,12 +17,7 @@ describe('Employees reference module', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(
-      ctx.db,
-      ctx.pool,
-      process.env['DATABASE_URL'] ??
-        'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije',
-    )
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
   })
 
   afterEach(async () => {

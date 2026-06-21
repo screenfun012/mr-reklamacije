@@ -1,4 +1,4 @@
-import { createDb, createPool, getDatabaseUrl, schema } from '@mr/db'
+import { createDb, createPool, getIntegrationDatabaseUrl, schema } from '@mr/db'
 import { ADMIN_PERMISSIONS, SYSTEM_ROLE_ADMIN, SYSTEM_ROLE_OPERATOR } from '@mr/shared'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
@@ -16,7 +16,7 @@ let db: NodePgDatabase<typeof schema>
 let resolver: ReturnType<typeof createPermissionResolver>
 
 beforeAll(async () => {
-  pool = createPool(getDatabaseUrl())
+  pool = createPool(getIntegrationDatabaseUrl())
   db = createDb(pool) as unknown as NodePgDatabase<typeof schema>
   resolver = createPermissionResolver(db)
 

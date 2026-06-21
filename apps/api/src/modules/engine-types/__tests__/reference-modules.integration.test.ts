@@ -12,16 +12,13 @@ import { ensureTestUser } from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { Container } from '../../../core/container.js'
 
-const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije'
-
 describe('EngineTypes reference module', () => {
   let ctx: TestDbContext
   let container: Container
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
   })
 
@@ -160,7 +157,7 @@ describe('ExternalParties reference module', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
   })
 
@@ -192,7 +189,7 @@ describe('Customers reference module', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
   })
 
@@ -217,7 +214,7 @@ describe('ClaimSources reference module', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
   })
 
@@ -253,7 +250,7 @@ describe('Departments reference module', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
   })
 

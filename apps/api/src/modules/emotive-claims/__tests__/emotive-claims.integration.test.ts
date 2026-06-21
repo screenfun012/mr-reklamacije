@@ -39,9 +39,6 @@ function listQuery(overrides: Partial<EmotiveClaimListQuery> = {}): EmotiveClaim
   return { page: 1, pageSize: 50, includeDeleted: false, ...overrides }
 }
 
-const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije'
-
 const FULL_OPERATOR: EmotiveClaimsActor = {
   id: TEST_USER_ID,
   permissions: [
@@ -91,7 +88,7 @@ describe('EmotiveClaimsService integration', () => {
     unsubscribeEvents = eventBus.subscribeUser(TEST_USER_ID, ['operator'], (event) => {
       receivedEvents.push(event)
     })
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL, eventBus)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
     await ensureTestUser(ctx.db)
   })
 

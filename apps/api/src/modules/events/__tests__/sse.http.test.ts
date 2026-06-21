@@ -13,9 +13,6 @@ import { createTestDbContext, type TestDbContext } from '../../../test-helpers/t
 import type { Container } from '../../../core/container.js'
 import { registerEventsRoutes } from '../sse.routes.js'
 
-const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije'
-
 function createEventsTestApp(container: Container, user: MRSessionUser | null) {
   const app = new Hono<{ Variables: AppVariables }>()
   registerGlobalErrorHandler(app, container.logger)
@@ -43,7 +40,7 @@ describe('GET /api/events/me', () => {
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, DATABASE_URL)
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
   })
 
   afterEach(async () => {
@@ -77,7 +74,7 @@ describe('GET /api/events/me', () => {
   })
 
   it('is protected by global requireAuth in createApp', async () => {
-    const app = createApp(buildTestContainer(ctx.db, ctx.pool, DATABASE_URL))
+    const app = createApp(buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl))
 
     const res = await app.request('/api/events/me')
     expect(res.status).toBe(401)

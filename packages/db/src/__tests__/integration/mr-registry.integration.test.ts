@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url'
 import type pg from 'pg'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { createDb, createPool, getDatabaseUrl } from '../../client.js'
+import { createDb, createPool } from '../../client.js'
+import { getIntegrationDatabaseUrl } from '../../test-helpers/integration-db.js'
 import * as schema from '../../schema/index.js'
 import { sqlNormalizeMrKeyLiteral } from '../../sql/normalize-mr-key-sql.js'
 import { domaceClaims, emotiveClaims, engineTypes, mrRegistry, users } from '../../schema/index.js'
@@ -54,7 +55,7 @@ let client: pg.PoolClient
 let db: NodePgDatabase<typeof schema>
 
 beforeAll(async () => {
-  pool = createPool(getDatabaseUrl())
+  pool = createPool(getIntegrationDatabaseUrl())
   migrateDb = createDb(pool)
 
   await migrate(migrateDb, {

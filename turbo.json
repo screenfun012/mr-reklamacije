@@ -17,6 +17,18 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
+    "test:integration": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "@mr/auth#test:integration": {
+      "dependsOn": ["@mr/db#test:integration", "^build"],
+      "outputs": ["coverage/**"]
+    },
+    "api#test:integration": {
+      "dependsOn": ["@mr/auth#test:integration", "^build"],
+      "outputs": ["coverage/**"]
+    },
     "@mr/i18n#test": {
       "dependsOn": ["build", "^build"],
       "outputs": ["coverage/**"]

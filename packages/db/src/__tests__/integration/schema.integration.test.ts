@@ -4,7 +4,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { createDb, createPool, getDatabaseUrl } from '../../client.js'
+import { createDb, createPool } from '../../client.js'
+import { getIntegrationDatabaseUrl } from '../../test-helpers/integration-db.js'
 import {
   accounts,
   appSettings,
@@ -40,7 +41,7 @@ let pool: ReturnType<typeof createPool>
 let db: ReturnType<typeof createDb>
 
 beforeAll(async () => {
-  pool = createPool(getDatabaseUrl())
+  pool = createPool(getIntegrationDatabaseUrl())
   db = createDb(pool)
 
   await migrate(db, {

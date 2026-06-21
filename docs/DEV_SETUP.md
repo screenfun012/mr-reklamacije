@@ -57,6 +57,31 @@ This document covers the **local machine**: Docker Compose Postgres, env files, 
 
    You should see at least: `citext`, `pg_trgm`, `pgcrypto`, `plpgsql`, `uuid-ossp`.
 
+8. **Integration test database** (optional on first setup — auto-created by `pnpm test:integration` if missing):
+
+   ```bash
+   psql postgresql://mr:mr_dev_password@localhost:5433/postgres -v ON_ERROR_STOP=1 \
+     -f scripts/db-init/02-test-database.sql
+   psql postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije_test \
+     -v ON_ERROR_STOP=1 -f scripts/db-init/01-extensions.sql
+   ```
+
+   New Docker volumes get `mr_reklamacije_test` from `scripts/db-init/02-test-database.sql` automatically.
+
+## Dev database vs integration test database
+
+| | Dev | Integration tests |
+|---|---|---|
+| Database | `mr_reklamacije` | `mr_reklamacije_test` |
+| Env var | `DATABASE_URL` in `apps/api/.env` | `TEST_DATABASE_URL` (see `.env.example`) |
+| Used by | API, migrate, seed, Excel import, browser | `pnpm test:integration` only |
+| Safe to TRUNCATE | **No** — real dev data | Yes — tests reset freely |
+
+Integration tests call `assertIntegrationDatabase()` at startup. If the URL is not a `*_test` database (or is `mr_reklamacije`), the run **fails immediately** — dev data cannot be wiped by accident.
+
+- Unit tests: `pnpm test` (no Postgres required for most packages)
+- Integration tests: `pnpm test:integration` (migrate + seed test DB once per run, then transactional rollback per API test)
+
 ## Daily workflow
 
 **Recommended — one terminal:**
