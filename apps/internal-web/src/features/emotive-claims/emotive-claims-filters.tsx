@@ -1,8 +1,17 @@
 import { OUTCOME_REGISTRY, type EmotiveClaimsSearch, type OutcomeLabelKey } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Input } from '@mr/ui'
+import {
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@mr/ui'
 import { useEffect, useState } from 'react'
 
+import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
 import { useDebouncedValue } from '~/lib/use-debounced-value'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -43,60 +52,66 @@ export function EmotiveClaimsFilters({ search, onSearchChange }: EmotiveClaimsFi
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end">
-      <label className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
         <span className="font-medium text-foreground">{m.emotive_claims_filter_outcome()}</span>
-        <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          value={search.outcome ?? ''}
-          onChange={(event) => {
-            const value = event.target.value
+        <Select
+          value={search.outcome ?? FILTER_ALL_SENTINEL}
+          onValueChange={(value) => {
             onSearchChange({
               ...search,
-              outcome: value.length > 0 ? (value as EmotiveClaimsSearch['outcome']) : undefined,
+              outcome:
+                value === FILTER_ALL_SENTINEL
+                  ? undefined
+                  : (value as EmotiveClaimsSearch['outcome']),
               page: 1,
             })
           }}
         >
-          <option value="">{m.emotive_claims_filter_outcome_all()}</option>
-          {OUTCOME_REGISTRY.map((definition) => (
-            <option key={definition.key} value={definition.key}>
-              {OUTCOME_LABELS[definition.labelKey]()}
-            </option>
-          ))}
-        </select>
-      </label>
+          <SelectTrigger aria-label={m.emotive_claims_filter_outcome()}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={FILTER_ALL_SENTINEL}>
+              {m.emotive_claims_filter_outcome_all()}
+            </SelectItem>
+            {OUTCOME_REGISTRY.map((definition) => (
+              <SelectItem key={definition.key} value={definition.key}>
+                {OUTCOME_LABELS[definition.labelKey]()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <label className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
         <span className="font-medium text-foreground">{m.emotive_claims_filter_date_from()}</span>
-        <Input
-          type="date"
-          value={search.dateFrom ?? ''}
-          onChange={(event) => {
-            const value = event.target.value
+        <DatePicker
+          value={search.dateFrom}
+          onChange={(dateFrom) => {
             onSearchChange({
               ...search,
-              dateFrom: value.length > 0 ? value : undefined,
+              dateFrom,
               page: 1,
             })
           }}
+          aria-label={m.emotive_claims_filter_date_from()}
         />
-      </label>
+      </div>
 
-      <label className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
         <span className="font-medium text-foreground">{m.emotive_claims_filter_date_to()}</span>
-        <Input
-          type="date"
-          value={search.dateTo ?? ''}
-          onChange={(event) => {
-            const value = event.target.value
+        <DatePicker
+          value={search.dateTo}
+          onChange={(dateTo) => {
             onSearchChange({
               ...search,
-              dateTo: value.length > 0 ? value : undefined,
+              dateTo,
               page: 1,
             })
           }}
+          aria-label={m.emotive_claims_filter_date_to()}
         />
-      </label>
+      </div>
 
       <label className="flex min-w-[12rem] flex-[2] flex-col gap-1.5 text-sm">
         <span className="font-medium text-foreground">{m.emotive_claims_filter_search()}</span>
