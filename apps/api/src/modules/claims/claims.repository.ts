@@ -1,0 +1,303 @@
+import { schema } from '@mr/db'
+import {
+  ClaimKind,
+  type ClaimListItem,
+  type DomaceClaimListItem,
+  type EmotiveClaimListItem,
+} from '@mr/shared'
+import { eq, sql, type SQL } from 'drizzle-orm'
+
+import type { ApiDatabase } from '../../core/database.js'
+import type { ClaimsListScope } from './claims.types.js'
+import type { ClaimListQuery, ClaimListResponse } from './claims.validators.js'
+
+const { customers, customerUsers, employees, engineTypes } = schema
+
+interface UnifiedListRow {
+  kind: string
+  id: string
+  sequence_number: number
+  claim_number: string | null
+  customer_name: string | null
+  warranty_report: string | null
+  engine_type_id: string | null
+  engine_type_code: string | null
+  engine_code: string | null
+  date_of_claim: Date | string | null
+  mr_number: string | null
+  date_of_finish: Date | string | null
+  employee_id: string | null
+  employee_name: string | null
+  source_id: string | null
+  customer_id: string | null
+  outcome: string
+  claim_year: number
+  total_amount: string | number | null
+  created_at: Date
+}
+
+function formatDate(value: Date | string): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  return value.toISOString().slice(0, 10)
+}
+
+function formatTimestamp(value: Date | string): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  return value.toISOString()
+}
+
+function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
+  if (row.kind === ClaimKind.Domace) {
+    const item: DomaceClaimListItem = {
+      kind: ClaimKind.Domace,
+      id: row.id,
+      sequenceNumber: row.sequence_number,
+      claimNumber: row.claim_number,
+      customerName: row.customer_name,
+      warrantyReport: row.warranty_report,
+      engineTypeId: row.engine_type_id,
+      engineTypeCode: row.engine_type_code,
+      engineCode: row.engine_code,
+      dateOfClaim: row.date_of_claim === null ? null : formatDate(row.date_of_claim),
+      mrNumber: row.mr_number,
+      dateOfFinish: row.date_of_finish === null ? null : formatDate(row.date_of_finish),
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      outcome: row.outcome as DomaceClaimListItem['outcome'],
+      claimYear: row.claim_year,
+      totalAmount: row.total_amount === null ? null : Number(row.total_amount),
+      createdAt: formatTimestamp(row.created_at),
+    }
+    return item
+  }
+
+  const item: EmotiveClaimListItem = {
+    kind: ClaimKind.Emotive,
+    id: row.id,
+    sequenceNumber: row.sequence_number,
+    claimNumber: row.claim_number,
+    warrantyReport: row.warranty_report,
+    engineTypeId: row.engine_type_id ?? '',
+    engineTypeCode: row.engine_type_code ?? '',
+    engineCode: row.engine_code,
+    dateOfClaim: formatDate(row.date_of_claim ?? row.created_at),
+    mrNumber: row.mr_number ?? '',
+    dateOfFinish: row.date_of_finish === null ? null : formatDate(row.date_of_finish),
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    sourceId: row.source_id,
+    outcome: row.outcome as EmotiveClaimListItem['outcome'],
+    claimYear: row.claim_year,
+    customerId: row.customer_id,
+    customerName: row.customer_name,
+    createdAt: formatTimestamp(row.created_at),
+  }
+  return item
+}
+
+export class ClaimsRepository {
+  constructor(private readonly db: ApiDatabase) {}
+
+  async getUserCustomerIds(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ customerId: customerUsers.customerId })
+      .from(customerUsers)
+      .where(eq(customerUsers.userId, userId))
+
+    return rows.map((row) => row.customerId)
+  }
+
+  async list(query: ClaimListQuery, scope: ClaimsListScope): Promise<ClaimListResponse> {
+    const branches = await this.buildUnionBranches(query, scope)
+    if (branches.length === 0) {
+      return { items: [], total: 0, page: query.page, pageSize: query.pageSize }
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+    const offset = (query.page - 1) * query.pageSize
+
+    const countResult = await this.db.execute<{ total: number }>(sql`
+      SELECT count(*)::int AS total
+      FROM (${unionSql}) AS unified
+    `)
+
+    const total = countResult.rows[0]?.total ?? 0
+
+    const listResult = await this.db.execute<UnifiedListRow>(sql`
+      SELECT *
+      FROM (${unionSql}) AS unified
+      ORDER BY date_of_claim DESC NULLS LAST, id DESC
+      LIMIT ${query.pageSize}
+      OFFSET ${offset}
+    `)
+
+    return {
+      items: listResult.rows.map(mapUnifiedRow),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+    }
+  }
+
+  private async buildUnionBranches(query: ClaimListQuery, scope: ClaimsListScope): Promise<SQL[]> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive && (query.kind === undefined || query.kind === ClaimKind.Emotive)) {
+      const customerIds =
+        scope.emotiveCustomerScope === 'own_customer'
+          ? await this.getUserCustomerIds(scope.userId)
+          : null
+
+      if (scope.emotiveCustomerScope === 'own_customer' && customerIds.length === 0) {
+        // No linked customers — emotive branch contributes zero rows.
+      } else {
+        branches.push(this.buildEmotiveBranch(query, customerIds))
+      }
+    }
+
+    if (scope.includeDomace && (query.kind === undefined || query.kind === ClaimKind.Domace)) {
+      branches.push(this.buildDomaceBranch(query))
+    }
+
+    return branches
+  }
+
+  private buildEmotiveBranch(query: ClaimListQuery, customerIds: string[] | null): SQL {
+    const conditions: SQL[] = []
+
+    if (!query.includeDeleted) {
+      conditions.push(sql`ec.deleted_at IS NULL`)
+    }
+
+    if (query.outcome !== undefined) {
+      conditions.push(sql`ec.outcome = ${query.outcome}`)
+    }
+
+    if (query.sourceId !== undefined) {
+      conditions.push(sql`ec.source_id = ${query.sourceId}`)
+    }
+
+    if (query.customerId !== undefined) {
+      conditions.push(sql`ec.customer_id = ${query.customerId}`)
+    }
+
+    if (query.dateFrom !== undefined) {
+      conditions.push(sql`ec.date_of_claim >= ${query.dateFrom.toISOString().slice(0, 10)}`)
+    }
+
+    if (query.dateTo !== undefined) {
+      conditions.push(sql`ec.date_of_claim <= ${query.dateTo.toISOString().slice(0, 10)}`)
+    }
+
+    if (query.search !== undefined) {
+      conditions.push(
+        sql`to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || coalesce(ec.mr_number, '') || ' ' || coalesce(c.name, '')) @@ websearch_to_tsquery('simple', ${query.search})`,
+      )
+    }
+
+    if (customerIds !== null) {
+      conditions.push(
+        sql`ec.customer_id IN (${sql.join(
+          customerIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : sql`TRUE`
+
+    return sql`
+      SELECT
+        ${ClaimKind.Emotive}::text AS kind,
+        ec.id,
+        ec.sequence_number,
+        ec.claim_number,
+        c.name AS customer_name,
+        ec.warranty_report,
+        ec.engine_type_id,
+        et.code AS engine_type_code,
+        ec.engine_code,
+        ec.date_of_claim,
+        ec.mr_number,
+        ec.date_of_finish,
+        ec.employee_id,
+        emp.full_name AS employee_name,
+        ec.source_id,
+        ec.customer_id,
+        ec.outcome,
+        ec.claim_year,
+        NULL::numeric AS total_amount,
+        ec.created_at
+      FROM emotive_claims ec
+      INNER JOIN engine_types et ON et.id = ec.engine_type_id
+      LEFT JOIN customers c ON c.id = ec.customer_id
+      LEFT JOIN employees emp ON emp.id = ec.employee_id
+      WHERE ${whereClause}
+    `
+  }
+
+  private buildDomaceBranch(query: ClaimListQuery): SQL {
+    const conditions: SQL[] = []
+
+    if (!query.includeDeleted) {
+      conditions.push(sql`dc.deleted_at IS NULL`)
+    }
+
+    if (query.outcome !== undefined) {
+      conditions.push(sql`dc.outcome = ${query.outcome}`)
+    }
+
+    if (query.dateFrom !== undefined) {
+      conditions.push(sql`dc.date_of_claim >= ${query.dateFrom.toISOString().slice(0, 10)}`)
+    }
+
+    if (query.dateTo !== undefined) {
+      conditions.push(sql`dc.date_of_claim <= ${query.dateTo.toISOString().slice(0, 10)}`)
+    }
+
+    if (query.search !== undefined) {
+      conditions.push(
+        sql`to_tsvector('simple', coalesce(dc.warranty_report, '') || ' ' || coalesce(dc.mr_number, '') || ' ' || coalesce(dc.customer_name, '')) @@ websearch_to_tsquery('simple', ${query.search})`,
+      )
+    }
+
+    if (query.sourceId !== undefined || query.customerId !== undefined) {
+      // DOMACE has no source/customer FK filters — force empty branch when set.
+      conditions.push(sql`FALSE`)
+    }
+
+    const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : sql`TRUE`
+
+    return sql`
+      SELECT
+        ${ClaimKind.Domace}::text AS kind,
+        dc.id,
+        dc.sequence_number,
+        dc.claim_number,
+        dc.customer_name,
+        dc.warranty_report,
+        dc.engine_type_id,
+        et.code AS engine_type_code,
+        dc.engine_code,
+        dc.date_of_claim,
+        dc.mr_number,
+        dc.date_of_finish,
+        dc.employee_id,
+        emp.full_name AS employee_name,
+        NULL::uuid AS source_id,
+        NULL::uuid AS customer_id,
+        dc.outcome,
+        dc.claim_year,
+        dc.total_amount,
+        dc.created_at
+      FROM domace_claims dc
+      LEFT JOIN engine_types et ON et.id = dc.engine_type_id
+      LEFT JOIN employees emp ON emp.id = dc.employee_id
+      WHERE ${whereClause}
+    `
+  }
+}

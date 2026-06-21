@@ -208,6 +208,12 @@ export const DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS = [
   'domace_claims.view_own_customer',
 ] as const satisfies readonly Permission[]
 
+/** Permissions that allow viewing the unified claims list (API + internal-web /reklamacije). */
+export const CLAIMS_LIST_VIEW_PERMISSIONS = [
+  ...EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS,
+  ...DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS,
+] as const satisfies readonly Permission[]
+
 export const CLIENT_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view_own_customer',
   'domace_claims.view_own_customer',

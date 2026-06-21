@@ -14,6 +14,7 @@ import { CustomersRepository, CustomersService } from '../modules/customers/inde
 import { FaultsRepository } from './claims/faults.repository.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
+import { ClaimsRepository, ClaimsService, registerClaimsRoutes } from '../modules/claims/index.js'
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
@@ -52,6 +53,8 @@ export interface Container {
   emotiveClaimsService: EmotiveClaimsService
   domaceClaimsRepository: DomaceClaimsRepository
   domaceClaimsService: DomaceClaimsService
+  claimsRepository: ClaimsRepository
+  claimsService: ClaimsService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
@@ -104,6 +107,9 @@ export function buildContainer(
     eventBus,
   )
 
+  const claimsRepository = new ClaimsRepository(db)
+  const claimsService = new ClaimsService(claimsRepository)
+
   return {
     env,
     logger,
@@ -129,5 +135,7 @@ export function buildContainer(
     emotiveClaimsService,
     domaceClaimsRepository,
     domaceClaimsService,
+    claimsRepository,
+    claimsService,
   }
 }

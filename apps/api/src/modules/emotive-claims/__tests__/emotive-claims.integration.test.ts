@@ -412,7 +412,7 @@ describe('EmotiveClaimsService integration', () => {
       )
 
       const byOutcome = await container.emotiveClaimsService.list(
-        listQuery({ outcome: ClaimOutcome.Accepted }),
+        listQuery({ outcome: ClaimOutcome.Accepted, search: 'druga reklamacija beta' }),
         FULL_OPERATOR,
       )
       expect(byOutcome.items.every((item) => item.outcome === ClaimOutcome.Accepted)).toBe(true)

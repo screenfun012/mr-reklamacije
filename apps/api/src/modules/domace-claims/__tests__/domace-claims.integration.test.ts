@@ -243,18 +243,22 @@ describe('DomaceClaimsService integration', () => {
     })
 
     it('excludes soft-deleted claims by default', async () => {
+      const uniqueCustomer = `SoftDeleteTest-${Date.now()}`
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        baseCreateInput({ customerName: uniqueCustomer }),
         FULL_OPERATOR,
         auditContext,
       )
       await container.domaceClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
 
-      const visible = await container.domaceClaimsService.list(listQuery(), FULL_OPERATOR)
+      const visible = await container.domaceClaimsService.list(
+        listQuery({ search: uniqueCustomer }),
+        FULL_OPERATOR,
+      )
       expect(visible.items.some((i) => i.id === created.id)).toBe(false)
 
       const all = await container.domaceClaimsService.list(
-        listQuery({ includeDeleted: true }),
+        listQuery({ includeDeleted: true, search: uniqueCustomer }),
         FULL_OPERATOR,
       )
       expect(all.items.some((i) => i.id === created.id)).toBe(true)
