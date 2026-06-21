@@ -1,5 +1,6 @@
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import {
@@ -27,6 +28,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [createdClaimId, setCreatedClaimId] = useState<string | null>(null)
 
   const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
@@ -43,14 +45,16 @@ export function DomaceClaimCreateForm(): React.ReactElement {
     onSubmit: async ({ value }) => {
       setSubmitError(null)
       setShowSuccess(false)
+      setCreatedClaimId(null)
       if (!validate(value)) {
         return
       }
       try {
         const input = formValuesToCreateInput(value)
-        await createMutation.mutateAsync(input)
+        const created = await createMutation.mutateAsync(input)
         form.reset()
         setStepErrors({})
+        setCreatedClaimId(created.id)
         setShowSuccess(true)
       } catch (error) {
         setSubmitError(createDomaceClaimErrorMessage(error))
@@ -117,9 +121,18 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           {showSuccess ? (
             <div
               role="status"
-              className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"
+              className="flex flex-col gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"
             >
-              {m.domace_claims_create_success()}
+              <p>{m.domace_claims_create_success()}</p>
+              {createdClaimId ? (
+                <Link
+                  to="/reklamacije/domace/$id"
+                  params={{ id: createdClaimId }}
+                  className="font-medium underline underline-offset-2 hover:text-emerald-800 dark:hover:text-emerald-300"
+                >
+                  {m.domace_claims_create_success_view()}
+                </Link>
+              ) : null}
             </div>
           ) : null}
 

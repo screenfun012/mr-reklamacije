@@ -1,4 +1,5 @@
 export { domaceClaimKeys } from './domace-claim-keys.js'
+export { domaceClaimDetailOptions } from './domace-claims.js'
 export { emotiveClaimKeys } from './emotive-claim-keys.js'
 export {
   emotiveClaimDetailOptions,

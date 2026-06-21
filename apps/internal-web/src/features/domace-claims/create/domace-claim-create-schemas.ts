@@ -30,26 +30,34 @@ const optionalDateField = z
   })
 
 /**
+ * Shared field validators for DOMACE create and detail basic edit forms.
+ */
+export const domaceClaimBasicFieldsSchema = z.object({
+  mrNumber: z.string().trim().max(50),
+  claimNumber: z.string().trim().max(50),
+  customerName: z.string().trim().max(255),
+  engineTypeId: z.string().trim(),
+  engineCode: z.string().trim().max(100),
+  dateOfFinish: optionalDateField,
+  dateOfClaim: optionalDateField,
+  warrantyReport: z.string().trim().max(8000),
+})
+
+const atLeastOneMrOrCustomerRefine = {
+  message: m.domace_claims_create_field_at_least_one(),
+  path: ['mrNumber'],
+}
+
+/**
  * Client-side validation for the DOMACE create form. Every field is optional;
  * the only hard rule is "at least one of mrNumber / customerName" (mirrors the
  * shared {@link DomaceClaimCreateInputSchema} refine). Faults are validated
  * separately via {@link validateFaultDrafts}.
  */
-export const domaceClaimFormSchema = z
-  .object({
-    mrNumber: z.string().trim().max(50),
-    claimNumber: z.string().trim().max(50),
-    customerName: z.string().trim().max(255),
-    engineTypeId: z.string().trim(),
-    engineCode: z.string().trim().max(100),
-    dateOfFinish: optionalDateField,
-    dateOfClaim: optionalDateField,
-    warrantyReport: z.string().trim().max(8000),
-  })
-  .refine((value) => value.mrNumber.trim() !== '' || value.customerName.trim() !== '', {
-    message: m.domace_claims_create_field_at_least_one(),
-    path: ['mrNumber'],
-  })
+export const domaceClaimFormSchema = domaceClaimBasicFieldsSchema.refine(
+  (value) => value.mrNumber.trim() !== '' || value.customerName.trim() !== '',
+  atLeastOneMrOrCustomerRefine,
+)
 
 export type DomaceClaimFormValues = {
   mrNumber: string

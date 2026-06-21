@@ -6,6 +6,13 @@ import {
   type EngineTypeListItem,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
@@ -30,7 +37,7 @@ const ENGINE_TYPES: EngineTypeListItem[] = [
   },
 ]
 
-function renderForm(): void {
+async function renderForm(): Promise<void> {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity },
@@ -47,7 +54,19 @@ function renderForm(): void {
       <DomaceClaimCreateForm />
     </QueryClientProvider>
   )
-  render(node)
+
+  const rootRoute = createRootRoute({ component: () => node })
+  const detailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/reklamacije/domace/$id',
+    component: () => null,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([detailRoute]),
+    history: createMemoryHistory({ initialEntries: ['/reklamacije/domace/nova'] }),
+  })
+  await router.load()
+  render(<RouterProvider router={router as never} />)
 }
 
 function stubCreatedResponse(): ReturnType<typeof vi.fn> {
@@ -83,7 +102,7 @@ describe('DomaceClaimCreateForm', () => {
 
   it('creates a claim with only customerName (no mrNumber)', async () => {
     const fetchSpy = stubCreatedResponse()
-    renderForm()
+    await renderForm()
 
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_customer_name()), {
       target: { value: 'Petar Petrović' },
@@ -98,11 +117,14 @@ describe('DomaceClaimCreateForm', () => {
     await waitFor(() =>
       expect(screen.getByText(m.domace_claims_create_success())).toBeInTheDocument(),
     )
+    expect(
+      screen.getByRole('link', { name: m.domace_claims_create_success_view() }),
+    ).toHaveAttribute('href', '/reklamacije/domace/11111111-1111-4111-8111-111111111111')
   })
 
   it('creates a claim with only mrNumber (no customerName)', async () => {
     const fetchSpy = stubCreatedResponse()
-    renderForm()
+    await renderForm()
 
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_mr_number()), {
       target: { value: 'MR1234/23' },
@@ -118,7 +140,7 @@ describe('DomaceClaimCreateForm', () => {
 
   it('blocks an empty form and shows the "at least one" error without calling the API', async () => {
     const fetchSpy = stubCreatedResponse()
-    renderForm()
+    await renderForm()
 
     fireEvent.click(screen.getByRole('button', { name: m.action_save() }))
 
@@ -134,7 +156,7 @@ describe('DomaceClaimCreateForm', () => {
 
   it('does not send total_amount from the create form', async () => {
     const fetchSpy = stubCreatedResponse()
-    renderForm()
+    await renderForm()
 
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_customer_name()), {
       target: { value: 'AC Stanić' },

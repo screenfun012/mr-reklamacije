@@ -202,6 +202,12 @@ export const EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS = [
   'emotive_claims.view_own_customer',
 ] as const satisfies readonly Permission[]
 
+/** Permissions that allow viewing DOMACE claims (API + internal-web detail route). */
+export const DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS = [
+  'domace_claims.view',
+  'domace_claims.view_own_customer',
+] as const satisfies readonly Permission[]
+
 export const CLIENT_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view_own_customer',
   'domace_claims.view_own_customer',

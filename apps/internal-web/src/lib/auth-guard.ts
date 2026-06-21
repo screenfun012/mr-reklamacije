@@ -1,5 +1,8 @@
 import { createServerSessionLoader, requirePermissions, requireRoles } from '@mr/auth/route-guards'
-import { EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
+import {
+  DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS,
+  EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS,
+} from '@mr/shared'
 
 import { authClient } from './auth-client'
 
@@ -20,4 +23,8 @@ export function internalRequireEmotiveClaimsCreate() {
 
 export function internalRequireDomaceClaimsCreate() {
   return requirePermissions(authClient, ['domace_claims.create'], loadServerSession)
+}
+
+export function internalRequireDomaceClaimsView() {
+  return requirePermissions(authClient, DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
 }
