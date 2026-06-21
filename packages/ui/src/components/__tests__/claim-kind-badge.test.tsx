@@ -22,6 +22,13 @@ describe('ClaimKindBadge', () => {
       const badge = screen.getByText(KIND_LABELS_SR[kind])
       expect(badge.tagName).toBe('SPAN')
       expect(badge.className).toContain(KIND_BADGE_CLASSES[kind].split(' ')[0])
+      expect(badge.className).toContain('rounded-full')
+    })
+
+    it(`renders ${kind} icon`, () => {
+      const { container } = render(<ClaimKindBadge kind={kind} />)
+
+      expect(container.querySelector('svg')).not.toBeNull()
     })
   }
 })

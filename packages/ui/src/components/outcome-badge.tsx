@@ -1,5 +1,19 @@
 import { m } from '@mr/i18n'
-import { OUTCOME_BY_KEY, type ClaimOutcome, type OutcomeLabelKey } from '@mr/shared'
+import {
+  ClaimOutcome,
+  OUTCOME_BY_KEY,
+  type ClaimOutcome as ClaimOutcomeType,
+  type OutcomeLabelKey,
+} from '@mr/shared'
+
+import { OUTCOME_ICONS } from '../lib/badge-icons.js'
+import {
+  BADGE_ENTER_ANIMATION_CLASSES,
+  BADGE_ICON_CLASSES,
+  BADGE_PENDING_ICON_PULSE_CLASSES,
+  BADGE_SHELL_CLASSES,
+} from '../lib/badge-styles.js'
+import { useBadgeEnterAnimation } from '../lib/use-badge-enter-animation.js'
 import { cn } from '../lib/cn.js'
 
 const OUTCOME_LABELS: Record<OutcomeLabelKey, () => string> = {
@@ -9,31 +23,30 @@ const OUTCOME_LABELS: Record<OutcomeLabelKey, () => string> = {
   outcome_archived: () => m.outcome_archived(),
 }
 
-const OUTCOME_DOT_CLASSES: Record<ClaimOutcome, string> = {
-  pending: 'bg-amber-500',
-  accepted: 'bg-emerald-500',
-  rejected: 'bg-rose-500',
-  archived: 'bg-slate-400',
-}
-
 export interface OutcomeBadgeProps {
-  outcome: ClaimOutcome
+  outcome: ClaimOutcomeType
   className?: string
 }
 
-export function OutcomeBadge({ outcome, className }: OutcomeBadgeProps) {
+export function OutcomeBadge({ outcome, className }: OutcomeBadgeProps): React.ReactElement {
   const definition = OUTCOME_BY_KEY[outcome]
+  const Icon = OUTCOME_ICONS[outcome]
+  const isEntering = useBadgeEnterAnimation(outcome)
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium',
+        BADGE_SHELL_CLASSES,
         definition.badgeClass,
+        isEntering && BADGE_ENTER_ANIMATION_CLASSES,
         className,
       )}
     >
-      <span
-        className={cn('size-1.5 shrink-0 rounded-full', OUTCOME_DOT_CLASSES[outcome])}
+      <Icon
+        className={cn(
+          BADGE_ICON_CLASSES,
+          outcome === ClaimOutcome.Pending && BADGE_PENDING_ICON_PULSE_CLASSES,
+        )}
         aria-hidden
       />
       {OUTCOME_LABELS[definition.labelKey]()}

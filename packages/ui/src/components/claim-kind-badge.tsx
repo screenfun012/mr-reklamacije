@@ -1,10 +1,8 @@
 import { m } from '@mr/i18n'
-import {
-  CLAIM_KIND_BY_KEY,
-  KIND_DOT_CLASSES,
-  type ClaimKind,
-  type ClaimKindLabelKey,
-} from '@mr/shared'
+import { CLAIM_KIND_BY_KEY, type ClaimKind, type ClaimKindLabelKey } from '@mr/shared'
+
+import { KIND_ICONS } from '../lib/badge-icons.js'
+import { BADGE_ICON_CLASSES, BADGE_SHELL_CLASSES } from '../lib/badge-styles.js'
 import { cn } from '../lib/cn.js'
 
 const KIND_LABELS: Record<ClaimKindLabelKey, () => string> = {
@@ -17,18 +15,13 @@ export interface ClaimKindBadgeProps {
   className?: string
 }
 
-export function ClaimKindBadge({ kind, className }: ClaimKindBadgeProps) {
+export function ClaimKindBadge({ kind, className }: ClaimKindBadgeProps): React.ReactElement {
   const definition = CLAIM_KIND_BY_KEY[kind]
+  const Icon = KIND_ICONS[kind]
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium',
-        definition.badgeClass,
-        className,
-      )}
-    >
-      <span className={cn('size-1.5 shrink-0 rounded-full', KIND_DOT_CLASSES[kind])} aria-hidden />
+    <span className={cn(BADGE_SHELL_CLASSES, definition.badgeClass, className)}>
+      <Icon className={BADGE_ICON_CLASSES} aria-hidden />
       {KIND_LABELS[definition.labelKey]()}
     </span>
   )
