@@ -1,20 +1,14 @@
 /**
  * @mr/tailwind-preset
  *
- * MR Reklamacije theme — red brand primary with shadcn-compatible
- * token structure, usable across all three frontends (admin-web,
- * internal-web, portal-web).
+ * MR Engines brandbook tokens (May 2026) mapped to shadcn-compatible
+ * CSS variables for admin-web, internal-web, portal-web.
  *
- * Color space: OKLCH for perceptual uniformity.
+ * Color space: hex values from brandbook; shadcn vars reference role tokens.
  * Dark mode: class-based (.dark on html element).
  *
- * Usage:
- *   @import "tailwindcss";
- *   @import "@mr/tailwind-preset";
- *
- * Fonts (Figtree Variable, JetBrains Mono) and animations
- * (tw-animate-css) are NOT bundled here — each frontend installs
- * them and references them in its own globals.css after the preset.
+ * Phase 1 (2026-06): role tokens p.16, semantic p.15, core palette p.14.
+ * Badge mr-*-strong / mr-brand-subtle unchanged — see docs/15-brand-guidelines.md.
  */
 
 @custom-variant dark (&:is(.dark *));
@@ -35,6 +29,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -52,11 +47,14 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* MR Engines brandbook semantic colors (May 2026) */
+  /* Core brand palette (PDF p.14) */
   --color-mr-brand: #ed1c24;
   --color-mr-brand-400: #f0414a;
   --color-mr-brand-strong: #c8141b;
   --color-mr-brand-subtle: #fdecef;
+  --color-mr-red-700: #a8111a;
+
+  /* Semantic (PDF p.15) — badge *-strong values frozen in existing code */
   --color-mr-warning: #f5a623;
   --color-mr-warning-strong: #9a6410;
   --color-mr-warning-subtle: #fef3e2;
@@ -69,9 +67,18 @@
   --color-mr-info: #2e90fa;
   --color-mr-info-strong: #175cd3;
   --color-mr-info-subtle: #e8f1fe;
+
+  /* Neutral scale (PDF p.16 + derived neutral-400) */
   --color-mr-neutral-subtle: #f5f5f5;
   --color-mr-neutral-muted: #5a5b60;
   --color-mr-neutral-border: #c8c9cc;
+  --color-mr-neutral-200: #c8c9cc;
+  --color-mr-neutral-300: #a3a4a8;
+  --color-mr-neutral-400: #7f8084;
+  --color-mr-neutral-500: #5a5b60;
+  --color-mr-neutral-600: #3c3d41;
+  --color-mr-neutral-700: #2a2b2e;
+  --color-mr-neutral-800: #191919;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -81,97 +88,129 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
+  --shadow-raised: var(--mr-shadow-raised);
+
   --animate-fade-in-scale: fade-in-scale 0.25s ease-out;
 }
 
 :root {
-  /* MR Reklamacije brand palette */
+  /* Derived (app / Nikola visual confirm pending) — docs/15 §9 */
   --radius: 0.45rem;
+  --mr-shadow-raised: 0 1px 3px 0 rgb(25 25 25 / 0.1), 0 1px 2px -1px rgb(25 25 25 / 0.08);
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.21 0.006 285.885);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.006 285.885);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.006 285.885);
+  /* Role tokens — light (PDF p.16, confirmed Nikola 2026-06-21) */
+  --mr-bg: #f5f5f5;
+  --mr-surface: #ffffff;
+  --mr-surface-raised: #ffffff;
+  --mr-text-primary: #191919;
+  --mr-text-secondary: #5a5b60;
+  --mr-border: #c8c9cc;
+  --mr-primary: #ed1c24;
+  --mr-primary-hover: #c8141b;
+  --mr-primary-active: #a8111a;
+  --mr-red-50-wash: #fdecef;
+  --mr-disabled-bg: #c8c9cc;
+  --mr-disabled-text: #7f8084;
+  --mr-error: #d92d20;
+  --mr-focus-ring: #f0414a;
 
-  /* Brand red — primary brand color */
-  --primary: oklch(0.6 0.2324 26.5);
-  --primary-foreground: oklch(0.971 0.013 17.38);
+  /* shadcn semantic mapping */
+  --background: var(--mr-bg);
+  --foreground: var(--mr-text-primary);
+  --card: var(--mr-surface);
+  --card-foreground: var(--mr-text-primary);
+  --popover: var(--mr-surface);
+  --popover-foreground: var(--mr-text-primary);
 
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.24 0.01 0);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.24 0.01 0);
+  --primary: var(--mr-primary);
+  --primary-foreground: #ffffff;
 
-  /* Destructive — shadcn default red-orange, deliberately distinct
-     from primary so destructive actions read clearly even though
-     primary is also red. */
-  --destructive: oklch(0.577 0.245 27.325);
+  --secondary: var(--mr-bg);
+  --secondary-foreground: var(--mr-text-primary);
+  --muted: var(--mr-bg);
+  --muted-foreground: var(--mr-text-secondary);
+  --accent: var(--mr-bg);
+  --accent-foreground: var(--mr-text-primary);
 
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
+  --destructive: var(--mr-error);
+  --destructive-foreground: #ffffff;
 
-  /* Charts — red gradation matching primary */
-  --chart-1: oklch(0.808 0.114 19.571);
-  --chart-2: oklch(0.637 0.237 25.331);
-  --chart-3: oklch(0.6 0.2324 26.5);
-  --chart-4: oklch(0.505 0.213 27.518);
-  --chart-5: oklch(0.444 0.177 26.899);
+  --border: var(--mr-border);
+  --input: var(--mr-border);
+  --ring: var(--mr-focus-ring);
 
-  /* Sidebar uses brand red for active state */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-primary: oklch(0.6 0.2324 26.5);
-  --sidebar-primary-foreground: oklch(0.971 0.013 17.38);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.24 0.01 0);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  --chart-1: #f0414a;
+  --chart-2: #ed1c24;
+  --chart-3: #c8141b;
+  --chart-4: #a8111a;
+  --chart-5: #d92d20;
+
+  --sidebar: var(--mr-surface);
+  --sidebar-foreground: var(--mr-text-primary);
+  --sidebar-primary: var(--mr-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--mr-bg);
+  --sidebar-accent-foreground: var(--mr-text-primary);
+  --sidebar-border: var(--mr-border);
+  --sidebar-ring: var(--mr-focus-ring);
 }
 
 .dark {
-  --background: oklch(0.21 0.006 285.885);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.24 0.01 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.24 0.01 0);
-  --popover-foreground: oklch(0.985 0 0);
+  /* Role tokens — dark (PDF p.16, confirmed Nikola 2026-06-21) */
+  --mr-bg: #191919;
+  --mr-surface: #2a2b2e;
+  --mr-surface-raised: #3c3d41;
+  --mr-text-primary: #ffffff;
+  --mr-text-secondary: #a3a4a8;
+  --mr-border: #3c3d41;
+  --mr-primary: #ed1c24;
+  --mr-primary-hover: #f0414a;
+  --mr-primary-active: #a8111a;
+  --mr-red-50-wash: #fdecef;
+  --mr-disabled-bg: #3c3d41;
+  --mr-disabled-text: #7f8084;
+  --mr-error: #d92d20;
+  --mr-focus-ring: #f0414a;
+  --mr-shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.3);
 
-  --primary: oklch(0.637 0.237 25.331);
-  --primary-foreground: oklch(0.971 0.013 17.38);
+  --background: var(--mr-bg);
+  --foreground: var(--mr-text-primary);
+  --card: var(--mr-surface);
+  --card-foreground: var(--mr-text-primary);
+  --popover: var(--mr-surface-raised);
+  --popover-foreground: var(--mr-text-primary);
 
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
+  --primary: var(--mr-primary);
+  --primary-foreground: #ffffff;
 
-  /* Destructive in dark mode — shadcn default */
-  --destructive: oklch(0.704 0.191 22.216);
+  --secondary: var(--mr-surface-raised);
+  --secondary-foreground: var(--mr-text-primary);
+  --muted: var(--mr-surface);
+  --muted-foreground: var(--mr-text-secondary);
+  --accent: var(--mr-surface-raised);
+  --accent-foreground: var(--mr-text-primary);
 
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
+  --destructive: var(--mr-error);
+  --destructive-foreground: #ffffff;
 
-  --chart-1: oklch(0.808 0.114 19.571);
-  --chart-2: oklch(0.637 0.237 25.331);
-  --chart-3: oklch(0.6 0.2324 26.5);
-  --chart-4: oklch(0.505 0.213 27.518);
-  --chart-5: oklch(0.444 0.177 26.899);
+  --border: var(--mr-border);
+  --input: var(--mr-border);
+  --ring: var(--mr-focus-ring);
 
-  --sidebar: oklch(0.24 0.01 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.637 0.237 25.331);
-  --sidebar-primary-foreground: oklch(0.971 0.013 17.38);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+  --chart-1: #f0414a;
+  --chart-2: #ed1c24;
+  --chart-3: #c8141b;
+  --chart-4: #a8111a;
+  --chart-5: #d92d20;
+
+  --sidebar: var(--mr-surface);
+  --sidebar-foreground: var(--mr-text-primary);
+  --sidebar-primary: var(--mr-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--mr-surface-raised);
+  --sidebar-accent-foreground: var(--mr-text-primary);
+  --sidebar-border: var(--mr-border);
+  --sidebar-ring: var(--mr-focus-ring);
 }
 
 @keyframes fade-in-scale {
