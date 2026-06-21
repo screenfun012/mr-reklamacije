@@ -11,7 +11,7 @@ import type { ApiDatabase } from '../../core/database.js'
 import type { ClaimsListScope } from './claims.types.js'
 import type { ClaimListQuery, ClaimListResponse } from './claims.validators.js'
 
-const { customers, customerUsers, employees, engineTypes } = schema
+const { customerUsers } = schema
 
 interface UnifiedListRow {
   [key: string]: unknown

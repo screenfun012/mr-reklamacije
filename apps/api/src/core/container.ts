@@ -14,7 +14,7 @@ import { CustomersRepository, CustomersService } from '../modules/customers/inde
 import { FaultsRepository } from './claims/faults.repository.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
-import { ClaimsRepository, ClaimsService, registerClaimsRoutes } from '../modules/claims/index.js'
+import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'

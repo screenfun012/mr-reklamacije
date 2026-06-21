@@ -5,7 +5,7 @@ import {
   type DomaceClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Input, OutcomeBadge } from '@mr/ui'
+import { Button, OutcomeBadge } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
