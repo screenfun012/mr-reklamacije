@@ -3,6 +3,7 @@ import '@fontsource-variable/figtree/index.css'
 import '@fontsource/jetbrains-mono/400.css'
 
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
+import { m } from '@mr/i18n'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -26,7 +27,7 @@ export const Route = createRootRouteWithContext<InternalRouterContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'MR Reklamacije Internal' },
+      { title: m.app_title_internal() },
     ],
     links: [{ rel: 'stylesheet', href: globalsCss }],
     headScripts: [{ children: themeBootstrapScript }],
@@ -37,7 +38,7 @@ export const Route = createRootRouteWithContext<InternalRouterContext>()({
 function RootDocument({ children }: { children: ReactNode }) {
   const { locale } = useLocale()
   return (
-    <html lang="sr" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

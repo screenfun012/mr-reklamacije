@@ -18,7 +18,7 @@ function StatistikaComponent() {
         <Heading level="h1" className="mb-2">
           {m.nav_statistika()}
         </Heading>
-        <p className="text-muted-foreground">Coming soon — Phase 1</p>
+        <p className="text-muted-foreground">{m.placeholder_coming_soon_phase()}</p>
       </div>
     </InternalShell>
   )

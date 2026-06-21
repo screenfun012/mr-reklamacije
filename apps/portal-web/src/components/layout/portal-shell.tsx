@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { m } from '@mr/i18n'
 import { Heading } from '@mr/ui'
 
 import { authClient } from '~/lib/auth-client'
@@ -33,8 +34,8 @@ export function PortalShell({ children }: PortalShellProps) {
 
       <main className="container mx-auto max-w-3xl px-6 py-12">
         <div className="text-center mb-12">
-          <Heading level="h1">MR Reklamacije</Heading>
-          <p className="text-sm text-muted-foreground mt-1">Portal</p>
+          <Heading level="h1">{m.app_brand_name()}</Heading>
+          <p className="text-sm text-muted-foreground mt-1">{m.portal_shell_subtitle()}</p>
         </div>
 
         {children}

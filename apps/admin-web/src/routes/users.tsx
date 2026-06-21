@@ -17,7 +17,7 @@ function UsersComponent() {
         <Heading level="h1" className="mb-2">
           {m.nav_users()}
         </Heading>
-        <p className="text-muted-foreground">Coming soon — Phase 1</p>
+        <p className="text-muted-foreground">{m.placeholder_coming_soon_phase()}</p>
       </div>
     </AdminShell>
   )
