@@ -220,7 +220,9 @@ export async function freeDevStack(options?: {
   }
 
   const freedPorts = freePorts(Object.values(DEV_PORTS))
-  await Promise.all(Object.values(DEV_PORTS).map((port) => waitForPortFree(port, { timeoutMs: 8000 })))
+  await Promise.all(
+    Object.values(DEV_PORTS).map((port) => waitForPortFree(port, { timeoutMs: 8000 })),
+  )
 
   return { killedPids, freedPorts }
 }
