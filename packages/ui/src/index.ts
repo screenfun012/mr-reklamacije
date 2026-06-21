@@ -1,4 +1,10 @@
 export { cn } from './lib/cn.js'
+export {
+  Heading,
+  type HeadingElement,
+  type HeadingLevel,
+  type HeadingProps,
+} from './components/heading.js'
 export { Button, type ButtonProps } from './primitives/button.js'
 export { buttonVariants, type ButtonVariantProps } from './primitives/button-variants.js'
 export { Input, type InputProps } from './primitives/input.js'

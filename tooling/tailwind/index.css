@@ -90,6 +90,46 @@
 
   --shadow-raised: var(--mr-shadow-raised);
 
+  /* Typography — brandbook p.10–11 (fluid mobile→desktop via clamp) */
+  --text-display: clamp(2.5rem, 1.5rem + 4vw, 4rem);
+  --text-display--line-height: 1.05;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.02em;
+
+  --text-h1: clamp(2rem, 1.25rem + 2.5vw, 3rem);
+  --text-h1--line-height: 1.1;
+  --text-h1--font-weight: 700;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h2: clamp(1.75rem, 1.125rem + 2vw, 2.25rem);
+  --text-h2--line-height: 1.15;
+  --text-h2--font-weight: 700;
+  --text-h2--letter-spacing: -0.01em;
+
+  --text-h3: clamp(1.375rem, 1rem + 1.5vw, 1.75rem);
+  --text-h3--line-height: 1.25;
+  --text-h3--font-weight: 600;
+  --text-h3--letter-spacing: -0.01em;
+
+  --text-h4: clamp(1.125rem, 0.95rem + 0.75vw, 1.375rem);
+  --text-h4--line-height: 1.3;
+  --text-h4--font-weight: 600;
+  --text-h4--letter-spacing: 0;
+
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.55;
+  --text-body-lg--font-weight: 400;
+
+  --text-caption: 0.875rem;
+  --text-caption--line-height: 1.45;
+  --text-caption--font-weight: 500;
+
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1.4;
+  --text-micro--font-weight: 500;
+
+  --tracking-label: 0.04em;
+
   --animate-fade-in-scale: fade-in-scale 0.25s ease-out;
 }
 
@@ -241,6 +281,6 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-base leading-[1.6] text-foreground;
   }
 }

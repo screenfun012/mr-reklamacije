@@ -26,7 +26,7 @@ The application must feel modern, fast, and obvious. Non-technical users
 - **CSS:** Tailwind CSS v4 (via `@mr/tailwind-preset`)
 - **Components:** shadcn/ui as base layer, customized in `packages/ui/`
 - **Icons:** `lucide-react` exclusively (consistent style, tree-shakeable)
-- **Fonts:** Inter (400, 500, 600, 700) via `@fontsource/inter`; monospace `JetBrains Mono` for code/IDs
+- **Fonts:** Figtree Variable via `@fontsource-variable/figtree`; monospace `JetBrains Mono` for code/IDs. See **`docs/15-brand-guidelines.md`** for the full type scale.
 - **Charts:** `recharts` (aligns with shadcn, sufficient for our stats needs)
 - **Date picker:** shadcn's `Calendar` based on `react-day-picker`
 - **Tables:** `@tanstack/react-table` with shadcn styling
@@ -38,68 +38,42 @@ The application must feel modern, fast, and obvious. Non-technical users
 
 ## Design tokens (Tailwind preset)
 
-### Color palette
+## Design tokens (Tailwind preset)
 
-Tailwind is configured with CSS variables, allowing light/dark mode toggle.
+Color, spacing, and typography tokens live in `@mr/tailwind-preset` (`tooling/tailwind/index.css`).
+**Authoritative reference:** `docs/15-brand-guidelines.md` (brandbook May 2026).
 
-```css
-/* globals.css */
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;        /* deep blue */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 11%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
-    --radius: 0.5rem;
-  }
+Light/dark role tokens, semantic `mr-*` colors, and shadcn CSS variables (`--primary`, `--background`, etc.)
+are defined there. Do not duplicate hex values in this file.
 
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    /* ... dark variant of each ... */
-  }
-}
-```
+### Claim outcome colors
 
-### Claim outcome colors (fixed mapping)
-
-```ts
-export const outcomeColors = {
-  pending: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-900 dark:text-amber-100', label: { sr: 'U obradi', en: 'In progress' } },
-  accepted: { bg: 'bg-emerald-100 dark:bg-emerald-900', text: 'text-emerald-900 dark:text-emerald-100', label: { sr: 'Prihvaćeno', en: 'Accepted' } },
-  rejected: { bg: 'bg-rose-100 dark:bg-rose-900', text: 'text-rose-900 dark:text-rose-100', label: { sr: 'Odbijeno', en: 'Rejected' } },
-  archived: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', label: { sr: 'Arhiva', en: 'Archived' } },
-}
-```
+Outcome and kind badges use brandbook semantic tokens via `@mr/shared` constants
+(`OUTCOME_BADGE_CLASSES`, `KIND_BADGE_CLASSES`) — not Tailwind amber/emerald defaults.
 
 ### Typography scale
 
-- Display: `text-3xl font-bold` — page titles
-- H1: `text-2xl font-semibold` — section titles
-- H2: `text-xl font-semibold` — sub-sections
-- H3: `text-lg font-medium` — card titles
-- Body: `text-sm` — default prose
-- Small: `text-xs` — metadata, timestamps
-- Monospace: `font-mono text-xs` — IDs, MR numbers, claim numbers
+Use the **`Heading`** component from `@mr/ui` with brandbook levels. Do not use ad-hoc
+`text-3xl` / `text-sm font-semibold` for page or section titles.
+
+| Level | Utility / component | Desktop | Mobile | Use |
+|-------|---------------------|---------|--------|-----|
+| Display | `Heading level="display"` | 64px | 40px | Hero only — one per page |
+| H1 | `Heading level="h1"` | 48px | 32px | Page title |
+| H2 | `Heading level="h2"` | 36px | 28px | Major section, list titles |
+| H3 | `Heading level="h3"` | 28px | 22px | Card sections (claim detail) |
+| H4 | `CardTitle` / `Heading level="h4"` | 22px | 18px | Widget / form card title |
+| Body | default (`text-base`, 16px on `body`) | 16px | 16px | Primary reading text |
+| Body large | `text-body-lg` | 18px | 18px | Lead paragraph |
+| Caption | `text-sm` / `text-caption` | 14px | 14px | Labels, table cells, inputs |
+| Micro | `text-xs` | 12px | 12px | Badges, fine print (**frozen for badges**) |
+
+**Semantic HTML:** use `as` prop when visual level differs from document outline
+(e.g. `<Heading level="h3" as="h2">` for a section under one page H1).
+
+**Uppercase labels/buttons:** `tracking-label` (+0.04em) — Phase 3 buttons.
+
+Monospace: `font-mono text-xs` — IDs, MR numbers, claim numbers.
 
 ### Spacing (8px base)
 

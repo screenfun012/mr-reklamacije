@@ -31,6 +31,17 @@ describe('Card', () => {
     expect(screen.getByText('Footer')).toBeInTheDocument()
   })
 
+  it('applies brand H4 typography to CardTitle', () => {
+    render(
+      <Card>
+        <CardHeader>
+          <CardTitle>Title</CardTitle>
+        </CardHeader>
+      </Card>,
+    )
+    expect(screen.getByText('Title').className).toContain('text-h4')
+  })
+
   it('applies default and custom classes', () => {
     render(
       <Card className="custom-card" data-testid="card">

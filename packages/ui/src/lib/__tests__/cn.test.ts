@@ -14,4 +14,8 @@ describe('cn', () => {
   it('ignores falsy values', () => {
     expect(cn('foo', false, null, undefined, 'bar')).toBe('foo bar')
   })
+
+  it('keeps brand font-size utilities alongside text color utilities', () => {
+    expect(cn('text-h4', 'text-card-foreground')).toBe('text-h4 text-card-foreground')
+  })
 })
