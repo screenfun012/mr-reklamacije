@@ -203,7 +203,9 @@ export function TwoFactorEnrollFlow(props: {
           <>
             <div>
               <p className="text-sm font-medium">{m.security_2fa_backup_title()}</p>
-              <p className="text-sm text-muted-foreground">{m.security_2fa_backup_description()}</p>
+              <p className="text-sm text-muted-foreground">
+                {m.security_two_factor_enroll_step_backup_description()}
+              </p>
             </div>
             <ul className="grid grid-cols-2 gap-2 rounded-md border p-3 font-mono text-sm">
               {backupCodes.map((c) => (

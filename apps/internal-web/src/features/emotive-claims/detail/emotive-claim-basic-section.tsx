@@ -171,10 +171,8 @@ function BasicEditMode({
       ) : null}
 
       <div className="flex items-center gap-2">
-        <Button type="button" onClick={handleSave} disabled={mutation.isPending}>
-          {mutation.isPending
-            ? m.emotive_claims_detail_basic_saving()
-            : m.emotive_claims_detail_basic_save()}
+        <Button type="button" onClick={handleSave} loading={mutation.isPending}>
+          {m.emotive_claims_detail_basic_save()}
         </Button>
         <Button
           type="button"

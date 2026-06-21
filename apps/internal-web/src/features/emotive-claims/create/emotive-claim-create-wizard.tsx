@@ -203,8 +203,8 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
             </Button>
 
             {currentStep === 'review' ? (
-              <Button type="submit" disabled={isPending}>
-                {isPending ? m.emotive_claims_create_saving() : m.action_save()}
+              <Button type="submit" loading={isPending}>
+                {m.action_save()}
               </Button>
             ) : (
               <Button type="button" disabled={isPending} onClick={handleNext}>

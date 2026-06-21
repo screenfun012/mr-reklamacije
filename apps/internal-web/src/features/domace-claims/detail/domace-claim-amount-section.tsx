@@ -94,10 +94,8 @@ function AmountEditor({
           ) : null}
 
           <div>
-            <Button type="button" onClick={handleSave} disabled={mutation.isPending}>
-              {mutation.isPending
-                ? m.domace_claims_detail_amount_saving()
-                : m.domace_claims_detail_amount_save()}
+            <Button type="button" onClick={handleSave} loading={mutation.isPending}>
+              {m.domace_claims_detail_amount_save()}
             </Button>
           </div>
         </div>

@@ -150,8 +150,8 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           ) : null}
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isPending}>
-              {isPending ? m.domace_claims_create_saving() : m.action_save()}
+            <Button type="submit" loading={isPending}>
+              {m.action_save()}
             </Button>
           </div>
         </form>

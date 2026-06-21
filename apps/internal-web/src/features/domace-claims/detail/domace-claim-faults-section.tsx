@@ -159,10 +159,8 @@ function FaultsEditMode({
       ) : null}
 
       <div className="flex items-center gap-2">
-        <Button type="button" onClick={handleSave} disabled={mutation.isPending}>
-          {mutation.isPending
-            ? m.emotive_claims_detail_faults_saving()
-            : m.emotive_claims_detail_faults_save()}
+        <Button type="button" onClick={handleSave} loading={mutation.isPending}>
+          {m.emotive_claims_detail_faults_save()}
         </Button>
         <Button
           type="button"

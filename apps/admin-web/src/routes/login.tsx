@@ -192,7 +192,7 @@ function LoginComponent(): React.ReactElement {
                 </div>
               )}
 
-              <Button type="submit" disabled={isPending} className="w-full">
+              <Button type="submit" loading={isPending} className="w-full">
                 {m.auth_login_submit()}
               </Button>
             </form>
