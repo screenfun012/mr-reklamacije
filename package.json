@@ -12,6 +12,7 @@
     "dev:all": "tsx scripts/dev-all.mts",
     "dev:api": "tsx scripts/dev-api.mts",
     "audit:mr-duplicates": "tsx scripts/audit-mr-duplicates.mts",
+    "cleanup:mr-duplicates-dev": "tsx scripts/cleanup-mr-duplicates-dev.mts",
     "dev:audit-deps": "tsx scripts/audit-phantom-deps.mts",
     "cleanup:junk": "tsx scripts/cleanup-workspace-junk.mts",
     "dev:check": "tsx scripts/dev-check.mts",
