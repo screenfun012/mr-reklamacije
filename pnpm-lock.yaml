@@ -17,6 +17,9 @@ importers:
       '@mr/eslint-config':
         specifier: workspace:*
         version: link:tooling/eslint
+      '@mr/shared':
+        specifier: workspace:*
+        version: link:packages/shared
       '@types/node':
         specifier: ^20.19.39
         version: 20.19.42
