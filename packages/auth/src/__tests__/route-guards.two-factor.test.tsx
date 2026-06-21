@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setLocale } from '@mr/i18n'
 
@@ -91,6 +91,11 @@ function createTwoFactorStub(overrides: {
 describe('TwoFactorVerifyForm', () => {
   beforeEach(() => {
     setLocale('en')
+  })
+
+  afterEach(async () => {
+    // input-otp syncs selection on a short timer; flush before jsdom teardown.
+    await new Promise((resolve) => setTimeout(resolve, 260))
   })
 
   it('submits TOTP when 6 digits entered', async () => {
