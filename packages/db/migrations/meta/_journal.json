@@ -71,6 +71,13 @@
       "when": 1781982310759,
       "tag": "0009_domace_claims_emotive_clone",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782075023569,
+      "tag": "0010_mr_registry",
+      "breakpoints": true
     }
   ]
 }

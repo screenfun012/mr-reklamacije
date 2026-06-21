@@ -8,6 +8,7 @@
  *   - catalogs.ts (Phase C.1): engine_types, external_parties, claim_sources
  *   - client-registrations.ts (Phase C.1): client_registration_requests
  *   - claims.ts (Phase C.2)
+ *   - mr-registry.ts: mr_registry (global MR unique registry)
  *   - attachments.ts (Phase C.3): attachments, claim_observations
  *   - translation-cache.ts (Phase C.3): translation_cache
  *   - settings.ts (Phase C.3): app_settings, employee_monthly_output
@@ -22,6 +23,7 @@ export * from './audit.js'
 export * from './catalogs.js'
 export * from './client-registrations.js'
 export * from './claims.js'
+export * from './mr-registry.js'
 export * from './attachments.js'
 export * from './translation-cache.js'
 export * from './settings.js'

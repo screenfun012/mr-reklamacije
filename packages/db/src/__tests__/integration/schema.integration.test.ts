@@ -54,6 +54,7 @@ beforeAll(async () => {
       translation_cache,
       claim_observations,
       attachments,
+      mr_registry,
       emotive_claim_faults,
       emotive_claims,
       domace_claims,
