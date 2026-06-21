@@ -16,6 +16,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Heading,
 } from '@mr/ui'
 
 import { InternalShell } from '~/components/layout/internal-shell'
@@ -35,7 +36,7 @@ function SecuritySettingsComponent(): React.ReactElement {
   return (
     <InternalShell>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">{m.nav_security()}</h1>
+        <Heading level="h1">{m.nav_security()}</Heading>
 
         <Card className="max-w-xl">
           <CardHeader>

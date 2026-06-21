@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Heading } from '@mr/ui'
 
 import { AdminShell } from '~/components/layout/admin-shell'
 import { adminRequireRoles } from '~/lib/auth-guard'
@@ -20,7 +20,9 @@ function HomeComponent() {
     <AdminShell>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">{m.dashboard_welcome({ userName })}</h1>
+          <Heading level="h1" className="mb-2">
+            {m.dashboard_welcome({ userName })}
+          </Heading>
           <p className="text-muted-foreground">{m.nav_dashboard()}</p>
         </div>
 

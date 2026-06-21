@@ -1,6 +1,6 @@
 import { formatListDate, type EmotiveClaimListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { OutcomeBadge, Skeleton } from '@mr/ui'
+import { Heading, OutcomeBadge, Skeleton } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
 import { Eye, Trash2 } from 'lucide-react'
 
@@ -25,7 +25,7 @@ export function EmotiveClaimsTable({ items, total }: EmotiveClaimsTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">{m.emotive_claims_list_title()}</h2>
+        <Heading level="h2">{m.emotive_claims_list_title()}</Heading>
         <span className="text-sm text-muted-foreground">
           {m.emotive_claims_count({ count: total })}
         </span>

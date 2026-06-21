@@ -8,7 +8,7 @@ import {
   type EmotiveClaimFaultItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button } from '@mr/ui'
+import { Button, Heading } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
 import { useState } from 'react'
@@ -39,9 +39,9 @@ export function EmotiveClaimFaultsSection({
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">
+        <Heading level="h3" as="h2" className="text-foreground">
           {m.emotive_claims_detail_section_faults()}
-        </h2>
+        </Heading>
         {canEdit && !editing ? (
           <Button
             type="button"

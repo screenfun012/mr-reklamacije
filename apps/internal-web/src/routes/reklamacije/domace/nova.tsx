@@ -7,7 +7,7 @@ import {
   externalPartiesReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Skeleton } from '@mr/ui'
+import { Heading, Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { InternalShell } from '~/components/layout/internal-shell'
@@ -40,7 +40,9 @@ function DomaceClaimNovaPage(): React.ReactElement {
           >
             {m.domace_claims_create_back_to_list()}
           </Link>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">{m.domace_claims_new_claim()}</h1>
+          <Heading level="h1" className="mt-2">
+            {m.domace_claims_new_claim()}
+          </Heading>
         </div>
         <Suspense fallback={<DomaceClaimCreateSkeleton />}>
           <DomaceClaimCreateForm />

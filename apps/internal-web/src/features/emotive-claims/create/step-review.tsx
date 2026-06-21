@@ -7,6 +7,7 @@ import {
   type ExternalPartyListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
+import { Heading } from '@mr/ui'
 
 import { TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
 import { formatFieldError } from './format-field-error.js'
@@ -72,7 +73,9 @@ export function StepReview({
       />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">{m.emotive_claims_create_review_basic_title()}</h2>
+        <Heading level="h3" as="h2" className="text-foreground">
+          {m.emotive_claims_create_review_basic_title()}
+        </Heading>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <ReviewItem label={m.emotive_claims_create_field_mr_number()} value={values.mrNumber} />
           <ReviewItem
@@ -97,7 +100,9 @@ export function StepReview({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">{m.emotive_claims_create_review_faults_title()}</h2>
+        <Heading level="h3" as="h2" className="text-foreground">
+          {m.emotive_claims_create_review_faults_title()}
+        </Heading>
         {values.faults.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {m.emotive_claims_create_review_faults_empty()}

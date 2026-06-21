@@ -1,6 +1,6 @@
 import { ApiError, ClaimOutcome, formatEuroAmount, type DomaceClaimDetail } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Input } from '@mr/ui'
+import { Button, Heading, Input } from '@mr/ui'
 import { useState } from 'react'
 
 import { useUpdateDomaceClaimAmount } from './use-update-domace-claim-amount.js'
@@ -57,9 +57,9 @@ function AmountEditor({
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-      <h2 className="text-sm font-semibold text-foreground">
+      <Heading level="h3" as="h2" className="text-foreground">
         {m.domace_claims_detail_section_amount()}
-      </h2>
+      </Heading>
 
       {claim.totalAmount !== null ? (
         <p className="text-sm text-muted-foreground">

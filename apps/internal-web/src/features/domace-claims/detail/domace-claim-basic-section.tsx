@@ -5,7 +5,7 @@ import {
   type DomaceClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, OutcomeBadge } from '@mr/ui'
+import { Button, Heading, OutcomeBadge } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
@@ -41,9 +41,9 @@ export function DomaceClaimBasicSection({
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">
+        <Heading level="h3" as="h2" className="text-foreground">
           {m.domace_claims_create_section_basic()}
-        </h2>
+        </Heading>
         <div className="flex items-center gap-2">
           <OutcomeBadge outcome={claim.outcome} />
           {canEdit && !editing ? (

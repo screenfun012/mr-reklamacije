@@ -7,7 +7,7 @@ import {
   externalPartiesReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Skeleton } from '@mr/ui'
+import { Button, Heading, Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
@@ -39,7 +39,9 @@ function DetailHeader(): React.ReactElement {
       >
         {m.domace_claims_create_back_to_list()}
       </Link>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight">{m.domace_claims_detail_title()}</h1>
+      <Heading level="h1" className="mt-2">
+        {m.domace_claims_detail_title()}
+      </Heading>
     </div>
   )
 }

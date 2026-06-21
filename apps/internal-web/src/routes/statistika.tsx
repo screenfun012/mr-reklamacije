@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { m } from '@mr/i18n'
+import { Heading } from '@mr/ui'
 
 import { InternalShell } from '~/components/layout/internal-shell'
 import { internalRequireRoles } from '~/lib/auth-guard'
@@ -14,7 +15,9 @@ function StatistikaComponent() {
   return (
     <InternalShell>
       <div>
-        <h1 className="text-3xl font-bold mb-2">{m.nav_statistika()}</h1>
+        <Heading level="h1" className="mb-2">
+          {m.nav_statistika()}
+        </Heading>
         <p className="text-muted-foreground">Coming soon — Phase 1</p>
       </div>
     </InternalShell>

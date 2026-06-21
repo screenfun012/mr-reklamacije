@@ -10,7 +10,7 @@ import {
   externalPartiesReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
+import { Button, Card, CardContent, CardHeader, CardTitle, Heading } from '@mr/ui'
 
 import { StepFaultsFields } from '../../emotive-claims/create/step-faults-fields.js'
 import { DomaceBasicFields } from './domace-basic-fields.js'
@@ -97,7 +97,9 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           noValidate
         >
           <section className="flex flex-col gap-4">
-            <h2 className="text-sm font-semibold">{m.domace_claims_create_section_basic()}</h2>
+            <Heading level="h3" as="h2" className="text-foreground">
+              {m.domace_claims_create_section_basic()}
+            </Heading>
             <DomaceBasicFields
               form={form}
               engineTypes={engineTypes}
@@ -107,7 +109,9 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           </section>
 
           <section className="flex flex-col gap-4">
-            <h2 className="text-sm font-semibold">{m.domace_claims_create_section_faults()}</h2>
+            <Heading level="h3" as="h2" className="text-foreground">
+              {m.domace_claims_create_section_faults()}
+            </Heading>
             <StepFaultsFields
               form={form}
               departments={departments}

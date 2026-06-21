@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { m } from '@mr/i18n'
+import { Heading } from '@mr/ui'
 
 import { InternalShell } from '~/components/layout/internal-shell'
 import { authClient } from '~/lib/auth-client'
@@ -18,7 +19,9 @@ function HomeComponent() {
   return (
     <InternalShell>
       <div>
-        <h1 className="text-3xl font-bold mb-2">Dobrodošao, {userName}</h1>
+        <Heading level="h1" className="mb-2">
+          Dobrodošao, {userName}
+        </Heading>
         <p className="text-muted-foreground">{m.nav_pocetna()} — Coming soon — Phase 1</p>
       </div>
     </InternalShell>

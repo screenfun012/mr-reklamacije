@@ -10,7 +10,7 @@ import {
   TwoFactorVerifyForm,
 } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@mr/ui'
+import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
 
 import { authClient } from '~/lib/auth-client'
 
@@ -95,7 +95,9 @@ function LoginComponent(): React.ReactElement {
     <main className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{m.auth_login_title()}</CardTitle>
+          <Heading level="h2" as="h1">
+            {m.auth_login_title()}
+          </Heading>
         </CardHeader>
         <CardContent>
           {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (

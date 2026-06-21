@@ -5,7 +5,7 @@ import {
   claimsPaginationFromSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button } from '@mr/ui'
+import { Button, Heading } from '@mr/ui'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { useCallback } from 'react'
@@ -49,9 +49,9 @@ function ReklamacijeComponent() {
   return (
     <InternalShell>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
+            <Heading level="h1">{m.nav_reklamacije()}</Heading>
             <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
           </div>
           <div className="flex flex-wrap gap-2 self-start">
@@ -84,7 +84,7 @@ function ReklamacijePending() {
     <InternalShell>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{m.nav_reklamacije()}</h1>
+          <Heading level="h1">{m.nav_reklamacije()}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
         </div>
         <ClaimsTableSkeleton />

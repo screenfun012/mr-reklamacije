@@ -1,6 +1,6 @@
 import { m } from '@mr/i18n'
 import { ClaimOutcome, OUTCOME_REGISTRY, type ClaimOutcome as ClaimOutcomeType } from '@mr/shared'
-import { Button } from '@mr/ui'
+import { Button, Heading } from '@mr/ui'
 import { Lock } from 'lucide-react'
 import { useState } from 'react'
 
@@ -74,9 +74,9 @@ export function DomaceClaimStatusActions({
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-      <h2 className="text-sm font-semibold text-foreground">
+      <Heading level="h3" as="h2" className="text-foreground">
         {m.emotive_claims_detail_status_section()}
-      </h2>
+      </Heading>
 
       {isLocked ? (
         <div

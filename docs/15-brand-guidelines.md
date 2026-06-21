@@ -203,7 +203,7 @@ Wired in Phase 1 preset; **do not change badge `*-strong` / `mr-brand-subtle`**.
 |-------|--------|-------|
 | **0** | Done | This doc + source audit |
 | **1** | Done | Preset tokens + shadcn mapping |
-| **2** | Next | Typography scale in UI |
+| **2** | Done | Typography scale in UI (`Heading`, page H1, section H3, list H2, body 16px) |
 | **3** | Pending | Button sizes/states |
 | **4** | Pending | Card, input, table surfaces |
 | **5** | Pending | Page audit |
