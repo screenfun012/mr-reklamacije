@@ -1,5 +1,7 @@
 import {
   ClaimKind,
+  ClaimOutcome,
+  formatClaimDetailMetaLine,
   formatListDate,
   type ClaimOutcome as ClaimOutcomeType,
   type DomaceClaimDetail,
@@ -21,12 +23,6 @@ export interface DomaceClaimDetailHeaderProps {
   onEditBasic: () => void
 }
 
-function formatHeaderMeta(parts: ReadonlyArray<string | null | undefined>): string {
-  return parts
-    .filter((part): part is string => part !== null && part !== undefined && part.trim() !== '')
-    .join(' · ')
-}
-
 export function DomaceClaimDetailHeader({
   claim,
   canEditBasic,
@@ -35,28 +31,32 @@ export function DomaceClaimDetailHeader({
   canReopen,
   onEditBasic,
 }: DomaceClaimDetailHeaderProps): React.ReactElement {
-  const metaLine = formatHeaderMeta([
+  const metaLine = formatClaimDetailMetaLine([
     claim.customerName,
     claim.engineTypeCode,
     claim.dateOfClaim ? formatListDate(claim.dateOfClaim) : null,
   ])
 
-  return (
-    <header className="flex flex-col gap-4 border-b border-border pb-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Heading level="h1" className="font-mono text-foreground">
-              {claim.mrNumber ?? EMPTY}
-            </Heading>
-            <OutcomeBadge outcome={claim.outcome} />
-            <ClaimKindBadge kind={ClaimKind.Domace} />
-          </div>
-          <p className="text-sm text-muted-foreground">{metaLine || EMPTY}</p>
-        </div>
+  const showEdit = canEditBasic && !editingBasic
+  const isLocked = claim.outcome !== ClaimOutcome.Pending
+  const showStatusActions = canChangeOutcome || (canReopen && isLocked)
+  const showActionBar = showEdit || showStatusActions
 
-        <div className="flex flex-wrap items-start justify-end gap-3">
-          {canEditBasic && !editingBasic ? (
+  return (
+    <header className="flex flex-col gap-3 border-b border-border pb-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <Heading level="h1" className="font-mono text-foreground">
+          {claim.mrNumber ?? EMPTY}
+        </Heading>
+        <OutcomeBadge outcome={claim.outcome} />
+        <ClaimKindBadge kind={ClaimKind.Domace} />
+      </div>
+
+      <p className="text-sm text-muted-foreground">{metaLine || EMPTY}</p>
+
+      {showActionBar ? (
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border/60 pt-3">
+          {showEdit ? (
             <Button
               type="button"
               variant="outline"
@@ -68,15 +68,17 @@ export function DomaceClaimDetailHeader({
               {m.emotive_claims_detail_basic_edit()}
             </Button>
           ) : null}
-          <DomaceClaimStatusActions
-            claimId={claim.id}
-            currentOutcome={claim.outcome as ClaimOutcomeType}
-            canChangeOutcome={canChangeOutcome}
-            canReopen={canReopen}
-            layout="inline"
-          />
+          {showStatusActions ? (
+            <DomaceClaimStatusActions
+              claimId={claim.id}
+              currentOutcome={claim.outcome as ClaimOutcomeType}
+              canChangeOutcome={canChangeOutcome}
+              canReopen={canReopen}
+              layout="inline"
+            />
+          ) : null}
         </div>
-      </div>
+      ) : null}
     </header>
   )
 }

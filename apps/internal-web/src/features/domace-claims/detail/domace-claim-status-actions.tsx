@@ -79,7 +79,7 @@ export function DomaceClaimStatusActions({
       className={
         layout === 'section'
           ? 'flex flex-col gap-3 rounded-lg border border-border p-6'
-          : 'flex flex-col gap-2'
+          : 'flex flex-wrap items-center gap-3'
       }
     >
       {layout === 'section' ? (
