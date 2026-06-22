@@ -7,7 +7,7 @@ import {
   type EmotiveClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading, OutcomeBadge } from '@mr/ui'
+import { Button, Heading } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
@@ -32,13 +32,33 @@ interface EmotiveClaimBasicSectionProps {
   claim: EmotiveClaimDetail
   /** Pending status + `emotive_claims.update` permission. */
   canEdit: boolean
+  editing?: boolean
+  onEditingChange?: (editing: boolean) => void
+  /** When false, edit is triggered externally (detail header). Defaults to true. */
+  showSectionEditButton?: boolean
+  /** Hides MR in read-only grid when shown in page header. */
+  hideMrInReadOnly?: boolean
+}
+
+function useControlledEditing(
+  controlledEditing: boolean | undefined,
+  onEditingChange: ((editing: boolean) => void) | undefined,
+): [boolean, (editing: boolean) => void] {
+  const [internalEditing, setInternalEditing] = useState(false)
+  const editing = controlledEditing ?? internalEditing
+  const setEditing = onEditingChange ?? setInternalEditing
+  return [editing, setEditing]
 }
 
 export function EmotiveClaimBasicSection({
   claim,
   canEdit,
+  editing: controlledEditing,
+  onEditingChange,
+  showSectionEditButton = true,
+  hideMrInReadOnly = false,
 }: EmotiveClaimBasicSectionProps): React.ReactElement {
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useControlledEditing(controlledEditing, onEditingChange)
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
@@ -46,37 +66,42 @@ export function EmotiveClaimBasicSection({
         <Heading level="h3" as="h2" className="text-foreground">
           {m.emotive_claims_detail_section_basic()}
         </Heading>
-        <div className="flex items-center gap-2">
-          <OutcomeBadge outcome={claim.outcome} />
-          {canEdit && !editing ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil className="size-4" />
-              {m.emotive_claims_detail_basic_edit()}
-            </Button>
-          ) : null}
-        </div>
+        {canEdit && !editing && showSectionEditButton ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="size-4" />
+            {m.emotive_claims_detail_basic_edit()}
+          </Button>
+        ) : null}
       </div>
 
       {editing ? (
         <BasicEditMode claim={claim} onDone={() => setEditing(false)} />
       ) : (
-        <BasicReadOnly claim={claim} />
+        <BasicReadOnly claim={claim} hideMr={hideMrInReadOnly} />
       )}
     </section>
   )
 }
 
-function BasicReadOnly({ claim }: { claim: EmotiveClaimDetail }): React.ReactElement {
+function BasicReadOnly({
+  claim,
+  hideMr = false,
+}: {
+  claim: EmotiveClaimDetail
+  hideMr?: boolean
+}): React.ReactElement {
   return (
     <>
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <DetailItem label={m.emotive_claims_col_mr_number()} value={claim.mrNumber} mono />
+        {hideMr ? null : (
+          <DetailItem label={m.emotive_claims_col_mr_number()} value={claim.mrNumber} mono />
+        )}
         <DetailItem label={m.emotive_claims_col_claim_number()} value={claim.claimNumber} />
         <DetailItem label={m.emotive_claims_col_partner()} value={claim.customerName} />
         <DetailItem label={m.emotive_claims_col_engine()} value={claim.engineTypeCode} mono />

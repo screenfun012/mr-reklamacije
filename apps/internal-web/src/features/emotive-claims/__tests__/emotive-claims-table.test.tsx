@@ -79,7 +79,7 @@ describe('EmotiveClaimsTable', () => {
     const viewLink = screen.getByRole('link', { name: 'Pregled' })
     expect(viewLink).toHaveAttribute(
       'href',
-      '/reklamacije/emotive/11111111-1111-4111-8111-111111111111',
+      '/reklamacije/emotive/11111111-1111-4111-8111-111111111111?tab=pregled',
     )
   })
 })

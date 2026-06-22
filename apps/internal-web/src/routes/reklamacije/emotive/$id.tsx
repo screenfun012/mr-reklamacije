@@ -1,7 +1,7 @@
-import { ApiError, emotiveClaimDetailOptions } from '@mr/shared'
+import { ApiError, ClaimDetailSearchSchema, emotiveClaimDetailOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading, Skeleton } from '@mr/ui'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { Button, Skeleton } from '@mr/ui'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
 import { InternalShell } from '~/components/layout/internal-shell'
@@ -10,6 +10,7 @@ import { internalRequireEmotiveClaimsView } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/reklamacije/emotive/$id')({
   beforeLoad: internalRequireEmotiveClaimsView(),
+  validateSearch: (search) => ClaimDetailSearchSchema.parse(search),
   loader: async ({ context: { queryClient }, params: { id } }) => {
     await queryClient.ensureQueryData(emotiveClaimDetailOptions(id))
   },
@@ -18,32 +19,35 @@ export const Route = createFileRoute('/reklamacije/emotive/$id')({
   errorComponent: EmotiveClaimDetailError,
 })
 
-function DetailHeader(): React.ReactElement {
+function BackLink(): React.ReactElement {
   return (
-    <div>
-      <Link
-        to="/reklamacije"
-        search={{ page: 1, pageSize: 10 }}
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        {m.emotive_claims_create_back_to_list()}
-      </Link>
-      <Heading level="h1" className="mt-2">
-        {m.emotive_claims_detail_title()}
-      </Heading>
-    </div>
+    <Link
+      to="/reklamacije"
+      search={{ page: 1, pageSize: 10 }}
+      className="text-sm text-muted-foreground hover:text-foreground"
+    >
+      {m.emotive_claims_create_back_to_list()}
+    </Link>
   )
 }
 
 function EmotiveClaimDetailPage(): React.ReactElement {
   const { id } = Route.useParams()
+  const { tab } = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
 
   return (
     <InternalShell>
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <DetailHeader />
+        <BackLink />
         <Suspense fallback={<EmotiveClaimDetailSkeleton />}>
-          <EmotiveClaimDetailView id={id} />
+          <EmotiveClaimDetailView
+            id={id}
+            tab={tab}
+            onTabChange={(nextTab) => {
+              void navigate({ search: { tab: nextTab } })
+            }}
+          />
         </Suspense>
       </div>
     </InternalShell>
@@ -54,7 +58,7 @@ function EmotiveClaimDetailPending(): React.ReactElement {
   return (
     <InternalShell>
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-5 w-40" />
         <EmotiveClaimDetailSkeleton />
       </div>
     </InternalShell>
@@ -63,15 +67,27 @@ function EmotiveClaimDetailPending(): React.ReactElement {
 
 function EmotiveClaimDetailSkeleton(): React.ReactElement {
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border p-6" aria-busy="true">
-      <Skeleton className="h-6 w-64" />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
+    <div className="flex flex-col gap-6" aria-busy="true">
+      <div className="flex flex-col gap-3 border-b border-border pb-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-72" />
+        <Skeleton className="h-9 w-56" />
       </div>
-      <Skeleton className="h-20 w-full" />
+      <div className="flex gap-2 border-b border-border pb-2">
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="h-8 w-20" />
+      </div>
+      <div className="flex flex-col gap-4 rounded-lg border border-border p-6">
+        <Skeleton className="h-6 w-40" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
     </div>
   )
 }
@@ -88,7 +104,7 @@ function EmotiveClaimDetailError({
   return (
     <InternalShell>
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <DetailHeader />
+        <BackLink />
         <div
           className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
           role="alert"

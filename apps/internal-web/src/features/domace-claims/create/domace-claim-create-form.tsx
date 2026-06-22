@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import {
+  CLAIM_DETAIL_DEFAULT_SEARCH,
   departmentsReferenceOptions,
   employeesReferenceOptions,
   engineTypesReferenceOptions,
@@ -132,6 +133,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
                 <Link
                   to="/reklamacije/domace/$id"
                   params={{ id: createdClaimId }}
+                  search={CLAIM_DETAIL_DEFAULT_SEARCH}
                   className="font-medium underline underline-offset-2 hover:text-emerald-800 dark:hover:text-emerald-300"
                 >
                   {m.domace_claims_create_success_view()}

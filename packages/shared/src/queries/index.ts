@@ -2,6 +2,13 @@ export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'
 export {
+  ClaimDetailSearchSchema,
+  ClaimDetailTab,
+  CLAIM_DETAIL_DEFAULT_SEARCH,
+  type ClaimDetailSearch,
+  type ClaimDetailTab as ClaimDetailTabValue,
+} from './claim-detail-search.js'
+export {
   claimsListOptions,
   claimsListQueryKey,
   normalizeClaimsListFilters,

@@ -1,4 +1,9 @@
-import { ClaimKind, formatListDate, type ClaimListItem } from '@mr/shared'
+import {
+  CLAIM_DETAIL_DEFAULT_SEARCH,
+  ClaimKind,
+  formatListDate,
+  type ClaimListItem,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { ClaimKindBadge, Heading, OutcomeBadge, Skeleton } from '@mr/ui'
 import { Link, useNavigate } from '@tanstack/react-router'
@@ -20,11 +25,20 @@ function claimEngineCode(item: ClaimListItem): string {
 function claimDetailLink(item: ClaimListItem): {
   to: '/reklamacije/emotive/$id' | '/reklamacije/domace/$id'
   params: { id: string }
+  search: typeof CLAIM_DETAIL_DEFAULT_SEARCH
 } {
   if (item.kind === ClaimKind.Domace) {
-    return { to: '/reklamacije/domace/$id', params: { id: item.id } }
+    return {
+      to: '/reklamacije/domace/$id',
+      params: { id: item.id },
+      search: CLAIM_DETAIL_DEFAULT_SEARCH,
+    }
   }
-  return { to: '/reklamacije/emotive/$id', params: { id: item.id } }
+  return {
+    to: '/reklamacije/emotive/$id',
+    params: { id: item.id },
+    search: CLAIM_DETAIL_DEFAULT_SEARCH,
+  }
 }
 
 export function ClaimsTable({ items, total }: ClaimsTableProps) {
@@ -118,6 +132,7 @@ export function ClaimsTable({ items, total }: ClaimsTableProps) {
                       <Link
                         to={detailLink.to}
                         params={detailLink.params}
+                        search={detailLink.search}
                         className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
                         aria-label={m.emotive_claims_detail_view_action()}
                         onClick={(event) => event.stopPropagation()}

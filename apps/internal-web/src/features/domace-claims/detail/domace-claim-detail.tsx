@@ -1,21 +1,45 @@
-import { ClaimOutcome, domaceClaimDetailOptions, formatListDateTime } from '@mr/shared'
+import {
+  ClaimDetailTab,
+  ClaimOutcome,
+  domaceClaimDetailOptions,
+  formatListDateTime,
+  type ClaimDetailTabValue,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Heading } from '@mr/ui'
+import {
+  ClaimDetailTabPlaceholder,
+  Heading,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { useState } from 'react'
 
 import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
+import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
 import { DomaceClaimFaultsSection } from './domace-claim-faults-section.js'
-import { DomaceClaimStatusActions } from './domace-claim-status-actions.js'
 
 export interface DomaceClaimDetailViewProps {
   id: string
+  tab: ClaimDetailTabValue
+  onTabChange: (tab: ClaimDetailTabValue) => void
 }
 
 const rootRoute = getRouteApi('__root__')
 
-export function DomaceClaimDetailView({ id }: DomaceClaimDetailViewProps): React.ReactElement {
+function faultsTabLabel(count: number): string {
+  return count > 0 ? `${m.claim_detail_tab_faults()} ${count}` : m.claim_detail_tab_faults()
+}
+
+export function DomaceClaimDetailView({
+  id,
+  tab,
+  onTabChange,
+}: DomaceClaimDetailViewProps): React.ReactElement {
   const { data: claim } = useSuspenseQuery(domaceClaimDetailOptions(id))
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
@@ -28,35 +52,86 @@ export function DomaceClaimDetailView({ id }: DomaceClaimDetailViewProps): React
     claim.outcome === ClaimOutcome.Accepted &&
     permissions?.includes('domace_claims.update') === true
 
+  const [editingBasic, setEditingBasic] = useState(false)
+
+  const handleTabChange = (nextTab: string): void => {
+    const parsed = nextTab as ClaimDetailTabValue
+    if (parsed !== ClaimDetailTab.Pregled) {
+      setEditingBasic(false)
+    }
+    onTabChange(parsed)
+  }
+
+  const handleEditBasic = (): void => {
+    onTabChange(ClaimDetailTab.Pregled)
+    setEditingBasic(true)
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <DomaceClaimBasicSection claim={claim} canEdit={canEditBasic} />
-
-      <DomaceClaimStatusActions
-        claimId={claim.id}
-        currentOutcome={claim.outcome}
+      <DomaceClaimDetailHeader
+        claim={claim}
+        canEditBasic={canEditBasic}
+        editingBasic={editingBasic}
         canChangeOutcome={canChangeOutcome}
         canReopen={canReopen}
+        onEditBasic={handleEditBasic}
       />
 
-      <DomaceClaimAmountSection claim={claim} canEdit={canEditAmount} />
+      <Tabs value={tab} onValueChange={handleTabChange}>
+        <TabsList aria-label={m.domace_claims_detail_title()}>
+          <TabsTrigger value={ClaimDetailTab.Pregled}>{m.claim_detail_tab_overview()}</TabsTrigger>
+          <TabsTrigger value={ClaimDetailTab.Kvarovi}>
+            {faultsTabLabel(claim.faults.length)}
+          </TabsTrigger>
+          <TabsTrigger value={ClaimDetailTab.Prilozi}>
+            {m.claim_detail_tab_attachments()}
+          </TabsTrigger>
+          <TabsTrigger value={ClaimDetailTab.Izvestaj}>{m.claim_detail_tab_report()}</TabsTrigger>
+        </TabsList>
 
-      <DomaceClaimFaultsSection claim={claim} canEdit={canEditFaults} />
+        <TabsContent value={ClaimDetailTab.Pregled} className="flex flex-col gap-6">
+          <DomaceClaimBasicSection
+            claim={claim}
+            canEdit={canEditBasic}
+            editing={editingBasic}
+            onEditingChange={setEditingBasic}
+            showSectionEditButton={false}
+            hideMrInReadOnly
+          />
 
-      <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-        <Heading level="h3" as="h2" className="text-foreground">
-          {m.emotive_claims_detail_section_notes()}
-        </Heading>
-        {claim.internalNotes ? (
-          <p className="text-sm whitespace-pre-wrap text-foreground">{claim.internalNotes}</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">{m.emotive_claims_detail_notes_empty()}</p>
-        )}
-      </section>
+          <DomaceClaimAmountSection claim={claim} canEdit={canEditAmount} />
 
-      <p className="text-xs text-muted-foreground">
-        {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
-      </p>
+          <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
+            <Heading level="h3" as="h2" className="text-foreground">
+              {m.emotive_claims_detail_section_notes()}
+            </Heading>
+            {claim.internalNotes ? (
+              <p className="text-sm whitespace-pre-wrap text-foreground">{claim.internalNotes}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {m.emotive_claims_detail_notes_empty()}
+              </p>
+            )}
+          </section>
+
+          <p className="text-xs text-muted-foreground">
+            {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
+          </p>
+        </TabsContent>
+
+        <TabsContent value={ClaimDetailTab.Kvarovi}>
+          <DomaceClaimFaultsSection claim={claim} canEdit={canEditFaults} />
+        </TabsContent>
+
+        <TabsContent value={ClaimDetailTab.Prilozi}>
+          <ClaimDetailTabPlaceholder />
+        </TabsContent>
+
+        <TabsContent value={ClaimDetailTab.Izvestaj}>
+          <ClaimDetailTabPlaceholder />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -104,11 +104,11 @@ describe('ClaimsTable', () => {
     const viewLinks = screen.getAllByRole('link', { name: 'Pregled' })
     expect(viewLinks[0]).toHaveAttribute(
       'href',
-      '/reklamacije/emotive/11111111-1111-4111-8111-111111111111',
+      '/reklamacije/emotive/11111111-1111-4111-8111-111111111111?tab=pregled',
     )
     expect(viewLinks[1]).toHaveAttribute(
       'href',
-      '/reklamacije/domace/66666666-6666-4666-8666-666666666666',
+      '/reklamacije/domace/66666666-6666-4666-8666-666666666666?tab=pregled',
     )
   })
 })

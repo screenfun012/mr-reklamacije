@@ -119,7 +119,10 @@ describe('DomaceClaimCreateForm', () => {
     )
     expect(
       screen.getByRole('link', { name: m.domace_claims_create_success_view() }),
-    ).toHaveAttribute('href', '/reklamacije/domace/11111111-1111-4111-8111-111111111111')
+    ).toHaveAttribute(
+      'href',
+      '/reklamacije/domace/11111111-1111-4111-8111-111111111111?tab=pregled',
+    )
   })
 
   it('creates a claim with only mrNumber (no customerName)', async () => {

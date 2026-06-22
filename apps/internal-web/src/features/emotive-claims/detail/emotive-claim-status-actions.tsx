@@ -13,6 +13,7 @@ export interface EmotiveClaimStatusActionsProps {
   canChangeOutcome: boolean
   /** Holder of emotive_claims.reopen — the admin-only unlock key. */
   canReopen: boolean
+  layout?: 'section' | 'inline'
 }
 
 /** Outcomes a pending claim can move to. */
@@ -42,6 +43,7 @@ export function EmotiveClaimStatusActions({
   currentOutcome,
   canChangeOutcome,
   canReopen,
+  layout = 'section',
 }: EmotiveClaimStatusActionsProps): React.ReactElement | null {
   const mutation = useChangeEmotiveClaimOutcome(claimId)
   const [confirmingReject, setConfirmingReject] = useState(false)
@@ -83,10 +85,18 @@ export function EmotiveClaimStatusActions({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-      <Heading level="h3" as="h2" className="text-foreground">
-        {m.emotive_claims_detail_status_section()}
-      </Heading>
+    <div
+      className={
+        layout === 'section'
+          ? 'flex flex-col gap-3 rounded-lg border border-border p-6'
+          : 'flex flex-col gap-2'
+      }
+    >
+      {layout === 'section' ? (
+        <Heading level="h3" as="h2" className="text-foreground">
+          {m.emotive_claims_detail_status_section()}
+        </Heading>
+      ) : null}
 
       {isLocked ? (
         <div
@@ -145,6 +155,6 @@ export function EmotiveClaimStatusActions({
           {m.emotive_claims_detail_status_error()}
         </p>
       ) : null}
-    </section>
+    </div>
   )
 }

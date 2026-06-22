@@ -1,4 +1,4 @@
-import { formatListDate, type EmotiveClaimListItem } from '@mr/shared'
+import { CLAIM_DETAIL_DEFAULT_SEARCH, formatListDate, type EmotiveClaimListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Heading, OutcomeBadge, Skeleton } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
@@ -83,6 +83,7 @@ export function EmotiveClaimsTable({ items, total }: EmotiveClaimsTableProps) {
                     <Link
                       to="/reklamacije/emotive/$id"
                       params={{ id: claim.id }}
+                      search={CLAIM_DETAIL_DEFAULT_SEARCH}
                       className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
                       aria-label={m.emotive_claims_detail_view_action()}
                     >
