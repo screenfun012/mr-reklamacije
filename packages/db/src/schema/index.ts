@@ -10,6 +10,7 @@
  *   - claims.ts (Phase C.2)
  *   - mr-registry.ts: mr_registry (global MR unique registry)
  *   - attachments.ts (Phase C.3): attachments, claim_observations
+ *   - claim-reports.ts (Phase 3.0): claim_reports
  *   - translation-cache.ts (Phase C.3): translation_cache
  *   - settings.ts (Phase C.3): app_settings, employee_monthly_output
  *   - auth-tables.ts (6.2): Better-Auth sessions, accounts, verification_tokens, two_factor_secrets
@@ -25,5 +26,6 @@ export * from './client-registrations.js'
 export * from './claims.js'
 export * from './mr-registry.js'
 export * from './attachments.js'
+export * from './claim-reports.js'
 export * from './translation-cache.js'
 export * from './settings.js'

@@ -4,6 +4,10 @@
 @import '@mr/tailwind-preset';
 @import 'tw-animate-css';
 
+/* Tiptap Simple Editor template (spike) */
+@import '../components/styles/_variables.scss';
+@import '../components/styles/_keyframe-animations.scss';
+
 @theme {
   --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;

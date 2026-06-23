@@ -73,6 +73,14 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `attachments.delete_any` | Delete any attachment |
 | `attachments.change_visibility` | Toggle between internal and client-visible |
 
+### Module: `claim_reports`
+
+| Permission | Description |
+|---|---|
+| `claim_reports.view` | View the formal claim report editor content |
+| `claim_reports.update` | Create and edit claim report content (autosave) |
+| `claim_reports.export` | Export claim report to Word/PDF (Phase 3.2) |
+
 ### Module: `customers`
 
 | Permission | Description |
@@ -208,6 +216,8 @@ attachments.view_internal
 attachments.upload
 attachments.delete_own
 attachments.change_visibility
+claim_reports.view
+claim_reports.update
 customers.view
 customers.create
 customers.update
@@ -235,6 +245,7 @@ emotive_claims.view
 domace_claims.view
 observations.view_internal
 attachments.view_internal
+claim_reports.view
 customers.view
 employees.view
 employees.view_analytics

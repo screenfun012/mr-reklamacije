@@ -1,4 +1,5 @@
 import {
+  AttachmentPurpose,
   AttachmentVisibility,
   ClaimKind,
   type AttachmentListItem,
@@ -64,6 +65,7 @@ export class AttachmentsRepository {
         and(
           eq(attachments.claimKind, query.claimKind),
           eq(claimColumn, query.claimId),
+          eq(attachments.purpose, AttachmentPurpose.ClaimAttachment),
           isNull(attachments.deletedAt),
           visibilityClause,
         ),
@@ -98,6 +100,7 @@ export class AttachmentsRepository {
     claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
     claimId: string,
     contentSha256: string,
+    purpose: typeof AttachmentPurpose.ClaimAttachment | typeof AttachmentPurpose.ReportImage,
   ): Promise<AttachmentListItem | null> {
     const claimColumn = mapClaimIdColumn(claimKind)
     const rows = await this.db
@@ -108,6 +111,7 @@ export class AttachmentsRepository {
           eq(attachments.claimKind, claimKind),
           eq(claimColumn, claimId),
           eq(attachments.contentSha256, contentSha256),
+          eq(attachments.purpose, purpose),
           isNull(attachments.deletedAt),
         ),
       )
@@ -136,6 +140,7 @@ export class AttachmentsRepository {
         and(
           eq(attachments.claimKind, claimKind),
           eq(claimColumn, claimId),
+          eq(attachments.purpose, AttachmentPurpose.ClaimAttachment),
           isNull(attachments.deletedAt),
         ),
       )
@@ -145,6 +150,28 @@ export class AttachmentsRepository {
       count: row?.count ?? 0,
       totalBytes: row?.totalBytes ?? 0,
     }
+  }
+
+  async countActiveReportImagesForClaim(
+    claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
+    claimId: string,
+  ): Promise<number> {
+    const claimColumn = mapClaimIdColumn(claimKind)
+    const rows = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.claimKind, claimKind),
+          eq(claimColumn, claimId),
+          eq(attachments.purpose, AttachmentPurpose.ReportImage),
+          isNull(attachments.deletedAt),
+        ),
+      )
+
+    return rows[0]?.count ?? 0
   }
 
   async insert(input: {
@@ -161,6 +188,7 @@ export class AttachmentsRepository {
     thumbnailPath: string | null
     caption: string | null
     visibility: typeof AttachmentVisibility.Internal | typeof AttachmentVisibility.ClientVisible
+    purpose: typeof AttachmentPurpose.ClaimAttachment | typeof AttachmentPurpose.ReportImage
     uploadedBy: string
   }): Promise<AttachmentListItem> {
     const values = {
@@ -178,6 +206,7 @@ export class AttachmentsRepository {
       thumbnailPath: input.thumbnailPath,
       caption: input.caption,
       visibility: input.visibility,
+      purpose: input.purpose,
       uploadedBy: input.uploadedBy,
     }
 

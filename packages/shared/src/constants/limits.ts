@@ -1,6 +1,13 @@
 export const MAX_FILE_SIZE_MB = 25
 export const MAX_FILES_PER_CLAIM = 50
+export const MAX_REPORT_IMAGES_PER_CLAIM = 100
 export const MAX_TOTAL_SIZE_PER_CLAIM_MB = 500
+
+/** Max stored width for report images after server-side optimization. */
+export const MAX_REPORT_IMAGE_WIDTH = 1920
+
+export const REPORT_IMAGE_JPEG_QUALITY = 80
+export const REPORT_IMAGE_WEBP_QUALITY = 80
 
 export const ALLOWED_IMAGE_MIME_TYPES = [
   'image/jpeg',

@@ -4,6 +4,8 @@ export {
   buildAttachmentDownloadUrl,
   fetchAttachmentSignedUrl,
 } from './attachments.js'
+export { claimReportKeys } from './claim-report-keys.js'
+export { claimReportOptions, upsertClaimReport } from './claim-reports.js'
 export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'

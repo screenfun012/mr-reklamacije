@@ -72,6 +72,13 @@ export const AttachmentVisibility = {
 
 export type AttachmentVisibility = (typeof AttachmentVisibility)[keyof typeof AttachmentVisibility]
 
+export const AttachmentPurpose = {
+  ClaimAttachment: 'claim_attachment',
+  ReportImage: 'report_image',
+} as const
+
+export type AttachmentPurpose = (typeof AttachmentPurpose)[keyof typeof AttachmentPurpose]
+
 export const ObservationVisibility = {
   Internal: 'internal',
   ClientVisible: 'client_visible',
@@ -102,3 +109,9 @@ export const AuditAction = {
 } as const
 
 export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction]
+
+export const ClaimReportStatus = {
+  Draft: 'draft',
+} as const
+
+export type ClaimReportStatus = (typeof ClaimReportStatus)[keyof typeof ClaimReportStatus]

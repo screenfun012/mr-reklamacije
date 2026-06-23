@@ -1,12 +1,15 @@
 import {
+  AttachmentPurpose,
   AttachmentVisibility,
   AuditAction,
   ClaimKind,
   MAX_FILE_SIZE_MB,
   MAX_FILES_PER_CLAIM,
+  MAX_REPORT_IMAGES_PER_CLAIM,
   MAX_TOTAL_SIZE_PER_CLAIM_MB,
   detectAttachmentMimeType,
   extensionForMimeType,
+  isImageAttachmentMimeType,
 } from '@mr/shared'
 import { createHash, randomUUID } from 'node:crypto'
 
@@ -32,6 +35,7 @@ import type { DomaceClaimsRepository } from '../domace-claims/domace-claims.repo
 import type { EmotiveClaimsRepository } from '../emotive-claims/emotive-claims.repository.js'
 import {
   generateImageThumbnail,
+  optimizeReportImage,
   readImageDimensions,
   shouldGenerateImageThumbnail,
 } from './attachment-image-processing.js'
@@ -66,6 +70,17 @@ export interface AttachmentUploadInput {
     | typeof AttachmentVisibility.Internal
     | typeof AttachmentVisibility.ClientVisible
   readonly files: readonly AttachmentUploadFileInput[]
+}
+
+export interface ReportImageUploadInput {
+  readonly claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace
+  readonly claimId: string
+  readonly file: AttachmentUploadFileInput
+}
+
+export interface ReportImageUploadResult {
+  readonly id: string
+  readonly url: string
 }
 
 function resolveViewScope(actor: AttachmentsActor): AttachmentsViewScope {
@@ -223,6 +238,7 @@ export class AttachmentsService {
         input.claimKind,
         input.claimId,
         contentSha256,
+        AttachmentPurpose.ClaimAttachment,
       )
       if (existing !== null) {
         items.push(existing)
@@ -269,6 +285,7 @@ export class AttachmentsService {
         thumbnailPath,
         caption: file.caption ?? null,
         visibility: input.visibility,
+        purpose: AttachmentPurpose.ClaimAttachment,
         uploadedBy: actor.id,
       })
 
@@ -292,6 +309,112 @@ export class AttachmentsService {
     }
 
     return { items, skippedDuplicates }
+  }
+
+  async uploadReportImage(
+    input: ReportImageUploadInput,
+    actor: AttachmentsActor,
+    auditContext: AttachmentsAuditContext,
+  ): Promise<ReportImageUploadResult> {
+    if (!actor.permissions.includes('claim_reports.update')) {
+      throw new ForbiddenError()
+    }
+
+    const claim = await this.loadClaimContext(input.claimKind, input.claimId, actor)
+    assertClaimEditable(claim)
+
+    const reportImageCount = await this.repo.countActiveReportImagesForClaim(
+      input.claimKind,
+      input.claimId,
+    )
+    if (reportImageCount >= MAX_REPORT_IMAGES_PER_CLAIM) {
+      throw new ConflictError(`Report image limit reached (${MAX_REPORT_IMAGES_PER_CLAIM})`)
+    }
+
+    const file = input.file
+    if (file.data.byteLength > MAX_FILE_SIZE_BYTES) {
+      throw new PayloadTooLargeError(`File exceeds ${MAX_FILE_SIZE_MB} MB limit`)
+    }
+
+    const detectedMime = detectAttachmentMimeType(new Uint8Array(file.data))
+    if (detectedMime === null || !isImageAttachmentMimeType(detectedMime)) {
+      throw new UnsupportedMediaTypeError('Unsupported image type')
+    }
+
+    const optimized = await optimizeReportImage(file.data, detectedMime)
+    const storedMime = optimized.mimeType
+
+    const contentSha256 = createHash('sha256').update(optimized.data).digest('hex')
+    const existing = await this.repo.findByContentHash(
+      input.claimKind,
+      input.claimId,
+      contentSha256,
+      AttachmentPurpose.ReportImage,
+    )
+    if (existing !== null) {
+      return {
+        id: existing.id,
+        url: `/api/attachments/${existing.id}/download`,
+      }
+    }
+
+    const attachmentId = randomUUID()
+    const extension = extensionForMimeType(storedMime)
+    const storagePath = buildAttachmentStoragePath({
+      claimKind: input.claimKind,
+      claimYear: claim.claimYear,
+      claimId: input.claimId,
+      attachmentId,
+      extension,
+    })
+
+    await this.storage.upload({
+      path: storagePath,
+      data: optimized.data,
+      mimeType: storedMime,
+    })
+
+    const thumbnailPath = shouldGenerateImageThumbnail(storedMime)
+      ? await generateImageThumbnail(this.storage, storagePath, optimized.data)
+      : null
+
+    const created = await this.repo.insert({
+      claimKind: input.claimKind,
+      claimId: input.claimId,
+      fileName: sanitizeUploadFileName(file.fileName),
+      storagePath,
+      mimeType: storedMime,
+      fileSizeBytes: optimized.data.byteLength,
+      contentSha256,
+      width: optimized.width,
+      height: optimized.height,
+      durationSeconds: null,
+      thumbnailPath,
+      caption: file.caption ?? null,
+      visibility: AttachmentVisibility.Internal,
+      purpose: AttachmentPurpose.ReportImage,
+      uploadedBy: actor.id,
+    })
+
+    await this.audit.log({
+      entityType: 'attachment',
+      entityId: created.id,
+      action: AuditAction.Create,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      context: {
+        claimKind: input.claimKind,
+        claimId: input.claimId,
+        fileName: created.fileName,
+        purpose: AttachmentPurpose.ReportImage,
+      },
+    })
+
+    return {
+      id: created.id,
+      url: `/api/attachments/${created.id}/download`,
+    }
   }
 
   async delete(

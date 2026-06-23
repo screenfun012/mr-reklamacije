@@ -11,6 +11,7 @@ import { buildContainer, type Container } from '../core/container.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 import { registerAttachmentsRoutes } from '../modules/attachments/index.js'
+import { registerClaimReportsRoutes } from '../modules/claim-reports/index.js'
 import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
 import { registerCustomersRoutes } from '../modules/customers/index.js'
 import { registerDepartmentsRoutes } from '../modules/departments/index.js'
@@ -123,6 +124,26 @@ export function createAttachmentsTestApp(
   })
 
   registerAttachmentsRoutes(app, container)
+  registerDomaceClaimsRoutes(app, container)
+  registerEmotiveClaimsRoutes(app, container)
+
+  return app
+}
+
+export function createClaimReportsTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerClaimReportsRoutes(app, container)
   registerDomaceClaimsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
 

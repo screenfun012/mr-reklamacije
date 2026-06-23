@@ -6,14 +6,7 @@ import {
   type ClaimDetailTabValue,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  ClaimDetailTabPlaceholder,
-  Heading,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@mr/ui'
+import { Heading, Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -22,6 +15,7 @@ import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
 import { EmotiveClaimFaultsSection } from './emotive-claim-faults-section.js'
 import { EmotiveClaimAttachmentsTab } from './emotive-claim-attachments-tab.js'
+import { EmotiveClaimReportTab } from './emotive-claim-report-tab.js'
 
 export interface EmotiveClaimDetailViewProps {
   id: string
@@ -125,7 +119,7 @@ export function EmotiveClaimDetailView({
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>
-          <ClaimDetailTabPlaceholder />
+          <EmotiveClaimReportTab claimId={claim.id} outcome={claim.outcome} />
         </TabsContent>
       </Tabs>
     </div>

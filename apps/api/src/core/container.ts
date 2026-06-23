@@ -24,6 +24,7 @@ import {
   ExternalPartiesService,
 } from '../modules/external-parties/index.js'
 import { AttachmentsRepository, AttachmentsService } from '../modules/attachments/index.js'
+import { ClaimReportsRepository, ClaimReportsService } from '../modules/claim-reports/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
 import { LocalVolumeStorageService } from '../infrastructure/storage/local-volume-storage.js'
 
@@ -61,6 +62,8 @@ export interface Container {
   mrRegistryService: MrRegistryService
   attachmentsRepository: AttachmentsRepository
   attachmentsService: AttachmentsService
+  claimReportsRepository: ClaimReportsRepository
+  claimReportsService: ClaimReportsService
   storageService: LocalVolumeStorageService
 }
 
@@ -139,6 +142,14 @@ export function buildContainer(
     env.API_BASE_URL,
   )
 
+  const claimReportsRepository = new ClaimReportsRepository(db)
+  const claimReportsService = new ClaimReportsService(
+    claimReportsRepository,
+    emotiveClaimsRepository,
+    domaceClaimsRepository,
+    auditService,
+  )
+
   return {
     env,
     logger,
@@ -169,6 +180,8 @@ export function buildContainer(
     mrRegistryService,
     attachmentsRepository,
     attachmentsService,
+    claimReportsRepository,
+    claimReportsService,
     storageService,
   }
 }

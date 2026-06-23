@@ -85,6 +85,20 @@
       "when": 1782132000000,
       "tag": "0011_attachments_content_sha256",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782200000000,
+      "tag": "0012_claim_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1782400000000,
+      "tag": "0013_attachments_purpose",
+      "breakpoints": true
     }
   ]
 }

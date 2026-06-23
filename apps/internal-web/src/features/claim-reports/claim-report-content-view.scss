@@ -1,0 +1,21 @@
+.claim-report-content-view {
+  min-height: 12rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  padding: 1.5rem 2rem;
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+.claim-report-content-view img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media screen and (max-width: 480px) {
+  .claim-report-content-view {
+    padding: 1rem 1.25rem;
+  }
+}

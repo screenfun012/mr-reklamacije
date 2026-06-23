@@ -1,4 +1,9 @@
-import type { AttachmentVisibility, ClaimKind, ObservationVisibility } from '@mr/shared'
+import type {
+  AttachmentPurpose,
+  AttachmentVisibility,
+  ClaimKind,
+  ObservationVisibility,
+} from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
 import {
   bigint,
@@ -37,6 +42,7 @@ export const attachments = pgTable(
     thumbnailPath: text('thumbnail_path'),
     caption: text('caption'),
     visibility: text('visibility').notNull().default('internal').$type<AttachmentVisibility>(),
+    purpose: text('purpose').notNull().default('claim_attachment').$type<AttachmentPurpose>(),
     uploadedBy: uuid('uploaded_by'),
     uploadedAt: timestamp('uploaded_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -56,6 +62,7 @@ export const attachments = pgTable(
       `,
     ),
     check('attachments_visibility_check', sql`${t.visibility} IN ('internal', 'client_visible')`),
+    check('attachments_purpose_check', sql`${t.purpose} IN ('claim_attachment', 'report_image')`),
     foreignKey({
       name: 'attachments_emotive_claim_id_fkey',
       columns: [t.emotiveClaimId],

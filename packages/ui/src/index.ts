@@ -66,6 +66,18 @@ export {
   DialogTitle,
   DialogDescription,
 } from './primitives/dialog.js'
+export {
+  Sheet,
+  SheetPortal,
+  SheetOverlay,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+} from './primitives/sheet.js'
 export { Toaster } from './primitives/sonner.js'
 export { toast, type ToasterProps } from './primitives/sonner-toast.js'
 export {

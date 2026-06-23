@@ -6,14 +6,7 @@ import {
   type ClaimDetailTabValue,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  ClaimDetailTabPlaceholder,
-  Heading,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@mr/ui'
+import { Heading, Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -23,6 +16,7 @@ import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
 import { DomaceClaimFaultsSection } from './domace-claim-faults-section.js'
 import { DomaceClaimAttachmentsTab } from './domace-claim-attachments-tab.js'
+import { DomaceClaimReportTab } from './domace-claim-report-tab.js'
 
 export interface DomaceClaimDetailViewProps {
   id: string
@@ -130,7 +124,7 @@ export function DomaceClaimDetailView({
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>
-          <ClaimDetailTabPlaceholder />
+          <DomaceClaimReportTab claimId={claim.id} outcome={claim.outcome} />
         </TabsContent>
       </Tabs>
     </div>
