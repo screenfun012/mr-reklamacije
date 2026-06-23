@@ -4,6 +4,7 @@ import '@fontsource/jetbrains-mono/400.css'
 
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
+import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -13,12 +14,6 @@ import { loadServerSession } from '~/lib/auth-guard'
 import { useLocale } from '~/lib/locale'
 import type { AdminRouterContext } from '~/router-context'
 import globalsCss from '~/styles/globals.css?url'
-
-// Inline FOUC-prevention script: applies the resolved theme class to
-// <html> before React hydrates. Runs synchronously in <head> so the
-// first paint already matches the user's saved theme. Storage key
-// must stay in sync with apps/admin-web/src/lib/theme.ts (`mrr:theme`).
-const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('mrr:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`
 
 export const Route = createRootRouteWithContext<AdminRouterContext>()({
   staleTime: SESSION_ROUTE_STALE_MS,
@@ -30,11 +25,6 @@ export const Route = createRootRouteWithContext<AdminRouterContext>()({
       { title: m.app_title_admin() },
     ],
     links: [{ rel: 'stylesheet', href: globalsCss }],
-    // `headScripts` (not `scripts`) is what HeadContent renders into
-    // the document <head>. TanStack's `scripts` array is rendered by
-    // <Scripts /> at the end of <body>, which would defeat FOUC
-    // prevention because the bootstrap script must run before paint.
-    headScripts: [{ children: themeBootstrapScript }],
   }),
   shellComponent: RootDocument,
 })
@@ -44,6 +34,7 @@ function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body suppressHydrationWarning>

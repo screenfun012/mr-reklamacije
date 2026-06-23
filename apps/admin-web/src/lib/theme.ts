@@ -1,9 +1,10 @@
+import { THEME_STORAGE_KEY } from '@mr/shared'
 import { useSyncExternalStore } from 'react'
 
 export type Theme = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
-const STORAGE_KEY = 'mrr:theme'
+const STORAGE_KEY = THEME_STORAGE_KEY
 const VALID_THEMES: ReadonlyArray<Theme> = ['light', 'dark', 'system']
 
 function isTheme(value: unknown): value is Theme {

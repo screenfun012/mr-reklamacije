@@ -4,6 +4,7 @@ import '@fontsource/jetbrains-mono/400.css'
 
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
+import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -13,11 +14,6 @@ import { loadServerSession } from '~/lib/auth-guard'
 import { useLocale } from '~/lib/locale'
 import type { PortalRouterContext } from '~/router-context'
 import globalsCss from '~/styles/globals.css?url'
-
-// Inline FOUC-prevention script: applies the resolved theme class to
-// <html> before React hydrates. Storage key must stay in sync with
-// apps/portal-web/src/lib/theme.ts (`mrr:theme`).
-const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('mrr:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`
 
 export const Route = createRootRouteWithContext<PortalRouterContext>()({
   staleTime: SESSION_ROUTE_STALE_MS,
@@ -29,7 +25,6 @@ export const Route = createRootRouteWithContext<PortalRouterContext>()({
       { title: m.app_title_portal() },
     ],
     links: [{ rel: 'stylesheet', href: globalsCss }],
-    headScripts: [{ children: themeBootstrapScript }],
   }),
   shellComponent: RootDocument,
 })
@@ -39,6 +34,7 @@ function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body suppressHydrationWarning>

@@ -9,7 +9,7 @@ describe('Skeleton', () => {
     const skeleton = screen.getByTestId('skeleton')
     expect(skeleton).toBeInTheDocument()
     expect(skeleton.className).toContain('animate-pulse')
-    expect(skeleton.className).toContain('bg-primary/10')
+    expect(skeleton.className).toContain('bg-muted')
   })
 
   it('applies custom className', () => {
