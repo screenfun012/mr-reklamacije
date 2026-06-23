@@ -70,8 +70,14 @@
 }
 
 .claim-report-editor-wrapper .tiptap.ProseMirror [data-resize-container]:hover [data-resize-handle],
-.claim-report-editor-wrapper .tiptap.ProseMirror [data-resize-container].is-resizing [data-resize-handle],
-.claim-report-editor-wrapper .tiptap.ProseMirror img.ProseMirror-selectednode ~ [data-resize-handle] {
+.claim-report-editor-wrapper
+  .tiptap.ProseMirror
+  [data-resize-container].is-resizing
+  [data-resize-handle],
+.claim-report-editor-wrapper
+  .tiptap.ProseMirror
+  img.ProseMirror-selectednode
+  ~ [data-resize-handle] {
   opacity: 1;
 }
 

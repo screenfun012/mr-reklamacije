@@ -15,3 +15,9 @@ packages/db/migrations/meta/**
 **/.tanstack/**
 **/.nitro/**
 **/.output/**
+
+# Tiptap CLI template (generated — do not format; aligned with internal-web eslint/tsconfig)
+apps/internal-web/src/components/tiptap/**
+apps/internal-web/src/components/styles/_variables.scss
+apps/internal-web/src/hooks/**
+apps/internal-web/src/lib/tiptap-utils.ts
