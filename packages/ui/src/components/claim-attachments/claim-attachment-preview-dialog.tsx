@@ -33,6 +33,15 @@ export interface ClaimAttachmentPreviewDialogProps {
 const PREVIEW_DIALOG_CLASS =
   'flex h-[85vh] max-h-[85vh] w-[min(90vw,1400px)] flex-col gap-0 overflow-hidden p-0'
 
+const PREVIEW_BODY_CLASS =
+  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/20 px-4 py-4 sm:px-6'
+
+const PREVIEW_FRAME_CLASS = 'min-h-0 w-full flex-1 rounded-md border border-border bg-background'
+
+function buildPdfPreviewUrl(inlineUrl: string): string {
+  return `${inlineUrl}#view=FitH`
+}
+
 export function ClaimAttachmentPreviewDialog({
   open,
   onOpenChange,
@@ -60,8 +69,6 @@ export function ClaimAttachmentPreviewDialog({
     previewKind === AttachmentPreviewKind.Image &&
     imageIndex >= 0 &&
     imageIndex < imageAttachments.length - 1
-
-  const isOfficePreview = previewKind === AttachmentPreviewKind.Office
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,16 +104,9 @@ export function ClaimAttachmentPreviewDialog({
           </div>
         </DialogHeader>
 
-        <div
-          className={cn(
-            'relative min-h-0 min-w-0 flex-1 bg-muted/20',
-            isOfficePreview
-              ? 'flex flex-col overflow-hidden px-4 py-4 sm:px-6'
-              : 'overflow-auto px-4 py-4 sm:px-6',
-          )}
-        >
+        <div className={PREVIEW_BODY_CLASS}>
           {previewKind === AttachmentPreviewKind.Image ? (
-            <div className="relative flex h-full min-h-[12rem] items-center justify-center">
+            <div className="relative flex min-h-0 flex-1 items-center justify-center">
               <img
                 src={inlineUrl}
                 alt={attachment.fileName}
@@ -151,22 +151,26 @@ export function ClaimAttachmentPreviewDialog({
 
           {previewKind === AttachmentPreviewKind.Pdf ? (
             <iframe
-              src={inlineUrl}
+              src={buildPdfPreviewUrl(inlineUrl)}
               title={attachment.fileName}
-              className="h-full min-h-[20rem] w-full rounded-md border border-border bg-background"
+              className={cn(PREVIEW_FRAME_CLASS, 'block')}
             />
           ) : null}
 
           {previewKind === AttachmentPreviewKind.Video ? (
-            <div className="flex h-full min-h-[12rem] items-center justify-center">
-              <video src={inlineUrl} controls className="max-h-full max-w-full rounded-md bg-black">
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <video
+                src={inlineUrl}
+                controls
+                className="max-h-full w-full max-w-full object-contain rounded-md bg-black"
+              >
                 <track kind="captions" />
               </video>
             </div>
           ) : null}
 
           {previewKind === AttachmentPreviewKind.Office ? (
-            <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {officePreview ?? (
                 <div className="flex max-w-md flex-col items-center gap-4 self-center rounded-lg border border-border bg-background p-8 text-center">
                   <AttachmentFileIcon
@@ -182,7 +186,7 @@ export function ClaimAttachmentPreviewDialog({
           ) : null}
 
           {previewKind === AttachmentPreviewKind.Unknown ? (
-            <div className="flex h-full min-h-[12rem] items-center justify-center">
+            <div className="flex min-h-0 flex-1 items-center justify-center">
               <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-border bg-background p-8 text-center">
                 <AttachmentFileIcon
                   mimeType={attachment.mimeType}
