@@ -1,3 +1,23 @@
+export {
+  ClaimAttachmentsDropzone,
+  type ClaimAttachmentsDropzoneProps,
+} from './components/claim-attachments/claim-attachments-dropzone.js'
+export {
+  ClaimAttachmentsGrid,
+  type ClaimAttachmentsGridProps,
+} from './components/claim-attachments/claim-attachments-grid.js'
+export {
+  ClaimAttachmentPreviewDialog,
+  type ClaimAttachmentPreviewDialogProps,
+} from './components/claim-attachments/claim-attachment-preview-dialog.js'
+export {
+  ClaimAttachmentDeleteDialog,
+  type ClaimAttachmentDeleteDialogProps,
+} from './components/claim-attachments/claim-attachment-delete-dialog.js'
+export {
+  AttachmentFileIcon,
+  type AttachmentFileIconProps,
+} from './components/claim-attachments/attachment-file-icon.js'
 export { cn } from './lib/cn.js'
 export {
   Heading,

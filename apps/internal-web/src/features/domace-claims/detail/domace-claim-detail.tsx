@@ -22,6 +22,7 @@ import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
 import { DomaceClaimFaultsSection } from './domace-claim-faults-section.js'
+import { DomaceClaimAttachmentsTab } from './domace-claim-attachments-tab.js'
 
 export interface DomaceClaimDetailViewProps {
   id: string
@@ -125,7 +126,7 @@ export function DomaceClaimDetailView({
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Prilozi}>
-          <ClaimDetailTabPlaceholder />
+          <DomaceClaimAttachmentsTab claimId={claim.id} outcome={claim.outcome} />
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>

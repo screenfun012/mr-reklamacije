@@ -11,6 +11,12 @@ export {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   type AllowedAttachmentMimeType,
 } from './utils/detect-attachment-mime.js'
+export {
+  AttachmentPreviewKind,
+  formatAttachmentFileSize,
+  getAttachmentPreviewKind,
+  type AttachmentPreviewKind as AttachmentPreviewKindValue,
+} from './utils/attachment-preview-kind.js'
 export { formatListDateTime } from './utils/format-list-date-time.js'
 export { formatEuroAmount } from './utils/format-euro-amount.js'
 export { normalizeMrKey } from './utils/normalize-mr-key.js'

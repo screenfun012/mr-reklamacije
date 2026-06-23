@@ -1,3 +1,9 @@
+export { attachmentKeys } from './attachment-keys.js'
+export {
+  attachmentsListOptions,
+  buildAttachmentDownloadUrl,
+  fetchAttachmentSignedUrl,
+} from './attachments.js'
 export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'

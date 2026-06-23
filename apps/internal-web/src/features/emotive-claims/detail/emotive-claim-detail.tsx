@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
 import { EmotiveClaimFaultsSection } from './emotive-claim-faults-section.js'
+import { EmotiveClaimAttachmentsTab } from './emotive-claim-attachments-tab.js'
 
 export interface EmotiveClaimDetailViewProps {
   id: string
@@ -120,7 +121,7 @@ export function EmotiveClaimDetailView({
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Prilozi}>
-          <ClaimDetailTabPlaceholder />
+          <EmotiveClaimAttachmentsTab claimId={claim.id} outcome={claim.outcome} />
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>
