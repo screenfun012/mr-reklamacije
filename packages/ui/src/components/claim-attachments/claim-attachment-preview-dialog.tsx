@@ -30,17 +30,10 @@ export interface ClaimAttachmentPreviewDialogProps {
   officePreview?: ReactNode
 }
 
-const PREVIEW_DIALOG_CLASS =
-  'flex h-[85vh] max-h-[85vh] w-[min(90vw,1400px)] flex-col gap-0 overflow-hidden p-0'
+const PREVIEW_DIALOG_CLASS = 'h-[85vh] max-h-[85vh] w-[min(90vw,1400px)] max-w-[min(90vw,1400px)]'
 
 const PREVIEW_BODY_CLASS =
   'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/20 px-4 py-4 sm:px-6'
-
-const PREVIEW_FRAME_CLASS = 'min-h-0 w-full flex-1 rounded-md border border-border bg-background'
-
-function buildPdfPreviewUrl(inlineUrl: string): string {
-  return `${inlineUrl}#view=FitH`
-}
 
 export function ClaimAttachmentPreviewDialog({
   open,
@@ -53,7 +46,7 @@ export function ClaimAttachmentPreviewDialog({
   if (attachment === null) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent hideClose className={PREVIEW_DIALOG_CLASS} />
+        <DialogContent wide hideClose className={PREVIEW_DIALOG_CLASS} />
       </Dialog>
     )
   }
@@ -72,7 +65,7 @@ export function ClaimAttachmentPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideClose className={PREVIEW_DIALOG_CLASS}>
+      <DialogContent wide hideClose className={PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="shrink-0 space-y-0 border-b border-border px-4 py-3 text-left sm:px-6 sm:py-4">
           <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
             <div className="min-w-0 overflow-hidden">
@@ -104,7 +97,12 @@ export function ClaimAttachmentPreviewDialog({
           </div>
         </DialogHeader>
 
-        <div className={PREVIEW_BODY_CLASS}>
+        <div
+          className={cn(
+            PREVIEW_BODY_CLASS,
+            previewKind === AttachmentPreviewKind.Pdf && 'px-0 py-0 sm:px-0 sm:py-0',
+          )}
+        >
           {previewKind === AttachmentPreviewKind.Image ? (
             <div className="relative flex min-h-0 flex-1 items-center justify-center">
               <img
@@ -150,11 +148,13 @@ export function ClaimAttachmentPreviewDialog({
           ) : null}
 
           {previewKind === AttachmentPreviewKind.Pdf ? (
-            <iframe
-              src={buildPdfPreviewUrl(inlineUrl)}
-              title={attachment.fileName}
-              className={cn(PREVIEW_FRAME_CLASS, 'block')}
-            />
+            <div className="relative min-h-0 w-full flex-1">
+              <iframe
+                src={inlineUrl}
+                title={attachment.fileName}
+                className="absolute inset-0 size-full border-0 bg-background"
+              />
+            </div>
           ) : null}
 
           {previewKind === AttachmentPreviewKind.Video ? (
