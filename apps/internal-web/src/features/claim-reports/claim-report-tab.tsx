@@ -6,12 +6,14 @@ import { type ReactNode, useState } from 'react'
 
 import { ClaimReportContentView } from './claim-report-content-view.js'
 import { ClaimReportSheet } from './claim-report-sheet.js'
+import { useClaimReportExport } from './use-claim-report-export.js'
 
 export interface ClaimReportTabProps {
   claimKind: ClaimKind
   claimId: string
   canView: boolean
   canEdit: boolean
+  canExport: boolean
   claimLocked: boolean
 }
 
@@ -32,9 +34,14 @@ export function ClaimReportTab({
   claimId,
   canView,
   canEdit,
+  canExport,
   claimLocked,
 }: ClaimReportTabProps): React.ReactElement {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const { exportPdf, exportDocx, isExportingPdf, isExportingDocx } = useClaimReportExport(
+    claimKind,
+    claimId,
+  )
   const { data, isLoading, isError } = useQuery({
     ...claimReportOptions(claimKind, claimId),
     enabled: canView,
@@ -50,6 +57,28 @@ export function ClaimReportTab({
 
   const isEmpty = data === undefined || isClaimReportEmpty(data.contentHtml)
   const showEditButton = canEdit && !claimLocked
+  const showExportButtons = canExport && !isEmpty && !isLoading && !isError && data !== undefined
+
+  const exportButtons = showExportButtons ? (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={isExportingPdf}
+        onClick={() => void exportPdf()}
+      >
+        {m.claim_report_download_pdf()}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={isExportingDocx}
+        onClick={() => void exportDocx()}
+      >
+        {m.claim_report_download_word()}
+      </Button>
+    </>
+  ) : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,11 +108,14 @@ export function ClaimReportTab({
         </ClaimReportTabHeader>
       ) : (
         <div className="flex min-h-0 flex-col gap-3">
-          {showEditButton ? (
+          {showEditButton || showExportButtons ? (
             <ClaimReportTabHeader>
-              <Button type="button" onClick={() => setSheetOpen(true)}>
-                {m.claim_report_edit()}
-              </Button>
+              {exportButtons}
+              {showEditButton ? (
+                <Button type="button" onClick={() => setSheetOpen(true)}>
+                  {m.claim_report_edit()}
+                </Button>
+              ) : null}
             </ClaimReportTabHeader>
           ) : null}
           <ClaimReportContentView contentHtml={data.contentHtml} />

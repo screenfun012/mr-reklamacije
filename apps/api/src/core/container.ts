@@ -147,7 +147,10 @@ export function buildContainer(
     claimReportsRepository,
     emotiveClaimsRepository,
     domaceClaimsRepository,
+    attachmentsRepository,
+    storageService,
     auditService,
+    env.CLAIM_REPORT_PDF_ENABLED,
   )
 
   return {

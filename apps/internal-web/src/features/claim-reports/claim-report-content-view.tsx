@@ -20,6 +20,7 @@ export function ClaimReportContentView({
 
   return (
     <article
+      id="claim-report-print-root"
       className="claim-report-content-view tiptap ProseMirror"
       data-testid="claim-report-content-view"
       dangerouslySetInnerHTML={{ __html: safeHtml }}

@@ -19,6 +19,7 @@ export function DomaceClaimReportTab({
 
   const canView = permissions.includes('claim_reports.view')
   const canEdit = outcome === ClaimOutcome.Pending && permissions.includes('claim_reports.update')
+  const canExport = permissions.includes('claim_reports.export')
 
   return (
     <ClaimReportTab
@@ -26,6 +27,7 @@ export function DomaceClaimReportTab({
       claimId={claimId}
       canView={canView}
       canEdit={canEdit}
+      canExport={canExport}
       claimLocked={outcome !== ClaimOutcome.Pending}
     />
   )

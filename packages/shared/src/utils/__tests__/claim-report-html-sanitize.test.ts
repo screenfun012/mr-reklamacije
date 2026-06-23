@@ -4,6 +4,7 @@ import {
   CLAIM_REPORT_ATTACHMENT_SRC_PATTERN,
   isAllowedClaimReportAttachmentSrc,
   isClaimReportEmpty,
+  parseClaimReportAttachmentId,
 } from '../claim-report-html-sanitize.js'
 
 describe('isAllowedClaimReportAttachmentSrc', () => {
@@ -21,6 +22,19 @@ describe('isAllowedClaimReportAttachmentSrc', () => {
     expect(isAllowedClaimReportAttachmentSrc('javascript:alert(1)')).toBe(false)
     expect(isAllowedClaimReportAttachmentSrc('data:image/png;base64,abc')).toBe(false)
     expect(isAllowedClaimReportAttachmentSrc('https://evil.example/image.png')).toBe(false)
+  })
+})
+
+describe('parseClaimReportAttachmentId', () => {
+  it('extracts attachment id from allowed src', () => {
+    const attachmentId = 'a1b2c3d4-e5f6-4789-a012-3456789abcde'
+    expect(parseClaimReportAttachmentId(`/api/attachments/${attachmentId}/download`)).toBe(
+      attachmentId,
+    )
+  })
+
+  it('returns null for invalid src', () => {
+    expect(parseClaimReportAttachmentId('https://evil.example/image.png')).toBeNull()
   })
 })
 

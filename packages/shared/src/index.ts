@@ -26,9 +26,11 @@ export {
   CLAIM_REPORT_ALLOWED_ATTRIBUTES,
   CLAIM_REPORT_ALLOWED_STYLES,
   CLAIM_REPORT_ALLOWED_TAGS,
+  CLAIM_REPORT_ATTACHMENT_ID_PATTERN,
   CLAIM_REPORT_ATTACHMENT_SRC_PATTERN,
   isAllowedClaimReportAttachmentSrc,
   isClaimReportEmpty,
+  parseClaimReportAttachmentId,
 } from './utils/claim-report-html-sanitize.js'
 
 export * from './enums.js'

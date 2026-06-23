@@ -21,10 +21,17 @@ function toActor(user: MRSessionUser): ClaimReportsActor {
   return { id: user.id, permissions: user.permissions }
 }
 
+function buildAttachmentContentDisposition(fileName: string): string {
+  const encoded = encodeURIComponent(fileName)
+  return `attachment; filename="${fileName.replace(/"/g, '')}"; filename*=UTF-8''${encoded}`
+}
+
 export function createClaimReportsController(container: Container): {
   get: (c: Context) => Promise<Response>
   upsert: (c: Context) => Promise<Response>
   uploadImage: (c: Context) => Promise<Response>
+  exportPdf: (c: Context) => Promise<Response>
+  exportDocx: (c: Context) => Promise<Response>
 } {
   return {
     get: async (c: Context) => {
@@ -79,6 +86,44 @@ export function createClaimReportsController(container: Container): {
       )
 
       return c.json(result, 201)
+    },
+
+    exportPdf: async (c: Context) => {
+      const user = requireUser(c)
+      const query = ClaimReportQuerySchema.parse(c.req.query())
+      const result = await container.claimReportsService.exportPdf(
+        query,
+        toActor(user),
+        getActorContext(c, user),
+      )
+
+      return new Response(new Uint8Array(result.buffer), {
+        status: 200,
+        headers: {
+          'Content-Type': result.mimeType,
+          'Content-Disposition': buildAttachmentContentDisposition(result.fileName),
+          'Cache-Control': 'no-store',
+        },
+      })
+    },
+
+    exportDocx: async (c: Context) => {
+      const user = requireUser(c)
+      const query = ClaimReportQuerySchema.parse(c.req.query())
+      const result = await container.claimReportsService.exportDocx(
+        query,
+        toActor(user),
+        getActorContext(c, user),
+      )
+
+      return new Response(new Uint8Array(result.buffer), {
+        status: 200,
+        headers: {
+          'Content-Type': result.mimeType,
+          'Content-Disposition': buildAttachmentContentDisposition(result.fileName),
+          'Cache-Control': 'no-store',
+        },
+      })
     },
   }
 }

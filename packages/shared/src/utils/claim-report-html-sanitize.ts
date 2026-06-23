@@ -1,8 +1,10 @@
 import { DEFAULT_CLAIM_REPORT_CONTENT_HTML } from '../constants/claim-report.js'
 
 /** Relative attachment download URLs embedded in report HTML. */
-export const CLAIM_REPORT_ATTACHMENT_SRC_PATTERN =
-  /^\/api\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/download$/i
+export const CLAIM_REPORT_ATTACHMENT_ID_PATTERN =
+  /^\/api\/attachments\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/download$/i
+
+export const CLAIM_REPORT_ATTACHMENT_SRC_PATTERN = CLAIM_REPORT_ATTACHMENT_ID_PATTERN
 
 export const CLAIM_REPORT_ALLOWED_TAGS = [
   'p',
@@ -49,6 +51,11 @@ export const CLAIM_REPORT_ALLOWED_STYLES: Readonly<Record<string, readonly RegEx
     /^text-align:\s*(left|center|right|justify)$/,
     /^background-color:\s*(#[0-9a-fA-F]{3,8}|rgb\([^)]+\)|rgba\([^)]+\))$/,
   ],
+}
+
+export function parseClaimReportAttachmentId(src: string): string | null {
+  const match = src.trim().match(CLAIM_REPORT_ATTACHMENT_ID_PATTERN)
+  return match?.[1] ?? null
 }
 
 export function isAllowedClaimReportAttachmentSrc(src: string | undefined): boolean {

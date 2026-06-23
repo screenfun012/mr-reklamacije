@@ -83,3 +83,15 @@ const isDevelopment = process.env['NODE_ENV'] === 'development'
 export const loginRateLimiter = createRateLimiter(
   isDevelopment ? { windowMs: 60_000, max: 100 } : { windowMs: 15 * 60_000, max: 5 },
 )
+
+export const claimReportExportRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 5,
+  keyOf: (c) => {
+    const user = c.get('user')
+    if (user === null) {
+      return 'claim-report-export:anonymous'
+    }
+    return `claim-report-export:${user.id}`
+  },
+})

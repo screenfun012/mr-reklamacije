@@ -69,3 +69,10 @@ export class InternalError extends AppError {
     Object.setPrototypeOf(this, InternalError.prototype)
   }
 }
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Servis trenutno nije dostupan') {
+    super(ERROR_CODE.ServiceUnavailable, 503, message)
+    Object.setPrototypeOf(this, ServiceUnavailableError.prototype)
+  }
+}

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @mr/i18n compile",
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",

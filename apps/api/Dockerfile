@@ -18,6 +18,9 @@ COPY apps ./apps
 
 RUN pnpm install --frozen-lockfile
 
+# Chromium for claim report PDF export (Playwright). Disabled at runtime via CLAIM_REPORT_PDF_ENABLED=false.
+RUN pnpm --filter api exec playwright install chromium --with-deps
+
 ENV NODE_ENV=development
 
 EXPOSE 3000

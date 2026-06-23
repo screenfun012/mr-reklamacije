@@ -5,6 +5,7 @@ export const ERROR_CODE = {
   ValidationError: 'VALIDATION_ERROR',
   Conflict: 'CONFLICT',
   RateLimited: 'RATE_LIMITED',
+  ServiceUnavailable: 'SERVICE_UNAVAILABLE',
   InternalError: 'INTERNAL_ERROR',
   BadRequest: 'BAD_REQUEST',
 } as const

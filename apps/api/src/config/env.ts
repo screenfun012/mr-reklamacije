@@ -39,6 +39,12 @@ const EnvSchema = z.object({
 
   // File uploads (Railway volume in production; local path in dev)
   UPLOAD_DIR: z.string().min(1).default('./data/uploads'),
+
+  // Claim report PDF export (Playwright). When false, API returns 503 and UI falls back to print.
+  CLAIM_REPORT_PDF_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
 })
 
 export type Env = z.infer<typeof EnvSchema>

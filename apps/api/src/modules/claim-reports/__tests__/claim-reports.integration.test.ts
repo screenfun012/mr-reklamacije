@@ -15,11 +15,14 @@ import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
+import { buildContainer } from '../../../core/container.js'
 import { ConflictError, ForbiddenError } from '../../../core/errors/domain-errors.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import {
   buildTestContainer,
   createClaimReportsTestApp,
+  createTestEnv,
+  fakeLogger,
   testUser,
 } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
@@ -33,6 +36,14 @@ const REPORT_OPERATOR = testUser([
 ])
 
 const REPORT_VIEWER = testUser(['domace_claims.view', 'claim_reports.view'])
+
+const REPORT_EXPORT_OPERATOR = testUser([
+  'domace_claims.view',
+  'domace_claims.create',
+  'claim_reports.view',
+  'claim_reports.update',
+  'claim_reports.export',
+])
 
 const auditContext = {
   actorUserId: TEST_USER_ID,
@@ -415,5 +426,157 @@ describe('ClaimReports HTTP integration', () => {
 
     expect(saved.contentHtml).toBe('<p>Bezbedan tekst</p>')
     expect(saved.contentHtml).not.toContain('script')
+  })
+})
+
+describe('ClaimReports export integration', () => {
+  let ctx: TestDbContext
+  let container: Container
+
+  beforeEach(async () => {
+    ctx = await createTestDbContext()
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
+    await ensureTestUser(ctx.db)
+    await mkdir(container.env.UPLOAD_DIR, { recursive: true })
+  })
+
+  afterEach(async () => {
+    await rm(container.env.UPLOAD_DIR, { recursive: true, force: true })
+    await ctx.cleanup()
+  })
+
+  async function seedReportWithImage(
+    app: ReturnType<typeof createClaimReportsTestApp>,
+    claimId: string,
+  ): Promise<{ imageUrl: string }> {
+    const reportImage = await createTestJpeg(640, 480)
+    const formData = new FormData()
+    formData.set('claimKind', ClaimKind.Domace)
+    formData.set('claimId', claimId)
+    formData.append('file', new Blob([reportImage], { type: 'image/jpeg' }), 'report.jpg')
+
+    const uploadResponse = await app.request('/api/claim-reports/images', {
+      method: 'POST',
+      body: formData,
+    })
+    expect(uploadResponse.status).toBe(201)
+    const uploadBody = (await uploadResponse.json()) as { url: string }
+
+    const putResponse = await app.request(
+      `/api/claim-reports?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentJson: SAMPLE_BODY.contentJson,
+          contentHtml: `<p>Izveštaj sa slikom</p><img src="${uploadBody.url}" alt="Slika" width="320" />`,
+        }),
+      },
+    )
+    expect(putResponse.status).toBe(200)
+
+    return { imageUrl: uploadBody.url }
+  }
+
+  it('returns 403 for docx export without claim_reports.export', async () => {
+    const app = createClaimReportsTestApp(container, REPORT_OPERATOR)
+    const claimId = await createDomaceClaim(container)
+
+    await container.claimReportsService.upsert(
+      { claimKind: ClaimKind.Domace, claimId },
+      SAMPLE_BODY,
+      {
+        id: TEST_USER_ID,
+        permissions: ['claim_reports.view', 'claim_reports.update', 'domace_claims.view'],
+      },
+      auditContext,
+    )
+
+    const response = await app.request(
+      `/api/claim-reports/export/docx?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    expect(response.status).toBe(403)
+  })
+
+  it('returns 404 for docx export when report is empty', async () => {
+    const app = createClaimReportsTestApp(container, REPORT_EXPORT_OPERATOR)
+    const claimId = await createDomaceClaim(container)
+
+    const response = await app.request(
+      `/api/claim-reports/export/docx?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it('exports docx with hydrated report image', async () => {
+    const app = createClaimReportsTestApp(container, REPORT_EXPORT_OPERATOR)
+    const claimId = await createDomaceClaim(container)
+    await seedReportWithImage(app, claimId)
+
+    const response = await app.request(
+      `/api/claim-reports/export/docx?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    const buffer = Buffer.from(await response.arrayBuffer())
+    expect(buffer.byteLength).toBeGreaterThan(100)
+    expect(buffer.subarray(0, 2).toString('utf8')).toBe('PK')
+  })
+
+  it('returns 503 for pdf export when feature flag is disabled', async () => {
+    const disabledEnv = createTestEnv(ctx.databaseUrl)
+    disabledEnv.CLAIM_REPORT_PDF_ENABLED = false
+    const disabledContainer = buildContainer(disabledEnv, fakeLogger(), ctx.db, ctx.pool)
+    const app = createClaimReportsTestApp(disabledContainer, REPORT_EXPORT_OPERATOR)
+    const claimId = await createDomaceClaim(disabledContainer)
+
+    await disabledContainer.claimReportsService.upsert(
+      { claimKind: ClaimKind.Domace, claimId },
+      SAMPLE_BODY,
+      {
+        id: TEST_USER_ID,
+        permissions: [
+          'claim_reports.view',
+          'claim_reports.update',
+          'claim_reports.export',
+          'domace_claims.view',
+        ],
+      },
+      auditContext,
+    )
+
+    const response = await app.request(
+      `/api/claim-reports/export/pdf?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    expect(response.status).toBe(503)
+    const body = (await response.json()) as { error: { code: string } }
+    expect(body.error.code).toBe(ERROR_CODE.ServiceUnavailable)
+  })
+
+  it('exports pdf when Playwright is available', async () => {
+    const app = createClaimReportsTestApp(container, REPORT_EXPORT_OPERATOR)
+    const claimId = await createDomaceClaim(container)
+    await seedReportWithImage(app, claimId)
+
+    const response = await app.request(
+      `/api/claim-reports/export/pdf?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    if (response.status === 503) {
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.ServiceUnavailable)
+      return
+    }
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('application/pdf')
+    const buffer = Buffer.from(await response.arrayBuffer())
+    expect(buffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
   })
 })

@@ -62,6 +62,25 @@ folder. Nixpacks uses pnpm workspaces correctly when invoked from repo root.
 - Attached only to `api` service
 - Not attached to web services (they don't need it)
 
+### Claim report PDF export (Playwright)
+
+Server-side PDF uses Playwright + Chromium on the **`api`** service only.
+
+| Requirement | Value |
+|---|---|
+| Env flag | `CLAIM_REPORT_PDF_ENABLED=true` (default). Set `false` to return **503** and let internal-web fall back to browser print. |
+| RAM | **≥ 1 GB** for the `api` service when PDF export is enabled |
+| Docker | After `pnpm install`, run `pnpm --filter api exec playwright install chromium --with-deps` (see `apps/api/Dockerfile`) |
+| Rate limit | 5 exports / minute / user |
+
+If staging/production PDF generation fails (missing Chromium, OOM, Railway limits):
+
+1. Set `CLAIM_REPORT_PDF_ENABLED=false` — app keeps working; users get print fallback on read-only report view.
+2. Or try a lighter bundle (`@sparticuz/chromium`) in a follow-up.
+3. Do **not** block deploy — PDF is optional; Word export and the rest of the app must keep running.
+
+Word export uses `@turbodocx/html-to-docx` with **embedded base64 images** (hydrated from storage on the server, never fetched via attachment URLs).
+
 ### Auto-deploy
 
 - `production` env watches `main` branch
