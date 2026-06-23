@@ -44,7 +44,7 @@ export function ClaimAttachmentPreviewDialog({
   if (attachment === null) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent centered hideClose className={PREVIEW_DIALOG_CLASS} />
+        <DialogContent hideClose className={PREVIEW_DIALOG_CLASS} />
       </Dialog>
     )
   }
@@ -65,7 +65,7 @@ export function ClaimAttachmentPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent centered hideClose className={PREVIEW_DIALOG_CLASS}>
+      <DialogContent hideClose className={PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="shrink-0 space-y-0 border-b border-border px-4 py-3 text-left sm:px-6 sm:py-4">
           <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
             <div className="min-w-0 overflow-hidden">

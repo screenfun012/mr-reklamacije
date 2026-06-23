@@ -26,6 +26,7 @@ describe('Dialog', () => {
       </Dialog>,
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveClass('origin-center')
     expect(screen.getByText('Visible Title')).toBeInTheDocument()
     expect(screen.getByText('Description')).toBeInTheDocument()
   })
