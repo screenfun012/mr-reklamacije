@@ -23,7 +23,9 @@ import {
   ExternalPartiesRepository,
   ExternalPartiesService,
 } from '../modules/external-parties/index.js'
+import { AttachmentsRepository, AttachmentsService } from '../modules/attachments/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
+import { LocalVolumeStorageService } from '../infrastructure/storage/local-volume-storage.js'
 
 /**
  * Application DI container. All stateful services are constructed here once
@@ -57,6 +59,9 @@ export interface Container {
   claimsRepository: ClaimsRepository
   claimsService: ClaimsService
   mrRegistryService: MrRegistryService
+  attachmentsRepository: AttachmentsRepository
+  attachmentsService: AttachmentsService
+  storageService: LocalVolumeStorageService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
@@ -122,6 +127,18 @@ export function buildContainer(
   const claimsRepository = new ClaimsRepository(db)
   const claimsService = new ClaimsService(claimsRepository)
 
+  const storageService = new LocalVolumeStorageService(env.UPLOAD_DIR)
+  const attachmentsRepository = new AttachmentsRepository(db)
+  const attachmentsService = new AttachmentsService(
+    attachmentsRepository,
+    storageService,
+    emotiveClaimsRepository,
+    domaceClaimsRepository,
+    auditService,
+    env.BETTER_AUTH_SECRET,
+    env.API_BASE_URL,
+  )
+
   return {
     env,
     logger,
@@ -150,5 +167,8 @@ export function buildContainer(
     claimsRepository,
     claimsService,
     mrRegistryService,
+    attachmentsRepository,
+    attachmentsService,
+    storageService,
   }
 }

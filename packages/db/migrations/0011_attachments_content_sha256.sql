@@ -1,0 +1,3 @@
+ALTER TABLE "attachments" ADD COLUMN "content_sha256" text;--> statement-breakpoint
+CREATE INDEX "idx_attachments_emotive_claim_content_sha256" ON "attachments" USING btree ("emotive_claim_id","content_sha256") WHERE "attachments"."emotive_claim_id" IS NOT NULL AND "attachments"."deleted_at" IS NULL AND "attachments"."content_sha256" IS NOT NULL;--> statement-breakpoint
+CREATE INDEX "idx_attachments_domace_claim_content_sha256" ON "attachments" USING btree ("domace_claim_id","content_sha256") WHERE "attachments"."domace_claim_id" IS NOT NULL AND "attachments"."deleted_at" IS NULL AND "attachments"."content_sha256" IS NOT NULL;

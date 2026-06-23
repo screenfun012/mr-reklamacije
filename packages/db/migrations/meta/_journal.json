@@ -78,6 +78,13 @@
       "when": 1782075023569,
       "tag": "0010_mr_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782132000000,
+      "tag": "0011_attachments_content_sha256",
+      "breakpoints": true
     }
   ]
 }

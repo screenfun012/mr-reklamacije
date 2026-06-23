@@ -36,6 +36,9 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   OPENAI_MAX_TOKENS_PER_REQUEST: z.coerce.number().int().positive().default(2000),
+
+  // File uploads (Railway volume in production; local path in dev)
+  UPLOAD_DIR: z.string().min(1).default('./data/uploads'),
 })
 
 export type Env = z.infer<typeof EnvSchema>

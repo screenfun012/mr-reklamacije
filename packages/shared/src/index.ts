@@ -3,6 +3,14 @@ export { fetchJson } from './api/fetch-json.js'
 export { resolveFetchUrl } from './api/resolve-fetch-url.js'
 export { formatListDate } from './utils/format-list-date.js'
 export { formatClaimDetailMetaLine } from './utils/format-claim-detail-meta-line.js'
+export {
+  detectAttachmentMimeType,
+  extensionForMimeType,
+  isAllowedAttachmentMimeType,
+  isImageAttachmentMimeType,
+  ALLOWED_ATTACHMENT_MIME_TYPES,
+  type AllowedAttachmentMimeType,
+} from './utils/detect-attachment-mime.js'
 export { formatListDateTime } from './utils/format-list-date-time.js'
 export { formatEuroAmount } from './utils/format-euro-amount.js'
 export { normalizeMrKey } from './utils/normalize-mr-key.js'
@@ -24,5 +32,6 @@ export * from './schemas/claim-fault.schema.js'
 export * from './schemas/emotive-claim.schema.js'
 export * from './schemas/domace-claim.schema.js'
 export * from './schemas/claim-list.schema.js'
+export * from './schemas/attachment.schema.js'
 export * from './constants/claim-events.js'
 export * from './constants/app-events.js'

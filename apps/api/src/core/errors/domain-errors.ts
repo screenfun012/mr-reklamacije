@@ -49,6 +49,20 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+export class PayloadTooLargeError extends AppError {
+  constructor(message: string) {
+    super(ERROR_CODE.BadRequest, 413, message)
+    Object.setPrototypeOf(this, PayloadTooLargeError.prototype)
+  }
+}
+
+export class UnsupportedMediaTypeError extends AppError {
+  constructor(message: string) {
+    super(ERROR_CODE.BadRequest, 415, message)
+    Object.setPrototypeOf(this, UnsupportedMediaTypeError.prototype)
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Something went wrong') {
     super(ERROR_CODE.InternalError, 500, message)

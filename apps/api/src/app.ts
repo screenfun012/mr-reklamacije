@@ -18,6 +18,7 @@ import { registerEmotiveClaimsRoutes } from './modules/emotive-claims/index.js'
 import { registerEngineTypesRoutes } from './modules/engine-types/index.js'
 import { registerEventsRoutes } from './modules/events/index.js'
 import { registerExternalPartiesRoutes } from './modules/external-parties/index.js'
+import { registerAttachmentsRoutes } from './modules/attachments/index.js'
 import { registerMrRegistryRoutes } from './modules/mr-registry/index.js'
 
 export type { MRSessionUser }
@@ -32,6 +33,9 @@ function isPublicPath(path: string): boolean {
     return true
   }
   if (path === '/health' || path === '/api/health') {
+    return true
+  }
+  if (path === '/api/attachments/raw') {
     return true
   }
   return false
@@ -78,6 +82,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerDomaceClaimsRoutes(app, container)
   registerMrRegistryRoutes(app, container)
   registerClaimsRoutes(app, container)
+  registerAttachmentsRoutes(app, container)
   registerEventsRoutes(app, container)
 
   return app

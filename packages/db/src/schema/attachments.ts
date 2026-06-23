@@ -30,6 +30,7 @@ export const attachments = pgTable(
     storagePath: text('storage_path').notNull(),
     mimeType: text('mime_type').notNull(),
     fileSizeBytes: bigint('file_size_bytes', { mode: 'number' }).notNull(),
+    contentSha256: text('content_sha256'),
     width: integer('width'),
     height: integer('height'),
     durationSeconds: integer('duration_seconds'),

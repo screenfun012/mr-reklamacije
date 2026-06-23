@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 import type { Logger } from '@mr/logger'
 import type { Permission } from '@mr/shared'
 import { Hono } from 'hono'
@@ -6,16 +8,19 @@ import { vi } from 'vitest'
 import type { AppVariables } from '../app.js'
 import type { MRSessionUser } from '../core/auth/session-types.js'
 import { buildContainer, type Container } from '../core/container.js'
-import type { EventBus } from '../modules/events/index.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
+import { registerAttachmentsRoutes } from '../modules/attachments/index.js'
 import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
 import { registerCustomersRoutes } from '../modules/customers/index.js'
 import { registerDepartmentsRoutes } from '../modules/departments/index.js'
+import { registerDomaceClaimsRoutes } from '../modules/domace-claims/index.js'
 import { registerEmployeesRoutes } from '../modules/employees/index.js'
 import { registerEmotiveClaimsRoutes } from '../modules/emotive-claims/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
+import type { EventBus } from '../modules/events/index.js'
 import { registerExternalPartiesRoutes } from '../modules/external-parties/index.js'
+import { TEST_USER_ID } from './fixtures.js'
 
 export function createTestEnv(databaseUrl: string): Env {
   return {
@@ -35,6 +40,7 @@ export function createTestEnv(databaseUrl: string): Env {
     SESSION_IDLE_CLIENT_MIN: 43200,
     OPENAI_MODEL: 'gpt-4o-mini',
     OPENAI_MAX_TOKENS_PER_REQUEST: 2000,
+    UPLOAD_DIR: path.join(process.cwd(), '.tmp', 'test-uploads'),
   }
 }
 
@@ -48,8 +54,6 @@ export function fakeLogger(): Logger {
     fatal: vi.fn(),
   } as unknown as Logger
 }
-
-import { TEST_USER_ID } from './fixtures.js'
 
 export function testUser(
   permissions: Permission[],
@@ -100,6 +104,26 @@ export function createReferenceTestApp(
   registerCustomersRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
+  registerEmotiveClaimsRoutes(app, container)
+
+  return app
+}
+
+export function createAttachmentsTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerAttachmentsRoutes(app, container)
+  registerDomaceClaimsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
 
   return app
