@@ -1,7 +1,10 @@
 import type { ClaimListQuery } from '../schemas/claim-list.schema.js'
 
 /** List filters for unified claims query; optional fields match unset API query params. */
-export type ClaimsListFilters = Omit<ClaimListQuery, 'page' | 'pageSize' | 'includeDeleted'> & {
+export type ClaimsListFilters = Omit<
+  ClaimListQuery,
+  'page' | 'pageSize' | 'includeDeleted' | 'sortBy' | 'sortDir'
+> & {
   includeDeleted?: boolean
 }
 

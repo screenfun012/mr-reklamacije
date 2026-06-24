@@ -22,6 +22,7 @@ export {
   claimsListQueryKey,
   normalizeClaimsListFilters,
   type ClaimsListFilters,
+  type ClaimsListSort,
   type ClaimsPageSize,
 } from './claims.js'
 export {
@@ -30,6 +31,7 @@ export {
   claimsListQueryKeyFromSearch,
   claimsPaginationFromSearch,
   claimsSearchFromFilters,
+  claimsSortFromSearch,
   type ClaimsSearch,
 } from './claims-search.js'
 export { emotiveClaimKeys } from './emotive-claim-keys.js'

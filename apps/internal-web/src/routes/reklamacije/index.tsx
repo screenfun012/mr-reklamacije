@@ -3,6 +3,7 @@ import {
   claimsFiltersFromSearch,
   claimsListOptions,
   claimsPaginationFromSearch,
+  claimsSortFromSearch,
   engineManufacturersReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -21,8 +22,9 @@ export const Route = createFileRoute('/reklamacije/')({
   loader: async ({ context: { queryClient }, deps: search }) => {
     const filters = claimsFiltersFromSearch(search)
     const { page, pageSize } = claimsPaginationFromSearch(search)
+    const sort = claimsSortFromSearch(search)
     await Promise.all([
-      queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize)),
+      queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize, sort)),
       queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
     ])
   },

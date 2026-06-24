@@ -2,6 +2,7 @@ import {
   claimsFiltersFromSearch,
   claimsListOptions,
   claimsPaginationFromSearch,
+  claimsSortFromSearch,
   type ClaimsSearch,
 } from '@mr/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -20,8 +21,9 @@ export interface ClaimsListContentProps {
 export function ClaimsListContent({ search, onSearchChange }: ClaimsListContentProps) {
   const filters = claimsFiltersFromSearch(search)
   const { page, pageSize } = claimsPaginationFromSearch(search)
+  const sort = claimsSortFromSearch(search)
 
-  const { data } = useSuspenseQuery(claimsListOptions(filters, page, pageSize))
+  const { data } = useSuspenseQuery(claimsListOptions(filters, page, pageSize, sort))
 
   const handleSearchChange = useCallback(
     (next: ClaimsSearch) => {

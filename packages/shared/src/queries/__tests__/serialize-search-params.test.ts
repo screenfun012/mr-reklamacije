@@ -23,6 +23,17 @@ describe('serializeEmotiveClaimsListParams', () => {
   it('omits undefined values', () => {
     expect(serializeEmotiveClaimsListParams({ page: 1, pageSize: 10 })).toBe('page=1&pageSize=10')
   })
+
+  it('serializes sortBy and sortDir for claims list API', () => {
+    const query = serializeEmotiveClaimsListParams({
+      page: 1,
+      pageSize: 10,
+      sortBy: 'dateOfClaim',
+      sortDir: 'asc',
+    })
+
+    expect(query).toBe('page=1&pageSize=10&sortBy=dateOfClaim&sortDir=asc')
+  })
 })
 
 describe('serializeReferenceListParams', () => {

@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
 import { ClaimKind, ClaimOutcome } from '../enums.js'
-import { claimKeys } from './claim-keys.js'
+import { claimSortByValues, claimSortDirValues } from '../schemas/claim-list.schema.js'
+import { claimKeys, type ClaimsListSort } from './claim-keys.js'
 import { claimsListQueryKey, type ClaimsListFilters } from './claims.js'
 
 const claimOutcomeValues = [
@@ -28,6 +29,8 @@ export const ClaimsSearchSchema = z.object({
     .int()
     .pipe(z.union([z.literal(10), z.literal(25), z.literal(50)]))
     .default(10),
+  sortBy: z.enum(claimSortByValues).optional(),
+  sortDir: z.enum(claimSortDirValues).optional(),
 })
 
 export type ClaimsSearch = z.infer<typeof ClaimsSearchSchema>
@@ -64,9 +67,23 @@ export function claimsPaginationFromSearch(search: ClaimsSearch): {
   }
 }
 
+export function claimsSortFromSearch(search: ClaimsSearch): ClaimsListSort {
+  const sort: ClaimsListSort = {}
+
+  if (search.sortBy !== undefined) {
+    sort.sortBy = search.sortBy
+  }
+  if (search.sortDir !== undefined) {
+    sort.sortDir = search.sortDir
+  }
+
+  return sort
+}
+
 export function claimsSearchFromFilters(
   filters: ClaimsListFilters,
   pagination: { page: number; pageSize: number },
+  sort: ClaimsListSort = {},
 ): ClaimsSearch {
   const search: ClaimsSearch = {
     page: pagination.page,
@@ -91,6 +108,12 @@ export function claimsSearchFromFilters(
   if (filters.dateTo !== undefined) {
     search.dateTo = filters.dateTo.toISOString().slice(0, 10)
   }
+  if (sort.sortBy !== undefined) {
+    search.sortBy = sort.sortBy
+  }
+  if (sort.sortDir !== undefined) {
+    search.sortDir = sort.sortDir
+  }
 
   return search
 }
@@ -99,5 +122,10 @@ export function claimsListQueryKeyFromSearch(
   search: ClaimsSearch,
 ): ReturnType<typeof claimKeys.list> {
   const { page, pageSize } = claimsPaginationFromSearch(search)
-  return claimsListQueryKey(claimsFiltersFromSearch(search), page, pageSize)
+  return claimsListQueryKey(
+    claimsFiltersFromSearch(search),
+    page,
+    pageSize,
+    claimsSortFromSearch(search),
+  )
 }
