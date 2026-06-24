@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import {
@@ -22,6 +22,8 @@ export const Route = createFileRoute('/login')({
   component: LoginComponent,
 })
 
+const loginRoute = getRouteApi('/login')
+
 const loginSchema = z.object({
   email: z.email(m.field_email_invalid()),
   password: z.string().min(1, m.field_password_required()),
@@ -31,7 +33,7 @@ type SignInData = { twoFactorRedirect?: boolean } | null | undefined
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
-  const { reason } = Route.useSearch()
+  const { reason } = loginRoute.useSearch()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 

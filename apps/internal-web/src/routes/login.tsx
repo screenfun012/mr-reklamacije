@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import {
@@ -23,6 +23,8 @@ export const Route = createFileRoute('/login')({
   component: LoginComponent,
 })
 
+const loginRoute = getRouteApi('/login')
+
 // Zod 4 is Standard-Schema-compliant, so TanStack Form v1 consumes it directly
 const loginSchema = z.object({
   email: z.email(m.field_email_invalid()),
@@ -39,7 +41,7 @@ type SignInData =
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
-  const { reason } = Route.useSearch()
+  const { reason } = loginRoute.useSearch()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [showTwoFactorStep, setShowTwoFactorStep] = useState(false)
