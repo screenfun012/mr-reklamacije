@@ -224,6 +224,13 @@ export const CLAIMS_LIST_VIEW_PERMISSIONS = [
   ...DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS,
 ] as const satisfies readonly Permission[]
 
+/** Permissions that allow viewing statistics analytics (API + internal-web /statistika). */
+export const STATISTICS_VIEW_PERMISSIONS = [
+  'statistics.view_emotive',
+  'statistics.view_domace',
+  'statistics.view_overall',
+] as const satisfies readonly Permission[]
+
 export const CLIENT_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view_own_customer',
   'domace_claims.view_own_customer',

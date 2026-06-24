@@ -18,6 +18,7 @@ import { DepartmentsRepository, DepartmentsService } from '../modules/department
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { DashboardRepository, DashboardService } from '../modules/dashboard/index.js'
+import { StatisticsRepository, StatisticsService } from '../modules/statistics/index.js'
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
 import {
@@ -71,6 +72,8 @@ export interface Container {
   claimsService: ClaimsService
   dashboardRepository: DashboardRepository
   dashboardService: DashboardService
+  statisticsRepository: StatisticsRepository
+  statisticsService: StatisticsService
   mrRegistryService: MrRegistryService
   attachmentsRepository: AttachmentsRepository
   attachmentsService: AttachmentsService
@@ -153,6 +156,9 @@ export function buildContainer(
   const dashboardRepository = new DashboardRepository(db)
   const dashboardService = new DashboardService(dashboardRepository)
 
+  const statisticsRepository = new StatisticsRepository(db)
+  const statisticsService = new StatisticsService(statisticsRepository)
+
   const storageService = new LocalVolumeStorageService(env.UPLOAD_DIR)
   const attachmentsRepository = new AttachmentsRepository(db)
   const claimContextService = new ClaimContextService(
@@ -212,6 +218,8 @@ export function buildContainer(
     claimsService,
     dashboardRepository,
     dashboardService,
+    statisticsRepository,
+    statisticsService,
     mrRegistryService,
     attachmentsRepository,
     attachmentsService,

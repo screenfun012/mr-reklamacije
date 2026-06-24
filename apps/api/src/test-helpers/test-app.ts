@@ -13,6 +13,7 @@ import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 import { registerAttachmentsRoutes } from '../modules/attachments/index.js'
 import { registerClaimReportsRoutes } from '../modules/claim-reports/index.js'
 import { registerExcelRoutes } from '../modules/excel/index.js'
+import { registerStatisticsRoutes } from '../modules/statistics/index.js'
 import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
 import { registerCustomersRoutes } from '../modules/customers/index.js'
 import { registerDepartmentsRoutes } from '../modules/departments/index.js'
@@ -168,6 +169,26 @@ export function createExcelTestApp(
   })
 
   registerExcelRoutes(app, container)
+  registerDomaceClaimsRoutes(app, container)
+  registerEmotiveClaimsRoutes(app, container)
+
+  return app
+}
+
+export function createStatisticsTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerStatisticsRoutes(app, container)
   registerDomaceClaimsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
 
