@@ -3,13 +3,6 @@ import type { ClaimFaultItem, ExcelExportInput } from '@mr/shared'
 import { and, asc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
-import { domaceClaimFaults, domaceClaims } from '../domace-claims/domace-claims.schema.js'
-import {
-  claimSources,
-  customerUsers,
-  emotiveClaimFaults,
-  emotiveClaims,
-} from '../emotive-claims/emotive-claims.schema.js'
 import type {
   DomaceExportDbRow,
   EmotiveExportDbRow,
@@ -17,8 +10,20 @@ import type {
   ExcelActor,
 } from './excel.types.js'
 
-const { customers, departments, employeeMonthlyOutput, employees, engineTypes, externalParties } =
-  schema
+const {
+  claimSources,
+  customerUsers,
+  customers,
+  departments,
+  domaceClaimFaults,
+  domaceClaims,
+  employeeMonthlyOutput,
+  employees,
+  engineTypes,
+  emotiveClaimFaults,
+  emotiveClaims,
+  externalParties,
+} = schema
 
 function formatDate(value: Date | string | null): string | null {
   if (value === null) {
