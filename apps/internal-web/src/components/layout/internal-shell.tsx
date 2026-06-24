@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { authClient } from '~/lib/auth-client'
+import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 
 import { InternalSidebar } from './internal-sidebar'
 import { InternalTopbar } from './internal-topbar'
@@ -17,7 +18,7 @@ export interface InternalShellProps {
  */
 export function InternalShell({ children }: InternalShellProps) {
   const navigate = useNavigate()
-  const { data: session } = authClient.useSession()
+  const { userEmail, userName } = useInternalAuthUser()
 
   const handleLogout = (): void => {
     void (async () => {
@@ -25,9 +26,6 @@ export function InternalShell({ children }: InternalShellProps) {
       await navigate({ to: '/login' })
     })()
   }
-
-  const userEmail = session?.user.email ?? ''
-  const userName = session?.user.name ?? userEmail
 
   return (
     <AppShell

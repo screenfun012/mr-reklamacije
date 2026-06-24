@@ -1,6 +1,8 @@
 export type AuthSessionUser = {
   roles?: unknown
   permissions?: unknown
+  name?: unknown
+  email?: unknown
 }
 
 export type AuthSessionPayload = {
@@ -12,6 +14,8 @@ export type SerializableAuthSession = {
   user: {
     roles: readonly string[]
     permissions: readonly string[]
+    name: string
+    email: string
   } | null
 }
 
@@ -29,7 +33,10 @@ export function toSerializableAuthSession(
     ? session.user.permissions.filter((p): p is string => typeof p === 'string')
     : []
 
-  return { user: { roles, permissions } }
+  const name = typeof session.user.name === 'string' ? session.user.name : ''
+  const email = typeof session.user.email === 'string' ? session.user.email : ''
+
+  return { user: { roles, permissions, name, email } }
 }
 
 function parseClientSessionPayload(raw: unknown): AuthSessionPayload | null {

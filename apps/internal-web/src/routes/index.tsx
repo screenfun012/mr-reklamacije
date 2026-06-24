@@ -10,7 +10,7 @@ import { DashboardClaimListSkeleton } from '~/features/dashboard/dashboard-claim
 import { DashboardContent } from '~/features/dashboard/dashboard-content'
 import { DashboardClaimsChartSkeleton } from '~/features/dashboard/dashboard-outcome-chart'
 import { DashboardStatCardsSkeleton } from '~/features/dashboard/dashboard-stat-cards'
-import { authClient } from '~/lib/auth-client'
+import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { internalRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/')({
@@ -35,8 +35,7 @@ function DashboardSkeleton() {
 }
 
 function HomeComponent() {
-  const { data: session } = authClient.useSession()
-  const userName = session?.user?.name ?? session?.user?.email ?? ''
+  const { userName } = useInternalAuthUser()
 
   return (
     <InternalShell>

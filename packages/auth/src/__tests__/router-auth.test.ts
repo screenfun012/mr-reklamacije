@@ -28,7 +28,9 @@ describe('createRootAuthBeforeLoad', () => {
     const result = await beforeLoad()
 
     expect(authClient.getSession).toHaveBeenCalledTimes(1)
-    expect(result.authSession).toEqual({ user: { roles: ['operator'], permissions: [] } })
+    expect(result.authSession).toEqual({
+      user: { roles: ['operator'], permissions: [], name: '', email: '' },
+    })
   })
 
   it('returns null session when getSession fails so login route still renders', async () => {
