@@ -9,6 +9,9 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "src/paraglide/**"]
     },
+    "@mr/i18n#typecheck": {
+      "dependsOn": ["build"]
+    },
     "lint": {},
     "typecheck": {
       "dependsOn": ["^build"]
