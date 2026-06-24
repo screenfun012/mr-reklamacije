@@ -21,16 +21,26 @@ export function StatisticsTrendChartsSkeleton(): React.ReactElement {
           <CardHeader>
             <Skeleton className="h-5 w-44" />
           </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full rounded-lg" />
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid min-h-[8.75rem] grid-cols-3 gap-3">
+              <Skeleton className="h-[4.5rem] rounded-lg" />
+              <Skeleton className="h-[4.5rem] rounded-lg" />
+              <Skeleton className="h-[4.5rem] rounded-lg" />
+            </div>
+            <Skeleton className="h-[200px] w-full rounded-lg" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <Skeleton className="h-5 w-52" />
           </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full rounded-lg" />
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid min-h-[8.75rem] grid-cols-3 gap-3">
+              <Skeleton className="h-[4.5rem] rounded-lg" />
+              <Skeleton className="h-[4.5rem] rounded-lg" />
+              <Skeleton className="h-[4.5rem] rounded-lg" />
+            </div>
+            <Skeleton className="h-[200px] w-full rounded-lg" />
           </CardContent>
         </Card>
       </div>
