@@ -43,6 +43,24 @@ export const StatisticsVolumeTrendSchema = z.object({
 
 export type StatisticsVolumeTrend = z.infer<typeof StatisticsVolumeTrendSchema>
 
+export const StatisticsManufacturerRowSchema = z.object({
+  manufacturerId: z.string().uuid().nullable(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+  pending: z.coerce.number().int().nonnegative(),
+  accepted: z.coerce.number().int().nonnegative(),
+  rejected: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsManufacturerRow = z.infer<typeof StatisticsManufacturerRowSchema>
+
+export const StatisticsByManufacturerSchema = z.object({
+  items: z.array(StatisticsManufacturerRowSchema),
+})
+
+export type StatisticsByManufacturer = z.infer<typeof StatisticsByManufacturerSchema>
+
 export const StatisticsTrendsSchema = z.object({
   byMonth: z.array(StatisticsTrendMonthSchema),
   byYear: z.array(StatisticsTrendYearSchema),
@@ -53,6 +71,7 @@ export type StatisticsTrends = z.infer<typeof StatisticsTrendsSchema>
 
 export const StatisticsSummarySchema = z.object({
   trends: StatisticsTrendsSchema,
+  byManufacturer: StatisticsByManufacturerSchema,
 })
 
 export type StatisticsSummary = z.infer<typeof StatisticsSummarySchema>

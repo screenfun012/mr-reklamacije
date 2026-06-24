@@ -24,6 +24,14 @@ export { normalizeMrKey } from './utils/normalize-mr-key.js'
 export { normalizeName, toAsciiDisplay } from './utils/normalize-name.js'
 export { parseExcelDate } from './utils/parse-excel-date.js'
 export {
+  collapseManufacturerRowsForDisplay,
+  computeManufacturerOutcomePercents,
+  isStatisticsUnknownManufacturer,
+  StatisticsManufacturerDisplaySegment,
+  type ManufacturerOutcomePercents,
+  type StatisticsManufacturerDisplayRow,
+} from './utils/statistics-manufacturer-display.js'
+export {
   CLAIM_REPORT_ALLOWED_ATTRIBUTES,
   CLAIM_REPORT_ALLOWED_STYLES,
   CLAIM_REPORT_ALLOWED_TAGS,
@@ -39,6 +47,7 @@ export * from './constants/outcome-colors.js'
 export * from './constants/outcome-registry.js'
 export * from './constants/kind-colors.js'
 export * from './constants/kind-registry.js'
+export * from './constants/statistics-manufacturer-colors.js'
 export * from './queries/index.js'
 export * from './permissions.js'
 export * from './constants/roles.js'
