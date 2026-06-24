@@ -18,6 +18,7 @@ const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
 export const ClaimsSearchSchema = z.object({
   kind: z.enum(claimKindValues).optional(),
   outcome: z.enum(claimOutcomeValues).optional(),
+  manufacturerId: z.string().uuid().optional(),
   search: z.string().trim().min(1).optional(),
   dateFrom: z.string().regex(isoDatePattern).optional(),
   dateTo: z.string().regex(isoDatePattern).optional(),
@@ -46,6 +47,7 @@ export function claimsFiltersFromSearch(search: ClaimsSearch): ClaimsListFilters
   return {
     kind: search.kind,
     outcome: search.outcome,
+    manufacturerId: search.manufacturerId,
     search: search.search,
     dateFrom: parseIsoDate(search.dateFrom),
     dateTo: parseIsoDate(search.dateTo),
@@ -76,6 +78,9 @@ export function claimsSearchFromFilters(
   }
   if (filters.outcome !== undefined) {
     search.outcome = filters.outcome
+  }
+  if (filters.manufacturerId !== undefined) {
+    search.manufacturerId = filters.manufacturerId
   }
   if (filters.search !== undefined && filters.search.length > 0) {
     search.search = filters.search

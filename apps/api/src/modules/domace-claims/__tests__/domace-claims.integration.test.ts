@@ -16,6 +16,7 @@ import {
   ForbiddenError,
   MrKeyConflictError,
   NotFoundError,
+  ValidationError,
 } from '../../../core/errors/domain-errors.js'
 import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import {
@@ -88,6 +89,23 @@ describe('DomaceClaimsService integration', () => {
   afterEach(async () => {
     await ctx.cleanup()
   })
+
+  async function createEngineManufacturer(code: string, name: string): Promise<string> {
+    const created = await container.engineManufacturersRepository.create({
+      code,
+      name,
+    })
+    return created.id
+  }
+
+  async function createInactiveEngineManufacturer(code: string, name: string): Promise<string> {
+    const id = await createEngineManufacturer(code, name)
+    await ctx.db
+      .update(schema.engineManufacturers)
+      .set({ isActive: false })
+      .where(eq(schema.engineManufacturers.id, id))
+    return id
+  }
 
   describe('when creating', () => {
     it('assigns sequence_number and claim_year from date_of_claim', async () => {
@@ -646,6 +664,55 @@ describe('DomaceClaimsService integration', () => {
       const detail = await container.domaceClaimsService.findById(id, FULL_OPERATOR)
       expect(detail.outcome).toBe(ClaimOutcome.Pending)
       expect(detail.totalAmount).toBe(2500)
+    })
+  })
+
+  describe('when engine manufacturer is set', () => {
+    it('persists manufacturer on create, resolves name on detail, and filters list', async () => {
+      const manufacturerId = await createEngineManufacturer(`DOM-BMW-${Date.now()}`, 'BMW Domace')
+      const otherManufacturerId = await createEngineManufacturer(
+        `DOM-AUDI-${Date.now()}`,
+        'Audi Domace',
+      )
+
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ manufacturerId, mrNumber: `DOM-MFG-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.manufacturerId).toBe(manufacturerId)
+      expect(created.manufacturerName).toBe('BMW Domace')
+
+      await container.domaceClaimsService.create(
+        baseCreateInput({
+          manufacturerId: otherManufacturerId,
+          mrNumber: `DOM-MFG-OTHER-${Date.now()}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const filtered = await container.domaceClaimsService.list(
+        listQuery({ manufacturerId }),
+        FULL_OPERATOR,
+      )
+      expect(filtered.items.every((item) => item.manufacturerId === manufacturerId)).toBe(true)
+    })
+
+    it('rejects inactive engine manufacturer on create', async () => {
+      const manufacturerId = await createInactiveEngineManufacturer(
+        `DOM-INACTIVE-${Date.now()}`,
+        'Inactive Domace',
+      )
+
+      await expect(
+        container.domaceClaimsService.create(
+          baseCreateInput({ manufacturerId }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
     })
   })
 

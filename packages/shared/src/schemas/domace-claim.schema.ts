@@ -29,6 +29,7 @@ export const DomaceClaimCreateInputSchema = z
     mrNumber: z.string().trim().min(1).max(50).optional(),
     customerName: z.string().trim().min(1).max(255).optional(),
     engineTypeId: z.string().uuid().optional(),
+    manufacturerId: z.string().uuid().optional(),
     engineCode: z.string().trim().max(100).optional(),
     dateOfClaim: z.coerce.date().optional(),
     outcome: z.enum(claimOutcomeValues).default(ClaimOutcome.Pending),
@@ -52,6 +53,7 @@ export const DomaceClaimUpdateInputSchema = z
     mrNumber: z.string().trim().max(50).nullable().optional(),
     customerName: z.string().trim().max(255).nullable().optional(),
     engineTypeId: z.string().uuid().nullable().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().nullable().optional(),
     warrantyReport: z.string().trim().max(8000).nullable().optional(),
@@ -82,6 +84,7 @@ export type DomaceClaimChangeOutcomeInput = z.infer<typeof DomaceClaimChangeOutc
 
 export const DomaceClaimListQuerySchema = z.object({
   outcome: z.enum(claimOutcomeValues).optional(),
+  manufacturerId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   search: z.string().trim().min(1).optional(),
@@ -103,12 +106,14 @@ export type DomaceClaimFaultItem = z.infer<typeof DomaceClaimFaultItemSchema>
 export const DomaceClaimListItemSchema = z.object({
   kind: z.literal(ClaimKind.Domace),
   id: z.string().uuid(),
-  sequenceNumber: z.number().int(),
+  sequenceNumber: z.coerce.number().int(),
   claimNumber: z.string().nullable(),
   customerName: z.string().nullable(),
   warrantyReport: z.string().nullable(),
   engineTypeId: z.string().uuid().nullable(),
   engineTypeCode: z.string().nullable(),
+  manufacturerId: z.string().uuid().nullable(),
+  manufacturerName: z.string().nullable(),
   engineCode: z.string().nullable(),
   dateOfClaim: z.string().nullable(),
   mrNumber: z.string().nullable(),
@@ -116,8 +121,8 @@ export const DomaceClaimListItemSchema = z.object({
   employeeId: z.string().uuid().nullable(),
   employeeName: z.string().nullable(),
   outcome: z.enum(claimOutcomeValues),
-  claimYear: z.number().int(),
-  totalAmount: z.number().nullable(),
+  claimYear: z.coerce.number().int(),
+  totalAmount: z.coerce.number().nullable(),
   createdAt: z.string(),
 })
 

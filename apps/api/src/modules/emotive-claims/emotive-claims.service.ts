@@ -235,21 +235,28 @@ export class EmotiveClaimsService {
   }
 
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
-    const [engineTypeActive, employeeActive, sourceActive, customerActive] = await Promise.all([
-      this.repo.isEngineTypeActive(input.engineTypeId),
-      input.employeeId !== undefined
-        ? this.repo.isEmployeeActive(input.employeeId)
-        : Promise.resolve(true),
-      input.sourceId !== undefined
-        ? this.repo.isClaimSourceActive(input.sourceId)
-        : Promise.resolve(true),
-      input.customerId !== undefined
-        ? this.repo.isCustomerActive(input.customerId)
-        : Promise.resolve(true),
-    ])
+    const [engineTypeActive, manufacturerActive, employeeActive, sourceActive, customerActive] =
+      await Promise.all([
+        this.repo.isEngineTypeActive(input.engineTypeId),
+        input.manufacturerId !== undefined
+          ? this.repo.isManufacturerActive(input.manufacturerId)
+          : Promise.resolve(true),
+        input.employeeId !== undefined
+          ? this.repo.isEmployeeActive(input.employeeId)
+          : Promise.resolve(true),
+        input.sourceId !== undefined
+          ? this.repo.isClaimSourceActive(input.sourceId)
+          : Promise.resolve(true),
+        input.customerId !== undefined
+          ? this.repo.isCustomerActive(input.customerId)
+          : Promise.resolve(true),
+      ])
 
     if (!engineTypeActive) {
       throw new ValidationError('Invalid or inactive engine type')
+    }
+    if (!manufacturerActive) {
+      throw new ValidationError('Invalid or inactive engine manufacturer')
     }
     if (!employeeActive) {
       throw new ValidationError('Invalid or inactive employee')
@@ -272,6 +279,12 @@ export class EmotiveClaimsService {
       checks.push({
         active: this.repo.isEngineTypeActive(input.engineTypeId),
         message: 'Invalid or inactive engine type',
+      })
+    }
+    if (input.manufacturerId !== undefined && input.manufacturerId !== null) {
+      checks.push({
+        active: this.repo.isManufacturerActive(input.manufacturerId),
+        message: 'Invalid or inactive engine manufacturer',
       })
     }
     if (input.employeeId !== undefined) {

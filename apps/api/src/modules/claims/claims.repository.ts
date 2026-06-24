@@ -17,12 +17,14 @@ interface UnifiedListRow {
   [key: string]: unknown
   kind: string
   id: string
-  sequence_number: number
+  sequence_number: number | string
   claim_number: string | null
   customer_name: string | null
   warranty_report: string | null
   engine_type_id: string | null
   engine_type_code: string | null
+  manufacturer_id: string | null
+  manufacturer_name: string | null
   engine_code: string | null
   date_of_claim: Date | string | null
   mr_number: string | null
@@ -32,7 +34,7 @@ interface UnifiedListRow {
   source_id: string | null
   customer_id: string | null
   outcome: string
-  claim_year: number
+  claim_year: number | string
   total_amount: string | number | null
   created_at: Date
 }
@@ -51,17 +53,23 @@ function formatTimestamp(value: Date | string): string {
   return value.toISOString()
 }
 
+function toInt(value: number | string): number {
+  return typeof value === 'number' ? value : Number.parseInt(value, 10)
+}
+
 function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
   if (row.kind === ClaimKind.Domace) {
     const item: DomaceClaimListItem = {
       kind: ClaimKind.Domace,
       id: row.id,
-      sequenceNumber: row.sequence_number,
+      sequenceNumber: toInt(row.sequence_number),
       claimNumber: row.claim_number,
       customerName: row.customer_name,
       warrantyReport: row.warranty_report,
       engineTypeId: row.engine_type_id,
       engineTypeCode: row.engine_type_code,
+      manufacturerId: row.manufacturer_id,
+      manufacturerName: row.manufacturer_name,
       engineCode: row.engine_code,
       dateOfClaim: row.date_of_claim === null ? null : formatDate(row.date_of_claim),
       mrNumber: row.mr_number,
@@ -69,7 +77,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
       employeeId: row.employee_id,
       employeeName: row.employee_name,
       outcome: row.outcome as DomaceClaimListItem['outcome'],
-      claimYear: row.claim_year,
+      claimYear: toInt(row.claim_year),
       totalAmount: row.total_amount === null ? null : Number(row.total_amount),
       createdAt: formatTimestamp(row.created_at),
     }
@@ -79,11 +87,13 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
   const item: EmotiveClaimListItem = {
     kind: ClaimKind.Emotive,
     id: row.id,
-    sequenceNumber: row.sequence_number,
+    sequenceNumber: toInt(row.sequence_number),
     claimNumber: row.claim_number,
     warrantyReport: row.warranty_report,
     engineTypeId: row.engine_type_id ?? '',
     engineTypeCode: row.engine_type_code ?? '',
+    manufacturerId: row.manufacturer_id,
+    manufacturerName: row.manufacturer_name,
     engineCode: row.engine_code,
     dateOfClaim: formatDate(row.date_of_claim ?? row.created_at),
     mrNumber: row.mr_number ?? '',
@@ -92,7 +102,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     employeeName: row.employee_name,
     sourceId: row.source_id,
     outcome: row.outcome as EmotiveClaimListItem['outcome'],
-    claimYear: row.claim_year,
+    claimYear: toInt(row.claim_year),
     customerId: row.customer_id,
     customerName: row.customer_name,
     createdAt: formatTimestamp(row.created_at),
@@ -121,12 +131,12 @@ export class ClaimsRepository {
     const unionSql = sql.join(branches, sql` UNION ALL `)
     const offset = (query.page - 1) * query.pageSize
 
-    const countResult = await this.db.execute<{ total: number }>(sql`
+    const countResult = await this.db.execute<{ total: number | string }>(sql`
       SELECT count(*)::int AS total
       FROM (${unionSql}) AS unified
     `)
 
-    const total = countResult.rows[0]?.total ?? 0
+    const total = toInt(countResult.rows[0]?.total ?? 0)
 
     const listResult = await this.db.execute<UnifiedListRow>(sql`
       SELECT *
@@ -184,6 +194,10 @@ export class ClaimsRepository {
       conditions.push(sql`ec.customer_id = ${query.customerId}`)
     }
 
+    if (query.manufacturerId !== undefined) {
+      conditions.push(sql`ec.manufacturer_id = ${query.manufacturerId}`)
+    }
+
     if (query.dateFrom !== undefined) {
       conditions.push(sql`ec.date_of_claim >= ${query.dateFrom.toISOString().slice(0, 10)}`)
     }
@@ -219,6 +233,8 @@ export class ClaimsRepository {
         ec.warranty_report,
         ec.engine_type_id,
         et.code AS engine_type_code,
+        ec.manufacturer_id,
+        em.name AS manufacturer_name,
         ec.engine_code,
         ec.date_of_claim,
         ec.mr_number,
@@ -233,6 +249,7 @@ export class ClaimsRepository {
         ec.created_at
       FROM emotive_claims ec
       INNER JOIN engine_types et ON et.id = ec.engine_type_id
+      LEFT JOIN engine_manufacturers em ON em.id = ec.manufacturer_id
       LEFT JOIN customers c ON c.id = ec.customer_id
       LEFT JOIN employees emp ON emp.id = ec.employee_id
       WHERE ${whereClause}
@@ -248,6 +265,10 @@ export class ClaimsRepository {
 
     if (query.outcome !== undefined) {
       conditions.push(sql`dc.outcome = ${query.outcome}`)
+    }
+
+    if (query.manufacturerId !== undefined) {
+      conditions.push(sql`dc.manufacturer_id = ${query.manufacturerId}`)
     }
 
     if (query.dateFrom !== undefined) {
@@ -281,6 +302,8 @@ export class ClaimsRepository {
         dc.warranty_report,
         dc.engine_type_id,
         et.code AS engine_type_code,
+        dc.manufacturer_id,
+        em.name AS manufacturer_name,
         dc.engine_code,
         dc.date_of_claim,
         dc.mr_number,
@@ -295,6 +318,7 @@ export class ClaimsRepository {
         dc.created_at
       FROM domace_claims dc
       LEFT JOIN engine_types et ON et.id = dc.engine_type_id
+      LEFT JOIN engine_manufacturers em ON em.id = dc.manufacturer_id
       LEFT JOIN employees emp ON emp.id = dc.employee_id
       WHERE ${whereClause}
     `

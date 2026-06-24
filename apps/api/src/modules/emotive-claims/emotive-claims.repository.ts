@@ -25,7 +25,8 @@ import type {
 } from './emotive-claims.validators.js'
 import { FaultsRepository } from './faults/faults.repository.js'
 
-const { customers, departments, employees, engineTypes, externalParties } = schema
+const { customers, departments, employees, engineManufacturers, engineTypes, externalParties } =
+  schema
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -69,6 +70,8 @@ function mapListItem(row: {
   warrantyReport: string | null
   engineTypeId: string
   engineTypeCode: string
+  manufacturerId: string | null
+  manufacturerName: string | null
   engineCode: string | null
   dateOfClaim: Date | string
   mrNumber: string
@@ -90,6 +93,8 @@ function mapListItem(row: {
     warrantyReport: row.warrantyReport,
     engineTypeId: row.engineTypeId,
     engineTypeCode: row.engineTypeCode,
+    manufacturerId: row.manufacturerId,
+    manufacturerName: row.manufacturerName,
     engineCode: row.engineCode,
     dateOfClaim: formatDate(row.dateOfClaim),
     mrNumber: row.mrNumber,
@@ -140,6 +145,21 @@ export class EmotiveClaimsRepository {
           eq(engineTypes.id, engineTypeId),
           isNull(engineTypes.deletedAt),
           eq(engineTypes.isActive, true),
+        ),
+      )
+      .limit(1)
+    return row !== undefined
+  }
+
+  async isManufacturerActive(manufacturerId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: engineManufacturers.id })
+      .from(engineManufacturers)
+      .where(
+        and(
+          eq(engineManufacturers.id, manufacturerId),
+          isNull(engineManufacturers.deletedAt),
+          eq(engineManufacturers.isActive, true),
         ),
       )
       .limit(1)
@@ -234,6 +254,7 @@ export class EmotiveClaimsRepository {
         .values({
           warrantyReport: input.warrantyReport ?? null,
           engineTypeId: input.engineTypeId,
+          manufacturerId: input.manufacturerId ?? null,
           engineCode: input.engineCode ?? null,
           dateOfClaim: input.dateOfClaim,
           mrNumber: input.mrNumber,
@@ -297,6 +318,10 @@ export class EmotiveClaimsRepository {
       conditions.push(eq(emotiveClaims.customerId, query.customerId))
     }
 
+    if (query.manufacturerId !== undefined) {
+      conditions.push(eq(emotiveClaims.manufacturerId, query.manufacturerId))
+    }
+
     if (query.dateFrom !== undefined) {
       conditions.push(gte(emotiveClaims.dateOfClaim, query.dateFrom))
     }
@@ -337,6 +362,8 @@ export class EmotiveClaimsRepository {
         warrantyReport: emotiveClaims.warrantyReport,
         engineTypeId: emotiveClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
+        manufacturerId: emotiveClaims.manufacturerId,
+        manufacturerName: engineManufacturers.name,
         engineCode: emotiveClaims.engineCode,
         dateOfClaim: emotiveClaims.dateOfClaim,
         mrNumber: emotiveClaims.mrNumber,
@@ -353,6 +380,7 @@ export class EmotiveClaimsRepository {
       .from(emotiveClaims)
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .where(whereClause)
       .orderBy(desc(emotiveClaims.dateOfClaim), desc(emotiveClaims.id))
@@ -395,6 +423,8 @@ export class EmotiveClaimsRepository {
         engineTypeId: emotiveClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
         engineTypeManufacturer: engineTypes.manufacturer,
+        manufacturerId: emotiveClaims.manufacturerId,
+        manufacturerName: engineManufacturers.name,
         engineCode: emotiveClaims.engineCode,
         dateOfClaim: emotiveClaims.dateOfClaim,
         mrNumber: emotiveClaims.mrNumber,
@@ -416,6 +446,7 @@ export class EmotiveClaimsRepository {
       .from(emotiveClaims)
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
       .where(and(eq(emotiveClaims.id, id), deletedCondition))
@@ -489,6 +520,9 @@ export class EmotiveClaimsRepository {
     }
     if (input.engineTypeId !== undefined) {
       patch.engineTypeId = input.engineTypeId
+    }
+    if (input.manufacturerId !== undefined) {
+      patch.manufacturerId = input.manufacturerId
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

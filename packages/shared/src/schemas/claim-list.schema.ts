@@ -23,6 +23,7 @@ export const ClaimListQuerySchema = z.object({
   outcome: z.enum(claimOutcomeValues).optional(),
   sourceId: z.string().uuid().optional(),
   customerId: z.string().uuid().optional(),
+  manufacturerId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   search: z.string().trim().min(1).optional(),
@@ -44,9 +45,11 @@ export const ClaimListItemSchema = z.discriminatedUnion('kind', [
 
 export type ClaimListItem = z.infer<typeof ClaimListItemSchema>
 
-export interface ClaimListResponse {
-  items: ClaimListItem[]
-  total: number
-  page: number
-  pageSize: number
-}
+export const ClaimListResponseSchema = z.object({
+  items: z.array(ClaimListItemSchema),
+  total: z.coerce.number().int().nonnegative(),
+  page: z.number().int().min(1),
+  pageSize: z.union([z.literal(10), z.literal(25), z.literal(50)]),
+})
+
+export type ClaimListResponse = z.infer<typeof ClaimListResponseSchema>

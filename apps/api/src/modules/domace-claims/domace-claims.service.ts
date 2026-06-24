@@ -267,9 +267,12 @@ export class DomaceClaimsService {
   }
 
   private async validateCreateReferences(input: DomaceClaimCreateInput): Promise<void> {
-    const [engineTypeActive, employeeActive] = await Promise.all([
+    const [engineTypeActive, manufacturerActive, employeeActive] = await Promise.all([
       input.engineTypeId !== undefined
         ? this.repo.isEngineTypeActive(input.engineTypeId)
+        : Promise.resolve(true),
+      input.manufacturerId !== undefined
+        ? this.repo.isManufacturerActive(input.manufacturerId)
         : Promise.resolve(true),
       input.employeeId !== undefined
         ? this.repo.isEmployeeActive(input.employeeId)
@@ -278,6 +281,9 @@ export class DomaceClaimsService {
 
     if (!engineTypeActive) {
       throw new ValidationError('Invalid or inactive engine type')
+    }
+    if (!manufacturerActive) {
+      throw new ValidationError('Invalid or inactive engine manufacturer')
     }
     if (!employeeActive) {
       throw new ValidationError('Invalid or inactive employee')
@@ -294,6 +300,12 @@ export class DomaceClaimsService {
       checks.push({
         active: this.repo.isEngineTypeActive(input.engineTypeId),
         message: 'Invalid or inactive engine type',
+      })
+    }
+    if (input.manufacturerId !== undefined && input.manufacturerId !== null) {
+      checks.push({
+        active: this.repo.isManufacturerActive(input.manufacturerId),
+        message: 'Invalid or inactive engine manufacturer',
       })
     }
     if (input.employeeId !== undefined && input.employeeId !== null) {

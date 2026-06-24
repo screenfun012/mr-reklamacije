@@ -21,6 +21,7 @@ export type EmotiveClaimFaultInput = z.infer<typeof EmotiveClaimFaultInputSchema
 
 export const EmotiveClaimCreateInputSchema = z.object({
   engineTypeId: z.string().uuid(),
+  manufacturerId: z.string().uuid().optional(),
   dateOfClaim: z.coerce.date(),
   /** MR Engines internal work order (e.g. 5376/25). Required on create. */
   mrNumber: z.string().trim().min(1).max(50),
@@ -42,6 +43,7 @@ export const EmotiveClaimUpdateInputSchema = z
   .object({
     warrantyReport: z.string().trim().min(1).max(8000).optional(),
     engineTypeId: z.string().uuid().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().optional(),
     mrNumber: z.string().trim().min(1).max(50).optional(),
@@ -69,6 +71,7 @@ export const EmotiveClaimListQuerySchema = z.object({
   outcome: z.enum(claimOutcomeValues).optional(),
   sourceId: z.string().uuid().optional(),
   customerId: z.string().uuid().optional(),
+  manufacturerId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   search: z.string().trim().min(1).optional(),
@@ -90,11 +93,13 @@ export type EmotiveClaimFaultItem = z.infer<typeof EmotiveClaimFaultItemSchema>
 export const EmotiveClaimListItemSchema = z.object({
   kind: z.literal(ClaimKind.Emotive),
   id: z.string().uuid(),
-  sequenceNumber: z.number().int(),
+  sequenceNumber: z.coerce.number().int(),
   claimNumber: z.string().nullable(),
   warrantyReport: z.string().nullable(),
   engineTypeId: z.string().uuid(),
   engineTypeCode: z.string(),
+  manufacturerId: z.string().uuid().nullable(),
+  manufacturerName: z.string().nullable(),
   engineCode: z.string().nullable(),
   dateOfClaim: z.string(),
   mrNumber: z.string(),
@@ -103,7 +108,7 @@ export const EmotiveClaimListItemSchema = z.object({
   employeeName: z.string().nullable(),
   sourceId: z.string().uuid().nullable(),
   outcome: z.enum(claimOutcomeValues),
-  claimYear: z.number().int(),
+  claimYear: z.coerce.number().int(),
   customerId: z.string().uuid().nullable(),
   customerName: z.string().nullable(),
   createdAt: z.string(),

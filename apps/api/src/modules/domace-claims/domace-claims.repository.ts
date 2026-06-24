@@ -20,7 +20,7 @@ import type {
   DomaceClaimUpdateInput,
 } from './domace-claims.validators.js'
 
-const { departments, employees, engineTypes, externalParties } = schema
+const { departments, employees, engineManufacturers, engineTypes, externalParties } = schema
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -65,6 +65,8 @@ function mapListItem(row: {
   warrantyReport: string | null
   engineTypeId: string | null
   engineTypeCode: string | null
+  manufacturerId: string | null
+  manufacturerName: string | null
   engineCode: string | null
   dateOfClaim: Date | string | null
   mrNumber: string | null
@@ -85,6 +87,8 @@ function mapListItem(row: {
     warrantyReport: row.warrantyReport,
     engineTypeId: row.engineTypeId,
     engineTypeCode: row.engineTypeCode,
+    manufacturerId: row.manufacturerId,
+    manufacturerName: row.manufacturerName,
     engineCode: row.engineCode,
     dateOfClaim: row.dateOfClaim === null ? null : formatDate(row.dateOfClaim),
     mrNumber: row.mrNumber,
@@ -114,6 +118,21 @@ export class DomaceClaimsRepository {
           eq(engineTypes.id, engineTypeId),
           isNull(engineTypes.deletedAt),
           eq(engineTypes.isActive, true),
+        ),
+      )
+      .limit(1)
+    return row !== undefined
+  }
+
+  async isManufacturerActive(manufacturerId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: engineManufacturers.id })
+      .from(engineManufacturers)
+      .where(
+        and(
+          eq(engineManufacturers.id, manufacturerId),
+          isNull(engineManufacturers.deletedAt),
+          eq(engineManufacturers.isActive, true),
         ),
       )
       .limit(1)
@@ -176,6 +195,7 @@ export class DomaceClaimsRepository {
           customerName: input.customerName ?? null,
           warrantyReport: input.warrantyReport ?? null,
           engineTypeId: input.engineTypeId ?? null,
+          manufacturerId: input.manufacturerId ?? null,
           engineCode: input.engineCode ?? null,
           dateOfClaim: input.dateOfClaim ?? null,
           dateOfFinish: input.dateOfFinish ?? null,
@@ -237,6 +257,10 @@ export class DomaceClaimsRepository {
       conditions.push(eq(domaceClaims.outcome, query.outcome))
     }
 
+    if (query.manufacturerId !== undefined) {
+      conditions.push(eq(domaceClaims.manufacturerId, query.manufacturerId))
+    }
+
     if (query.dateFrom !== undefined) {
       conditions.push(gte(domaceClaims.dateOfClaim, query.dateFrom))
     }
@@ -270,6 +294,8 @@ export class DomaceClaimsRepository {
         warrantyReport: domaceClaims.warrantyReport,
         engineTypeId: domaceClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
+        manufacturerId: domaceClaims.manufacturerId,
+        manufacturerName: engineManufacturers.name,
         engineCode: domaceClaims.engineCode,
         dateOfClaim: domaceClaims.dateOfClaim,
         mrNumber: domaceClaims.mrNumber,
@@ -283,6 +309,7 @@ export class DomaceClaimsRepository {
       })
       .from(domaceClaims)
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineManufacturers, eq(domaceClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
       .where(whereClause)
       .orderBy(desc(domaceClaims.dateOfClaim), desc(domaceClaims.id))
@@ -330,6 +357,8 @@ export class DomaceClaimsRepository {
         engineTypeId: domaceClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
         engineTypeManufacturer: engineTypes.manufacturer,
+        manufacturerId: domaceClaims.manufacturerId,
+        manufacturerName: engineManufacturers.name,
         engineCode: domaceClaims.engineCode,
         dateOfClaim: domaceClaims.dateOfClaim,
         mrNumber: domaceClaims.mrNumber,
@@ -346,6 +375,7 @@ export class DomaceClaimsRepository {
       })
       .from(domaceClaims)
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineManufacturers, eq(domaceClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
       .where(and(eq(domaceClaims.id, id), deletedCondition))
       .limit(1)
@@ -410,6 +440,9 @@ export class DomaceClaimsRepository {
     }
     if (input.engineTypeId !== undefined) {
       patch.engineTypeId = input.engineTypeId
+    }
+    if (input.manufacturerId !== undefined) {
+      patch.manufacturerId = input.manufacturerId
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

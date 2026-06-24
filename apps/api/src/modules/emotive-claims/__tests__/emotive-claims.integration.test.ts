@@ -109,6 +109,23 @@ describe('EmotiveClaimsService integration', () => {
     return created.id
   }
 
+  async function createEngineManufacturer(code: string, name: string): Promise<string> {
+    const created = await container.engineManufacturersRepository.create({
+      code,
+      name,
+    })
+    return created.id
+  }
+
+  async function createInactiveEngineManufacturer(code: string, name: string): Promise<string> {
+    const id = await createEngineManufacturer(code, name)
+    await ctx.db
+      .update(schema.engineManufacturers)
+      .set({ isActive: false })
+      .where(eq(schema.engineManufacturers.id, id))
+    return id
+  }
+
   async function buildCreateInput(
     overrides: Partial<EmotiveClaimCreateInput> = {},
   ): Promise<EmotiveClaimCreateInput> {
@@ -557,6 +574,68 @@ describe('EmotiveClaimsService integration', () => {
       expect(employeeFault?.employeeName).toBeTruthy()
       expect(departmentFault?.departmentName).toBeTruthy()
       expect(externalFault?.externalPartyName).toBe(externalParty.name)
+    })
+  })
+
+  describe('when engine manufacturer is set', () => {
+    it('persists manufacturer on create, resolves name on detail, filters list, and clears on update', async () => {
+      const manufacturerId = await createEngineManufacturer(`BMW-${Date.now()}`, 'BMW Test')
+      const otherManufacturerId = await createEngineManufacturer(`AUDI-${Date.now()}`, 'Audi Test')
+      const mrWithManufacturer = `MFG-${Date.now()}/26`
+      const mrOther = `MFG-OTHER-${Date.now()}/26`
+
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          manufacturerId,
+          mrNumber: mrWithManufacturer,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.manufacturerId).toBe(manufacturerId)
+      expect(created.manufacturerName).toBe('BMW Test')
+
+      await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          manufacturerId: otherManufacturerId,
+          mrNumber: mrOther,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const filtered = await container.emotiveClaimsService.list(
+        listQuery({ manufacturerId }),
+        FULL_OPERATOR,
+      )
+      expect(filtered.items.every((item) => item.manufacturerId === manufacturerId)).toBe(true)
+      expect(filtered.items.some((item) => item.mrNumber === mrWithManufacturer)).toBe(true)
+      expect(filtered.items.some((item) => item.mrNumber === mrOther)).toBe(false)
+
+      const updated = await container.emotiveClaimsService.update(
+        created.id,
+        { manufacturerId: null },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(updated.manufacturerId).toBeNull()
+      expect(updated.manufacturerName).toBeNull()
+    })
+
+    it('rejects inactive engine manufacturer on create', async () => {
+      const manufacturerId = await createInactiveEngineManufacturer(
+        `INACTIVE-${Date.now()}`,
+        'Inactive Mfg',
+      )
+
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({ manufacturerId }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
     })
   })
 
