@@ -53,7 +53,7 @@ export function ClaimsListContent({ search, onSearchChange }: ClaimsListContentP
         items={data.items}
         total={data.total}
         search={search}
-        onSearchChange={onSearchChange}
+        onSearchChange={handleSearchChange}
       />
       <EmotiveClaimsPagination
         total={data.total}

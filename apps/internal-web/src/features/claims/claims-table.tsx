@@ -16,16 +16,15 @@ import {
   getCoreRowModel,
   useReactTable,
   type Column,
-  type SortingState,
-  type Updater,
 } from '@tanstack/react-table'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 
 import {
-  claimsSearchFromTableSorting,
   claimsTableSortingFromSearch,
+  createNextSortSearch,
+  isSortableClaimColumnId,
   sortableColumnAriaSort,
 } from './claims-table-sort'
 
@@ -68,9 +67,13 @@ function claimDetailLink(item: ClaimListItem): {
 function SortableColumnHeader({
   column,
   label,
+  search,
+  onSearchChange,
 }: {
   column: Column<ClaimListItem, unknown>
   label: string
+  search: ClaimsSearch
+  onSearchChange: (next: ClaimsSearch) => void
 }) {
   const sorted = column.getIsSorted()
   const SortIcon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown
@@ -79,7 +82,13 @@ function SortableColumnHeader({
     <button
       type="button"
       className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
-      onClick={column.getToggleSortingHandler()}
+      onClick={(event) => {
+        event.stopPropagation()
+        if (!isSortableClaimColumnId(column.id)) {
+          return
+        }
+        onSearchChange(createNextSortSearch(search, column.id))
+      }}
     >
       <span>{label}</span>
       <SortIcon className={`size-3.5 ${sorted === false ? 'opacity-40' : ''}`} aria-hidden />
@@ -87,7 +96,10 @@ function SortableColumnHeader({
   )
 }
 
-function createClaimsTableColumns() {
+function createClaimsTableColumns(
+  search: ClaimsSearch,
+  onSearchChange: (next: ClaimsSearch) => void,
+) {
   return [
     columnHelper.display({
       id: 'kind',
@@ -135,7 +147,12 @@ function createClaimsTableColumns() {
       id: ClaimSortBy.DateOfFinish,
       enableSorting: true,
       header: ({ column }) => (
-        <SortableColumnHeader column={column} label={m.emotive_claims_col_date_finish()} />
+        <SortableColumnHeader
+          column={column}
+          label={m.emotive_claims_col_date_finish()}
+          search={search}
+          onSearchChange={onSearchChange}
+        />
       ),
       cell: ({ row }) =>
         row.original.dateOfFinish ? formatListDate(row.original.dateOfFinish) : '—',
@@ -145,7 +162,12 @@ function createClaimsTableColumns() {
       id: ClaimSortBy.DateOfClaim,
       enableSorting: true,
       header: ({ column }) => (
-        <SortableColumnHeader column={column} label={m.emotive_claims_col_date_received()} />
+        <SortableColumnHeader
+          column={column}
+          label={m.emotive_claims_col_date_received()}
+          search={search}
+          onSearchChange={onSearchChange}
+        />
       ),
       cell: ({ row }) =>
         row.original.dateOfClaim ? formatListDate(row.original.dateOfClaim) : '—',
@@ -188,22 +210,11 @@ function createClaimsTableColumns() {
 
 export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTableProps) {
   const navigate = useNavigate()
-  const columns = useMemo(() => createClaimsTableColumns(), [])
-  const sorting = useMemo(() => claimsTableSortingFromSearch(search), [search])
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-      const nextSearch = claimsSearchFromTableSorting(search, nextSorting)
-
-      if (nextSearch === null) {
-        return
-      }
-
-      onSearchChange(nextSearch)
-    },
-    [onSearchChange, search, sorting],
+  const columns = useMemo(
+    () => createClaimsTableColumns(search, onSearchChange),
+    [onSearchChange, search],
   )
+  const sorting = useMemo(() => claimsTableSortingFromSearch(search), [search])
 
   const table = useReactTable({
     data: [...items],
@@ -215,7 +226,6 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
     manualFiltering: true,
     enableSortingRemoval: false,
     state: { sorting },
-    onSortingChange: handleSortingChange,
   })
 
   if (items.length === 0) {

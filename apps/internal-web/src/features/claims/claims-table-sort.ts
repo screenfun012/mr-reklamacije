@@ -1,6 +1,28 @@
 import { ClaimSortBy, ClaimSortDir, type ClaimsSearch } from '@mr/shared'
 import type { SortingState } from '@tanstack/react-table'
 
+export type SortableClaimColumnId = typeof ClaimSortBy.DateOfClaim | typeof ClaimSortBy.DateOfFinish
+
+export function isSortableClaimColumnId(columnId: string): columnId is SortableClaimColumnId {
+  return columnId === ClaimSortBy.DateOfClaim || columnId === ClaimSortBy.DateOfFinish
+}
+
+export function createNextSortSearch(
+  search: ClaimsSearch,
+  columnId: SortableClaimColumnId,
+): ClaimsSearch {
+  const isActive = search.sortBy === columnId
+  const nextDir =
+    isActive && search.sortDir === ClaimSortDir.Asc ? ClaimSortDir.Desc : ClaimSortDir.Asc
+
+  return {
+    ...search,
+    sortBy: columnId,
+    sortDir: nextDir,
+    page: 1,
+  }
+}
+
 export function claimsTableSortingFromSearch(search: ClaimsSearch): SortingState {
   if (search.sortBy === undefined) {
     return []
@@ -12,28 +34,6 @@ export function claimsTableSortingFromSearch(search: ClaimsSearch): SortingState
       desc: search.sortDir !== ClaimSortDir.Asc,
     },
   ]
-}
-
-export function claimsSearchFromTableSorting(
-  search: ClaimsSearch,
-  sorting: SortingState,
-): ClaimsSearch | null {
-  const active = sorting[0]
-
-  if (active === undefined) {
-    return null
-  }
-
-  if (active.id !== ClaimSortBy.DateOfClaim && active.id !== ClaimSortBy.DateOfFinish) {
-    return null
-  }
-
-  return {
-    ...search,
-    sortBy: active.id,
-    sortDir: active.desc ? ClaimSortDir.Desc : ClaimSortDir.Asc,
-    page: 1,
-  }
 }
 
 export function sortableColumnAriaSort(
