@@ -33,7 +33,7 @@
       "outputs": ["coverage/**"]
     },
     "@mr/i18n#test": {
-      "dependsOn": ["build", "^build"],
+      "dependsOn": ["build"],
       "outputs": ["coverage/**"]
     }
   }
