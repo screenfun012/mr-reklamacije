@@ -8,9 +8,9 @@ import {
   StatisticsTrendChartsPlaceholder,
 } from './statistics-trend-charts-skeleton.js'
 
-const LazyStatisticsTrendCharts = lazy(() =>
-  import('./statistics-trend-charts.js').then((module) => ({
-    default: module.StatisticsTrendCharts,
+const LazyStatisticsAnalyticsCharts = lazy(() =>
+  import('./statistics-analytics-charts.js').then((module) => ({
+    default: module.StatisticsAnalyticsCharts,
   })),
 )
 
@@ -23,7 +23,7 @@ function StatistikaAnalyticsContent(): React.ReactElement {
 
   return (
     <Suspense fallback={<StatisticsTrendChartsSkeleton />}>
-      <LazyStatisticsTrendCharts trends={data.trends} />
+      <LazyStatisticsAnalyticsCharts summary={data} />
     </Suspense>
   )
 }
