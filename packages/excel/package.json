@@ -12,11 +12,18 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
+    "@mr/eslint-config": "workspace:*",
     "@mr/tsconfig": "workspace:*",
     "@types/node": "^22.19.3",
-    "typescript": "^5.9.3"
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }
