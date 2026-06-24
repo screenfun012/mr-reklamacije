@@ -5,6 +5,7 @@ import {
   claimKeys,
   domaceClaimKeys,
   fetchJson,
+  invalidateStatisticsSummary,
   type DomaceClaimCreateInput,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -24,6 +25,7 @@ export function useCreateDomaceClaim() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

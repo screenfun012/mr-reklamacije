@@ -3,6 +3,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 import {
   emotiveClaimKeys,
   fetchJson,
+  invalidateStatisticsSummary,
   type EmotiveClaimDetail,
   type EmotiveClaimFaultInput,
 } from '@mr/shared'
@@ -34,6 +35,7 @@ export function useUpdateEmotiveClaimFaults(
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

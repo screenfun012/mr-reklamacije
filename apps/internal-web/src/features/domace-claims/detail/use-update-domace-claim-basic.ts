@@ -1,6 +1,11 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
-import { domaceClaimKeys, fetchJson, type DomaceClaimDetail } from '@mr/shared'
+import {
+  domaceClaimKeys,
+  fetchJson,
+  invalidateStatisticsSummary,
+  type DomaceClaimDetail,
+} from '@mr/shared'
 
 import type { DomaceClaimBasicEdit } from './domace-claim-detail-schemas.js'
 
@@ -23,6 +28,7 @@ export function useUpdateDomaceClaimBasic(
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

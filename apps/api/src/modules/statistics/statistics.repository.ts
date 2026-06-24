@@ -205,8 +205,8 @@ export class StatisticsRepository {
     const result = await this.db.execute<ManufacturerRow>(sql`
       SELECT
         c.manufacturer_id,
-        em.code,
-        em.name,
+        MAX(em.code) AS code,
+        MAX(em.name) AS name,
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Pending})::int AS pending,
         COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Accepted})::int AS accepted,
@@ -215,9 +215,9 @@ export class StatisticsRepository {
       LEFT JOIN engine_manufacturers em
         ON em.id = c.manufacturer_id
         AND em.deleted_at IS NULL
-      GROUP BY c.manufacturer_id, em.code, em.name
+      GROUP BY c.manufacturer_id
       HAVING COUNT(*) > 0
-      ORDER BY total DESC, em.name ASC NULLS LAST
+      ORDER BY total DESC, MAX(em.name) ASC NULLS LAST
     `)
 
     return result.rows.map((row) => ({

@@ -4,6 +4,7 @@ import {
   claimKeys,
   domaceClaimKeys,
   fetchJson,
+  invalidateStatisticsSummary,
   type ClaimOutcome,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -45,6 +46,7 @@ export function useChangeDomaceClaimOutcome(
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

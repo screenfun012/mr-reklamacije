@@ -3,6 +3,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 import {
   domaceClaimKeys,
   fetchJson,
+  invalidateStatisticsSummary,
   type DomaceClaimDetail,
   type DomaceClaimFaultInput,
 } from '@mr/shared'
@@ -26,6 +27,7 @@ export function useUpdateDomaceClaimFaults(
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

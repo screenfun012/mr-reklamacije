@@ -1,6 +1,11 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
-import { emotiveClaimKeys, fetchJson, type EmotiveClaimDetail } from '@mr/shared'
+import {
+  emotiveClaimKeys,
+  fetchJson,
+  invalidateStatisticsSummary,
+  type EmotiveClaimDetail,
+} from '@mr/shared'
 
 /**
  * Editable basic fields of an emotive claim. Optional fields use `null` to
@@ -44,6 +49,7 @@ export function useUpdateEmotiveClaimBasic(
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

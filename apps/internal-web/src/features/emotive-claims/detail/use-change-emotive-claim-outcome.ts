@@ -4,6 +4,7 @@ import {
   claimKeys,
   emotiveClaimKeys,
   fetchJson,
+  invalidateStatisticsSummary,
   type ClaimOutcome,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -53,6 +54,7 @@ export function useChangeEmotiveClaimOutcome(
       await queryClient.invalidateQueries({ queryKey: detailKey })
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
     },
   })
 }

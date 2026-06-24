@@ -6,6 +6,7 @@ import {
   claimKeys,
   emotiveClaimKeys,
   fetchJson,
+  invalidateStatisticsSummary,
   type EmotiveClaimCreateInput,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -26,6 +27,7 @@ export function useCreateEmotiveClaim() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
+      await invalidateStatisticsSummary(queryClient)
       await navigate({ to: '/reklamacije', search: { page: 1, pageSize: 10 } })
     },
   })

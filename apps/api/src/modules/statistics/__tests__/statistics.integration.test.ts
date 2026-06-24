@@ -99,16 +99,19 @@ describe('Statistics module integration', () => {
     mrNumber: string,
     dateOfClaim: Date = daysAgo(20),
     manufacturerId?: string,
+    engineTypeId?: string | null,
+    outcome: (typeof ClaimOutcome)[keyof typeof ClaimOutcome] = ClaimOutcome.Accepted,
   ): Promise<string> {
     const claim = await container.domaceClaimsService.create(
       {
         mrNumber,
         customerName: 'Stats Domace',
         dateOfClaim,
-        outcome: ClaimOutcome.Accepted,
+        outcome,
         totalAmount: 100000,
         faults: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
+        ...(engineTypeId !== undefined ? { engineTypeId: engineTypeId ?? undefined } : {}),
       },
       {
         id: TEST_USER_ID,
@@ -234,6 +237,46 @@ describe('Statistics module integration', () => {
 
       expect(row?.total).toBe(beforeCount + 1)
       expect(activeId).toBeDefined()
+    })
+
+    it('counts domace claims after PATCH with only manufacturer_id', async () => {
+      const bmwId = await createEngineManufacturer(`STAT-BMW-PATCH-${Date.now()}`, 'BMW Patch Only')
+      const claimId = await createDomaceClaim(
+        `STAT-MFG-PATCH-${Date.now()}/26`,
+        daysAgo(10),
+        undefined,
+        undefined,
+        ClaimOutcome.Pending,
+      )
+
+      await container.domaceClaimsService.update(
+        claimId,
+        { manufacturerId: bmwId },
+        {
+          id: TEST_USER_ID,
+          permissions: ['domace_claims.view', 'domace_claims.update', 'emotive_claims.view'],
+        },
+        auditContext,
+      )
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const bmw = summary.byManufacturer.items.find((row) => row.manufacturerId === bmwId)
+
+      expect(bmw).toMatchObject({ total: 1, pending: 1 })
+    })
+
+    it('counts domace claims with manufacturer_id but null engine_type_id', async () => {
+      const bmwId = await createEngineManufacturer(
+        `STAT-BMW-NO-ET-${Date.now()}`,
+        'BMW No Engine Type',
+      )
+
+      await createDomaceClaim(`STAT-MFG-NO-ET-${Date.now()}/26`, daysAgo(10), bmwId, null)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const bmw = summary.byManufacturer.items.find((row) => row.manufacturerId === bmwId)
+
+      expect(bmw).toMatchObject({ total: 1, accepted: 1 })
     })
 
     it('scopes manufacturer domace counts to statistics.view_domace permission', async () => {

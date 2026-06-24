@@ -11,6 +11,7 @@ export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'
 export { dashboardKeys, dashboardSummaryOptions } from './dashboard.js'
 export { statisticsKeys, statisticsSummaryOptions } from './statistics.js'
+export { invalidateStatisticsSummary } from './invalidate-statistics-summary.js'
 export {
   ClaimDetailSearchSchema,
   ClaimDetailTab,
