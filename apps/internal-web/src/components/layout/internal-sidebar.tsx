@@ -1,18 +1,28 @@
-import { usePermissions } from '@mr/auth/route-guards'
 import { MrEnginesLogo } from '@mr/ui'
-import { Link } from '@tanstack/react-router'
+import { getRouteApi, Link } from '@tanstack/react-router'
 
 import { internalNavItems } from '~/config/navigation'
-import { authClient } from '~/lib/auth-client'
+
+const rootRoute = getRouteApi('__root__')
+
+function hasAnyPermission(
+  userPermissions: readonly string[],
+  required: readonly string[],
+): boolean {
+  const permissionSet = new Set(userPermissions)
+  return required.some((permission) => permissionSet.has(permission))
+}
 
 export function InternalSidebar() {
-  const { has } = usePermissions(authClient)
+  const { authSession } = rootRoute.useRouteContext()
+  const userPermissions = authSession?.user?.permissions ?? []
+
   const visibleItems = internalNavItems.filter((item) => {
     if (item.permissions !== undefined) {
-      return item.permissions.some((permission) => has(permission))
+      return hasAnyPermission(userPermissions, item.permissions)
     }
     if (item.permission !== undefined) {
-      return has(item.permission)
+      return userPermissions.includes(item.permission)
     }
     return true
   })

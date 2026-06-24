@@ -46,6 +46,7 @@ pnpm-debug.log*
 
 # Local upload storage (dev)
 data/uploads/
+apps/api/data/
 apps/api/.tmp/
 tmp/
 .cache/
