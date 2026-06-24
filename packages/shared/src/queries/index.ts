@@ -9,6 +9,7 @@ export { claimReportOptions, upsertClaimReport } from './claim-reports.js'
 export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'
+export { dashboardKeys, dashboardSummaryOptions } from './dashboard.js'
 export {
   ClaimDetailSearchSchema,
   ClaimDetailTab,
