@@ -13,6 +13,24 @@ const claimOutcomeValues = [
 
 const claimKindValues = [ClaimKind.Emotive, ClaimKind.Domace] as const
 
+export const ClaimSortBy = {
+  DateOfClaim: 'dateOfClaim',
+  DateOfFinish: 'dateOfFinish',
+} as const
+
+export type ClaimSortBy = (typeof ClaimSortBy)[keyof typeof ClaimSortBy]
+
+export const claimSortByValues = [ClaimSortBy.DateOfClaim, ClaimSortBy.DateOfFinish] as const
+
+export const ClaimSortDir = {
+  Asc: 'asc',
+  Desc: 'desc',
+} as const
+
+export type ClaimSortDir = (typeof ClaimSortDir)[keyof typeof ClaimSortDir]
+
+export const claimSortDirValues = [ClaimSortDir.Asc, ClaimSortDir.Desc] as const
+
 const boolQueryParam = z
   .string()
   .optional()
@@ -27,6 +45,8 @@ export const ClaimListQuerySchema = z.object({
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   search: z.string().trim().min(1).optional(),
+  sortBy: z.enum(claimSortByValues).optional(),
+  sortDir: z.enum(claimSortDirValues).optional(),
   includeDeleted: boolQueryParam.default(false),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce

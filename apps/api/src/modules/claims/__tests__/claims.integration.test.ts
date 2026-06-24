@@ -1,4 +1,4 @@
-import { ClaimKind, ClaimOutcome, normalizeName } from '@mr/shared'
+import { ClaimKind, ClaimOutcome, ClaimSortBy, ClaimSortDir, normalizeName } from '@mr/shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -59,14 +59,18 @@ describe('ClaimsService integration', () => {
     await ctx.cleanup()
   })
 
-  async function createEmotive(mrNumber: string): Promise<string> {
+  async function createEmotive(
+    mrNumber: string,
+    options: { dateOfClaim?: Date; dateOfFinish?: Date } = {},
+  ): Promise<string> {
     const engineType = await container.engineTypesRepository.create({
       code: `ENG-${Date.now()}-${mrNumber}`,
     })
     const created = await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType.id,
-        dateOfClaim: new Date('2026-06-15'),
+        dateOfClaim: options.dateOfClaim ?? new Date('2026-06-15'),
+        dateOfFinish: options.dateOfFinish,
         mrNumber,
         outcome: ClaimOutcome.Pending,
         warrantyReport: 'Unified list emotive row',
@@ -80,12 +84,20 @@ describe('ClaimsService integration', () => {
     return created.id
   }
 
-  async function createDomace(mrNumber: string, customerName: string): Promise<string> {
+  async function createDomace(
+    mrNumber: string,
+    customerName: string,
+    options: { dateOfClaim?: Date | null; dateOfFinish?: Date | null } = {},
+  ): Promise<string> {
     const created = await container.domaceClaimsService.create(
       {
         mrNumber,
         customerName,
-        dateOfClaim: new Date('2026-06-15'),
+        dateOfClaim:
+          options.dateOfClaim === null
+            ? undefined
+            : (options.dateOfClaim ?? new Date('2026-06-15')),
+        dateOfFinish: options.dateOfFinish === null ? undefined : options.dateOfFinish,
         outcome: ClaimOutcome.Pending,
         faults: [],
       },
@@ -199,6 +211,142 @@ describe('ClaimsService integration', () => {
       await expect(
         container.claimsService.list(listQuery({ kind: ClaimKind.Domace }), EMOTIVE_ONLY),
       ).rejects.toThrow(ForbiddenError)
+    })
+  })
+
+  describe('when sorting unified claims', () => {
+    const sortToken = () => `SORT-${Date.now()}`
+
+    it('keeps default order by date_of_claim desc when sort params are omitted', async () => {
+      const token = sortToken()
+      await createEmotive(`${token}-OLD/26`, { dateOfClaim: new Date('2026-06-01') })
+      await createEmotive(`${token}-NEW/26`, { dateOfClaim: new Date('2026-06-30') })
+      await createEmotive(`${token}-MID/26`, { dateOfClaim: new Date('2026-06-15') })
+
+      const result = await container.claimsService.list(listQuery({ search: token }), FULL_OPERATOR)
+
+      expect(result.items.map((item) => item.mrNumber)).toEqual([
+        `${token}-NEW/26`,
+        `${token}-MID/26`,
+        `${token}-OLD/26`,
+      ])
+    })
+
+    it('sorts by dateOfClaim ascending', async () => {
+      const token = sortToken()
+      await createEmotive(`${token}-OLD/26`, { dateOfClaim: new Date('2026-06-01') })
+      await createEmotive(`${token}-NEW/26`, { dateOfClaim: new Date('2026-06-30') })
+      await createEmotive(`${token}-MID/26`, { dateOfClaim: new Date('2026-06-15') })
+
+      const result = await container.claimsService.list(
+        listQuery({
+          search: token,
+          sortBy: ClaimSortBy.DateOfClaim,
+          sortDir: ClaimSortDir.Asc,
+        }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.mrNumber)).toEqual([
+        `${token}-OLD/26`,
+        `${token}-MID/26`,
+        `${token}-NEW/26`,
+      ])
+    })
+
+    it('sorts by dateOfClaim descending', async () => {
+      const token = sortToken()
+      await createEmotive(`${token}-OLD/26`, { dateOfClaim: new Date('2026-06-01') })
+      await createEmotive(`${token}-NEW/26`, { dateOfClaim: new Date('2026-06-30') })
+
+      const result = await container.claimsService.list(
+        listQuery({
+          search: token,
+          sortBy: ClaimSortBy.DateOfClaim,
+          sortDir: ClaimSortDir.Desc,
+        }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.mrNumber)).toEqual([
+        `${token}-NEW/26`,
+        `${token}-OLD/26`,
+      ])
+    })
+
+    it('sorts by dateOfFinish ascending with null finish dates last', async () => {
+      const token = sortToken()
+      const earlyId = await createEmotive(`${token}-EARLY/26`, {
+        dateOfClaim: new Date('2026-06-15'),
+        dateOfFinish: new Date('2026-06-01'),
+      })
+      const lateId = await createEmotive(`${token}-LATE/26`, {
+        dateOfClaim: new Date('2026-06-15'),
+        dateOfFinish: new Date('2026-06-30'),
+      })
+      const nullFinishId = await createDomace(`${token}-NULL/26`, 'Null finish', {
+        dateOfClaim: new Date('2026-06-15'),
+        dateOfFinish: null,
+      })
+
+      const result = await container.claimsService.list(
+        listQuery({
+          search: token,
+          sortBy: ClaimSortBy.DateOfFinish,
+          sortDir: ClaimSortDir.Asc,
+        }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.id)).toEqual([earlyId, lateId, nullFinishId])
+    })
+
+    it('sorts by dateOfFinish descending with null finish dates last', async () => {
+      const token = sortToken()
+      const earlyId = await createEmotive(`${token}-EARLY/26`, {
+        dateOfClaim: new Date('2026-06-15'),
+        dateOfFinish: new Date('2026-06-01'),
+      })
+      const lateId = await createEmotive(`${token}-LATE/26`, {
+        dateOfClaim: new Date('2026-06-15'),
+        dateOfFinish: new Date('2026-06-30'),
+      })
+      const nullFinishId = await createDomace(`${token}-NULL/26`, 'Null finish', {
+        dateOfClaim: new Date('2026-06-15'),
+        dateOfFinish: null,
+      })
+
+      const result = await container.claimsService.list(
+        listQuery({
+          search: token,
+          sortBy: ClaimSortBy.DateOfFinish,
+          sortDir: ClaimSortDir.Desc,
+        }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.id)).toEqual([lateId, earlyId, nullFinishId])
+    })
+
+    it('places null date_of_claim rows last when sorting ascending by dateOfClaim', async () => {
+      const token = sortToken()
+      const datedId = await createEmotive(`${token}-DATED/26`, {
+        dateOfClaim: new Date('2026-06-10'),
+      })
+      const nullClaimId = await createDomace(`${token}-NODATE/26`, 'Bez datuma', {
+        dateOfClaim: null,
+      })
+
+      const result = await container.claimsService.list(
+        listQuery({
+          search: token,
+          sortBy: ClaimSortBy.DateOfClaim,
+          sortDir: ClaimSortDir.Asc,
+        }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.id)).toEqual([datedId, nullClaimId])
     })
   })
 })

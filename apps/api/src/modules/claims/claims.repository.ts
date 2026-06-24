@@ -8,6 +8,7 @@ import {
 import { eq, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
+import { buildClaimListOrderBy } from './claim-list-order.js'
 import type { ClaimsListScope } from './claims.types.js'
 import type { ClaimListQuery, ClaimListResponse } from './claims.validators.js'
 
@@ -138,10 +139,12 @@ export class ClaimsRepository {
 
     const total = toInt(countResult.rows[0]?.total ?? 0)
 
+    const orderBy = buildClaimListOrderBy(query)
+
     const listResult = await this.db.execute<UnifiedListRow>(sql`
       SELECT *
       FROM (${unionSql}) AS unified
-      ORDER BY date_of_claim DESC NULLS LAST, id DESC
+      ORDER BY ${orderBy}
       LIMIT ${query.pageSize}
       OFFSET ${offset}
     `)

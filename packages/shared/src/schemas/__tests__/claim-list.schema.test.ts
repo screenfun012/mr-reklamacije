@@ -1,7 +1,57 @@
 import { describe, expect, it } from 'vitest'
 
 import { ClaimKind, ClaimOutcome } from '../../enums.js'
-import { ClaimListResponseSchema } from '../claim-list.schema.js'
+import {
+  ClaimListQuerySchema,
+  ClaimListResponseSchema,
+  ClaimSortBy,
+  ClaimSortDir,
+} from '../claim-list.schema.js'
+
+describe('ClaimListQuerySchema', () => {
+  it('accepts whitelisted sortBy and sortDir values', () => {
+    const parsed = ClaimListQuerySchema.parse({
+      sortBy: ClaimSortBy.DateOfClaim,
+      sortDir: ClaimSortDir.Asc,
+      page: 1,
+      pageSize: 10,
+    })
+
+    expect(parsed.sortBy).toBe('dateOfClaim')
+    expect(parsed.sortDir).toBe('asc')
+  })
+
+  it('rejects invalid sortBy values such as SQL injection attempts', () => {
+    expect(() =>
+      ClaimListQuerySchema.parse({
+        sortBy: 'date_of_claim; DROP TABLE emotive_claims',
+        page: 1,
+        pageSize: 10,
+      }),
+    ).toThrow()
+  })
+
+  it('rejects unknown sortBy column names', () => {
+    expect(() =>
+      ClaimListQuerySchema.parse({
+        sortBy: 'mrNumber',
+        page: 1,
+        pageSize: 10,
+      }),
+    ).toThrow()
+  })
+
+  it('rejects invalid sortDir values', () => {
+    expect(() =>
+      ClaimListQuerySchema.parse({
+        sortBy: ClaimSortBy.DateOfFinish,
+        sortDir: 'up',
+        page: 1,
+        pageSize: 10,
+      }),
+    ).toThrow()
+  })
+})
 
 describe('ClaimListResponseSchema', () => {
   it('accepts unified list items when numeric fields arrive as JSON strings from raw SQL', () => {
