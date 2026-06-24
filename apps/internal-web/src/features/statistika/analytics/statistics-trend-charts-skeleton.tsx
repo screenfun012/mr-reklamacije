@@ -1,0 +1,53 @@
+import { m } from '@mr/i18n'
+import { Card, CardContent, CardHeader, Skeleton } from '@mr/ui'
+
+export function StatisticsTrendChartsSkeleton(): React.ReactElement {
+  return (
+    <section className="flex flex-col gap-4" aria-busy="true" aria-label={m.common_loading()}>
+      <div>
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-56" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-80 w-full rounded-lg" />
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-44" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-52" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  )
+}
+
+export interface StatisticsTrendChartsPlaceholderProps {
+  message: string
+}
+
+export function StatisticsTrendChartsPlaceholder({
+  message,
+}: StatisticsTrendChartsPlaceholderProps): React.ReactElement {
+  return (
+    <section className="rounded-lg border border-border bg-card p-4">
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </section>
+  )
+}
