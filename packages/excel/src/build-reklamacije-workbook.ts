@@ -1,8 +1,11 @@
 import ExcelJS from 'exceljs'
 
+import { addEmployeeStatsSheet } from './build-employee-stats-sheet.js'
+import { addFirmStatsSheet } from './build-firm-stats-sheet.js'
 import { formatDomaceOutcome } from './format-domace-outcome.js'
 import { formatExportDate, formatSheetDateLabel } from './format-export-date.js'
 import { formatGreska } from './format-greska.js'
+import { buildMasterRows } from './map-domace-to-emotive-row.js'
 import type { DomaceExportRow, EmotiveExportRow, ReklamacijeWorkbookInput } from './types.js'
 
 const EMOTIVE_HEADERS = [
@@ -23,19 +26,17 @@ const DOMACE_HEADERS = [
   'R.B.',
   'DATUM',
   'IME STRANKE',
-  'VOZILO ',
   'RADNI NALOG',
-  'STARI R/N',
-  'IZNOS ORIGINALNOG  RACUNA',
   'BROJ RACUNA',
   'OPIS PROBLEMA',
-  'REKLAMACIJA ',
-  'IZNOS DELOVA BEZ PDV',
-  'IZNOS RADA BEZ PDV',
-  'UKUPNO ',
-  'ZAPOSLENI ',
-  'NAPOMENA ',
+  'REKLAMACIJA',
+  'UKUPNO',
+  'ZAPOSLENI',
+  'NAPOMENA',
 ] as const
+
+const EMOTIVE_DATA_SHEET_NAME = 'EMOTIVE REKLAMACIJE'
+const DOMACE_DATA_SHEET_NAME = 'DOMACE REKLAMACIJE '
 
 function addHeaderRow(sheet: ExcelJS.Worksheet, headers: readonly string[]): void {
   const row = sheet.addRow([...headers])
@@ -63,18 +64,13 @@ function domaceRowValues(row: DomaceExportRow): (string | number | null)[] {
     row.sequenceNumber,
     formatExportDate(row.dateOfClaim),
     row.customerName,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
+    row.workOrder,
+    row.invoiceNumber,
+    row.problemDescription,
     formatDomaceOutcome(row.outcome),
-    null,
-    null,
     row.totalAmount,
     row.employeeName,
-    row.internalNotes,
+    row.notes,
   ]
 }
 
@@ -95,12 +91,8 @@ function addEmotiveSheet(
   }))
 }
 
-function addDomaceSheet(
-  workbook: ExcelJS.Workbook,
-  sheetName: string,
-  rows: readonly DomaceExportRow[],
-): void {
-  const sheet = workbook.addWorksheet(sheetName)
+function addDomaceSheet(workbook: ExcelJS.Workbook, rows: readonly DomaceExportRow[]): void {
+  const sheet = workbook.addWorksheet(DOMACE_DATA_SHEET_NAME)
   addHeaderRow(sheet, DOMACE_HEADERS)
 
   for (const row of rows) {
@@ -112,26 +104,42 @@ function addDomaceSheet(
   }))
 }
 
+function addYearSheets(workbook: ExcelJS.Workbook, masterRows: readonly EmotiveExportRow[]): void {
+  const years = [...new Set(masterRows.map((row) => row.claimYear))].sort(
+    (left, right) => right - left,
+  )
+
+  for (const year of years) {
+    const yearRows = masterRows.filter((row) => row.claimYear === year)
+    addEmotiveSheet(workbook, String(year), yearRows)
+  }
+}
+
 export async function buildReklamacijeWorkbook(input: ReklamacijeWorkbookInput): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook()
   const exportedAt = input.exportedAt ?? new Date()
+  const masterRows = buildMasterRows(input)
 
-  if (input.includeEmotive) {
+  if (masterRows.length > 0) {
     const ukupnoName = `UKUPNO SA ${formatSheetDateLabel(exportedAt)}.`
-    addEmotiveSheet(workbook, ukupnoName, input.emotiveRows)
-
-    const years = [...new Set(input.emotiveRows.map((row) => row.claimYear))].sort(
-      (left, right) => right - left,
-    )
-
-    for (const year of years) {
-      const yearRows = input.emotiveRows.filter((row) => row.claimYear === year)
-      addEmotiveSheet(workbook, String(year), yearRows)
-    }
+    addEmotiveSheet(workbook, ukupnoName, masterRows)
   }
 
-  if (input.includeDomace) {
-    addDomaceSheet(workbook, 'DOMACE REKLAMACIJE ', input.domaceRows)
+  if (input.includeEmotive && input.emotiveRows.length > 0) {
+    addEmotiveSheet(workbook, EMOTIVE_DATA_SHEET_NAME, input.emotiveRows)
+  }
+
+  if (input.includeDomace && input.domaceRows.length > 0) {
+    addDomaceSheet(workbook, input.domaceRows)
+  }
+
+  if (input.includeEmotive && input.emotiveRows.length > 0) {
+    addEmployeeStatsSheet(workbook, input.emotiveRows, input.employeeAssembledByYear)
+    addFirmStatsSheet(workbook, input.emotiveRows)
+  }
+
+  if (masterRows.length > 0) {
+    addYearSheets(workbook, masterRows)
   }
 
   const buffer = await workbook.xlsx.writeBuffer()
@@ -140,7 +148,9 @@ export async function buildReklamacijeWorkbook(input: ReklamacijeWorkbookInput):
 
 export type {
   DomaceExportRow,
+  EmotiveClaimOutcome,
   EmotiveExportRow,
+  EmployeeAssembledYearRow,
   ExportFaultRow,
   ReklamacijeWorkbookInput,
 } from './types.js'

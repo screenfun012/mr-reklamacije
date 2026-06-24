@@ -96,23 +96,37 @@ export class ExcelService {
     const includeEmotive = input.scope !== ExcelExportScope.Domace
     const includeDomace = input.scope !== ExcelExportScope.Emotive
 
-    const emotiveRows = includeEmotive
-      ? (await this.repo.listEmotiveForExport(input, actor)).map(
-          (row): EmotiveExportRow => ({
-            sequenceNumber: row.sequenceNumber,
-            warrantyReport: row.warrantyReport,
-            engineTypeCode: row.engineTypeCode,
-            dateOfClaim: row.dateOfClaim,
-            mrNumber: row.mrNumber,
-            dateOfFinish: row.dateOfFinish,
-            claimNumber: row.claimNumber,
-            employeeName: formatEmployeeNameForExport(row.employeeName),
-            faults: mapFaults(row.faults),
-            sourceName: row.sourceName,
-            claimYear: row.claimYear,
-          }),
-        )
-      : []
+    const emotiveDbRows = includeEmotive ? await this.repo.listEmotiveForExport(input, actor) : []
+
+    const emotiveRows = emotiveDbRows.map(
+      (row): EmotiveExportRow => ({
+        sequenceNumber: row.sequenceNumber,
+        warrantyReport: row.warrantyReport,
+        engineTypeCode: row.engineTypeCode,
+        dateOfClaim: row.dateOfClaim,
+        mrNumber: row.mrNumber,
+        dateOfFinish: row.dateOfFinish,
+        claimNumber: row.claimNumber,
+        employeeId: row.employeeId,
+        employeeName: formatEmployeeNameForExport(row.employeeName),
+        customerName: row.customerName,
+        outcome: row.outcome,
+        faults: mapFaults(row.faults),
+        sourceName: row.sourceName,
+        claimYear: row.claimYear,
+      }),
+    )
+
+    const claimYears = [...new Set(emotiveRows.map((row) => row.claimYear))]
+    const employeeAssembledByYear =
+      includeEmotive && claimYears.length > 0
+        ? (await this.repo.listEmployeeAssembledForExport(claimYears)).map((row) => ({
+            employeeId: row.employeeId,
+            employeeName: formatEmployeeNameForExport(row.employeeName) ?? row.employeeName,
+            year: row.year,
+            enginesAssembled: row.enginesAssembled,
+          }))
+        : []
 
     const domaceRows = includeDomace
       ? (await this.repo.listDomaceForExport(input, actor)).map(
@@ -120,10 +134,19 @@ export class ExcelService {
             sequenceNumber: row.sequenceNumber,
             dateOfClaim: row.dateOfClaim,
             customerName: row.customerName,
+            mrNumber: row.mrNumber,
+            workOrder: row.mrNumber,
+            invoiceNumber: row.claimNumber,
+            problemDescription: row.warrantyReport,
+            dateOfFinish: row.dateOfFinish,
+            engineTypeCode: row.engineTypeCode,
+            employeeId: row.employeeId,
+            employeeName: formatEmployeeNameForExport(row.employeeName),
             outcome: row.outcome,
             totalAmount: row.totalAmount,
-            employeeName: formatEmployeeNameForExport(row.employeeName),
-            internalNotes: row.internalNotes,
+            notes: row.internalNotes,
+            claimYear: row.claimYear,
+            faults: mapFaults(row.faults),
           }),
         )
       : []
@@ -131,6 +154,7 @@ export class ExcelService {
     const buffer = await buildReklamacijeWorkbook({
       emotiveRows,
       domaceRows,
+      employeeAssembledByYear,
       includeEmotive,
       includeDomace,
       exportedAt,

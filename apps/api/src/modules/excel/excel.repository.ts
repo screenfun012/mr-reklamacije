@@ -1,18 +1,24 @@
 import { schema } from '@mr/db'
 import type { ClaimFaultItem, ExcelExportInput } from '@mr/shared'
-import { and, asc, eq, gte, inArray, isNull, lte, type SQL } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
-import { domaceClaims } from '../domace-claims/domace-claims.schema.js'
+import { domaceClaimFaults, domaceClaims } from '../domace-claims/domace-claims.schema.js'
 import {
   claimSources,
   customerUsers,
   emotiveClaimFaults,
   emotiveClaims,
 } from '../emotive-claims/emotive-claims.schema.js'
-import type { DomaceExportDbRow, EmotiveExportDbRow, ExcelActor } from './excel.types.js'
+import type {
+  DomaceExportDbRow,
+  EmotiveExportDbRow,
+  EmployeeAssembledDbRow,
+  ExcelActor,
+} from './excel.types.js'
 
-const { departments, employees, engineTypes, externalParties } = schema
+const { customers, departments, employeeMonthlyOutput, employees, engineTypes, externalParties } =
+  schema
 
 function formatDate(value: Date | string | null): string | null {
   if (value === null) {
@@ -137,13 +143,17 @@ export class ExcelRepository {
         mrNumber: emotiveClaims.mrNumber,
         dateOfFinish: emotiveClaims.dateOfFinish,
         claimNumber: emotiveClaims.claimNumber,
+        employeeId: emotiveClaims.employeeId,
         employeeName: employees.fullName,
+        customerName: customers.name,
+        outcome: emotiveClaims.outcome,
         sourceName: claimSources.name,
         claimYear: emotiveClaims.claimYear,
       })
       .from(emotiveClaims)
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+      .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
       .where(whereClause)
       .orderBy(asc(emotiveClaims.sequenceNumber))
@@ -189,7 +199,10 @@ export class ExcelRepository {
       mrNumber: row.mrNumber,
       dateOfFinish: formatDate(row.dateOfFinish),
       claimNumber: row.claimNumber,
+      employeeId: row.employeeId,
       employeeName: row.employeeName,
+      customerName: row.customerName,
+      outcome: row.outcome as EmotiveExportDbRow['outcome'],
       sourceName: row.sourceName,
       claimYear: row.claimYear,
       faults: faultsByClaimId.get(row.id) ?? [],
@@ -218,27 +231,105 @@ export class ExcelRepository {
 
     const rows = await this.db
       .select({
+        id: domaceClaims.id,
         sequenceNumber: domaceClaims.sequenceNumber,
         dateOfClaim: domaceClaims.dateOfClaim,
+        dateOfFinish: domaceClaims.dateOfFinish,
         customerName: domaceClaims.customerName,
+        mrNumber: domaceClaims.mrNumber,
+        claimNumber: domaceClaims.claimNumber,
+        warrantyReport: domaceClaims.warrantyReport,
+        engineTypeCode: engineTypes.code,
+        employeeId: domaceClaims.employeeId,
+        employeeName: employees.fullName,
         outcome: domaceClaims.outcome,
         totalAmount: domaceClaims.totalAmount,
-        employeeName: employees.fullName,
         internalNotes: domaceClaims.internalNotes,
+        claimYear: domaceClaims.claimYear,
       })
       .from(domaceClaims)
+      .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
       .where(whereClause)
       .orderBy(asc(domaceClaims.sequenceNumber))
 
+    if (rows.length === 0) {
+      return []
+    }
+
+    const claimIds = rows.map((row) => row.id)
+    const faultRows = await this.db
+      .select({
+        id: domaceClaimFaults.id,
+        claimId: domaceClaimFaults.claimId,
+        faultType: domaceClaimFaults.faultType,
+        employeeId: domaceClaimFaults.employeeId,
+        employeeName: employees.fullName,
+        departmentId: domaceClaimFaults.departmentId,
+        departmentName: departments.nameSr,
+        externalPartyId: domaceClaimFaults.externalPartyId,
+        externalPartyName: externalParties.name,
+        notes: domaceClaimFaults.notes,
+      })
+      .from(domaceClaimFaults)
+      .leftJoin(employees, eq(domaceClaimFaults.employeeId, employees.id))
+      .leftJoin(departments, eq(domaceClaimFaults.departmentId, departments.id))
+      .leftJoin(externalParties, eq(domaceClaimFaults.externalPartyId, externalParties.id))
+      .where(inArray(domaceClaimFaults.claimId, claimIds))
+
+    const faultsByClaimId = new Map<string, ClaimFaultItem[]>()
+    for (const fault of faultRows) {
+      const mapped = mapFaultRow(fault)
+      const existing = faultsByClaimId.get(fault.claimId) ?? []
+      existing.push(mapped)
+      faultsByClaimId.set(fault.claimId, existing)
+    }
+
     return rows.map((row) => ({
+      id: row.id,
       sequenceNumber: row.sequenceNumber,
       dateOfClaim: formatDate(row.dateOfClaim),
+      dateOfFinish: formatDate(row.dateOfFinish),
       customerName: row.customerName,
+      mrNumber: row.mrNumber,
+      claimNumber: row.claimNumber,
+      warrantyReport: row.warrantyReport,
+      engineTypeCode: row.engineTypeCode,
+      employeeId: row.employeeId,
+      employeeName: row.employeeName,
       outcome: row.outcome as DomaceExportDbRow['outcome'],
       totalAmount: row.totalAmount,
-      employeeName: row.employeeName,
       internalNotes: row.internalNotes,
+      claimYear: row.claimYear,
+      faults: faultsByClaimId.get(row.id) ?? [],
+    }))
+  }
+
+  async listEmployeeAssembledForExport(
+    years: readonly number[],
+  ): Promise<EmployeeAssembledDbRow[]> {
+    if (years.length === 0) {
+      return []
+    }
+
+    const rows = await this.db
+      .select({
+        employeeId: employeeMonthlyOutput.employeeId,
+        employeeName: employees.fullName,
+        year: employeeMonthlyOutput.year,
+        enginesAssembled: sql<number>`coalesce(sum(${employeeMonthlyOutput.enginesAssembled}), 0)`,
+      })
+      .from(employeeMonthlyOutput)
+      .innerJoin(employees, eq(employeeMonthlyOutput.employeeId, employees.id))
+      .where(inArray(employeeMonthlyOutput.year, [...years]))
+      .groupBy(employeeMonthlyOutput.employeeId, employees.fullName, employeeMonthlyOutput.year)
+      .orderBy(asc(employees.fullName), asc(employeeMonthlyOutput.year))
+
+    return rows.map((row) => ({
+      employeeId: row.employeeId,
+      employeeName: row.employeeName,
+      year: row.year,
+      enginesAssembled: Number(row.enginesAssembled),
     }))
   }
 }

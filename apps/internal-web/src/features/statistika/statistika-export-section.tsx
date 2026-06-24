@@ -20,6 +20,7 @@ import { Download, Loader2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
+import { useLocale } from '~/lib/locale'
 
 import { useExcelExport } from './use-excel-export'
 
@@ -45,6 +46,7 @@ export function StatistikaExportSection({
   canExportPartial,
   canExportFull,
 }: StatistikaExportSectionProps): React.ReactElement {
+  const { locale } = useLocale()
   const { exportWorkbook, isExporting } = useExcelExport()
   const [scope, setScope] = useState<ExcelExportInput['scope']>(ExcelExportScope.All)
   const [claimYear, setClaimYear] = useState('')
@@ -64,6 +66,24 @@ export function StatistikaExportSection({
   }, [claimYear, dateFrom, dateTo, outcome, scope])
 
   const exportBlocked = isFullExport ? !canExportFull : !canExportPartial
+
+  const scopeLabel = useMemo(() => {
+    const option = SCOPE_OPTIONS.find((item) => item.value === scope)
+    return option?.label() ?? ''
+  }, [scope, locale])
+
+  const outcomeLabel = useMemo(() => {
+    if (outcome === FILTER_ALL_SENTINEL) {
+      return m.emotive_claims_filter_outcome_all()
+    }
+
+    const definition = OUTCOME_REGISTRY.find((item) => item.key === outcome)
+    if (definition === undefined) {
+      return m.emotive_claims_filter_outcome_all()
+    }
+
+    return OUTCOME_LABELS[definition.labelKey]()
+  }, [outcome, locale])
 
   const handleExport = useCallback(async () => {
     const parsedYear = claimYear.trim().length > 0 ? Number(claimYear) : undefined
@@ -95,7 +115,7 @@ export function StatistikaExportSection({
             }}
           >
             <SelectTrigger aria-label={m.statistika_export_scope()}>
-              <SelectValue />
+              <SelectValue>{scopeLabel}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {SCOPE_OPTIONS.map((option) => (
@@ -142,7 +162,7 @@ export function StatistikaExportSection({
           <span className="font-medium text-foreground">{m.emotive_claims_filter_outcome()}</span>
           <Select value={outcome} onValueChange={setOutcome}>
             <SelectTrigger aria-label={m.emotive_claims_filter_outcome()}>
-              <SelectValue />
+              <SelectValue>{outcomeLabel}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={FILTER_ALL_SENTINEL}>
