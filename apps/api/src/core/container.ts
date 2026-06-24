@@ -19,6 +19,10 @@ import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-c
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { EmployeesRepository, EmployeesService } from '../modules/employees/index.js'
 import { EngineTypesRepository, EngineTypesService } from '../modules/engine-types/index.js'
+import {
+  EngineManufacturersRepository,
+  EngineManufacturersService,
+} from '../modules/engine-manufacturers/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
 import {
   ExternalPartiesRepository,
@@ -46,6 +50,8 @@ export interface Container {
   employeesService: EmployeesService
   engineTypesRepository: EngineTypesRepository
   engineTypesService: EngineTypesService
+  engineManufacturersRepository: EngineManufacturersRepository
+  engineManufacturersService: EngineManufacturersService
   externalPartiesRepository: ExternalPartiesRepository
   externalPartiesService: ExternalPartiesService
   customersRepository: CustomersRepository
@@ -90,6 +96,12 @@ export function buildContainer(
 
   const engineTypesRepository = new EngineTypesRepository(db)
   const engineTypesService = new EngineTypesService(engineTypesRepository, auditService)
+
+  const engineManufacturersRepository = new EngineManufacturersRepository(db)
+  const engineManufacturersService = new EngineManufacturersService(
+    engineManufacturersRepository,
+    auditService,
+  )
 
   const externalPartiesRepository = new ExternalPartiesRepository(db)
   const externalPartiesService = new ExternalPartiesService(externalPartiesRepository, auditService)
@@ -169,6 +181,8 @@ export function buildContainer(
     employeesService,
     engineTypesRepository,
     engineTypesService,
+    engineManufacturersRepository,
+    engineManufacturersService,
     externalPartiesRepository,
     externalPartiesService,
     customersRepository,

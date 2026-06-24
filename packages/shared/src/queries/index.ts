@@ -62,6 +62,8 @@ export {
   employeesReferenceQueryKey,
   engineTypesReferenceOptions,
   engineTypesReferenceQueryKey,
+  engineManufacturersReferenceOptions,
+  engineManufacturersReferenceQueryKey,
   externalPartiesReferenceOptions,
   externalPartiesReferenceQueryKey,
   prefetchClaimEditReferences,

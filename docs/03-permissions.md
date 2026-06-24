@@ -163,6 +163,8 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `settings.departments.manage` | CRUD on departments |
 | `settings.engine_types.manage` | CRUD on engine types |
 | `settings.engine_types.create` | Create-only (for employees adding from claim form) |
+| `settings.engine_manufacturers.manage` | CRUD on engine manufacturers (admin panel) |
+| `settings.engine_manufacturers.create` | Create engine manufacturers (admin panel) |
 | `settings.external_parties.create` | Create-only (inline from claim fault form; mirrors engine_types.create) |
 | `settings.external_parties.manage` | CRUD on external parties |
 | `settings.claim_sources.manage` | CRUD on claim sources |

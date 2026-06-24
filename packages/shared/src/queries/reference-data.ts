@@ -9,6 +9,7 @@ import type {
   EmployeeListItem,
   EmployeesListQuery,
   EngineTypeListItem,
+  EngineManufacturerListItem,
   ExternalPartyListItem,
   ReferenceListQuery,
 } from '../schemas/reference-data.schema.js'
@@ -116,6 +117,26 @@ export function engineTypesReferenceOptions(filters: ReferenceLookupFilters = {}
     // Full catalog for <select> dropdowns; seed data is small (one page). Search-as-you-type is future work.
     queryFn: () =>
       fetchAllReferencePages<EngineTypeListItem>('/api/engine-types', {
+        activeOnly: normalized.activeOnly ?? true,
+        search: normalized.search,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
+export function engineManufacturersReferenceQueryKey(
+  filters: ReferenceLookupFilters = {},
+): readonly ['engine-manufacturers', 'reference', ReferenceLookupFilters] {
+  return ['engine-manufacturers', 'reference', normalizeReferenceLookupFilters(filters)] as const
+}
+
+export function engineManufacturersReferenceOptions(filters: ReferenceLookupFilters = {}) {
+  const normalized = normalizeReferenceLookupFilters(filters)
+  return queryOptions({
+    queryKey: engineManufacturersReferenceQueryKey(normalized),
+    queryFn: () =>
+      fetchAllReferencePages<EngineManufacturerListItem>('/api/engine-manufacturers', {
         activeOnly: normalized.activeOnly ?? true,
         search: normalized.search,
       }),

@@ -12,6 +12,8 @@ import {
   employeesReferenceQueryKey,
   engineTypesReferenceOptions,
   engineTypesReferenceQueryKey,
+  engineManufacturersReferenceOptions,
+  engineManufacturersReferenceQueryKey,
   externalPartiesReferenceOptions,
   externalPartiesReferenceQueryKey,
 } from '../reference-data.js'
@@ -46,6 +48,12 @@ describe('reference query options', () => {
     ])
     expect(claimSourcesReferenceOptions().queryKey[0]).toBe('claim-sources')
     expect(engineTypesReferenceOptions().queryKey[0]).toBe('engine-types')
+    expect(engineManufacturersReferenceQueryKey()).toEqual([
+      'engine-manufacturers',
+      'reference',
+      ACTIVE_REFERENCE_LOOKUP,
+    ])
+    expect(engineManufacturersReferenceOptions().queryKey[0]).toBe('engine-manufacturers')
   })
 
   it('normalizes empty filters to activeOnly true for shared cache keys', () => {

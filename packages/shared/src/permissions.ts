@@ -111,6 +111,8 @@ export const PERMISSIONS = [
   'settings.departments.manage',
   'settings.engine_types.manage',
   'settings.engine_types.create',
+  'settings.engine_manufacturers.manage',
+  'settings.engine_manufacturers.create',
   'settings.external_parties.create',
   'settings.external_parties.manage',
   'settings.claim_sources.manage',

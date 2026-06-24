@@ -77,6 +77,36 @@ export const EngineTypeCreateInputSchema = z.object({
 
 export type EngineTypeCreateInput = z.infer<typeof EngineTypeCreateInputSchema>
 
+export const EngineManufacturerListItemSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+})
+
+export type EngineManufacturerListItem = z.infer<typeof EngineManufacturerListItemSchema>
+
+export const EngineManufacturerCreateInputSchema = z.object({
+  code: z.string().trim().min(1).max(50),
+  name: z.string().trim().min(1).max(200),
+  sortOrder: z.number().int().min(0).optional(),
+})
+
+export type EngineManufacturerCreateInput = z.infer<typeof EngineManufacturerCreateInputSchema>
+
+export const EngineManufacturerUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    sortOrder: z.number().int().min(0).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type EngineManufacturerUpdateInput = z.infer<typeof EngineManufacturerUpdateInputSchema>
+
 export const ExternalPartyListItemSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
