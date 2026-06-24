@@ -14,6 +14,9 @@ interface StatsRow extends Record<string, unknown> {
   accepted: number | string
   rejected: number | string
   new_this_month: number | string
+  new_last_month: number | string
+  pending_new_this_month: number | string
+  pending_new_last_month: number | string
   emotive_count: number | string
   domace_count: number | string
 }
@@ -63,7 +66,7 @@ export class DashboardRepository {
   constructor(private readonly db: ApiDatabase) {}
 
   async getSummary(scope: DashboardScope): Promise<DashboardSummary> {
-    const [stats, overdue, recent, chart] = await Promise.all([
+    const [statsBundle, overdue, recent, chart] = await Promise.all([
       this.fetchStats(scope),
       this.fetchOverdue(scope),
       this.fetchRecent(scope),
@@ -71,14 +74,18 @@ export class DashboardRepository {
     ])
 
     return {
-      stats,
+      stats: statsBundle.stats,
+      trends: statsBundle.trends,
       overdue,
       recent,
       chart,
     }
   }
 
-  private async fetchStats(scope: DashboardScope): Promise<DashboardSummary['stats']> {
+  private async fetchStats(scope: DashboardScope): Promise<{
+    stats: DashboardSummary['stats']
+    trends: DashboardSummary['trends']
+  }> {
     const branches: SQL[] = []
 
     if (scope.includeEmotive) {
@@ -104,13 +111,20 @@ export class DashboardRepository {
     }
 
     if (branches.length === 0) {
+      const emptyTrend = { previous: 0, delta: 0 }
       return {
-        total: 0,
-        pending: 0,
-        accepted: 0,
-        rejected: 0,
-        newThisMonth: 0,
-        byKind: { emotive: 0, domace: 0 },
+        stats: {
+          total: 0,
+          pending: 0,
+          accepted: 0,
+          rejected: 0,
+          newThisMonth: 0,
+          byKind: { emotive: 0, domace: 0 },
+        },
+        trends: {
+          newThisMonth: emptyTrend,
+          pending: emptyTrend,
+        },
       }
     }
 
@@ -125,21 +139,51 @@ export class DashboardRepository {
         COUNT(*) FILTER (
           WHERE anchor_date >= date_trunc('month', CURRENT_DATE)::date
         )::int AS new_this_month,
+        COUNT(*) FILTER (
+          WHERE anchor_date >= (date_trunc('month', CURRENT_DATE) - interval '1 month')::date
+            AND anchor_date < date_trunc('month', CURRENT_DATE)::date
+        )::int AS new_last_month,
+        COUNT(*) FILTER (
+          WHERE outcome = ${ClaimOutcome.Pending}
+            AND anchor_date >= date_trunc('month', CURRENT_DATE)::date
+        )::int AS pending_new_this_month,
+        COUNT(*) FILTER (
+          WHERE outcome = ${ClaimOutcome.Pending}
+            AND anchor_date >= (date_trunc('month', CURRENT_DATE) - interval '1 month')::date
+            AND anchor_date < date_trunc('month', CURRENT_DATE)::date
+        )::int AS pending_new_last_month,
         COUNT(*) FILTER (WHERE kind = ${ClaimKind.Emotive})::int AS emotive_count,
         COUNT(*) FILTER (WHERE kind = ${ClaimKind.Domace})::int AS domace_count
       FROM (${unionSql}) AS active_claims
     `)
 
     const row = result.rows[0]
+    const newThisMonth = toInt(row?.new_this_month ?? 0)
+    const newLastMonth = toInt(row?.new_last_month ?? 0)
+    const pendingNewThisMonth = toInt(row?.pending_new_this_month ?? 0)
+    const pendingNewLastMonth = toInt(row?.pending_new_last_month ?? 0)
+
     return {
-      total: toInt(row?.total ?? 0),
-      pending: toInt(row?.pending ?? 0),
-      accepted: toInt(row?.accepted ?? 0),
-      rejected: toInt(row?.rejected ?? 0),
-      newThisMonth: toInt(row?.new_this_month ?? 0),
-      byKind: {
-        emotive: toInt(row?.emotive_count ?? 0),
-        domace: toInt(row?.domace_count ?? 0),
+      stats: {
+        total: toInt(row?.total ?? 0),
+        pending: toInt(row?.pending ?? 0),
+        accepted: toInt(row?.accepted ?? 0),
+        rejected: toInt(row?.rejected ?? 0),
+        newThisMonth,
+        byKind: {
+          emotive: toInt(row?.emotive_count ?? 0),
+          domace: toInt(row?.domace_count ?? 0),
+        },
+      },
+      trends: {
+        newThisMonth: {
+          previous: newLastMonth,
+          delta: newThisMonth - newLastMonth,
+        },
+        pending: {
+          previous: pendingNewLastMonth,
+          delta: pendingNewThisMonth - pendingNewLastMonth,
+        },
       },
     }
   }
@@ -204,7 +248,8 @@ export class DashboardRepository {
           ec.id,
           ec.mr_number,
           c.name AS customer_label,
-          (CURRENT_DATE - (ec.created_at AT TIME ZONE 'UTC')::date)::int AS days_open
+          (CURRENT_DATE - (ec.created_at AT TIME ZONE 'UTC')::date)::int AS days_open,
+          ec.created_at
         FROM emotive_claims ec
         LEFT JOIN customers c ON c.id = ec.customer_id
         WHERE ${activeEmotiveWhere('ec')}
@@ -218,7 +263,8 @@ export class DashboardRepository {
           dc.id,
           dc.mr_number,
           dc.customer_name AS customer_label,
-          (CURRENT_DATE - (dc.created_at AT TIME ZONE 'UTC')::date)::int AS days_open
+          (CURRENT_DATE - (dc.created_at AT TIME ZONE 'UTC')::date)::int AS days_open,
+          dc.created_at
         FROM domace_claims dc
         WHERE ${activeDomaceWhere('dc')}
       `)
@@ -233,7 +279,7 @@ export class DashboardRepository {
     const result = await this.db.execute<ListRow>(sql`
       SELECT kind, id, mr_number, customer_label, days_open
       FROM (${unionSql}) AS recent_claims
-      ORDER BY days_open ASC, id DESC
+      ORDER BY created_at DESC, id DESC
       LIMIT ${LIST_LIMIT}
     `)
 

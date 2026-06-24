@@ -118,11 +118,35 @@ describe('DashboardClaimList', () => {
     })
   })
 
-  it('renders days badge with warning styling', async () => {
+  it('renders days badge with warning styling for moderate overdue age', async () => {
     await renderWithRouter(
       <DashboardClaimList
         title="Kasne reklamacije"
         emptyMessage="Nema kasnih reklamacija"
+        daysUrgency
+        items={[
+          {
+            kind: ClaimKind.Emotive,
+            id: '11111111-1111-4111-8111-111111111111',
+            mrNumber: '5376/26',
+            customerLabel: 'SELMAN',
+            daysOpen: 8,
+          },
+        ]}
+      />,
+    )
+
+    const badge = screen.getByText('8 dana')
+    expect(badge).toHaveClass('text-mr-warning-strong')
+    expect(badge).not.toHaveClass('text-mr-error-strong')
+  })
+
+  it('renders days badge with error styling for critical overdue age', async () => {
+    await renderWithRouter(
+      <DashboardClaimList
+        title="Kasne reklamacije"
+        emptyMessage="Nema kasnih reklamacija"
+        daysUrgency
         items={[
           {
             kind: ClaimKind.Emotive,
@@ -135,6 +159,8 @@ describe('DashboardClaimList', () => {
       />,
     )
 
-    expect(screen.getByText('388 dana')).toBeInTheDocument()
+    const badge = screen.getByText('388 dana')
+    expect(badge).toHaveClass('text-mr-error-strong')
+    expect(badge).not.toHaveClass('text-mr-warning-strong')
   })
 })

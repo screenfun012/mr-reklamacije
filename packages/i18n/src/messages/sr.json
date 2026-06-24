@@ -55,6 +55,7 @@
   "dashboard_overdue_title": "Kasne reklamacije",
   "dashboard_recent_empty": "Nema skorašnjih reklamacija",
   "dashboard_recent_title": "Skorašnje reklamacije",
+  "dashboard_trend_vs_last_month": "u odnosu na prošli mesec",
   "dashboard_welcome": "Dobrodošao, {userName}!",
   "field_email_invalid": "Unesite ispravan e-mail",
   "field_password_required": "Lozinka je obavezna",

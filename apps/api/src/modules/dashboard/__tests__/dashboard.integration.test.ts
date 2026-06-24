@@ -178,9 +178,16 @@ describe('DashboardService integration', () => {
     it('includes newly created claims in recent list', async () => {
       const recentId = await createEmotive('DASH-RECENT/26', ClaimOutcome.Pending, daysAgo(0))
 
+      // Recent uses created_at DESC with LIMIT 20 — pin this row so the assertion
+      // does not depend on seeded or leaked claims in the shared integration DB.
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ createdAt: new Date('2099-06-01T12:00:00.000Z') })
+        .where(eq(schema.emotiveClaims.id, recentId))
+
       const summary = await container.dashboardService.getSummary(FULL_OPERATOR)
 
-      expect(summary.recent.some((item) => item.id === recentId)).toBe(true)
+      expect(summary.recent[0]?.id).toBe(recentId)
       expect(summary.recent.some((item) => item.mrNumber === 'DASH-RECENT/26')).toBe(true)
     })
 
@@ -194,6 +201,17 @@ describe('DashboardService integration', () => {
       const summary = await container.dashboardService.getSummary(FULL_OPERATOR)
 
       expect(summary.recent.some((item) => item.id === archivedId)).toBe(false)
+    })
+
+    it('returns month-over-month trends aligned with stats', async () => {
+      const summary = await container.dashboardService.getSummary(FULL_OPERATOR)
+
+      expect(summary.trends.newThisMonth.delta).toBe(
+        summary.stats.newThisMonth - summary.trends.newThisMonth.previous,
+      )
+      expect(summary.trends.newThisMonth.previous).toBeGreaterThanOrEqual(0)
+      expect(summary.trends.pending.previous).toBeGreaterThanOrEqual(0)
+      expect(Number.isInteger(summary.trends.pending.delta)).toBe(true)
     })
 
     it('throws ForbiddenError when actor lacks list view permissions', async () => {

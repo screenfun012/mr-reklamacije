@@ -11,7 +11,7 @@ export function DashboardContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <DashboardStatCards stats={data.stats} />
+      <DashboardStatCards stats={data.stats} trends={data.trends} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
         <DashboardClaimList
           title={m.dashboard_recent_title()}
@@ -22,6 +22,7 @@ export function DashboardContent() {
           title={m.dashboard_overdue_title()}
           emptyMessage={m.dashboard_overdue_empty()}
           items={data.overdue}
+          daysUrgency
         />
       </div>
       <DashboardClaimsChart data={data.chart} />

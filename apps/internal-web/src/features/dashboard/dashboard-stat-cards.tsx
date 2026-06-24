@@ -1,17 +1,32 @@
-import type { DashboardStats } from '@mr/shared'
+import {
+  ClaimKind,
+  ClaimOutcome,
+  type ClaimsSearch,
+  type DashboardStats,
+  type DashboardTrends,
+  type DashboardStatTrend,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Card, CardContent, CardHeader, CardTitle, cn } from '@mr/ui'
+import { Link } from '@tanstack/react-router'
+
+import { DashboardStatTrendBadge } from './dashboard-stat-trend-badge'
 
 export interface DashboardStatCardsProps {
   stats: DashboardStats
+  trends: DashboardTrends
 }
 
 type StatAccent = 'neutral' | 'pending' | 'accepted' | 'rejected'
+
+type StatCardLinkSearch = Pick<ClaimsSearch, 'outcome' | 'kind'>
 
 interface StatCardConfig {
   title: string
   value: number
   accent: StatAccent
+  linkSearch?: StatCardLinkSearch
+  trend?: DashboardStatTrend
 }
 
 const CARD_ACCENT_CLASSES: Record<StatAccent, string> = {
@@ -30,38 +45,88 @@ const VALUE_ACCENT_CLASSES: Record<StatAccent, string> = {
   rejected: 'text-mr-error-strong dark:text-mr-error',
 }
 
-function buildCards(stats: DashboardStats): StatCardConfig[] {
+function buildCards(stats: DashboardStats, trends: DashboardTrends): StatCardConfig[] {
   return [
     { title: m.dashboard_card_total(), value: stats.total, accent: 'neutral' },
-    { title: m.dashboard_card_pending(), value: stats.pending, accent: 'pending' },
-    { title: m.dashboard_card_accepted(), value: stats.accepted, accent: 'accepted' },
-    { title: m.dashboard_card_rejected(), value: stats.rejected, accent: 'rejected' },
-    { title: m.dashboard_card_this_month(), value: stats.newThisMonth, accent: 'neutral' },
-    { title: m.dashboard_card_emotive(), value: stats.byKind.emotive, accent: 'neutral' },
-    { title: m.dashboard_card_domace(), value: stats.byKind.domace, accent: 'neutral' },
+    {
+      title: m.dashboard_card_pending(),
+      value: stats.pending,
+      accent: 'pending',
+      linkSearch: { outcome: ClaimOutcome.Pending },
+      trend: trends.pending,
+    },
+    {
+      title: m.dashboard_card_accepted(),
+      value: stats.accepted,
+      accent: 'accepted',
+      linkSearch: { outcome: ClaimOutcome.Accepted },
+    },
+    {
+      title: m.dashboard_card_rejected(),
+      value: stats.rejected,
+      accent: 'rejected',
+      linkSearch: { outcome: ClaimOutcome.Rejected },
+    },
+    {
+      title: m.dashboard_card_this_month(),
+      value: stats.newThisMonth,
+      accent: 'neutral',
+      trend: trends.newThisMonth,
+    },
+    {
+      title: m.dashboard_card_emotive(),
+      value: stats.byKind.emotive,
+      accent: 'neutral',
+      linkSearch: { kind: ClaimKind.Emotive },
+    },
+    {
+      title: m.dashboard_card_domace(),
+      value: stats.byKind.domace,
+      accent: 'neutral',
+      linkSearch: { kind: ClaimKind.Domace },
+    },
   ]
 }
 
-export function DashboardStatCards({ stats }: DashboardStatCardsProps) {
-  const cards = buildCards(stats)
+function StatCard({ card }: { card: StatCardConfig }) {
+  const cardBody = (
+    <Card className={cn(CARD_ACCENT_CLASSES[card.accent], card.linkSearch && 'h-full')}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{card.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end justify-between gap-2">
+          <div className={cn('text-3xl font-bold tabular-nums', VALUE_ACCENT_CLASSES[card.accent])}>
+            {card.value}
+          </div>
+          {card.trend ? <DashboardStatTrendBadge trend={card.trend} /> : null}
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (!card.linkSearch) {
+    return cardBody
+  }
+
+  return (
+    <Link
+      to="/reklamacije"
+      search={{ page: 1, pageSize: 10, ...card.linkSearch }}
+      className="block cursor-pointer rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      {cardBody}
+    </Link>
+  )
+}
+
+export function DashboardStatCards({ stats, trends }: DashboardStatCardsProps) {
+  const cards = buildCards(stats, trends)
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
       {cards.map((card) => (
-        <Card key={card.title} className={cn(CARD_ACCENT_CLASSES[card.accent])}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {card.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={cn('text-3xl font-bold tabular-nums', VALUE_ACCENT_CLASSES[card.accent])}
-            >
-              {card.value}
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard key={card.title} card={card} />
       ))}
     </div>
   )

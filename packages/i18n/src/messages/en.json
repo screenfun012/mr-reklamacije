@@ -55,6 +55,7 @@
   "dashboard_overdue_title": "Overdue claims",
   "dashboard_recent_empty": "No recent claims",
   "dashboard_recent_title": "Recent claims",
+  "dashboard_trend_vs_last_month": "vs last month",
   "dashboard_welcome": "Welcome, {userName}!",
   "field_email_invalid": "Enter a valid email",
   "field_password_required": "Password is required",

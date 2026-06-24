@@ -16,6 +16,22 @@ export const DashboardStatsSchema = z.object({
 
 export type DashboardStats = z.infer<typeof DashboardStatsSchema>
 
+export const DashboardStatTrendSchema = z.object({
+  previous: z.coerce.number().int().nonnegative(),
+  delta: z.coerce.number().int(),
+})
+
+export type DashboardStatTrend = z.infer<typeof DashboardStatTrendSchema>
+
+export const DashboardTrendsSchema = z.object({
+  /** New claims this month vs previous calendar month (anchor_date). */
+  newThisMonth: DashboardStatTrendSchema,
+  /** Pending claims opened in each month that are still pending (intake rate). */
+  pending: DashboardStatTrendSchema,
+})
+
+export type DashboardTrends = z.infer<typeof DashboardTrendsSchema>
+
 export const DashboardListItemSchema = z.object({
   kind: z.enum([ClaimKind.Emotive, ClaimKind.Domace]),
   id: z.string().uuid(),
@@ -37,6 +53,7 @@ export type DashboardChartMonth = z.infer<typeof DashboardChartMonthSchema>
 
 export const DashboardSummarySchema = z.object({
   stats: DashboardStatsSchema,
+  trends: DashboardTrendsSchema,
   overdue: z.array(DashboardListItemSchema),
   recent: z.array(DashboardListItemSchema),
   chart: z.array(DashboardChartMonthSchema),

@@ -7,20 +7,39 @@ export interface DashboardClaimListProps {
   title: string
   emptyMessage: string
   items: readonly DashboardListItem[]
+  /** Color days badge by overdue urgency (>30 error, 7–30 warning). */
+  daysUrgency?: boolean
 }
 
 const DAYS_BADGE_SHELL_CLASSES =
   'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums'
 
-export function DashboardDaysBadge({ days }: { days: number }) {
+const OVERDUE_URGENCY_CRITICAL_DAYS = 30
+
+function overdueDaysBadgeClasses(days: number): string {
+  if (days > OVERDUE_URGENCY_CRITICAL_DAYS) {
+    return OUTCOME_BADGE_CLASSES.rejected
+  }
+
+  return OUTCOME_BADGE_CLASSES.pending
+}
+
+export function DashboardDaysBadge({ days, urgency = false }: { days: number; urgency?: boolean }) {
+  const accentClasses = urgency ? overdueDaysBadgeClasses(days) : OUTCOME_BADGE_CLASSES.pending
+
   return (
-    <span className={cn(DAYS_BADGE_SHELL_CLASSES, OUTCOME_BADGE_CLASSES.pending, 'shrink-0')}>
+    <span className={cn(DAYS_BADGE_SHELL_CLASSES, accentClasses, 'shrink-0')}>
       {m.dashboard_overdue_days({ days })}
     </span>
   )
 }
 
-export function DashboardClaimList({ title, emptyMessage, items }: DashboardClaimListProps) {
+export function DashboardClaimList({
+  title,
+  emptyMessage,
+  items,
+  daysUrgency = false,
+}: DashboardClaimListProps) {
   const navigate = useNavigate()
 
   return (
@@ -58,7 +77,7 @@ export function DashboardClaimList({ title, emptyMessage, items }: DashboardClai
                     </span>
                   </span>
                   <ClaimKindBadge kind={item.kind} className="shrink-0" />
-                  <DashboardDaysBadge days={item.daysOpen} />
+                  <DashboardDaysBadge days={item.daysOpen} urgency={daysUrgency} />
                 </button>
               </li>
             )
