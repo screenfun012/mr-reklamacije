@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimOutcome, normalizeName } from '@mr/shared'
+import { ClaimOutcome, normalizeName, STATISTICS_UNKNOWN_MANUFACTURER_CODE } from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -58,10 +58,16 @@ describe('Statistics module integration', () => {
     await ctx.cleanup()
   })
 
+  async function createEngineManufacturer(code: string, name: string): Promise<string> {
+    const created = await container.engineManufacturersRepository.create({ code, name })
+    return created.id
+  }
+
   async function createEmotiveClaim(
     mrNumber: string,
     outcome: (typeof ClaimOutcome)[keyof typeof ClaimOutcome] = ClaimOutcome.Accepted,
     dateOfClaim: Date = daysAgo(10),
+    manufacturerId?: string,
   ): Promise<string> {
     const engineType = await container.engineTypesRepository.create({
       code: `STAT-${Date.now()}-${mrNumber}`,
@@ -77,6 +83,7 @@ describe('Statistics module integration', () => {
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),
         sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
         faults: [],
+        ...(manufacturerId !== undefined ? { manufacturerId } : {}),
       },
       {
         id: TEST_USER_ID,
@@ -91,6 +98,7 @@ describe('Statistics module integration', () => {
   async function createDomaceClaim(
     mrNumber: string,
     dateOfClaim: Date = daysAgo(20),
+    manufacturerId?: string,
   ): Promise<string> {
     const claim = await container.domaceClaimsService.create(
       {
@@ -100,6 +108,7 @@ describe('Statistics module integration', () => {
         outcome: ClaimOutcome.Accepted,
         totalAmount: 100000,
         faults: [],
+        ...(manufacturerId !== undefined ? { manufacturerId } : {}),
       },
       {
         id: TEST_USER_ID,
@@ -158,6 +167,98 @@ describe('Statistics module integration', () => {
     })
   })
 
+  describe('when loading manufacturer statistics', () => {
+    it('groups active claims by manufacturer with outcome counts', async () => {
+      const bmwId = await createEngineManufacturer(`STAT-BMW-${Date.now()}`, 'BMW Stats')
+      const audiId = await createEngineManufacturer(`STAT-AUDI-${Date.now()}`, 'Audi Stats')
+
+      await createEmotiveClaim('STAT-MFG-1/26', ClaimOutcome.Accepted, daysAgo(10), bmwId)
+      await createEmotiveClaim('STAT-MFG-2/26', ClaimOutcome.Pending, daysAgo(12), bmwId)
+      await createEmotiveClaim('STAT-MFG-3/26', ClaimOutcome.Rejected, daysAgo(8), audiId)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const bmw = summary.byManufacturer.items.find((row) => row.manufacturerId === bmwId)
+      const audi = summary.byManufacturer.items.find((row) => row.manufacturerId === audiId)
+
+      expect(bmw).toMatchObject({ total: 2, pending: 1, accepted: 1, rejected: 0 })
+      expect(audi).toMatchObject({ total: 1, rejected: 1 })
+      expect(summary.byManufacturer.items[0]?.total).toBeGreaterThanOrEqual(
+        summary.byManufacturer.items[1]?.total ?? 0,
+      )
+    })
+
+    it('includes unknown segment for null manufacturer_id', async () => {
+      await createEmotiveClaim('STAT-UNK-1/26', ClaimOutcome.Accepted, daysAgo(9))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const unknown = summary.byManufacturer.items.find(
+        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+      )
+
+      expect(unknown).toMatchObject({
+        manufacturerId: null,
+        total: expect.any(Number),
+      })
+      expect(unknown?.total).toBeGreaterThanOrEqual(1)
+    })
+
+    it('excludes archived claims from manufacturer aggregates', async () => {
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-ARCH-MFG-${Date.now()}`,
+        'Arch MFG',
+      )
+      const before = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const beforeCount =
+        before.byManufacturer.items.find((row) => row.manufacturerId === manufacturerId)?.total ?? 0
+
+      const activeId = await createEmotiveClaim(
+        'STAT-MFG-ACTIVE/26',
+        ClaimOutcome.Accepted,
+        daysAgo(11),
+        manufacturerId,
+      )
+      const archivedId = await createEmotiveClaim(
+        'STAT-MFG-ARCH/26',
+        ClaimOutcome.Accepted,
+        daysAgo(11),
+        manufacturerId,
+      )
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome: ClaimOutcome.Archived })
+        .where(eq(schema.emotiveClaims.id, archivedId))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const row = summary.byManufacturer.items.find((row) => row.manufacturerId === manufacturerId)
+
+      expect(row?.total).toBe(beforeCount + 1)
+      expect(activeId).toBeDefined()
+    })
+
+    it('scopes manufacturer domace counts to statistics.view_domace permission', async () => {
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-SCOPE-MFG-${Date.now()}`,
+        'Scope MFG',
+      )
+
+      await createEmotiveClaim(
+        'STAT-MFG-EMO-SCOPE/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+      )
+      await createDomaceClaim('STAT-MFG-DOM-SCOPE/26', daysAgo(10), manufacturerId)
+
+      const summary = await container.statisticsService.getSummary(EMOTIVE_ONLY)
+      const row = summary.byManufacturer.items.find(
+        (entry) => entry.manufacturerId === manufacturerId,
+      )
+
+      expect(row?.total).toBe(1)
+    })
+  })
+
   describe('HTTP', () => {
     it('returns 403 without statistics permissions', async () => {
       const app = createStatisticsTestApp(container, NO_STATISTICS)
@@ -185,6 +286,9 @@ describe('Statistics module integration', () => {
           volumeTrend: {
             direction: expect.stringMatching(/rising|falling|stable/),
           },
+        },
+        byManufacturer: {
+          items: expect.any(Array),
         },
       })
     })

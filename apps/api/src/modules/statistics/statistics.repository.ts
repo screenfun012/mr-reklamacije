@@ -2,6 +2,8 @@ import {
   ClaimKind,
   ClaimOutcome,
   STATISTICS_TREND_MONTH_COUNT,
+  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+  type StatisticsManufacturerRow,
   type StatisticsTrendMonth,
   type StatisticsTrendYear,
 } from '@mr/shared'
@@ -22,6 +24,16 @@ interface TrendYearRow extends Record<string, unknown> {
   emotive: number | string
   domace: number | string
   total: number | string
+}
+
+interface ManufacturerRow extends Record<string, unknown> {
+  manufacturer_id: string | null
+  code: string | null
+  name: string | null
+  total: number | string
+  pending: number | string
+  accepted: number | string
+  rejected: number | string
 }
 
 function toInt(value: number | string): number {
@@ -160,6 +172,65 @@ export class StatisticsRepository {
       emotive: toInt(row.emotive),
       domace: toInt(row.domace),
       total: toInt(row.total),
+    }))
+  }
+
+  async fetchByManufacturer(scope: StatisticsScope): Promise<StatisticsManufacturerRow[]> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      branches.push(sql`
+        SELECT ec.manufacturer_id, ec.outcome
+        FROM emotive_claims ec
+        WHERE ${activeEmotiveWhere('ec')}
+          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+      `)
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT dc.manufacturer_id, dc.outcome
+        FROM domace_claims dc
+        WHERE ${activeDomaceWhere('dc')}
+          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<ManufacturerRow>(sql`
+      SELECT
+        c.manufacturer_id,
+        em.code,
+        em.name,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Pending})::int AS pending,
+        COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Accepted})::int AS accepted,
+        COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Rejected})::int AS rejected
+      FROM (${unionSql}) AS c
+      LEFT JOIN engine_manufacturers em
+        ON em.id = c.manufacturer_id
+        AND em.deleted_at IS NULL
+      GROUP BY c.manufacturer_id, em.code, em.name
+      HAVING COUNT(*) > 0
+      ORDER BY total DESC, em.name ASC NULLS LAST
+    `)
+
+    return result.rows.map((row) => ({
+      manufacturerId: row.manufacturer_id,
+      code: row.manufacturer_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : (row.code ?? ''),
+      name:
+        row.manufacturer_id === null
+          ? 'Nepoznato'
+          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+      total: toInt(row.total),
+      pending: toInt(row.pending),
+      accepted: toInt(row.accepted),
+      rejected: toInt(row.rejected),
     }))
   }
 }
