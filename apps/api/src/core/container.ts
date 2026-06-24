@@ -8,6 +8,7 @@ import type { Env } from '../config/env.js'
 import { createDb } from '../infrastructure/db.js'
 import type { AuditPort } from './ports/audit-port.js'
 import type { EventBus } from './ports/event-bus-port.js'
+import { ClaimContextService } from './claims/claim-context.service.js'
 import { AuditService } from '../modules/audit/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
@@ -24,6 +25,7 @@ import {
   ExternalPartiesService,
 } from '../modules/external-parties/index.js'
 import { AttachmentsRepository, AttachmentsService } from '../modules/attachments/index.js'
+import { ReportImageReadAdapter } from '../modules/attachments/report-image-read.adapter.js'
 import { ClaimReportsRepository, ClaimReportsService } from '../modules/claim-reports/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
 import { LocalVolumeStorageService } from '../infrastructure/storage/local-volume-storage.js'
@@ -132,11 +134,15 @@ export function buildContainer(
 
   const storageService = new LocalVolumeStorageService(env.UPLOAD_DIR)
   const attachmentsRepository = new AttachmentsRepository(db)
+  const claimContextService = new ClaimContextService(
+    emotiveClaimsRepository,
+    domaceClaimsRepository,
+  )
+  const reportImageRead = new ReportImageReadAdapter(attachmentsRepository, storageService)
   const attachmentsService = new AttachmentsService(
     attachmentsRepository,
     storageService,
-    emotiveClaimsRepository,
-    domaceClaimsRepository,
+    claimContextService,
     auditService,
     env.BETTER_AUTH_SECRET,
     env.API_BASE_URL,
@@ -145,10 +151,8 @@ export function buildContainer(
   const claimReportsRepository = new ClaimReportsRepository(db)
   const claimReportsService = new ClaimReportsService(
     claimReportsRepository,
-    emotiveClaimsRepository,
-    domaceClaimsRepository,
-    attachmentsRepository,
-    storageService,
+    claimContextService,
+    reportImageRead,
     auditService,
     env.CLAIM_REPORT_PDF_ENABLED,
   )

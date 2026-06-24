@@ -1,7 +1,5 @@
 import {
   AuditAction,
-  ClaimKind,
-  ClaimOutcome,
   buildDefaultClaimReportResponse,
   isClaimReportEmpty,
   type ClaimReportQuery,
@@ -16,13 +14,10 @@ import {
   ServiceUnavailableError,
 } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
-import type { StorageService } from '../../infrastructure/storage/storage.interface.js'
-import type { AttachmentsRepository } from '../attachments/attachments.repository.js'
-import type { DomaceClaimsRepository } from '../domace-claims/domace-claims.repository.js'
-import type { EmotiveClaimsRepository } from '../emotive-claims/emotive-claims.repository.js'
+import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
+import type { ReportImageReadPort } from '../../core/ports/report-image-read-port.js'
 import { renderClaimReportDocx } from './claim-report-export-docx.js'
 import { renderClaimReportPdf } from './claim-report-export-pdf.js'
-import { ClaimReportImageLoaderImpl } from './claim-report-image-loader.js'
 import { hydrateClaimReportImages } from './hydrate-claim-report-images.js'
 import { ClaimReportsRepository } from './claim-reports.repository.js'
 import { sanitizeClaimReportHtml } from './sanitize-claim-report-html.js'
@@ -32,26 +27,6 @@ export interface ClaimReportExportResult {
   buffer: Buffer
   fileName: string
   mimeType: string
-}
-
-function resolveEmotiveScope(actor: ClaimReportsActor) {
-  if (actor.permissions.includes('emotive_claims.view')) {
-    return { type: 'all' as const }
-  }
-  if (actor.permissions.includes('emotive_claims.view_own_customer')) {
-    return { type: 'own_customer' as const, userId: actor.id }
-  }
-  throw new ForbiddenError()
-}
-
-function resolveDomaceScope(actor: ClaimReportsActor) {
-  if (actor.permissions.includes('domace_claims.view')) {
-    return { type: 'all' as const }
-  }
-  if (actor.permissions.includes('domace_claims.view_own_customer')) {
-    return { type: 'own_customer' as const, userId: actor.id }
-  }
-  throw new ForbiddenError()
 }
 
 function formatTimestamp(value: Date): string {
@@ -90,26 +65,20 @@ function buildExportFileName(claimId: string, extension: 'pdf' | 'docx'): string
 }
 
 export class ClaimReportsService {
-  private readonly imageLoader: ClaimReportImageLoaderImpl
-
   constructor(
     private readonly repo: ClaimReportsRepository,
-    private readonly emotiveClaimsRepository: EmotiveClaimsRepository,
-    private readonly domaceClaimsRepository: DomaceClaimsRepository,
-    private readonly attachmentsRepository: AttachmentsRepository,
-    private readonly storage: StorageService,
+    private readonly claimContext: ClaimContextPort,
+    private readonly reportImageRead: ReportImageReadPort,
     private readonly audit: AuditPort,
     private readonly claimReportPdfEnabled: boolean,
-  ) {
-    this.imageLoader = new ClaimReportImageLoaderImpl(attachmentsRepository, storage)
-  }
+  ) {}
 
   async get(query: ClaimReportQuery, actor: ClaimReportsActor): Promise<ClaimReportResponse> {
     if (!actor.permissions.includes('claim_reports.view')) {
       throw new ForbiddenError()
     }
 
-    await this.loadClaimContext(query.claimKind, query.claimId, actor)
+    await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
 
     const existing = await this.repo.findByClaim(query)
     if (existing === null) {
@@ -129,7 +98,7 @@ export class ClaimReportsService {
       throw new ForbiddenError()
     }
 
-    const claim = await this.loadClaimContext(query.claimKind, query.claimId, actor)
+    const claim = await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
     assertClaimEditable(claim)
 
     const sanitizedHtml = sanitizeClaimReportHtml(body.contentHtml)
@@ -231,7 +200,7 @@ export class ClaimReportsService {
       throw new ForbiddenError()
     }
 
-    await this.loadClaimContext(query.claimKind, query.claimId, actor)
+    await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
 
     const existing = await this.repo.findByClaim(query)
     if (existing === null || isClaimReportEmpty(existing.contentHtml)) {
@@ -242,33 +211,9 @@ export class ClaimReportsService {
     const hydratedHtml = await hydrateClaimReportImages(
       sanitizedHtml,
       { claimKind: query.claimKind, claimId: query.claimId },
-      this.imageLoader,
+      this.reportImageRead,
     )
 
     return { html: hydratedHtml, reportId: existing.id }
-  }
-
-  private async loadClaimContext(
-    claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
-    claimId: string,
-    actor: ClaimReportsActor,
-  ): Promise<{ outcome: ClaimOutcome }> {
-    if (claimKind === ClaimKind.Emotive) {
-      const scope = resolveEmotiveScope(actor)
-      const claim = await this.emotiveClaimsRepository.findById(claimId, scope)
-      if (claim === null) {
-        throw new NotFoundError('Emotive claim', claimId)
-      }
-
-      return { outcome: claim.outcome }
-    }
-
-    const scope = resolveDomaceScope(actor)
-    const claim = await this.domaceClaimsRepository.findById(claimId, scope)
-    if (claim === null) {
-      throw new NotFoundError('Domace claim', claimId)
-    }
-
-    return { outcome: claim.outcome }
   }
 }

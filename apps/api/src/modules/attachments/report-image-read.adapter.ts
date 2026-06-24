@@ -1,10 +1,10 @@
 import { AttachmentPurpose, ClaimKind } from '@mr/shared'
 
+import type { ReportImageReadPort } from '../../core/ports/report-image-read-port.js'
 import type { StorageService } from '../../infrastructure/storage/storage.interface.js'
-import type { AttachmentsRepository } from '../attachments/attachments.repository.js'
-import type { ClaimReportImageLoader } from './hydrate-claim-report-images.js'
+import type { AttachmentsRepository } from './attachments.repository.js'
 
-export class ClaimReportImageLoaderImpl implements ClaimReportImageLoader {
+export class ReportImageReadAdapter implements ReportImageReadPort {
   constructor(
     private readonly attachmentsRepository: AttachmentsRepository,
     private readonly storage: StorageService,

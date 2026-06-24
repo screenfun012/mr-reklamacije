@@ -4,15 +4,9 @@ import {
   type ClaimKind,
 } from '@mr/shared'
 
-const CLAIM_REPORT_IMG_TAG_PATTERN = /<img\b([^>]*?\bsrc=")([^"]+)("[^>]*?)>/gi
+import type { ReportImageReadPort } from '../../core/ports/report-image-read-port.js'
 
-export interface ClaimReportImageLoader {
-  loadReportImage(input: {
-    claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace
-    claimId: string
-    attachmentId: string
-  }): Promise<{ data: Buffer; mimeType: string } | null>
-}
+const CLAIM_REPORT_IMG_TAG_PATTERN = /<img\b([^>]*?\bsrc=")([^"]+)("[^>]*?)>/gi
 
 export interface ClaimReportImageContext {
   claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace
@@ -26,7 +20,7 @@ function toDataUrl(mimeType: string, data: Buffer): string {
 export async function hydrateClaimReportImages(
   html: string,
   context: ClaimReportImageContext,
-  loader: ClaimReportImageLoader,
+  loader: ReportImageReadPort,
 ): Promise<string> {
   const matches = [...html.matchAll(CLAIM_REPORT_IMG_TAG_PATTERN)]
   if (matches.length === 0) {
@@ -61,8 +55,8 @@ export async function hydrateClaimReportImages(
       continue
     }
 
-    const hydratedTag = `<img${prefix}${toDataUrl(image.mimeType, image.data)}${suffix}>`
-    result = result.replace(fullTag, hydratedTag)
+    const dataUrl = toDataUrl(image.mimeType, image.data)
+    result = result.replace(fullTag, `<img${prefix}${dataUrl}${suffix}>`)
   }
 
   return result

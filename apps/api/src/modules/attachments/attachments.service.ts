@@ -22,6 +22,7 @@ import {
   UnsupportedMediaTypeError,
 } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
 import {
   buildSignedAttachmentUrl,
   verifySignedAttachmentToken,
@@ -31,8 +32,6 @@ import {
   sanitizeUploadFileName,
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
-import type { DomaceClaimsRepository } from '../domace-claims/domace-claims.repository.js'
-import type { EmotiveClaimsRepository } from '../emotive-claims/emotive-claims.repository.js'
 import {
   generateImageThumbnail,
   optimizeReportImage,
@@ -44,7 +43,6 @@ import type {
   AttachmentsActor,
   AttachmentsAuditContext,
   AttachmentsViewScope,
-  ClaimAttachmentContext,
 } from './attachments.types.js'
 import type {
   AttachmentListItem,
@@ -95,32 +93,11 @@ function resolveViewScope(actor: AttachmentsActor): AttachmentsViewScope {
   throw new ForbiddenError()
 }
 
-function resolveEmotiveScope(actor: AttachmentsActor) {
-  if (actor.permissions.includes('emotive_claims.view')) {
-    return { type: 'all' as const }
-  }
-  if (actor.permissions.includes('emotive_claims.view_own_customer')) {
-    return { type: 'own_customer' as const, userId: actor.id }
-  }
-  throw new ForbiddenError()
-}
-
-function resolveDomaceScope(actor: AttachmentsActor) {
-  if (actor.permissions.includes('domace_claims.view')) {
-    return { type: 'all' as const }
-  }
-  if (actor.permissions.includes('domace_claims.view_own_customer')) {
-    return { type: 'own_customer' as const, userId: actor.id }
-  }
-  throw new ForbiddenError()
-}
-
 export class AttachmentsService {
   constructor(
     private readonly repo: AttachmentsRepository,
     private readonly storage: StorageService,
-    private readonly emotiveClaimsRepository: EmotiveClaimsRepository,
-    private readonly domaceClaimsRepository: DomaceClaimsRepository,
+    private readonly claimContext: ClaimContextPort,
     private readonly audit: AuditPort,
     private readonly signingSecret: string,
     private readonly apiBaseUrl: string,
@@ -128,7 +105,7 @@ export class AttachmentsService {
 
   async list(query: AttachmentListQuery, actor: AttachmentsActor): Promise<AttachmentListResponse> {
     const scope = resolveViewScope(actor)
-    await this.loadClaimContext(query.claimKind, query.claimId, actor)
+    await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
     const items = await this.repo.listByClaim(query, scope)
     return { items }
   }
@@ -140,7 +117,7 @@ export class AttachmentsService {
       throw new NotFoundError('Attachment', id)
     }
 
-    await this.loadClaimContext(attachment.claimKind, attachment.claimId, actor)
+    await this.claimContext.loadClaimContext(attachment.claimKind, attachment.claimId, actor)
     return attachment
   }
 
@@ -205,7 +182,7 @@ export class AttachmentsService {
       throw new ForbiddenError()
     }
 
-    const claim = await this.loadClaimContext(input.claimKind, input.claimId, actor)
+    const claim = await this.claimContext.loadClaimContext(input.claimKind, input.claimId, actor)
     assertClaimEditable(claim)
 
     const stats = await this.repo.countActiveForClaim(input.claimKind, input.claimId)
@@ -320,7 +297,7 @@ export class AttachmentsService {
       throw new ForbiddenError()
     }
 
-    const claim = await this.loadClaimContext(input.claimKind, input.claimId, actor)
+    const claim = await this.claimContext.loadClaimContext(input.claimKind, input.claimId, actor)
     assertClaimEditable(claim)
 
     const reportImageCount = await this.repo.countActiveReportImagesForClaim(
@@ -428,7 +405,11 @@ export class AttachmentsService {
       throw new NotFoundError('Attachment', id)
     }
 
-    const claim = await this.loadClaimContext(attachment.claimKind, attachment.claimId, actor)
+    const claim = await this.claimContext.loadClaimContext(
+      attachment.claimKind,
+      attachment.claimId,
+      actor,
+    )
     assertClaimEditable(claim)
 
     const canDeleteAny = actor.permissions.includes('attachments.delete_any')
@@ -453,29 +434,5 @@ export class AttachmentsService {
         claimId: attachment.claimId,
       },
     })
-  }
-
-  private async loadClaimContext(
-    claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
-    claimId: string,
-    actor: AttachmentsActor,
-  ): Promise<ClaimAttachmentContext> {
-    if (claimKind === ClaimKind.Emotive) {
-      const scope = resolveEmotiveScope(actor)
-      const claim = await this.emotiveClaimsRepository.findById(claimId, scope)
-      if (claim === null) {
-        throw new NotFoundError('Emotive claim', claimId)
-      }
-
-      return { outcome: claim.outcome, claimYear: claim.claimYear }
-    }
-
-    const scope = resolveDomaceScope(actor)
-    const claim = await this.domaceClaimsRepository.findById(claimId, scope)
-    if (claim === null) {
-      throw new NotFoundError('Domace claim', claimId)
-    }
-
-    return { outcome: claim.outcome, claimYear: claim.claimYear }
   }
 }

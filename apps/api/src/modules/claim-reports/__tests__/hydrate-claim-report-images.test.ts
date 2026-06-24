@@ -1,15 +1,13 @@
 import { ClaimKind } from '@mr/shared'
 import { describe, expect, it, vi } from 'vitest'
 
-import {
-  hydrateClaimReportImages,
-  type ClaimReportImageLoader,
-} from '../hydrate-claim-report-images.js'
+import type { ReportImageReadPort } from '../../../core/ports/report-image-read-port.js'
+import { hydrateClaimReportImages } from '../hydrate-claim-report-images.js'
 
 const ATTACHMENT_ID = '11111111-1111-4111-8111-111111111111'
 const ATTACHMENT_SRC = `/api/attachments/${ATTACHMENT_ID}/download`
 
-function createLoader(impl: ClaimReportImageLoader['loadReportImage']): ClaimReportImageLoader {
+function createLoader(impl: ReportImageReadPort['loadReportImage']): ReportImageReadPort {
   return { loadReportImage: vi.fn(impl) }
 }
 
