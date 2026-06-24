@@ -5,7 +5,7 @@
  *   - customers.ts (Phase B.3): customers, customer_users
  *   - employees.ts (Phase B.3): departments, employees
  *   - audit.ts (Phase B.3): audit_log
- *   - catalogs.ts (Phase C.1): engine_types, external_parties, claim_sources
+ *   - catalogs.ts (Phase C.1): engine_manufacturers, engine_types, external_parties, claim_sources
  *   - client-registrations.ts (Phase C.1): client_registration_requests
  *   - claims.ts (Phase C.2)
  *   - mr-registry.ts: mr_registry (global MR unique registry)

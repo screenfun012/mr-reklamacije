@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import { users } from './access-control.js'
-import { claimSources, engineTypes, externalParties } from './catalogs.js'
+import { claimSources, engineManufacturers, engineTypes, externalParties } from './catalogs.js'
 import { customers } from './customers.js'
 import { departments, employees } from './employees.js'
 
@@ -33,6 +33,7 @@ export const emotiveClaims = pgTable(
     claimNumber: text('claim_number'),
     warrantyReport: text('warranty_report'),
     engineTypeId: uuid('engine_type_id').notNull(),
+    manufacturerId: uuid('manufacturer_id'),
     engineCode: text('engine_code'),
     dateOfClaim: date('date_of_claim', { mode: 'date' }).notNull(),
     mrNumber: text('mr_number').notNull(),
@@ -67,6 +68,11 @@ export const emotiveClaims = pgTable(
       foreignColumns: [engineTypes.id],
     }).onDelete('restrict'),
     foreignKey({
+      name: 'emotive_claims_manufacturer_id_fkey',
+      columns: [t.manufacturerId],
+      foreignColumns: [engineManufacturers.id],
+    }).onDelete('restrict'),
+    foreignKey({
       name: 'emotive_claims_employee_id_fkey',
       columns: [t.employeeId],
       foreignColumns: [employees.id],
@@ -98,6 +104,8 @@ export const emotiveClaims = pgTable(
     index('idx_emotive_claims_source_id').on(t.sourceId),
     index('idx_emotive_claims_customer_id').on(t.customerId),
     index('idx_emotive_claims_engine_type_id').on(t.engineTypeId),
+    index('idx_emotive_claims_manufacturer_id').on(t.manufacturerId),
+    index('idx_emotive_claims_manufacturer_id_claim_year').on(t.manufacturerId, t.claimYear),
     // TODO (Phase 1 optimization): Upgrade GIN full-text search to
     // Serbian stemmer. Requires installing Serbian dictionary
     // (e.g., snowball extension with Serbian rules) in Docker image
@@ -187,6 +195,7 @@ export const domaceClaims = pgTable(
     customerName: text('customer_name'),
     warrantyReport: text('warranty_report'),
     engineTypeId: uuid('engine_type_id'),
+    manufacturerId: uuid('manufacturer_id'),
     engineCode: text('engine_code'),
     dateOfClaim: date('date_of_claim', { mode: 'date' }),
     mrNumber: text('mr_number'),
@@ -216,6 +225,11 @@ export const domaceClaims = pgTable(
       foreignColumns: [engineTypes.id],
     }).onDelete('restrict'),
     foreignKey({
+      name: 'domace_claims_manufacturer_id_fkey',
+      columns: [t.manufacturerId],
+      foreignColumns: [engineManufacturers.id],
+    }).onDelete('restrict'),
+    foreignKey({
       name: 'domace_claims_employee_id_fkey',
       columns: [t.employeeId],
       foreignColumns: [employees.id],
@@ -235,6 +249,8 @@ export const domaceClaims = pgTable(
     index('idx_domace_claims_claim_year_outcome').on(t.claimYear, t.outcome),
     index('idx_domace_claims_employee_id_claim_year').on(t.employeeId, t.claimYear),
     index('idx_domace_claims_engine_type_id').on(t.engineTypeId),
+    index('idx_domace_claims_manufacturer_id').on(t.manufacturerId),
+    index('idx_domace_claims_manufacturer_id_claim_year').on(t.manufacturerId, t.claimYear),
     // Same `simple` FTS config as emotive_claims; Serbian stemmer TODO applies here too.
     index('idx_domace_claims_warranty_customer_fts').using(
       'gin',
@@ -302,6 +318,10 @@ export const emotiveClaimsRelations = relations(emotiveClaims, ({ many, one }) =
     fields: [emotiveClaims.engineTypeId],
     references: [engineTypes.id],
   }),
+  manufacturer: one(engineManufacturers, {
+    fields: [emotiveClaims.manufacturerId],
+    references: [engineManufacturers.id],
+  }),
   employee: one(employees, {
     fields: [emotiveClaims.employeeId],
     references: [employees.id],
@@ -350,6 +370,10 @@ export const domaceClaimsRelations = relations(domaceClaims, ({ many, one }) => 
   engineType: one(engineTypes, {
     fields: [domaceClaims.engineTypeId],
     references: [engineTypes.id],
+  }),
+  manufacturer: one(engineManufacturers, {
+    fields: [domaceClaims.manufacturerId],
+    references: [engineManufacturers.id],
   }),
   employee: one(employees, {
     fields: [domaceClaims.employeeId],

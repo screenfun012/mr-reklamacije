@@ -14,6 +14,24 @@ import {
 
 import { customers } from './customers.js'
 
+export const engineManufacturers = pgTable(
+  'engine_manufacturers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [uniqueIndex('engine_manufacturers_code_key').on(t.code)],
+)
+
 export const engineTypes = pgTable(
   'engine_types',
   {

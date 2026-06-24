@@ -8,6 +8,7 @@ import { seedDomaceClaims } from './domace-claims.js'
 import { seedEmotiveClaims } from './emotive-claims.js'
 import { seedEmployees } from './employees.js'
 import { seedEngineTypes } from './engine-types.js'
+import { seedEngineManufacturers } from './engine-manufacturers.js'
 import { seedPermissions } from './permissions.js'
 import { seedRoles } from './roles.js'
 
@@ -23,6 +24,7 @@ export async function runSystemSeeds(db: NodePgDatabase<typeof schema>): Promise
   await seedCustomers(db)
   await seedClaimSources(db)
   await seedEngineTypes(db)
+  await seedEngineManufacturers(db)
   await seedEmotiveClaims(db)
   await seedDomaceClaims(db)
 }
