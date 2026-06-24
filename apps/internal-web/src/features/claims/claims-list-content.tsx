@@ -49,7 +49,12 @@ export function ClaimsListContent({ search, onSearchChange }: ClaimsListContentP
   return (
     <div className="flex flex-col gap-6">
       <ClaimsFilters search={search} onSearchChange={handleSearchChange} />
-      <ClaimsTable items={data.items} total={data.total} />
+      <ClaimsTable
+        items={data.items}
+        total={data.total}
+        search={search}
+        onSearchChange={onSearchChange}
+      />
       <EmotiveClaimsPagination
         total={data.total}
         page={data.page}

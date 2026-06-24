@@ -1,18 +1,42 @@
+'use no memo'
+
 import {
   CLAIM_DETAIL_DEFAULT_SEARCH,
   ClaimKind,
+  ClaimSortBy,
   formatListDate,
   type ClaimListItem,
+  type ClaimsSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { ClaimKindBadge, Heading, OutcomeBadge, Skeleton } from '@mr/ui'
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type Column,
+  type SortingState,
+  type Updater,
+} from '@tanstack/react-table'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Eye, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
+
+import {
+  claimsSearchFromTableSorting,
+  claimsTableSortingFromSearch,
+  sortableColumnAriaSort,
+} from './claims-table-sort'
 
 export interface ClaimsTableProps {
   items: readonly ClaimListItem[]
   total: number
+  search: ClaimsSearch
+  onSearchChange: (next: ClaimsSearch) => void
 }
+
+const columnHelper = createColumnHelper<ClaimListItem>()
 
 function claimCustomerName(item: ClaimListItem): string | null {
   return item.customerName
@@ -41,8 +65,158 @@ function claimDetailLink(item: ClaimListItem): {
   }
 }
 
-export function ClaimsTable({ items, total }: ClaimsTableProps) {
+function SortableColumnHeader({
+  column,
+  label,
+}: {
+  column: Column<ClaimListItem, unknown>
+  label: string
+}) {
+  const sorted = column.getIsSorted()
+  const SortIcon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown
+
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+      onClick={column.getToggleSortingHandler()}
+    >
+      <span>{label}</span>
+      <SortIcon className={`size-3.5 ${sorted === false ? 'opacity-40' : ''}`} aria-hidden />
+    </button>
+  )
+}
+
+function createClaimsTableColumns() {
+  return [
+    columnHelper.display({
+      id: 'kind',
+      header: () => m.claims_col_kind(),
+      cell: ({ row }) => <ClaimKindBadge kind={row.original.kind} />,
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'mrNumber',
+      header: () => m.emotive_claims_col_mr_number(),
+      cell: ({ row }) => <span className="font-mono text-xs">{row.original.mrNumber ?? '—'}</span>,
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'claimNumber',
+      header: () => m.emotive_claims_col_claim_number(),
+      cell: ({ row }) => row.original.claimNumber ?? '—',
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'outcome',
+      header: () => m.emotive_claims_col_outcome(),
+      cell: ({ row }) => <OutcomeBadge outcome={row.original.outcome} />,
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'partner',
+      header: () => m.emotive_claims_col_partner(),
+      cell: ({ row }) => claimCustomerName(row.original) ?? '—',
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'engine',
+      header: () => m.emotive_claims_col_engine(),
+      cell: ({ row }) => <span className="font-mono text-xs">{claimEngineCode(row.original)}</span>,
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'employee',
+      header: () => m.emotive_claims_col_employee(),
+      cell: ({ row }) => row.original.employeeName ?? '—',
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.accessor('dateOfFinish', {
+      id: ClaimSortBy.DateOfFinish,
+      enableSorting: true,
+      header: ({ column }) => (
+        <SortableColumnHeader column={column} label={m.emotive_claims_col_date_finish()} />
+      ),
+      cell: ({ row }) =>
+        row.original.dateOfFinish ? formatListDate(row.original.dateOfFinish) : '—',
+      meta: { cellClassName: 'px-4 py-3 whitespace-nowrap' },
+    }),
+    columnHelper.accessor('dateOfClaim', {
+      id: ClaimSortBy.DateOfClaim,
+      enableSorting: true,
+      header: ({ column }) => (
+        <SortableColumnHeader column={column} label={m.emotive_claims_col_date_received()} />
+      ),
+      cell: ({ row }) =>
+        row.original.dateOfClaim ? formatListDate(row.original.dateOfClaim) : '—',
+      meta: { cellClassName: 'px-4 py-3 whitespace-nowrap' },
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: () => m.emotive_claims_col_actions(),
+      cell: ({ row }) => {
+        const detailLink = claimDetailLink(row.original)
+
+        return (
+          <div className="flex items-center gap-2">
+            <Link
+              to={detailLink.to}
+              params={detailLink.params}
+              search={detailLink.search}
+              className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+              aria-label={m.emotive_claims_detail_view_action()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Eye className="size-4" />
+            </Link>
+            <button
+              type="button"
+              className="inline-flex size-8 items-center justify-center rounded-md text-destructive opacity-60"
+              disabled
+              aria-label="Obriši"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        )
+      },
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+  ]
+}
+
+export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTableProps) {
   const navigate = useNavigate()
+  const columns = useMemo(() => createClaimsTableColumns(), [])
+  const sorting = useMemo(() => claimsTableSortingFromSearch(search), [search])
+
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+      const nextSearch = claimsSearchFromTableSorting(search, nextSorting)
+
+      if (nextSearch === null) {
+        return
+      }
+
+      onSearchChange(nextSearch)
+    },
+    [onSearchChange, search, sorting],
+  )
+
+  const table = useReactTable({
+    data: [...items],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => `${row.kind}-${row.id}`,
+    manualSorting: true,
+    manualPagination: true,
+    manualFiltering: true,
+    enableSortingRemoval: false,
+    state: { sorting },
+    onSortingChange: handleSortingChange,
+  })
 
   if (items.length === 0) {
     return (
@@ -67,89 +241,52 @@ export function ClaimsTable({ items, total }: ClaimsTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1160px] text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/20 text-left">
-              <th className="px-4 py-3 font-medium text-muted-foreground">{m.claims_col_kind()}</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_mr_number()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_claim_number()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_outcome()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_partner()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_engine()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_employee()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_date_finish()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_date_received()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.emotive_claims_col_actions()}
-              </th>
-            </tr>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} className="border-b border-border bg-muted/20 text-left">
+                {headerGroup.headers.map((header) => {
+                  const sorted = header.column.getIsSorted()
+                  const ariaSort = header.column.getCanSort()
+                    ? sortableColumnAriaSort(sorted)
+                    : undefined
+
+                  return (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-medium text-muted-foreground"
+                      aria-sort={ariaSort}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  )
+                })}
+              </tr>
+            ))}
           </thead>
           <tbody>
-            {items.map((claim) => {
-              const detailLink = claimDetailLink(claim)
+            {table.getRowModel().rows.map((row) => {
+              const detailLink = claimDetailLink(row.original)
 
               return (
                 <tr
-                  key={`${claim.kind}-${claim.id}`}
+                  key={row.id}
                   className="cursor-pointer border-b border-border last:border-b-0 hover:bg-muted/30"
                   onClick={() => {
                     void navigate(detailLink)
                   }}
                 >
-                  <td className="px-4 py-3">
-                    <ClaimKindBadge kind={claim.kind} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs">{claim.mrNumber ?? '—'}</td>
-                  <td className="px-4 py-3">{claim.claimNumber ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <OutcomeBadge outcome={claim.outcome} />
-                  </td>
-                  <td className="px-4 py-3">{claimCustomerName(claim) ?? '—'}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{claimEngineCode(claim)}</td>
-                  <td className="px-4 py-3">{claim.employeeName ?? '—'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {claim.dateOfFinish ? formatListDate(claim.dateOfFinish) : '—'}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {claim.dateOfClaim ? formatListDate(claim.dateOfClaim) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={detailLink.to}
-                        params={detailLink.params}
-                        search={detailLink.search}
-                        className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
-                        aria-label={m.emotive_claims_detail_view_action()}
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Eye className="size-4" />
-                      </Link>
-                      <button
-                        type="button"
-                        className="inline-flex size-8 items-center justify-center rounded-md text-destructive opacity-60"
-                        disabled
-                        aria-label="Obriši"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                  </td>
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className={
+                        (cell.column.columnDef.meta as { cellClassName?: string } | undefined)
+                          ?.cellClassName ?? 'px-4 py-3'
+                      }
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               )
             })}
