@@ -12,7 +12,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { DashboardOverdueTable } from '../dashboard-overdue-table.js'
+import { DashboardClaimList } from '../dashboard-claim-list.js'
 
 const navigateMock = vi.fn()
 
@@ -44,14 +44,20 @@ async function renderWithRouter(node: ReactElement): Promise<void> {
   render(<RouterProvider router={router as never} />)
 }
 
-describe('DashboardOverdueTable', () => {
+describe('DashboardClaimList', () => {
   beforeEach(() => {
     setLocale('sr')
     navigateMock.mockReset()
   })
 
-  it('renders empty state when there are no overdue rows', async () => {
-    await renderWithRouter(<DashboardOverdueTable items={[]} />)
+  it('renders empty state when there are no rows', async () => {
+    await renderWithRouter(
+      <DashboardClaimList
+        title="Kasne reklamacije"
+        emptyMessage="Nema kasnih reklamacija"
+        items={[]}
+      />,
+    )
 
     expect(screen.getByRole('status')).toHaveTextContent('Nema kasnih reklamacija')
   })
@@ -60,7 +66,9 @@ describe('DashboardOverdueTable', () => {
     const user = userEvent.setup()
 
     await renderWithRouter(
-      <DashboardOverdueTable
+      <DashboardClaimList
+        title="Kasne reklamacije"
+        emptyMessage="Nema kasnih reklamacija"
         items={[
           {
             kind: ClaimKind.Emotive,
@@ -68,8 +76,6 @@ describe('DashboardOverdueTable', () => {
             mrNumber: '5376/26',
             customerLabel: 'SELMAN',
             daysOpen: 12,
-            outcome: 'pending',
-            dateOfClaim: '2026-04-17',
           },
         ]}
       />,
@@ -88,7 +94,9 @@ describe('DashboardOverdueTable', () => {
     const user = userEvent.setup()
 
     await renderWithRouter(
-      <DashboardOverdueTable
+      <DashboardClaimList
+        title="Kasne reklamacije"
+        emptyMessage="Nema kasnih reklamacija"
         items={[
           {
             kind: ClaimKind.Domace,
@@ -96,8 +104,6 @@ describe('DashboardOverdueTable', () => {
             mrNumber: '1234/26',
             customerLabel: 'Auto Stanić',
             daysOpen: 20,
-            outcome: 'pending',
-            dateOfClaim: null,
           },
         ]}
       />,
@@ -110,5 +116,25 @@ describe('DashboardOverdueTable', () => {
       params: { id: '66666666-6666-4666-8666-666666666666' },
       search: { tab: 'pregled' },
     })
+  })
+
+  it('renders days badge with warning styling', async () => {
+    await renderWithRouter(
+      <DashboardClaimList
+        title="Kasne reklamacije"
+        emptyMessage="Nema kasnih reklamacija"
+        items={[
+          {
+            kind: ClaimKind.Emotive,
+            id: '11111111-1111-4111-8111-111111111111',
+            mrNumber: '5376/26',
+            customerLabel: 'SELMAN',
+            daysOpen: 388,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('388 dana')).toBeInTheDocument()
   })
 })

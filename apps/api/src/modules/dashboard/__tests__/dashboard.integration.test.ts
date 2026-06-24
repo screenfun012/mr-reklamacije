@@ -172,7 +172,28 @@ describe('DashboardService integration', () => {
       expect(summary.stats.pending).toBe(before.stats.pending + 1)
       expect(summary.stats.byKind.emotive).toBe(before.stats.byKind.emotive + 1)
       expect(summary.stats.byKind.domace).toBe(before.stats.byKind.domace + 1)
-      expect(summary.recent).toEqual([])
+      expect(summary.chart).toHaveLength(6)
+    })
+
+    it('includes newly created claims in recent list', async () => {
+      const recentId = await createEmotive('DASH-RECENT/26', ClaimOutcome.Pending, daysAgo(0))
+
+      const summary = await container.dashboardService.getSummary(FULL_OPERATOR)
+
+      expect(summary.recent.some((item) => item.id === recentId)).toBe(true)
+      expect(summary.recent.some((item) => item.mrNumber === 'DASH-RECENT/26')).toBe(true)
+    })
+
+    it('excludes archived claims from recent list', async () => {
+      const archivedId = await createEmotive('DASH-REC-ARCH/26')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome: ClaimOutcome.Archived })
+        .where(eq(schema.emotiveClaims.id, archivedId))
+
+      const summary = await container.dashboardService.getSummary(FULL_OPERATOR)
+
+      expect(summary.recent.some((item) => item.id === archivedId)).toBe(false)
     })
 
     it('throws ForbiddenError when actor lacks list view permissions', async () => {

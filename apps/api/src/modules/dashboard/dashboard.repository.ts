@@ -5,7 +5,8 @@ import type { ApiDatabase } from '../../core/database.js'
 import type { DashboardScope } from './dashboard.types.js'
 
 const OVERDUE_DAYS_THRESHOLD = 7
-const OVERDUE_LIST_LIMIT = 20
+const LIST_LIMIT = 20
+const CHART_MONTH_COUNT = 6
 
 interface StatsRow extends Record<string, unknown> {
   total: number | string
@@ -17,28 +18,23 @@ interface StatsRow extends Record<string, unknown> {
   domace_count: number | string
 }
 
-interface OverdueRow extends Record<string, unknown> {
+interface ListRow extends Record<string, unknown> {
   kind: string
   id: string
   mr_number: string | null
   customer_label: string | null
   days_open: number | string
-  outcome: string
-  date_of_claim: Date | string | null
+}
+
+interface ChartRow extends Record<string, unknown> {
+  month: string
+  emotive: number | string
+  domace: number | string
+  total: number | string
 }
 
 function toInt(value: number | string): number {
   return typeof value === 'number' ? value : Number.parseInt(value, 10)
-}
-
-function formatDate(value: Date | string | null): string | null {
-  if (value === null) {
-    return null
-  }
-  if (typeof value === 'string') {
-    return value.slice(0, 10)
-  }
-  return value.toISOString().slice(0, 10)
 }
 
 function activeEmotiveWhere(alias: string): SQL {
@@ -53,16 +49,32 @@ function anchorDate(alias: string): SQL {
   return sql`COALESCE(${sql.raw(alias)}.date_of_claim, (${sql.raw(alias)}.created_at AT TIME ZONE 'UTC')::date)`
 }
 
+function mapListRow(row: ListRow): DashboardSummary['overdue'][number] {
+  return {
+    kind: row.kind as DashboardSummary['overdue'][number]['kind'],
+    id: row.id,
+    mrNumber: row.mr_number,
+    customerLabel: row.customer_label,
+    daysOpen: toInt(row.days_open),
+  }
+}
+
 export class DashboardRepository {
   constructor(private readonly db: ApiDatabase) {}
 
   async getSummary(scope: DashboardScope): Promise<DashboardSummary> {
-    const [stats, overdue] = await Promise.all([this.fetchStats(scope), this.fetchOverdue(scope)])
+    const [stats, overdue, recent, chart] = await Promise.all([
+      this.fetchStats(scope),
+      this.fetchOverdue(scope),
+      this.fetchRecent(scope),
+      this.fetchChart(scope),
+    ])
 
     return {
       stats,
       overdue,
-      recent: [],
+      recent,
+      chart,
     }
   }
 
@@ -142,9 +154,7 @@ export class DashboardRepository {
           ec.id,
           ec.mr_number,
           c.name AS customer_label,
-          (CURRENT_DATE - ${anchorDate('ec')})::int AS days_open,
-          ec.outcome,
-          ec.date_of_claim
+          (CURRENT_DATE - ${anchorDate('ec')})::int AS days_open
         FROM emotive_claims ec
         LEFT JOIN customers c ON c.id = ec.customer_id
         WHERE ${activeEmotiveWhere('ec')}
@@ -160,9 +170,7 @@ export class DashboardRepository {
           dc.id,
           dc.mr_number,
           dc.customer_name AS customer_label,
-          (CURRENT_DATE - ${anchorDate('dc')})::int AS days_open,
-          dc.outcome,
-          dc.date_of_claim
+          (CURRENT_DATE - ${anchorDate('dc')})::int AS days_open
         FROM domace_claims dc
         WHERE ${activeDomaceWhere('dc')}
           AND dc.outcome = ${ClaimOutcome.Pending}
@@ -176,21 +184,125 @@ export class DashboardRepository {
 
     const unionSql = sql.join(branches, sql` UNION ALL `)
 
-    const result = await this.db.execute<OverdueRow>(sql`
-      SELECT kind, id, mr_number, customer_label, days_open, outcome, date_of_claim
+    const result = await this.db.execute<ListRow>(sql`
+      SELECT kind, id, mr_number, customer_label, days_open
       FROM (${unionSql}) AS overdue_claims
-      ORDER BY days_open DESC, date_of_claim ASC NULLS LAST, id DESC
-      LIMIT ${OVERDUE_LIST_LIMIT}
+      ORDER BY days_open DESC, id DESC
+      LIMIT ${LIST_LIMIT}
+    `)
+
+    return result.rows.map(mapListRow)
+  }
+
+  private async fetchRecent(scope: DashboardScope): Promise<DashboardSummary['recent']> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      branches.push(sql`
+        SELECT
+          ${ClaimKind.Emotive}::text AS kind,
+          ec.id,
+          ec.mr_number,
+          c.name AS customer_label,
+          (CURRENT_DATE - (ec.created_at AT TIME ZONE 'UTC')::date)::int AS days_open
+        FROM emotive_claims ec
+        LEFT JOIN customers c ON c.id = ec.customer_id
+        WHERE ${activeEmotiveWhere('ec')}
+      `)
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT
+          ${ClaimKind.Domace}::text AS kind,
+          dc.id,
+          dc.mr_number,
+          dc.customer_name AS customer_label,
+          (CURRENT_DATE - (dc.created_at AT TIME ZONE 'UTC')::date)::int AS days_open
+        FROM domace_claims dc
+        WHERE ${activeDomaceWhere('dc')}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<ListRow>(sql`
+      SELECT kind, id, mr_number, customer_label, days_open
+      FROM (${unionSql}) AS recent_claims
+      ORDER BY days_open ASC, id DESC
+      LIMIT ${LIST_LIMIT}
+    `)
+
+    return result.rows.map(mapListRow)
+  }
+
+  private async fetchChart(scope: DashboardScope): Promise<DashboardSummary['chart']> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      branches.push(sql`
+        SELECT
+          ${ClaimKind.Emotive}::text AS kind,
+          date_trunc('month', ec.created_at AT TIME ZONE 'UTC')::date AS month_start
+        FROM emotive_claims ec
+        WHERE ${activeEmotiveWhere('ec')}
+          AND ec.created_at >= (date_trunc('month', CURRENT_DATE) - (${CHART_MONTH_COUNT - 1} * interval '1 month'))
+      `)
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT
+          ${ClaimKind.Domace}::text AS kind,
+          date_trunc('month', dc.created_at AT TIME ZONE 'UTC')::date AS month_start
+        FROM domace_claims dc
+        WHERE ${activeDomaceWhere('dc')}
+          AND dc.created_at >= (date_trunc('month', CURRENT_DATE) - (${CHART_MONTH_COUNT - 1} * interval '1 month'))
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<ChartRow>(sql`
+      WITH months AS (
+        SELECT generate_series(
+          date_trunc('month', CURRENT_DATE) - (${CHART_MONTH_COUNT - 1} * interval '1 month'),
+          date_trunc('month', CURRENT_DATE),
+          interval '1 month'
+        )::date AS month_start
+      ),
+      counts AS (
+        SELECT
+          month_start,
+          COUNT(*) FILTER (WHERE kind = ${ClaimKind.Emotive})::int AS emotive,
+          COUNT(*) FILTER (WHERE kind = ${ClaimKind.Domace})::int AS domace,
+          COUNT(*)::int AS total
+        FROM (${unionSql}) AS chart_claims
+        GROUP BY month_start
+      )
+      SELECT
+        to_char(m.month_start, 'YYYY-MM') AS month,
+        COALESCE(c.emotive, 0)::int AS emotive,
+        COALESCE(c.domace, 0)::int AS domace,
+        COALESCE(c.total, 0)::int AS total
+      FROM months m
+      LEFT JOIN counts c ON c.month_start = m.month_start
+      ORDER BY m.month_start ASC
     `)
 
     return result.rows.map((row) => ({
-      kind: row.kind as DashboardSummary['overdue'][number]['kind'],
-      id: row.id,
-      mrNumber: row.mr_number,
-      customerLabel: row.customer_label,
-      daysOpen: toInt(row.days_open),
-      outcome: ClaimOutcome.Pending,
-      dateOfClaim: formatDate(row.date_of_claim),
+      month: row.month,
+      emotive: toInt(row.emotive),
+      domace: toInt(row.domace),
+      total: toInt(row.total),
     }))
   }
 }

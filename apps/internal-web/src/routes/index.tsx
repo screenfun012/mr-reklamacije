@@ -6,8 +6,9 @@ import { m } from '@mr/i18n'
 import { Button, Heading } from '@mr/ui'
 
 import { InternalShell } from '~/components/layout/internal-shell'
+import { DashboardClaimListSkeleton } from '~/features/dashboard/dashboard-claim-list'
 import { DashboardContent } from '~/features/dashboard/dashboard-content'
-import { DashboardOverdueTableSkeleton } from '~/features/dashboard/dashboard-overdue-table'
+import { DashboardClaimsChartSkeleton } from '~/features/dashboard/dashboard-outcome-chart'
 import { DashboardStatCardsSkeleton } from '~/features/dashboard/dashboard-stat-cards'
 import { authClient } from '~/lib/auth-client'
 import { internalRequireRoles } from '~/lib/auth-guard'
@@ -19,6 +20,19 @@ export const Route = createFileRoute('/')({
   pendingComponent: HomePending,
   errorComponent: HomeError,
 })
+
+function DashboardSkeleton() {
+  return (
+    <>
+      <DashboardStatCardsSkeleton />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <DashboardClaimListSkeleton />
+        <DashboardClaimListSkeleton />
+      </div>
+      <DashboardClaimsChartSkeleton />
+    </>
+  )
+}
 
 function HomeComponent() {
   const { data: session } = authClient.useSession()
@@ -33,14 +47,7 @@ function HomeComponent() {
           </Heading>
           <p className="text-sm text-muted-foreground">{m.nav_pocetna()}</p>
         </div>
-        <Suspense
-          fallback={
-            <>
-              <DashboardStatCardsSkeleton />
-              <DashboardOverdueTableSkeleton />
-            </>
-          }
-        >
+        <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>
       </div>
@@ -56,8 +63,7 @@ function HomePending() {
           <Heading level="h1">{m.nav_pocetna()}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">{m.common_loading()}</p>
         </div>
-        <DashboardStatCardsSkeleton />
-        <DashboardOverdueTableSkeleton />
+        <DashboardSkeleton />
       </div>
     </InternalShell>
   )
