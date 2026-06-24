@@ -1,8 +1,9 @@
-import type { CustomerListItem, EngineTypeListItem } from '@mr/shared'
+import type { CustomerListItem, EngineManufacturerListItem, EngineTypeListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   DatePicker,
   Input,
+  SearchableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -13,6 +14,16 @@ import {
 import { SELECT_EMPTY_SENTINEL } from './form-field-styles.js'
 import { formatFieldError } from './format-field-error.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
+
+function manufacturerOptions(
+  manufacturers: readonly EngineManufacturerListItem[],
+): { value: string; label: string; keywords: string }[] {
+  return manufacturers.map((manufacturer) => ({
+    value: manufacturer.id,
+    label: manufacturer.name,
+    keywords: manufacturer.code,
+  }))
+}
 
 interface StepBasicFieldsProps {
   form: {
@@ -26,6 +37,7 @@ interface StepBasicFieldsProps {
     }>
   }
   customers: CustomerListItem[]
+  manufacturers: EngineManufacturerListItem[]
   engineTypes: EngineTypeListItem[]
   stepErrors: Record<string, string>
   disabled: boolean
@@ -34,6 +46,7 @@ interface StepBasicFieldsProps {
 export function StepBasicFields({
   form,
   customers,
+  manufacturers,
   engineTypes,
   stepErrors,
   disabled,
@@ -107,6 +120,31 @@ export function StepBasicFields({
                 ))}
               </SelectContent>
             </Select>
+          </FieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="manufacturerId"
+        children={(field) => (
+          <FieldGroup
+            id="manufacturerId"
+            label={m.emotive_claims_create_field_manufacturer()}
+            error={stepErrors['manufacturerId'] ?? formatFieldError(field.state.meta.errors[0])}
+          >
+            <SearchableSelect
+              id="manufacturerId"
+              value={field.state.value}
+              options={manufacturerOptions(manufacturers)}
+              placeholder={m.emotive_claims_create_select_placeholder()}
+              searchPlaceholder={m.field_search_placeholder()}
+              emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+              noResultsLabel={m.field_no_results()}
+              disabled={disabled}
+              aria-label={m.emotive_claims_create_field_manufacturer()}
+              onValueChange={field.handleChange}
+              onBlur={field.handleBlur}
+            />
           </FieldGroup>
         )}
       />

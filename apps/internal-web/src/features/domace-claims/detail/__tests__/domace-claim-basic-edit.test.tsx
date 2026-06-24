@@ -2,8 +2,10 @@ import {
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
+  engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   type DomaceClaimDetail,
+  type EngineManufacturerListItem,
   type EngineTypeListItem,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
@@ -16,6 +18,7 @@ import { DomaceClaimBasicSection } from '../domace-claim-basic-section.js'
 
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
+const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
 
 const ENGINE_TYPES: EngineTypeListItem[] = [
   {
@@ -25,6 +28,16 @@ const ENGINE_TYPES: EngineTypeListItem[] = [
     displacementCc: 2143,
     isActive: true,
     usageCount: 0,
+  },
+]
+
+const MANUFACTURERS: EngineManufacturerListItem[] = [
+  {
+    id: MANUFACTURER_ID,
+    code: 'MERCEDES',
+    name: 'Mercedes-Benz',
+    sortOrder: 1,
+    isActive: true,
   },
 ]
 
@@ -62,6 +75,10 @@ function renderSection(canEdit: boolean): void {
   })
   client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, makeClaim())
   client.setQueryData(engineTypesReferenceOptions({ activeOnly: true }).queryKey, ENGINE_TYPES)
+  client.setQueryData(
+    engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
+    MANUFACTURERS,
+  )
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>

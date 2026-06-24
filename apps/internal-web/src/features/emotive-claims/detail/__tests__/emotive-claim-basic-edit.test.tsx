@@ -3,9 +3,11 @@ import {
   ClaimOutcome,
   CustomerKind,
   customersReferenceOptions,
+  engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   type CustomerListItem,
   type EmotiveClaimDetail,
+  type EngineManufacturerListItem,
   type EngineTypeListItem,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
@@ -19,6 +21,7 @@ import { EmotiveClaimBasicSection } from '../emotive-claim-basic-section.js'
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 const CUSTOMER_ID = '55555555-5555-4555-8555-555555555555'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
+const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
 
 const CUSTOMERS: CustomerListItem[] = [
   {
@@ -38,6 +41,16 @@ const ENGINE_TYPES: EngineTypeListItem[] = [
     displacementCc: 2143,
     isActive: true,
     usageCount: 3,
+  },
+]
+
+const MANUFACTURERS: EngineManufacturerListItem[] = [
+  {
+    id: MANUFACTURER_ID,
+    code: 'MERCEDES',
+    name: 'Mercedes-Benz',
+    sortOrder: 1,
+    isActive: true,
   },
 ]
 
@@ -81,6 +94,10 @@ function renderSection(canEdit: boolean): void {
     CUSTOMERS,
   )
   client.setQueryData(engineTypesReferenceOptions({ activeOnly: true }).queryKey, ENGINE_TYPES)
+  client.setQueryData(
+    engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
+    MANUFACTURERS,
+  )
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>

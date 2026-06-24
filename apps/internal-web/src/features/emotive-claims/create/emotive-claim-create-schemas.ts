@@ -37,6 +37,7 @@ export const emotiveClaimStepBasicSchema = z.object({
     .trim()
     .min(1, m.emotive_claims_create_field_customer_required())
     .uuid(m.emotive_claims_create_field_customer_required()),
+  manufacturerId: z.string().trim(),
   engineTypeId: z
     .string()
     .trim()
@@ -51,6 +52,7 @@ export type EmotiveClaimFormValues = {
   mrNumber: string
   claimNumber: string
   customerId: string
+  manufacturerId: string
   engineTypeId: string
   engineCode: string
   dateOfFinish: string
@@ -63,6 +65,7 @@ export const EMOTIVE_CLAIM_FORM_DEFAULTS: EmotiveClaimFormValues = {
   mrNumber: '',
   claimNumber: '',
   customerId: '',
+  manufacturerId: '',
   engineTypeId: '',
   engineCode: '',
   dateOfFinish: '',
@@ -76,6 +79,7 @@ export function formValuesToCreateInput(values: EmotiveClaimFormValues) {
     mrNumber: values.mrNumber,
     claimNumber: values.claimNumber.trim() === '' ? undefined : values.claimNumber,
     customerId: values.customerId,
+    manufacturerId: values.manufacturerId.trim() === '' ? undefined : values.manufacturerId,
     engineTypeId: values.engineTypeId,
     engineCode: values.engineCode.trim() === '' ? undefined : values.engineCode,
     dateOfClaim: values.dateOfClaim,

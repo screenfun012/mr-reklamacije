@@ -3,6 +3,7 @@ import {
   type CustomerListItem,
   type DepartmentListItem,
   type EmployeeListItem,
+  type EngineManufacturerListItem,
   type EngineTypeListItem,
   type ExternalPartyListItem,
 } from '@mr/shared'
@@ -16,6 +17,7 @@ import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
 interface StepReviewProps {
   values: EmotiveClaimFormValues
   customers: CustomerListItem[]
+  manufacturers: EngineManufacturerListItem[]
   engineTypes: EngineTypeListItem[]
   departments: DepartmentListItem[]
   employees: EmployeeListItem[]
@@ -36,6 +38,7 @@ interface StepReviewProps {
 export function StepReview({
   values,
   customers,
+  manufacturers,
   engineTypes,
   departments,
   employees,
@@ -44,6 +47,8 @@ export function StepReview({
   disabled,
 }: StepReviewProps): React.ReactElement {
   const customerName = customers.find((c) => c.id === values.customerId)?.name ?? '—'
+  const manufacturerName =
+    manufacturers.find((item) => item.id === values.manufacturerId)?.name ?? '—'
   const engineTypeCode = engineTypes.find((e) => e.id === values.engineTypeId)?.code ?? '—'
 
   return (
@@ -83,6 +88,10 @@ export function StepReview({
             value={values.claimNumber || '—'}
           />
           <ReviewItem label={m.emotive_claims_create_field_customer()} value={customerName} />
+          <ReviewItem
+            label={m.emotive_claims_create_field_manufacturer()}
+            value={values.manufacturerId ? manufacturerName : '—'}
+          />
           <ReviewItem label={m.emotive_claims_create_field_engine_type()} value={engineTypeCode} />
           <ReviewItem
             label={m.emotive_claims_create_field_engine_code()}

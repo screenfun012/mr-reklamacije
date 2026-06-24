@@ -41,6 +41,12 @@ export {
   SelectScrollDownButton,
 } from './primitives/select.js'
 export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from './primitives/popover.js'
+export {
+  SearchableSelect,
+  SEARCHABLE_SELECT_EMPTY_VALUE,
+  type SearchableSelectOption,
+  type SearchableSelectProps,
+} from './primitives/searchable-select.js'
 export { Calendar, type CalendarProps } from './primitives/calendar.js'
 export { DatePicker, type DatePickerProps } from './primitives/date-picker.js'
 export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from './primitives/input-otp.js'

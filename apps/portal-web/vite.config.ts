@@ -8,12 +8,14 @@ import { defineConfig, mergeConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+const i18nEntry = fileURLToPath(new URL('../../packages/i18n/src/index.ts', import.meta.url))
 
 /** Workspace packages resolve from src in dev (package.json "development" export). */
 const mrWebDevSettings = {
   server: {
     watch: {
-      ignored: ['**/dist/**', '**/.turbo/**', '**/packages/i18n/src/paraglide/**'],
+      // Do not ignore paraglide — compile must invalidate @mr/i18n in the running dev server.
+      ignored: ['**/dist/**', '**/.turbo/**'],
     },
     fs: {
       allow: [repoRoot],
@@ -28,8 +30,10 @@ const mrWebDevSettings = {
   resolve: {
     // Nitro/rolldown SSR: tslib CJS via __toESM yields undefined .default → prod 500.
     alias: {
+      '@mr/i18n': i18nEntry,
       tslib: 'tslib/tslib.es6.mjs',
     },
+    conditions: ['development', 'import', 'module', 'browser', 'default'],
   },
 } as const
 

@@ -1,4 +1,9 @@
-import { ApiError, ClaimDetailSearchSchema, domaceClaimDetailOptions } from '@mr/shared'
+import {
+  ApiError,
+  ClaimDetailSearchSchema,
+  domaceClaimDetailOptions,
+  prefetchClaimEditReferences,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Skeleton } from '@mr/ui'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
@@ -12,7 +17,10 @@ export const Route = createFileRoute('/reklamacije/domace/$id')({
   beforeLoad: internalRequireDomaceClaimsView(),
   validateSearch: (search) => ClaimDetailSearchSchema.parse(search),
   loader: async ({ context: { queryClient }, params: { id } }) => {
-    await queryClient.ensureQueryData(domaceClaimDetailOptions(id))
+    await Promise.all([
+      queryClient.ensureQueryData(domaceClaimDetailOptions(id)),
+      prefetchClaimEditReferences(queryClient),
+    ])
   },
   component: DomaceClaimDetailPage,
   pendingComponent: DomaceClaimDetailPending,

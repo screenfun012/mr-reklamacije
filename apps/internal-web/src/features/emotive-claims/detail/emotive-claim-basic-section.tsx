@@ -2,6 +2,7 @@ import {
   ApiError,
   CustomerKind,
   customersReferenceOptions,
+  engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   formatListDate,
   type EmotiveClaimDetail,
@@ -107,7 +108,7 @@ function BasicReadOnly({
         <DetailItem label={m.emotive_claims_col_engine()} value={claim.engineTypeCode} mono />
         <DetailItem
           label={m.emotive_claims_detail_field_manufacturer()}
-          value={claim.engineTypeManufacturer}
+          value={claim.manufacturerName ?? claim.engineTypeManufacturer}
         />
         <DetailItem label={m.emotive_claims_detail_field_engine_code()} value={claim.engineCode} />
         <DetailItem label={m.emotive_claims_detail_field_source()} value={resolveSource(claim)} />
@@ -148,6 +149,9 @@ function BasicEditMode({
     customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
   )
   const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
+  const { data: manufacturers } = useSuspenseQuery(
+    engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
 
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -184,6 +188,7 @@ function BasicEditMode({
       <StepBasicFields
         form={form}
         customers={customers}
+        manufacturers={manufacturers}
         engineTypes={engineTypes}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
@@ -222,6 +227,7 @@ function claimToFormValues(claim: EmotiveClaimDetail): EmotiveClaimFormValues {
     mrNumber: claim.mrNumber,
     claimNumber: claim.claimNumber ?? '',
     customerId: claim.customerId ?? '',
+    manufacturerId: claim.manufacturerId ?? '',
     engineTypeId: claim.engineTypeId,
     engineCode: claim.engineCode ?? '',
     dateOfFinish: claim.dateOfFinish ?? '',
@@ -238,6 +244,7 @@ function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasi
     mrNumber: values.mrNumber.trim(),
     claimNumber: claimNumber === '' ? null : claimNumber,
     customerId: values.customerId,
+    manufacturerId: values.manufacturerId.trim() === '' ? null : values.manufacturerId,
     engineTypeId: values.engineTypeId,
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: values.dateOfClaim,

@@ -8,6 +8,7 @@ import {
   departmentsReferenceOptions,
   employeesReferenceOptions,
   engineTypesReferenceOptions,
+  engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -44,6 +45,9 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
     customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
   )
   const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
+  const { data: manufacturers } = useSuspenseQuery(
+    engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const { data: departments } = useSuspenseQuery(departmentsReferenceOptions({ activeOnly: true }))
   const { data: externalParties } = useSuspenseQuery(
@@ -153,6 +157,7 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
             <StepBasicFields
               form={form}
               customers={customers}
+              manufacturers={manufacturers}
               engineTypes={engineTypes}
               stepErrors={stepErrors}
               disabled={isPending}
@@ -174,6 +179,7 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
             <StepReview
               values={form.state.values}
               customers={customers}
+              manufacturers={manufacturers}
               engineTypes={engineTypes}
               departments={departments}
               employees={employees}

@@ -1,5 +1,6 @@
 import {
   CLAIM_KIND_REGISTRY,
+  engineManufacturersReferenceOptions,
   OUTCOME_REGISTRY,
   type ClaimsSearch,
   type OutcomeLabelKey,
@@ -8,13 +9,15 @@ import { m } from '@mr/i18n'
 import {
   DatePicker,
   Input,
+  SearchableSelect,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@mr/ui'
-import { useEffect, useState } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
 import { useDebouncedValue } from '~/lib/use-debounced-value'
@@ -42,6 +45,19 @@ export interface ClaimsFiltersProps {
 export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
   const [searchDraft, setSearchDraft] = useState(search.search ?? '')
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
+  const { data: manufacturers } = useSuspenseQuery(
+    engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
+
+  const manufacturerOptions = useMemo(
+    () =>
+      manufacturers.map((manufacturer) => ({
+        value: manufacturer.id,
+        label: manufacturer.name,
+        keywords: manufacturer.code,
+      })),
+    [manufacturers],
+  )
 
   useEffect(() => {
     setSearchDraft(search.search ?? '')
@@ -118,6 +134,26 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
+        <span className="font-medium text-foreground">{m.claims_filter_manufacturer()}</span>
+        <SearchableSelect
+          value={search.manufacturerId ?? ''}
+          options={manufacturerOptions}
+          placeholder={m.claims_filter_manufacturer_all()}
+          searchPlaceholder={m.field_search_placeholder()}
+          emptyOptionLabel={m.claims_filter_manufacturer_all()}
+          noResultsLabel={m.field_no_results()}
+          aria-label={m.claims_filter_manufacturer()}
+          onValueChange={(manufacturerId) => {
+            onSearchChange({
+              ...search,
+              manufacturerId: manufacturerId.length > 0 ? manufacturerId : undefined,
+              page: 1,
+            })
+          }}
+        />
       </div>
 
       <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">

@@ -1,8 +1,9 @@
-import type { EngineTypeListItem } from '@mr/shared'
+import type { EngineManufacturerListItem, EngineTypeListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   DatePicker,
   Input,
+  SearchableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -29,6 +30,7 @@ interface DomaceBasicFieldsProps {
     }>
   }
   engineTypes: EngineTypeListItem[]
+  manufacturers: EngineManufacturerListItem[]
   stepErrors: Record<string, string>
   disabled: boolean
 }
@@ -36,6 +38,7 @@ interface DomaceBasicFieldsProps {
 export function DomaceBasicFields({
   form,
   engineTypes,
+  manufacturers,
   stepErrors,
   disabled,
 }: DomaceBasicFieldsProps): React.ReactElement {
@@ -89,6 +92,35 @@ export function DomaceBasicFields({
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
+            />
+          </FieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="manufacturerId"
+        children={(field) => (
+          <FieldGroup
+            id="manufacturerId"
+            label={m.emotive_claims_create_field_manufacturer()}
+            error={stepErrors['manufacturerId']}
+          >
+            <SearchableSelect
+              id="manufacturerId"
+              value={field.state.value}
+              options={manufacturers.map((manufacturer) => ({
+                value: manufacturer.id,
+                label: manufacturer.name,
+                keywords: manufacturer.code,
+              }))}
+              placeholder={m.emotive_claims_create_select_placeholder()}
+              searchPlaceholder={m.field_search_placeholder()}
+              emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+              noResultsLabel={m.field_no_results()}
+              disabled={disabled}
+              aria-label={m.emotive_claims_create_field_manufacturer()}
+              onValueChange={field.handleChange}
+              onBlur={field.handleBlur}
             />
           </FieldGroup>
         )}

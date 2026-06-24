@@ -213,6 +213,7 @@ export async function prefetchClaimEditReferences(queryClient: QueryClient): Pro
     queryClient.ensureQueryData(employeesReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
     queryClient.ensureQueryData(externalPartiesReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
     queryClient.ensureQueryData(engineTypesReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
+    queryClient.ensureQueryData(engineManufacturersReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
     queryClient.ensureQueryData(customersReferenceOptions(EMOTIVE_PARTNER_CUSTOMERS_REFERENCE)),
   ])
 }

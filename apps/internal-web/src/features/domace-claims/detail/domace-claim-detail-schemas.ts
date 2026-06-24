@@ -20,6 +20,7 @@ export interface DomaceClaimBasicEdit {
   mrNumber: string | null
   customerName: string | null
   claimNumber: string | null
+  manufacturerId: string | null
   engineTypeId: string | null
   engineCode: string | null
   dateOfClaim: string | null
@@ -32,6 +33,7 @@ export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimD
     mrNumber: claim.mrNumber ?? '',
     claimNumber: claim.claimNumber ?? '',
     customerName: claim.customerName ?? '',
+    manufacturerId: claim.manufacturerId ?? '',
     engineTypeId: claim.engineTypeId ?? '',
     engineCode: claim.engineCode ?? '',
     dateOfFinish: claim.dateOfFinish ?? '',
@@ -48,6 +50,7 @@ export function detailBasicValuesToPatch(
   const claimNumber = values.claimNumber.trim()
   const engineCode = values.engineCode.trim()
   const engineTypeId = values.engineTypeId.trim()
+  const manufacturerId = values.manufacturerId.trim()
   const dateOfClaim = values.dateOfClaim.trim()
   const dateOfFinish = values.dateOfFinish.trim()
   const warrantyReport = values.warrantyReport.trim()
@@ -56,6 +59,7 @@ export function detailBasicValuesToPatch(
     mrNumber: mrNumber === '' ? null : mrNumber,
     customerName: customerName === '' ? null : customerName,
     claimNumber: claimNumber === '' ? null : claimNumber,
+    manufacturerId: manufacturerId === '' ? null : manufacturerId,
     engineTypeId: engineTypeId === '' ? null : engineTypeId,
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: dateOfClaim === '' ? null : dateOfClaim,

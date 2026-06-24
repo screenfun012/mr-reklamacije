@@ -1,5 +1,6 @@
 import {
   ApiError,
+  engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   formatListDate,
   type DomaceClaimDetail,
@@ -113,7 +114,7 @@ function BasicReadOnly({
         />
         <DetailItem
           label={m.emotive_claims_detail_field_manufacturer()}
-          value={claim.engineTypeManufacturer}
+          value={claim.manufacturerName ?? claim.engineTypeManufacturer}
         />
         <DetailItem label={m.domace_claims_create_field_engine_code()} value={claim.engineCode} />
         <DetailItem
@@ -147,6 +148,9 @@ function BasicEditMode({
   onDone: () => void
 }): React.ReactElement {
   const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
+  const { data: manufacturers } = useSuspenseQuery(
+    engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const mutation = useUpdateDomaceClaimBasic(claim.id)
@@ -184,6 +188,7 @@ function BasicEditMode({
       <DomaceBasicFields
         form={form}
         engineTypes={engineTypes}
+        manufacturers={manufacturers}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

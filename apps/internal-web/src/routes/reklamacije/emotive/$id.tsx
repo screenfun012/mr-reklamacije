@@ -1,4 +1,9 @@
-import { ApiError, ClaimDetailSearchSchema, emotiveClaimDetailOptions } from '@mr/shared'
+import {
+  ApiError,
+  ClaimDetailSearchSchema,
+  emotiveClaimDetailOptions,
+  prefetchClaimEditReferences,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Skeleton } from '@mr/ui'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
@@ -12,7 +17,10 @@ export const Route = createFileRoute('/reklamacije/emotive/$id')({
   beforeLoad: internalRequireEmotiveClaimsView(),
   validateSearch: (search) => ClaimDetailSearchSchema.parse(search),
   loader: async ({ context: { queryClient }, params: { id } }) => {
-    await queryClient.ensureQueryData(emotiveClaimDetailOptions(id))
+    await Promise.all([
+      queryClient.ensureQueryData(emotiveClaimDetailOptions(id)),
+      prefetchClaimEditReferences(queryClient),
+    ])
   },
   component: EmotiveClaimDetailPage,
   pendingComponent: EmotiveClaimDetailPending,

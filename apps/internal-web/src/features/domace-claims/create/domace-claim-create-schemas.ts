@@ -36,6 +36,7 @@ export const domaceClaimBasicFieldsSchema = z.object({
   mrNumber: z.string().trim().max(50),
   claimNumber: z.string().trim().max(50),
   customerName: z.string().trim().max(255),
+  manufacturerId: z.string().trim(),
   engineTypeId: z.string().trim(),
   engineCode: z.string().trim().max(100),
   dateOfFinish: optionalDateField,
@@ -63,6 +64,7 @@ export type DomaceClaimFormValues = {
   mrNumber: string
   claimNumber: string
   customerName: string
+  manufacturerId: string
   engineTypeId: string
   engineCode: string
   dateOfFinish: string
@@ -75,6 +77,7 @@ export const DOMACE_CLAIM_FORM_DEFAULTS: DomaceClaimFormValues = {
   mrNumber: '',
   claimNumber: '',
   customerName: '',
+  manufacturerId: '',
   engineTypeId: '',
   engineCode: '',
   dateOfFinish: '',
@@ -95,6 +98,7 @@ export function formValuesToCreateInput(values: DomaceClaimFormValues): DomaceCl
     mrNumber: emptyToUndefined(values.mrNumber),
     claimNumber: emptyToUndefined(values.claimNumber),
     customerName: emptyToUndefined(values.customerName),
+    manufacturerId: emptyToUndefined(values.manufacturerId),
     engineTypeId: emptyToUndefined(values.engineTypeId),
     engineCode: emptyToUndefined(values.engineCode),
     dateOfClaim: emptyToUndefined(values.dateOfClaim),

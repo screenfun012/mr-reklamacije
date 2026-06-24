@@ -7,6 +7,7 @@ import {
   CLAIM_DETAIL_DEFAULT_SEARCH,
   departmentsReferenceOptions,
   employeesReferenceOptions,
+  engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   externalPartiesReferenceOptions,
 } from '@mr/shared'
@@ -32,6 +33,9 @@ export function DomaceClaimCreateForm(): React.ReactElement {
   const [createdClaimId, setCreatedClaimId] = useState<string | null>(null)
 
   const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
+  const { data: manufacturers } = useSuspenseQuery(
+    engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const { data: departments } = useSuspenseQuery(departmentsReferenceOptions({ activeOnly: true }))
   const { data: externalParties } = useSuspenseQuery(
@@ -104,6 +108,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
             <DomaceBasicFields
               form={form}
               engineTypes={engineTypes}
+              manufacturers={manufacturers}
               stepErrors={stepErrors}
               disabled={isPending}
             />

@@ -3,7 +3,7 @@ import {
   claimsFiltersFromSearch,
   claimsListOptions,
   claimsPaginationFromSearch,
-  prefetchClaimEditReferences,
+  engineManufacturersReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Heading } from '@mr/ui'
@@ -23,7 +23,7 @@ export const Route = createFileRoute('/reklamacije/')({
     const { page, pageSize } = claimsPaginationFromSearch(search)
     await Promise.all([
       queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize)),
-      prefetchClaimEditReferences(queryClient),
+      queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
     ])
   },
   component: ReklamacijeComponent,

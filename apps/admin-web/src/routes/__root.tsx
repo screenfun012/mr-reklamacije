@@ -5,6 +5,7 @@ import '@fontsource/jetbrains-mono/400.css'
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
 import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
+import { Toaster } from '@mr/ui'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -39,6 +40,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body suppressHydrationWarning>
         <div key={locale}>{children}</div>
+        <Toaster richColors closeButton />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />
       </body>

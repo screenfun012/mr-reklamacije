@@ -108,6 +108,20 @@ describe('@mr/i18n messages', () => {
     expect(m.outcome_archived()).toBe('Archived')
   })
 
+  it('exports manufacturer filter and admin catalog message keys', () => {
+    setLocale('sr')
+    expect(typeof m.claims_filter_manufacturer).toBe('function')
+    expect(m.claims_filter_manufacturer()).toBe('Proizvođač')
+    expect(m.claims_filter_manufacturer_all()).toBe('Svi proizvođači')
+    expect(m.field_search_placeholder()).toBe('Pretraži…')
+    expect(m.nav_engine_manufacturers()).toBe('Proizvođači motora')
+    setLocale('en')
+    expect(m.claims_filter_manufacturer()).toBe('Manufacturer')
+    expect(m.claims_filter_manufacturer_all()).toBe('All manufacturers')
+    expect(m.field_search_placeholder()).toBe('Search…')
+    expect(m.nav_engine_manufacturers()).toBe('Engine manufacturers')
+  })
+
   it('returns insufficient-role login banner message per locale', () => {
     setLocale('sr')
     expect(m.auth_login_insufficient_role()).toBe(

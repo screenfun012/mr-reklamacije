@@ -9,6 +9,7 @@ export function serializeDomaceCreateBody(input: DomaceClaimCreateInput): Record
     mrNumber: input.mrNumber,
     claimNumber: input.claimNumber,
     customerName: input.customerName,
+    manufacturerId: input.manufacturerId,
     engineTypeId: input.engineTypeId,
     engineCode: input.engineCode,
     dateOfClaim: input.dateOfClaim ? formatDateParam(input.dateOfClaim) : undefined,
