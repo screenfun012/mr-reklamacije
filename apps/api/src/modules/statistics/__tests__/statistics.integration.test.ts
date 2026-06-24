@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimOutcome, StatisticsVolumeTrendDirection, normalizeName } from '@mr/shared'
+import { ClaimOutcome, normalizeName } from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 

@@ -59,7 +59,7 @@ export function computeVolumeTrend(
   const previousPeriodTotal = previous.reduce((sum, row) => sum + row.total, 0)
   const delta = currentPeriodTotal - previousPeriodTotal
 
-  let direction = StatisticsVolumeTrendDirection.Stable
+  let direction: StatisticsVolumeTrendDirection = StatisticsVolumeTrendDirection.Stable
   if (delta > 0) {
     direction = StatisticsVolumeTrendDirection.Rising
   } else if (delta < 0) {
