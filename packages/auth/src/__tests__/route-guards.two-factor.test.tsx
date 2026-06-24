@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setLocale } from '@mr/i18n'
@@ -94,8 +94,18 @@ describe('TwoFactorVerifyForm', () => {
   })
 
   afterEach(async () => {
-    // input-otp syncs selection on a short timer; flush before jsdom teardown.
-    await new Promise((resolve) => setTimeout(resolve, 260))
+    // Unmount before jsdom teardown; input-otp schedules selection sync at 0/10/50ms.
+    await act(async () => {
+      cleanup()
+    })
+
+    vi.useFakeTimers()
+    try {
+      vi.runOnlyPendingTimers()
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
   })
 
   it('submits TOTP when 6 digits entered', async () => {
