@@ -18,6 +18,7 @@
     "@hono/node-server": "1.19.14",
     "@mr/auth": "workspace:*",
     "@mr/db": "workspace:*",
+    "@mr/excel": "workspace:*",
     "@mr/logger": "workspace:*",
     "@mr/shared": "workspace:*",
     "@opentelemetry/api": "1.9.1",

@@ -95,3 +95,15 @@ export const claimReportExportRateLimiter = createRateLimiter({
     return `claim-report-export:${user.id}`
   },
 })
+
+export const excelExportRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
+  keyOf: (c) => {
+    const user = c.get('user')
+    if (user === null) {
+      return 'excel-export:anonymous'
+    }
+    return `excel-export:${user.id}`
+  },
+})

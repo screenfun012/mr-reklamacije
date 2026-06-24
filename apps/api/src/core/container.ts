@@ -32,6 +32,7 @@ import {
 import { AttachmentsRepository, AttachmentsService } from '../modules/attachments/index.js'
 import { ReportImageReadAdapter } from '../modules/attachments/report-image-read.adapter.js'
 import { ClaimReportsRepository, ClaimReportsService } from '../modules/claim-reports/index.js'
+import { ExcelRepository, ExcelService } from '../modules/excel/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
 import { LocalVolumeStorageService } from '../infrastructure/storage/local-volume-storage.js'
 
@@ -75,6 +76,8 @@ export interface Container {
   attachmentsService: AttachmentsService
   claimReportsRepository: ClaimReportsRepository
   claimReportsService: ClaimReportsService
+  excelRepository: ExcelRepository
+  excelService: ExcelService
   storageService: LocalVolumeStorageService
 }
 
@@ -175,6 +178,9 @@ export function buildContainer(
     env.CLAIM_REPORT_PDF_ENABLED,
   )
 
+  const excelRepository = new ExcelRepository(db)
+  const excelService = new ExcelService(excelRepository, auditService)
+
   return {
     env,
     logger,
@@ -211,6 +217,8 @@ export function buildContainer(
     attachmentsService,
     claimReportsRepository,
     claimReportsService,
+    excelRepository,
+    excelService,
     storageService,
   }
 }
