@@ -1,4 +1,4 @@
-import type { ListPageSize, ResourceCatalogSearch } from '@mr/shared'
+import type { ListPageSize } from '@mr/shared'
 import type { QueryKey, UseSuspenseQueryOptions } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { z } from 'zod'
