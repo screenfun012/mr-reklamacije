@@ -1,12 +1,14 @@
-import { engineManufacturersReferenceOptions } from '@mr/shared'
-import { createFileRoute } from '@tanstack/react-router'
-import { Suspense } from 'react'
+import { engineManufacturersReferenceOptions, ResourceCatalogSearchSchema } from '@mr/shared'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Suspense, useCallback } from 'react'
 
 import { AdminShell } from '~/components/layout/admin-shell'
-import { EngineManufacturersPage } from '~/features/engine-manufacturers/engine-manufacturers-page'
+import { ResourceListPage } from '~/lib/resource/resource-list-page'
 import { adminRequireRoles } from '~/lib/auth-guard'
+import { engineManufacturersResourceDefinition } from '~/resources/engine-manufacturers.definition'
 
 export const Route = createFileRoute('/settings/engine-manufacturers/')({
+  validateSearch: (search) => ResourceCatalogSearchSchema.parse(search),
   beforeLoad: adminRequireRoles(['admin']),
   loader: async ({ context: { queryClient } }) => {
     await queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: false }))
@@ -15,10 +17,27 @@ export const Route = createFileRoute('/settings/engine-manufacturers/')({
 })
 
 function EngineManufacturersRoute(): React.ReactElement {
+  const search = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
+
+  const handleSearchChange = useCallback(
+    (next: typeof search) => {
+      void navigate({
+        search: next,
+        replace: true,
+      })
+    },
+    [navigate],
+  )
+
   return (
     <AdminShell>
       <Suspense fallback={<p className="text-sm text-muted-foreground">…</p>}>
-        <EngineManufacturersPage />
+        <ResourceListPage
+          definition={engineManufacturersResourceDefinition}
+          search={search}
+          onSearchChange={handleSearchChange}
+        />
       </Suspense>
     </AdminShell>
   )
