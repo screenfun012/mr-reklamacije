@@ -18,11 +18,20 @@ export function registerEngineTypesRoutes(
     requirePermissions(
       'emotive_claims.create',
       'emotive_claims.update',
+      'domace_claims.create',
+      'domace_claims.update',
       'settings.engine_types.create',
+      'settings.engine_types.manage',
     ),
     controller.list,
   )
-  routes.post('/', requirePermission('settings.engine_types.create'), controller.create)
+  routes.post(
+    '/',
+    requirePermissions('settings.engine_types.create', 'settings.engine_types.manage'),
+    controller.create,
+  )
+  routes.patch('/:id', requirePermission('settings.engine_types.manage'), controller.update)
+  routes.delete('/:id', requirePermission('settings.engine_types.manage'), controller.delete)
 
   app.route('/api/engine-types', routes)
 }

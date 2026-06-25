@@ -97,6 +97,51 @@ describe('EngineTypes reference module', () => {
     })
   })
 
+  describe('when updating', () => {
+    it('updates fields including notes with audit log', async () => {
+      const created = await container.engineTypesRepository.create({
+        code: 'UPD-TYPE',
+        manufacturer: 'Before',
+      })
+
+      const updated = await container.engineTypesService.update(
+        created.id,
+        { manufacturer: 'After', notes: 'Updated notes' },
+        {
+          actorUserId: testUser(['settings.engine_types.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(updated.manufacturer).toBe('After')
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+
+      expect(auditRows.some((row) => row.action === AuditAction.Update)).toBe(true)
+    })
+  })
+
+  describe('when deleting', () => {
+    it('soft-deletes engine type with audit log', async () => {
+      const created = await container.engineTypesRepository.create({ code: 'DEL-TYPE' })
+
+      const deleted = await container.engineTypesService.softDelete(created.id, {
+        actorUserId: testUser(['settings.engine_types.manage']).id,
+        actorIp: null,
+        actorUserAgent: null,
+      })
+
+      expect(deleted.isActive).toBe(false)
+
+      const list = await container.engineTypesRepository.list({ activeOnly: true, limit: 50 })
+      expect(list.items.some((item) => item.id === created.id)).toBe(false)
+    })
+  })
+
   describe('HTTP', () => {
     it('returns 403 on GET without any read permission', async () => {
       const app = createReferenceTestApp(container, testUser(['customers.view']))
@@ -133,12 +178,54 @@ describe('EngineTypes reference module', () => {
 
     it('lists engine types with ANY read permission', async () => {
       await container.engineTypesRepository.create({ code: 'LIST-ONE' })
-      const app = createReferenceTestApp(container, testUser(['emotive_claims.update']))
+      const app = createReferenceTestApp(container, testUser(['domace_claims.update']))
       const res = await app.request('/api/engine-types?limit=5')
       expect(res.status).toBe(200)
 
       const body = (await res.json()) as { items: unknown[]; hasMore: boolean }
       expect(body.items.length).toBeGreaterThan(0)
+    })
+
+    it('updates engine type via PATCH with manage permission', async () => {
+      const created = await container.engineTypesRepository.create({
+        code: 'PATCH-TYPE',
+        manufacturer: 'Patch Me',
+      })
+      const app = createReferenceTestApp(container, testUser(['settings.engine_types.manage']))
+      const res = await app.request(`/api/engine-types/${created.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manufacturer: 'Patched', notes: 'SSE test note' }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { manufacturer: string | null }
+      expect(body.manufacturer).toBe('Patched')
+    })
+
+    it('returns 403 on PATCH without manage permission', async () => {
+      const created = await container.engineTypesRepository.create({
+        code: 'PATCH-FORBIDDEN',
+      })
+      const app = createReferenceTestApp(container, testUser(['settings.engine_types.create']))
+      const res = await app.request(`/api/engine-types/${created.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: 'Nope' }),
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('soft-deletes engine type via DELETE with manage permission', async () => {
+      const created = await container.engineTypesRepository.create({ code: 'DELETE-TYPE' })
+      const app = createReferenceTestApp(container, testUser(['settings.engine_types.manage']))
+      const res = await app.request(`/api/engine-types/${created.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { isActive: boolean }
+      expect(body.isActive).toBe(false)
     })
 
     it('returns 401 without auth', async () => {

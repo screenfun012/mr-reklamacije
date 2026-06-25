@@ -1,13 +1,14 @@
 import { and, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
 
-import { ConflictError, InternalError } from '../../core/errors/domain-errors.js'
+import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { engineTypes } from './engine-types.schema.js'
 import type {
   EngineTypeCreateInput,
   EngineTypeListItem,
+  EngineTypeUpdateInput,
   ReferenceListQuery,
   ReferenceListResponse,
 } from './engine-types.validators.js'
@@ -116,5 +117,69 @@ export class EngineTypesRepository {
     }
 
     return mapEngineTypeRow(created)
+  }
+
+  async findById(id: string): Promise<EngineTypeListItem | null> {
+    const [row] = await this.db
+      .select({
+        id: engineTypes.id,
+        code: engineTypes.code,
+        manufacturer: engineTypes.manufacturer,
+        displacementCc: engineTypes.displacementCc,
+        isActive: engineTypes.isActive,
+        usageCount: engineTypes.usageCount,
+      })
+      .from(engineTypes)
+      .where(and(eq(engineTypes.id, id), isNull(engineTypes.deletedAt)))
+      .limit(1)
+
+    return row === undefined ? null : mapEngineTypeRow(row)
+  }
+
+  async update(id: string, input: EngineTypeUpdateInput): Promise<EngineTypeListItem> {
+    const [updated] = await this.db
+      .update(engineTypes)
+      .set({
+        ...(input.manufacturer !== undefined ? { manufacturer: input.manufacturer } : {}),
+        ...(input.displacementCc !== undefined ? { displacementCc: input.displacementCc } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      })
+      .where(and(eq(engineTypes.id, id), isNull(engineTypes.deletedAt)))
+      .returning({
+        id: engineTypes.id,
+        code: engineTypes.code,
+        manufacturer: engineTypes.manufacturer,
+        displacementCc: engineTypes.displacementCc,
+        isActive: engineTypes.isActive,
+        usageCount: engineTypes.usageCount,
+      })
+
+    if (updated === undefined) {
+      throw new NotFoundError('Engine type', id)
+    }
+
+    return mapEngineTypeRow(updated)
+  }
+
+  async softDelete(id: string): Promise<EngineTypeListItem> {
+    const [deleted] = await this.db
+      .update(engineTypes)
+      .set({ deletedAt: new Date(), isActive: false })
+      .where(and(eq(engineTypes.id, id), isNull(engineTypes.deletedAt)))
+      .returning({
+        id: engineTypes.id,
+        code: engineTypes.code,
+        manufacturer: engineTypes.manufacturer,
+        displacementCc: engineTypes.displacementCc,
+        isActive: engineTypes.isActive,
+        usageCount: engineTypes.usageCount,
+      })
+
+    if (deleted === undefined) {
+      throw new NotFoundError('Engine type', id)
+    }
+
+    return mapEngineTypeRow(deleted)
   }
 }
