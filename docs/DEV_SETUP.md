@@ -106,6 +106,15 @@ pnpm dev                 # :3001 admin, :3002 internal, :3003 portal
 
 **Important:** Run dev servers in your own terminal (not Cursor background agents). Cursor should only run short-lived checks (`pnpm dev:check`, tests). See `CONTRIBUTING.md`.
 
+### API hot reload vs shared packages
+
+`pnpm dev:api` runs `tsx watch` with `packages/**` excluded from the watch graph. That means:
+
+- Edits under **`apps/api/src`** still restart the API automatically.
+- Edits under **`packages/shared`**, **`packages/auth`**, or other workspace packages **do not** restart the API. Press **Enter** in the API terminal (or restart `pnpm dev:api`) after changing shared code so the running process picks up the new modules.
+
+Vite dev servers proxy `/api/**` to `127.0.0.1:3000` with short connection retries during API restarts (GET/HEAD only on `ECONNRESET`; all methods on `ECONNREFUSED`).
+
 - Stop database: `docker compose down` (data persists in volume)
 - Reset database: `docker compose down -v` (**deletes all data** in the named volume)
 - Before commit: see **`CONTRIBUTING.md`** (`format:write`, `typecheck`, `test`, `lint`, `depcruise`, `format:check`)
@@ -115,6 +124,10 @@ pnpm dev                 # :3001 admin, :3002 internal, :3003 portal
 **Port 5433 already in use:**
 
 Edit `docker-compose.yml`, change `5433:5432` to something else like `5434:5432`, and update `DATABASE_URL` in `apps/api/.env` accordingly.
+
+**504 on `/api/*` while saving files (brief flicker, then 200):**
+
+During API hot reload the Vite proxy may hit a ~1s gap. Connection retries absorb most of this; if a request still fails, retry the action or wait for the API terminal to show “Server listening”. For persistent 504, run `pnpm dev:check` and restart with `pnpm dev:all`.
 
 **504 on `/api/auth/*`, connection refused on :3002, login flicker:**
 

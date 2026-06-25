@@ -117,6 +117,9 @@ importers:
         specifier: 4.4.2
         version: 4.4.2
     devDependencies:
+      '@mr/dev-vite':
+        specifier: workspace:*
+        version: link:../../tooling/vite
       '@mr/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
@@ -141,9 +144,6 @@ importers:
       eslint:
         specifier: ^9.39.1
         version: 9.39.4(jiti@2.7.0)
-      http-proxy-middleware:
-        specifier: ^4.0.0
-        version: 4.1.0
       nitro:
         specifier: 3.0.260429-beta
         version: 3.0.260429-beta(chokidar@5.0.0)(dotenv@16.6.1)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.17)(pg@8.21.0))(jiti@2.7.0)(lru-cache@11.5.1)(rollup@4.61.1)(vite@8.0.16(@types/node@20.19.42)(esbuild@0.28.0)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -377,6 +377,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@date-fns/tz@1.5.0)(@types/react@19.2.17)(date-fns@4.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@mr/dev-vite':
+        specifier: workspace:*
+        version: link:../../tooling/vite
       '@mr/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
@@ -416,9 +419,6 @@ importers:
       eslint:
         specifier: ^9.39.1
         version: 9.39.4(jiti@2.7.0)
-      http-proxy-middleware:
-        specifier: ^4.0.0
-        version: 4.1.0
       jsdom:
         specifier: ^29.0.2
         version: 29.1.1(@noble/hashes@2.2.0)
@@ -492,6 +492,9 @@ importers:
         specifier: 4.4.2
         version: 4.4.2
     devDependencies:
+      '@mr/dev-vite':
+        specifier: workspace:*
+        version: link:../../tooling/vite
       '@mr/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint
@@ -516,9 +519,6 @@ importers:
       eslint:
         specifier: ^9.39.1
         version: 9.39.4(jiti@2.7.0)
-      http-proxy-middleware:
-        specifier: ^4.0.0
-        version: 4.1.0
       nitro:
         specifier: 3.0.260429-beta
         version: 3.0.260429-beta(chokidar@5.0.0)(dotenv@16.6.1)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.17)(pg@8.21.0))(jiti@2.7.0)(lru-cache@11.5.1)(rollup@4.61.1)(vite@8.0.16(@types/node@20.19.42)(esbuild@0.28.0)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -894,6 +894,25 @@ importers:
       prettier:
         specifier: ^3.7.4
         version: 3.8.3
+
+  tooling/vite:
+    dependencies:
+      http-proxy-middleware:
+        specifier: ^4.0.0
+        version: 4.1.0
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.16(@types/node@20.19.42)(esbuild@0.28.0)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+    devDependencies:
+      '@mr/tsconfig':
+        specifier: workspace:*
+        version: link:../typescript
+      '@types/node':
+        specifier: ^20.19.39
+        version: 20.19.42
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 

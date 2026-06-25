@@ -1,0 +1,4 @@
+{
+  "extends": "@mr/tsconfig/node.json",
+  "include": ["dev-api-proxy.ts"]
+}
