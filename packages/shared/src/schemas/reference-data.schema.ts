@@ -77,6 +77,19 @@ export const EngineTypeCreateInputSchema = z.object({
 
 export type EngineTypeCreateInput = z.infer<typeof EngineTypeCreateInputSchema>
 
+export const EngineTypeUpdateInputSchema = z
+  .object({
+    manufacturer: z.string().trim().min(1).max(200).nullable().optional(),
+    displacementCc: z.number().int().positive().nullable().optional(),
+    notes: z.string().trim().max(4000).nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type EngineTypeUpdateInput = z.infer<typeof EngineTypeUpdateInputSchema>
+
 export const EngineManufacturerListItemSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
