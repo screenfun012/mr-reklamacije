@@ -28,7 +28,7 @@ describe('resolveStatisticsRankColor for sources', () => {
       resolveStatisticsRankColor('SELMAN', 0, {
         fixedColors: STATISTICS_SOURCE_FIXED_COLORS,
       }),
-    ).toEqual(STATISTICS_SOURCE_FIXED_COLORS.SELMAN)
+    ).toEqual(STATISTICS_SOURCE_FIXED_COLORS['SELMAN'])
   })
 
   it('returns neutral gray for unknown bucket', () => {

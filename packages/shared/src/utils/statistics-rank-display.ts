@@ -19,7 +19,7 @@ export interface StatisticsRankRow {
   total: number
 }
 
-export interface StatisticsRankDisplayRow<T extends StatisticsRankRow> extends T {
+export type StatisticsRankDisplayRow<T extends StatisticsRankRow> = T & {
   segment: StatisticsRankDisplaySegment
 }
 
