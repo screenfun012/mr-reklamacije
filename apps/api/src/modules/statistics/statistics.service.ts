@@ -83,10 +83,20 @@ export class StatisticsService {
 
   async getSummary(actor: StatisticsActor): Promise<StatisticsSummary> {
     const scope = resolveScope(actor)
-    const [byMonth, byYear, manufacturerItems] = await Promise.all([
+    const [
+      byMonth,
+      byYear,
+      manufacturerItems,
+      distribution,
+      processingTime,
+      acceptanceRateByMonth,
+    ] = await Promise.all([
       this.repo.fetchTrendsByMonth(scope),
       this.repo.fetchTrendsByYear(scope),
       this.repo.fetchByManufacturer(scope),
+      this.repo.fetchOutcomeDistribution(scope),
+      this.repo.fetchProcessingTime(scope),
+      this.repo.fetchAcceptanceRateByMonth(scope),
     ])
 
     return {
@@ -97,6 +107,11 @@ export class StatisticsService {
       },
       byManufacturer: {
         items: manufacturerItems,
+      },
+      outcomes: {
+        distribution,
+        processingTime,
+        acceptanceRateByMonth,
       },
     }
   }

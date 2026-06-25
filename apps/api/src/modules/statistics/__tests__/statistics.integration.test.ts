@@ -333,7 +333,94 @@ describe('Statistics module integration', () => {
         byManufacturer: {
           items: expect.any(Array),
         },
+        outcomes: {
+          distribution: expect.objectContaining({
+            pending: expect.any(Number),
+            accepted: expect.any(Number),
+            rejected: expect.any(Number),
+            total: expect.any(Number),
+          }),
+          processingTime: expect.objectContaining({
+            sampleSize: expect.any(Number),
+          }),
+          acceptanceRateByMonth: expect.any(Array),
+        },
       })
+    })
+  })
+
+  describe('when loading outcome statistics', () => {
+    it('returns global outcome distribution counts', async () => {
+      await createEmotiveClaim('STAT-OUT-DIST-1/26', ClaimOutcome.Pending, daysAgo(10))
+      await createEmotiveClaim('STAT-OUT-DIST-2/26', ClaimOutcome.Accepted, daysAgo(12))
+      await createEmotiveClaim('STAT-OUT-DIST-3/26', ClaimOutcome.Rejected, daysAgo(8))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const { distribution } = summary.outcomes
+
+      expect(distribution.total).toBeGreaterThanOrEqual(3)
+      expect(distribution.pending).toBeGreaterThanOrEqual(1)
+      expect(distribution.accepted).toBeGreaterThanOrEqual(1)
+      expect(distribution.rejected).toBeGreaterThanOrEqual(1)
+      expect(distribution.total).toBe(
+        distribution.pending + distribution.accepted + distribution.rejected,
+      )
+    })
+
+    it('computes processing time only for resolved claims', async () => {
+      const before = await container.statisticsService.getSummary(FULL_STATISTICS)
+      await createEmotiveClaim('STAT-OUT-PROC-PEND/26', ClaimOutcome.Pending, daysAgo(15))
+      await createEmotiveClaim('STAT-OUT-PROC-ACC/26', ClaimOutcome.Accepted, daysAgo(10))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+
+      expect(summary.outcomes.processingTime.sampleSize).toBe(
+        before.outcomes.processingTime.sampleSize + 1,
+      )
+      expect(summary.outcomes.processingTime.averageDays).not.toBeNull()
+      expect(summary.outcomes.processingTime.medianDays).not.toBeNull()
+      expect(summary.outcomes.processingTime.maxDays).toBeGreaterThanOrEqual(0)
+    })
+
+    it('returns acceptance rate by month for resolved claims', async () => {
+      await createEmotiveClaim('STAT-OUT-RATE-ACC/26', ClaimOutcome.Accepted, daysAgo(5))
+      await createEmotiveClaim('STAT-OUT-RATE-REJ/26', ClaimOutcome.Rejected, daysAgo(5))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const currentMonth = summary.outcomes.acceptanceRateByMonth.at(-1)
+
+      expect(summary.outcomes.acceptanceRateByMonth).toHaveLength(24)
+      expect(currentMonth?.decided).toBeGreaterThanOrEqual(2)
+      expect(currentMonth?.ratePercent).not.toBeNull()
+    })
+
+    it('excludes archived claims from outcome distribution', async () => {
+      const before = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const archivedId = await createEmotiveClaim('STAT-OUT-ARCH/26', ClaimOutcome.Accepted)
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome: ClaimOutcome.Archived })
+        .where(eq(schema.emotiveClaims.id, archivedId))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+
+      expect(summary.outcomes.distribution.total).toBe(before.outcomes.distribution.total)
+    })
+
+    it('scopes domace outcome counts to statistics.view_domace permission', async () => {
+      await createEmotiveClaim('STAT-OUT-EMO-SCOPE/26', ClaimOutcome.Accepted, daysAgo(7))
+      await createDomaceClaim('STAT-OUT-DOM-SCOPE/26', daysAgo(7))
+
+      const full = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const emotiveOnly = await container.statisticsService.getSummary(EMOTIVE_ONLY)
+
+      expect(full.outcomes.distribution.total).toBeGreaterThan(
+        emotiveOnly.outcomes.distribution.total,
+      )
+      expect(emotiveOnly.outcomes.processingTime.sampleSize).toBeLessThan(
+        full.outcomes.processingTime.sampleSize,
+      )
     })
   })
 })
