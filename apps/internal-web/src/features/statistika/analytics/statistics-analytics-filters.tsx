@@ -18,7 +18,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
-import { useDebouncedValue } from '~/lib/use-debounced-value'
+import { useDebouncedValue } from '@mr/shared'
 
 const DATE_DEBOUNCE_MS = 300
 const STATISTICS_PERIOD_ROLLING = '__rolling24__'

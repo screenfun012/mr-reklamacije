@@ -113,3 +113,4 @@ export {
   type ClaimDetailTabPlaceholderProps,
 } from './components/claim-detail-tab-placeholder.js'
 export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'
+export { ListPagination, type ListPaginationProps } from './components/list-pagination.js'

@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: false,
-    include: ['src/**/__tests__/**/*.test.ts'],
+    include: ['src/**/__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.tsx'],
     passWithNoTests: false,
     coverage: {
       provider: 'v8',
@@ -20,6 +20,7 @@ export default defineConfig({
         'src/enums.ts',
         'src/permissions.ts',
         'src/constants/**',
+        'src/hooks/**',
         'src/errors/**',
         'src/schemas/**',
         'src/queries/index.ts',

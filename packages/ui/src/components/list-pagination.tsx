@@ -1,15 +1,22 @@
 import { m } from '@mr/i18n'
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
+import { isListPageSize, LIST_PAGE_SIZE_OPTIONS, type ListPageSize } from '@mr/shared'
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from 'lucide-react'
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50] as const
+import { Button } from '../primitives/button.js'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../primitives/select.js'
 
-export interface EmotiveClaimsPaginationProps {
+export interface ListPaginationProps {
   total: number
   page: number
   pageSize: number
   onPageChange: (page: number) => void
-  onPageSizeChange: (pageSize: (typeof PAGE_SIZE_OPTIONS)[number]) => void
+  onPageSizeChange: (pageSize: ListPageSize) => void
 }
 
 function paginationRange(
@@ -27,13 +34,13 @@ function paginationRange(
   return { from, to, totalPages }
 }
 
-export function EmotiveClaimsPagination({
+export function ListPagination({
   total,
   page,
   pageSize,
   onPageChange,
   onPageSizeChange,
-}: EmotiveClaimsPaginationProps) {
+}: ListPaginationProps) {
   const { from, to, totalPages } = paginationRange(total, page, pageSize)
   const isFirstPage = page <= 1
   const isLastPage = page >= totalPages
@@ -51,7 +58,7 @@ export function EmotiveClaimsPagination({
             value={String(pageSize)}
             onValueChange={(value) => {
               const next = Number(value)
-              if (next === 10 || next === 25 || next === 50) {
+              if (isListPageSize(next)) {
                 onPageSizeChange(next)
               }
             }}
@@ -63,7 +70,7 @@ export function EmotiveClaimsPagination({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
+              {LIST_PAGE_SIZE_OPTIONS.map((size) => (
                 <SelectItem key={size} value={String(size)}>
                   {size}
                 </SelectItem>

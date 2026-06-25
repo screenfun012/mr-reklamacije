@@ -4,11 +4,11 @@ import {
   claimsPaginationFromSearch,
   claimsSortFromSearch,
   type ClaimsSearch,
+  type ListPageSize,
 } from '@mr/shared'
+import { ListPagination } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-
-import { EmotiveClaimsPagination } from '~/features/emotive-claims/emotive-claims-pagination'
 
 import { ClaimsFilters } from './claims-filters'
 import { ClaimsTable } from './claims-table'
@@ -40,7 +40,7 @@ export function ClaimsListContent({ search, onSearchChange }: ClaimsListContentP
   )
 
   const handlePageSizeChange = useCallback(
-    (nextPageSize: 10 | 25 | 50) => {
+    (nextPageSize: ListPageSize) => {
       onSearchChange({ ...search, page: 1, pageSize: nextPageSize })
     },
     [onSearchChange, search],
@@ -55,7 +55,7 @@ export function ClaimsListContent({ search, onSearchChange }: ClaimsListContentP
         search={search}
         onSearchChange={handleSearchChange}
       />
-      <EmotiveClaimsPagination
+      <ListPagination
         total={data.total}
         page={data.page}
         pageSize={data.pageSize}

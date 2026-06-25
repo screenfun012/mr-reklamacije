@@ -8,7 +8,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
-import { useDebouncedValue } from '~/lib/use-debounced-value.js'
+import { useDebouncedValue } from '@mr/shared'
 
 export type ClaimReportSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
