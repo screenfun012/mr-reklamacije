@@ -155,6 +155,10 @@ export const engineTypesResourceDefinition: ResourceDefinition<
     notes: parseOptionalNullableString(values['notes'] ?? ''),
   }),
   getDeactivateTargetLabel: (item) => item.code,
+  listConfig: {
+    defaultPageSize: 25,
+    getSearchableText: (item) => [item.code, item.manufacturer ?? ''].join(' '),
+  },
   lifecycle: {
     getUsageCount: (item) => item.usageCount,
     reactivateTitle: () => m.admin_engine_types_reactivate_title(),

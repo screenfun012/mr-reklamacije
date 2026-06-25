@@ -1,3 +1,4 @@
+import type { ListPageSize, ResourceCatalogSearch } from '@mr/shared'
 import type { QueryKey, UseSuspenseQueryOptions } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { z } from 'zod'
@@ -42,6 +43,11 @@ export interface ResourceLifecycleLabels<TItem> {
   hardDeleteBlockedTooltip: (item: TItem) => string
 }
 
+export interface ResourceListConfig<TItem> {
+  defaultPageSize?: ListPageSize
+  getSearchableText: (item: TItem) => string
+}
+
 export interface ResourceDefinition<
   TItem extends { id: string; isActive: boolean },
   TCreate extends Record<string, unknown>,
@@ -74,5 +80,6 @@ export interface ResourceDefinition<
   buildCreateBody: (values: Record<string, string>) => TCreate
   buildUpdateBody: (values: Record<string, string>) => TUpdate
   getDeactivateTargetLabel: (item: TItem) => string
+  listConfig?: ResourceListConfig<TItem>
   lifecycle?: ResourceLifecycleLabels<TItem>
 }

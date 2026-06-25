@@ -1,10 +1,18 @@
-import { Button, Heading } from '@mr/ui'
+import {
+  filterResourceCatalogItems,
+  paginateClientList,
+  resourceCatalogPaginationFromSearch,
+  type ListPageSize,
+  type ResourceCatalogSearch,
+} from '@mr/shared'
+import { Button, Heading, ListPagination } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { ResourceFormDialog } from './resource-form-dialog.js'
 import { ResourceHardDeleteDialog } from './resource-hard-delete-dialog.js'
+import { ResourceListToolbar } from './resource-list-toolbar.js'
 import { ResourceTable } from './resource-table.js'
 import { ResourceToggleActiveDialog } from './resource-toggle-active-dialog.js'
 import type { ResourceDefinition } from './types.js'
@@ -15,19 +23,52 @@ export interface ResourceListPageProps<
   TUpdate extends Record<string, unknown>,
 > {
   definition: ResourceDefinition<TItem, TCreate, TUpdate>
+  search: ResourceCatalogSearch
+  onSearchChange: (next: ResourceCatalogSearch) => void
 }
 
 export function ResourceListPage<
   TItem extends { id: string; isActive: boolean },
   TCreate extends Record<string, unknown>,
   TUpdate extends Record<string, unknown>,
->({ definition }: ResourceListPageProps<TItem, TCreate, TUpdate>): React.ReactElement {
-  const { data: items } = useSuspenseQuery(definition.listQueryOptions({ activeOnly: false }))
+>({
+  definition,
+  search,
+  onSearchChange,
+}: ResourceListPageProps<TItem, TCreate, TUpdate>): React.ReactElement {
+  const { data: allItems } = useSuspenseQuery(definition.listQueryOptions({ activeOnly: false }))
+  const listConfig = definition.listConfig
+
+  const filteredItems = useMemo(() => {
+    if (!listConfig) {
+      return [...allItems]
+    }
+
+    return filterResourceCatalogItems(allItems, {
+      query: search.q,
+      status: search.status,
+      getSearchableText: listConfig.getSearchableText,
+    })
+  }, [allItems, listConfig, search.q, search.status])
+
+  const { page, pageSize } = resourceCatalogPaginationFromSearch(search)
+  const paged = useMemo(
+    () => paginateClientList(filteredItems, page, pageSize),
+    [filteredItems, page, pageSize],
+  )
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<TItem | null>(null)
   const [toggleActiveTarget, setToggleActiveTarget] = useState<TItem | null>(null)
   const [hardDeleteTarget, setHardDeleteTarget] = useState<TItem | null>(null)
+
+  const handlePageChange = (nextPage: number): void => {
+    onSearchChange({ ...search, page: nextPage })
+  }
+
+  const handlePageSizeChange = (nextPageSize: ListPageSize): void => {
+    onSearchChange({ ...search, page: 1, pageSize: nextPageSize })
+  }
 
   return (
     <div className="space-y-6">
@@ -42,13 +83,25 @@ export function ResourceListPage<
         </Button>
       </div>
 
+      {listConfig ? <ResourceListToolbar search={search} onSearchChange={onSearchChange} /> : null}
+
       <ResourceTable
         definition={definition}
-        items={items}
+        items={paged.items}
         onEdit={setEditTarget}
         onToggleActive={setToggleActiveTarget}
         {...(definition.lifecycle ? { onHardDelete: setHardDeleteTarget } : {})}
       />
+
+      {listConfig ? (
+        <ListPagination
+          total={paged.total}
+          page={paged.page}
+          pageSize={paged.pageSize}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      ) : null}
 
       <ResourceFormDialog
         definition={definition}

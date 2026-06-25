@@ -81,6 +81,17 @@ export * from './schemas/statistics.schema.js'
 export * from './schemas/excel-export.schema.js'
 export * from './schemas/attachment.schema.js'
 export * from './schemas/claim-report.schema.js'
+export {
+  ResourceCatalogSearchSchema,
+  ResourceCatalogStatusFilter,
+  resourceCatalogPaginationFromSearch,
+  type ResourceCatalogSearch,
+} from './schemas/resource-catalog-search.schema.js'
+export {
+  filterResourceCatalogItems,
+  paginateClientList,
+  type ClientListPage,
+} from './utils/resource-catalog-client.js'
 export * from './constants/claim-report.js'
 export * from './constants/claim-events.js'
 export * from './constants/resource-events.js'
