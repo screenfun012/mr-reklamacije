@@ -273,6 +273,7 @@ Main EMOTIVE (international) claims table. Replaces the `UKUPNO SA…` sheet.
 | employee_id | uuid FK employees NOT NULL | who originally assembled it |
 | source_id | uuid FK claim_sources NOT NULL | |
 | outcome | text NOT NULL | `pending` \| `accepted` \| `rejected` \| `archived` |
+| outcome_resolved_at | timestamptz NULL | set when outcome becomes `accepted`/`rejected`; cleared on reopen to `pending`; used for processing-time stats |
 | claim_year | integer | computed from `date_of_claim` via trigger on INSERT/UPDATE; used for filtering and sheet export |
 | customer_id | uuid NULL FK customers | which EMOTIVE partner; inferable from source but stored explicitly |
 | internal_notes | text NULL | free-form observations by the firm |
@@ -330,6 +331,7 @@ Domestic market claims. Unifies the two Excel formats (pre-2026 and 2026+).
 | invoice_number | text NULL | `BROJ RACUNA` |
 | problem_description | text NOT NULL | `OPIS PROBLEMA` / `Razlog reklamacije` |
 | outcome | text NOT NULL | `pending` \| `accepted` \| `rejected` \| `archived` |
+| outcome_resolved_at | timestamptz NULL | set when outcome becomes `accepted`/`rejected`; cleared on reopen to `pending`; used for processing-time stats |
 | parts_amount_no_vat | decimal(14,2) NULL | `IZNOS DELOVA BEZ PDV` |
 | labor_amount_no_vat | decimal(14,2) NULL | `IZNOS RADA BEZ PDV` — retained even in new format |
 | total_amount | decimal(14,2) NULL | `UKUPNO`; auto-computed from parts+labor when both present, overridable |

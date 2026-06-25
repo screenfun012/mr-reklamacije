@@ -493,6 +493,66 @@ describe('DomaceClaimsService integration', () => {
     })
   })
 
+  describe('outcome_resolved_at', () => {
+    it('sets outcome_resolved_at when rejecting a pending claim', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber: `DOM-RES-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const [beforeRow] = await ctx.db
+        .select({ outcomeResolvedAt: schema.domaceClaims.outcomeResolvedAt })
+        .from(schema.domaceClaims)
+        .where(eq(schema.domaceClaims.id, created.id))
+
+      expect(beforeRow?.outcomeResolvedAt).toBeNull()
+
+      await container.domaceClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Rejected },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const [afterRow] = await ctx.db
+        .select({ outcomeResolvedAt: schema.domaceClaims.outcomeResolvedAt })
+        .from(schema.domaceClaims)
+        .where(eq(schema.domaceClaims.id, created.id))
+
+      expect(afterRow?.outcomeResolvedAt).toBeInstanceOf(Date)
+    })
+
+    it('clears outcome_resolved_at when reopening to pending', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ mrNumber: `DOM-REOPEN-RES-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.domaceClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Accepted },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.domaceClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Pending },
+        ADMIN_ACTOR,
+        auditContext,
+      )
+
+      const [row] = await ctx.db
+        .select({ outcomeResolvedAt: schema.domaceClaims.outcomeResolvedAt })
+        .from(schema.domaceClaims)
+        .where(eq(schema.domaceClaims.id, created.id))
+
+      expect(row?.outcomeResolvedAt).toBeNull()
+    })
+  })
+
   describe('claim locking (completed claims)', () => {
     async function createCompleted(outcome = ClaimOutcome.Accepted): Promise<string> {
       const created = await container.domaceClaimsService.create(

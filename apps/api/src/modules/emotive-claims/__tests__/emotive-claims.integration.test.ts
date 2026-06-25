@@ -891,6 +891,64 @@ describe('EmotiveClaimsService integration', () => {
         payload: { kind: ClaimKind.Emotive, id: created.id },
       })
     })
+
+    it('sets outcome_resolved_at when accepting a pending claim', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `RESOLVED-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const [beforeRow] = await ctx.db
+        .select({ outcomeResolvedAt: schema.emotiveClaims.outcomeResolvedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      expect(beforeRow?.outcomeResolvedAt).toBeNull()
+
+      await container.emotiveClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Accepted },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const [afterRow] = await ctx.db
+        .select({ outcomeResolvedAt: schema.emotiveClaims.outcomeResolvedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      expect(afterRow?.outcomeResolvedAt).toBeInstanceOf(Date)
+    })
+
+    it('clears outcome_resolved_at when reopening to pending', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `REOPEN-RES-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Rejected },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Pending },
+        ADMIN_ACTOR,
+        auditContext,
+      )
+
+      const [row] = await ctx.db
+        .select({ outcomeResolvedAt: schema.emotiveClaims.outcomeResolvedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      expect(row?.outcomeResolvedAt).toBeNull()
+    })
   })
 
   describe('claim locking (completed claims)', () => {

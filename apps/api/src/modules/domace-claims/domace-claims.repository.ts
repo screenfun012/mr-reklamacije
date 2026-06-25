@@ -3,6 +3,10 @@ import { ClaimKind } from '@mr/shared'
 import { and, desc, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { FaultsRepository } from '../../core/claims/faults.repository.js'
+import {
+  initialOutcomeResolvedAt,
+  outcomeResolvedAtForTransition,
+} from '../../core/claims/outcome-resolved-at.js'
 import type { ApiDatabase } from '../../core/database.js'
 import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { MrRegistryService } from '../../core/mr-registry/index.js'
@@ -201,6 +205,7 @@ export class DomaceClaimsRepository {
           dateOfFinish: input.dateOfFinish ?? null,
           employeeId: input.employeeId ?? null,
           outcome: input.outcome,
+          outcomeResolvedAt: initialOutcomeResolvedAt(input.outcome),
           claimYear,
           totalAmount: input.totalAmount ?? null,
           claimNumber: input.claimNumber ?? null,
@@ -568,10 +573,20 @@ export class DomaceClaimsRepository {
       throw new NotFoundError('Domace claim', id)
     }
 
-    await this.db
-      .update(domaceClaims)
-      .set({ outcome: input.outcome, updatedBy: actorId })
-      .where(eq(domaceClaims.id, id))
+    const resolvedAtPatch = outcomeResolvedAtForTransition(existing.outcome, input.outcome)
+    const patch: {
+      outcome: typeof input.outcome
+      updatedBy: string
+      outcomeResolvedAt?: Date | null
+    } = {
+      outcome: input.outcome,
+      updatedBy: actorId,
+    }
+    if (resolvedAtPatch !== undefined) {
+      patch.outcomeResolvedAt = resolvedAtPatch
+    }
+
+    await this.db.update(domaceClaims).set(patch).where(eq(domaceClaims.id, id))
 
     const updated = await this.findById(id, scope)
     if (updated === null) {

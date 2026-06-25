@@ -41,6 +41,7 @@ export const emotiveClaims = pgTable(
     employeeId: uuid('employee_id'),
     sourceId: uuid('source_id'),
     outcome: text('outcome').notNull().$type<ClaimOutcome>(),
+    outcomeResolvedAt: timestamp('outcome_resolved_at', { withTimezone: true, mode: 'date' }),
     // claim_year is set by repository layer on INSERT/UPDATE
     // (year extracted from date_of_claim / date_received).
     // Docs mentions trigger but we enforce in application code for
@@ -100,6 +101,7 @@ export const emotiveClaims = pgTable(
     index('idx_emotive_claims_date_of_claim').on(t.dateOfClaim.desc()),
     index('idx_emotive_claims_date_of_claim_id').on(t.dateOfClaim.desc(), t.id.desc()),
     index('idx_emotive_claims_claim_year_outcome').on(t.claimYear, t.outcome),
+    index('idx_emotive_claims_outcome_resolved_at').on(t.outcomeResolvedAt.desc()),
     index('idx_emotive_claims_employee_id_claim_year').on(t.employeeId, t.claimYear),
     index('idx_emotive_claims_source_id').on(t.sourceId),
     index('idx_emotive_claims_customer_id').on(t.customerId),
@@ -202,6 +204,7 @@ export const domaceClaims = pgTable(
     dateOfFinish: date('date_of_finish', { mode: 'date' }),
     employeeId: uuid('employee_id'),
     outcome: text('outcome').notNull().$type<ClaimOutcome>(),
+    outcomeResolvedAt: timestamp('outcome_resolved_at', { withTimezone: true, mode: 'date' }),
     claimYear: integer('claim_year').notNull(),
     totalAmount: decimal('total_amount', { precision: 14, scale: 2, mode: 'number' }),
     internalNotes: text('internal_notes'),
@@ -247,6 +250,7 @@ export const domaceClaims = pgTable(
     index('idx_domace_claims_date_of_claim').on(t.dateOfClaim.desc()),
     index('idx_domace_claims_date_of_claim_id').on(t.dateOfClaim.desc(), t.id.desc()),
     index('idx_domace_claims_claim_year_outcome').on(t.claimYear, t.outcome),
+    index('idx_domace_claims_outcome_resolved_at').on(t.outcomeResolvedAt.desc()),
     index('idx_domace_claims_employee_id_claim_year').on(t.employeeId, t.claimYear),
     index('idx_domace_claims_engine_type_id').on(t.engineTypeId),
     index('idx_domace_claims_manufacturer_id').on(t.manufacturerId),

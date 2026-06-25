@@ -3,6 +3,10 @@ import { ClaimKind } from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
+import {
+  initialOutcomeResolvedAt,
+  outcomeResolvedAtForTransition,
+} from '../../core/claims/outcome-resolved-at.js'
 import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { MrRegistryService } from '../../core/mr-registry/index.js'
 import { claimYearFromDate } from './claim-year.js'
@@ -262,6 +266,7 @@ export class EmotiveClaimsRepository {
           employeeId: input.employeeId ?? null,
           sourceId: input.sourceId ?? null,
           outcome: input.outcome,
+          outcomeResolvedAt: initialOutcomeResolvedAt(input.outcome),
           claimYear,
           customerId,
           claimNumber: input.claimNumber ?? null,
@@ -633,10 +638,20 @@ export class EmotiveClaimsRepository {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    await this.db
-      .update(emotiveClaims)
-      .set({ outcome: input.outcome, updatedBy: actorId })
-      .where(eq(emotiveClaims.id, id))
+    const resolvedAtPatch = outcomeResolvedAtForTransition(existing.outcome, input.outcome)
+    const patch: {
+      outcome: typeof input.outcome
+      updatedBy: string
+      outcomeResolvedAt?: Date | null
+    } = {
+      outcome: input.outcome,
+      updatedBy: actorId,
+    }
+    if (resolvedAtPatch !== undefined) {
+      patch.outcomeResolvedAt = resolvedAtPatch
+    }
+
+    await this.db.update(emotiveClaims).set(patch).where(eq(emotiveClaims.id, id))
 
     const updated = await this.findById(id, scope)
     if (updated === null) {
