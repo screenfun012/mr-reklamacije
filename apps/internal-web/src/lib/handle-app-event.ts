@@ -16,10 +16,14 @@ function isResourceChangedKey(value: unknown): value is ResourceChangedKey {
 }
 
 function isResourceChangedAppEvent(value: unknown): value is ResourceChangedAppEvent {
-  if (!isRecord(value) || value.type !== ResourceEventType.Changed || !isRecord(value.payload)) {
+  if (
+    !isRecord(value) ||
+    value['type'] !== ResourceEventType.Changed ||
+    !isRecord(value['payload'])
+  ) {
     return false
   }
-  return isResourceChangedKey(value.payload.resource)
+  return isResourceChangedKey(value['payload']['resource'])
 }
 
 /**
