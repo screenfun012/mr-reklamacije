@@ -3,10 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "exports": {
-    "./dev-api-proxy": "./dev-api-proxy.ts"
+    "./dev-api-proxy": {
+      "types": "./dist/dev-api-proxy.d.ts",
+      "import": "./dist/dev-api-proxy.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -14,6 +22,7 @@
     "vite": "^8.0.10"
   },
   "devDependencies": {
+    "@mr/eslint-config": "workspace:*",
     "@mr/tsconfig": "workspace:*",
     "@types/node": "^20.19.39",
     "typescript": "^5.9.3"
