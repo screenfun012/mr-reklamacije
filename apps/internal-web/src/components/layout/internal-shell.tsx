@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 
 import { authClient } from '~/lib/auth-client'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
+import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
 
 import { InternalSidebar } from './internal-sidebar'
 import { InternalTopbar } from './internal-topbar'
@@ -17,6 +18,7 @@ export interface InternalShellProps {
  * for the employee-facing frontend (operators / viewers via Phase 1.0 RBAC).
  */
 export function InternalShell({ children }: InternalShellProps) {
+  useRealtimeEventStream()
   const navigate = useNavigate()
   const { userEmail, userName } = useInternalAuthUser()
 
