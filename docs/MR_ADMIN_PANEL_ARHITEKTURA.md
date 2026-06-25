@@ -126,8 +126,10 @@ Iz analize interne app, ovo su entiteti/akcije koje admin mora da kontroliše:
 **Cilj:** infrastruktura koja čini sve module laganim + real-time sync.
 - **Admin API namespace** `/api/admin/*` — odluka odložena za Fazu 1; F0 koristi postojeće module (`/api/engine-types`)
 - **Generički Resource engine** — `ResourceDefinition`, `ResourceListPage`, `ResourceFormDialog`, `useResourceCrud` u `admin-web`. Engine-manufacturers ostaje namenski (referenca). **Engine types** = prvi generic katalog (`/settings/engine-types`).
+- **Lifecycle (engine types):** `PATCH isActive` za deaktivaciju **i reaktivaciju**; `DELETE` samo kad `usageCount = 0` (409 inače). UI: toggle-active dijalog + hard-delete (Trash, disabled + tooltip kad je usage > 0). SSE `resource_changed` na sve mutacije.
+- **Admin list UX (katalozi, ~60–200 redova):** pun fetch preko `fetchAllReferencePages`, zatim **client-side** pretraga (debounce 300ms), filter Svi/Aktivni/Neaktivni, paginacija 10/25/50 — URL sync (`?page=&pageSize=&q=&status=`). Deljeni `ListPagination` u `@mr/ui`, `useDebouncedValue` u `@mr/shared`, `ResourceCatalogSearchSchema` u `@mr/shared`.
 - **SSE proširen** (nije gradio od nule): `InProcessEventBus` + `/api/events/me` + `resource_changed` u `AppEvent` union + emit iz engine-types mutacija + `EventSource` u `internal-web` (`useRealtimeEventStream` → `invalidateQueries`). **Odluka:** zadržati `/api/events/me` (nema `/api/events/stream` alias-a).
-- **Gotovo:** browser test — admin doda tip motora → interni dropdown osvežen instant bez F5.
+- **Gotovo:** browser test — admin doda tip motora → interni dropdown osvežen instant bez F5; reaktivacija istim SSE lancem; hard delete samo za usage=0.
 
 ### FAZA 1 — Katalozi (moduli 1-5) — prvi upotrebljiv alat
 **Cilj:** dodaješ/menjaš proizvođače, tipove motora, izvore, firme, radnike iz UI.
@@ -183,7 +185,7 @@ Cursor je pregledao kod i potvrdio tačno stanje (ne pretpostavke):
 ### Radi i gotovo
 - `apps/admin-web` skeleton: layout, sidebar, topbar, login (Better-Auth + 2FA), admin-only guard (`adminRequireRoles(['admin'])`)
 - **Engine manufacturers — POTPUN CRUD** (`/api/engine-manufacturers`): namenski admin modul (referenca, ne migriran u generic).
-- **Engine types — POTPUN CRUD** (`/api/engine-types`): PATCH + soft-delete + audit; admin UI preko **generičkog engine-a** (`/settings/engine-types`).
+- **Engine types — POTPUN CRUD** (`/api/engine-types`): PATCH (ukl. `isActive` toggle) + **hard delete** (usage guard) + audit; admin UI preko **generičkog engine-a** (`/settings/engine-types`) sa lifecycle + client-side list UX.
 - **SSE:** Hono `/api/events/me` (streamSSE, heartbeat 20s, auth), `InProcessEventBus`, claim event-ovi + **`resource_changed`** (F0). `internal-web` sluša preko `EventSource` i invalidira query keš. CORS nije problem — Vite proxy čini `/api/**` same-origin.
 
 ### Placeholderi (ruta + guard postoje, prazan sadržaj)
@@ -193,7 +195,7 @@ Cursor je pregledao kod i potvrdio tačno stanje (ne pretpostavke):
 | Resurs | list | create | update | delete |
 |---|---|---|---|---|
 | Engine manufacturers | ✅ | ✅ | ✅ | ✅ soft |
-| Engine types | ✅ | ✅ | ✅ | ✅ soft |
+| Engine types | ✅ | ✅ | ✅ | ✅ hard (usage=0) |
 | Claim sources | ✅ | ❌ | ❌ | ❌ |
 | Employees | ✅ | ❌ | ❌ | ❌ |
 | Customers (firme) | ✅ | ❌ | ❌ | ❌ |
