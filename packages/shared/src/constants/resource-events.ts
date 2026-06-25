@@ -1,5 +1,6 @@
 /** Catalog resource keys carried in SSE `resource_changed` payloads. */
 export const ResourceChangedKey = {
+  Customers: 'customers',
   EngineTypes: 'engineTypes',
 } as const
 

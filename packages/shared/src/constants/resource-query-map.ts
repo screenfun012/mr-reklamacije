@@ -8,6 +8,8 @@ export function queryKeyPrefixesForResourceChanged(
   resource: ResourceChangedKey,
 ): readonly (readonly string[])[] {
   switch (resource) {
+    case ResourceChangedKey.Customers:
+      return [['customers']] as const
     case ResourceChangedKey.EngineTypes:
       return [['engine-types']] as const
     default: {

@@ -144,9 +144,31 @@ export const CustomerListItemSchema = z.object({
   country: z.string().nullable(),
   city: z.string().nullable(),
   isActive: z.boolean(),
+  usageCount: z.number().int(),
 })
 
 export type CustomerListItem = z.infer<typeof CustomerListItemSchema>
+
+export const CustomerCreateInputSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  country: z.string().trim().min(1).max(200).optional(),
+  city: z.string().trim().min(1).max(200).optional(),
+})
+
+export type CustomerCreateInput = z.infer<typeof CustomerCreateInputSchema>
+
+export const CustomerUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    country: z.string().trim().min(1).max(200).nullable().optional(),
+    city: z.string().trim().min(1).max(200).nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type CustomerUpdateInput = z.infer<typeof CustomerUpdateInputSchema>
 
 export const ClaimSourceDefaultCustomerSchema = z.object({
   id: z.string().uuid(),

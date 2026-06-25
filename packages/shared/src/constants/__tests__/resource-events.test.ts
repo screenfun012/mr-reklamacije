@@ -5,6 +5,12 @@ import { ResourceChangedKey, ResourceEventType } from '../resource-events.js'
 import { queryKeyPrefixesForResourceChanged } from '../resource-query-map.js'
 
 describe('ResourceChangedKey', () => {
+  it('maps customers to customers query prefix', () => {
+    expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.Customers)).toEqual([
+      ['customers'],
+    ])
+  })
+
   it('maps engineTypes to engine-types query prefix', () => {
     expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.EngineTypes)).toEqual([
       ['engine-types'],
