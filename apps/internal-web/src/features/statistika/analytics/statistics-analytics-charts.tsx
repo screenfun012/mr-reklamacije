@@ -7,15 +7,19 @@ import { StatisticsTrendCharts } from './statistics-trend-charts.js'
 
 export interface StatisticsAnalyticsChartsProps {
   summary: StatisticsSummary
+  showManufacturerSection?: boolean
 }
 
 export function StatisticsAnalyticsCharts({
   summary,
+  showManufacturerSection = true,
 }: StatisticsAnalyticsChartsProps): React.ReactElement {
   return (
     <div className="flex flex-col gap-8">
       <StatisticsTrendCharts trends={summary.trends} />
-      <StatisticsManufacturerCharts byManufacturer={summary.byManufacturer} />
+      {showManufacturerSection ? (
+        <StatisticsManufacturerCharts byManufacturer={summary.byManufacturer} />
+      ) : null}
       <StatisticsOutcomesCharts outcomes={summary.outcomes} />
       <StatisticsBreakdownCharts
         bySource={summary.bySource}

@@ -1,7 +1,12 @@
-import { createFileRoute, getRouteApi } from '@tanstack/react-router'
-import { Suspense } from 'react'
+import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
+import { Suspense, useCallback } from 'react'
 
-import { STATISTICS_VIEW_PERMISSIONS, statisticsSummaryOptions } from '@mr/shared'
+import {
+  engineManufacturersReferenceOptions,
+  STATISTICS_VIEW_PERMISSIONS,
+  StatisticsSearchSchema,
+  statisticsSummaryOptions,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Heading } from '@mr/ui'
 
@@ -13,14 +18,19 @@ import { internalRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/statistika')({
   beforeLoad: internalRequireRoles(['operator', 'admin']),
-  loader: ({ context: { queryClient, authSession } }) => {
+  validateSearch: (search) => StatisticsSearchSchema.parse(search),
+  loaderDeps: ({ search }) => search,
+  loader: ({ context: { queryClient, authSession }, deps: search }) => {
     const permissions = authSession?.user?.permissions ?? []
     const canViewStatistics = STATISTICS_VIEW_PERMISSIONS.some((permission) =>
       permissions.includes(permission),
     )
 
     if (canViewStatistics) {
-      return queryClient.ensureQueryData(statisticsSummaryOptions())
+      return Promise.all([
+        queryClient.ensureQueryData(statisticsSummaryOptions(search)),
+        queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
+      ])
     }
 
     return null
@@ -35,11 +45,23 @@ function hasStatisticsPermission(permissions: readonly string[]): boolean {
 }
 
 function StatistikaComponent() {
+  const search = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions ?? []
   const canViewStatistics = hasStatisticsPermission(permissions)
   const canExportPartial = permissions.includes('export.workbook_partial')
   const canExportFull = permissions.includes('export.workbook_full')
+
+  const handleSearchChange = useCallback(
+    (next: typeof search) => {
+      void navigate({
+        search: next,
+        replace: true,
+      })
+    },
+    [navigate],
+  )
 
   return (
     <InternalShell>
@@ -52,7 +74,11 @@ function StatistikaComponent() {
         </div>
 
         <Suspense fallback={<StatisticsTrendChartsSkeleton />}>
-          <StatistikaAnalyticsSection canViewStatistics={canViewStatistics} />
+          <StatistikaAnalyticsSection
+            canViewStatistics={canViewStatistics}
+            search={search}
+            onSearchChange={handleSearchChange}
+          />
         </Suspense>
 
         {canExportPartial || canExportFull ? (

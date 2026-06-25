@@ -1,8 +1,14 @@
-import { statisticsSummaryOptions } from '@mr/shared'
+import { statisticsSummaryOptions, type StatisticsSearch } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 
+import { StatisticsAnalyticsFilters } from './statistics-analytics-filters.js'
+import {
+  isStatisticsSummaryEmpty,
+  StatisticsAnalyticsEmptyBanner,
+} from './statistics-analytics-empty-state.js'
+import { formatStatisticsPeriodSubtitle } from './statistics-period-subtitle.js'
 import {
   StatisticsTrendChartsSkeleton,
   StatisticsTrendChartsPlaceholder,
@@ -16,20 +22,49 @@ const LazyStatisticsAnalyticsCharts = lazy(() =>
 
 export interface StatistikaAnalyticsSectionProps {
   canViewStatistics: boolean
+  search: StatisticsSearch
+  onSearchChange: (next: StatisticsSearch) => void
 }
 
-function StatistikaAnalyticsContent(): React.ReactElement {
-  const { data } = useSuspenseQuery(statisticsSummaryOptions())
+function StatistikaAnalyticsContent({
+  search,
+  onSearchChange,
+}: {
+  search: StatisticsSearch
+  onSearchChange: (next: StatisticsSearch) => void
+}): React.ReactElement {
+  const { data } = useSuspenseQuery(statisticsSummaryOptions(search))
+  const isEmpty = isStatisticsSummaryEmpty(data)
+  const showManufacturerSection = search.manufacturerId === undefined
 
   return (
-    <Suspense fallback={<StatisticsTrendChartsSkeleton />}>
-      <LazyStatisticsAnalyticsCharts summary={data} />
-    </Suspense>
+    <>
+      <StatisticsAnalyticsFilters search={search} onSearchChange={onSearchChange} />
+
+      <p className="text-sm text-muted-foreground">{formatStatisticsPeriodSubtitle(search)}</p>
+
+      {isEmpty ? (
+        <StatisticsAnalyticsEmptyBanner
+          onClearFilters={() => {
+            onSearchChange({})
+          }}
+        />
+      ) : null}
+
+      <Suspense fallback={<StatisticsTrendChartsSkeleton />}>
+        <LazyStatisticsAnalyticsCharts
+          summary={data}
+          showManufacturerSection={showManufacturerSection}
+        />
+      </Suspense>
+    </>
   )
 }
 
 export function StatistikaAnalyticsSection({
   canViewStatistics,
+  search,
+  onSearchChange,
 }: StatistikaAnalyticsSectionProps): React.ReactElement {
   if (!canViewStatistics) {
     return <StatisticsTrendChartsPlaceholder message={m.statistika_analytics_no_permission()} />
@@ -45,7 +80,7 @@ export function StatistikaAnalyticsSection({
       </div>
 
       <Suspense fallback={<StatisticsTrendChartsSkeleton />}>
-        <StatistikaAnalyticsContent />
+        <StatistikaAnalyticsContent search={search} onSearchChange={onSearchChange} />
       </Suspense>
     </section>
   )
