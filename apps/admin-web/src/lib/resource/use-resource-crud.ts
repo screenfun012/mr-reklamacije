@@ -1,4 +1,4 @@
-import { ApiError, fetchJson } from '@mr/shared'
+import { ApiError, fetchJson, fetchNoContent } from '@mr/shared'
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
 import type { ResourceDefinition } from './types.js'
@@ -51,15 +51,29 @@ export function createResourceCrudHooks<
     })
   }
 
-  function useDeactivateResource(id: string): UseMutationResult<TItem, Error, void> {
+  function useSetResourceActive(id: string): UseMutationResult<TItem, Error, boolean> {
     const queryClient = useQueryClient()
 
     return useMutation({
-      mutationFn: async (): Promise<TItem> =>
+      mutationFn: async (isActive: boolean): Promise<TItem> =>
         fetchJson<TItem>(`${definition.apiBase}/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isActive: false }),
+          body: JSON.stringify({ isActive }),
+        }),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: definition.listQueryKeyPrefix })
+      },
+    })
+  }
+
+  function useHardDeleteResource(id: string): UseMutationResult<void, Error, void> {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+      mutationFn: async (): Promise<void> =>
+        fetchNoContent(`${definition.apiBase}/${id}`, {
+          method: 'DELETE',
         }),
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: definition.listQueryKeyPrefix })
@@ -70,6 +84,7 @@ export function createResourceCrudHooks<
   return {
     useCreateResource,
     useUpdateResource,
-    useDeactivateResource,
+    useSetResourceActive,
+    useHardDeleteResource,
   }
 }

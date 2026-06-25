@@ -1,4 +1,6 @@
+import { m } from '@mr/i18n'
 import { Button } from '@mr/ui'
+import { Trash2 } from 'lucide-react'
 
 import type { ResourceColumnDef, ResourceDefinition } from './types.js'
 
@@ -10,7 +12,8 @@ export interface ResourceTableProps<
   definition: ResourceDefinition<TItem, TCreate, TUpdate>
   items: readonly TItem[]
   onEdit: (item: TItem) => void
-  onDeactivate: (item: TItem) => void
+  onToggleActive: (item: TItem) => void
+  onHardDelete?: (item: TItem) => void
 }
 
 export function ResourceTable<
@@ -21,8 +24,11 @@ export function ResourceTable<
   definition,
   items,
   onEdit,
-  onDeactivate,
+  onToggleActive,
+  onHardDelete,
 }: ResourceTableProps<TItem, TCreate, TUpdate>): React.ReactElement {
+  const lifecycle = definition.lifecycle
+
   if (items.length === 0) {
     return (
       <div
@@ -54,32 +60,68 @@ export function ResourceTable<
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b border-border last:border-b-0">
-                {definition.columns.map((column) => (
-                  <td key={column.id} className={`px-4 py-3 ${column.cellClassName ?? ''}`}>
-                    {column.cell(item)}
-                  </td>
-                ))}
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => onEdit(item)}>
-                      {definition.editActionLabel()}
-                    </Button>
-                    {item.isActive ? (
+            {items.map((item) => {
+              const usageCount = lifecycle?.getUsageCount(item) ?? 0
+              const canHardDelete = lifecycle !== undefined && usageCount === 0
+
+              return (
+                <tr key={item.id} className="border-b border-border last:border-b-0">
+                  {definition.columns.map((column) => (
+                    <td key={column.id} className={`px-4 py-3 ${column.cellClassName ?? ''}`}>
+                      {column.cell(item)}
+                    </td>
+                  ))}
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
                       <Button
                         type="button"
-                        variant="destructive"
+                        variant="outline"
                         size="sm"
-                        onClick={() => onDeactivate(item)}
+                        onClick={() => onEdit(item)}
                       >
-                        {definition.deactivateConfirmLabel()}
+                        {definition.editActionLabel()}
                       </Button>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      <Button
+                        type="button"
+                        variant={item.isActive ? 'destructive' : 'outline'}
+                        size="sm"
+                        onClick={() => onToggleActive(item)}
+                      >
+                        {item.isActive
+                          ? definition.deactivateConfirmLabel()
+                          : (lifecycle?.reactivateConfirmLabel() ?? definition.activeYesLabel())}
+                      </Button>
+                      {lifecycle && onHardDelete ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-destructive hover:text-destructive"
+                          disabled={!canHardDelete}
+                          title={
+                            canHardDelete
+                              ? m.action_delete()
+                              : lifecycle.hardDeleteBlockedTooltip(item)
+                          }
+                          aria-label={
+                            canHardDelete
+                              ? m.action_delete()
+                              : lifecycle.hardDeleteBlockedTooltip(item)
+                          }
+                          onClick={() => {
+                            if (canHardDelete) {
+                              onHardDelete(item)
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

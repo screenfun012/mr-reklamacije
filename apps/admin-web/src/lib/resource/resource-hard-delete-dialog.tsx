@@ -1,3 +1,4 @@
+import { m } from '@mr/i18n'
 import {
   Button,
   Dialog,
@@ -9,12 +10,10 @@ import {
   toast,
 } from '@mr/ui'
 
-import { m } from '@mr/i18n'
-
 import type { ResourceDefinition } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
 
-export interface ResourceDeactivateDialogProps<
+export interface ResourceHardDeleteDialogProps<
   TItem extends { id: string; isActive: boolean },
   TCreate extends Record<string, unknown>,
   TUpdate extends Record<string, unknown>,
@@ -25,7 +24,7 @@ export interface ResourceDeactivateDialogProps<
   onOpenChange: (open: boolean) => void
 }
 
-export function ResourceDeactivateDialog<
+export function ResourceHardDeleteDialog<
   TItem extends { id: string; isActive: boolean },
   TCreate extends Record<string, unknown>,
   TUpdate extends Record<string, unknown>,
@@ -34,15 +33,20 @@ export function ResourceDeactivateDialog<
   item,
   open,
   onOpenChange,
-}: ResourceDeactivateDialogProps<TItem, TCreate, TUpdate>): React.ReactElement {
-  const { useDeactivateResource } = createResourceCrudHooks(definition)
-  const deactivateMutation = useDeactivateResource(item.id)
+}: ResourceHardDeleteDialogProps<TItem, TCreate, TUpdate>): React.ReactElement {
+  const lifecycle = definition.lifecycle
+  const { useHardDeleteResource } = createResourceCrudHooks(definition)
+  const hardDeleteMutation = useHardDeleteResource(item.id)
+
+  if (!lifecycle) {
+    return <></>
+  }
 
   const handleConfirm = (): void => {
     void (async () => {
       try {
-        await deactivateMutation.mutateAsync()
-        toast.success(definition.deactivateSuccessMessage())
+        await hardDeleteMutation.mutateAsync()
+        toast.success(lifecycle.hardDeleteSuccessMessage())
         onOpenChange(false)
       } catch (error) {
         toast.error(resourceSaveErrorMessage(error, definition.subtitle()))
@@ -54,14 +58,14 @@ export function ResourceDeactivateDialog<
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{definition.deactivateTitle()}</DialogTitle>
-          <DialogDescription>{definition.deactivateDescription(item)}</DialogDescription>
+          <DialogTitle>{lifecycle.hardDeleteTitle()}</DialogTitle>
+          <DialogDescription>{lifecycle.hardDeleteDescription(item)}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
             type="button"
             variant="outline"
-            disabled={deactivateMutation.isPending}
+            disabled={hardDeleteMutation.isPending}
             onClick={() => onOpenChange(false)}
           >
             {m.action_cancel()}
@@ -69,10 +73,10 @@ export function ResourceDeactivateDialog<
           <Button
             type="button"
             variant="destructive"
-            disabled={deactivateMutation.isPending}
+            disabled={hardDeleteMutation.isPending}
             onClick={handleConfirm}
           >
-            {definition.deactivateConfirmLabel()}
+            {lifecycle.hardDeleteConfirmLabel()}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -29,6 +29,19 @@ export type ResourceListQueryOptions<TItem> = Pick<
   'queryKey' | 'queryFn' | 'staleTime' | 'gcTime'
 >
 
+export interface ResourceLifecycleLabels<TItem> {
+  getUsageCount: (item: TItem) => number
+  reactivateTitle: () => string
+  reactivateDescription: (item: TItem) => string
+  reactivateConfirmLabel: () => string
+  reactivateSuccessMessage: () => string
+  hardDeleteTitle: () => string
+  hardDeleteDescription: (item: TItem) => string
+  hardDeleteConfirmLabel: () => string
+  hardDeleteSuccessMessage: () => string
+  hardDeleteBlockedTooltip: (item: TItem) => string
+}
+
 export interface ResourceDefinition<
   TItem extends { id: string; isActive: boolean },
   TCreate extends Record<string, unknown>,
@@ -61,4 +74,5 @@ export interface ResourceDefinition<
   buildCreateBody: (values: Record<string, string>) => TCreate
   buildUpdateBody: (values: Record<string, string>) => TUpdate
   getDeactivateTargetLabel: (item: TItem) => string
+  lifecycle?: ResourceLifecycleLabels<TItem>
 }

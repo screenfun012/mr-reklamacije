@@ -155,4 +155,19 @@ export const engineTypesResourceDefinition: ResourceDefinition<
     notes: parseOptionalNullableString(values['notes'] ?? ''),
   }),
   getDeactivateTargetLabel: (item) => item.code,
+  lifecycle: {
+    getUsageCount: (item) => item.usageCount,
+    reactivateTitle: () => m.admin_engine_types_reactivate_title(),
+    reactivateDescription: (item) =>
+      m.admin_engine_types_reactivate_description({ code: item.code }),
+    reactivateConfirmLabel: () => m.admin_engine_types_reactivate_confirm(),
+    reactivateSuccessMessage: () => m.admin_engine_types_reactivate_success(),
+    hardDeleteTitle: () => m.admin_engine_types_hard_delete_title(),
+    hardDeleteDescription: (item) =>
+      m.admin_engine_types_hard_delete_description({ code: item.code }),
+    hardDeleteConfirmLabel: () => m.admin_engine_types_hard_delete_confirm(),
+    hardDeleteSuccessMessage: () => m.admin_engine_types_hard_delete_success(),
+    hardDeleteBlockedTooltip: (item) =>
+      m.admin_engine_types_hard_delete_blocked({ code: item.code, count: item.usageCount }),
+  },
 }

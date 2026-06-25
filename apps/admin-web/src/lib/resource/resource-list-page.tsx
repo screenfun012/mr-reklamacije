@@ -3,9 +3,10 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 
-import { ResourceDeactivateDialog } from './resource-deactivate-dialog.js'
 import { ResourceFormDialog } from './resource-form-dialog.js'
+import { ResourceHardDeleteDialog } from './resource-hard-delete-dialog.js'
 import { ResourceTable } from './resource-table.js'
+import { ResourceToggleActiveDialog } from './resource-toggle-active-dialog.js'
 import type { ResourceDefinition } from './types.js'
 
 export interface ResourceListPageProps<
@@ -25,7 +26,8 @@ export function ResourceListPage<
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<TItem | null>(null)
-  const [deactivateTarget, setDeactivateTarget] = useState<TItem | null>(null)
+  const [toggleActiveTarget, setToggleActiveTarget] = useState<TItem | null>(null)
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<TItem | null>(null)
 
   return (
     <div className="space-y-6">
@@ -44,7 +46,8 @@ export function ResourceListPage<
         definition={definition}
         items={items}
         onEdit={setEditTarget}
-        onDeactivate={setDeactivateTarget}
+        onToggleActive={setToggleActiveTarget}
+        {...(definition.lifecycle ? { onHardDelete: setHardDeleteTarget } : {})}
       />
 
       <ResourceFormDialog
@@ -68,14 +71,27 @@ export function ResourceListPage<
         />
       ) : null}
 
-      {deactivateTarget !== null ? (
-        <ResourceDeactivateDialog
+      {toggleActiveTarget !== null ? (
+        <ResourceToggleActiveDialog
           definition={definition}
-          item={deactivateTarget}
+          item={toggleActiveTarget}
           open
           onOpenChange={(open) => {
             if (!open) {
-              setDeactivateTarget(null)
+              setToggleActiveTarget(null)
+            }
+          }}
+        />
+      ) : null}
+
+      {hardDeleteTarget !== null && definition.lifecycle ? (
+        <ResourceHardDeleteDialog
+          definition={definition}
+          item={hardDeleteTarget}
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setHardDeleteTarget(null)
             }
           }}
         />
