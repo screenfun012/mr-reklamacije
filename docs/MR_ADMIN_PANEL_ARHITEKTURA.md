@@ -96,7 +96,9 @@ ResourceDefinition<T> = {
 - Novi katalog = dodaš `ResourceDefinition` (10 min), NE pišeš nov modul
 
 ### Granica (da ne postane preopšte)
-Generički obrazac pokriva **proste kataloge** (entitet sa poljima, CRUD). Složeni moduli (RBAC matrica permisija, manipulacija reklamacijama, logovi) su **namenski** — ne forsiramo ih u generiku. Senior pravilo: generika za ono što se ponavlja, namenski za ono što je jedinstveno.
+Generički obrazac pokriva **proste kataloge** (entitet sa poljima, CRUD + lifecycle). Složeni moduli (RBAC matrica permisija, manipulacija reklamacijama, logovi) su **namenski** — ne forsiramo ih u generiku. Senior pravilo: generika za ono što se ponavlja, namenski za ono što je jedinstveno.
+
+**Paginacija kataloga:** server cursor samo za fetch cele liste; UI paginacija je client-side (nije server offset kao kod reklamacija). Skala ~60–200 redova — bez server-side bloat-a.
 
 ---
 
