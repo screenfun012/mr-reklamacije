@@ -2,6 +2,7 @@
 export const ResourceChangedKey = {
   Customers: 'customers',
   EngineTypes: 'engineTypes',
+  EngineManufacturers: 'engineManufacturers',
 } as const
 
 export type ResourceChangedKey = (typeof ResourceChangedKey)[keyof typeof ResourceChangedKey]

@@ -12,6 +12,8 @@ export function queryKeyPrefixesForResourceChanged(
       return [['customers']] as const
     case ResourceChangedKey.EngineTypes:
       return [['engine-types']] as const
+    case ResourceChangedKey.EngineManufacturers:
+      return [['engine-manufacturers']] as const
     default: {
       const _exhaustive: never = resource
       return _exhaustive

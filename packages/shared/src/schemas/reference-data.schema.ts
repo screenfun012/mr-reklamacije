@@ -97,6 +97,7 @@ export const EngineManufacturerListItemSchema = z.object({
   name: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  usageCount: z.number().int().nonnegative(),
 })
 
 export type EngineManufacturerListItem = z.infer<typeof EngineManufacturerListItemSchema>

@@ -1,8 +1,9 @@
-import { AuditAction } from '@mr/shared'
+import { AuditAction, ResourceChangedKey } from '@mr/shared'
 
-import { NotFoundError } from '../../core/errors/domain-errors.js'
+import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { EngineManufacturersRepository } from './engine-manufacturers.repository.js'
 import type {
   EngineManufacturerCreateInput,
@@ -16,6 +17,7 @@ export class EngineManufacturersService {
   constructor(
     private readonly repo: EngineManufacturersRepository,
     private readonly audit: AuditPort,
+    private readonly eventBus: EventBus,
   ) {}
 
   async list(
@@ -39,6 +41,8 @@ export class EngineManufacturersService {
       actorUserAgent: actor.actorUserAgent,
       changes: { after: created },
     })
+
+    this.eventBus.publishResourceChanged(ResourceChangedKey.EngineManufacturers)
 
     return created
   }
@@ -65,16 +69,22 @@ export class EngineManufacturersService {
       changes: { before, after: updated },
     })
 
+    this.eventBus.publishResourceChanged(ResourceChangedKey.EngineManufacturers)
+
     return updated
   }
 
-  async softDelete(id: string, actor: HttpActorContext): Promise<EngineManufacturerListItem> {
+  async hardDelete(id: string, actor: HttpActorContext): Promise<void> {
     const before = await this.repo.findById(id)
     if (before === null) {
       throw new NotFoundError('Engine manufacturer', id)
     }
 
-    const deleted = await this.repo.softDelete(id)
+    if (before.usageCount > 0) {
+      throw new ConflictError('Proizvođač motora se koristi u reklamacijama i ne može se obrisati.')
+    }
+
+    await this.repo.hardDelete(id)
 
     await this.audit.log({
       entityType: 'engine_manufacturer',
@@ -83,9 +93,9 @@ export class EngineManufacturersService {
       actorUserId: actor.actorUserId,
       actorIp: actor.actorIp,
       actorUserAgent: actor.actorUserAgent,
-      changes: { before, after: deleted },
+      changes: { before },
     })
 
-    return deleted
+    this.eventBus.publishResourceChanged(ResourceChangedKey.EngineManufacturers)
   }
 }

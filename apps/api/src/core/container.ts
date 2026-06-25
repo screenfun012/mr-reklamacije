@@ -110,6 +110,7 @@ export function buildContainer(
   const engineManufacturersService = new EngineManufacturersService(
     engineManufacturersRepository,
     auditService,
+    eventBus,
   )
 
   const externalPartiesRepository = new ExternalPartiesRepository(db)

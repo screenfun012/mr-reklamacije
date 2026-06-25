@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
+import { and, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
@@ -19,7 +19,23 @@ interface EngineManufacturerRow {
   name: string
   sortOrder: number
   isActive: boolean
+  usageCount: number
 }
+
+const manufacturerUsageCountSql = sql<number>`(
+  COALESCE((
+    SELECT COUNT(*)::int
+    FROM emotive_claims
+    WHERE emotive_claims.manufacturer_id = engine_manufacturers.id
+      AND emotive_claims.deleted_at IS NULL
+  ), 0)
+  + COALESCE((
+    SELECT COUNT(*)::int
+    FROM domace_claims
+    WHERE domace_claims.manufacturer_id = engine_manufacturers.id
+      AND domace_claims.deleted_at IS NULL
+  ), 0)
+)`.mapWith(Number)
 
 function mapEngineManufacturerRow(row: EngineManufacturerRow): EngineManufacturerListItem {
   return {
@@ -28,6 +44,7 @@ function mapEngineManufacturerRow(row: EngineManufacturerRow): EngineManufacture
     name: row.name,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+    usageCount: row.usageCount,
   }
 }
 
@@ -67,6 +84,7 @@ export class EngineManufacturersRepository {
         name: engineManufacturers.name,
         sortOrder: engineManufacturers.sortOrder,
         isActive: engineManufacturers.isActive,
+        usageCount: manufacturerUsageCountSql,
       })
       .from(engineManufacturers)
       .where(and(...conditions))
@@ -93,6 +111,7 @@ export class EngineManufacturersRepository {
         name: engineManufacturers.name,
         sortOrder: engineManufacturers.sortOrder,
         isActive: engineManufacturers.isActive,
+        usageCount: manufacturerUsageCountSql,
       })
       .from(engineManufacturers)
       .where(and(eq(engineManufacturers.id, id), isNull(engineManufacturers.deletedAt)))
@@ -132,7 +151,7 @@ export class EngineManufacturersRepository {
       throw new InternalError('Failed to create engine manufacturer')
     }
 
-    return mapEngineManufacturerRow(created)
+    return mapEngineManufacturerRow({ ...created, usageCount: 0 })
   }
 
   async update(
@@ -159,26 +178,28 @@ export class EngineManufacturersRepository {
       throw new NotFoundError('Engine manufacturer', id)
     }
 
-    return mapEngineManufacturerRow(updated)
+    const usageCount = await this.getUsageCount(id)
+    return mapEngineManufacturerRow({ ...updated, usageCount })
   }
 
-  async softDelete(id: string): Promise<EngineManufacturerListItem> {
-    const [deleted] = await this.db
-      .update(engineManufacturers)
-      .set({ deletedAt: new Date(), isActive: false })
+  async getUsageCount(id: string): Promise<number> {
+    const [row] = await this.db
+      .select({ usageCount: manufacturerUsageCountSql })
+      .from(engineManufacturers)
       .where(and(eq(engineManufacturers.id, id), isNull(engineManufacturers.deletedAt)))
-      .returning({
-        id: engineManufacturers.id,
-        code: engineManufacturers.code,
-        name: engineManufacturers.name,
-        sortOrder: engineManufacturers.sortOrder,
-        isActive: engineManufacturers.isActive,
-      })
+      .limit(1)
+
+    return row?.usageCount ?? 0
+  }
+
+  async hardDelete(id: string): Promise<void> {
+    const [deleted] = await this.db
+      .delete(engineManufacturers)
+      .where(and(eq(engineManufacturers.id, id), isNull(engineManufacturers.deletedAt)))
+      .returning({ id: engineManufacturers.id })
 
     if (deleted === undefined) {
       throw new NotFoundError('Engine manufacturer', id)
     }
-
-    return mapEngineManufacturerRow(deleted)
   }
 }

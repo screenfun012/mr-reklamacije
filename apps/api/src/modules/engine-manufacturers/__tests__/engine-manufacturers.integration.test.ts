@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { AuditAction, ERROR_CODE } from '@mr/shared'
+import { AuditAction, ERROR_CODE, ResourceChangedKey } from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -9,7 +9,8 @@ import {
   createReferenceTestApp,
   testUser,
 } from '../../../test-helpers/test-app.js'
-import { ensureTestUser } from '../../../test-helpers/fixtures.js'
+import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 
 describe('EngineManufacturers reference module', () => {
@@ -66,6 +67,42 @@ describe('EngineManufacturers reference module', () => {
       expect(sortBIndex).toBeGreaterThanOrEqual(0)
       expect(sortAIndex).toBeLessThan(sortBIndex)
     })
+
+    it('includes usageCount from emotive and domace claims', async () => {
+      const created = await container.engineManufacturersRepository.create({
+        code: 'USAGE-MFG',
+        name: 'Usage Mfg',
+      })
+      const engineTypeId = await container.engineTypesRepository
+        .create({ code: 'USAGE-MFG-ENG' })
+        .then((row) => row.id)
+
+      await ctx.db.insert(schema.emotiveClaims).values({
+        warrantyReport: 'Usage count test',
+        engineTypeId,
+        dateOfClaim: new Date('2026-01-15'),
+        mrNumber: 'MR-USAGE-MFG',
+        outcome: 'pending',
+        claimYear: 2026,
+        manufacturerId: created.id,
+        createdBy: TEST_USER_ID,
+      })
+
+      await ctx.db.insert(schema.domaceClaims).values({
+        outcome: 'pending',
+        claimYear: 2026,
+        manufacturerId: created.id,
+        createdBy: TEST_USER_ID,
+      })
+
+      const listed = await container.engineManufacturersRepository.list({
+        activeOnly: false,
+        limit: 50,
+      })
+
+      const row = listed.items.find((item) => item.id === created.id)
+      expect(row?.usageCount).toBe(2)
+    })
   })
 
   describe('when creating', () => {
@@ -83,6 +120,7 @@ describe('EngineManufacturers reference module', () => {
       expect(created.name).toBe('Test BMW')
       expect(created.sortOrder).toBe(15)
       expect(created.isActive).toBe(true)
+      expect(created.usageCount).toBe(0)
 
       const auditRows = await ctx.db
         .select()
@@ -92,6 +130,24 @@ describe('EngineManufacturers reference module', () => {
       expect(auditRows).toHaveLength(1)
       expect(auditRows[0]?.action).toBe(AuditAction.Create)
       expect(auditRows[0]?.entityType).toBe('engine_manufacturer')
+    })
+
+    it('emits resource_changed on create', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+
+      await scopedContainer.engineManufacturersService.create(
+        { code: 'SSE-CREATE-MFG', name: 'SSE Create' },
+        {
+          actorUserId: testUser(['settings.engine_manufacturers.create']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.EngineManufacturers },
+      ])
     })
 
     it('throws conflict for duplicate code', async () => {
@@ -141,28 +197,123 @@ describe('EngineManufacturers reference module', () => {
 
       expect(auditRows.some((row) => row.action === AuditAction.Update)).toBe(true)
     })
+
+    it('reactivates manufacturer via PATCH isActive with audit log', async () => {
+      const created = await container.engineManufacturersRepository.create({
+        code: 'REACT-MFG',
+        name: 'Reactivate Me',
+      })
+      await container.engineManufacturersRepository.update(created.id, { isActive: false })
+
+      const reactivated = await container.engineManufacturersService.update(
+        created.id,
+        { isActive: true },
+        {
+          actorUserId: testUser(['settings.engine_manufacturers.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(reactivated.isActive).toBe(true)
+    })
+
+    it('emits resource_changed on reactivation', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.engineManufacturersRepository.create({
+        code: 'SSE-REACT-MFG',
+        name: 'SSE Reactivate',
+      })
+      await scopedContainer.engineManufacturersRepository.update(created.id, { isActive: false })
+      eventBus.resourceEvents.length = 0
+
+      await scopedContainer.engineManufacturersService.update(
+        created.id,
+        { isActive: true },
+        {
+          actorUserId: testUser(['settings.engine_manufacturers.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.EngineManufacturers },
+      ])
+    })
   })
 
   describe('when deleting', () => {
-    it('soft-deletes manufacturer with audit log', async () => {
+    it('hard-deletes manufacturer with audit log', async () => {
       const created = await container.engineManufacturersRepository.create({
         code: 'DEL-MFG',
         name: 'To Delete',
       })
 
-      const deleted = await container.engineManufacturersService.softDelete(created.id, {
+      await container.engineManufacturersService.hardDelete(created.id, {
         actorUserId: testUser(['settings.engine_manufacturers.manage']).id,
         actorIp: null,
         actorUserAgent: null,
       })
 
-      expect(deleted.isActive).toBe(false)
+      const found = await container.engineManufacturersRepository.findById(created.id)
+      expect(found).toBeNull()
 
-      const list = await container.engineManufacturersRepository.list({
-        activeOnly: true,
-        limit: 50,
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+
+      expect(auditRows.some((row) => row.action === AuditAction.Delete)).toBe(true)
+    })
+
+    it('rejects hard delete when usageCount is greater than zero', async () => {
+      const created = await container.engineManufacturersRepository.create({
+        code: 'USED-MFG',
+        name: 'Used Mfg',
       })
-      expect(list.items.some((item) => item.id === created.id)).toBe(false)
+      const engineTypeId = await container.engineTypesRepository
+        .create({ code: 'USED-MFG-ENG' })
+        .then((row) => row.id)
+
+      await ctx.db.insert(schema.emotiveClaims).values({
+        warrantyReport: 'Blocks delete',
+        engineTypeId,
+        dateOfClaim: new Date('2026-01-15'),
+        mrNumber: 'MR-USED-MFG',
+        outcome: 'pending',
+        claimYear: 2026,
+        manufacturerId: created.id,
+        createdBy: TEST_USER_ID,
+      })
+
+      await expect(
+        container.engineManufacturersService.hardDelete(created.id, {
+          actorUserId: testUser(['settings.engine_manufacturers.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        }),
+      ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('emits resource_changed on hard delete', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.engineManufacturersRepository.create({
+        code: 'SSE-DEL-MFG',
+        name: 'SSE Delete',
+      })
+
+      await scopedContainer.engineManufacturersService.hardDelete(created.id, {
+        actorUserId: testUser(['settings.engine_manufacturers.manage']).id,
+        actorIp: null,
+        actorUserAgent: null,
+      })
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.EngineManufacturers },
+      ])
     })
   })
 
@@ -195,10 +346,16 @@ describe('EngineManufacturers reference module', () => {
       })
 
       expect(res.status).toBe(201)
-      const body = (await res.json()) as { code: string; name: string; sortOrder: number }
+      const body = (await res.json()) as {
+        code: string
+        name: string
+        sortOrder: number
+        usageCount: number
+      }
       expect(body.code).toBe('HTTP-SKODA')
       expect(body.name).toBe('Škoda')
       expect(body.sortOrder).toBe(45)
+      expect(body.usageCount).toBe(0)
     })
 
     it('lists manufacturers with claim edit permission', async () => {
@@ -251,7 +408,7 @@ describe('EngineManufacturers reference module', () => {
       expect(res.status).toBe(403)
     })
 
-    it('soft-deletes manufacturer via DELETE with manage permission', async () => {
+    it('hard-deletes manufacturer via DELETE with manage permission', async () => {
       const created = await container.engineManufacturersRepository.create({
         code: 'DELETE-MFG',
         name: 'Delete Me',
@@ -264,9 +421,42 @@ describe('EngineManufacturers reference module', () => {
         method: 'DELETE',
       })
 
-      expect(res.status).toBe(200)
-      const body = (await res.json()) as { isActive: boolean }
-      expect(body.isActive).toBe(false)
+      expect(res.status).toBe(204)
+      expect(await res.text()).toBe('')
+
+      const found = await container.engineManufacturersRepository.findById(created.id)
+      expect(found).toBeNull()
+    })
+
+    it('returns 409 on DELETE when manufacturer is in use', async () => {
+      const created = await container.engineManufacturersRepository.create({
+        code: 'DELETE-USED-MFG',
+        name: 'Delete Used',
+      })
+      const engineTypeId = await container.engineTypesRepository
+        .create({ code: 'DELETE-USED-ENG' })
+        .then((row) => row.id)
+
+      await ctx.db.insert(schema.emotiveClaims).values({
+        warrantyReport: 'Blocks HTTP delete',
+        engineTypeId,
+        dateOfClaim: new Date('2026-01-15'),
+        mrNumber: 'MR-DELETE-USED',
+        outcome: 'pending',
+        claimYear: 2026,
+        manufacturerId: created.id,
+        createdBy: TEST_USER_ID,
+      })
+
+      const app = createReferenceTestApp(
+        container,
+        testUser(['settings.engine_manufacturers.manage']),
+      )
+      const res = await app.request(`/api/engine-manufacturers/${created.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(res.status).toBe(409)
     })
 
     it('returns 401 without auth', async () => {
