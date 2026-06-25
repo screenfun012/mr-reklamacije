@@ -4,7 +4,10 @@ import type { MRSessionUser } from '../../core/auth/session-types.js'
 import type { Container } from '../../core/container.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import type { StatisticsActor } from './statistics.types.js'
-import { StatisticsSummarySchema } from './statistics.validators.js'
+import {
+  StatisticsSummarySchema,
+  statisticsFiltersFromSummaryQuery,
+} from './statistics.validators.js'
 
 function requireUser(c: Context): MRSessionUser {
   const user = c.get('user')
@@ -24,7 +27,8 @@ export function createStatisticsController(container: Container): {
   return {
     summary: async (c: Context) => {
       const user = requireUser(c)
-      const result = await container.statisticsService.getSummary(toActor(user))
+      const filters = statisticsFiltersFromSummaryQuery(c.req.query())
+      const result = await container.statisticsService.getSummary(toActor(user), filters)
       return c.json(StatisticsSummarySchema.parse(result))
     },
   }

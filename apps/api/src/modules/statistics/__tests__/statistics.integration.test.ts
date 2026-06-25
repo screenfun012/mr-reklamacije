@@ -1,5 +1,10 @@
 import { schema } from '@mr/db'
-import { ClaimOutcome, normalizeName, STATISTICS_UNKNOWN_MANUFACTURER_CODE } from '@mr/shared'
+import {
+  ClaimKind,
+  ClaimOutcome,
+  normalizeName,
+  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+} from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -47,6 +52,12 @@ function daysAgo(days: number): Date {
   date.setHours(12, 0, 0, 0)
   date.setDate(date.getDate() - days)
   return date
+}
+
+function dateInYear(year: number, month: number, day: number): Date {
+  return new Date(
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00.000Z`,
+  )
 }
 
 describe('Statistics module integration', () => {
@@ -364,6 +375,38 @@ describe('Statistics module integration', () => {
         },
       })
     })
+
+    it('accepts year filter query params', async () => {
+      const app = createStatisticsTestApp(
+        container,
+        testUser(['statistics.view_emotive', 'statistics.view_domace']),
+      )
+      await createEmotiveClaim(
+        'STAT-HTTP-YEAR-IN/25',
+        ClaimOutcome.Accepted,
+        dateInYear(2025, 3, 10),
+      )
+      await createEmotiveClaim('STAT-HTTP-YEAR-OUT/26', ClaimOutcome.Accepted, daysAgo(5))
+
+      const response = await app.request('/api/statistics/summary?year=2025')
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as {
+        trends: { byMonth: Array<{ total: number }> }
+        byManufacturer: { items: Array<{ total: number }> }
+      }
+      const filteredTotal = body.trends.byMonth.reduce((sum, row) => sum + row.total, 0)
+      const unfiltered = await app.request('/api/statistics/summary')
+      const unfilteredBody = (await unfiltered.json()) as {
+        trends: { byMonth: Array<{ total: number }> }
+      }
+      const unfilteredTotal = unfilteredBody.trends.byMonth.reduce((sum, row) => sum + row.total, 0)
+
+      expect(filteredTotal).toBeGreaterThanOrEqual(1)
+      expect(filteredTotal).toBeLessThan(unfilteredTotal)
+      expect(body.trends.byMonth).toHaveLength(12)
+      expect(body.byManufacturer.items.length).toBeGreaterThanOrEqual(1)
+    })
   })
 
   describe('when loading outcome statistics', () => {
@@ -599,6 +642,83 @@ describe('Statistics module integration', () => {
 
       expect(emotiveRow?.total).toBe(beforeEmotiveCount + 1)
       expect(fullRow?.total).toBe(beforeFullCount + 2)
+    })
+  })
+
+  describe('when applying summary filters', () => {
+    it('limits aggregates to the selected claim year', async () => {
+      await createEmotiveClaim(
+        'STAT-FIL-YEAR-IN/25',
+        ClaimOutcome.Accepted,
+        dateInYear(2025, 4, 12),
+      )
+      await createEmotiveClaim('STAT-FIL-YEAR-OUT/26', ClaimOutcome.Accepted, daysAgo(4))
+
+      const filtered = await container.statisticsService.getSummary(FULL_STATISTICS, { year: 2025 })
+      const unfiltered = await container.statisticsService.getSummary(FULL_STATISTICS, {})
+
+      const filteredTotal = filtered.trends.byMonth.reduce((sum, row) => sum + row.total, 0)
+      const unfilteredTotal = unfiltered.trends.byMonth.reduce((sum, row) => sum + row.total, 0)
+
+      expect(filtered.trends.byMonth).toHaveLength(12)
+      expect(filteredTotal).toBeGreaterThanOrEqual(1)
+      expect(filteredTotal).toBeLessThan(unfilteredTotal)
+      expect(filtered.trends.byYear).toEqual([
+        expect.objectContaining({ year: 2025, total: expect.any(Number) }),
+      ])
+    })
+
+    it('limits aggregates to the selected manufacturer', async () => {
+      const bmwId = await createEngineManufacturer(`STAT-FIL-BMW-${Date.now()}`, 'BMW Filter')
+      const audiId = await createEngineManufacturer(`STAT-FIL-AUDI-${Date.now()}`, 'Audi Filter')
+
+      await createEmotiveClaim('STAT-FIL-MFG-1/26', ClaimOutcome.Accepted, daysAgo(8), bmwId)
+      await createEmotiveClaim('STAT-FIL-MFG-2/26', ClaimOutcome.Accepted, daysAgo(7), audiId)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId: bmwId,
+      })
+
+      expect(summary.byManufacturer.items).toEqual([
+        expect.objectContaining({ manufacturerId: bmwId, total: 1 }),
+      ])
+      expect(summary.byManufacturer.items.some((row) => row.manufacturerId === audiId)).toBe(false)
+    })
+
+    it('returns empty source breakdown for domace kind filter', async () => {
+      await createEmotiveClaim('STAT-FIL-KIND-EMO/26')
+      await createDomaceClaim('STAT-FIL-KIND-DOM/26')
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        kind: ClaimKind.Domace,
+      })
+
+      expect(summary.bySource.items).toEqual([])
+      expect(summary.trends.byMonth.at(-1)?.domace).toBeGreaterThanOrEqual(1)
+      expect(summary.trends.byMonth.at(-1)?.emotive).toBe(0)
+    })
+
+    it('returns empty aggregates for filters with no matching claims', async () => {
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, { year: 2010 })
+
+      expect(summary.trends.byMonth.every((row) => row.total === 0)).toBe(true)
+      expect(summary.byManufacturer.items).toEqual([])
+      expect(summary.outcomes.distribution.total).toBe(0)
+      expect(summary.bySource.items).toEqual([])
+      expect(summary.byEmployee.items).toEqual([])
+      expect(summary.byEngineType.items).toEqual([])
+    })
+
+    it('intersects kind filter with permission scope', async () => {
+      await createEmotiveClaim('STAT-FIL-SCOPE-EMO/26')
+      await createDomaceClaim('STAT-FIL-SCOPE-DOM/26')
+
+      const summary = await container.statisticsService.getSummary(EMOTIVE_ONLY, {
+        kind: ClaimKind.Domace,
+      })
+
+      expect(summary.trends.byMonth.every((row) => row.total === 0)).toBe(true)
+      expect(summary.bySource.items).toEqual([])
     })
   })
 })

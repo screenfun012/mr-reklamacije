@@ -1,11 +1,13 @@
 import {
   StatisticsVolumeTrendDirection,
   type StatisticsSummary,
+  type StatisticsSummaryFilters,
   type StatisticsTrendMonth,
   type StatisticsVolumeTrend,
 } from '@mr/shared'
 
 import { ForbiddenError } from '../../core/errors/domain-errors.js'
+import { buildStatisticsQueryContext } from './statistics-claim-filter.js'
 import type { StatisticsRepository } from './statistics.repository.js'
 import type { StatisticsActor, StatisticsScope } from './statistics.types.js'
 
@@ -81,8 +83,12 @@ export function computeVolumeTrend(
 export class StatisticsService {
   constructor(private readonly repo: StatisticsRepository) {}
 
-  async getSummary(actor: StatisticsActor): Promise<StatisticsSummary> {
+  async getSummary(
+    actor: StatisticsActor,
+    filters: StatisticsSummaryFilters = {},
+  ): Promise<StatisticsSummary> {
     const scope = resolveScope(actor)
+    const queryContext = buildStatisticsQueryContext(scope, filters)
     const [
       byMonth,
       byYear,
@@ -94,15 +100,15 @@ export class StatisticsService {
       employeeItems,
       engineTypeItems,
     ] = await Promise.all([
-      this.repo.fetchTrendsByMonth(scope),
-      this.repo.fetchTrendsByYear(scope),
-      this.repo.fetchByManufacturer(scope),
-      this.repo.fetchOutcomeDistribution(scope),
-      this.repo.fetchProcessingTime(scope),
-      this.repo.fetchAcceptanceRateByMonth(scope),
-      this.repo.fetchBySource(scope),
-      this.repo.fetchByEmployee(scope),
-      this.repo.fetchByEngineType(scope),
+      this.repo.fetchTrendsByMonth(queryContext),
+      this.repo.fetchTrendsByYear(queryContext),
+      this.repo.fetchByManufacturer(queryContext),
+      this.repo.fetchOutcomeDistribution(queryContext),
+      this.repo.fetchProcessingTime(queryContext),
+      this.repo.fetchAcceptanceRateByMonth(queryContext),
+      this.repo.fetchBySource(queryContext),
+      this.repo.fetchByEmployee(queryContext),
+      this.repo.fetchByEngineType(queryContext),
     ])
 
     return {

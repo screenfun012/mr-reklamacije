@@ -3,7 +3,6 @@ import {
   ClaimOutcome,
   computeAcceptanceRatePercent,
   roundStatisticsDays,
-  STATISTICS_TREND_MONTH_COUNT,
   STATISTICS_UNKNOWN_MANUFACTURER_CODE,
   type StatisticsAcceptanceRateMonth,
   type StatisticsEmployeeRow,
@@ -18,7 +17,13 @@ import {
 import { sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
-import type { StatisticsScope } from './statistics.types.js'
+import {
+  anchorDate,
+  buildActiveClaimWhere,
+  buildResolvedClaimWhere,
+  processingDays,
+  type StatisticsQueryContext,
+} from './statistics-claim-filter.js'
 
 interface TrendMonthRow extends Record<string, unknown> {
   month: string
@@ -88,22 +93,6 @@ function toInt(value: number | string): number {
   return typeof value === 'number' ? value : Number.parseInt(value, 10)
 }
 
-function activeEmotiveWhere(alias: string): SQL {
-  return sql`${sql.raw(alias)}.deleted_at IS NULL AND ${sql.raw(alias)}.outcome <> ${ClaimOutcome.Archived}`
-}
-
-function activeDomaceWhere(alias: string): SQL {
-  return sql`${sql.raw(alias)}.deleted_at IS NULL AND ${sql.raw(alias)}.outcome <> ${ClaimOutcome.Archived}`
-}
-
-function anchorDate(alias: string): SQL {
-  return sql`COALESCE(${sql.raw(alias)}.date_of_claim, (${sql.raw(alias)}.created_at AT TIME ZONE 'UTC')::date)`
-}
-
-function trendWindowStart(): SQL {
-  return sql`(date_trunc('month', CURRENT_DATE) - (${STATISTICS_TREND_MONTH_COUNT - 1} * interval '1 month'))::date`
-}
-
 function toFloat(value: number | string | null): number | null {
   if (value === null) {
     return null
@@ -112,40 +101,29 @@ function toFloat(value: number | string | null): number | null {
   return typeof value === 'number' ? value : Number.parseFloat(value)
 }
 
-function processingDays(alias: string): SQL {
-  return sql`GREATEST(0, (${sql.raw(alias)}.outcome_resolved_at::date - ${anchorDate(alias)}))`
-}
-
-function resolvedOutcomeWhere(alias: string): SQL {
-  return sql`${sql.raw(alias)}.outcome IN (${ClaimOutcome.Accepted}, ${ClaimOutcome.Rejected})
-    AND ${sql.raw(alias)}.outcome_resolved_at IS NOT NULL`
-}
-
 export class StatisticsRepository {
   constructor(private readonly db: ApiDatabase) {}
 
-  async fetchTrendsByMonth(scope: StatisticsScope): Promise<StatisticsTrendMonth[]> {
+  async fetchTrendsByMonth(ctx: StatisticsQueryContext): Promise<StatisticsTrendMonth[]> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT
           ${ClaimKind.Emotive}::text AS kind,
           date_trunc('month', ${anchorDate('ec')})::date AS month_start
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT
           ${ClaimKind.Domace}::text AS kind,
           date_trunc('month', ${anchorDate('dc')})::date AS month_start
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
       `)
     }
 
@@ -158,8 +136,8 @@ export class StatisticsRepository {
     const result = await this.db.execute<TrendMonthRow>(sql`
       WITH months AS (
         SELECT generate_series(
-          date_trunc('month', CURRENT_DATE) - ((${STATISTICS_TREND_MONTH_COUNT} - 1) * interval '1 month'),
-          date_trunc('month', CURRENT_DATE),
+          ${ctx.period.monthSeriesStart},
+          ${ctx.period.monthSeriesEnd},
           interval '1 month'
         )::date AS month_start
       ),
@@ -190,28 +168,26 @@ export class StatisticsRepository {
     }))
   }
 
-  async fetchTrendsByYear(scope: StatisticsScope): Promise<StatisticsTrendYear[]> {
+  async fetchTrendsByYear(ctx: StatisticsQueryContext): Promise<StatisticsTrendYear[]> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT
           ${ClaimKind.Emotive}::text AS kind,
           ec.claim_year AS claim_year
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT
           ${ClaimKind.Domace}::text AS kind,
           dc.claim_year AS claim_year
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
       `)
     }
 
@@ -240,24 +216,22 @@ export class StatisticsRepository {
     }))
   }
 
-  async fetchByManufacturer(scope: StatisticsScope): Promise<StatisticsManufacturerRow[]> {
+  async fetchByManufacturer(ctx: StatisticsQueryContext): Promise<StatisticsManufacturerRow[]> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT ec.manufacturer_id, ec.outcome
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT dc.manufacturer_id, dc.outcome
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
       `)
     }
 
@@ -299,24 +273,24 @@ export class StatisticsRepository {
     }))
   }
 
-  async fetchOutcomeDistribution(scope: StatisticsScope): Promise<StatisticsOutcomeDistribution> {
+  async fetchOutcomeDistribution(
+    ctx: StatisticsQueryContext,
+  ): Promise<StatisticsOutcomeDistribution> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT ec.outcome
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT dc.outcome
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
       `)
     }
 
@@ -348,26 +322,22 @@ export class StatisticsRepository {
     }
   }
 
-  async fetchProcessingTime(scope: StatisticsScope): Promise<StatisticsProcessingTime> {
+  async fetchProcessingTime(ctx: StatisticsQueryContext): Promise<StatisticsProcessingTime> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT ${processingDays('ec')}::numeric AS processing_days
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${resolvedOutcomeWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildResolvedClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT ${processingDays('dc')}::numeric AS processing_days
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${resolvedOutcomeWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildResolvedClaimWhere('dc', ctx)}
       `)
     }
 
@@ -403,33 +373,27 @@ export class StatisticsRepository {
   }
 
   async fetchAcceptanceRateByMonth(
-    scope: StatisticsScope,
+    ctx: StatisticsQueryContext,
   ): Promise<StatisticsAcceptanceRateMonth[]> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT
           date_trunc('month', ec.outcome_resolved_at)::date AS month_start,
           ec.outcome
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${resolvedOutcomeWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
-          AND ec.outcome_resolved_at >= ${trendWindowStart()}
+        WHERE ${buildResolvedClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT
           date_trunc('month', dc.outcome_resolved_at)::date AS month_start,
           dc.outcome
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${resolvedOutcomeWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
-          AND dc.outcome_resolved_at >= ${trendWindowStart()}
+        WHERE ${buildResolvedClaimWhere('dc', ctx)}
       `)
     }
 
@@ -442,8 +406,8 @@ export class StatisticsRepository {
     const result = await this.db.execute<AcceptanceRateMonthRow>(sql`
       WITH months AS (
         SELECT generate_series(
-          date_trunc('month', CURRENT_DATE) - ((${STATISTICS_TREND_MONTH_COUNT} - 1) * interval '1 month'),
-          date_trunc('month', CURRENT_DATE),
+          ${ctx.period.monthSeriesStart},
+          ${ctx.period.monthSeriesEnd},
           interval '1 month'
         )::date AS month_start
       ),
@@ -477,8 +441,8 @@ export class StatisticsRepository {
     })
   }
 
-  async fetchBySource(scope: StatisticsScope): Promise<StatisticsSourceRow[]> {
-    if (!scope.includeEmotive) {
+  async fetchBySource(ctx: StatisticsQueryContext): Promise<StatisticsSourceRow[]> {
+    if (!ctx.effectiveScope.includeEmotive) {
       return []
     }
 
@@ -492,8 +456,7 @@ export class StatisticsRepository {
       LEFT JOIN claim_sources cs
         ON cs.id = ec.source_id
         AND cs.deleted_at IS NULL
-      WHERE ${activeEmotiveWhere('ec')}
-        AND ${anchorDate('ec')} >= ${trendWindowStart()}
+      WHERE ${buildActiveClaimWhere('ec', ctx)}
       GROUP BY ec.source_id
       HAVING COUNT(*) > 0
       ORDER BY total DESC, MAX(cs.name) ASC NULLS LAST
@@ -510,24 +473,22 @@ export class StatisticsRepository {
     }))
   }
 
-  async fetchByEmployee(scope: StatisticsScope): Promise<StatisticsEmployeeRow[]> {
+  async fetchByEmployee(ctx: StatisticsQueryContext): Promise<StatisticsEmployeeRow[]> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT ec.employee_id
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT dc.employee_id
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
       `)
     }
 
@@ -560,24 +521,22 @@ export class StatisticsRepository {
     }))
   }
 
-  async fetchByEngineType(scope: StatisticsScope): Promise<StatisticsEngineTypeRow[]> {
+  async fetchByEngineType(ctx: StatisticsQueryContext): Promise<StatisticsEngineTypeRow[]> {
     const branches: SQL[] = []
 
-    if (scope.includeEmotive) {
+    if (ctx.effectiveScope.includeEmotive) {
       branches.push(sql`
         SELECT ec.engine_type_id
         FROM emotive_claims ec
-        WHERE ${activeEmotiveWhere('ec')}
-          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
       `)
     }
 
-    if (scope.includeDomace) {
+    if (ctx.effectiveScope.includeDomace) {
       branches.push(sql`
         SELECT dc.engine_type_id
         FROM domace_claims dc
-        WHERE ${activeDomaceWhere('dc')}
-          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
       `)
     }
 
