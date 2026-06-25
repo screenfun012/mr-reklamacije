@@ -12,7 +12,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isResourceChangedKey(value: unknown): value is ResourceChangedKey {
-  return value === ResourceChangedKey.Customers || value === ResourceChangedKey.EngineTypes
+  return (
+    typeof value === 'string' && (Object.values(ResourceChangedKey) as string[]).includes(value)
+  )
 }
 
 function isResourceChangedAppEvent(value: unknown): value is ResourceChangedAppEvent {
