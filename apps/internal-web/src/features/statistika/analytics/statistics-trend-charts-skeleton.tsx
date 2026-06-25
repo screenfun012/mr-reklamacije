@@ -113,6 +113,58 @@ export function StatisticsTrendChartsSkeleton(): React.ReactElement {
           <Skeleton className="h-72 w-full rounded-lg" />
         </CardContent>
       </Card>
+
+      <div>
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-40" />
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid min-h-[5.5rem] grid-cols-3 gap-3">
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+          </div>
+          <Skeleton className="h-[220px] w-full rounded-lg" />
+        </CardContent>
+      </Card>
+      <div>
+        <Skeleton className="h-5 w-44" />
+        <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-36" />
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid min-h-[5.5rem] grid-cols-3 gap-3">
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+          </div>
+          <Skeleton className="h-[220px] w-full rounded-lg" />
+        </CardContent>
+      </Card>
+      <div>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-32" />
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid min-h-[5.5rem] grid-cols-3 gap-3">
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+            <Skeleton className="h-[4.5rem] rounded-lg" />
+          </div>
+          <Skeleton className="h-[220px] w-full rounded-lg" />
+        </CardContent>
+      </Card>
     </section>
   )
 }
