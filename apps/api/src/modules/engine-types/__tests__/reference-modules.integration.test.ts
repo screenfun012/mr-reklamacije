@@ -14,7 +14,7 @@ import {
   buildTestContainer,
   testUser,
 } from '../../../test-helpers/test-app.js'
-import { ensureTestUser } from '../../../test-helpers/fixtures.js'
+import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import type { Container } from '../../../core/container.js'
@@ -400,14 +400,299 @@ describe('Customers reference module', () => {
     await ctx.cleanup()
   })
 
-  it('filters by kind=emotive_partner', async () => {
-    const app = createReferenceTestApp(container, testUser(['customers.view']))
-    const res = await app.request(`/api/customers?kind=${CustomerKind.EmotivePartner}`)
-    expect(res.status).toBe(200)
+  describe('when listing', () => {
+    it('filters by kind=emotive_partner', async () => {
+      const app = createReferenceTestApp(container, testUser(['customers.view']))
+      const res = await app.request(`/api/customers?kind=${CustomerKind.EmotivePartner}`)
+      expect(res.status).toBe(200)
 
-    const body = (await res.json()) as { items: Array<{ kind: string }> }
-    expect(body.items.length).toBeGreaterThan(0)
-    expect(body.items.every((item) => item.kind === CustomerKind.EmotivePartner)).toBe(true)
+      const body = (await res.json()) as { items: Array<{ kind: string }> }
+      expect(body.items.length).toBeGreaterThan(0)
+      expect(body.items.every((item) => item.kind === CustomerKind.EmotivePartner)).toBe(true)
+    })
+
+    it('includes usageCount from emotive claims and customer user links', async () => {
+      const created = await container.customersRepository.create({
+        name: 'USAGE-COUNT-FIRMA',
+        country: 'RS',
+      })
+
+      await ctx.db.insert(schema.customerUsers).values({
+        customerId: created.id,
+        userId: TEST_USER_ID,
+        assignedBy: TEST_USER_ID,
+      })
+
+      const listed = await container.customersRepository.list({
+        kind: CustomerKind.EmotivePartner,
+        activeOnly: false,
+        limit: 50,
+      })
+
+      const row = listed.items.find((item) => item.id === created.id)
+      expect(row?.usageCount).toBe(1)
+    })
+  })
+
+  describe('when creating', () => {
+    it('creates emotive partner with defaults and writes audit log', async () => {
+      const created = await container.customersService.create(
+        { name: 'TEST-FIRMA', city: 'Beograd' },
+        {
+          actorUserId: testUser(['customers.create']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(created.name).toBe('TEST-FIRMA')
+      expect(created.kind).toBe(CustomerKind.EmotivePartner)
+      expect(created.city).toBe('Beograd')
+      expect(created.isActive).toBe(true)
+      expect(created.usageCount).toBe(0)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+
+      expect(auditRows).toHaveLength(1)
+      expect(auditRows[0]?.action).toBe(AuditAction.Create)
+      expect(auditRows[0]?.entityType).toBe('customer')
+    })
+
+    it('throws conflict for duplicate name within kind', async () => {
+      await container.customersRepository.create({ name: 'DUP-FIRMA' })
+
+      await expect(
+        container.customersService.create(
+          { name: 'DUP-FIRMA' },
+          {
+            actorUserId: testUser(['customers.create']).id,
+            actorIp: null,
+            actorUserAgent: null,
+          },
+        ),
+      ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('emits resource_changed on create', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+
+      await scopedContainer.customersService.create(
+        { name: 'SSE-FIRMA' },
+        {
+          actorUserId: testUser(['customers.create']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.Customers },
+      ])
+    })
+  })
+
+  describe('when updating', () => {
+    it('updates fields with audit log', async () => {
+      const created = await container.customersRepository.create({ name: 'UPD-FIRMA' })
+
+      const updated = await container.customersService.update(
+        created.id,
+        { name: 'UPD-FIRMA-2', country: 'NL' },
+        {
+          actorUserId: testUser(['customers.update']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(updated.name).toBe('UPD-FIRMA-2')
+      expect(updated.country).toBe('NL')
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+
+      expect(auditRows.some((row) => row.action === AuditAction.Update)).toBe(true)
+    })
+
+    it('reactivates customer via PATCH isActive', async () => {
+      const created = await container.customersRepository.create({ name: 'REACT-FIRMA' })
+      await container.customersRepository.update(created.id, { isActive: false })
+
+      const reactivated = await container.customersService.update(
+        created.id,
+        { isActive: true },
+        {
+          actorUserId: testUser(['customers.update']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(reactivated.isActive).toBe(true)
+    })
+
+    it('emits resource_changed on update', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.customersRepository.create({ name: 'SSE-UPD-FIRMA' })
+
+      await scopedContainer.customersService.update(
+        created.id,
+        { city: 'Novi Sad' },
+        {
+          actorUserId: testUser(['customers.update']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.Customers },
+      ])
+    })
+  })
+
+  describe('when deleting', () => {
+    it('hard-deletes unused customer with audit log', async () => {
+      const created = await container.customersRepository.create({ name: 'DEL-FIRMA' })
+
+      await container.customersService.hardDelete(created.id, {
+        actorUserId: testUser(['customers.delete']).id,
+        actorIp: null,
+        actorUserAgent: null,
+      })
+
+      const found = await container.customersRepository.findById(created.id)
+      expect(found).toBeNull()
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+
+      expect(auditRows.some((row) => row.action === AuditAction.Delete)).toBe(true)
+    })
+
+    it('rejects hard delete when linked to emotive claims', async () => {
+      const engineTypeId = await container.engineTypesRepository
+        .create({ code: 'CUST-DEL-ENG' })
+        .then((row) => row.id)
+      const created = await container.customersRepository.create({ name: 'USED-FIRMA' })
+
+      await ctx.db.insert(schema.emotiveClaims).values({
+        warrantyReport: 'Test',
+        engineTypeId,
+        dateOfClaim: new Date('2026-01-15'),
+        mrNumber: 'MR-CUST-DEL',
+        outcome: 'pending',
+        claimYear: 2026,
+        customerId: created.id,
+        createdBy: TEST_USER_ID,
+      })
+
+      await expect(
+        container.customersService.hardDelete(created.id, {
+          actorUserId: testUser(['customers.delete']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        }),
+      ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('rejects hard delete when linked to portal users', async () => {
+      const created = await container.customersRepository.create({ name: 'LINKED-FIRMA' })
+
+      await ctx.db.insert(schema.customerUsers).values({
+        customerId: created.id,
+        userId: TEST_USER_ID,
+        assignedBy: TEST_USER_ID,
+      })
+
+      await expect(
+        container.customersService.hardDelete(created.id, {
+          actorUserId: testUser(['customers.delete']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        }),
+      ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('emits resource_changed on hard delete', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.customersRepository.create({ name: 'SSE-DEL-FIRMA' })
+
+      await scopedContainer.customersService.hardDelete(created.id, {
+        actorUserId: testUser(['customers.delete']).id,
+        actorIp: null,
+        actorUserAgent: null,
+      })
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.Customers },
+      ])
+    })
+  })
+
+  describe('HTTP', () => {
+    it('returns 403 on POST without create permission', async () => {
+      const app = createReferenceTestApp(container, testUser(['customers.view']))
+      const res = await app.request('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'HTTP-FORBIDDEN' }),
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('creates customer via POST', async () => {
+      const app = createReferenceTestApp(container, testUser(['customers.create']))
+      const res = await app.request('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'HTTP-FIRMA', country: 'RS' }),
+      })
+
+      expect(res.status).toBe(201)
+      const body = (await res.json()) as { name: string; kind: string; usageCount: number }
+      expect(body.name).toBe('HTTP-FIRMA')
+      expect(body.kind).toBe(CustomerKind.EmotivePartner)
+      expect(body.usageCount).toBe(0)
+    })
+
+    it('updates customer via PATCH', async () => {
+      const created = await container.customersRepository.create({ name: 'HTTP-PATCH-FIRMA' })
+      const app = createReferenceTestApp(container, testUser(['customers.update']))
+      const res = await app.request(`/api/customers/${created.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: false }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { isActive: boolean }
+      expect(body.isActive).toBe(false)
+    })
+
+    it('returns 403 on DELETE without delete permission', async () => {
+      const created = await container.customersRepository.create({ name: 'HTTP-NO-DEL' })
+      const app = createReferenceTestApp(container, testUser(['customers.update']))
+      const res = await app.request(`/api/customers/${created.id}`, { method: 'DELETE' })
+      expect(res.status).toBe(403)
+    })
+
+    it('hard-deletes customer via DELETE', async () => {
+      const created = await container.customersRepository.create({ name: 'HTTP-DEL-FIRMA' })
+      const app = createReferenceTestApp(container, testUser(['customers.delete']))
+      const res = await app.request(`/api/customers/${created.id}`, { method: 'DELETE' })
+      expect(res.status).toBe(204)
+    })
   })
 })
 

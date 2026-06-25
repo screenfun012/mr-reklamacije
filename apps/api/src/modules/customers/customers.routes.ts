@@ -13,6 +13,9 @@ export function registerCustomersRoutes(
   const routes = new Hono<{ Variables: AppVariables }>()
 
   routes.get('/', requirePermission('customers.view'), controller.list)
+  routes.post('/', requirePermission('customers.create'), controller.create)
+  routes.patch('/:id', requirePermission('customers.update'), controller.update)
+  routes.delete('/:id', requirePermission('customers.delete'), controller.delete)
 
   app.route('/api/customers', routes)
 }

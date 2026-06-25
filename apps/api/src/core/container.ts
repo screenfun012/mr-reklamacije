@@ -116,7 +116,7 @@ export function buildContainer(
   const externalPartiesService = new ExternalPartiesService(externalPartiesRepository, auditService)
 
   const customersRepository = new CustomersRepository(db)
-  const customersService = new CustomersService(customersRepository)
+  const customersService = new CustomersService(customersRepository, auditService, eventBus)
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
   const claimSourcesService = new ClaimSourcesService(claimSourcesRepository)
