@@ -150,22 +150,97 @@ describe('EngineTypes reference module', () => {
         { type: 'resource_changed', resource: ResourceChangedKey.EngineTypes },
       ])
     })
+
+    it('reactivates engine type via PATCH isActive with audit log', async () => {
+      const created = await container.engineTypesRepository.create({ code: 'REACT-TYPE' })
+      await container.engineTypesRepository.update(created.id, { isActive: false })
+
+      const reactivated = await container.engineTypesService.update(
+        created.id,
+        { isActive: true },
+        {
+          actorUserId: testUser(['settings.engine_types.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(reactivated.isActive).toBe(true)
+    })
+
+    it('emits resource_changed on reactivation', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.engineTypesRepository.create({ code: 'SSE-REACT' })
+      await scopedContainer.engineTypesRepository.update(created.id, { isActive: false })
+
+      await scopedContainer.engineTypesService.update(
+        created.id,
+        { isActive: true },
+        {
+          actorUserId: testUser(['settings.engine_types.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.EngineTypes },
+      ])
+    })
   })
 
   describe('when deleting', () => {
-    it('soft-deletes engine type with audit log', async () => {
+    it('hard-deletes unused engine type with audit log', async () => {
       const created = await container.engineTypesRepository.create({ code: 'DEL-TYPE' })
 
-      const deleted = await container.engineTypesService.softDelete(created.id, {
+      await container.engineTypesService.hardDelete(created.id, {
         actorUserId: testUser(['settings.engine_types.manage']).id,
         actorIp: null,
         actorUserAgent: null,
       })
 
-      expect(deleted.isActive).toBe(false)
+      const found = await container.engineTypesRepository.findById(created.id)
+      expect(found).toBeNull()
 
-      const list = await container.engineTypesRepository.list({ activeOnly: true, limit: 50 })
-      expect(list.items.some((item) => item.id === created.id)).toBe(false)
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+
+      expect(auditRows.some((row) => row.action === AuditAction.Delete)).toBe(true)
+    })
+
+    it('rejects hard delete when usageCount is greater than zero', async () => {
+      const created = await container.engineTypesRepository.create({ code: 'USED-TYPE' })
+      await ctx.db
+        .update(schema.engineTypes)
+        .set({ usageCount: 1 })
+        .where(eq(schema.engineTypes.id, created.id))
+
+      await expect(
+        container.engineTypesService.hardDelete(created.id, {
+          actorUserId: testUser(['settings.engine_types.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        }),
+      ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('emits resource_changed on hard delete', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.engineTypesRepository.create({ code: 'SSE-DEL' })
+
+      await scopedContainer.engineTypesService.hardDelete(created.id, {
+        actorUserId: testUser(['settings.engine_types.manage']).id,
+        actorIp: null,
+        actorUserAgent: null,
+      })
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.EngineTypes },
+      ])
     })
   })
 
@@ -243,16 +318,30 @@ describe('EngineTypes reference module', () => {
       expect(res.status).toBe(403)
     })
 
-    it('soft-deletes engine type via DELETE with manage permission', async () => {
+    it('hard-deletes unused engine type via DELETE with manage permission', async () => {
       const created = await container.engineTypesRepository.create({ code: 'DELETE-TYPE' })
       const app = createReferenceTestApp(container, testUser(['settings.engine_types.manage']))
       const res = await app.request(`/api/engine-types/${created.id}`, {
         method: 'DELETE',
       })
 
-      expect(res.status).toBe(200)
-      const body = (await res.json()) as { isActive: boolean }
-      expect(body.isActive).toBe(false)
+      expect(res.status).toBe(204)
+      expect(await container.engineTypesRepository.findById(created.id)).toBeNull()
+    })
+
+    it('returns 409 on DELETE when engine type is in use', async () => {
+      const created = await container.engineTypesRepository.create({ code: 'DELETE-USED' })
+      await ctx.db
+        .update(schema.engineTypes)
+        .set({ usageCount: 2 })
+        .where(eq(schema.engineTypes.id, created.id))
+
+      const app = createReferenceTestApp(container, testUser(['settings.engine_types.manage']))
+      const res = await app.request(`/api/engine-types/${created.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(res.status).toBe(409)
     })
 
     it('returns 401 without auth', async () => {

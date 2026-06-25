@@ -1,6 +1,6 @@
 import { AuditAction, ResourceChangedKey } from '@mr/shared'
 
-import { NotFoundError } from '../../core/errors/domain-errors.js'
+import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
@@ -71,13 +71,17 @@ export class EngineTypesService {
     return updated
   }
 
-  async softDelete(id: string, actor: HttpActorContext): Promise<EngineTypeListItem> {
+  async hardDelete(id: string, actor: HttpActorContext): Promise<void> {
     const before = await this.repo.findById(id)
     if (before === null) {
       throw new NotFoundError('Engine type', id)
     }
 
-    const deleted = await this.repo.softDelete(id)
+    if (before.usageCount > 0) {
+      throw new ConflictError('Tip motora se koristi u reklamacijama i ne može se obrisati.')
+    }
+
+    await this.repo.hardDelete(id)
 
     await this.audit.log({
       entityType: 'engine_type',
@@ -86,11 +90,9 @@ export class EngineTypesService {
       actorUserId: actor.actorUserId,
       actorIp: actor.actorIp,
       actorUserAgent: actor.actorUserAgent,
-      changes: { before, after: deleted },
+      changes: { before },
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.EngineTypes)
-
-    return deleted
   }
 }

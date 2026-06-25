@@ -168,25 +168,14 @@ export class EngineTypesRepository {
     return mapEngineTypeRow(updated)
   }
 
-  async softDelete(id: string): Promise<EngineTypeListItem> {
+  async hardDelete(id: string): Promise<void> {
     const [deleted] = await this.db
-      .update(engineTypes)
-      .set({ deletedAt: new Date(), isActive: false })
+      .delete(engineTypes)
       .where(and(eq(engineTypes.id, id), isNull(engineTypes.deletedAt)))
-      .returning({
-        id: engineTypes.id,
-        code: engineTypes.code,
-        manufacturer: engineTypes.manufacturer,
-        displacementCc: engineTypes.displacementCc,
-        notes: engineTypes.notes,
-        isActive: engineTypes.isActive,
-        usageCount: engineTypes.usageCount,
-      })
+      .returning({ id: engineTypes.id })
 
     if (deleted === undefined) {
       throw new NotFoundError('Engine type', id)
     }
-
-    return mapEngineTypeRow(deleted)
   }
 }

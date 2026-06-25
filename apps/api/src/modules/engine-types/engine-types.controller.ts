@@ -50,8 +50,8 @@ export function createEngineTypesController(container: Container) {
       }
 
       const { id } = EngineTypeIdParamSchema.parse({ id: c.req.param('id') })
-      const deleted = await container.engineTypesService.softDelete(id, getActorContext(c, user))
-      return c.json(deleted)
+      await container.engineTypesService.hardDelete(id, getActorContext(c, user))
+      return c.body(null, 204)
     },
   }
 }
