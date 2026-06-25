@@ -1,7 +1,16 @@
 /** @vitest-environment jsdom */
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@mr/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@mr/ui')>()
+  const { stubInputOtpUiComponents } = await import('./mocks/mr-ui-input-otp.js')
+  return {
+    ...actual,
+    ...stubInputOtpUiComponents,
+  }
+})
 
 import { setLocale } from '@mr/i18n'
 
@@ -91,21 +100,6 @@ function createTwoFactorStub(overrides: {
 describe('TwoFactorVerifyForm', () => {
   beforeEach(() => {
     setLocale('en')
-  })
-
-  afterEach(async () => {
-    // Unmount before jsdom teardown; input-otp schedules selection sync at 0/10/50ms.
-    await act(async () => {
-      cleanup()
-    })
-
-    vi.useFakeTimers()
-    try {
-      vi.runOnlyPendingTimers()
-    } finally {
-      vi.clearAllTimers()
-      vi.useRealTimers()
-    }
   })
 
   it('submits TOTP when 6 digits entered', async () => {
