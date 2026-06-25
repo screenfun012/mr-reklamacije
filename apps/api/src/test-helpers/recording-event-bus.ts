@@ -1,4 +1,4 @@
-import type { AppEvent, ClaimEventPayload } from '@mr/shared'
+import type { AppEvent, ClaimEventPayload, ResourceChangedKey } from '@mr/shared'
 
 import type { EventBus } from '../core/ports/event-bus-port.js'
 
@@ -7,8 +7,11 @@ export type RecordedClaimEvent =
   | { type: 'updated'; payload: ClaimEventPayload }
   | { type: 'deleted'; payload: ClaimEventPayload }
 
+export type RecordedResourceEvent = { type: 'resource_changed'; resource: ResourceChangedKey }
+
 export class RecordingEventBus implements EventBus {
   readonly events: RecordedClaimEvent[] = []
+  readonly resourceEvents: RecordedResourceEvent[] = []
 
   publishClaimCreated(payload: ClaimEventPayload): void {
     this.events.push({ type: 'created', payload })
@@ -20,6 +23,10 @@ export class RecordingEventBus implements EventBus {
 
   publishClaimDeleted(payload: ClaimEventPayload): void {
     this.events.push({ type: 'deleted', payload })
+  }
+
+  publishResourceChanged(resource: ResourceChangedKey): void {
+    this.resourceEvents.push({ type: 'resource_changed', resource })
   }
 
   subscribeUser(

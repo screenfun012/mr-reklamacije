@@ -2,12 +2,15 @@ import { EventEmitter } from 'node:events'
 
 import {
   ClaimEventType,
+  ResourceChangedKey,
+  ResourceEventType,
   SYSTEM_ROLE_ADMIN,
   SYSTEM_ROLE_OPERATOR,
   SYSTEM_ROLE_VIEWER,
   type AppEvent,
   type ClaimAppEvent,
   type ClaimEventPayload,
+  type ResourceChangedAppEvent,
 } from '@mr/shared'
 
 import type { EventBus } from '../../core/ports/event-bus-port.js'
@@ -17,6 +20,8 @@ const CLAIM_LIST_ROLE_CHANNELS = [
   SYSTEM_ROLE_VIEWER,
   SYSTEM_ROLE_ADMIN,
 ] as const
+
+const RESOURCE_SYNC_ROLE_CHANNELS = CLAIM_LIST_ROLE_CHANNELS
 
 function userChannel(userId: string): string {
   return `user:${userId}`
@@ -43,6 +48,16 @@ export class InProcessEventBus implements EventBus {
 
   publishClaimDeleted(payload: ClaimEventPayload): void {
     this.publishClaimEvent(ClaimEventType.Deleted, payload)
+  }
+
+  publishResourceChanged(resource: ResourceChangedKey): void {
+    const event: ResourceChangedAppEvent = {
+      type: ResourceEventType.Changed,
+      payload: { resource },
+    }
+    for (const role of RESOURCE_SYNC_ROLE_CHANNELS) {
+      this.publishToRole(role, event)
+    }
   }
 
   publishToUser(userId: string, event: AppEvent): void {

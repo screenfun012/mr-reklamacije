@@ -1,4 +1,11 @@
-import { ClaimEventType, ClaimKind, SYSTEM_ROLE_OPERATOR, type AppEvent } from '@mr/shared'
+import {
+  ClaimEventType,
+  ClaimKind,
+  ResourceChangedKey,
+  ResourceEventType,
+  SYSTEM_ROLE_OPERATOR,
+  type AppEvent,
+} from '@mr/shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { InProcessEventBus } from '../in-process-event-bus.js'
@@ -52,6 +59,26 @@ describe('InProcessEventBus', () => {
 
       expect(received).toEqual([])
       expect(bus.listenerCount(USER_ID, ROLES)).toBe(0)
+    })
+  })
+
+  describe('when publishing resource_changed', () => {
+    it('delivers the event to operator role subscribers', () => {
+      const received: AppEvent[] = []
+      const unsubscribe = bus.subscribeUser(USER_ID, ROLES, (event) => {
+        received.push(event)
+      })
+
+      bus.publishResourceChanged(ResourceChangedKey.EngineTypes)
+
+      expect(received).toEqual([
+        {
+          type: ResourceEventType.Changed,
+          payload: { resource: ResourceChangedKey.EngineTypes },
+        },
+      ])
+
+      unsubscribe()
     })
   })
 

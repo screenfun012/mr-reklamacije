@@ -1,5 +1,11 @@
 import { schema } from '@mr/db'
-import { AuditAction, CustomerKind, ERROR_CODE, ExternalPartyKind } from '@mr/shared'
+import {
+  AuditAction,
+  CustomerKind,
+  ERROR_CODE,
+  ExternalPartyKind,
+  ResourceChangedKey,
+} from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -10,6 +16,7 @@ import {
 } from '../../../test-helpers/test-app.js'
 import { ensureTestUser } from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
+import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import type { Container } from '../../../core/container.js'
 
 describe('EngineTypes reference module', () => {
@@ -122,6 +129,26 @@ describe('EngineTypes reference module', () => {
         .where(eq(schema.auditLog.entityId, created.id))
 
       expect(auditRows.some((row) => row.action === AuditAction.Update)).toBe(true)
+    })
+
+    it('emits resource_changed on update', async () => {
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+      const created = await scopedContainer.engineTypesRepository.create({ code: 'SSE-TYPE' })
+
+      await scopedContainer.engineTypesService.update(
+        created.id,
+        { notes: 'emit test' },
+        {
+          actorUserId: testUser(['settings.engine_types.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        },
+      )
+
+      expect(eventBus.resourceEvents).toEqual([
+        { type: 'resource_changed', resource: ResourceChangedKey.EngineTypes },
+      ])
     })
   })
 

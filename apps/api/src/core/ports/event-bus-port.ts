@@ -1,4 +1,4 @@
-import type { AppEvent, ClaimEventPayload } from '@mr/shared'
+import type { AppEvent, ClaimEventPayload, ResourceChangedKey } from '@mr/shared'
 
 /**
  * In-process claim notifications + SSE subscriptions (docs/05-auth-realtime.md).
@@ -11,6 +11,8 @@ export interface EventBus {
   publishClaimCreated(payload: ClaimEventPayload): void
   publishClaimUpdated(payload: ClaimEventPayload): void
   publishClaimDeleted(payload: ClaimEventPayload): void
+
+  publishResourceChanged(resource: ResourceChangedKey): void
 
   /**
    * Registers an SSE listener for direct user events and role-scoped broadcasts.
