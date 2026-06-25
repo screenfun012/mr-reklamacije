@@ -1,14 +1,20 @@
-export const STATISTICS_UNKNOWN_MANUFACTURER_CODE = 'UNKNOWN'
+import {
+  STATISTICS_OTHERS_CODE,
+  STATISTICS_RANK_CYCLE_COLORS,
+  STATISTICS_UNKNOWN_CODE,
+  resolveStatisticsRankColor,
+  type StatisticsRankChartColor,
+} from './statistics-rank-colors.js'
 
-/** UI roll-up bucket — not the catalog code `OSTALO`. */
-export const STATISTICS_MANUFACTURER_OTHERS_CODE = 'OTHERS'
+/** @deprecated Use STATISTICS_UNKNOWN_CODE */
+export const STATISTICS_UNKNOWN_MANUFACTURER_CODE = STATISTICS_UNKNOWN_CODE
+
+/** @deprecated Use STATISTICS_OTHERS_CODE */
+export const STATISTICS_MANUFACTURER_OTHERS_CODE = STATISTICS_OTHERS_CODE
 
 export const STATISTICS_MANUFACTURER_TOP_N = 10
 
-export interface ManufacturerChartColor {
-  fill: string
-  fillStrong: string
-}
+export type ManufacturerChartColor = StatisticsRankChartColor
 
 export const STATISTICS_MANUFACTURER_FIXED_COLORS: Readonly<
   Record<string, ManufacturerChartColor>
@@ -47,16 +53,7 @@ export const STATISTICS_MANUFACTURER_FIXED_COLORS: Readonly<
   },
 }
 
-export const STATISTICS_MANUFACTURER_CYCLE_COLORS: readonly ManufacturerChartColor[] = [
-  { fill: 'var(--color-mr-brand-400)', fillStrong: 'var(--color-mr-brand)' },
-  { fill: 'var(--color-mr-warning)', fillStrong: 'var(--color-mr-warning-strong)' },
-  { fill: '#14b8a6', fillStrong: '#0d9488' },
-  { fill: '#a855f7', fillStrong: '#7e22ce' },
-  { fill: '#f97316', fillStrong: '#c2410c' },
-  { fill: '#06b6d4', fillStrong: '#0891b2' },
-  { fill: '#ec4899', fillStrong: '#be185d' },
-  { fill: '#84cc16', fillStrong: '#4d7c0f' },
-]
+export const STATISTICS_MANUFACTURER_CYCLE_COLORS = STATISTICS_RANK_CYCLE_COLORS
 
 export const STATISTICS_OUTCOME_CHART_COLORS = {
   pending: {
@@ -74,29 +71,8 @@ export const STATISTICS_OUTCOME_CHART_COLORS = {
 } as const satisfies Record<string, ManufacturerChartColor>
 
 export function resolveManufacturerColor(code: string, cycleIndex = 0): ManufacturerChartColor {
-  if (code === STATISTICS_UNKNOWN_MANUFACTURER_CODE) {
-    return {
-      fill: 'var(--color-mr-neutral-400)',
-      fillStrong: 'var(--color-mr-neutral-500)',
-    }
-  }
-
-  if (code === STATISTICS_MANUFACTURER_OTHERS_CODE) {
-    return {
-      fill: 'var(--color-mr-neutral-500)',
-      fillStrong: 'var(--color-mr-neutral-600)',
-    }
-  }
-
-  const fixed = STATISTICS_MANUFACTURER_FIXED_COLORS[code]
-  if (fixed) {
-    return fixed
-  }
-
-  const normalizedIndex =
-    ((cycleIndex % STATISTICS_MANUFACTURER_CYCLE_COLORS.length) +
-      STATISTICS_MANUFACTURER_CYCLE_COLORS.length) %
-    STATISTICS_MANUFACTURER_CYCLE_COLORS.length
-
-  return STATISTICS_MANUFACTURER_CYCLE_COLORS[normalizedIndex]!
+  return resolveStatisticsRankColor(code, cycleIndex, {
+    fixedColors: STATISTICS_MANUFACTURER_FIXED_COLORS,
+    cycleColors: STATISTICS_MANUFACTURER_CYCLE_COLORS,
+  })
 }

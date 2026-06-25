@@ -56,6 +56,15 @@ export * from './constants/outcome-registry.js'
 export * from './constants/kind-colors.js'
 export * from './constants/kind-registry.js'
 export * from './constants/statistics-manufacturer-colors.js'
+export * from './constants/statistics-rank-colors.js'
+export * from './constants/statistics-source-colors.js'
+export {
+  collapseRankRowsForDisplay,
+  isStatisticsUnknownRankRow,
+  StatisticsRankDisplaySegment,
+  type StatisticsRankDisplayRow,
+  type StatisticsRankRow,
+} from './utils/statistics-rank-display.js'
 export * from './queries/index.js'
 export * from './permissions.js'
 export * from './constants/roles.js'

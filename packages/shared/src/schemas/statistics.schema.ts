@@ -96,6 +96,51 @@ export const StatisticsOutcomesSchema = z.object({
 
 export type StatisticsOutcomes = z.infer<typeof StatisticsOutcomesSchema>
 
+export const StatisticsSourceRowSchema = z.object({
+  sourceId: z.string().uuid().nullable(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsSourceRow = z.infer<typeof StatisticsSourceRowSchema>
+
+export const StatisticsBySourceSchema = z.object({
+  items: z.array(StatisticsSourceRowSchema),
+})
+
+export type StatisticsBySource = z.infer<typeof StatisticsBySourceSchema>
+
+export const StatisticsEmployeeRowSchema = z.object({
+  employeeId: z.string().uuid().nullable(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsEmployeeRow = z.infer<typeof StatisticsEmployeeRowSchema>
+
+export const StatisticsByEmployeeSchema = z.object({
+  items: z.array(StatisticsEmployeeRowSchema),
+})
+
+export type StatisticsByEmployee = z.infer<typeof StatisticsByEmployeeSchema>
+
+export const StatisticsEngineTypeRowSchema = z.object({
+  engineTypeId: z.string().uuid().nullable(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsEngineTypeRow = z.infer<typeof StatisticsEngineTypeRowSchema>
+
+export const StatisticsByEngineTypeSchema = z.object({
+  items: z.array(StatisticsEngineTypeRowSchema),
+})
+
+export type StatisticsByEngineType = z.infer<typeof StatisticsByEngineTypeSchema>
+
 export const StatisticsTrendsSchema = z.object({
   byMonth: z.array(StatisticsTrendMonthSchema),
   byYear: z.array(StatisticsTrendYearSchema),
@@ -108,6 +153,9 @@ export const StatisticsSummarySchema = z.object({
   trends: StatisticsTrendsSchema,
   byManufacturer: StatisticsByManufacturerSchema,
   outcomes: StatisticsOutcomesSchema,
+  bySource: StatisticsBySourceSchema,
+  byEmployee: StatisticsByEmployeeSchema,
+  byEngineType: StatisticsByEngineTypeSchema,
 })
 
 export type StatisticsSummary = z.infer<typeof StatisticsSummarySchema>
