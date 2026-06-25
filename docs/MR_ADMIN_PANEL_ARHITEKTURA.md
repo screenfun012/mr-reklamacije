@@ -46,7 +46,7 @@ Pošto gradimo vrhunski alat od starta, ne pravimo kompromis "refetch on focus p
 
 **Sloj 3 — Između RAZLIČITIH app-ova (admin → interna/portal) — PRAVI SSE:**
 Pošto su različiti origin-i (portovi), SSE preko Hono-a:
-1. **Hono SSE endpoint** `/api/events/stream` — svaki app (interna, portal) se konektuje pri startu, drži otvorenu konekciju
+1. **Hono SSE endpoint** `/api/events/me` — svaki app (interna, portal) se konektuje pri startu, drži otvorenu konekciju
 2. **Admin mutacija** (npr. dodaš proizvođača) → API upiše u bazu → **emituje SSE event** `{ type: 'resource.changed', resource: 'manufacturers' }` svim povezanim klijentima
 3. **Interna/portal app** prima event → `invalidateQueries(['manufacturers'])` → **instant refetch, bez ikakvog reload-a, bez focusa**
 4. Operater koji baš gleda formu vidi novi proizvođač da "uskoči" u dropdown u realnom vremenu
@@ -122,13 +122,12 @@ Iz analize interne app, ovo su entiteti/akcije koje admin mora da kontroliše:
 
 ## 5. Redosled faza (svaka daje upotrebljiv alat)
 
-### FAZA 0 — Temelj (engine) — KRITIČNA, pre svega
-**Cilj:** infrastruktura koja čini sve module laganim + real-time sync. Mnogo je VEĆ tu (vidi sekciju 6).
-- **Admin API namespace** `/api/admin/*` — odluka: nov wrapper ili generic obavija postojeće module
-- **Generički Resource engine** (ResourceDefinition, ResourceListPage, ResourceForm, useResourceCrud). Engine-manufacturers (već gotov) je referenca — odlučiti migrirati ga u generic ili ostaviti.
-- **Proširiti postojeći SSE** (NE graditi od nule): `InProcessEventBus` + `/api/events/me` VEĆ rade za claim event-ove. Dodati: `resource.changed` u `AppEvent` union, emit iz katalog mutacija, **EventSource klijent** u internoj/portal app (ovo fali — nema ga), mapiranje event→`invalidateQueries`. Odlučiti: zadržati `/api/events/me` ili dodati alias `/api/events/stream`.
-- Admin permisije postoje u `permissions.ts` — proširiti gde fali
-- **Gotovo kad:** generic engine radi end-to-end na jednom katalogu, i izmena u adminu se INSTANT vidi u internoj app preko SSE (dokazano kroz browser — promena u admin tabu, instant u internom bez reload-a)
+### FAZA 0 — Temelj (engine) — ✅ DOKAZANO (2026-06)
+**Cilj:** infrastruktura koja čini sve module laganim + real-time sync.
+- **Admin API namespace** `/api/admin/*` — odluka odložena za Fazu 1; F0 koristi postojeće module (`/api/engine-types`)
+- **Generički Resource engine** — `ResourceDefinition`, `ResourceListPage`, `ResourceFormDialog`, `useResourceCrud` u `admin-web`. Engine-manufacturers ostaje namenski (referenca). **Engine types** = prvi generic katalog (`/settings/engine-types`).
+- **SSE proširen** (nije gradio od nule): `InProcessEventBus` + `/api/events/me` + `resource_changed` u `AppEvent` union + emit iz engine-types mutacija + `EventSource` u `internal-web` (`useRealtimeEventStream` → `invalidateQueries`). **Odluka:** zadržati `/api/events/me` (nema `/api/events/stream` alias-a).
+- **Gotovo:** browser test — admin doda tip motora → interni dropdown osvežen instant bez F5.
 
 ### FAZA 1 — Katalozi (moduli 1-5) — prvi upotrebljiv alat
 **Cilj:** dodaješ/menjaš proizvođače, tipove motora, izvore, firme, radnike iz UI.
@@ -183,8 +182,9 @@ Cursor je pregledao kod i potvrdio tačno stanje (ne pretpostavke):
 
 ### Radi i gotovo
 - `apps/admin-web` skeleton: layout, sidebar, topbar, login (Better-Auth + 2FA), admin-only guard (`adminRequireRoles(['admin'])`)
-- **Engine manufacturers — POTPUN CRUD** (`/api/engine-manufacturers`): list/create/update/soft-delete + audit log + admin UI (`/settings/engine-manufacturers`). **ALI:** namenski modul, NE generički engine. Odluka u Fazi 0: prepraviti u generic ili ostaviti kao referencu.
-- **SSE temelj POSTOJI:** Hono `/api/events/me` (streamSSE, heartbeat 20s, auth), `InProcessEventBus` (Node EventEmitter, kanali `user:{id}`/`role:{code}`), emituje `claim.created/updated/deleted`. CORS nije problem — Vite proxy čini `/api/**` same-origin.
+- **Engine manufacturers — POTPUN CRUD** (`/api/engine-manufacturers`): namenski admin modul (referenca, ne migriran u generic).
+- **Engine types — POTPUN CRUD** (`/api/engine-types`): PATCH + soft-delete + audit; admin UI preko **generičkog engine-a** (`/settings/engine-types`).
+- **SSE:** Hono `/api/events/me` (streamSSE, heartbeat 20s, auth), `InProcessEventBus`, claim event-ovi + **`resource_changed`** (F0). `internal-web` sluša preko `EventSource` i invalidira query keš. CORS nije problem — Vite proxy čini `/api/**` same-origin.
 
 ### Placeholderi (ruta + guard postoje, prazan sadržaj)
 `/` (dashboard), `/emotive-claims`, `/domace-claims`, `/users` — konzistentan pattern (AdminShell + Heading + placeholder), dobra osnova za generic resource page.
@@ -193,7 +193,7 @@ Cursor je pregledao kod i potvrdio tačno stanje (ne pretpostavke):
 | Resurs | list | create | update | delete |
 |---|---|---|---|---|
 | Engine manufacturers | ✅ | ✅ | ✅ | ✅ soft |
-| Engine types | ✅ | ✅ | ❌ | ❌ |
+| Engine types | ✅ | ✅ | ✅ | ✅ soft |
 | Claim sources | ✅ | ❌ | ❌ | ❌ |
 | Employees | ✅ | ❌ | ❌ | ❌ |
 | Customers (firme) | ✅ | ❌ | ❌ | ❌ |
@@ -235,7 +235,7 @@ Pre koda, Cursor mora da potvrdi (jer on vidi kod, mi ne):
 4. **Operateri/korisnici:** Better-Auth korisnici — kako se kreiraju/menjaju? Da li admin može da kreira korisnika preko API-ja?
 5. **RBAC:** Kako su permisije trenutno dodeljene korisnicima (hardkodovano po roli, ili u bazi)? Za dinamičke permisije iz admina, gde se čuvaju?
 6. **Admin akcije nad reklamacijama:** "Otključavanje" — postoji li koncept zaključane reklamacije? Šta operater NE sme što admin sme? Gde je ta granica u kodu?
-7. **Cross-app real-time (SSE):** Da li Hono API trenutno ima bilo kakav streaming/SSE endpoint? Da li postoji prepreka da dodamo `streamSSE` (`/api/events/stream`) + Node `EventEmitter` event bus? Kako su app-ovi konfigurisani — da li interna/portal mogu da otvore `EventSource` ka `:3000` (CORS, credentials)? Ovo je ključno za real-time sync.
+7. **Cross-app real-time (SSE):** ✅ Potvrđeno — `/api/events/me` + `InProcessEventBus` + `EventSource` u internoj app; Vite proxy omogućava same-origin konekciju.
 8. **Rute koje smo "ostavili":** Spomenuli smo da su neke rute/putanje ostavljene za kasnije. Koje su to u admin app? Da li su spremne za popunjavanje?
 9. **Portal app:** Šta `:3003` trenutno ima? Da li su portal korisnici (klijenti) zaseban tip naloga?
 
@@ -259,7 +259,7 @@ Pre koda, Cursor mora da potvrdi (jer on vidi kod, mi ne):
               │   /api/admin/* (namespace) │
               │   + RBAC guard po akciji   │
               │   + EventEmitter bus       │
-              │   + streamSSE endpoint     │◄──── /api/events/stream
+              │   + streamSSE endpoint     │◄──── /api/events/me
               └────────────┬───────────────┘      (keep-alive konekcije)
                            │ čita iz            
                            ▼                       │ SSE push
