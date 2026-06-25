@@ -1,10 +1,8 @@
 import {
   collapseRankRowsForDisplay,
   resolveStatisticsRankColor,
-  STATISTICS_OTHERS_CODE,
   STATISTICS_RANK_CYCLE_COLORS,
   STATISTICS_SOURCE_FIXED_COLORS,
-  STATISTICS_UNKNOWN_CODE,
   type StatisticsByEmployee,
   type StatisticsByEngineType,
   type StatisticsBySource,
