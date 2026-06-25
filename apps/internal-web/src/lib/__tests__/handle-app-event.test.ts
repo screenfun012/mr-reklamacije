@@ -19,6 +19,20 @@ describe('parseAppEventFromSseData', () => {
     })
   })
 
+  it('parses resource_changed events for customers', () => {
+    const event = parseAppEventFromSseData(
+      JSON.stringify({
+        type: ResourceEventType.Changed,
+        payload: { resource: ResourceChangedKey.Customers },
+      }),
+    )
+
+    expect(event).toEqual({
+      type: ResourceEventType.Changed,
+      payload: { resource: ResourceChangedKey.Customers },
+    })
+  })
+
   it('returns null for malformed JSON', () => {
     expect(parseAppEventFromSseData('not-json')).toBeNull()
   })
@@ -35,5 +49,17 @@ describe('handleAppEvent', () => {
     })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['engine-types'] })
+  })
+
+  it('invalidates customers query prefix on resource_changed', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    handleAppEvent(queryClient, {
+      type: ResourceEventType.Changed,
+      payload: { resource: ResourceChangedKey.Customers },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['customers'] })
   })
 })

@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isResourceChangedKey(value: unknown): value is ResourceChangedKey {
-  return value === ResourceChangedKey.EngineTypes
+  return value === ResourceChangedKey.Customers || value === ResourceChangedKey.EngineTypes
 }
 
 function isResourceChangedAppEvent(value: unknown): value is ResourceChangedAppEvent {
