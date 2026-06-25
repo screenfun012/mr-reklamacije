@@ -31,6 +31,7 @@ const CUSTOMERS: CustomerListItem[] = [
     country: 'RS',
     city: 'Beograd',
     isActive: true,
+    usageCount: 0,
   },
 ]
 const ENGINE_TYPES: EngineTypeListItem[] = [
