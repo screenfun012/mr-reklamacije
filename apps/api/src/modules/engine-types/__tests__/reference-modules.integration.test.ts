@@ -416,6 +416,20 @@ describe('Customers reference module', () => {
         name: 'USAGE-COUNT-FIRMA',
         country: 'RS',
       })
+      const engineTypeId = await container.engineTypesRepository
+        .create({ code: 'USAGE-COUNT-ENG' })
+        .then((row) => row.id)
+
+      await ctx.db.insert(schema.emotiveClaims).values({
+        warrantyReport: 'Usage count test',
+        engineTypeId,
+        dateOfClaim: new Date('2026-01-15'),
+        mrNumber: 'MR-USAGE-COUNT',
+        outcome: 'pending',
+        claimYear: 2026,
+        customerId: created.id,
+        createdBy: TEST_USER_ID,
+      })
 
       await ctx.db.insert(schema.customerUsers).values({
         customerId: created.id,
@@ -430,7 +444,7 @@ describe('Customers reference module', () => {
       })
 
       const row = listed.items.find((item) => item.id === created.id)
-      expect(row?.usageCount).toBe(1)
+      expect(row?.usageCount).toBe(2)
     })
   })
 

@@ -5,7 +5,7 @@ import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
-import { customerUsers, customers, emotiveClaims } from './customers.schema.js'
+import { customers } from './customers.schema.js'
 import type {
   CustomerCreateInput,
   CustomerListItem,
@@ -27,14 +27,14 @@ interface CustomerRow {
 const customerUsageCountSql = sql<number>`(
   COALESCE((
     SELECT COUNT(*)::int
-    FROM ${emotiveClaims}
-    WHERE ${emotiveClaims.customerId} = ${customers.id}
-      AND ${emotiveClaims.deletedAt} IS NULL
+    FROM emotive_claims
+    WHERE emotive_claims.customer_id = customers.id
+      AND emotive_claims.deleted_at IS NULL
   ), 0)
   + COALESCE((
     SELECT COUNT(*)::int
-    FROM ${customerUsers}
-    WHERE ${customerUsers.customerId} = ${customers.id}
+    FROM customer_users
+    WHERE customer_users.customer_id = customers.id
   ), 0)
 )`.mapWith(Number)
 
