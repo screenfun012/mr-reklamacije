@@ -1,4 +1,4 @@
-import type { AppEvent, ClaimEventPayload } from '@mr/shared'
+import type { AppEvent, ClaimEventPayload, ResourceChangedKey } from '@mr/shared'
 
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 
@@ -16,6 +16,10 @@ export class NoOpEventBus implements EventBus {
 
   publishClaimDeleted(_payload: ClaimEventPayload): void {
     void _payload
+  }
+
+  publishResourceChanged(_resource: ResourceChangedKey): void {
+    void _resource
   }
 
   subscribeUser(
