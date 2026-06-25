@@ -115,11 +115,13 @@ describe('@mr/i18n messages', () => {
     expect(m.claims_filter_manufacturer_all()).toBe('Svi proizvođači')
     expect(m.field_search_placeholder()).toBe('Pretraži…')
     expect(m.nav_engine_manufacturers()).toBe('Proizvođači motora')
+    expect(m.nav_engine_types()).toBe('Tipovi motora')
     setLocale('en')
     expect(m.claims_filter_manufacturer()).toBe('Manufacturer')
     expect(m.claims_filter_manufacturer_all()).toBe('All manufacturers')
     expect(m.field_search_placeholder()).toBe('Search…')
     expect(m.nav_engine_manufacturers()).toBe('Engine manufacturers')
+    expect(m.nav_engine_types()).toBe('Engine types')
   })
 
   it('returns insufficient-role login banner message per locale', () => {

@@ -18,6 +18,7 @@ interface EngineTypeRow {
   code: string
   manufacturer: string | null
   displacementCc: number | null
+  notes: string | null
   isActive: boolean
   usageCount: number
 }
@@ -28,6 +29,7 @@ function mapEngineTypeRow(row: EngineTypeRow): EngineTypeListItem {
     code: row.code,
     manufacturer: row.manufacturer,
     displacementCc: row.displacementCc,
+    notes: row.notes,
     isActive: row.isActive,
     usageCount: row.usageCount,
   }
@@ -62,6 +64,7 @@ export class EngineTypesRepository {
         code: engineTypes.code,
         manufacturer: engineTypes.manufacturer,
         displacementCc: engineTypes.displacementCc,
+        notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })
@@ -108,6 +111,7 @@ export class EngineTypesRepository {
         code: engineTypes.code,
         manufacturer: engineTypes.manufacturer,
         displacementCc: engineTypes.displacementCc,
+        notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })
@@ -126,6 +130,7 @@ export class EngineTypesRepository {
         code: engineTypes.code,
         manufacturer: engineTypes.manufacturer,
         displacementCc: engineTypes.displacementCc,
+        notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })
@@ -151,6 +156,7 @@ export class EngineTypesRepository {
         code: engineTypes.code,
         manufacturer: engineTypes.manufacturer,
         displacementCc: engineTypes.displacementCc,
+        notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })
@@ -172,6 +178,7 @@ export class EngineTypesRepository {
         code: engineTypes.code,
         manufacturer: engineTypes.manufacturer,
         displacementCc: engineTypes.displacementCc,
+        notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })

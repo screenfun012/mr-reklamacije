@@ -1,4 +1,4 @@
-import type { QueryKey } from '@tanstack/react-query'
+import type { QueryKey, UseSuspenseQueryOptions } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { z } from 'zod'
 
@@ -24,12 +24,10 @@ export interface ResourceColumnDef<TItem> {
   cellClassName?: string
 }
 
-export interface ResourceListQueryOptions<TItem> {
-  queryKey: QueryKey
-  queryFn: () => Promise<readonly TItem[]>
-  staleTime: number
-  gcTime: number
-}
+export type ResourceListQueryOptions<TItem> = Pick<
+  UseSuspenseQueryOptions<readonly TItem[], Error, readonly TItem[], QueryKey>,
+  'queryKey' | 'queryFn' | 'staleTime' | 'gcTime'
+>
 
 export interface ResourceDefinition<
   TItem extends { id: string; isActive: boolean },

@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { Briefcase, Cog, Globe, LayoutDashboard, Users } from 'lucide-react'
+import { Briefcase, Cog, Cpu, Globe, LayoutDashboard, Users } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 export interface NavItem {
@@ -52,5 +52,11 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_engine_manufacturers,
     to: '/settings/engine-manufacturers',
     icon: Cog,
+  },
+  {
+    key: 'engine-types',
+    label: m.nav_engine_types,
+    to: '/settings/engine-types',
+    icon: Cpu,
   },
 ]

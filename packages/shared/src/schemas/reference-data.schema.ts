@@ -62,6 +62,7 @@ export const EngineTypeListItemSchema = z.object({
   code: z.string(),
   manufacturer: z.string().nullable(),
   displacementCc: z.number().nullable(),
+  notes: z.string().nullable(),
   isActive: z.boolean(),
   usageCount: z.number().int(),
 })
