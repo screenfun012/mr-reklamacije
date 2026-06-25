@@ -61,6 +61,41 @@ export const StatisticsByManufacturerSchema = z.object({
 
 export type StatisticsByManufacturer = z.infer<typeof StatisticsByManufacturerSchema>
 
+export const StatisticsOutcomeDistributionSchema = z.object({
+  pending: z.coerce.number().int().nonnegative(),
+  accepted: z.coerce.number().int().nonnegative(),
+  rejected: z.coerce.number().int().nonnegative(),
+  total: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsOutcomeDistribution = z.infer<typeof StatisticsOutcomeDistributionSchema>
+
+export const StatisticsProcessingTimeSchema = z.object({
+  averageDays: z.coerce.number().nonnegative().nullable(),
+  medianDays: z.coerce.number().nonnegative().nullable(),
+  maxDays: z.coerce.number().int().nonnegative(),
+  sampleSize: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsProcessingTime = z.infer<typeof StatisticsProcessingTimeSchema>
+
+export const StatisticsAcceptanceRateMonthSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  decided: z.coerce.number().int().nonnegative(),
+  accepted: z.coerce.number().int().nonnegative(),
+  ratePercent: z.coerce.number().nullable(),
+})
+
+export type StatisticsAcceptanceRateMonth = z.infer<typeof StatisticsAcceptanceRateMonthSchema>
+
+export const StatisticsOutcomesSchema = z.object({
+  distribution: StatisticsOutcomeDistributionSchema,
+  processingTime: StatisticsProcessingTimeSchema,
+  acceptanceRateByMonth: z.array(StatisticsAcceptanceRateMonthSchema),
+})
+
+export type StatisticsOutcomes = z.infer<typeof StatisticsOutcomesSchema>
+
 export const StatisticsTrendsSchema = z.object({
   byMonth: z.array(StatisticsTrendMonthSchema),
   byYear: z.array(StatisticsTrendYearSchema),
@@ -72,6 +107,7 @@ export type StatisticsTrends = z.infer<typeof StatisticsTrendsSchema>
 export const StatisticsSummarySchema = z.object({
   trends: StatisticsTrendsSchema,
   byManufacturer: StatisticsByManufacturerSchema,
+  outcomes: StatisticsOutcomesSchema,
 })
 
 export type StatisticsSummary = z.infer<typeof StatisticsSummarySchema>

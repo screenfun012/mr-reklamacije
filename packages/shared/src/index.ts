@@ -32,6 +32,14 @@ export {
   type StatisticsManufacturerDisplayRow,
 } from './utils/statistics-manufacturer-display.js'
 export {
+  computeAcceptanceRatePercent,
+  computeOutcomeDistributionPercents,
+  formatStatisticsDays,
+  hasProcessingTimeSample,
+  roundStatisticsDays,
+  type OutcomeDistributionPercents,
+} from './utils/statistics-outcomes-display.js'
+export {
   CLAIM_REPORT_ALLOWED_ATTRIBUTES,
   CLAIM_REPORT_ALLOWED_STYLES,
   CLAIM_REPORT_ALLOWED_TAGS,

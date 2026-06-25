@@ -6,6 +6,12 @@ import {
 } from '../../constants/statistics-manufacturer-colors.js'
 import { StatisticsSummarySchema, StatisticsVolumeTrendDirection } from '../statistics.schema.js'
 
+const emptyOutcomes = {
+  distribution: { pending: 0, accepted: 0, rejected: 0, total: 0 },
+  processingTime: { averageDays: null, medianDays: null, maxDays: 0, sampleSize: 0 },
+  acceptanceRateByMonth: [],
+}
+
 describe('StatisticsSummarySchema', () => {
   it('parses a valid trends summary', () => {
     const parsed = StatisticsSummarySchema.parse({
@@ -42,11 +48,17 @@ describe('StatisticsSummarySchema', () => {
           },
         ],
       },
+      outcomes: {
+        distribution: { pending: 3, accepted: 4, rejected: 2, total: 9 },
+        processingTime: { averageDays: 12.5, medianDays: 10, maxDays: 45, sampleSize: 6 },
+        acceptanceRateByMonth: [{ month: '2025-06', decided: 4, accepted: 3, ratePercent: 75 }],
+      },
     })
 
     expect(parsed.trends.byMonth).toHaveLength(1)
     expect(parsed.trends.volumeTrend.direction).toBe('rising')
     expect(parsed.byManufacturer.items[1]?.code).toBe(STATISTICS_UNKNOWN_MANUFACTURER_CODE)
+    expect(parsed.outcomes.processingTime.sampleSize).toBe(6)
   })
 
   it('parses catalog OSTALO separately from UI others roll-up code', () => {
@@ -75,6 +87,7 @@ describe('StatisticsSummarySchema', () => {
           },
         ],
       },
+      outcomes: emptyOutcomes,
     })
 
     expect(parsed.byManufacturer.items[0]?.code).toBe('OSTALO')
