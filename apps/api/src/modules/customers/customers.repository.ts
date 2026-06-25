@@ -5,8 +5,7 @@ import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
-import { emotiveClaims } from '../emotive-claims/emotive-claims.schema.js'
-import { customerUsers, customers } from './customers.schema.js'
+import { customerUsers, customers, emotiveClaims } from './customers.schema.js'
 import type {
   CustomerCreateInput,
   CustomerListItem,
