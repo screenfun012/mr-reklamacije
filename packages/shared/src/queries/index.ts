@@ -10,7 +10,23 @@ export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'
 export { dashboardKeys, dashboardSummaryOptions } from './dashboard.js'
-export { statisticsKeys, statisticsSummaryOptions } from './statistics.js'
+export {
+  statisticsKeys,
+  statisticsSummaryOptions,
+  statisticsSummaryQueryKeyFromSearch,
+} from './statistics.js'
+export {
+  STATISTICS_MAX_CUSTOM_RANGE_MONTHS,
+  StatisticsSearchSchema,
+  serializeStatisticsSummaryParams,
+  statisticsFiltersFromSearch,
+  statisticsSearchFromFilters,
+  type StatisticsSearch,
+} from './statistics-search.js'
+export {
+  normalizeStatisticsSummaryFilters,
+  type StatisticsSummaryFilters,
+} from './statistics-filters.js'
 export { invalidateStatisticsSummary } from './invalidate-statistics-summary.js'
 export {
   ClaimDetailSearchSchema,
