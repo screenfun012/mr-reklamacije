@@ -29,6 +29,11 @@ const EMOTIVE_ONLY: StatisticsActor = {
   permissions: ['statistics.view_emotive'],
 }
 
+const DOMACE_ONLY: StatisticsActor = {
+  id: TEST_USER_ID,
+  permissions: ['statistics.view_domace'],
+}
+
 const NO_STATISTICS = testUser(['emotive_claims.view', 'domace_claims.view'])
 
 const auditContext = {
@@ -68,6 +73,7 @@ describe('Statistics module integration', () => {
     outcome: (typeof ClaimOutcome)[keyof typeof ClaimOutcome] = ClaimOutcome.Accepted,
     dateOfClaim: Date = daysAgo(10),
     manufacturerId?: string,
+    sourceCode: string = 'SELMAN',
   ): Promise<string> {
     const engineType = await container.engineTypesRepository.create({
       code: `STAT-${Date.now()}-${mrNumber}`,
@@ -81,7 +87,7 @@ describe('Statistics module integration', () => {
         outcome,
         warrantyReport: 'Statistics test',
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),
-        sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+        sourceId: await getClaimSourceIdByCode(ctx.db, sourceCode),
         faults: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
       },
@@ -101,6 +107,7 @@ describe('Statistics module integration', () => {
     manufacturerId?: string,
     engineTypeId?: string | null,
     outcome: (typeof ClaimOutcome)[keyof typeof ClaimOutcome] = ClaimOutcome.Accepted,
+    employeeId?: string,
   ): Promise<string> {
     const claim = await container.domaceClaimsService.create(
       {
@@ -112,6 +119,7 @@ describe('Statistics module integration', () => {
         faults: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
         ...(engineTypeId !== undefined ? { engineTypeId: engineTypeId ?? undefined } : {}),
+        ...(employeeId !== undefined ? { employeeId } : {}),
       },
       {
         id: TEST_USER_ID,
@@ -345,6 +353,15 @@ describe('Statistics module integration', () => {
           }),
           acceptanceRateByMonth: expect.any(Array),
         },
+        bySource: {
+          items: expect.any(Array),
+        },
+        byEmployee: {
+          items: expect.any(Array),
+        },
+        byEngineType: {
+          items: expect.any(Array),
+        },
       })
     })
   })
@@ -421,6 +438,167 @@ describe('Statistics module integration', () => {
       expect(emotiveOnly.outcomes.processingTime.sampleSize).toBeLessThan(
         full.outcomes.processingTime.sampleSize,
       )
+    })
+  })
+
+  describe('when loading breakdown statistics', () => {
+    it('groups emotive claims by claim source', async () => {
+      await createEmotiveClaim(
+        'STAT-SRC-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(9),
+        undefined,
+        'SELMAN',
+      )
+      await createEmotiveClaim(
+        'STAT-SRC-2/26',
+        ClaimOutcome.Accepted,
+        daysAgo(8),
+        undefined,
+        'VITOBELLO',
+      )
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const selman = summary.bySource.items.find((row) => row.code === 'SELMAN')
+      const vitobello = summary.bySource.items.find((row) => row.code === 'VITOBELLO')
+
+      expect(selman?.total).toBeGreaterThanOrEqual(1)
+      expect(vitobello?.total).toBeGreaterThanOrEqual(1)
+    })
+
+    it('returns empty bySource for domace-only statistics scope', async () => {
+      await createEmotiveClaim('STAT-SRC-DOM-ONLY/26')
+      await createDomaceClaim('STAT-SRC-DOM-ONLY-D/26')
+
+      const summary = await container.statisticsService.getSummary(DOMACE_ONLY)
+
+      expect(summary.bySource.items).toEqual([])
+    })
+
+    it('includes unknown source segment for null source_id', async () => {
+      const claimId = await createEmotiveClaim('STAT-SRC-UNK/26')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ sourceId: null })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const unknown = summary.bySource.items.find(
+        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+      )
+
+      expect(unknown).toMatchObject({ sourceId: null, total: expect.any(Number) })
+      expect(unknown?.total).toBeGreaterThanOrEqual(1)
+    })
+
+    it('aggregates assigned employee_id across emotive and domace claims', async () => {
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+
+      await createEmotiveClaim('STAT-EMP-1/26', ClaimOutcome.Accepted, daysAgo(10))
+      await createDomaceClaim(
+        'STAT-EMP-2/26',
+        daysAgo(11),
+        undefined,
+        undefined,
+        ClaimOutcome.Accepted,
+        employeeId,
+      )
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const employee = summary.byEmployee.items.find((row) => row.employeeId === employeeId)
+
+      expect(employee?.total).toBeGreaterThanOrEqual(2)
+    })
+
+    it('includes unknown employee segment for null employee_id', async () => {
+      await createDomaceClaim(
+        'STAT-EMP-UNK/26',
+        daysAgo(9),
+        undefined,
+        undefined,
+        ClaimOutcome.Accepted,
+        undefined,
+      )
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const unknown = summary.byEmployee.items.find(
+        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+      )
+
+      expect(unknown).toMatchObject({ employeeId: null })
+      expect(unknown?.total).toBeGreaterThanOrEqual(1)
+    })
+
+    it('groups claims by engine type including null engine_type_id', async () => {
+      const engineType = await container.engineTypesRepository.create({
+        code: `STAT-ET-${Date.now()}`,
+      })
+
+      await createEmotiveClaim('STAT-ET-1/26', ClaimOutcome.Accepted, daysAgo(10))
+      await createDomaceClaim('STAT-ET-2/26', daysAgo(11), undefined, engineType.id)
+      await createDomaceClaim('STAT-ET-UNK/26', daysAgo(12), undefined, null)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const typed = summary.byEngineType.items.find((row) => row.engineTypeId === engineType.id)
+      const unknown = summary.byEngineType.items.find(
+        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+      )
+
+      expect(typed?.total).toBeGreaterThanOrEqual(1)
+      expect(unknown?.total).toBeGreaterThanOrEqual(1)
+    })
+
+    it('excludes archived claims from breakdown aggregates', async () => {
+      const before = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const beforeSelman = before.bySource.items.find((row) => row.code === 'SELMAN')?.total ?? 0
+
+      const activeId = await createEmotiveClaim('STAT-BRK-ACTIVE/26')
+      const archivedId = await createEmotiveClaim('STAT-BRK-ARCH/26')
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome: ClaimOutcome.Archived })
+        .where(eq(schema.emotiveClaims.id, archivedId))
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const selman = summary.bySource.items.find((row) => row.code === 'SELMAN')
+
+      expect(selman?.total).toBe(beforeSelman + 1)
+      expect(activeId).toBeDefined()
+    })
+
+    it('scopes domace employee counts to statistics.view_domace permission', async () => {
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+      const beforeEmotive = await container.statisticsService.getSummary(EMOTIVE_ONLY)
+      const beforeFull = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const beforeEmotiveCount =
+        beforeEmotive.byEmployee.items.find((row) => row.employeeId === employeeId)?.total ?? 0
+      const beforeFullCount =
+        beforeFull.byEmployee.items.find((row) => row.employeeId === employeeId)?.total ?? 0
+
+      await createEmotiveClaim('STAT-EMP-SCOPE-1/26')
+      await createDomaceClaim(
+        'STAT-EMP-SCOPE-2/26',
+        daysAgo(10),
+        undefined,
+        undefined,
+        ClaimOutcome.Accepted,
+        employeeId,
+      )
+
+      const emotiveOnly = await container.statisticsService.getSummary(EMOTIVE_ONLY)
+      const full = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const emotiveRow = emotiveOnly.byEmployee.items.find((row) => row.employeeId === employeeId)
+      const fullRow = full.byEmployee.items.find((row) => row.employeeId === employeeId)
+
+      expect(emotiveRow?.total).toBe(beforeEmotiveCount + 1)
+      expect(fullRow?.total).toBe(beforeFullCount + 2)
     })
   })
 })

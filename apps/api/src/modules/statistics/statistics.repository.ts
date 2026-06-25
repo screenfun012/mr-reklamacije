@@ -6,9 +6,12 @@ import {
   STATISTICS_TREND_MONTH_COUNT,
   STATISTICS_UNKNOWN_MANUFACTURER_CODE,
   type StatisticsAcceptanceRateMonth,
+  type StatisticsEmployeeRow,
+  type StatisticsEngineTypeRow,
   type StatisticsManufacturerRow,
   type StatisticsOutcomeDistribution,
   type StatisticsProcessingTime,
+  type StatisticsSourceRow,
   type StatisticsTrendMonth,
   type StatisticsTrendYear,
 } from '@mr/shared'
@@ -59,6 +62,26 @@ interface AcceptanceRateMonthRow extends Record<string, unknown> {
   month: string
   decided: number | string
   accepted: number | string
+}
+
+interface SourceRow extends Record<string, unknown> {
+  source_id: string | null
+  code: string | null
+  name: string | null
+  total: number | string
+}
+
+interface EmployeeRow extends Record<string, unknown> {
+  employee_id: string | null
+  name: string | null
+  total: number | string
+}
+
+interface EngineTypeRow extends Record<string, unknown> {
+  engine_type_id: string | null
+  code: string | null
+  name: string | null
+  total: number | string
 }
 
 function toInt(value: number | string): number {
@@ -452,5 +475,141 @@ export class StatisticsRepository {
         ratePercent: computeAcceptanceRatePercent(accepted, decided),
       }
     })
+  }
+
+  async fetchBySource(scope: StatisticsScope): Promise<StatisticsSourceRow[]> {
+    if (!scope.includeEmotive) {
+      return []
+    }
+
+    const result = await this.db.execute<SourceRow>(sql`
+      SELECT
+        ec.source_id,
+        MAX(cs.code) AS code,
+        MAX(cs.name) AS name,
+        COUNT(*)::int AS total
+      FROM emotive_claims ec
+      LEFT JOIN claim_sources cs
+        ON cs.id = ec.source_id
+        AND cs.deleted_at IS NULL
+      WHERE ${activeEmotiveWhere('ec')}
+        AND ${anchorDate('ec')} >= ${trendWindowStart()}
+      GROUP BY ec.source_id
+      HAVING COUNT(*) > 0
+      ORDER BY total DESC, MAX(cs.name) ASC NULLS LAST
+    `)
+
+    return result.rows.map((row) => ({
+      sourceId: row.source_id,
+      code: row.source_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : (row.code ?? ''),
+      name:
+        row.source_id === null
+          ? 'Nepoznato'
+          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+      total: toInt(row.total),
+    }))
+  }
+
+  async fetchByEmployee(scope: StatisticsScope): Promise<StatisticsEmployeeRow[]> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      branches.push(sql`
+        SELECT ec.employee_id
+        FROM emotive_claims ec
+        WHERE ${activeEmotiveWhere('ec')}
+          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+      `)
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT dc.employee_id
+        FROM domace_claims dc
+        WHERE ${activeDomaceWhere('dc')}
+          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<EmployeeRow>(sql`
+      SELECT
+        c.employee_id,
+        MAX(e.full_name) AS name,
+        COUNT(*)::int AS total
+      FROM (${unionSql}) AS c
+      LEFT JOIN employees e
+        ON e.id = c.employee_id
+        AND e.deleted_at IS NULL
+      GROUP BY c.employee_id
+      HAVING COUNT(*) > 0
+      ORDER BY total DESC, MAX(e.full_name) ASC NULLS LAST
+    `)
+
+    return result.rows.map((row) => ({
+      employeeId: row.employee_id,
+      code: row.employee_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : row.employee_id,
+      name:
+        row.employee_id === null ? 'Nepoznato' : (row.name ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+      total: toInt(row.total),
+    }))
+  }
+
+  async fetchByEngineType(scope: StatisticsScope): Promise<StatisticsEngineTypeRow[]> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      branches.push(sql`
+        SELECT ec.engine_type_id
+        FROM emotive_claims ec
+        WHERE ${activeEmotiveWhere('ec')}
+          AND ${anchorDate('ec')} >= ${trendWindowStart()}
+      `)
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT dc.engine_type_id
+        FROM domace_claims dc
+        WHERE ${activeDomaceWhere('dc')}
+          AND ${anchorDate('dc')} >= ${trendWindowStart()}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<EngineTypeRow>(sql`
+      SELECT
+        c.engine_type_id,
+        MAX(et.code) AS code,
+        MAX(et.code) AS name,
+        COUNT(*)::int AS total
+      FROM (${unionSql}) AS c
+      LEFT JOIN engine_types et
+        ON et.id = c.engine_type_id
+        AND et.deleted_at IS NULL
+      GROUP BY c.engine_type_id
+      HAVING COUNT(*) > 0
+      ORDER BY total DESC, MAX(et.code) ASC NULLS LAST
+    `)
+
+    return result.rows.map((row) => ({
+      engineTypeId: row.engine_type_id,
+      code: row.engine_type_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : (row.code ?? ''),
+      name:
+        row.engine_type_id === null
+          ? 'Nepoznato'
+          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+      total: toInt(row.total),
+    }))
   }
 }

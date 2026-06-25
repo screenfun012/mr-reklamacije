@@ -90,6 +90,9 @@ export class StatisticsService {
       distribution,
       processingTime,
       acceptanceRateByMonth,
+      sourceItems,
+      employeeItems,
+      engineTypeItems,
     ] = await Promise.all([
       this.repo.fetchTrendsByMonth(scope),
       this.repo.fetchTrendsByYear(scope),
@@ -97,6 +100,9 @@ export class StatisticsService {
       this.repo.fetchOutcomeDistribution(scope),
       this.repo.fetchProcessingTime(scope),
       this.repo.fetchAcceptanceRateByMonth(scope),
+      this.repo.fetchBySource(scope),
+      this.repo.fetchByEmployee(scope),
+      this.repo.fetchByEngineType(scope),
     ])
 
     return {
@@ -112,6 +118,15 @@ export class StatisticsService {
         distribution,
         processingTime,
         acceptanceRateByMonth,
+      },
+      bySource: {
+        items: sourceItems,
+      },
+      byEmployee: {
+        items: employeeItems,
+      },
+      byEngineType: {
+        items: engineTypeItems,
       },
     }
   }
