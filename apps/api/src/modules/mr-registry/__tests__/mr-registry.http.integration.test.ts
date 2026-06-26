@@ -11,6 +11,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer, testUser } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import { registerMrRegistryRoutes } from '../index.js'
@@ -48,9 +49,7 @@ describe('MrRegistry HTTP', () => {
   })
 
   async function seedEmotiveClaim(mrNumber: string): Promise<string> {
-    const engineTypeId = (
-      await container.engineTypesRepository.create({ code: `LK-${Date.now()}` })
-    ).id
+    const engineTypeId = (await createTestEngineType(container, `LK-${Date.now()}`)).id
     const created = await container.emotiveClaimsService.create(
       {
         engineTypeId,

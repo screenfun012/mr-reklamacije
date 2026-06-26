@@ -16,6 +16,10 @@ import {
 } from '../../../test-helpers/test-app.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
+import {
+  createTestEngineType,
+  ensureTestEngineManufacturerId,
+} from '../../../test-helpers/engine-type-fixtures.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import type { Container } from '../../../core/container.js'
 
@@ -47,8 +51,8 @@ describe('EngineTypes reference module', () => {
     })
 
     it('paginates with cursor', async () => {
-      await container.engineTypesRepository.create({ code: 'PAGE-A' })
-      await container.engineTypesRepository.create({ code: 'PAGE-B' })
+      await createTestEngineType(container, 'PAGE-A')
+      await createTestEngineType(container, 'PAGE-B')
 
       const firstPage = await container.engineTypesRepository.list({ activeOnly: true, limit: 1 })
       expect(firstPage.hasMore).toBe(true)
@@ -61,12 +65,28 @@ describe('EngineTypes reference module', () => {
 
       expect(secondPage.items[0]?.id).not.toBe(firstPage.items[0]?.id)
     })
+    it('filters by manufacturerId', async () => {
+      const bmwId = await ensureTestEngineManufacturerId(container, 'FILTER-BMW', 'BMW')
+      const audiId = await ensureTestEngineManufacturerId(container, 'FILTER-AUDI', 'Audi')
+      await createTestEngineType(container, 'FILTER-BMW-TYPE', bmwId)
+      await createTestEngineType(container, 'FILTER-AUDI-TYPE', audiId)
+
+      const result = await container.engineTypesRepository.list({
+        activeOnly: true,
+        limit: 50,
+        manufacturerId: bmwId,
+      })
+
+      expect(result.items.some((item) => item.code === 'FILTER-BMW-TYPE')).toBe(true)
+      expect(result.items.some((item) => item.code === 'FILTER-AUDI-TYPE')).toBe(false)
+    })
   })
 
   describe('when creating', () => {
     it('creates engine type with defaults and writes audit log', async () => {
+      const manufacturerId = await ensureTestEngineManufacturerId(container, 'CREATE-BMW', 'BMW')
       const created = await container.engineTypesService.create(
-        { code: 'TEST-N47', manufacturer: 'BMW' },
+        { code: 'TEST-N47', manufacturerId },
         {
           actorUserId: testUser(['settings.engine_types.create']).id,
           actorIp: null,
@@ -89,11 +109,11 @@ describe('EngineTypes reference module', () => {
     })
 
     it('throws conflict for duplicate code', async () => {
-      await container.engineTypesRepository.create({ code: 'DUP-CODE' })
+      await createTestEngineType(container, 'DUP-CODE')
 
       await expect(
         container.engineTypesService.create(
-          { code: 'DUP-CODE' },
+          { code: 'DUP-CODE', manufacturerId: await ensureTestEngineManufacturerId(container) },
           {
             actorUserId: testUser(['settings.engine_types.create']).id,
             actorIp: null,
@@ -106,14 +126,24 @@ describe('EngineTypes reference module', () => {
 
   describe('when updating', () => {
     it('updates fields including notes with audit log', async () => {
+      const beforeManufacturerId = await ensureTestEngineManufacturerId(
+        container,
+        'UPD-BEFORE',
+        'Before',
+      )
+      const afterManufacturerId = await ensureTestEngineManufacturerId(
+        container,
+        'UPD-AFTER',
+        'After',
+      )
       const created = await container.engineTypesRepository.create({
         code: 'UPD-TYPE',
-        manufacturer: 'Before',
+        manufacturerId: beforeManufacturerId,
       })
 
       const updated = await container.engineTypesService.update(
         created.id,
-        { manufacturer: 'After', notes: 'Updated notes' },
+        { manufacturerId: afterManufacturerId, notes: 'Updated notes' },
         {
           actorUserId: testUser(['settings.engine_types.manage']).id,
           actorIp: null,
@@ -121,7 +151,7 @@ describe('EngineTypes reference module', () => {
         },
       )
 
-      expect(updated.manufacturer).toBe('After')
+      expect(updated.manufacturerName).toBe('After')
 
       const auditRows = await ctx.db
         .select()
@@ -134,7 +164,7 @@ describe('EngineTypes reference module', () => {
     it('emits resource_changed on update', async () => {
       const eventBus = new RecordingEventBus()
       const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
-      const created = await scopedContainer.engineTypesRepository.create({ code: 'SSE-TYPE' })
+      const created = await createTestEngineType(scopedContainer, 'SSE-TYPE')
 
       await scopedContainer.engineTypesService.update(
         created.id,
@@ -152,7 +182,7 @@ describe('EngineTypes reference module', () => {
     })
 
     it('reactivates engine type via PATCH isActive with audit log', async () => {
-      const created = await container.engineTypesRepository.create({ code: 'REACT-TYPE' })
+      const created = await createTestEngineType(container, 'REACT-TYPE')
       await container.engineTypesRepository.update(created.id, { isActive: false })
 
       const reactivated = await container.engineTypesService.update(
@@ -171,7 +201,7 @@ describe('EngineTypes reference module', () => {
     it('emits resource_changed on reactivation', async () => {
       const eventBus = new RecordingEventBus()
       const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
-      const created = await scopedContainer.engineTypesRepository.create({ code: 'SSE-REACT' })
+      const created = await createTestEngineType(scopedContainer, 'SSE-REACT')
       await scopedContainer.engineTypesRepository.update(created.id, { isActive: false })
 
       await scopedContainer.engineTypesService.update(
@@ -192,7 +222,7 @@ describe('EngineTypes reference module', () => {
 
   describe('when deleting', () => {
     it('hard-deletes unused engine type with audit log', async () => {
-      const created = await container.engineTypesRepository.create({ code: 'DEL-TYPE' })
+      const created = await createTestEngineType(container, 'DEL-TYPE')
 
       await container.engineTypesService.hardDelete(created.id, {
         actorUserId: testUser(['settings.engine_types.manage']).id,
@@ -212,7 +242,7 @@ describe('EngineTypes reference module', () => {
     })
 
     it('rejects hard delete when usageCount is greater than zero', async () => {
-      const created = await container.engineTypesRepository.create({ code: 'USED-TYPE' })
+      const created = await createTestEngineType(container, 'USED-TYPE')
       await ctx.db
         .update(schema.engineTypes)
         .set({ usageCount: 1 })
@@ -230,7 +260,7 @@ describe('EngineTypes reference module', () => {
     it('emits resource_changed on hard delete', async () => {
       const eventBus = new RecordingEventBus()
       const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
-      const created = await scopedContainer.engineTypesRepository.create({ code: 'SSE-DEL' })
+      const created = await createTestEngineType(scopedContainer, 'SSE-DEL')
 
       await scopedContainer.engineTypesService.hardDelete(created.id, {
         actorUserId: testUser(['settings.engine_types.manage']).id,
@@ -262,6 +292,7 @@ describe('EngineTypes reference module', () => {
     })
 
     it('creates engine type via POST', async () => {
+      const manufacturerId = await ensureTestEngineManufacturerId(container, 'HTTP-BMW', 'BMW')
       const app = createReferenceTestApp(
         container,
         testUser(['settings.engine_types.create', 'emotive_claims.create']),
@@ -269,7 +300,7 @@ describe('EngineTypes reference module', () => {
       const res = await app.request('/api/engine-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'HTTP-N57', displacementCc: 2998 }),
+        body: JSON.stringify({ code: 'HTTP-N57', manufacturerId, displacementCc: 2998 }),
       })
 
       expect(res.status).toBe(201)
@@ -279,7 +310,7 @@ describe('EngineTypes reference module', () => {
     })
 
     it('lists engine types with ANY read permission', async () => {
-      await container.engineTypesRepository.create({ code: 'LIST-ONE' })
+      await createTestEngineType(container, 'LIST-ONE')
       const app = createReferenceTestApp(container, testUser(['domace_claims.update']))
       const res = await app.request('/api/engine-types?limit=5')
       expect(res.status).toBe(200)
@@ -289,26 +320,34 @@ describe('EngineTypes reference module', () => {
     })
 
     it('updates engine type via PATCH with manage permission', async () => {
+      const beforeManufacturerId = await ensureTestEngineManufacturerId(
+        container,
+        'PATCH-BEFORE',
+        'Patch Me',
+      )
+      const afterManufacturerId = await ensureTestEngineManufacturerId(
+        container,
+        'PATCH-AFTER',
+        'Patched',
+      )
       const created = await container.engineTypesRepository.create({
         code: 'PATCH-TYPE',
-        manufacturer: 'Patch Me',
+        manufacturerId: beforeManufacturerId,
       })
       const app = createReferenceTestApp(container, testUser(['settings.engine_types.manage']))
       const res = await app.request(`/api/engine-types/${created.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manufacturer: 'Patched', notes: 'SSE test note' }),
+        body: JSON.stringify({ manufacturerId: afterManufacturerId, notes: 'SSE test note' }),
       })
 
       expect(res.status).toBe(200)
-      const body = (await res.json()) as { manufacturer: string | null }
-      expect(body.manufacturer).toBe('Patched')
+      const body = (await res.json()) as { manufacturerName: string | null }
+      expect(body.manufacturerName).toBe('Patched')
     })
 
     it('returns 403 on PATCH without manage permission', async () => {
-      const created = await container.engineTypesRepository.create({
-        code: 'PATCH-FORBIDDEN',
-      })
+      const created = await createTestEngineType(container, 'PATCH-FORBIDDEN')
       const app = createReferenceTestApp(container, testUser(['settings.engine_types.create']))
       const res = await app.request(`/api/engine-types/${created.id}`, {
         method: 'PATCH',
@@ -319,7 +358,7 @@ describe('EngineTypes reference module', () => {
     })
 
     it('hard-deletes unused engine type via DELETE with manage permission', async () => {
-      const created = await container.engineTypesRepository.create({ code: 'DELETE-TYPE' })
+      const created = await createTestEngineType(container, 'DELETE-TYPE')
       const app = createReferenceTestApp(container, testUser(['settings.engine_types.manage']))
       const res = await app.request(`/api/engine-types/${created.id}`, {
         method: 'DELETE',
@@ -330,7 +369,7 @@ describe('EngineTypes reference module', () => {
     })
 
     it('returns 409 on DELETE when engine type is in use', async () => {
-      const created = await container.engineTypesRepository.create({ code: 'DELETE-USED' })
+      const created = await createTestEngineType(container, 'DELETE-USED')
       await ctx.db
         .update(schema.engineTypes)
         .set({ usageCount: 2 })
@@ -416,9 +455,9 @@ describe('Customers reference module', () => {
         name: 'USAGE-COUNT-FIRMA',
         country: 'RS',
       })
-      const engineTypeId = await container.engineTypesRepository
-        .create({ code: 'USAGE-COUNT-ENG' })
-        .then((row) => row.id)
+      const engineTypeId = await createTestEngineType(container, 'USAGE-COUNT-ENG').then(
+        (row) => row.id,
+      )
 
       await ctx.db.insert(schema.emotiveClaims).values({
         warrantyReport: 'Usage count test',
@@ -594,9 +633,9 @@ describe('Customers reference module', () => {
     })
 
     it('rejects hard delete when linked to emotive claims', async () => {
-      const engineTypeId = await container.engineTypesRepository
-        .create({ code: 'CUST-DEL-ENG' })
-        .then((row) => row.id)
+      const engineTypeId = await createTestEngineType(container, 'CUST-DEL-ENG').then(
+        (row) => row.id,
+      )
       const created = await container.customersRepository.create({ name: 'USED-FIRMA' })
 
       await ctx.db.insert(schema.emotiveClaims).values({

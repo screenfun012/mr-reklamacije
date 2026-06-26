@@ -9,7 +9,7 @@ import type {
   EngineTypeCreateInput,
   EngineTypeListItem,
   EngineTypeUpdateInput,
-  ReferenceListQuery,
+  EngineTypesListQuery,
   ReferenceListResponse,
 } from './engine-types.validators.js'
 
@@ -22,7 +22,7 @@ export class EngineTypesService {
     private readonly eventBus: EventBus,
   ) {}
 
-  async list(query: ReferenceListQuery): Promise<ReferenceListResponse<EngineTypeListItem>> {
+  async list(query: EngineTypesListQuery): Promise<ReferenceListResponse<EngineTypeListItem>> {
     return this.repo.list(query)
   }
 

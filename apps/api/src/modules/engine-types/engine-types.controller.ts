@@ -7,13 +7,13 @@ import {
   EngineTypeCreateInputSchema,
   EngineTypeIdParamSchema,
   EngineTypeUpdateInputSchema,
-  ReferenceListQuerySchema,
+  EngineTypesListQuerySchema,
 } from './engine-types.validators.js'
 
 export function createEngineTypesController(container: Container) {
   return {
     list: async (c: Context) => {
-      const query = ReferenceListQuerySchema.parse(c.req.query())
+      const query = EngineTypesListQuerySchema.parse(c.req.query())
       const result = await container.engineTypesService.list(query)
       return c.json(result)
     },

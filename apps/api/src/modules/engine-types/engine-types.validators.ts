@@ -4,11 +4,11 @@ export {
   EngineTypeCreateInputSchema,
   EngineTypeListItemSchema,
   EngineTypeUpdateInputSchema,
-  ReferenceListQuerySchema,
+  EngineTypesListQuerySchema,
   type EngineTypeCreateInput,
   type EngineTypeListItem,
   type EngineTypeUpdateInput,
-  type ReferenceListQuery,
+  type EngineTypesListQuery,
   type ReferenceListResponse,
 } from '@mr/shared'
 

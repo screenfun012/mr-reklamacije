@@ -16,6 +16,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import {
   buildTestContainer,
   createStatisticsTestApp,
@@ -86,9 +87,7 @@ describe('Statistics module integration', () => {
     manufacturerId?: string,
     sourceCode: string = 'SELMAN',
   ): Promise<string> {
-    const engineType = await container.engineTypesRepository.create({
-      code: `STAT-${Date.now()}-${mrNumber}`,
-    })
+    const engineType = await createTestEngineType(container, `STAT-${Date.now()}-${mrNumber}`)
 
     const claim = await container.emotiveClaimsService.create(
       {
@@ -576,9 +575,7 @@ describe('Statistics module integration', () => {
     })
 
     it('groups claims by engine type including null engine_type_id', async () => {
-      const engineType = await container.engineTypesRepository.create({
-        code: `STAT-ET-${Date.now()}`,
-      })
+      const engineType = await createTestEngineType(container, `STAT-ET-${Date.now()}`)
 
       await createEmotiveClaim('STAT-ET-1/26', ClaimOutcome.Accepted, daysAgo(10))
       await createDomaceClaim('STAT-ET-2/26', daysAgo(11), undefined, engineType.id)

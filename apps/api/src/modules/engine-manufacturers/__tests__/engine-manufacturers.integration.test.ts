@@ -74,7 +74,7 @@ describe('EngineManufacturers reference module', () => {
         name: 'Usage Mfg',
       })
       const engineTypeId = await container.engineTypesRepository
-        .create({ code: 'USAGE-MFG-ENG' })
+        .create({ code: 'USAGE-MFG-ENG', manufacturerId: created.id })
         .then((row) => row.id)
 
       await ctx.db.insert(schema.emotiveClaims).values({
@@ -274,7 +274,7 @@ describe('EngineManufacturers reference module', () => {
         name: 'Used Mfg',
       })
       const engineTypeId = await container.engineTypesRepository
-        .create({ code: 'USED-MFG-ENG' })
+        .create({ code: 'USED-MFG-ENG', manufacturerId: created.id })
         .then((row) => row.id)
 
       await ctx.db.insert(schema.emotiveClaims).values({
@@ -434,7 +434,7 @@ describe('EngineManufacturers reference module', () => {
         name: 'Delete Used',
       })
       const engineTypeId = await container.engineTypesRepository
-        .create({ code: 'DELETE-USED-ENG' })
+        .create({ code: 'DELETE-USED-ENG', manufacturerId: created.id })
         .then((row) => row.id)
 
       await ctx.db.insert(schema.emotiveClaims).values({

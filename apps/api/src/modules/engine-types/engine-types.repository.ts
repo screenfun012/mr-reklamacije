@@ -4,19 +4,21 @@ import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
+import { engineManufacturers } from '../engine-manufacturers/engine-manufacturers.schema.js'
 import { engineTypes } from './engine-types.schema.js'
 import type {
   EngineTypeCreateInput,
   EngineTypeListItem,
   EngineTypeUpdateInput,
-  ReferenceListQuery,
+  EngineTypesListQuery,
   ReferenceListResponse,
 } from './engine-types.validators.js'
 
 interface EngineTypeRow {
   id: string
   code: string
-  manufacturer: string | null
+  manufacturerId: string | null
+  manufacturerName: string | null
   displacementCc: number | null
   notes: string | null
   isActive: boolean
@@ -27,7 +29,8 @@ function mapEngineTypeRow(row: EngineTypeRow): EngineTypeListItem {
   return {
     id: row.id,
     code: row.code,
-    manufacturer: row.manufacturer,
+    manufacturerId: row.manufacturerId,
+    manufacturerName: row.manufacturerName,
     displacementCc: row.displacementCc,
     notes: row.notes,
     isActive: row.isActive,
@@ -38,7 +41,7 @@ function mapEngineTypeRow(row: EngineTypeRow): EngineTypeListItem {
 export class EngineTypesRepository {
   constructor(private readonly db: ApiDatabase) {}
 
-  async list(query: ReferenceListQuery): Promise<ReferenceListResponse<EngineTypeListItem>> {
+  async list(query: EngineTypesListQuery): Promise<ReferenceListResponse<EngineTypeListItem>> {
     const cursor = parseOptionalKeysetCursor(query.cursor)
     const conditions: SQL[] = [isNull(engineTypes.deletedAt)]
 
@@ -46,10 +49,14 @@ export class EngineTypesRepository {
       conditions.push(eq(engineTypes.isActive, true))
     }
 
+    if (query.manufacturerId !== undefined) {
+      conditions.push(eq(engineTypes.manufacturerId, query.manufacturerId))
+    }
+
     if (query.search !== undefined) {
       const pattern = `%${query.search}%`
       conditions.push(
-        or(ilike(engineTypes.code, pattern), ilike(engineTypes.manufacturer, pattern))!,
+        or(ilike(engineTypes.code, pattern), ilike(engineManufacturers.name, pattern))!,
       )
     }
 
@@ -62,13 +69,15 @@ export class EngineTypesRepository {
       .select({
         id: engineTypes.id,
         code: engineTypes.code,
-        manufacturer: engineTypes.manufacturer,
+        manufacturerId: engineTypes.manufacturerId,
+        manufacturerName: engineManufacturers.name,
         displacementCc: engineTypes.displacementCc,
         notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })
       .from(engineTypes)
+      .leftJoin(engineManufacturers, eq(engineTypes.manufacturerId, engineManufacturers.id))
       .where(and(...conditions))
       .orderBy(engineTypes.code, engineTypes.id)
       .limit(query.limit + 1)
@@ -100,7 +109,7 @@ export class EngineTypesRepository {
       .insert(engineTypes)
       .values({
         code: input.code,
-        manufacturer: input.manufacturer ?? null,
+        manufacturerId: input.manufacturerId,
         displacementCc: input.displacementCc ?? null,
         notes: input.notes ?? null,
         isActive: true,
@@ -109,7 +118,7 @@ export class EngineTypesRepository {
       .returning({
         id: engineTypes.id,
         code: engineTypes.code,
-        manufacturer: engineTypes.manufacturer,
+        manufacturerId: engineTypes.manufacturerId,
         displacementCc: engineTypes.displacementCc,
         notes: engineTypes.notes,
         isActive: engineTypes.isActive,
@@ -120,7 +129,8 @@ export class EngineTypesRepository {
       throw new InternalError('Failed to create engine type')
     }
 
-    return mapEngineTypeRow(created)
+    const manufacturerName = await this.resolveManufacturerName(created.manufacturerId)
+    return mapEngineTypeRow({ ...created, manufacturerName })
   }
 
   async findById(id: string): Promise<EngineTypeListItem | null> {
@@ -128,13 +138,15 @@ export class EngineTypesRepository {
       .select({
         id: engineTypes.id,
         code: engineTypes.code,
-        manufacturer: engineTypes.manufacturer,
+        manufacturerId: engineTypes.manufacturerId,
+        manufacturerName: engineManufacturers.name,
         displacementCc: engineTypes.displacementCc,
         notes: engineTypes.notes,
         isActive: engineTypes.isActive,
         usageCount: engineTypes.usageCount,
       })
       .from(engineTypes)
+      .leftJoin(engineManufacturers, eq(engineTypes.manufacturerId, engineManufacturers.id))
       .where(and(eq(engineTypes.id, id), isNull(engineTypes.deletedAt)))
       .limit(1)
 
@@ -145,7 +157,7 @@ export class EngineTypesRepository {
     const [updated] = await this.db
       .update(engineTypes)
       .set({
-        ...(input.manufacturer !== undefined ? { manufacturer: input.manufacturer } : {}),
+        ...(input.manufacturerId !== undefined ? { manufacturerId: input.manufacturerId } : {}),
         ...(input.displacementCc !== undefined ? { displacementCc: input.displacementCc } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
@@ -154,7 +166,7 @@ export class EngineTypesRepository {
       .returning({
         id: engineTypes.id,
         code: engineTypes.code,
-        manufacturer: engineTypes.manufacturer,
+        manufacturerId: engineTypes.manufacturerId,
         displacementCc: engineTypes.displacementCc,
         notes: engineTypes.notes,
         isActive: engineTypes.isActive,
@@ -165,7 +177,8 @@ export class EngineTypesRepository {
       throw new NotFoundError('Engine type', id)
     }
 
-    return mapEngineTypeRow(updated)
+    const manufacturerName = await this.resolveManufacturerName(updated.manufacturerId)
+    return mapEngineTypeRow({ ...updated, manufacturerName })
   }
 
   async hardDelete(id: string): Promise<void> {
@@ -177,5 +190,19 @@ export class EngineTypesRepository {
     if (deleted === undefined) {
       throw new NotFoundError('Engine type', id)
     }
+  }
+
+  private async resolveManufacturerName(manufacturerId: string | null): Promise<string | null> {
+    if (manufacturerId === null) {
+      return null
+    }
+
+    const [row] = await this.db
+      .select({ name: engineManufacturers.name })
+      .from(engineManufacturers)
+      .where(and(eq(engineManufacturers.id, manufacturerId), isNull(engineManufacturers.deletedAt)))
+      .limit(1)
+
+    return row?.name ?? null
   }
 }

@@ -26,6 +26,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { DomaceClaimsActor } from '../domace-claims.types.js'
@@ -161,9 +162,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('rejects create when MR matches an existing emotive claim', async () => {
       const mrNumber = `CROSS-${crypto.randomUUID().slice(0, 8)}/26`
-      const engineTypeId = (
-        await container.engineTypesRepository.create({ code: `DOM-X-${Date.now()}` })
-      ).id
+      const engineTypeId = (await createTestEngineType(container, `DOM-X-${Date.now()}`)).id
       const emotive = await container.emotiveClaimsService.create(
         {
           engineTypeId,

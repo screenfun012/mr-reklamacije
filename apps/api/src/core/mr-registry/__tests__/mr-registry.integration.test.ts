@@ -10,6 +10,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 
@@ -97,9 +98,7 @@ describe('MrRegistryService integration', () => {
 
 async function createEngineType(ctx: TestDbContext): Promise<string> {
   const container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
-  const created = await container.engineTypesRepository.create({
-    code: `MR-REG-${crypto.randomUUID().slice(0, 8)}`,
-  })
+  const created = await createTestEngineType(container, `MR-REG-${crypto.randomUUID().slice(0, 8)}`)
   return created.id
 }
 

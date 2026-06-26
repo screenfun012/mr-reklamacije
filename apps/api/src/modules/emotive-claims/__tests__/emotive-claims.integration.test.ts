@@ -18,6 +18,7 @@ import {
   MrKeyConflictError,
   ValidationError,
 } from '../../../core/errors/domain-errors.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import {
   ensureTestUser,
   getClaimSourceIdByCode,
@@ -105,7 +106,7 @@ describe('EmotiveClaimsService integration', () => {
   })
 
   async function createEngineType(code: string): Promise<string> {
-    const created = await container.engineTypesRepository.create({ code })
+    const created = await createTestEngineType(container, code)
     return created.id
   }
 
@@ -520,9 +521,13 @@ describe('EmotiveClaimsService integration', () => {
   describe('when fetching detail', () => {
     it('resolves source, manufacturer, and per-fault reference names on the server', async () => {
       const engineTypeId = await createEngineType(`MFG-${Date.now()}`)
+      const briggsManufacturerId = await createEngineManufacturer(
+        `BRIGGS-${Date.now()}`,
+        'Briggs & Stratton',
+      )
       await ctx.db
         .update(schema.engineTypes)
-        .set({ manufacturer: 'Briggs & Stratton' })
+        .set({ manufacturerId: briggsManufacturerId })
         .where(eq(schema.engineTypes.id, engineTypeId))
 
       const sourceId = await getClaimSourceIdByCode(ctx.db, 'SELMAN')

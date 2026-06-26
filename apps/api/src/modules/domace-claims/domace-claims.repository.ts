@@ -1,6 +1,7 @@
 import { schema } from '@mr/db'
 import { ClaimKind } from '@mr/shared'
 import { and, desc, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import type { FaultsRepository } from '../../core/claims/faults.repository.js'
 import {
@@ -25,6 +26,8 @@ import type {
 } from './domace-claims.validators.js'
 
 const { departments, employees, engineManufacturers, engineTypes, externalParties } = schema
+
+const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -361,7 +364,7 @@ export class DomaceClaimsRepository {
         warrantyReport: domaceClaims.warrantyReport,
         engineTypeId: domaceClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
-        engineTypeManufacturer: engineTypes.manufacturer,
+        engineTypeManufacturer: engineTypeMfg.name,
         manufacturerId: domaceClaims.manufacturerId,
         manufacturerName: engineManufacturers.name,
         engineCode: domaceClaims.engineCode,
@@ -380,6 +383,7 @@ export class DomaceClaimsRepository {
       })
       .from(domaceClaims)
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
       .leftJoin(engineManufacturers, eq(domaceClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
       .where(and(eq(domaceClaims.id, id), deletedCondition))

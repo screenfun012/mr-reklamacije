@@ -1,6 +1,7 @@
 import { schema } from '@mr/db'
 import { ClaimKind } from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
@@ -31,6 +32,8 @@ import { FaultsRepository } from './faults/faults.repository.js'
 
 const { customers, departments, employees, engineManufacturers, engineTypes, externalParties } =
   schema
+
+const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -427,7 +430,7 @@ export class EmotiveClaimsRepository {
         warrantyReport: emotiveClaims.warrantyReport,
         engineTypeId: emotiveClaims.engineTypeId,
         engineTypeCode: engineTypes.code,
-        engineTypeManufacturer: engineTypes.manufacturer,
+        engineTypeManufacturer: engineTypeMfg.name,
         manufacturerId: emotiveClaims.manufacturerId,
         manufacturerName: engineManufacturers.name,
         engineCode: emotiveClaims.engineCode,
@@ -451,6 +454,7 @@ export class EmotiveClaimsRepository {
       .from(emotiveClaims)
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
       .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))

@@ -16,6 +16,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import {
   buildTestContainer,
@@ -68,7 +69,7 @@ describe('EmotiveClaims HTTP', () => {
 
   async function createEngineType(): Promise<string> {
     const code = `ENG-${crypto.randomUUID().slice(0, 8)}`
-    const created = await container.engineTypesRepository.create({ code })
+    const created = await createTestEngineType(container, code)
     return created.id
   }
 

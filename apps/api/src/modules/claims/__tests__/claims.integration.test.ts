@@ -10,6 +10,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { ClaimsActor } from '../claims.types.js'
@@ -63,9 +64,7 @@ describe('ClaimsService integration', () => {
     mrNumber: string,
     options: { dateOfClaim?: Date; dateOfFinish?: Date } = {},
   ): Promise<string> {
-    const engineType = await container.engineTypesRepository.create({
-      code: `ENG-${Date.now()}-${mrNumber}`,
-    })
+    const engineType = await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)
     const created = await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType.id,

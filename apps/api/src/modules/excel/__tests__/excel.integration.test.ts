@@ -10,6 +10,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer, createExcelTestApp, testUser } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 
@@ -53,9 +54,7 @@ describe('Excel export integration', () => {
   })
 
   async function createEmotiveClaim(mrNumber: string): Promise<void> {
-    const engineType = await container.engineTypesRepository.create({
-      code: `EX-${Date.now()}-${mrNumber}`,
-    })
+    const engineType = await createTestEngineType(container, `EX-${Date.now()}-${mrNumber}`)
 
     await container.emotiveClaimsService.create(
       {

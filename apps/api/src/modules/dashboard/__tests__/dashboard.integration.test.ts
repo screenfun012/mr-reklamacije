@@ -12,6 +12,7 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { DashboardActor } from '../dashboard.types.js'
@@ -53,9 +54,7 @@ describe('DashboardService integration', () => {
     outcome: (typeof ClaimOutcome)[keyof typeof ClaimOutcome] = ClaimOutcome.Pending,
     dateOfClaim = daysAgo(365),
   ): Promise<string> {
-    const engineType = await container.engineTypesRepository.create({
-      code: `ENG-${Date.now()}-${mrNumber}`,
-    })
+    const engineType = await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)
     const created = await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType.id,
