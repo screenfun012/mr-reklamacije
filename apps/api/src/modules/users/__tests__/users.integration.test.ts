@@ -173,8 +173,8 @@ describe('Users module', () => {
 
       expect(response.status).toBe(403)
 
-      const body = (await response.json()) as { code: string }
-      expect(body.code).toBe(ERROR_CODE.Forbidden)
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
     })
 
     it('returns 400 when target user is not pending', async () => {
