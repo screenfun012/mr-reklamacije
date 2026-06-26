@@ -149,6 +149,7 @@
   --mr-primary-hover: #c8141b;
   --mr-primary-active: #a8111a;
   --mr-red-50-wash: #fdecef;
+  --mr-list-item-hover: #f0f0f0;
   --mr-disabled-bg: #c8c9cc;
   --mr-disabled-text: #7f8084;
   --mr-error: #d92d20;
@@ -169,7 +170,7 @@
   --secondary-foreground: var(--mr-text-primary);
   --muted: var(--mr-bg);
   --muted-foreground: var(--mr-text-secondary);
-  --accent: var(--mr-bg);
+  --accent: var(--mr-list-item-hover);
   --accent-foreground: var(--mr-text-primary);
 
   --destructive: var(--mr-error);
@@ -207,6 +208,7 @@
   --mr-primary-hover: #f0414a;
   --mr-primary-active: #a8111a;
   --mr-red-50-wash: #fdecef;
+  --mr-list-item-hover: #3c3d41;
   --mr-disabled-bg: #3c3d41;
   --mr-disabled-text: #7f8084;
   --mr-error: #d92d20;
@@ -227,7 +229,7 @@
   --secondary-foreground: var(--mr-text-primary);
   --muted: var(--mr-surface);
   --muted-foreground: var(--mr-text-secondary);
-  --accent: var(--mr-surface-raised);
+  --accent: var(--mr-list-item-hover);
   --accent-foreground: var(--mr-text-primary);
 
   --destructive: var(--mr-error);

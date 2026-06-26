@@ -2,7 +2,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 /** Brand secondary — transparent fill, 1.5px primary border, red-50 wash on hover. */
 const brandSecondary =
-  'border-[1.5px] border-primary bg-transparent text-primary shadow-none hover:bg-[var(--mr-red-50-wash)] dark:text-white dark:hover:bg-[var(--mr-red-50-wash)]'
+  'border-[1.5px] border-primary bg-transparent text-primary shadow-none hover:bg-[var(--mr-red-50-wash)] hover:text-primary dark:text-white dark:hover:bg-[var(--mr-surface-raised)] dark:hover:text-white'
 
 const brandDisabled =
   'disabled:pointer-events-none disabled:bg-[var(--mr-disabled-bg)] disabled:text-[var(--mr-disabled-text)] disabled:border-[var(--mr-disabled-bg)] disabled:opacity-100 disabled:shadow-none'
@@ -28,8 +28,8 @@ export const buttonVariants = cva(
         secondary: brandSecondary,
         ghost: [
           'bg-transparent text-primary shadow-none',
-          'hover:bg-[var(--mr-red-50-wash)] active:bg-[var(--mr-red-50-wash)]',
-          'dark:text-white dark:hover:bg-[var(--mr-red-50-wash)]',
+          'hover:bg-[var(--mr-red-50-wash)] hover:text-primary active:bg-[var(--mr-red-50-wash)]',
+          'dark:text-white dark:hover:bg-[var(--mr-surface-raised)] dark:hover:text-white dark:active:bg-[var(--mr-surface-raised)]',
         ],
         link: [
           'bg-transparent text-primary underline-offset-4 shadow-none hover:underline',

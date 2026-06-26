@@ -23,6 +23,9 @@ describe('Button', () => {
     expect(button.className).toContain('border-[1.5px]')
     expect(button.className).toContain('border-primary')
     expect(button.className).toContain('hover:bg-[var(--mr-red-50-wash)]')
+    expect(button.className).toContain('hover:text-primary')
+    expect(button.className).toContain('dark:hover:bg-[var(--mr-surface-raised)]')
+    expect(button.className).not.toContain('dark:hover:bg-[var(--mr-red-50-wash)]')
   })
 
   it('applies destructive variant with solid error fill', () => {

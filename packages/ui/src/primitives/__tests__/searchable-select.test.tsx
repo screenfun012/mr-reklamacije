@@ -92,4 +92,16 @@ describe('SearchableSelect', () => {
 
     expect(screen.getByRole('combobox', { name: 'Proizvođač' })).toHaveTextContent('BMW')
   })
+
+  it('applies list item hover classes on options', async () => {
+    const user = userEvent.setup()
+    render(<DialogSearchableSelectFixture />)
+
+    await user.click(screen.getByRole('combobox', { name: 'Proizvođač' }))
+    const popover = await screen.findByRole('dialog', { name: undefined })
+    const option = within(popover).getByRole('button', { name: 'BMW' })
+
+    expect(option.className).toContain('hover:bg-accent')
+    expect(option.className).toContain('data-[highlighted]:bg-accent')
+  })
 })

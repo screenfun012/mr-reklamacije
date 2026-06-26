@@ -39,4 +39,21 @@ describe('Select', () => {
     expect(await screen.findByRole('listbox')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Accepted' })).toBeInTheDocument()
   })
+
+  it('applies highlighted state classes on SelectItem for keyboard and pointer', () => {
+    render(
+      <Select open onOpenChange={vi.fn()} value="pending" onValueChange={vi.fn()}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pending">Pending</SelectItem>
+        </SelectContent>
+      </Select>,
+    )
+
+    const option = screen.getByRole('option', { name: 'Pending' })
+    expect(option.className).toContain('data-[highlighted]:bg-accent')
+    expect(option.className).toContain('hover:bg-accent')
+  })
 })

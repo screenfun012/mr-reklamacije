@@ -2,7 +2,11 @@ import { Check, ChevronDown } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '../lib/cn.js'
-import { fieldControlClassName, fieldPopoverContentClassName } from '../lib/field-control-styles.js'
+import {
+  fieldControlClassName,
+  fieldPopoverContentClassName,
+  listItemInteractiveClassName,
+} from '../lib/field-control-styles.js'
 import { Button } from './button.js'
 import { Input } from './input.js'
 import { Popover, PopoverContent, PopoverTrigger } from './popover.js'
@@ -118,7 +122,7 @@ export function SearchableSelect({
           disabled={disabled}
           className={cn(
             fieldControlClassName,
-            'justify-between px-3 py-2 font-normal hover:bg-background',
+            'justify-between px-3 py-2 font-normal',
             selectedLabel === null && 'text-muted-foreground',
             className,
           )}
@@ -150,7 +154,7 @@ export function SearchableSelect({
               type="button"
               className={cn(
                 'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
-                'hover:bg-accent hover:text-accent-foreground',
+                listItemInteractiveClassName,
                 normalizedValue === emptyValue && 'bg-accent text-accent-foreground',
               )}
               onPointerDown={(event) => {
@@ -174,7 +178,7 @@ export function SearchableSelect({
               type="button"
               className={cn(
                 'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
-                'hover:bg-accent hover:text-accent-foreground',
+                listItemInteractiveClassName,
                 normalizedValue === option.value && 'bg-accent text-accent-foreground',
               )}
               onPointerDown={(event) => {
