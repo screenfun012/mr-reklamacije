@@ -16,6 +16,7 @@ import { registerExcelRoutes } from '../modules/excel/index.js'
 import { registerStatisticsRoutes } from '../modules/statistics/index.js'
 import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
 import { registerCustomersRoutes } from '../modules/customers/index.js'
+import { registerUsersRoutes } from '../modules/users/index.js'
 import { registerDepartmentsRoutes } from '../modules/departments/index.js'
 import { registerDomaceClaimsRoutes } from '../modules/domace-claims/index.js'
 import { registerEmployeesRoutes } from '../modules/employees/index.js'
@@ -109,6 +110,7 @@ export function createReferenceTestApp(
   registerEngineManufacturersRoutes(app, container)
   registerExternalPartiesRoutes(app, container)
   registerCustomersRoutes(app, container)
+  registerUsersRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
@@ -192,6 +194,24 @@ export function createStatisticsTestApp(
   registerStatisticsRoutes(app, container)
   registerDomaceClaimsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
+
+  return app
+}
+
+export function createUsersTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerUsersRoutes(app, container)
 
   return app
 }

@@ -15,6 +15,7 @@ import { createRequestLogger } from './core/middleware/request-logger.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
 import { registerCustomersRoutes } from './modules/customers/index.js'
+import { registerUsersRoutes } from './modules/users/index.js'
 import { registerDepartmentsRoutes } from './modules/departments/index.js'
 import { registerClaimsRoutes } from './modules/claims/index.js'
 import { registerDashboardRoutes } from './modules/dashboard/index.js'
@@ -89,6 +90,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerEngineManufacturersRoutes(app, container)
   registerExternalPartiesRoutes(app, container)
   registerCustomersRoutes(app, container)
+  registerUsersRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)

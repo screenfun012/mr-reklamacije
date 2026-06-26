@@ -12,6 +12,7 @@ import { ClaimContextService } from './claims/claim-context.service.js'
 import { AuditService } from '../modules/audit/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
+import { UsersRepository, UsersService } from '../modules/users/index.js'
 import { FaultsRepository } from './claims/faults.repository.js'
 import { MrRegistryRepository, MrRegistryService } from './mr-registry/index.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
@@ -59,6 +60,8 @@ export interface Container {
   externalPartiesService: ExternalPartiesService
   customersRepository: CustomersRepository
   customersService: CustomersService
+  usersRepository: UsersRepository
+  usersService: UsersService
   claimSourcesRepository: ClaimSourcesRepository
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
@@ -118,6 +121,9 @@ export function buildContainer(
 
   const customersRepository = new CustomersRepository(db)
   const customersService = new CustomersService(customersRepository, auditService, eventBus)
+
+  const usersRepository = new UsersRepository(db)
+  const usersService = new UsersService(usersRepository, auditService, eventBus)
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
   const claimSourcesService = new ClaimSourcesService(claimSourcesRepository)
@@ -206,6 +212,8 @@ export function buildContainer(
     externalPartiesService,
     customersRepository,
     customersService,
+    usersRepository,
+    usersService,
     claimSourcesRepository,
     claimSourcesService,
     departmentsRepository,
