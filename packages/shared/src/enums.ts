@@ -22,6 +22,14 @@ export const SystemRoleCode = {
 
 export type SystemRoleCode = (typeof SystemRoleCode)[keyof typeof SystemRoleCode]
 
+export const UserAccountStatus = {
+  Pending: 'pending',
+  Approved: 'approved',
+  Rejected: 'rejected',
+} as const
+
+export type UserAccountStatus = (typeof UserAccountStatus)[keyof typeof UserAccountStatus]
+
 export const ClientRegistrationStatus = {
   Pending: 'pending',
   Approved: 'approved',

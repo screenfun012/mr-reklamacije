@@ -113,6 +113,13 @@
       "when": 1782600000000,
       "tag": "0015_outcome_resolved_at",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1782467285087,
+      "tag": "0016_user_account_status",
+      "breakpoints": true
     }
   ]
 }

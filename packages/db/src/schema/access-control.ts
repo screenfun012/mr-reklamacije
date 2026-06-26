@@ -1,4 +1,5 @@
-import type { UserLanguage } from '@mr/shared'
+import type { UserAccountStatus, UserLanguage } from '@mr/shared'
+import { UserAccountStatus as UserAccountStatusValues } from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
@@ -35,6 +36,10 @@ export const users = pgTable(
     name: text('name').notNull(),
     image: text('image'),
     isActive: boolean('is_active').notNull().default(true),
+    accountStatus: text('account_status')
+      .notNull()
+      .default(UserAccountStatusValues.Pending)
+      .$type<UserAccountStatus>(),
     preferredLanguage: text('preferred_language').notNull().default('sr').$type<UserLanguage>(),
     twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'date' }),
@@ -49,6 +54,10 @@ export const users = pgTable(
   (t) => [
     uniqueIndex('users_email_key').on(t.email),
     check('users_preferred_language_check', sql`${t.preferredLanguage} IN ('sr', 'en')`),
+    check(
+      'users_account_status_check',
+      sql`${t.accountStatus} IN ('pending', 'approved', 'rejected')`,
+    ),
   ],
 )
 
