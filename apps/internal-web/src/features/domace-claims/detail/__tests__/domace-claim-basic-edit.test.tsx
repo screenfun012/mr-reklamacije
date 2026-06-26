@@ -24,8 +24,10 @@ const ENGINE_TYPES: EngineTypeListItem[] = [
   {
     id: ENGINE_TYPE_ID,
     code: 'OM651',
-    manufacturer: 'Mercedes',
+    manufacturerId: MANUFACTURER_ID,
+    manufacturerName: 'Mercedes-Benz',
     displacementCc: 2143,
+    notes: null,
     isActive: true,
     usageCount: 0,
   },
@@ -52,6 +54,8 @@ function makeClaim(): DomaceClaimDetail {
     engineTypeId: ENGINE_TYPE_ID,
     engineTypeCode: 'OM651',
     engineTypeManufacturer: 'Mercedes',
+    manufacturerId: MANUFACTURER_ID,
+    manufacturerName: 'Mercedes-Benz',
     engineCode: null,
     dateOfClaim: '2026-05-01',
     mrNumber: 'MR-1/26',
@@ -74,7 +78,10 @@ function renderSection(canEdit: boolean): void {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, makeClaim())
-  client.setQueryData(engineTypesReferenceOptions({ activeOnly: true }).queryKey, ENGINE_TYPES)
+  client.setQueryData(
+    engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
+    ENGINE_TYPES,
+  )
   client.setQueryData(
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,

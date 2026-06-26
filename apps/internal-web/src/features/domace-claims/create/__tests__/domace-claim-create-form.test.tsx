@@ -2,10 +2,8 @@ import {
   departmentsReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
-  engineTypesReferenceOptions,
   externalPartiesReferenceOptions,
   type EngineManufacturerListItem,
-  type EngineTypeListItem,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
 import {
@@ -26,19 +24,7 @@ import {
 } from '../domace-claim-create-schemas.js'
 import { DomaceClaimCreateForm } from '../domace-claim-create-form.js'
 
-const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
-
-const ENGINE_TYPES: EngineTypeListItem[] = [
-  {
-    id: ENGINE_TYPE_ID,
-    code: 'OM651',
-    manufacturer: 'Mercedes',
-    displacementCc: 2143,
-    isActive: true,
-    usageCount: 0,
-  },
-]
 
 const MANUFACTURERS: EngineManufacturerListItem[] = [
   {
@@ -57,7 +43,6 @@ async function renderForm(): Promise<void> {
       mutations: { retry: false },
     },
   })
-  client.setQueryData(engineTypesReferenceOptions({ activeOnly: true }).queryKey, ENGINE_TYPES)
   client.setQueryData(
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,

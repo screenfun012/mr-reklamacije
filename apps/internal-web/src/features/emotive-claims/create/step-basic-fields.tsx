@@ -1,4 +1,4 @@
-import type { CustomerListItem, EngineManufacturerListItem, EngineTypeListItem } from '@mr/shared'
+import type { CustomerListItem, EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   DatePicker,
@@ -11,9 +11,11 @@ import {
   SelectValue,
 } from '@mr/ui'
 
+import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
+import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
+import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
 import { SELECT_EMPTY_SENTINEL } from './form-field-styles.js'
 import { formatFieldError } from './format-field-error.js'
-import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
 
 function manufacturerOptions(
   manufacturers: readonly EngineManufacturerListItem[],
@@ -35,10 +37,15 @@ interface StepBasicFieldsProps {
         handleBlur: () => void
       }) => React.ReactNode
     }>
+    Subscribe: React.ComponentType<{
+      selector: (state: { values: EmotiveClaimFormValues }) => string
+      children: (manufacturerId: string) => React.ReactNode
+    }>
+    setFieldValue: (name: 'engineTypeId', value: string) => void
   }
   customers: CustomerListItem[]
   manufacturers: EngineManufacturerListItem[]
-  engineTypes: EngineTypeListItem[]
+  orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
   disabled: boolean
 }
@@ -47,7 +54,7 @@ export function StepBasicFields({
   form,
   customers,
   manufacturers,
-  engineTypes,
+  orphanEngineType,
   stepErrors,
   disabled,
 }: StepBasicFieldsProps): React.ReactElement {
@@ -142,49 +149,41 @@ export function StepBasicFields({
               noResultsLabel={m.field_no_results()}
               disabled={disabled}
               aria-label={m.emotive_claims_create_field_manufacturer()}
-              onValueChange={field.handleChange}
+              onValueChange={(nextValue) => {
+                field.handleChange(nextValue)
+                form.setFieldValue('engineTypeId', '')
+              }}
               onBlur={field.handleBlur}
             />
           </FieldGroup>
         )}
       />
 
-      <form.Field
-        name="engineTypeId"
-        children={(field) => (
-          <FieldGroup
-            id="engineTypeId"
-            label={m.emotive_claims_create_field_engine_type()}
-            error={stepErrors['engineTypeId'] ?? formatFieldError(field.state.meta.errors[0])}
-          >
-            <Select
-              value={field.state.value.length > 0 ? field.state.value : SELECT_EMPTY_SENTINEL}
-              onValueChange={(value) => {
-                field.handleChange(value === SELECT_EMPTY_SENTINEL ? '' : value)
-              }}
-              disabled={disabled}
-            >
-              <SelectTrigger
+      <form.Subscribe selector={(state) => state.values.manufacturerId}>
+        {(manufacturerId) => (
+          <form.Field
+            name="engineTypeId"
+            children={(field) => (
+              <FieldGroup
                 id="engineTypeId"
-                aria-label={m.emotive_claims_create_field_engine_type()}
-                onBlur={field.handleBlur}
+                label={m.emotive_claims_create_field_engine_type()}
+                error={stepErrors['engineTypeId'] ?? formatFieldError(field.state.meta.errors[0])}
               >
-                <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SELECT_EMPTY_SENTINEL}>
-                  {m.emotive_claims_create_select_placeholder()}
-                </SelectItem>
-                {engineTypes.map((engineType) => (
-                  <SelectItem key={engineType.id} value={engineType.id}>
-                    {engineType.code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldGroup>
+                <EngineTypeSearchableSelectField
+                  id="engineTypeId"
+                  value={field.state.value}
+                  manufacturerId={manufacturerId}
+                  orphanEngineType={orphanEngineType}
+                  disabled={disabled}
+                  aria-label={m.emotive_claims_create_field_engine_type()}
+                  onValueChange={field.handleChange}
+                  onBlur={field.handleBlur}
+                />
+              </FieldGroup>
+            )}
+          />
         )}
-      />
+      </form.Subscribe>
 
       <form.Field
         name="engineCode"

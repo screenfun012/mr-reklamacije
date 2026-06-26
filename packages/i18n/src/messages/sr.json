@@ -429,6 +429,7 @@
   "claims_filter_manufacturer_all": "Svi proizvođači",
   "field_search_placeholder": "Pretraži…",
   "field_no_results": "Nema rezultata",
+  "field_select_manufacturer_first": "Prvo izaberite proizvođača",
   "nav_engine_manufacturers": "Proizvođači motora",
   "nav_engine_types": "Tipovi motora",
   "nav_customers": "Firme",

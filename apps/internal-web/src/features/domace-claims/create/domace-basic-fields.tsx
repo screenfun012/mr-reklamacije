@@ -1,20 +1,10 @@
-import type { EngineManufacturerListItem, EngineTypeListItem } from '@mr/shared'
+import type { EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  DatePicker,
-  Input,
-  SearchableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@mr/ui'
+import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 
-import {
-  SELECT_EMPTY_SENTINEL,
-  TEXTAREA_FIELD_CLASS,
-} from '../../emotive-claims/create/form-field-styles.js'
+import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
+import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
+import { TEXTAREA_FIELD_CLASS } from '../../emotive-claims/create/form-field-styles.js'
 import { formatFieldError } from '../../emotive-claims/create/format-field-error.js'
 import type { DomaceClaimFormValues } from './domace-claim-create-schemas.js'
 
@@ -28,17 +18,22 @@ interface DomaceBasicFieldsProps {
         handleBlur: () => void
       }) => React.ReactNode
     }>
+    Subscribe: React.ComponentType<{
+      selector: (state: { values: DomaceClaimFormValues }) => string
+      children: (manufacturerId: string) => React.ReactNode
+    }>
+    setFieldValue: (name: 'engineTypeId', value: string) => void
   }
-  engineTypes: EngineTypeListItem[]
   manufacturers: EngineManufacturerListItem[]
+  orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
   disabled: boolean
 }
 
 export function DomaceBasicFields({
   form,
-  engineTypes,
   manufacturers,
+  orphanEngineType,
   stepErrors,
   disabled,
 }: DomaceBasicFieldsProps): React.ReactElement {
@@ -119,45 +114,37 @@ export function DomaceBasicFields({
               noResultsLabel={m.field_no_results()}
               disabled={disabled}
               aria-label={m.emotive_claims_create_field_manufacturer()}
-              onValueChange={field.handleChange}
+              onValueChange={(nextValue) => {
+                field.handleChange(nextValue)
+                form.setFieldValue('engineTypeId', '')
+              }}
               onBlur={field.handleBlur}
             />
           </FieldGroup>
         )}
       />
 
-      <form.Field
-        name="engineTypeId"
-        children={(field) => (
-          <FieldGroup id="engineTypeId" label={m.domace_claims_create_field_engine_type()}>
-            <Select
-              value={field.state.value.length > 0 ? field.state.value : SELECT_EMPTY_SENTINEL}
-              onValueChange={(value) => {
-                field.handleChange(value === SELECT_EMPTY_SENTINEL ? '' : value)
-              }}
-              disabled={disabled}
-            >
-              <SelectTrigger
-                id="engineTypeId"
-                aria-label={m.domace_claims_create_field_engine_type()}
-                onBlur={field.handleBlur}
-              >
-                <SelectValue placeholder={m.domace_claims_create_select_placeholder()} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SELECT_EMPTY_SENTINEL}>
-                  {m.domace_claims_create_select_placeholder()}
-                </SelectItem>
-                {engineTypes.map((engineType) => (
-                  <SelectItem key={engineType.id} value={engineType.id}>
-                    {engineType.code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldGroup>
+      <form.Subscribe selector={(state) => state.values.manufacturerId}>
+        {(manufacturerId) => (
+          <form.Field
+            name="engineTypeId"
+            children={(field) => (
+              <FieldGroup id="engineTypeId" label={m.domace_claims_create_field_engine_type()}>
+                <EngineTypeSearchableSelectField
+                  id="engineTypeId"
+                  value={field.state.value}
+                  manufacturerId={manufacturerId}
+                  orphanEngineType={orphanEngineType}
+                  disabled={disabled}
+                  aria-label={m.domace_claims_create_field_engine_type()}
+                  onValueChange={field.handleChange}
+                  onBlur={field.handleBlur}
+                />
+              </FieldGroup>
+            )}
+          />
         )}
-      />
+      </form.Subscribe>
 
       <form.Field
         name="engineCode"

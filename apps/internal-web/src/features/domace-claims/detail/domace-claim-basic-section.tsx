@@ -1,7 +1,6 @@
 import {
   ApiError,
   engineManufacturersReferenceOptions,
-  engineTypesReferenceOptions,
   formatListDate,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -147,7 +146,6 @@ function BasicEditMode({
   claim: DomaceClaimDetail
   onDone: () => void
 }): React.ReactElement {
-  const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
@@ -187,8 +185,12 @@ function BasicEditMode({
     <div className="flex flex-col gap-4">
       <DomaceBasicFields
         form={form}
-        engineTypes={engineTypes}
         manufacturers={manufacturers}
+        orphanEngineType={
+          claim.engineTypeId && claim.engineTypeCode
+            ? { id: claim.engineTypeId, code: claim.engineTypeCode }
+            : undefined
+        }
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

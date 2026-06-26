@@ -3,7 +3,6 @@ import {
   CustomerKind,
   customersReferenceOptions,
   engineManufacturersReferenceOptions,
-  engineTypesReferenceOptions,
   formatListDate,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -148,7 +147,6 @@ function BasicEditMode({
   const { data: customers } = useSuspenseQuery(
     customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
   )
-  const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
@@ -189,7 +187,11 @@ function BasicEditMode({
         form={form}
         customers={customers}
         manufacturers={manufacturers}
-        engineTypes={engineTypes}
+        orphanEngineType={
+          claim.engineTypeId && claim.engineTypeCode
+            ? { id: claim.engineTypeId, code: claim.engineTypeCode }
+            : undefined
+        }
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

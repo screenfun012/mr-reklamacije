@@ -429,6 +429,7 @@
   "claims_filter_manufacturer_all": "All manufacturers",
   "field_search_placeholder": "Search…",
   "field_no_results": "No results",
+  "field_select_manufacturer_first": "Select a manufacturer first",
   "nav_engine_manufacturers": "Engine manufacturers",
   "nav_engine_types": "Engine types",
   "nav_customers": "Companies",

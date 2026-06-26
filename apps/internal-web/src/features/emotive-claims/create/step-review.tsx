@@ -1,14 +1,15 @@
 import {
   FaultType,
+  engineTypesReferenceOptions,
   type CustomerListItem,
   type DepartmentListItem,
   type EmployeeListItem,
   type EngineManufacturerListItem,
-  type EngineTypeListItem,
   type ExternalPartyListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Heading } from '@mr/ui'
+import { useSuspenseQuery } from '@tanstack/react-query'
 
 import { TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
 import { formatFieldError } from './format-field-error.js'
@@ -18,7 +19,6 @@ interface StepReviewProps {
   values: EmotiveClaimFormValues
   customers: CustomerListItem[]
   manufacturers: EngineManufacturerListItem[]
-  engineTypes: EngineTypeListItem[]
   departments: DepartmentListItem[]
   employees: EmployeeListItem[]
   externalParties: ExternalPartyListItem[]
@@ -39,7 +39,6 @@ export function StepReview({
   values,
   customers,
   manufacturers,
-  engineTypes,
   departments,
   employees,
   externalParties,
@@ -49,7 +48,7 @@ export function StepReview({
   const customerName = customers.find((c) => c.id === values.customerId)?.name ?? '—'
   const manufacturerName =
     manufacturers.find((item) => item.id === values.manufacturerId)?.name ?? '—'
-  const engineTypeCode = engineTypes.find((e) => e.id === values.engineTypeId)?.code ?? '—'
+  const engineTypeCode = useReviewEngineTypeCode(values.manufacturerId, values.engineTypeId)
 
   return (
     <div className="flex flex-col gap-6">
@@ -180,4 +179,16 @@ function resolveFaultTarget(
     return employees.find((e) => e.id === fault.employeeId)?.full_name ?? '—'
   }
   return externalParties.find((p) => p.id === fault.externalPartyId)?.name ?? '—'
+}
+
+function useReviewEngineTypeCode(manufacturerId: string, engineTypeId: string): string {
+  if (manufacturerId.trim() === '' || engineTypeId.trim() === '') {
+    return '—'
+  }
+
+  const { data: engineTypes } = useSuspenseQuery(
+    engineTypesReferenceOptions({ activeOnly: true, manufacturerId }),
+  )
+
+  return engineTypes.find((engineType) => engineType.id === engineTypeId)?.code ?? '—'
 }
