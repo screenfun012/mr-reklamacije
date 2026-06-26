@@ -90,8 +90,12 @@ function LoginComponent(): React.ReactElement {
   })
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[url('/background.png')] bg-cover bg-center bg-no-repeat"
+      />
+      <Card className="relative z-10 w-full max-w-md border border-white/15 bg-card/75 shadow-xl backdrop-blur-md">
         <CardHeader>
           <Heading level="h2" as="h1">
             {m.auth_login_title_internal()}
