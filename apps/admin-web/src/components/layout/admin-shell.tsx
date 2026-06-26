@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { authClient } from '~/lib/auth-client'
+import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
 
 import { AdminSidebar } from './admin-sidebar'
 import { AdminTopbar } from './admin-topbar'
@@ -27,6 +28,7 @@ export interface AdminShellProps {
 export function AdminShell({ children }: AdminShellProps) {
   const navigate = useNavigate()
   const { data: session } = authClient.useSession()
+  useRealtimeEventStream()
 
   const handleLogout = (): void => {
     void (async () => {

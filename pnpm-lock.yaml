@@ -156,6 +156,9 @@ importers:
       vite:
         specifier: ^8.0.10
         version: 8.0.16(@types/node@20.19.42)(esbuild@0.28.0)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: 3.2.6
+        version: 3.2.6(@types/node@20.19.42)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
   apps/api:
     dependencies:
