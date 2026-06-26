@@ -1,19 +1,25 @@
 import type { EngineTypeListItem } from '@mr/shared'
 
 import type { Container } from '../core/container.js'
+import { uniqueFixtureEngineManufacturerCode } from './engine-manufacturer-cleanup.js'
 
 export async function ensureTestEngineManufacturerId(
   container: Container,
-  code = 'TEST-BMW',
-  name = 'BMW',
+  code?: string,
+  name = 'Test Manufacturer',
 ): Promise<string> {
+  const resolvedCode = code ?? uniqueFixtureEngineManufacturerCode()
+
   const list = await container.engineManufacturersRepository.list({ activeOnly: false, limit: 50 })
-  const existing = list.items.find((item) => item.code === code)
+  const existing = list.items.find((item) => item.code === resolvedCode)
   if (existing !== undefined) {
     return existing.id
   }
 
-  const created = await container.engineManufacturersRepository.create({ code, name })
+  const created = await container.engineManufacturersRepository.create({
+    code: resolvedCode,
+    name,
+  })
   return created.id
 }
 

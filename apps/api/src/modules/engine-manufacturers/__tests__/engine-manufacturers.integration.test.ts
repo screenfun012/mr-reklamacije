@@ -1,23 +1,39 @@
-import { schema } from '@mr/db'
+import { createPool, getIntegrationDatabaseUrl, schema } from '@mr/db'
 import { AuditAction, ERROR_CODE, ResourceChangedKey } from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
+import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import {
+  LEGACY_LEAKED_ENGINE_MANUFACTURER_CODES,
+  purgeCommittedEngineManufacturersByCode,
+} from '../../../test-helpers/engine-manufacturer-cleanup.js'
+import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import {
   buildTestContainer,
   createReferenceTestApp,
   testUser,
 } from '../../../test-helpers/test-app.js'
-import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
-import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
+
+const CREATE_AUDIT_MFG_CODE = 'CREATE-AUDIT-MFG'
 
 describe('EngineManufacturers reference module', () => {
   let ctx: TestDbContext
   let container: Container
 
   beforeEach(async () => {
+    const bootstrapPool = createPool(getIntegrationDatabaseUrl())
+    try {
+      await purgeCommittedEngineManufacturersByCode(bootstrapPool, [
+        ...LEGACY_LEAKED_ENGINE_MANUFACTURER_CODES,
+        CREATE_AUDIT_MFG_CODE,
+      ])
+    } finally {
+      await bootstrapPool.end()
+    }
+
     ctx = await createTestDbContext()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
@@ -59,6 +75,7 @@ describe('EngineManufacturers reference module', () => {
       const result = await container.engineManufacturersRepository.list({
         activeOnly: true,
         limit: 50,
+        search: 'SORT-',
       })
 
       const sortAIndex = result.items.findIndex((item) => item.code === 'SORT-A')
@@ -95,20 +112,15 @@ describe('EngineManufacturers reference module', () => {
         createdBy: TEST_USER_ID,
       })
 
-      const listed = await container.engineManufacturersRepository.list({
-        activeOnly: false,
-        limit: 50,
-      })
-
-      const row = listed.items.find((item) => item.id === created.id)
-      expect(row?.usageCount).toBe(2)
+      const found = await container.engineManufacturersRepository.findById(created.id)
+      expect(found?.usageCount).toBe(2)
     })
   })
 
   describe('when creating', () => {
     it('creates manufacturer with defaults and writes audit log', async () => {
       const created = await container.engineManufacturersService.create(
-        { code: 'TEST-BMW', name: 'Test BMW', sortOrder: 15 },
+        { code: CREATE_AUDIT_MFG_CODE, name: 'Test BMW', sortOrder: 15 },
         {
           actorUserId: testUser(['settings.engine_manufacturers.create']).id,
           actorIp: null,
@@ -116,7 +128,7 @@ describe('EngineManufacturers reference module', () => {
         },
       )
 
-      expect(created.code).toBe('TEST-BMW')
+      expect(created.code).toBe(CREATE_AUDIT_MFG_CODE)
       expect(created.name).toBe('Test BMW')
       expect(created.sortOrder).toBe(15)
       expect(created.isActive).toBe(true)
