@@ -2,9 +2,11 @@ export type {
   ResourceColumnDef,
   ResourceDefinition,
   ResourceFormFieldDef,
-  ResourceFormFieldType,
   ResourceLifecycleLabels,
   ResourceListConfig,
+  ResourceManufacturerFilterConfig,
+  ResourceReferenceSelectFieldDef,
+  ResourceTextFormFieldDef,
 } from './types.js'
 export { ResourceFormDialog } from './resource-form-dialog.js'
 export { ResourceHardDeleteDialog } from './resource-hard-delete-dialog.js'

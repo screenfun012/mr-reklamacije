@@ -11,7 +11,9 @@ import {
   toast,
 } from '@mr/ui'
 import { useEffect, useState } from 'react'
+import { Suspense } from 'react'
 
+import { ResourceReferenceSelectField } from './resource-reference-select-field.js'
 import type { ResourceDefinition, ResourceFormFieldDef } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
 
@@ -57,6 +59,10 @@ function isSubmitDisabled<
     }
     return values[field.key]?.trim() === ''
   })
+}
+
+function isReadonlyField(field: ResourceFormFieldDef, mode: 'create' | 'edit'): boolean {
+  return field.type === 'readonly' || (field.createOnly === true && mode === 'edit')
 }
 
 export function ResourceFormDialog<
@@ -119,12 +125,34 @@ export function ResourceFormDialog<
             const fieldId = `resource-field-${field.key}`
             const value = values[field.key] ?? ''
 
-            if (field.type === 'readonly' || (field.createOnly === true && mode === 'edit')) {
+            if (isReadonlyField(field, mode)) {
               return (
                 <div key={field.key} className="space-y-1.5">
                   <span className="text-sm font-medium">{field.label()}</span>
                   <p className="text-sm text-muted-foreground">{value}</p>
                 </div>
+              )
+            }
+
+            if (field.type === 'reference-select') {
+              return (
+                <Suspense
+                  key={field.key}
+                  fallback={
+                    <div className="space-y-1.5">
+                      <span className="text-sm font-medium">{field.label()}</span>
+                      <p className="text-sm text-muted-foreground">…</p>
+                    </div>
+                  }
+                >
+                  <ResourceReferenceSelectField
+                    field={field}
+                    fieldId={fieldId}
+                    value={value}
+                    disabled={isPending}
+                    onChange={(next) => setFieldValue(field.key, next)}
+                  />
+                </Suspense>
               )
             }
 

@@ -3,12 +3,11 @@ import type { QueryKey, UseSuspenseQueryOptions } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { z } from 'zod'
 
-export type ResourceFormFieldType = 'text' | 'number' | 'textarea' | 'readonly'
+import type { ResourceReferenceSelectKey } from './reference-select-registry.js'
 
-export interface ResourceFormFieldDef {
+interface ResourceFormFieldBase {
   key: string
   label: () => string
-  type: ResourceFormFieldType
   /** Shown only in create dialog (e.g. code). */
   createOnly?: boolean
   /** Hidden in create dialog. */
@@ -16,6 +15,17 @@ export interface ResourceFormFieldDef {
   /** When true, empty value blocks submit. */
   required?: boolean
 }
+
+export interface ResourceTextFormFieldDef extends ResourceFormFieldBase {
+  type: 'text' | 'number' | 'textarea' | 'readonly'
+}
+
+export interface ResourceReferenceSelectFieldDef extends ResourceFormFieldBase {
+  type: 'reference-select'
+  referenceKey: ResourceReferenceSelectKey
+}
+
+export type ResourceFormFieldDef = ResourceTextFormFieldDef | ResourceReferenceSelectFieldDef
 
 export interface ResourceColumnDef<TItem> {
   id: string
@@ -43,9 +53,15 @@ export interface ResourceLifecycleLabels<TItem> {
   hardDeleteBlockedTooltip: () => string
 }
 
+export interface ResourceManufacturerFilterConfig<TItem> {
+  getManufacturerId: (item: TItem) => string | null
+}
+
 export interface ResourceListConfig<TItem> {
   defaultPageSize?: ListPageSize
   getSearchableText: (item: TItem) => string
+  /** Optional client-side filter by manufacturer (admin catalog toolbar). */
+  manufacturerFilter?: ResourceManufacturerFilterConfig<TItem>
 }
 
 export interface ResourceDefinition<
