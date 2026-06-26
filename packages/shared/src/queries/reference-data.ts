@@ -9,6 +9,7 @@ import type {
   EmployeeListItem,
   EmployeesListQuery,
   EngineTypeListItem,
+  EngineTypesListQuery,
   EngineManufacturerListItem,
   ExternalPartyListItem,
   ReferenceListQuery,
@@ -23,6 +24,10 @@ export type CustomersReferenceFilters = Partial<
 >
 
 export type ReferenceLookupFilters = Partial<Pick<ReferenceListQuery, 'search' | 'activeOnly'>>
+
+export type EngineTypesReferenceFilters = Partial<
+  Pick<EngineTypesListQuery, 'search' | 'activeOnly' | 'manufacturerId'>
+>
 
 export type EmployeesReferenceFilters = Partial<
   Pick<EmployeesListQuery, 'search' | 'activeOnly' | 'departmentId'>
@@ -105,13 +110,22 @@ export function claimSourcesReferenceOptions(filters: ReferenceLookupFilters = {
 }
 
 export function engineTypesReferenceQueryKey(
-  filters: ReferenceLookupFilters = {},
-): readonly ['engine-types', 'reference', ReferenceLookupFilters] {
-  return ['engine-types', 'reference', normalizeReferenceLookupFilters(filters)] as const
+  filters: EngineTypesReferenceFilters = {},
+): readonly ['engine-types', 'reference', EngineTypesReferenceFilters] {
+  return ['engine-types', 'reference', normalizeEngineTypesReferenceFilters(filters)] as const
 }
 
-export function engineTypesReferenceOptions(filters: ReferenceLookupFilters = {}) {
-  const normalized = normalizeReferenceLookupFilters(filters)
+function normalizeEngineTypesReferenceFilters(
+  filters: EngineTypesReferenceFilters = {},
+): EngineTypesReferenceFilters {
+  if (filters.activeOnly !== undefined) {
+    return filters
+  }
+  return { ...filters, activeOnly: true }
+}
+
+export function engineTypesReferenceOptions(filters: EngineTypesReferenceFilters = {}) {
+  const normalized = normalizeEngineTypesReferenceFilters(filters)
   return queryOptions({
     queryKey: engineTypesReferenceQueryKey(normalized),
     // Full catalog for <select> dropdowns; seed data is small (one page). Search-as-you-type is future work.
@@ -119,6 +133,7 @@ export function engineTypesReferenceOptions(filters: ReferenceLookupFilters = {}
       fetchAllReferencePages<EngineTypeListItem>('/api/engine-types', {
         activeOnly: normalized.activeOnly ?? true,
         search: normalized.search,
+        manufacturerId: normalized.manufacturerId,
       }),
     staleTime: REFERENCE_STALE_MS,
     gcTime: REFERENCE_GC_MS,

@@ -41,6 +41,12 @@ export const CustomersListQuerySchema = ReferenceListQuerySchema.extend({
 
 export type CustomersListQuery = z.infer<typeof CustomersListQuerySchema>
 
+export const EngineTypesListQuerySchema = ReferenceListQuerySchema.extend({
+  manufacturerId: z.string().uuid().optional(),
+})
+
+export type EngineTypesListQuery = z.infer<typeof EngineTypesListQuerySchema>
+
 export const ReferenceListResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
   z.object({
     items: z.array(itemSchema),
@@ -60,7 +66,8 @@ export type EmployeeListItem = z.infer<typeof EmployeeListItemSchema>
 export const EngineTypeListItemSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
-  manufacturer: z.string().nullable(),
+  manufacturerId: z.string().uuid().nullable(),
+  manufacturerName: z.string().nullable(),
   displacementCc: z.number().nullable(),
   notes: z.string().nullable(),
   isActive: z.boolean(),
@@ -71,7 +78,7 @@ export type EngineTypeListItem = z.infer<typeof EngineTypeListItemSchema>
 
 export const EngineTypeCreateInputSchema = z.object({
   code: z.string().trim().min(1).max(50),
-  manufacturer: z.string().trim().min(1).max(200).optional(),
+  manufacturerId: z.string().uuid(),
   displacementCc: z.number().int().positive().optional(),
   notes: z.string().trim().max(4000).optional(),
 })
@@ -80,7 +87,7 @@ export type EngineTypeCreateInput = z.infer<typeof EngineTypeCreateInputSchema>
 
 export const EngineTypeUpdateInputSchema = z
   .object({
-    manufacturer: z.string().trim().min(1).max(200).nullable().optional(),
+    manufacturerId: z.string().uuid().nullable().optional(),
     displacementCc: z.number().int().positive().nullable().optional(),
     notes: z.string().trim().max(4000).nullable().optional(),
     isActive: z.boolean().optional(),

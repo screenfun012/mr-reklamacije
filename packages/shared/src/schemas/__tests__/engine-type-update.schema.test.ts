@@ -2,25 +2,27 @@ import { describe, expect, it } from 'vitest'
 
 import { EngineTypeUpdateInputSchema } from '../reference-data.schema.js'
 
+const MANUFACTURER_ID = '00000000-0000-4000-8000-000000000001'
+
 describe('EngineTypeUpdateInputSchema', () => {
   it('accepts partial updates including notes', () => {
     const parsed = EngineTypeUpdateInputSchema.parse({
-      manufacturer: 'Mercedes-Benz',
+      manufacturerId: MANUFACTURER_ID,
       notes: 'OM651 variant',
     })
     expect(parsed).toEqual({
-      manufacturer: 'Mercedes-Benz',
+      manufacturerId: MANUFACTURER_ID,
       notes: 'OM651 variant',
     })
   })
 
   it('allows clearing nullable fields', () => {
     const parsed = EngineTypeUpdateInputSchema.parse({
-      manufacturer: null,
+      manufacturerId: null,
       notes: null,
       displacementCc: null,
     })
-    expect(parsed.manufacturer).toBeNull()
+    expect(parsed.manufacturerId).toBeNull()
     expect(parsed.notes).toBeNull()
     expect(parsed.displacementCc).toBeNull()
   })
