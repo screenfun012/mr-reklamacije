@@ -1065,6 +1065,19 @@ describe('EmotiveClaimsService integration', () => {
       ).rejects.toBeInstanceOf(ConflictError)
     })
 
+    it('allows internalNotes update on a completed claim', async () => {
+      const id = await createCompletedClaim()
+
+      const updated = await container.emotiveClaimsService.update(
+        id,
+        { internalNotes: 'Nalaz posle prihvatanja' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.internalNotes).toBe('Nalaz posle prihvatanja')
+    })
+
     it('rejects a faults-only replace on a completed claim with ConflictError', async () => {
       const id = await createCompletedClaim()
       const departmentId = await getDepartmentIdByCode(ctx.db, 'GLAVE')

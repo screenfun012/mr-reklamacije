@@ -6,7 +6,7 @@ import {
   type ClaimDetailTabValue,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Heading, Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
+import { DomaceClaimFindingsSection } from './domace-claim-findings-section.js'
 import { DomaceClaimFaultsSection } from './domace-claim-faults-section.js'
 import { DomaceClaimAttachmentsTab } from './domace-claim-attachments-tab.js'
 import { DomaceClaimReportTab } from './domace-claim-report-tab.js'
@@ -46,6 +47,7 @@ export function DomaceClaimDetailView({
   const canEditAmount =
     claim.outcome === ClaimOutcome.Accepted &&
     permissions?.includes('domace_claims.update') === true
+  const canEditFindings = permissions?.includes('domace_claims.update') === true
 
   const [editingBasic, setEditingBasic] = useState(false)
 
@@ -97,18 +99,7 @@ export function DomaceClaimDetailView({
 
           <DomaceClaimAmountSection claim={claim} canEdit={canEditAmount} />
 
-          <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-            <Heading level="h3" as="h2" className="text-foreground">
-              {m.emotive_claims_detail_section_notes()}
-            </Heading>
-            {claim.internalNotes ? (
-              <p className="text-sm whitespace-pre-wrap text-foreground">{claim.internalNotes}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {m.emotive_claims_detail_notes_empty()}
-              </p>
-            )}
-          </section>
+          <DomaceClaimFindingsSection claim={claim} canEdit={canEditFindings} />
 
           <p className="text-xs text-muted-foreground">
             {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}

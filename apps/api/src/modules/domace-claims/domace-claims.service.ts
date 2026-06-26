@@ -11,6 +11,7 @@ import {
   assertCompletedActionAllowed,
   assertOutcomeTransitionAllowed,
 } from '../../core/claims/claim-lock.js'
+import { isInternalNotesOnlyUpdate } from '../../core/claims/is-internal-notes-only-update.js'
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -108,7 +109,9 @@ export class DomaceClaimsService {
       throw new NotFoundError('Domace claim', id)
     }
 
-    assertClaimEditable(before)
+    if (!isInternalNotesOnlyUpdate(input)) {
+      assertClaimEditable(before)
+    }
 
     await this.validateUpdateReferences(input)
 

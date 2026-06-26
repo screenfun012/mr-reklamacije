@@ -11,6 +11,7 @@ import {
   assertCompletedActionAllowed,
   assertOutcomeTransitionAllowed,
 } from '../../core/claims/claim-lock.js'
+import { isInternalNotesOnlyUpdate } from '../../core/claims/is-internal-notes-only-update.js'
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
@@ -112,7 +113,9 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    assertClaimEditable(before)
+    if (!isInternalNotesOnlyUpdate(input)) {
+      assertClaimEditable(before)
+    }
 
     await this.validateUpdateReferences(input)
 

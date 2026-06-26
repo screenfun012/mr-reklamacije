@@ -583,6 +583,19 @@ describe('DomaceClaimsService integration', () => {
       ).rejects.toBeInstanceOf(ConflictError)
     })
 
+    it('allows internalNotes update on a completed claim', async () => {
+      const id = await createCompleted()
+
+      const updated = await container.domaceClaimsService.update(
+        id,
+        { internalNotes: 'Nalaz posle prihvatanja' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.internalNotes).toBe('Nalaz posle prihvatanja')
+    })
+
     it('blocks a direct accepted → rejected transition with ConflictError', async () => {
       const id = await createCompleted(ClaimOutcome.Accepted)
       await expect(

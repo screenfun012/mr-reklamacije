@@ -124,6 +124,15 @@ describe('@mr/i18n messages', () => {
     expect(m.nav_engine_types()).toBe('Engine types')
   })
 
+  it('returns claim findings section labels per locale', () => {
+    setLocale('sr')
+    expect(m.emotive_claims_detail_section_notes()).toBe('Nalazi')
+    expect(m.emotive_claims_detail_notes_empty()).toBe('Nema nalaza.')
+    setLocale('en')
+    expect(m.emotive_claims_detail_section_notes()).toBe('Findings')
+    expect(m.emotive_claims_detail_notes_empty()).toBe('No findings yet.')
+  })
+
   it('returns insufficient-role login banner message per locale', () => {
     setLocale('sr')
     expect(m.auth_login_insufficient_role()).toBe(

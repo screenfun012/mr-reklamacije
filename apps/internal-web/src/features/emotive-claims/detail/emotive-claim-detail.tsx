@@ -6,13 +6,14 @@ import {
   type ClaimDetailTabValue,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Heading, Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
+import { EmotiveClaimFindingsSection } from './emotive-claim-findings-section.js'
 import { EmotiveClaimFaultsSection } from './emotive-claim-faults-section.js'
 import { EmotiveClaimAttachmentsTab } from './emotive-claim-attachments-tab.js'
 import { EmotiveClaimReportTab } from './emotive-claim-report-tab.js'
@@ -43,6 +44,7 @@ export function EmotiveClaimDetailView({
     claim.outcome === ClaimOutcome.Pending &&
     permissions?.includes('emotive_claims.update') === true
   const canEditFaults = canEditBasic
+  const canEditFindings = permissions?.includes('emotive_claims.update') === true
 
   const [editingBasic, setEditingBasic] = useState(false)
 
@@ -92,18 +94,7 @@ export function EmotiveClaimDetailView({
             hideMrInReadOnly
           />
 
-          <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-            <Heading level="h3" as="h2" className="text-foreground">
-              {m.emotive_claims_detail_section_notes()}
-            </Heading>
-            {claim.internalNotes ? (
-              <p className="text-sm whitespace-pre-wrap text-foreground">{claim.internalNotes}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {m.emotive_claims_detail_notes_empty()}
-              </p>
-            )}
-          </section>
+          <EmotiveClaimFindingsSection claim={claim} canEdit={canEditFindings} />
 
           <p className="text-xs text-muted-foreground">
             {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
