@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import {
@@ -197,6 +197,13 @@ function LoginComponent(): React.ReactElement {
               <Button type="submit" loading={isPending} className="w-full">
                 {m.auth_login_submit()}
               </Button>
+
+              <Link
+                to="/register"
+                className="text-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {m.auth_login_register_link()}
+              </Link>
             </form>
           ) : null}
         </CardContent>
