@@ -510,6 +510,7 @@
   "admin_catalog_filter_all": "Svi",
   "admin_catalog_filter_active": "Aktivni",
   "admin_catalog_filter_inactive": "Neaktivni",
+  "admin_catalog_filter_manufacturer_all": "Svi proizvođači",
   "field_code": "Šifra",
   "field_manufacturer": "Proizvođač",
   "field_displacement_cc": "Zapremina (cm³)",

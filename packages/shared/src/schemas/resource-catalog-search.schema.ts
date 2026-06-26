@@ -26,6 +26,7 @@ export const ResourceCatalogSearchSchema = z.object({
     .default(25),
   q: z.string().trim().min(1).optional(),
   status: z.enum(resourceCatalogStatusValues).default(ResourceCatalogStatusFilter.All),
+  manufacturerId: z.string().uuid().optional(),
 })
 
 export type ResourceCatalogSearch = z.infer<typeof ResourceCatalogSearchSchema>

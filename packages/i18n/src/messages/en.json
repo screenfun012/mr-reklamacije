@@ -510,6 +510,7 @@
   "admin_catalog_filter_all": "All",
   "admin_catalog_filter_active": "Active",
   "admin_catalog_filter_inactive": "Inactive",
+  "admin_catalog_filter_manufacturer_all": "All manufacturers",
   "field_code": "Code",
   "field_manufacturer": "Manufacturer",
   "field_displacement_cc": "Displacement (cc)",

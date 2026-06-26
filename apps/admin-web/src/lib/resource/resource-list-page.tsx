@@ -48,8 +48,13 @@ export function ResourceListPage<
       query: search.q,
       status: search.status,
       getSearchableText: listConfig.getSearchableText,
+    }).filter((item) => {
+      if (search.manufacturerId === undefined || listConfig.manufacturerFilter === undefined) {
+        return true
+      }
+      return listConfig.manufacturerFilter.getManufacturerId(item) === search.manufacturerId
     })
-  }, [allItems, listConfig, search.q, search.status])
+  }, [allItems, listConfig, search.q, search.status, search.manufacturerId])
 
   const { page, pageSize } = resourceCatalogPaginationFromSearch(search)
   const paged = useMemo(
@@ -83,7 +88,13 @@ export function ResourceListPage<
         </Button>
       </div>
 
-      {listConfig ? <ResourceListToolbar search={search} onSearchChange={onSearchChange} /> : null}
+      {listConfig ? (
+        <ResourceListToolbar
+          search={search}
+          onSearchChange={onSearchChange}
+          showManufacturerFilter={listConfig.manufacturerFilter !== undefined}
+        />
+      ) : null}
 
       <ResourceTable
         definition={definition}

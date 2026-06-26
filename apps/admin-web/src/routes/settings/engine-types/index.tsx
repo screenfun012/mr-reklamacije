@@ -1,4 +1,8 @@
-import { engineTypesReferenceOptions, ResourceCatalogSearchSchema } from '@mr/shared'
+import {
+  engineManufacturersReferenceOptions,
+  engineTypesReferenceOptions,
+  ResourceCatalogSearchSchema,
+} from '@mr/shared'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, useCallback } from 'react'
 
@@ -11,7 +15,10 @@ export const Route = createFileRoute('/settings/engine-types/')({
   validateSearch: (search) => ResourceCatalogSearchSchema.parse(search),
   beforeLoad: adminRequireRoles(['admin']),
   loader: async ({ context: { queryClient } }) => {
-    await queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: false }))
+    await Promise.all([
+      queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: false })),
+      queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: false })),
+    ])
   },
   component: EngineTypesRoute,
 })

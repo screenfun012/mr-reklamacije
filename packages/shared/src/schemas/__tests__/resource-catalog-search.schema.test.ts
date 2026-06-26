@@ -26,4 +26,17 @@ describe('ResourceCatalogSearchSchema', () => {
       status: 'inactive',
     })
   })
+
+  it('parses manufacturer filter from URL search', () => {
+    expect(
+      ResourceCatalogSearchSchema.parse({
+        manufacturerId: '550e8400-e29b-41d4-a716-446655440000',
+      }),
+    ).toEqual({
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      manufacturerId: '550e8400-e29b-41d4-a716-446655440000',
+    })
+  })
 })

@@ -69,7 +69,7 @@ export const engineTypesResourceDefinition: ResourceDefinition<
     {
       id: 'manufacturer',
       header: () => m.field_manufacturer(),
-      cell: (item) => displayNullableText(item.manufacturer),
+      cell: (item) => displayNullableText(item.manufacturerName),
     },
     {
       id: 'displacementCc',
@@ -105,9 +105,11 @@ export const engineTypesResourceDefinition: ResourceDefinition<
       editOnly: true,
     },
     {
-      key: 'manufacturer',
+      key: 'manufacturerId',
       label: () => m.field_manufacturer(),
-      type: 'text',
+      type: 'reference-select',
+      referenceKey: 'engine-manufacturers',
+      required: true,
     },
     {
       key: 'displacementCc',
@@ -139,25 +141,28 @@ export const engineTypesResourceDefinition: ResourceDefinition<
   editActionLabel: () => m.action_edit(),
   getInitialFormValues: (item) => ({
     code: item?.code ?? '',
-    manufacturer: item?.manufacturer ?? '',
+    manufacturerId: item?.manufacturerId ?? '',
     displacementCc: item?.displacementCc === null ? '' : String(item?.displacementCc ?? ''),
     notes: item?.notes ?? '',
   }),
   buildCreateBody: (values) => ({
     code: (values['code'] ?? '').trim(),
-    manufacturer: parseOptionalString(values['manufacturer'] ?? ''),
+    manufacturerId: (values['manufacturerId'] ?? '').trim(),
     displacementCc: parseOptionalInt(values['displacementCc'] ?? ''),
     notes: parseOptionalString(values['notes'] ?? ''),
   }),
   buildUpdateBody: (values) => ({
-    manufacturer: parseOptionalNullableString(values['manufacturer'] ?? ''),
+    manufacturerId: parseOptionalNullableString(values['manufacturerId'] ?? ''),
     displacementCc: parseOptionalNullableInt(values['displacementCc'] ?? ''),
     notes: parseOptionalNullableString(values['notes'] ?? ''),
   }),
   getDeactivateTargetLabel: (item) => item.code,
   listConfig: {
     defaultPageSize: 25,
-    getSearchableText: (item) => [item.code, item.manufacturer ?? ''].join(' '),
+    getSearchableText: (item) => [item.code, item.manufacturerName ?? ''].join(' '),
+    manufacturerFilter: {
+      getManufacturerId: (item) => item.manufacturerId,
+    },
   },
   lifecycle: {
     getUsageCount: (item) => item.usageCount,
