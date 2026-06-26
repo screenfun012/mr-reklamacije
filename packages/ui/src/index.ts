@@ -103,6 +103,7 @@ export {
   DropdownMenuRadioGroup,
 } from './primitives/dropdown-menu.js'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './primitives/tabs.js'
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './primitives/tooltip.js'
 export { AppShell } from './layouts/app-shell.js'
 export type { AppShellProps } from './layouts/app-shell.types.js'
 export { MrEnginesLogo, type MrEnginesLogoProps } from './components/mr-engines-logo.js'

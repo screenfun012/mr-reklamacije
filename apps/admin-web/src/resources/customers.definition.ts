@@ -134,7 +134,6 @@ export const customersResourceDefinition: ResourceDefinition<
     hardDeleteDescription: (item) => m.admin_customers_hard_delete_description({ name: item.name }),
     hardDeleteConfirmLabel: () => m.admin_customers_hard_delete_confirm(),
     hardDeleteSuccessMessage: () => m.admin_customers_hard_delete_success(),
-    hardDeleteBlockedTooltip: (item) =>
-      m.admin_customers_hard_delete_blocked({ name: item.name, count: item.usageCount }),
+    hardDeleteBlockedTooltip: () => m.admin_catalog_hard_delete_blocked(),
   },
 }

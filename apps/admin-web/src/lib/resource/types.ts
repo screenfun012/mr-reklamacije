@@ -40,7 +40,7 @@ export interface ResourceLifecycleLabels<TItem> {
   hardDeleteDescription: (item: TItem) => string
   hardDeleteConfirmLabel: () => string
   hardDeleteSuccessMessage: () => string
-  hardDeleteBlockedTooltip: (item: TItem) => string
+  hardDeleteBlockedTooltip: () => string
 }
 
 export interface ResourceListConfig<TItem> {

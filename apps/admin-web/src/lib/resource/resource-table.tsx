@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { Button } from '@mr/ui'
+import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@mr/ui'
 import { Trash2 } from 'lucide-react'
 
 import type { ResourceColumnDef, ResourceDefinition } from './types.js'
@@ -41,90 +41,100 @@ export function ResourceTable<
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/20 text-left">
-              {definition.columns.map((column: ResourceColumnDef<TItem>) => (
-                <th
-                  key={column.id}
-                  className={`px-4 py-3 font-medium text-muted-foreground ${column.headerClassName ?? ''}`}
-                >
-                  {column.header()}
+    <TooltipProvider delayDuration={300}>
+      <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/20 text-left">
+                {definition.columns.map((column: ResourceColumnDef<TItem>) => (
+                  <th
+                    key={column.id}
+                    className={`px-4 py-3 font-medium text-muted-foreground ${column.headerClassName ?? ''}`}
+                  >
+                    {column.header()}
+                  </th>
+                ))}
+                <th className="px-4 py-3 font-medium text-muted-foreground">
+                  <span className="sr-only">{definition.editActionLabel()}</span>
                 </th>
-              ))}
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                <span className="sr-only">{definition.editActionLabel()}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const usageCount = lifecycle?.getUsageCount(item) ?? 0
-              const canHardDelete = lifecycle !== undefined && usageCount === 0
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const usageCount = lifecycle?.getUsageCount(item) ?? 0
+                const canHardDelete = lifecycle !== undefined && usageCount === 0
 
-              return (
-                <tr key={item.id} className="border-b border-border last:border-b-0">
-                  {definition.columns.map((column) => (
-                    <td key={column.id} className={`px-4 py-3 ${column.cellClassName ?? ''}`}>
-                      {column.cell(item)}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEdit(item)}
-                      >
-                        {definition.editActionLabel()}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={item.isActive ? 'destructive' : 'outline'}
-                        size="sm"
-                        onClick={() => onToggleActive(item)}
-                      >
-                        {item.isActive
-                          ? definition.deactivateConfirmLabel()
-                          : (lifecycle?.reactivateConfirmLabel() ?? definition.activeYesLabel())}
-                      </Button>
-                      {lifecycle && onHardDelete ? (
+                return (
+                  <tr key={item.id} className="border-b border-border last:border-b-0">
+                    {definition.columns.map((column) => (
+                      <td key={column.id} className={`px-4 py-3 ${column.cellClassName ?? ''}`}>
+                        {column.cell(item)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-destructive hover:text-destructive"
-                          disabled={!canHardDelete}
-                          title={
-                            canHardDelete
-                              ? m.action_delete()
-                              : lifecycle.hardDeleteBlockedTooltip(item)
-                          }
-                          aria-label={
-                            canHardDelete
-                              ? m.action_delete()
-                              : lifecycle.hardDeleteBlockedTooltip(item)
-                          }
-                          onClick={() => {
-                            if (canHardDelete) {
-                              onHardDelete(item)
-                            }
-                          }}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEdit(item)}
                         >
-                          <Trash2 className="size-4" />
+                          {definition.editActionLabel()}
                         </Button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                        <Button
+                          type="button"
+                          variant={item.isActive ? 'destructive' : 'outline'}
+                          size="sm"
+                          onClick={() => onToggleActive(item)}
+                        >
+                          {item.isActive
+                            ? definition.deactivateConfirmLabel()
+                            : (lifecycle?.reactivateConfirmLabel() ?? definition.activeYesLabel())}
+                        </Button>
+                        {lifecycle && onHardDelete ? (
+                          canHardDelete ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-destructive hover:text-destructive"
+                              aria-label={m.action_delete()}
+                              onClick={() => onHardDelete(item)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 text-destructive hover:text-destructive"
+                                    disabled
+                                    aria-label={m.action_delete()}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {lifecycle.hardDeleteBlockedTooltip()}
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }

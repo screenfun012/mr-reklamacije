@@ -171,7 +171,6 @@ export const engineTypesResourceDefinition: ResourceDefinition<
       m.admin_engine_types_hard_delete_description({ code: item.code }),
     hardDeleteConfirmLabel: () => m.admin_engine_types_hard_delete_confirm(),
     hardDeleteSuccessMessage: () => m.admin_engine_types_hard_delete_success(),
-    hardDeleteBlockedTooltip: (item) =>
-      m.admin_engine_types_hard_delete_blocked({ code: item.code, count: item.usageCount }),
+    hardDeleteBlockedTooltip: () => m.admin_catalog_hard_delete_blocked(),
   },
 }
