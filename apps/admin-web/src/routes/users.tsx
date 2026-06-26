@@ -1,24 +1,26 @@
+import { usersListOptions } from '@mr/shared'
 import { createFileRoute } from '@tanstack/react-router'
+import { Suspense } from 'react'
 
+import { UsersPageContent, UsersPageSkeleton } from '~/components/users/users-page'
 import { adminRequireRoles } from '~/lib/auth-guard'
-import { m } from '@mr/i18n'
-import { Heading } from '@mr/ui'
 
 import { AdminShell } from '~/components/layout/admin-shell'
+
 export const Route = createFileRoute('/users')({
   beforeLoad: adminRequireRoles(['admin']),
-  component: UsersComponent,
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.ensureQueryData(usersListOptions())
+  },
+  component: UsersRoute,
 })
 
-function UsersComponent() {
+function UsersRoute(): React.ReactElement {
   return (
     <AdminShell>
-      <div>
-        <Heading level="h1" className="mb-2">
-          {m.nav_users()}
-        </Heading>
-        <p className="text-muted-foreground">{m.placeholder_coming_soon_phase()}</p>
-      </div>
+      <Suspense fallback={<UsersPageSkeleton />}>
+        <UsersPageContent />
+      </Suspense>
     </AdminShell>
   )
 }
