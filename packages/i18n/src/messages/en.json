@@ -26,6 +26,8 @@
   "auth_login_error_generic": "Login failed",
   "auth_login_error_invalid": "Invalid email or password",
   "auth_login_error_rate_limited": "Too many login attempts. Wait a minute or restart the API: pnpm dev:api",
+  "auth_login_error_pending": "Your account is pending administrator approval.",
+  "auth_login_error_rejected": "Your account was rejected. Contact your administrator.",
   "auth_login_insufficient_role": "This application requires a different role. Please sign in with an appropriate account.",
   "auth_login_password": "Password",
   "auth_login_submit": "Sign in",

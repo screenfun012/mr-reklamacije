@@ -26,6 +26,8 @@
   "auth_login_error_generic": "Greška pri prijavi",
   "auth_login_error_invalid": "Neispravan e-mail ili lozinka",
   "auth_login_error_rate_limited": "Previše pokušaja prijave. Sačekajte minut ili restartujte API: pnpm dev:api",
+  "auth_login_error_pending": "Nalog čeka odobrenje administratora.",
+  "auth_login_error_rejected": "Nalog je odbijen. Obratite se administratoru.",
   "auth_login_insufficient_role": "Ova aplikacija zahteva drugačiju ulogu. Prijavite se sa odgovarajućim nalogom.",
   "auth_login_password": "Lozinka",
   "auth_login_submit": "Prijavi se",

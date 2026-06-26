@@ -64,11 +64,17 @@ function LoginComponent(): React.ReactElement {
 
         if (result.error) {
           setAuthError(
-            loginAuthErrorMessage(result.error.code, {
-              invalid: m.auth_login_error_invalid(),
-              rateLimited: m.auth_login_error_rate_limited(),
-              generic: m.auth_login_error_generic(),
-            }),
+            loginAuthErrorMessage(
+              result.error.code,
+              {
+                invalid: m.auth_login_error_invalid(),
+                rateLimited: m.auth_login_error_rate_limited(),
+                pending: m.auth_login_error_pending(),
+                rejected: m.auth_login_error_rejected(),
+                generic: m.auth_login_error_generic(),
+              },
+              result.error.message,
+            ),
           )
           return
         }

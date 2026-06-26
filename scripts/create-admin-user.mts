@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createAuth } from '@mr/auth'
 import { createDb, createPool, getDatabaseUrl, schema } from '@mr/db'
+import { UserAccountStatus } from '@mr/shared'
 import { config } from 'dotenv'
 import { eq } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
@@ -76,6 +77,13 @@ async function main(): Promise<void> {
       userId = result.user.id
       console.log(`✓ User created with id ${userId}`)
     }
+
+    await db
+      .update(schema.users)
+      .set({ accountStatus: UserAccountStatus.Approved })
+      .where(eq(schema.users.id, userId))
+
+    console.log(`✓ Account status set to approved for ${ADMIN_EMAIL}`)
 
     const adminRole = await db
       .select()
