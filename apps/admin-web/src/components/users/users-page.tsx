@@ -79,7 +79,7 @@ function UsersTable({
                     <UserAccountStatusBadge status={user.accountStatus} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {formatListDateTime(user.createdAt.toISOString())}
+                    {formatListDateTime(user.createdAt)}
                   </td>
                   {showActions ? (
                     <td className="px-4 py-3">

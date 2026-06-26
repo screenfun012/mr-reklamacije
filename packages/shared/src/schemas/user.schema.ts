@@ -21,7 +21,7 @@ export const UserListItemSchema = z.object({
   email: z.string().email(),
   name: z.string(),
   accountStatus: z.enum(userAccountStatusValues),
-  createdAt: z.coerce.date(),
+  createdAt: z.string(),
   roles: z.array(z.string()),
 })
 

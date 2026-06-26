@@ -22,7 +22,7 @@ function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
     email: row.email,
     name: row.name,
     accountStatus: row.accountStatus,
-    createdAt: row.createdAt,
+    createdAt: row.createdAt.toISOString(),
     roles: [...roleCodes],
   }
 }
