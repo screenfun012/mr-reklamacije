@@ -1,5 +1,5 @@
 import { Check, ChevronDown } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '../lib/cn.js'
 import { fieldControlClassName, fieldPopoverContentClassName } from '../lib/field-control-styles.js'
@@ -31,6 +31,26 @@ export interface SearchableSelectProps {
   className?: string
 }
 
+export function filterSearchableSelectOptions(
+  options: readonly SearchableSelectOption[],
+  search: string,
+): readonly SearchableSelectOption[] {
+  const query = search.trim().toLowerCase()
+  if (query === '') {
+    return options
+  }
+
+  return options.filter((option) => {
+    if (option.label.toLowerCase().includes(query)) {
+      return true
+    }
+    if (option.value.toLowerCase().includes(query)) {
+      return true
+    }
+    return option.keywords?.toLowerCase().includes(query) ?? false
+  })
+}
+
 export function SearchableSelect({
   id,
   value,
@@ -48,6 +68,7 @@ export function SearchableSelect({
 }: SearchableSelectProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const normalizedValue = value.length > 0 ? value : emptyValue
 
@@ -58,22 +79,17 @@ export function SearchableSelect({
     return options.find((option) => option.value === normalizedValue)?.label ?? null
   }, [emptyValue, normalizedValue, options])
 
-  const filteredOptions = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    if (query === '') {
-      return options
-    }
+  const filteredOptions = useMemo(
+    () => filterSearchableSelectOptions(options, search),
+    [options, search],
+  )
 
-    return options.filter((option) => {
-      if (option.label.toLowerCase().includes(query)) {
-        return true
-      }
-      if (option.value.toLowerCase().includes(query)) {
-        return true
-      }
-      return option.keywords?.toLowerCase().includes(query) ?? false
-    })
-  }, [options, search])
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    searchInputRef.current?.focus()
+  }, [open])
 
   const handleOpenChange = (nextOpen: boolean): void => {
     setOpen(nextOpen)
@@ -90,7 +106,7 @@ export function SearchableSelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -112,13 +128,17 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
+        data-slot="popover-content"
         className={cn(fieldPopoverContentClassName, 'w-[var(--radix-popover-trigger-width)] p-0')}
         align="start"
+        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <div className="border-b border-border p-2">
           <Input
+            ref={searchInputRef}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
             placeholder={searchPlaceholder}
             className="h-8"
             disabled={disabled}
@@ -133,7 +153,10 @@ export function SearchableSelect({
                 'hover:bg-accent hover:text-accent-foreground',
                 normalizedValue === emptyValue && 'bg-accent text-accent-foreground',
               )}
-              onClick={() => selectValue('')}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                selectValue('')
+              }}
             >
               <Check
                 className={cn(
@@ -154,7 +177,10 @@ export function SearchableSelect({
                 'hover:bg-accent hover:text-accent-foreground',
                 normalizedValue === option.value && 'bg-accent text-accent-foreground',
               )}
-              onClick={() => selectValue(option.value)}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                selectValue(option.value)
+              }}
             >
               <Check
                 className={cn(
