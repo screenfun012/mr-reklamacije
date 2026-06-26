@@ -1,14 +1,11 @@
-import { Check, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '../lib/cn.js'
-import {
-  fieldControlClassName,
-  fieldPopoverContentClassName,
-  listItemInteractiveClassName,
-} from '../lib/field-control-styles.js'
+import { fieldControlClassName, fieldPopoverContentClassName } from '../lib/field-control-styles.js'
 import { Button } from './button.js'
 import { Input } from './input.js'
+import { ListSelectOptionButton } from './list-select-option-button.js'
 import { Popover, PopoverContent, PopoverTrigger } from './popover.js'
 
 export const SEARCHABLE_SELECT_EMPTY_VALUE = '__empty__'
@@ -148,53 +145,23 @@ export function SearchableSelect({
             disabled={disabled}
           />
         </div>
-        <div className="max-h-60 overflow-y-auto p-1">
+        <div className="max-h-60 overflow-y-auto p-1" role="listbox" aria-label={ariaLabel}>
           {emptyOptionLabel !== undefined ? (
-            <button
-              type="button"
-              className={cn(
-                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
-                listItemInteractiveClassName,
-                normalizedValue === emptyValue && 'bg-accent text-accent-foreground',
-              )}
-              onPointerDown={(event) => {
-                event.preventDefault()
-                selectValue('')
-              }}
-            >
-              <Check
-                className={cn(
-                  'size-4 shrink-0',
-                  normalizedValue === emptyValue ? 'opacity-100' : 'opacity-0',
-                )}
-                aria-hidden
-              />
-              <span>{emptyOptionLabel}</span>
-            </button>
+            <ListSelectOptionButton
+              label={emptyOptionLabel}
+              selected={normalizedValue === emptyValue}
+              disabled={disabled}
+              onSelect={() => selectValue('')}
+            />
           ) : null}
           {filteredOptions.map((option) => (
-            <button
+            <ListSelectOptionButton
               key={option.value}
-              type="button"
-              className={cn(
-                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm',
-                listItemInteractiveClassName,
-                normalizedValue === option.value && 'bg-accent text-accent-foreground',
-              )}
-              onPointerDown={(event) => {
-                event.preventDefault()
-                selectValue(option.value)
-              }}
-            >
-              <Check
-                className={cn(
-                  'size-4 shrink-0',
-                  normalizedValue === option.value ? 'opacity-100' : 'opacity-0',
-                )}
-                aria-hidden
-              />
-              <span className="truncate">{option.label}</span>
-            </button>
+              label={option.label}
+              selected={normalizedValue === option.value}
+              disabled={disabled}
+              onSelect={() => selectValue(option.value)}
+            />
           ))}
           {filteredOptions.length === 0 && noResultsLabel !== undefined ? (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">{noResultsLabel}</p>

@@ -11,5 +11,8 @@ export const fieldPopoverContentClassName =
  */
 export const listItemInteractiveClassName = 'mr-list-item-interactive'
 
+/** Selected list option — same neutral gray as hover (SearchableSelect / ListSelect). */
+export const listItemSelectedClassName = 'bg-[var(--mr-list-item-hover)] font-medium'
+
 /** Clickable data table rows (list navigation). Hover only — no row click in admin tables. */
 export const dataTableRowInteractiveClassName = 'transition-colors hover:bg-muted/40'

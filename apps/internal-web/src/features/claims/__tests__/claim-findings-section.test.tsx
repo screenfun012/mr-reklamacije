@@ -34,4 +34,23 @@ describe('ClaimFindingsSection', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('Novi nalaz'))
   })
+
+  it('does not reset textarea while save is in progress', () => {
+    setLocale('sr')
+
+    const { rerender } = render(
+      <ClaimFindingsSection
+        internalNotes="Stari nalaz"
+        canEdit
+        isSaving={false}
+        onSave={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Novi nalaz' } })
+
+    rerender(<ClaimFindingsSection internalNotes="Stari nalaz" canEdit isSaving onSave={vi.fn()} />)
+
+    expect(screen.getByRole('textbox')).toHaveValue('Novi nalaz')
+  })
 })

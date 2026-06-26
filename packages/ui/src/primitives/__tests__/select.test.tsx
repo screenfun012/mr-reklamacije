@@ -38,12 +38,14 @@ describe('Select', () => {
     await user.click(screen.getByRole('combobox'))
     expect(await screen.findByRole('listbox')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Accepted' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Accepted' }).tagName).toBe('BUTTON')
   })
 
-  it('applies highlighted state classes on SelectItem for keyboard and pointer', () => {
+  it('applies list item hover class on option buttons', async () => {
+    const user = userEvent.setup()
     render(
-      <Select open onOpenChange={vi.fn()} value="pending" onValueChange={vi.fn()}>
-        <SelectTrigger>
+      <Select value="pending" onValueChange={vi.fn()}>
+        <SelectTrigger aria-label="Outcome">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -51,6 +53,8 @@ describe('Select', () => {
         </SelectContent>
       </Select>,
     )
+
+    await user.click(screen.getByRole('combobox', { name: 'Outcome' }))
 
     const option = screen.getByRole('option', { name: 'Pending' })
     expect(option.className).toContain('mr-list-item-interactive')

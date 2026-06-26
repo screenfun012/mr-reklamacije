@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
@@ -65,8 +65,7 @@ describe('SearchableSelect', () => {
     render(<DialogSearchableSelectFixture />)
 
     await user.click(screen.getByRole('combobox', { name: 'Proizvođač' }))
-    const popover = await screen.findByRole('dialog', { name: undefined })
-    await user.click(within(popover).getByRole('button', { name: 'BMW' }))
+    await user.click(await screen.findByRole('option', { name: 'BMW' }))
 
     expect(screen.getByRole('combobox', { name: 'Proizvođač' })).toHaveTextContent('BMW')
     expect(screen.getByTestId('selected-value')).toHaveTextContent('bmw-id')
@@ -77,14 +76,13 @@ describe('SearchableSelect', () => {
     render(<DialogSearchableSelectFixture />)
 
     await user.click(screen.getByRole('combobox', { name: 'Proizvođač' }))
-    const popover = await screen.findByRole('dialog', { name: undefined })
-    const searchInput = within(popover).getByPlaceholderText('Pretraži...')
+    const searchInput = await screen.findByPlaceholderText('Pretraži...')
 
     fireEvent.change(searchInput, { target: { value: 'BMW' } })
 
-    expect(within(popover).getByRole('button', { name: 'BMW' })).toBeInTheDocument()
-    expect(within(popover).queryByRole('button', { name: 'Mercedes-Benz' })).not.toBeInTheDocument()
-    expect(within(popover).queryByRole('button', { name: 'Alfa Romeo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'BMW' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Mercedes-Benz' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Alfa Romeo' })).not.toBeInTheDocument()
   })
 
   it('shows the selected label for an initial value', () => {
@@ -98,9 +96,9 @@ describe('SearchableSelect', () => {
     render(<DialogSearchableSelectFixture />)
 
     await user.click(screen.getByRole('combobox', { name: 'Proizvođač' }))
-    const popover = await screen.findByRole('dialog', { name: undefined })
-    const option = within(popover).getByRole('button', { name: 'BMW' })
+    const option = await screen.findByRole('option', { name: 'BMW' })
 
     expect(option.className).toContain('mr-list-item-interactive')
+    expect(option.tagName).toBe('BUTTON')
   })
 })

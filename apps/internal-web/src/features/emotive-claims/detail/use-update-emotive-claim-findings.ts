@@ -12,18 +12,36 @@ export function useUpdateEmotiveClaimFindings(
   const queryClient = useQueryClient()
   const detailKey = emotiveClaimKeys.detail(id)
 
-  return useMutation<EmotiveClaimDetail, Error, ClaimFindingsEdit>({
+  return useMutation<
+    EmotiveClaimDetail,
+    Error,
+    ClaimFindingsEdit,
+    { previous: EmotiveClaimDetail | undefined }
+  >({
     mutationFn: (input) =>
       fetchJson<EmotiveClaimDetail>(`/api/emotive-claims/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: detailKey })
+      const previous = queryClient.getQueryData<EmotiveClaimDetail>(detailKey)
+      if (previous !== undefined) {
+        queryClient.setQueryData<EmotiveClaimDetail>(detailKey, {
+          ...previous,
+          internalNotes: input.internalNotes,
+        })
+      }
+      return { previous }
+    },
     onSuccess: (updated) => {
       queryClient.setQueryData(detailKey, updated)
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: detailKey })
+    onError: (_error, _input, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(detailKey, context.previous)
+      }
     },
   })
 }

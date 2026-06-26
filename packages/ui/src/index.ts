@@ -24,6 +24,7 @@ export {
   fieldControlClassName,
   fieldPopoverContentClassName,
   listItemInteractiveClassName,
+  listItemSelectedClassName,
 } from './lib/field-control-styles.js'
 export {
   Heading,
@@ -58,6 +59,11 @@ export {
   type FilterSelectOption,
   type FilterSelectProps,
 } from './primitives/filter-select.js'
+export {
+  ListSelect,
+  type ListSelectOption,
+  type ListSelectProps,
+} from './primitives/list-select.js'
 export { Calendar, type CalendarProps } from './primitives/calendar.js'
 export { DatePicker, type DatePickerProps } from './primitives/date-picker.js'
 export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from './primitives/input-otp.js'

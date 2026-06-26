@@ -108,5 +108,6 @@ describe('FilterSelect', () => {
 
     const option = screen.getByRole('option', { name: 'Domaće' })
     expect(option.className).toContain('mr-list-item-interactive')
+    expect(option.tagName).toBe('BUTTON')
   })
 })

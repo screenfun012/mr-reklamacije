@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { Select, SelectContent, SelectItem, SelectTrigger } from './select.js'
+import { ListSelect } from './list-select.js'
 
 export interface FilterSelectOption {
   value: string
@@ -20,23 +20,6 @@ export interface FilterSelectProps {
   disabled?: boolean | undefined
 }
 
-function resolveDisplayLabel(
-  value: string,
-  options: readonly FilterSelectOption[],
-  placeholder: string,
-): string {
-  const match = options.find((option) => option.value === value)
-  if (match !== undefined) {
-    return match.label
-  }
-
-  if (value.trim() === '') {
-    return placeholder
-  }
-
-  return placeholder
-}
-
 export function FilterSelect({
   value,
   onValueChange,
@@ -48,21 +31,17 @@ export function FilterSelect({
   className,
   disabled = false,
 }: FilterSelectProps): React.ReactElement {
-  const displayLabel = resolveDisplayLabel(value, options, placeholder)
-
   const select = (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger id={id} aria-label={ariaLabel} className={className}>
-        <span className="truncate">{displayLabel}</span>
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <ListSelect
+      value={value}
+      onValueChange={onValueChange}
+      options={options}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      id={id}
+      className={className}
+      disabled={disabled}
+    />
   )
 
   if (label === undefined) {

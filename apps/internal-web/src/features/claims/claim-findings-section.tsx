@@ -1,7 +1,7 @@
 import { ApiError } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Heading } from '@mr/ui'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { TEXTAREA_FIELD_CLASS } from '../emotive-claims/create/form-field-styles.js'
 
@@ -20,15 +20,28 @@ export function ClaimFindingsSection({
 }: ClaimFindingsSectionProps): React.ReactElement {
   const [notesInput, setNotesInput] = useState(() => internalNotes ?? '')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const lastSyncedNotesRef = useRef(internalNotes)
 
   useEffect(() => {
+    if (isSaving) {
+      return
+    }
+
+    if (internalNotes === lastSyncedNotesRef.current) {
+      return
+    }
+
+    lastSyncedNotesRef.current = internalNotes
     setNotesInput(internalNotes ?? '')
-  }, [internalNotes])
+  }, [internalNotes, isSaving])
 
   const handleSave = (): void => {
     setSaveError(null)
     const trimmed = notesInput.trim()
-    void onSave(trimmed === '' ? null : trimmed).catch((error: unknown) => {
+    const nextNotes = trimmed === '' ? null : trimmed
+    lastSyncedNotesRef.current = nextNotes
+    void onSave(nextNotes).catch((error: unknown) => {
+      lastSyncedNotesRef.current = internalNotes
       setSaveError(resolveFindingsSaveError(error))
     })
   }
