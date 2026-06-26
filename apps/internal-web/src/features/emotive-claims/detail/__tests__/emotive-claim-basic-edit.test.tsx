@@ -168,6 +168,42 @@ describe('EmotiveClaimBasicSection', () => {
     expect(screen.getByText('MR-1/26')).toBeInTheDocument()
   })
 
+  it('shows Razlog label in read-only detail', () => {
+    renderSection(false)
+
+    expect(screen.getByText(m.emotive_claims_create_field_warranty_report())).toBeInTheDocument()
+    expect(screen.getByText('Report text')).toBeInTheDocument()
+  })
+
+  it('saves an updated Razlog via PATCH and returns to read-only', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...makeClaim(), warrantyReport: 'Ažuriran razlog' }),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    renderSection(true)
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+
+    fireEvent.change(screen.getByLabelText(m.emotive_claims_create_field_warranty_report()), {
+      target: { value: 'Ažuriran razlog' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+
+    const body = JSON.parse(String((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body)) as {
+      warrantyReport: string
+    }
+    expect(body.warrantyReport).toBe('Ažuriran razlog')
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
+      ).toBeInTheDocument(),
+    )
+  })
+
   it('saves an added engine code via PATCH and returns to read-only', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,

@@ -125,13 +125,11 @@ function BasicReadOnly({
           value={String(claim.claimYear)}
         />
       </dl>
-      <div className="flex flex-col gap-1">
-        <span className="text-muted-foreground text-sm">
-          {m.emotive_claims_create_field_warranty_report()}
-        </span>
-        <p className="text-sm whitespace-pre-wrap text-foreground">
+      <div className="flex flex-col gap-0.5 text-sm">
+        <dt className="text-muted-foreground">{m.emotive_claims_create_field_warranty_report()}</dt>
+        <dd className="whitespace-pre-wrap font-medium text-foreground">
           {claim.warrantyReport ?? EMPTY}
-        </p>
+        </dd>
       </div>
     </>
   )
@@ -242,6 +240,7 @@ function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasi
   const claimNumber = values.claimNumber.trim()
   const engineCode = values.engineCode.trim()
   const dateOfFinish = values.dateOfFinish.trim()
+  const warrantyReport = values.warrantyReport.trim()
   return {
     mrNumber: values.mrNumber.trim(),
     claimNumber: claimNumber === '' ? null : claimNumber,
@@ -251,6 +250,7 @@ function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasi
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: values.dateOfClaim,
     dateOfFinish: dateOfFinish === '' ? null : dateOfFinish,
+    ...(warrantyReport !== '' ? { warrantyReport } : {}),
   }
 }
 

@@ -20,6 +20,7 @@ export interface EmotiveClaimBasicEdit {
   engineCode: string | null
   dateOfClaim: string
   dateOfFinish: string | null
+  warrantyReport?: string
 }
 
 /**

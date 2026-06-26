@@ -258,7 +258,7 @@
   "emotive_claims_filter_outcome": "Outcome",
   "emotive_claims_filter_outcome_all": "All outcomes",
   "emotive_claims_filter_search": "Search",
-  "emotive_claims_filter_search_placeholder": "Warranty report text…",
+  "emotive_claims_filter_search_placeholder": "Reason text…",
   "emotive_claims_create_title": "New emotive claim",
   "emotive_claims_create_step_indicator": "Step {current} of {total}",
   "emotive_claims_create_step_basic_title": "Basic details",

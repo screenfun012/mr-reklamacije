@@ -258,7 +258,7 @@
   "emotive_claims_filter_outcome": "Ishod",
   "emotive_claims_filter_outcome_all": "Svi ishodi",
   "emotive_claims_filter_search": "Pretraga",
-  "emotive_claims_filter_search_placeholder": "Tekst izveštaja o garanciji…",
+  "emotive_claims_filter_search_placeholder": "Tekst razloga…",
   "emotive_claims_create_title": "Nova emotive reklamacija",
   "emotive_claims_create_step_indicator": "Korak {current} od {total}",
   "emotive_claims_create_step_basic_title": "Osnovni podaci",

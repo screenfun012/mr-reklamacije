@@ -46,6 +46,7 @@ export const emotiveClaimStepBasicSchema = z.object({
   engineCode: z.string().trim().max(100).optional(),
   dateOfFinish: optionalDateField,
   dateOfClaim: requiredDateField,
+  warrantyReport: z.string().trim().max(8000).optional(),
 })
 
 export type EmotiveClaimFormValues = {

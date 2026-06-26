@@ -14,7 +14,7 @@ import {
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
-import { SELECT_EMPTY_SENTINEL } from './form-field-styles.js'
+import { SELECT_EMPTY_SENTINEL, TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
 import { formatFieldError } from './format-field-error.js'
 
 function manufacturerOptions(
@@ -237,6 +237,26 @@ export function StepBasicFields({
               }}
               disabled={disabled}
               aria-label={m.emotive_claims_create_field_date_claim()}
+            />
+          </FieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="warrantyReport"
+        children={(field) => (
+          <FieldGroup
+            id="warrantyReport"
+            label={m.emotive_claims_create_field_warranty_report()}
+            error={stepErrors['warrantyReport'] ?? formatFieldError(field.state.meta.errors[0])}
+          >
+            <textarea
+              id="warrantyReport"
+              className={TEXTAREA_FIELD_CLASS}
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              disabled={disabled}
             />
           </FieldGroup>
         )}
