@@ -1,5 +1,6 @@
 import { createAuth, createPermissionResolver } from '@mr/auth'
 import { schema } from '@mr/db'
+import { ResourceChangedKey } from '@mr/shared'
 import type { Logger } from '@mr/logger'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import type { Pool } from 'pg'
@@ -99,7 +100,12 @@ export function buildContainer(
   pool: Pool,
   eventBus: EventBus = new InProcessEventBus(),
 ): Container {
-  const auth = createAuth(db, { trustedOrigins: env.PUBLIC_ORIGINS })
+  const auth = createAuth(db, {
+    trustedOrigins: env.PUBLIC_ORIGINS,
+    onUserRegistered: () => {
+      eventBus.publishResourceChanged(ResourceChangedKey.Users)
+    },
+  })
   const permissionResolver = createPermissionResolver(db)
   const auditService = new AuditService(db)
 
