@@ -5,7 +5,12 @@ import { requireAuth } from './core/auth/require-auth.js'
 import { createSessionMiddleware } from './core/auth/session-middleware.js'
 import type { BetterAuthFullSession, MRSessionUser } from './core/auth/session-types.js'
 import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
-import { generalRateLimiter, loginRateLimiter } from './core/middleware/rate-limit.js'
+import {
+  generalRateLimiter,
+  loginRateLimiter,
+  signupRateLimiter,
+} from './core/middleware/rate-limit.js'
+import { createSignupOriginGuard } from './core/middleware/signup-origin-guard.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
@@ -64,6 +69,8 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   app.use('*', createRequestLogger(container.logger))
   app.use('*', generalRateLimiter)
   app.use('/api/auth/sign-in/email', loginRateLimiter)
+  app.use('/api/auth/sign-up/email', signupRateLimiter)
+  app.use('/api/auth/sign-up/email', createSignupOriginGuard(container.env.SELF_SIGNUP_ORIGINS))
   app.use('*', createSessionMiddleware(container.auth))
 
   app.use('*', async (c, next) => {

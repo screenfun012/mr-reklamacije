@@ -35,6 +35,7 @@ export function createTestEnv(databaseUrl: string): Env {
     HOST: '127.0.0.1',
     API_BASE_URL: 'http://127.0.0.1:3000',
     PUBLIC_ORIGINS: ['http://127.0.0.1:5173'],
+    SELF_SIGNUP_ORIGINS: ['http://127.0.0.1:3002'],
     DATABASE_URL: databaseUrl,
     BETTER_AUTH_SECRET: 'test-secret-minimum-32-characters-long',
     BETTER_AUTH_URL: 'http://127.0.0.1:3000',

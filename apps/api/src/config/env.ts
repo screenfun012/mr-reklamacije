@@ -16,6 +16,16 @@ const EnvSchema = z.object({
       .map((o) => o.trim())
       .filter(Boolean),
   ),
+  /** Origins allowed to call POST /api/auth/sign-up/email (internal-web self-signup). */
+  SELF_SIGNUP_ORIGINS: z
+    .string()
+    .default('http://localhost:3002')
+    .transform((s) =>
+      s
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ),
 
   // Database
   DATABASE_URL: z.string().min(1),

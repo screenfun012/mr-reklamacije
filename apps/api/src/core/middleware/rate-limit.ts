@@ -107,3 +107,9 @@ export const excelExportRateLimiter = createRateLimiter({
     return `excel-export:${user.id}`
   },
 })
+
+/** Employee self-signup: 3 attempts per hour per IP (docs/05). */
+export const signupRateLimiter = createRateLimiter({
+  windowMs: 60 * 60_000,
+  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
+})
