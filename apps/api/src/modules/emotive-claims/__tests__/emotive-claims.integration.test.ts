@@ -18,7 +18,10 @@ import {
   MrKeyConflictError,
   ValidationError,
 } from '../../../core/errors/domain-errors.js'
-import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
+import {
+  createLegacyEngineTypeWithoutManufacturer,
+  createTestEngineType,
+} from '../../../test-helpers/engine-type-fixtures.js'
 import {
   ensureTestUser,
   getClaimSourceIdByCode,
@@ -586,12 +589,19 @@ describe('EmotiveClaimsService integration', () => {
     it('persists manufacturer on create, resolves name on detail, filters list, and clears on update', async () => {
       const manufacturerId = await createEngineManufacturer(`BMW-${Date.now()}`, 'BMW Test')
       const otherManufacturerId = await createEngineManufacturer(`AUDI-${Date.now()}`, 'Audi Test')
+      const bmwEngineTypeId = (
+        await createTestEngineType(container, `BMW-ET-${Date.now()}`, manufacturerId)
+      ).id
+      const audiEngineTypeId = (
+        await createTestEngineType(container, `AUDI-ET-${Date.now()}`, otherManufacturerId)
+      ).id
       const mrWithManufacturer = `MFG-${Date.now()}/26`
       const mrOther = `MFG-OTHER-${Date.now()}/26`
 
       const created = await container.emotiveClaimsService.create(
         await buildCreateInput({
           manufacturerId,
+          engineTypeId: bmwEngineTypeId,
           mrNumber: mrWithManufacturer,
         }),
         FULL_OPERATOR,
@@ -604,6 +614,7 @@ describe('EmotiveClaimsService integration', () => {
       await container.emotiveClaimsService.create(
         await buildCreateInput({
           manufacturerId: otherManufacturerId,
+          engineTypeId: audiEngineTypeId,
           mrNumber: mrOther,
         }),
         FULL_OPERATOR,
@@ -641,6 +652,75 @@ describe('EmotiveClaimsService integration', () => {
           auditContext,
         ),
       ).rejects.toBeInstanceOf(ValidationError)
+    })
+  })
+
+  describe('engine type and manufacturer pairing', () => {
+    it('rejects create when engine type belongs to a different manufacturer', async () => {
+      const bmwManufacturerId = await createEngineManufacturer(`BMW-PAIR-${Date.now()}`, 'BMW')
+      const mbManufacturerId = await createEngineManufacturer(`MB-PAIR-${Date.now()}`, 'Mercedes')
+      const bmwEngineTypeId = (
+        await createTestEngineType(container, `BMW-T-${Date.now()}`, bmwManufacturerId)
+      ).id
+
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({
+            manufacturerId: mbManufacturerId,
+            engineTypeId: bmwEngineTypeId,
+          }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('allows legacy orphan engine type without claim manufacturer', async () => {
+      const legacyEngineTypeId = await createLegacyEngineTypeWithoutManufacturer(
+        ctx.db,
+        `LEG-${Date.now()}`,
+      )
+
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: legacyEngineTypeId,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.engineTypeId).toBe(legacyEngineTypeId)
+      expect(created.manufacturerId).toBeNull()
+    })
+
+    it('preserves legacy engineTypeId when basic edit payload keeps orphan type', async () => {
+      const legacyEngineTypeId = await createLegacyEngineTypeWithoutManufacturer(
+        ctx.db,
+        `LEG-UPD-${Date.now()}`,
+      )
+
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: legacyEngineTypeId,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const updated = await container.emotiveClaimsService.update(
+        created.id,
+        {
+          manufacturerId: null,
+          engineTypeId: legacyEngineTypeId,
+          engineCode: 'ORPHAN-KEEP',
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.engineTypeId).toBe(legacyEngineTypeId)
+      expect(updated.engineCode).toBe('ORPHAN-KEEP')
+      expect(updated.manufacturerId).toBeNull()
     })
   })
 

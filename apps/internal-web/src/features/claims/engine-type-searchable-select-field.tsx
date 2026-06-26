@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 
 import {
   buildEngineTypeSearchableOptions,
+  isOrphanOnlyEngineTypeSelection,
   type EngineTypeOrphanOption,
 } from './engine-type-options.js'
 
@@ -18,6 +19,32 @@ interface EngineTypeSearchableSelectFieldProps {
   onValueChange: (value: string) => void
   onBlur?: (() => void) | undefined
   'aria-label': string
+}
+
+function OrphanOnlyEngineTypeSelect({
+  id,
+  value,
+  disabled,
+  orphanEngineType,
+  onValueChange,
+  onBlur,
+  'aria-label': ariaLabel,
+}: EngineTypeSearchableSelectFieldProps): React.ReactElement {
+  return (
+    <SearchableSelect
+      id={id}
+      value={value}
+      options={buildEngineTypeSearchableOptions([], value, orphanEngineType)}
+      placeholder={m.emotive_claims_create_select_placeholder()}
+      searchPlaceholder={m.field_search_placeholder()}
+      emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+      noResultsLabel={m.field_no_results()}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onValueChange={onValueChange}
+      {...(onBlur !== undefined ? { onBlur } : {})}
+    />
+  )
 }
 
 function EngineTypeSearchableSelectLoaded({
@@ -54,6 +81,10 @@ function EngineTypeSearchableSelectLoaded({
 export function EngineTypeSearchableSelectField(
   props: EngineTypeSearchableSelectFieldProps,
 ): React.ReactElement {
+  if (isOrphanOnlyEngineTypeSelection(props.manufacturerId, props.value, props.orphanEngineType)) {
+    return <OrphanOnlyEngineTypeSelect {...props} />
+  }
+
   if (props.manufacturerId.trim() === '') {
     return (
       <SearchableSelect

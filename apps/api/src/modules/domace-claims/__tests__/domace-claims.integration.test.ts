@@ -26,7 +26,10 @@ import {
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
-import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
+import {
+  createLegacyEngineTypeWithoutManufacturer,
+  createTestEngineType,
+} from '../../../test-helpers/engine-type-fixtures.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { DomaceClaimsActor } from '../domace-claims.types.js'
@@ -772,6 +775,60 @@ describe('DomaceClaimsService integration', () => {
           auditContext,
         ),
       ).rejects.toBeInstanceOf(ValidationError)
+    })
+  })
+
+  describe('engine type and manufacturer pairing', () => {
+    it('rejects create when engine type belongs to a different manufacturer', async () => {
+      const bmwManufacturerId = await createEngineManufacturer(`DOM-BMW-PAIR-${Date.now()}`, 'BMW')
+      const mbManufacturerId = await createEngineManufacturer(
+        `DOM-MB-PAIR-${Date.now()}`,
+        'Mercedes',
+      )
+      const bmwEngineTypeId = (
+        await createTestEngineType(container, `DOM-BMW-T-${Date.now()}`, bmwManufacturerId)
+      ).id
+
+      await expect(
+        container.domaceClaimsService.create(
+          baseCreateInput({
+            manufacturerId: mbManufacturerId,
+            engineTypeId: bmwEngineTypeId,
+          }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('preserves legacy engineTypeId when basic edit payload keeps orphan type', async () => {
+      const legacyEngineTypeId = await createLegacyEngineTypeWithoutManufacturer(
+        ctx.db,
+        `DOM-LEG-${Date.now()}`,
+      )
+
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({
+          engineTypeId: legacyEngineTypeId,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const updated = await container.domaceClaimsService.update(
+        created.id,
+        {
+          manufacturerId: null,
+          engineTypeId: legacyEngineTypeId,
+          engineCode: 'DOM-ORPHAN-KEEP',
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.engineTypeId).toBe(legacyEngineTypeId)
+      expect(updated.engineCode).toBe('DOM-ORPHAN-KEEP')
+      expect(updated.manufacturerId).toBeNull()
     })
   })
 

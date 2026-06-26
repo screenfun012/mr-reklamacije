@@ -87,7 +87,11 @@ describe('Statistics module integration', () => {
     manufacturerId?: string,
     sourceCode: string = 'SELMAN',
   ): Promise<string> {
-    const engineType = await createTestEngineType(container, `STAT-${Date.now()}-${mrNumber}`)
+    const engineType = await createTestEngineType(
+      container,
+      `STAT-${Date.now()}-${mrNumber}`,
+      manufacturerId,
+    )
 
     const claim = await container.emotiveClaimsService.create(
       {

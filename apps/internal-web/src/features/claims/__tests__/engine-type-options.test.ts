@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildEngineTypeSearchableOptions,
   engineTypeToSearchableOption,
+  isOrphanOnlyEngineTypeSelection,
 } from '../engine-type-options.js'
 
 const BMW_TYPE: EngineTypeListItem = {
@@ -62,5 +63,25 @@ describe('buildEngineTypeSearchableOptions', () => {
     expect(buildEngineTypeSearchableOptions([BMW_TYPE], BMW_TYPE.id)).toEqual([
       engineTypeToSearchableOption(BMW_TYPE),
     ])
+  })
+})
+
+describe('isOrphanOnlyEngineTypeSelection', () => {
+  it('is true when manufacturer is empty but legacy engine type is selected', () => {
+    expect(
+      isOrphanOnlyEngineTypeSelection('', MERCEDES_TYPE.id, {
+        id: MERCEDES_TYPE.id,
+        code: MERCEDES_TYPE.code,
+      }),
+    ).toBe(true)
+  })
+
+  it('is false when manufacturer is selected', () => {
+    expect(
+      isOrphanOnlyEngineTypeSelection(BMW_TYPE.manufacturerId ?? '', BMW_TYPE.id, {
+        id: BMW_TYPE.id,
+        code: BMW_TYPE.code,
+      }),
+    ).toBe(false)
   })
 })

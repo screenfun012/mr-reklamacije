@@ -57,6 +57,41 @@ const MANUFACTURERS: EngineManufacturerListItem[] = [
   },
 ]
 
+const LEGACY_ENGINE_TYPE_ID = '88888888-8888-4888-8888-888888888888'
+const LEGACY_ENGINE_TYPE_CODE = 'ENG-1782'
+
+function makeLegacyOrphanClaim(): EmotiveClaimDetail {
+  return {
+    ...makeClaim(),
+    manufacturerId: null,
+    manufacturerName: null,
+    engineTypeId: LEGACY_ENGINE_TYPE_ID,
+    engineTypeCode: LEGACY_ENGINE_TYPE_CODE,
+    engineTypeManufacturer: null,
+  } as unknown as EmotiveClaimDetail
+}
+
+function renderLegacyOrphanSection(): void {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  client.setQueryData(
+    customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }).queryKey,
+    CUSTOMERS,
+  )
+  client.setQueryData(
+    engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
+    MANUFACTURERS,
+  )
+
+  const node: ReactElement = (
+    <QueryClientProvider client={client}>
+      <EmotiveClaimBasicSection claim={makeLegacyOrphanClaim()} canEdit={true} />
+    </QueryClientProvider>
+  )
+  render(node)
+}
+
 function makeClaim(): EmotiveClaimDetail {
   return {
     kind: ClaimKind.Emotive,
@@ -184,5 +219,34 @@ describe('EmotiveClaimBasicSection', () => {
     expect(
       screen.queryByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows legacy engine type when manufacturer is missing and preserves it on save', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeLegacyOrphanClaim(),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    renderLegacyOrphanSection()
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_field_engine_type() }),
+    ).toHaveTextContent(LEGACY_ENGINE_TYPE_CODE)
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_field_engine_type() }),
+    ).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+
+    const body = JSON.parse(String((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body)) as {
+      engineTypeId: string
+      manufacturerId: string | null
+    }
+    expect(body.engineTypeId).toBe(LEGACY_ENGINE_TYPE_ID)
+    expect(body.manufacturerId).toBeNull()
   })
 })

@@ -42,3 +42,16 @@ export function buildEngineTypeSearchableOptions(
 
   return options
 }
+
+export function isOrphanOnlyEngineTypeSelection(
+  manufacturerId: string,
+  selectedEngineTypeId: string,
+  orphan?: EngineTypeOrphanOption,
+): boolean {
+  return (
+    manufacturerId.trim() === '' &&
+    selectedEngineTypeId.trim() !== '' &&
+    orphan !== undefined &&
+    orphan.id === selectedEngineTypeId
+  )
+}

@@ -11,6 +11,7 @@ import {
   assertCompletedActionAllowed,
   assertOutcomeTransitionAllowed,
 } from '../../core/claims/claim-lock.js'
+import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
@@ -269,6 +270,27 @@ export class EmotiveClaimsService {
     }
 
     await this.validateFaults(input.faults)
+    await this.validateManufacturerEngineTypePair(input.manufacturerId, input.engineTypeId)
+  }
+
+  private async validateManufacturerEngineTypePair(
+    manufacturerId: string | null | undefined,
+    engineTypeId: string | null | undefined,
+  ): Promise<void> {
+    if (
+      manufacturerId === undefined ||
+      manufacturerId === null ||
+      engineTypeId === undefined ||
+      engineTypeId === null
+    ) {
+      return
+    }
+
+    await validateEngineTypeManufacturerPair(
+      (id) => this.repo.getEngineTypeManufacturerId(id),
+      engineTypeId,
+      manufacturerId,
+    )
   }
 
   private async validateUpdateReferences(input: EmotiveClaimUpdateInput): Promise<void> {
@@ -319,6 +341,8 @@ export class EmotiveClaimsService {
     if (input.faults !== undefined) {
       await this.validateFaults(input.faults)
     }
+
+    await this.validateManufacturerEngineTypePair(input.manufacturerId, input.engineTypeId)
   }
 
   private async validateFaults(faults: readonly EmotiveClaimFaultInput[]): Promise<void> {

@@ -158,6 +158,16 @@ export class EmotiveClaimsRepository {
     return row !== undefined
   }
 
+  async getEngineTypeManufacturerId(engineTypeId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ manufacturerId: engineTypes.manufacturerId })
+      .from(engineTypes)
+      .where(and(eq(engineTypes.id, engineTypeId), isNull(engineTypes.deletedAt)))
+      .limit(1)
+
+    return row?.manufacturerId ?? null
+  }
+
   async isManufacturerActive(manufacturerId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: engineManufacturers.id })

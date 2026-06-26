@@ -23,8 +23,8 @@ export async function runSystemSeeds(db: NodePgDatabase<typeof schema>): Promise
   await seedEmployees(db)
   await seedCustomers(db)
   await seedClaimSources(db)
-  await seedEngineTypes(db)
   await seedEngineManufacturers(db)
+  await seedEngineTypes(db)
   await seedEmotiveClaims(db)
   await seedDomaceClaims(db)
 }

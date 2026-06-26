@@ -1,4 +1,6 @@
 import type { EngineTypeListItem } from '@mr/shared'
+import { schema } from '@mr/db'
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import type { Container } from '../core/container.js'
 import { uniqueFixtureEngineManufacturerCode } from './engine-manufacturer-cleanup.js'
@@ -33,4 +35,24 @@ export async function createTestEngineType(
     code,
     manufacturerId: resolvedManufacturerId,
   })
+}
+
+export async function createLegacyEngineTypeWithoutManufacturer(
+  db: NodePgDatabase<typeof schema>,
+  code: string,
+): Promise<string> {
+  const [row] = await db
+    .insert(schema.engineTypes)
+    .values({
+      code,
+      isActive: true,
+      manufacturerId: null,
+    })
+    .returning({ id: schema.engineTypes.id })
+
+  if (row === undefined) {
+    throw new Error('Failed to insert legacy engine type fixture')
+  }
+
+  return row.id
 }
