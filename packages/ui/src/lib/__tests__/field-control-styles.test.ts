@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { listItemInteractiveClassName } from '../field-control-styles.js'
+import {
+  dataTableRowInteractiveClassName,
+  listItemInteractiveClassName,
+} from '../field-control-styles.js'
 
 describe('listItemInteractiveClassName', () => {
-  it('includes hover, focus, and Radix highlighted states for list items', () => {
-    expect(listItemInteractiveClassName).toContain('hover:bg-accent')
-    expect(listItemInteractiveClassName).toContain('hover:text-accent-foreground')
-    expect(listItemInteractiveClassName).toContain('focus:bg-accent')
-    expect(listItemInteractiveClassName).toContain('data-[highlighted]:bg-accent')
-    expect(listItemInteractiveClassName).toContain('data-[highlighted]:text-accent-foreground')
+  it('uses preset CSS class for list item hover states', () => {
+    expect(listItemInteractiveClassName).toBe('mr-list-item-interactive')
+  })
+})
+
+describe('dataTableRowInteractiveClassName', () => {
+  it('includes muted row hover for data tables', () => {
+    expect(dataTableRowInteractiveClassName).toContain('hover:bg-muted/40')
+    expect(dataTableRowInteractiveClassName).toContain('transition-colors')
   })
 })

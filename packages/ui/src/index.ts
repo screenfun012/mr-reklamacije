@@ -20,6 +20,12 @@ export {
 } from './components/claim-attachments/attachment-file-icon.js'
 export { cn } from './lib/cn.js'
 export {
+  dataTableRowInteractiveClassName,
+  fieldControlClassName,
+  fieldPopoverContentClassName,
+  listItemInteractiveClassName,
+} from './lib/field-control-styles.js'
+export {
   Heading,
   type HeadingElement,
   type HeadingLevel,
@@ -47,6 +53,11 @@ export {
   type SearchableSelectOption,
   type SearchableSelectProps,
 } from './primitives/searchable-select.js'
+export {
+  FilterSelect,
+  type FilterSelectOption,
+  type FilterSelectProps,
+} from './primitives/filter-select.js'
 export { Calendar, type CalendarProps } from './primitives/calendar.js'
 export { DatePicker, type DatePickerProps } from './primitives/date-picker.js'
 export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from './primitives/input-otp.js'

@@ -54,4 +54,15 @@ describe('ClaimsFilters', () => {
     expect(screen.getByRole('combobox', { name: 'Proizvođač' })).toBeInTheDocument()
     expect(engineManufacturersReferenceOptions(ACTIVE_MANUFACTURERS_LOOKUP).queryKey).toBeDefined()
   })
+
+  it('renders kind and outcome filters with visible trigger labels', async () => {
+    await renderFilters()
+
+    expect(screen.getByRole('combobox', { name: 'Vrsta' })).toHaveTextContent('Sve')
+    expect(screen.getByRole('combobox', { name: 'Ishod' })).toHaveTextContent('Svi ishodi')
+    expect(screen.getByRole('combobox', { name: 'Vrsta' }).textContent).not.toContain('Sve Sve')
+    expect(screen.getByRole('combobox', { name: 'Ishod' }).textContent).not.toContain(
+      'Svi ishodi Svi ishodi',
+    )
+  })
 })

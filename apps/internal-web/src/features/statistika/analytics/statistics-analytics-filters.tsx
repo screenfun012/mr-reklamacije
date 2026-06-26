@@ -1,24 +1,15 @@
 import {
   CLAIM_KIND_REGISTRY,
   engineManufacturersReferenceOptions,
+  useDebouncedValue,
   type StatisticsSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  Button,
-  DatePicker,
-  SearchableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@mr/ui'
+import { Button, DatePicker, FilterSelect, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
-import { useDebouncedValue } from '@mr/shared'
 
 const DATE_DEBOUNCE_MS = 300
 const STATISTICS_PERIOD_ROLLING = '__rolling24__'
@@ -76,6 +67,38 @@ export function StatisticsAnalyticsFilters({
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
 
+  const yearOptions = useMemo(() => buildYearOptions(), [])
+
+  const periodOptions = useMemo(
+    () => [
+      {
+        value: STATISTICS_PERIOD_ROLLING,
+        label: m.statistika_analytics_filter_period_rolling(),
+      },
+      ...yearOptions.map((year) => ({
+        value: String(year),
+        label: String(year),
+      })),
+      {
+        value: STATISTICS_PERIOD_CUSTOM,
+        label: m.statistika_analytics_filter_period_custom(),
+      },
+    ],
+    [yearOptions],
+  )
+
+  const kindOptions = useMemo(
+    () => [
+      { value: FILTER_ALL_SENTINEL, label: KIND_FILTER_LABELS.all() },
+      ...CLAIM_KIND_REGISTRY.map((definition) => ({
+        value: definition.key,
+        label:
+          definition.key === 'domace' ? KIND_FILTER_LABELS.domace() : KIND_FILTER_LABELS.emotive(),
+      })),
+    ],
+    [],
+  )
+
   const manufacturerOptions = useMemo(
     () =>
       manufacturers.map((manufacturer) => ({
@@ -85,8 +108,6 @@ export function StatisticsAnalyticsFilters({
       })),
     [manufacturers],
   )
-
-  const yearOptions = useMemo(() => buildYearOptions(), [])
 
   useEffect(() => {
     setDateFromDraft(search.dateFrom)
@@ -116,57 +137,40 @@ export function StatisticsAnalyticsFilters({
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end">
-      <div className="flex min-w-[12rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">
-          {m.statistika_analytics_filter_period()}
-        </span>
-        <Select
-          value={periodValue}
-          onValueChange={(value) => {
-            if (value === STATISTICS_PERIOD_ROLLING) {
-              onSearchChange({
-                kind: search.kind,
-                manufacturerId: search.manufacturerId,
-              })
-              return
-            }
-
-            if (value === STATISTICS_PERIOD_CUSTOM) {
-              const defaults = defaultCustomDateRange()
-              onSearchChange({
-                kind: search.kind,
-                manufacturerId: search.manufacturerId,
-                dateFrom: search.dateFrom ?? defaults.dateFrom,
-                dateTo: search.dateTo ?? defaults.dateTo,
-              })
-              return
-            }
-
+      <FilterSelect
+        label={m.statistika_analytics_filter_period()}
+        value={periodValue}
+        options={periodOptions}
+        placeholder={m.statistika_analytics_filter_period_rolling()}
+        aria-label={m.statistika_analytics_filter_period()}
+        className="min-w-[12rem]"
+        onValueChange={(value) => {
+          if (value === STATISTICS_PERIOD_ROLLING) {
             onSearchChange({
               kind: search.kind,
               manufacturerId: search.manufacturerId,
-              year: Number.parseInt(value, 10),
             })
-          }}
-        >
-          <SelectTrigger aria-label={m.statistika_analytics_filter_period()}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={STATISTICS_PERIOD_ROLLING}>
-              {m.statistika_analytics_filter_period_rolling()}
-            </SelectItem>
-            {yearOptions.map((year) => (
-              <SelectItem key={year} value={String(year)}>
-                {year}
-              </SelectItem>
-            ))}
-            <SelectItem value={STATISTICS_PERIOD_CUSTOM}>
-              {m.statistika_analytics_filter_period_custom()}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+            return
+          }
+
+          if (value === STATISTICS_PERIOD_CUSTOM) {
+            const defaults = defaultCustomDateRange()
+            onSearchChange({
+              kind: search.kind,
+              manufacturerId: search.manufacturerId,
+              dateFrom: search.dateFrom ?? defaults.dateFrom,
+              dateTo: search.dateTo ?? defaults.dateTo,
+            })
+            return
+          }
+
+          onSearchChange({
+            kind: search.kind,
+            manufacturerId: search.manufacturerId,
+            year: Number.parseInt(value, 10),
+          })
+        }}
+      />
 
       {showCustomRange ? (
         <>
@@ -214,32 +218,19 @@ export function StatisticsAnalyticsFilters({
         />
       </div>
 
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.statistika_analytics_filter_kind()}</span>
-        <Select
-          value={search.kind ?? FILTER_ALL_SENTINEL}
-          onValueChange={(value) => {
-            onSearchChange({
-              ...search,
-              kind: value === FILTER_ALL_SENTINEL ? undefined : (value as StatisticsSearch['kind']),
-            })
-          }}
-        >
-          <SelectTrigger aria-label={m.statistika_analytics_filter_kind()}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={FILTER_ALL_SENTINEL}>{KIND_FILTER_LABELS.all()}</SelectItem>
-            {CLAIM_KIND_REGISTRY.map((definition) => (
-              <SelectItem key={definition.key} value={definition.key}>
-                {definition.key === 'domace'
-                  ? KIND_FILTER_LABELS.domace()
-                  : KIND_FILTER_LABELS.emotive()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterSelect
+        label={m.statistika_analytics_filter_kind()}
+        value={search.kind ?? FILTER_ALL_SENTINEL}
+        options={kindOptions}
+        placeholder={KIND_FILTER_LABELS.all()}
+        aria-label={m.statistika_analytics_filter_kind()}
+        onValueChange={(value) => {
+          onSearchChange({
+            ...search,
+            kind: value === FILTER_ALL_SENTINEL ? undefined : (value as StatisticsSearch['kind']),
+          })
+        }}
+      />
 
       <Button
         type="button"

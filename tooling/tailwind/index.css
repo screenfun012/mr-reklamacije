@@ -150,6 +150,7 @@
   --mr-primary-active: #a8111a;
   --mr-red-50-wash: #fdecef;
   --mr-list-item-hover: #f0f0f0;
+  --mr-calendar-today: #e8e8e8;
   --mr-disabled-bg: #c8c9cc;
   --mr-disabled-text: #7f8084;
   --mr-error: #d92d20;
@@ -209,6 +210,7 @@
   --mr-primary-active: #a8111a;
   --mr-red-50-wash: #fdecef;
   --mr-list-item-hover: #3c3d41;
+  --mr-calendar-today: #454649;
   --mr-disabled-bg: #3c3d41;
   --mr-disabled-text: #7f8084;
   --mr-error: #d92d20;
@@ -274,6 +276,22 @@
       opacity: 1;
       transform: scale(1);
     }
+  }
+}
+
+@layer components {
+  /* List item hover — preset CSS so every app gets it without Tailwind content scan. */
+  .mr-list-item-interactive {
+    transition-property: color, background-color;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  .mr-list-item-interactive:hover,
+  .mr-list-item-interactive:focus-visible,
+  .mr-list-item-interactive[data-highlighted] {
+    background-color: var(--mr-list-item-hover);
+    color: var(--mr-text-primary);
   }
 }
 

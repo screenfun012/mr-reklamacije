@@ -101,7 +101,6 @@ describe('SearchableSelect', () => {
     const popover = await screen.findByRole('dialog', { name: undefined })
     const option = within(popover).getByRole('button', { name: 'BMW' })
 
-    expect(option.className).toContain('hover:bg-accent')
-    expect(option.className).toContain('data-[highlighted]:bg-accent')
+    expect(option.className).toContain('mr-list-item-interactive')
   })
 })

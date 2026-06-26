@@ -1,21 +1,13 @@
 import { m } from '@mr/i18n'
 import {
   engineManufacturersReferenceOptions,
-  useDebouncedValue,
   ResourceCatalogStatusFilter,
+  useDebouncedValue,
   type ResourceCatalogSearch,
 } from '@mr/shared'
-import {
-  Input,
-  SearchableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@mr/ui'
+import { FilterSelect, Input, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -66,6 +58,15 @@ export function ResourceListToolbar({
   const [searchDraft, setSearchDraft] = useState(search.q ?? '')
   const debouncedQuery = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
 
+  const statusOptions = useMemo(
+    () => [
+      { value: ResourceCatalogStatusFilter.All, label: m.admin_catalog_filter_all() },
+      { value: ResourceCatalogStatusFilter.Active, label: m.admin_catalog_filter_active() },
+      { value: ResourceCatalogStatusFilter.Inactive, label: m.admin_catalog_filter_inactive() },
+    ],
+    [],
+  )
+
   useEffect(() => {
     setSearchDraft(search.q ?? '')
   }, [search.q])
@@ -101,8 +102,12 @@ export function ResourceListToolbar({
           </Suspense>
         ) : null}
 
-        <Select
+        <FilterSelect
           value={search.status}
+          options={statusOptions}
+          placeholder={m.admin_catalog_filter_all()}
+          aria-label={m.admin_catalog_filter_status()}
+          className="w-full sm:w-[12rem]"
           onValueChange={(value) => {
             if (
               value === ResourceCatalogStatusFilter.All ||
@@ -116,25 +121,7 @@ export function ResourceListToolbar({
               })
             }
           }}
-        >
-          <SelectTrigger
-            className="w-full sm:w-[12rem]"
-            aria-label={m.admin_catalog_filter_status()}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ResourceCatalogStatusFilter.All}>
-              {m.admin_catalog_filter_all()}
-            </SelectItem>
-            <SelectItem value={ResourceCatalogStatusFilter.Active}>
-              {m.admin_catalog_filter_active()}
-            </SelectItem>
-            <SelectItem value={ResourceCatalogStatusFilter.Inactive}>
-              {m.admin_catalog_filter_inactive()}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        />
       </div>
     </div>
   )

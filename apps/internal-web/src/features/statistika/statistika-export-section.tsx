@@ -6,16 +6,7 @@ import {
   type OutcomeLabelKey,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  Button,
-  DatePicker,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@mr/ui'
+import { Button, DatePicker, FilterSelect, Input } from '@mr/ui'
 import { Download, Loader2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
@@ -31,12 +22,6 @@ const OUTCOME_LABELS: Record<OutcomeLabelKey, () => string> = {
   outcome_archived: () => m.outcome_archived(),
 }
 
-const SCOPE_OPTIONS = [
-  { value: ExcelExportScope.All, label: () => m.statistika_export_scope_all() },
-  { value: ExcelExportScope.Emotive, label: () => m.statistika_export_scope_emotive() },
-  { value: ExcelExportScope.Domace, label: () => m.statistika_export_scope_domace() },
-] as const
-
 export interface StatistikaExportSectionProps {
   canExportPartial: boolean
   canExportFull: boolean
@@ -46,13 +31,33 @@ export function StatistikaExportSection({
   canExportPartial,
   canExportFull,
 }: StatistikaExportSectionProps): React.ReactElement {
-  const { locale } = useLocale()
+  useLocale()
   const { exportWorkbook, isExporting } = useExcelExport()
   const [scope, setScope] = useState<ExcelExportInput['scope']>(ExcelExportScope.All)
   const [claimYear, setClaimYear] = useState('')
   const [dateFrom, setDateFrom] = useState<string | undefined>(undefined)
   const [dateTo, setDateTo] = useState<string | undefined>(undefined)
   const [outcome, setOutcome] = useState<string>(FILTER_ALL_SENTINEL)
+
+  const scopeOptions = useMemo(
+    () => [
+      { value: ExcelExportScope.All, label: m.statistika_export_scope_all() },
+      { value: ExcelExportScope.Emotive, label: m.statistika_export_scope_emotive() },
+      { value: ExcelExportScope.Domace, label: m.statistika_export_scope_domace() },
+    ],
+    [],
+  )
+
+  const outcomeOptions = useMemo(
+    () => [
+      { value: FILTER_ALL_SENTINEL, label: m.emotive_claims_filter_outcome_all() },
+      ...OUTCOME_REGISTRY.map((definition) => ({
+        value: definition.key,
+        label: OUTCOME_LABELS[definition.labelKey](),
+      })),
+    ],
+    [],
+  )
 
   const isFullExport = useMemo(() => {
     const parsedYear = claimYear.trim().length > 0 ? Number(claimYear) : undefined
@@ -66,24 +71,6 @@ export function StatistikaExportSection({
   }, [claimYear, dateFrom, dateTo, outcome, scope])
 
   const exportBlocked = isFullExport ? !canExportFull : !canExportPartial
-
-  const scopeLabel = useMemo(() => {
-    const option = SCOPE_OPTIONS.find((item) => item.value === scope)
-    return option?.label() ?? ''
-  }, [scope, locale])
-
-  const outcomeLabel = useMemo(() => {
-    if (outcome === FILTER_ALL_SENTINEL) {
-      return m.emotive_claims_filter_outcome_all()
-    }
-
-    const definition = OUTCOME_REGISTRY.find((item) => item.key === outcome)
-    if (definition === undefined) {
-      return m.emotive_claims_filter_outcome_all()
-    }
-
-    return OUTCOME_LABELS[definition.labelKey]()
-  }, [outcome, locale])
 
   const handleExport = useCallback(async () => {
     const parsedYear = claimYear.trim().length > 0 ? Number(claimYear) : undefined
@@ -106,26 +93,16 @@ export function StatistikaExportSection({
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="flex min-w-[10rem] flex-col gap-1.5 text-sm">
-          <span className="font-medium text-foreground">{m.statistika_export_scope()}</span>
-          <Select
-            value={scope}
-            onValueChange={(value) => {
-              setScope(value as ExcelExportInput['scope'])
-            }}
-          >
-            <SelectTrigger aria-label={m.statistika_export_scope()}>
-              <SelectValue>{scopeLabel}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {SCOPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FilterSelect
+          label={m.statistika_export_scope()}
+          value={scope}
+          options={scopeOptions}
+          placeholder={m.statistika_export_scope_all()}
+          aria-label={m.statistika_export_scope()}
+          onValueChange={(value) => {
+            setScope(value as ExcelExportInput['scope'])
+          }}
+        />
 
         <div className="flex min-w-[8rem] flex-col gap-1.5 text-sm">
           <span className="font-medium text-foreground">{m.statistika_export_year()}</span>
@@ -158,24 +135,14 @@ export function StatistikaExportSection({
           />
         </div>
 
-        <div className="flex min-w-[10rem] flex-col gap-1.5 text-sm">
-          <span className="font-medium text-foreground">{m.emotive_claims_filter_outcome()}</span>
-          <Select value={outcome} onValueChange={setOutcome}>
-            <SelectTrigger aria-label={m.emotive_claims_filter_outcome()}>
-              <SelectValue>{outcomeLabel}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={FILTER_ALL_SENTINEL}>
-                {m.emotive_claims_filter_outcome_all()}
-              </SelectItem>
-              {OUTCOME_REGISTRY.map((definition) => (
-                <SelectItem key={definition.key} value={definition.key}>
-                  {OUTCOME_LABELS[definition.labelKey]()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FilterSelect
+          label={m.emotive_claims_filter_outcome()}
+          value={outcome}
+          options={outcomeOptions}
+          placeholder={m.emotive_claims_filter_outcome_all()}
+          aria-label={m.emotive_claims_filter_outcome()}
+          onValueChange={setOutcome}
+        />
 
         <Button
           type="button"

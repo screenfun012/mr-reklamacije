@@ -2,25 +2,16 @@ import {
   CLAIM_KIND_REGISTRY,
   engineManufacturersReferenceOptions,
   OUTCOME_REGISTRY,
+  useDebouncedValue,
   type ClaimsSearch,
   type OutcomeLabelKey,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  DatePicker,
-  Input,
-  SearchableSelect,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@mr/ui'
+import { DatePicker, FilterSelect, Input, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
-import { useDebouncedValue } from '@mr/shared'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -47,6 +38,29 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
+
+  const kindOptions = useMemo(
+    () => [
+      { value: FILTER_ALL_SENTINEL, label: KIND_FILTER_LABELS.all() },
+      ...CLAIM_KIND_REGISTRY.map((definition) => ({
+        value: definition.key,
+        label:
+          definition.key === 'domace' ? KIND_FILTER_LABELS.domace() : KIND_FILTER_LABELS.emotive(),
+      })),
+    ],
+    [],
+  )
+
+  const outcomeOptions = useMemo(
+    () => [
+      { value: FILTER_ALL_SENTINEL, label: m.emotive_claims_filter_outcome_all() },
+      ...OUTCOME_REGISTRY.map((definition) => ({
+        value: definition.key,
+        label: OUTCOME_LABELS[definition.labelKey](),
+      })),
+    ],
+    [],
   )
 
   const manufacturerOptions = useMemo(
@@ -79,62 +93,35 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end">
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.claims_filter_kind()}</span>
-        <Select
-          value={search.kind ?? FILTER_ALL_SENTINEL}
-          onValueChange={(value) => {
-            onSearchChange({
-              ...search,
-              kind: value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['kind']),
-              page: 1,
-            })
-          }}
-        >
-          <SelectTrigger aria-label={m.claims_filter_kind()}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={FILTER_ALL_SENTINEL}>{KIND_FILTER_LABELS.all()}</SelectItem>
-            {CLAIM_KIND_REGISTRY.map((definition) => (
-              <SelectItem key={definition.key} value={definition.key}>
-                {definition.key === 'domace'
-                  ? KIND_FILTER_LABELS.domace()
-                  : KIND_FILTER_LABELS.emotive()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterSelect
+        label={m.claims_filter_kind()}
+        value={search.kind ?? FILTER_ALL_SENTINEL}
+        options={kindOptions}
+        placeholder={KIND_FILTER_LABELS.all()}
+        aria-label={m.claims_filter_kind()}
+        onValueChange={(value) => {
+          onSearchChange({
+            ...search,
+            kind: value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['kind']),
+            page: 1,
+          })
+        }}
+      />
 
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.emotive_claims_filter_outcome()}</span>
-        <Select
-          value={search.outcome ?? FILTER_ALL_SENTINEL}
-          onValueChange={(value) => {
-            onSearchChange({
-              ...search,
-              outcome:
-                value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['outcome']),
-              page: 1,
-            })
-          }}
-        >
-          <SelectTrigger aria-label={m.emotive_claims_filter_outcome()}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={FILTER_ALL_SENTINEL}>
-              {m.emotive_claims_filter_outcome_all()}
-            </SelectItem>
-            {OUTCOME_REGISTRY.map((definition) => (
-              <SelectItem key={definition.key} value={definition.key}>
-                {OUTCOME_LABELS[definition.labelKey]()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterSelect
+        label={m.emotive_claims_filter_outcome()}
+        value={search.outcome ?? FILTER_ALL_SENTINEL}
+        options={outcomeOptions}
+        placeholder={m.emotive_claims_filter_outcome_all()}
+        aria-label={m.emotive_claims_filter_outcome()}
+        onValueChange={(value) => {
+          onSearchChange({
+            ...search,
+            outcome: value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['outcome']),
+            page: 1,
+          })
+        }}
+      />
 
       <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
         <span className="font-medium text-foreground">{m.claims_filter_manufacturer()}</span>

@@ -53,7 +53,6 @@ describe('Select', () => {
     )
 
     const option = screen.getByRole('option', { name: 'Pending' })
-    expect(option.className).toContain('data-[highlighted]:bg-accent')
-    expect(option.className).toContain('hover:bg-accent')
+    expect(option.className).toContain('mr-list-item-interactive')
   })
 })
