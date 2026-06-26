@@ -104,10 +104,7 @@ describe('mr_registry migration backfill', () => {
       .insert(users)
       .values({ email: 'mr-registry-test@example.com', name: 'MR Registry Test' })
       .returning()
-    const [engine] = await db
-      .insert(engineTypes)
-      .values({ code: 'MR_REG_ENGINE', manufacturer: 'Test' })
-      .returning()
+    const [engine] = await db.insert(engineTypes).values({ code: 'MR_REG_ENGINE' }).returning()
 
     expect(user?.id).toBeDefined()
     expect(engine?.id).toBeDefined()
@@ -162,10 +159,7 @@ describe('mr_registry migration backfill', () => {
       .insert(users)
       .values({ email: 'mr-registry-dup@example.com', name: 'MR Dup Test' })
       .returning()
-    const [engine] = await db
-      .insert(engineTypes)
-      .values({ code: 'MR_REG_ENGINE_DUP', manufacturer: 'Test' })
-      .returning()
+    const [engine] = await db.insert(engineTypes).values({ code: 'MR_REG_ENGINE_DUP' }).returning()
 
     const [emotive] = await db
       .insert(emotiveClaims)

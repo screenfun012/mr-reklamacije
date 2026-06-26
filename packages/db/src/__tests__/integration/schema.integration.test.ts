@@ -239,12 +239,12 @@ describe('schema Phase C (integration)', () => {
       .insert(engineTypes)
       .values({
         code: 'INT_TEST_ENGINE',
-        manufacturer: 'Test Mfg',
       })
       .returning()
 
     expect(row?.id).toBeDefined()
     expect(row?.code).toBe('INT_TEST_ENGINE')
+    expect(row?.manufacturerId).toBeNull()
   })
 
   it('inserts external_party with kind supplier (CHECK)', async () => {

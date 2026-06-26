@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   foreignKey,
+  index,
   integer,
   pgTable,
   text,
@@ -37,7 +38,7 @@ export const engineTypes = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     code: text('code').notNull(),
-    manufacturer: text('manufacturer'),
+    manufacturerId: uuid('manufacturer_id'),
     displacementCc: integer('displacement_cc'),
     notes: text('notes'),
     isActive: boolean('is_active').notNull().default(true),
@@ -49,8 +50,27 @@ export const engineTypes = pgTable(
       .$onUpdate(() => new Date()),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   },
-  (t) => [uniqueIndex('engine_types_code_key').on(t.code)],
+  (t) => [
+    uniqueIndex('engine_types_code_key').on(t.code),
+    index('idx_engine_types_manufacturer_id').on(t.manufacturerId),
+    foreignKey({
+      name: 'engine_types_manufacturer_id_fkey',
+      columns: [t.manufacturerId],
+      foreignColumns: [engineManufacturers.id],
+    }).onDelete('restrict'),
+  ],
 )
+
+export const engineManufacturersRelations = relations(engineManufacturers, ({ many }) => ({
+  engineTypes: many(engineTypes),
+}))
+
+export const engineTypesRelations = relations(engineTypes, ({ one }) => ({
+  manufacturer: one(engineManufacturers, {
+    fields: [engineTypes.manufacturerId],
+    references: [engineManufacturers.id],
+  }),
+}))
 
 export const externalParties = pgTable(
   'external_parties',
