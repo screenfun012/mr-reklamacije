@@ -4,8 +4,7 @@ import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
-import { engineManufacturers } from '../engine-manufacturers/engine-manufacturers.schema.js'
-import { engineTypes } from './engine-types.schema.js'
+import { engineManufacturers, engineTypes } from './engine-types.schema.js'
 import type {
   EngineTypeCreateInput,
   EngineTypeListItem,
