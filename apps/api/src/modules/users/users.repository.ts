@@ -1,4 +1,3 @@
-import { UserAccountStatus } from '@mr/shared'
 import { and, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
