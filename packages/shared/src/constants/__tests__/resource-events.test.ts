@@ -22,6 +22,10 @@ describe('ResourceChangedKey', () => {
       ['engine-manufacturers'],
     ])
   })
+
+  it('maps users to users query prefix', () => {
+    expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.Users)).toEqual([['users']])
+  })
 })
 
 describe('ResourceEventType', () => {

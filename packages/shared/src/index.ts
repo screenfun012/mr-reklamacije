@@ -81,6 +81,7 @@ export * from './schemas/statistics.schema.js'
 export * from './schemas/excel-export.schema.js'
 export * from './schemas/attachment.schema.js'
 export * from './schemas/claim-report.schema.js'
+export * from './schemas/user.schema.js'
 export {
   ResourceCatalogSearchSchema,
   ResourceCatalogStatusFilter,

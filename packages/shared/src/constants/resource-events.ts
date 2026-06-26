@@ -3,6 +3,7 @@ export const ResourceChangedKey = {
   Customers: 'customers',
   EngineTypes: 'engineTypes',
   EngineManufacturers: 'engineManufacturers',
+  Users: 'users',
 } as const
 
 export type ResourceChangedKey = (typeof ResourceChangedKey)[keyof typeof ResourceChangedKey]
