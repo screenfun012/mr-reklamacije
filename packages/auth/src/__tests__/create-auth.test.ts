@@ -33,6 +33,7 @@ describe('createAuth factory', () => {
     expect(auth.options).toBeDefined()
     // Verify additionalFields propagated from sharedAuthOptions
     expect(auth.options.user?.additionalFields).toHaveProperty('isActive')
+    expect(auth.options.user?.additionalFields).toHaveProperty('accountStatus')
     expect(auth.options.user?.additionalFields).toHaveProperty('preferredLanguage')
     expect(auth.options.user?.additionalFields).toHaveProperty('deletedAt')
   })

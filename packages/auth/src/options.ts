@@ -23,6 +23,12 @@ export const sharedAuthOptions: BetterAuthOptions = {
         defaultValue: true,
         input: false,
       },
+      accountStatus: {
+        type: 'string',
+        required: true,
+        defaultValue: 'pending',
+        input: false,
+      },
       preferredLanguage: {
         type: 'string',
         required: true,
