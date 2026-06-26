@@ -1,5 +1,5 @@
 import { ClaimOutcome } from '@mr/shared'
-import { and, eq, isNull, notInArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import * as schema from '../schema/index.js'
@@ -507,6 +507,28 @@ async function resetEmotiveClaimsSeedData(db: NodePgDatabase<typeof schema>): Pr
   const deletedClaims = await db
     .delete(schema.emotiveClaims)
     .returning({ id: schema.emotiveClaims.id })
+
+  const nonCanonicalEngineTypes = await db
+    .select({ id: schema.engineTypes.id })
+    .from(schema.engineTypes)
+    .where(notInArray(schema.engineTypes.code, [...CANONICAL_ENGINE_TYPE_CODES]))
+
+  if (nonCanonicalEngineTypes.length > 0) {
+    const nonCanonicalIds = nonCanonicalEngineTypes.map((row) => row.id)
+    const domaceClaimsToRemove = await db
+      .select({ id: schema.domaceClaims.id })
+      .from(schema.domaceClaims)
+      .where(inArray(schema.domaceClaims.engineTypeId, nonCanonicalIds))
+
+    if (domaceClaimsToRemove.length > 0) {
+      const domaceClaimIds = domaceClaimsToRemove.map((row) => row.id)
+      await db
+        .delete(schema.domaceClaimFaults)
+        .where(inArray(schema.domaceClaimFaults.claimId, domaceClaimIds))
+      await db.delete(schema.domaceClaims).where(inArray(schema.domaceClaims.id, domaceClaimIds))
+    }
+  }
+
   const deletedEngineTypes = await db
     .delete(schema.engineTypes)
     .where(notInArray(schema.engineTypes.code, [...CANONICAL_ENGINE_TYPE_CODES]))
@@ -515,7 +537,7 @@ async function resetEmotiveClaimsSeedData(db: NodePgDatabase<typeof schema>): Pr
   await db.update(schema.engineTypes).set({ usageCount: 0 })
 
   console.log(
-    `[seed:emotive-claims] Reset — removed ${deletedClaims.length} claims, ${deletedEngineTypes.length} non-canonical engine types`,
+    `[seed:emotive-claims] Reset — removed ${deletedClaims.length} emotive claims, ${deletedEngineTypes.length} non-canonical engine types`,
   )
 }
 
