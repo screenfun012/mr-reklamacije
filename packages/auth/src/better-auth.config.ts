@@ -7,6 +7,7 @@ import { customSession } from 'better-auth/plugins'
 
 import { createForcePendingOnSignupHook } from './hooks/force-pending-on-signup.js'
 import { createLoginAuditHook } from './hooks/login-audit.js'
+import { createOnUserRegisteredHook } from './hooks/on-user-registered.js'
 import { createSessionCreateBeforeHook } from './hooks/session-create-before.js'
 import { sharedAuthOptions } from './options.js'
 import { createPermissionResolver } from './permissions.js'
@@ -25,6 +26,8 @@ export interface CreateAuthOptions {
    * variable is parsed.
    */
   trustedOrigins?: string[]
+  /** Called after a new pending user row is created (email signup). */
+  onUserRegistered?: (userId: string) => void
 }
 
 /**
@@ -82,6 +85,7 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
       user: {
         create: {
           before: createForcePendingOnSignupHook(),
+          after: createOnUserRegisteredHook(opts.onUserRegistered),
         },
       },
       session: {
