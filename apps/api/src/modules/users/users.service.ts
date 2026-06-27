@@ -1,6 +1,17 @@
-import { AuditAction, ResourceChangedKey, UserAccountStatus, type Permission } from '@mr/shared'
+import {
+  AuditAction,
+  ResourceChangedKey,
+  UserAccountStatus,
+  isProtectedSuperAdminEmail,
+  type Permission,
+} from '@mr/shared'
 
-import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import {
+  ForbiddenError,
+  NotFoundError,
+  UnprocessableEntityError,
+  ValidationError,
+} from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
@@ -9,6 +20,7 @@ import type {
   UserAccountStatusPatchInput,
   UserListItem,
   UserListResponse,
+  UserRolesReplaceInput,
   UsersListQuery,
 } from './users.validators.js'
 
@@ -18,11 +30,16 @@ function permissionForStatus(status: UserAccountStatusPatchInput['status']): Per
     : 'users.reject_registration'
 }
 
+function sortedRoles(roleCodes: readonly string[]): string[] {
+  return [...roleCodes].sort()
+}
+
 export class UsersService {
   constructor(
     private readonly repo: UsersRepository,
     private readonly audit: AuditPort,
     private readonly eventBus: EventBus,
+    private readonly protectedSuperAdminEmail: string,
   ) {}
 
   async list(query: UsersListQuery): Promise<UserListResponse> {
@@ -64,6 +81,51 @@ export class UsersService {
       changes: {
         before: { accountStatus: before.accountStatus },
         after: { accountStatus: updated.accountStatus },
+      },
+    })
+
+    this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
+
+    return updated
+  }
+
+  async replaceRoles(
+    id: string,
+    input: UserRolesReplaceInput,
+    actor: HttpActorContext,
+  ): Promise<UserListItem> {
+    const target = await this.repo.findAccountStatusById(id)
+    if (target === null) {
+      throw new NotFoundError('User', id)
+    }
+
+    if (isProtectedSuperAdminEmail(target.email, this.protectedSuperAdminEmail)) {
+      throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
+    }
+
+    if (id === actor.actorUserId) {
+      throw new ForbiddenError('Ne možete menjati sopstvene uloge.')
+    }
+
+    if (target.accountStatus !== UserAccountStatus.Approved) {
+      throw new UnprocessableEntityError('Uloge se mogu dodeliti samo odobrenim korisnicima.')
+    }
+
+    const beforeRoles = sortedRoles(target.roles)
+    const afterRoles = sortedRoles(input.roleCodes)
+
+    const updated = await this.repo.replaceRoles(id, input.roleCodes, actor.actorUserId)
+
+    await this.audit.log({
+      entityType: 'user',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: actor.actorUserId,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
+      changes: {
+        before: { roles: beforeRoles },
+        after: { roles: afterRoles },
       },
     })
 

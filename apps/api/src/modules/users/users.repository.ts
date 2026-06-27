@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
-import { NotFoundError } from '../../core/errors/domain-errors.js'
+import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import { keysetBefore } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { roles, userRoles, users } from './users.schema.js'
@@ -119,6 +119,56 @@ export class UsersRepository {
     const roleCodesByUserId = await this.loadRoleCodesByUserIds([updated.id])
 
     return mapUserRow(updated, roleCodesByUserId.get(updated.id) ?? [])
+  }
+
+  async replaceRoles(
+    id: string,
+    roleCodes: readonly string[],
+    assignedBy: string,
+  ): Promise<UserListItem> {
+    return this.db.transaction(async (tx) => {
+      const [userRow] = await tx
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          accountStatus: users.accountStatus,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(and(eq(users.id, id), isNull(users.deletedAt)))
+        .limit(1)
+
+      if (userRow === undefined) {
+        throw new NotFoundError('User', id)
+      }
+
+      const roleRows = await tx
+        .select({ id: roles.id, code: roles.code })
+        .from(roles)
+        .where(and(inArray(roles.code, [...roleCodes]), isNull(roles.deletedAt)))
+
+      if (roleRows.length !== roleCodes.length) {
+        throw new ValidationError('Jedna ili više uloga nije validna.')
+      }
+
+      await tx.delete(userRoles).where(eq(userRoles.userId, id))
+
+      if (roleRows.length > 0) {
+        await tx.insert(userRoles).values(
+          roleRows.map((role) => ({
+            userId: id,
+            roleId: role.id,
+            assignedBy,
+          })),
+        )
+      }
+
+      return mapUserRow(
+        userRow,
+        roleRows.map((role) => role.code),
+      )
+    })
   }
 
   private async loadRoleCodesByUserIds(userIds: readonly string[]): Promise<Map<string, string[]>> {

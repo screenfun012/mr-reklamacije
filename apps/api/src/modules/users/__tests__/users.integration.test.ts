@@ -1,5 +1,15 @@
 import { schema } from '@mr/db'
-import { AuditAction, ERROR_CODE, ResourceChangedKey, UserAccountStatus } from '@mr/shared'
+import {
+  ADMIN_PERMISSIONS,
+  AuditAction,
+  ERROR_CODE,
+  PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT,
+  ResourceChangedKey,
+  SYSTEM_ROLE_ADMIN,
+  SYSTEM_ROLE_OPERATOR,
+  SYSTEM_ROLE_VIEWER,
+  UserAccountStatus,
+} from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -13,9 +23,39 @@ const ADMIN_USER_PERMISSIONS = [
   'users.view',
   'users.approve_registration',
   'users.reject_registration',
+  'roles.assign',
 ] as const
 
+const ROLES_ASSIGN_PERMISSIONS = ['roles.assign'] as const
+
 const APPROVED_USER_ID = '33333333-3333-4333-8333-333333333333'
+const PROTECTED_SUPER_ADMIN_ID = '44444444-4444-4444-8444-444444444444'
+const ROLES_ADMIN_ACTOR_ID = '55555555-5555-4555-8555-555555555555'
+
+async function getRoleId(db: TestDbContext['db'], code: string): Promise<string> {
+  const [role] = await db
+    .select({ id: schema.roles.id })
+    .from(schema.roles)
+    .where(eq(schema.roles.code, code))
+    .limit(1)
+
+  if (role === undefined) {
+    throw new Error(`Role ${code} not found — run system seeds in integration setup`)
+  }
+
+  return role.id
+}
+
+async function assignRole(
+  db: TestDbContext['db'],
+  userId: string,
+  roleCode: string,
+  assignedBy: string,
+): Promise<void> {
+  const roleId = await getRoleId(db, roleCode)
+
+  await db.insert(schema.userRoles).values({ userId, roleId, assignedBy }).onConflictDoNothing()
+}
 
 async function seedApprovedUser(db: TestDbContext['db']): Promise<void> {
   await db
@@ -58,6 +98,50 @@ async function seedAdminUser(db: TestDbContext['db']): Promise<void> {
     })
 }
 
+async function seedRolesAdminActor(db: TestDbContext['db']): Promise<void> {
+  await db
+    .insert(schema.users)
+    .values({
+      id: ROLES_ADMIN_ACTOR_ID,
+      email: 'roles-admin@mrengines.rs',
+      name: 'Roles Admin',
+      accountStatus: UserAccountStatus.Approved,
+    })
+    .onConflictDoNothing()
+}
+
+async function seedProtectedSuperAdmin(db: TestDbContext['db']): Promise<void> {
+  await db
+    .insert(schema.users)
+    .values({
+      id: PROTECTED_SUPER_ADMIN_ID,
+      email: PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT,
+      name: 'Protected Super Admin',
+      accountStatus: UserAccountStatus.Approved,
+    })
+    .onConflictDoUpdate({
+      target: schema.users.id,
+      set: {
+        email: PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT,
+        accountStatus: UserAccountStatus.Approved,
+      },
+    })
+
+  await assignRole(db, PROTECTED_SUPER_ADMIN_ID, SYSTEM_ROLE_ADMIN, TEST_USER_ID)
+}
+
+async function putUserRoles(
+  app: ReturnType<typeof createUsersTestApp>,
+  userId: string,
+  roleCodes: string[],
+): Promise<Response> {
+  return app.request(`/api/users/${userId}/roles`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roleCodes }),
+  })
+}
+
 describe('Users module', () => {
   let ctx: TestDbContext
   let container: Container
@@ -70,6 +154,8 @@ describe('Users module', () => {
     await seedAdminUser(ctx.db)
     await seedPendingUser(ctx.db)
     await seedApprovedUser(ctx.db)
+    await seedRolesAdminActor(ctx.db)
+    await seedProtectedSuperAdmin(ctx.db)
   })
 
   afterEach(async () => {
@@ -202,6 +288,154 @@ describe('Users module', () => {
       })
 
       expect(response.status).toBe(403)
+    })
+  })
+
+  describe('when replacing user roles (NIKOLA-SAFE)', () => {
+    it('assigns operator role to approved user with audit log and SSE', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(200)
+
+      const updated = (await response.json()) as { roles: string[] }
+      expect(updated.roles).toEqual([SYSTEM_ROLE_OPERATOR])
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, APPROVED_USER_ID))
+
+      const roleAudit = auditRows.find(
+        (row) =>
+          row.action === AuditAction.Update &&
+          row.changes !== null &&
+          typeof row.changes === 'object' &&
+          'after' in row.changes &&
+          (row.changes as { after?: { roles?: string[] } }).after?.roles?.includes(
+            SYSTEM_ROLE_OPERATOR,
+          ),
+      )
+      expect(roleAudit).toBeDefined()
+
+      expect(eventBus.resourceEvents.map((event) => event.resource)).toContain(
+        ResourceChangedKey.Users,
+      )
+    })
+
+    it('returns 403 when attacker tries to remove admin from protected super-admin', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, PROTECTED_SUPER_ADMIN_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+
+      const roleRows = await ctx.db
+        .select({ code: schema.roles.code })
+        .from(schema.userRoles)
+        .innerJoin(schema.roles, eq(schema.userRoles.roleId, schema.roles.id))
+        .where(eq(schema.userRoles.userId, PROTECTED_SUPER_ADMIN_ID))
+
+      expect(roleRows.map((row) => row.code)).toEqual([SYSTEM_ROLE_ADMIN])
+    })
+
+    it('returns 403 when actor tries to change own roles', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, ROLES_ADMIN_ACTOR_ID, [SYSTEM_ROLE_ADMIN])
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+    })
+
+    it('returns 403 on any role change attempt for protected super-admin including demote', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const demoteResponse = await putUserRoles(app, PROTECTED_SUPER_ADMIN_ID, [SYSTEM_ROLE_VIEWER])
+      expect(demoteResponse.status).toBe(403)
+
+      const noopResponse = await putUserRoles(app, PROTECTED_SUPER_ADMIN_ID, [SYSTEM_ROLE_ADMIN])
+      expect(noopResponse.status).toBe(403)
+    })
+
+    it('returns 422 when assigning roles to pending user', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, PENDING_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(422)
+
+      const pendingRoles = await ctx.db
+        .select()
+        .from(schema.userRoles)
+        .where(eq(schema.userRoles.userId, PENDING_USER_ID))
+
+      expect(pendingRoles).toHaveLength(0)
+    })
+
+    it('returns 400 for empty roleCodes payload', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await app.request(`/api/users/${APPROVED_USER_ID}/roles`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roleCodes: [] }),
+      })
+
+      expect(response.status).toBe(400)
+    })
+
+    it('returns 403 without roles.assign permission', async () => {
+      const app = createUsersTestApp(container, testUser(['users.view'], ROLES_ADMIN_ACTOR_ID))
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(403)
+    })
+
+    it('operator role grants emotive_claims access but not users.view', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(200)
+
+      const effective = await container.permissionResolver.getEffectiveForUser(APPROVED_USER_ID)
+
+      expect(effective.has('emotive_claims.view')).toBe(true)
+      expect(effective.has('users.view')).toBe(false)
+    })
+
+    it('admin role bypass grants full permission catalog', async () => {
+      const effective = await container.permissionResolver.getEffectiveForRoleCodes([
+        SYSTEM_ROLE_ADMIN,
+      ])
+
+      expect(effective.length).toBe(ADMIN_PERMISSIONS.length)
+      expect(effective).toContain('users.view')
+      expect(effective).toContain('roles.assign')
+      expect(effective).toContain('emotive_claims.delete')
     })
   })
 })

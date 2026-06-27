@@ -1,6 +1,6 @@
 import { createAuth, createPermissionResolver } from '@mr/auth'
 import { schema } from '@mr/db'
-import { ResourceChangedKey } from '@mr/shared'
+import { ResourceChangedKey, resolveProtectedSuperAdminEmail } from '@mr/shared'
 import type { Logger } from '@mr/logger'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import type { Pool } from 'pg'
@@ -129,7 +129,12 @@ export function buildContainer(
   const customersService = new CustomersService(customersRepository, auditService, eventBus)
 
   const usersRepository = new UsersRepository(db)
-  const usersService = new UsersService(usersRepository, auditService, eventBus)
+  const usersService = new UsersService(
+    usersRepository,
+    auditService,
+    eventBus,
+    resolveProtectedSuperAdminEmail(env.PROTECTED_SUPER_ADMIN_EMAIL),
+  )
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
   const claimSourcesService = new ClaimSourcesService(claimSourcesRepository)

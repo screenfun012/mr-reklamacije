@@ -1,3 +1,4 @@
+import { PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT } from '@mr/shared'
 import { z } from 'zod'
 
 const EnvSchema = z.object({
@@ -35,6 +36,8 @@ const EnvSchema = z.object({
     error: 'BETTER_AUTH_SECRET must be at least 32 characters',
   }),
   BETTER_AUTH_URL: z.url(),
+  /** Protected super-admin account — role/status changes are always rejected server-side. */
+  PROTECTED_SUPER_ADMIN_EMAIL: z.string().email().default(PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT),
 
   // Sessions
   SESSION_IDLE_ADMIN_MIN: z.coerce.number().int().positive().default(30),

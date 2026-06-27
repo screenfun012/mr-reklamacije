@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import type { Logger } from '@mr/logger'
-import type { Permission } from '@mr/shared'
+import { PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT, type Permission } from '@mr/shared'
 import { Hono } from 'hono'
 import { vi } from 'vitest'
 
@@ -40,6 +40,7 @@ export function createTestEnv(databaseUrl: string): Env {
     DATABASE_URL: databaseUrl,
     BETTER_AUTH_SECRET: 'test-secret-minimum-32-characters-long',
     BETTER_AUTH_URL: 'http://127.0.0.1:3000',
+    PROTECTED_SUPER_ADMIN_EMAIL: PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT,
     SESSION_IDLE_ADMIN_MIN: 30,
     SESSION_IDLE_OPERATOR_MIN: 240,
     SESSION_IDLE_VIEWER_MIN: 240,

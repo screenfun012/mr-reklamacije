@@ -19,6 +19,7 @@ export function registerUsersRoutes(
     requirePermissions('users.approve_registration', 'users.reject_registration'),
     controller.updateAccountStatus,
   )
+  routes.put('/:id/roles', requirePermission('roles.assign'), controller.replaceRoles)
 
   app.route('/api/users', routes)
 }

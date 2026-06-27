@@ -28,6 +28,13 @@ export class ValidationError extends AppError {
   }
 }
 
+export class UnprocessableEntityError extends AppError {
+  constructor(message = 'Zahtev se ne može obraditi') {
+    super(ERROR_CODE.ValidationError, 422, message)
+    Object.setPrototypeOf(this, UnprocessableEntityError.prototype)
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message: string) {
     super(ERROR_CODE.Conflict, 409, message)

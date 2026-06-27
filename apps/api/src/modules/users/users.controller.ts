@@ -6,6 +6,7 @@ import type { Container } from '../../core/container.js'
 import {
   UserAccountStatusPatchInputSchema,
   UserIdParamSchema,
+  UserRolesReplaceInputSchema,
   UsersListQuerySchema,
 } from './users.validators.js'
 
@@ -30,6 +31,20 @@ export function createUsersController(container: Container) {
         ...getActorContext(c, user),
         permissions: user.permissions ?? [],
       })
+
+      return c.json(updated)
+    },
+
+    replaceRoles: async (c: Context) => {
+      const user = c.get('user')
+      if (user === null) {
+        throw new UnauthorizedError()
+      }
+
+      const { id } = UserIdParamSchema.parse({ id: c.req.param('id') })
+      const body: unknown = await c.req.json()
+      const input = UserRolesReplaceInputSchema.parse(body)
+      const updated = await container.usersService.replaceRoles(id, input, getActorContext(c, user))
 
       return c.json(updated)
     },
