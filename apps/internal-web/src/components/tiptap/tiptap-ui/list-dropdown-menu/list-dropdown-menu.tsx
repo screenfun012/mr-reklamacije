@@ -1,4 +1,11 @@
 // @ts-nocheck
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@mr/ui'
 import { forwardRef, useCallback, useState, type ForwardedRef } from 'react'
 import { type Editor } from '@tiptap/react'
 
@@ -9,20 +16,35 @@ import { useTiptapEditor } from '~/hooks/use-tiptap-editor'
 import { ChevronDownIcon } from '~/components/tiptap/tiptap-icons/chevron-down-icon'
 
 // --- Tiptap UI ---
-import { ListButton, type ListType } from '~/components/tiptap/tiptap-ui/list-button'
+import { useList, type ListType } from '~/components/tiptap/tiptap-ui/list-button'
 
 import { useListDropdownMenu } from '~/components/tiptap/tiptap-ui/list-dropdown-menu/use-list-dropdown-menu'
 
 // --- UI Primitives ---
 import type { ButtonProps } from '~/components/tiptap/tiptap-ui-primitive/button'
 import { Button } from '~/components/tiptap/tiptap-ui-primitive/button'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuGroup,
-} from '~/components/tiptap/tiptap-ui-primitive/dropdown-menu'
+
+function ListMenuItem({ editor, type }: { editor: Editor | null; type: ListType }) {
+  const { canToggle, handleToggle, label, Icon, isActive } = useList({
+    editor,
+    type,
+    hideWhenUnavailable: false,
+  })
+
+  return (
+    <DropdownMenuItem
+      disabled={!canToggle}
+      data-active-state={isActive ? 'on' : 'off'}
+      onSelect={(event) => {
+        event.preventDefault()
+        handleToggle()
+      }}
+    >
+      <Icon className="tiptap-button-icon" />
+      <span>{label}</span>
+    </DropdownMenuItem>
+  )
+}
 
 export interface ListDropdownMenuProps extends Omit<ButtonProps, 'type'> {
   /**
@@ -101,17 +123,10 @@ function ListDropdownMenuImpl(
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start">
+      <DropdownMenuContent align="start" onCloseAutoFocus={(event) => event.preventDefault()}>
         <DropdownMenuGroup>
           {filteredLists.map((option) => (
-            <DropdownMenuItem key={option.type} asChild>
-              <ListButton
-                editor={editor}
-                type={option.type}
-                text={option.label}
-                showTooltip={false}
-              />
-            </DropdownMenuItem>
+            <ListMenuItem key={option.type} editor={editor} type={option.type} />
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>

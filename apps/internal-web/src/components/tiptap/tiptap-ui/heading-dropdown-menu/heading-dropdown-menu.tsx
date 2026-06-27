@@ -1,5 +1,13 @@
 // @ts-nocheck
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@mr/ui'
 import { forwardRef, useCallback, useState } from 'react'
+import type { Editor } from '@tiptap/react'
 
 // --- Icons ---
 import { ChevronDownIcon } from '~/components/tiptap/tiptap-icons/chevron-down-icon'
@@ -8,20 +16,36 @@ import { ChevronDownIcon } from '~/components/tiptap/tiptap-icons/chevron-down-i
 import { useTiptapEditor } from '~/hooks/use-tiptap-editor'
 
 // --- Tiptap UI ---
-import { HeadingButton } from '~/components/tiptap/tiptap-ui/heading-button'
+import type { Level } from '~/components/tiptap/tiptap-ui/heading-button'
+import { useHeading } from '~/components/tiptap/tiptap-ui/heading-button'
 import type { UseHeadingDropdownMenuConfig } from '~/components/tiptap/tiptap-ui/heading-dropdown-menu'
 import { useHeadingDropdownMenu } from '~/components/tiptap/tiptap-ui/heading-dropdown-menu'
 
 // --- UI Primitives ---
 import type { ButtonProps } from '~/components/tiptap/tiptap-ui-primitive/button'
 import { Button } from '~/components/tiptap/tiptap-ui-primitive/button'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuGroup,
-} from '~/components/tiptap/tiptap-ui-primitive/dropdown-menu'
+
+function HeadingMenuItem({ editor, level }: { editor: Editor | null; level: Level }) {
+  const { canToggle, handleToggle, label, Icon, isActive } = useHeading({
+    editor,
+    level,
+    hideWhenUnavailable: false,
+  })
+
+  return (
+    <DropdownMenuItem
+      disabled={!canToggle}
+      data-active-state={isActive ? 'on' : 'off'}
+      onSelect={(event) => {
+        event.preventDefault()
+        handleToggle()
+      }}
+    >
+      <Icon className="tiptap-button-icon" />
+      <span>{label}</span>
+    </DropdownMenuItem>
+  )
+}
 
 export interface HeadingDropdownMenuProps
   extends Omit<ButtonProps, 'type'>, UseHeadingDropdownMenuConfig {
@@ -102,17 +126,10 @@ export const HeadingDropdownMenu = forwardRef<HTMLButtonElement, HeadingDropdown
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent align="start" onCloseAutoFocus={(event) => event.preventDefault()}>
           <DropdownMenuGroup>
             {levels.map((level) => (
-              <DropdownMenuItem key={`heading-${level}`} asChild>
-                <HeadingButton
-                  editor={editor}
-                  level={level}
-                  text={`Heading ${level}`}
-                  showTooltip={false}
-                />
-              </DropdownMenuItem>
+              <HeadingMenuItem key={`heading-${level}`} editor={editor} level={level} />
             ))}
           </DropdownMenuGroup>
         </DropdownMenuContent>
