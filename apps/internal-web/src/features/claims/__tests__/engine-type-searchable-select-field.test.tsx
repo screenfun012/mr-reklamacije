@@ -46,7 +46,7 @@ describe('EngineTypeSearchableSelectField', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Tip motora' }))
     await user.click(
-      screen.getByRole('button', { name: m.emotive_claims_create_select_placeholder() }),
+      screen.getByRole('option', { name: m.emotive_claims_create_select_placeholder() }),
     )
 
     expect(onValueChange).toHaveBeenCalledWith('')
