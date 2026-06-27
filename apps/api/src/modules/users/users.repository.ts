@@ -1,3 +1,4 @@
+import { UserAccountStatus } from '@mr/shared'
 import { and, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
@@ -119,6 +120,72 @@ export class UsersRepository {
     const roleCodesByUserId = await this.loadRoleCodesByUserIds([updated.id])
 
     return mapUserRow(updated, roleCodesByUserId.get(updated.id) ?? [])
+  }
+
+  async approvePendingUser(
+    id: string,
+    roleCode: string,
+    assignedBy: string,
+  ): Promise<UserListItem> {
+    return this.db.transaction(async (tx) => {
+      const [userRow] = await tx
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          accountStatus: users.accountStatus,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, id),
+            eq(users.accountStatus, UserAccountStatus.Pending),
+            isNull(users.deletedAt),
+          ),
+        )
+        .limit(1)
+
+      if (userRow === undefined) {
+        throw new ValidationError('Status naloga može menjati samo korisnik na čekanju.')
+      }
+
+      const [roleRow] = await tx
+        .select({ id: roles.id, code: roles.code })
+        .from(roles)
+        .where(and(eq(roles.code, roleCode), isNull(roles.deletedAt)))
+        .limit(1)
+
+      if (roleRow === undefined) {
+        throw new ValidationError('Izabrana uloga nije validna.')
+      }
+
+      await tx.delete(userRoles).where(eq(userRoles.userId, id))
+
+      const [updated] = await tx
+        .update(users)
+        .set({ accountStatus: UserAccountStatus.Approved })
+        .where(eq(users.id, id))
+        .returning({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          accountStatus: users.accountStatus,
+          createdAt: users.createdAt,
+        })
+
+      if (updated === undefined) {
+        throw new NotFoundError('User', id)
+      }
+
+      await tx.insert(userRoles).values({
+        userId: id,
+        roleId: roleRow.id,
+        assignedBy,
+      })
+
+      return mapUserRow(updated, [roleRow.code])
+    })
   }
 
   async replaceRoles(

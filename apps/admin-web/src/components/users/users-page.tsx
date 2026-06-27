@@ -1,19 +1,22 @@
 import {
+  DEFAULT_APPROVE_REGISTRATION_ROLE,
   UserAccountStatus,
   formatListDateTime,
   patchUserAccountStatus,
   usersListOptions,
   usersListQueryKey,
+  type ApproveRegistrationRoleCode,
   type UserListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, dataTableRowHoverOnlyClassName, Heading, Skeleton, toast } from '@mr/ui'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 
 import { authClient } from '~/lib/auth-client'
 
 import { UserAccountStatusBadge } from './user-account-status-badge'
+import { UserApproveDialog } from './user-approve-dialog'
 
 function UsersTable({
   items,
@@ -121,6 +124,7 @@ export function UsersPageContent(): ReactElement {
   const { data: session } = authClient.useSession()
   const currentUserId = session?.user.id
   const { data: users } = useSuspenseQuery(usersListOptions())
+  const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
 
   const pendingUsers = users.filter((user) => user.accountStatus === UserAccountStatus.Pending)
   const otherUsers = users.filter((user) => user.accountStatus !== UserAccountStatus.Pending)
@@ -129,16 +133,35 @@ export function UsersPageContent(): ReactElement {
     mutationFn: ({
       userId,
       status,
+      roleCode,
     }: {
       userId: string
       status: typeof UserAccountStatus.Approved | typeof UserAccountStatus.Rejected
-    }) => patchUserAccountStatus(userId, { status }),
-    onMutate: async ({ userId, status }) => {
+      roleCode?: ApproveRegistrationRoleCode
+    }) =>
+      status === UserAccountStatus.Approved
+        ? patchUserAccountStatus(userId, {
+            status,
+            roleCode: roleCode ?? DEFAULT_APPROVE_REGISTRATION_ROLE,
+          })
+        : patchUserAccountStatus(userId, { status }),
+    onMutate: async ({ userId, status, roleCode }) => {
       await queryClient.cancelQueries({ queryKey: usersListQueryKey() })
       const previous = queryClient.getQueryData<UserListItem[]>(usersListQueryKey())
 
       queryClient.setQueryData<UserListItem[]>(usersListQueryKey(), (old) =>
-        old?.map((user) => (user.id === userId ? { ...user, accountStatus: status } : user)),
+        old?.map((user) =>
+          user.id === userId
+            ? {
+                ...user,
+                accountStatus: status,
+                roles:
+                  status === UserAccountStatus.Approved && roleCode !== undefined
+                    ? [roleCode]
+                    : user.roles,
+              }
+            : user,
+        ),
       )
 
       return { previous }
@@ -150,6 +173,9 @@ export function UsersPageContent(): ReactElement {
       toast.error(m.users_status_update_error())
     },
     onSuccess: (_data, variables) => {
+      if (variables.status === UserAccountStatus.Approved) {
+        setApproveTarget(null)
+      }
       toast.success(
         variables.status === UserAccountStatus.Approved
           ? m.users_approve_success()
@@ -161,8 +187,19 @@ export function UsersPageContent(): ReactElement {
     },
   })
 
-  const handleApprove = (user: UserListItem): void => {
-    statusMutation.mutate({ userId: user.id, status: UserAccountStatus.Approved })
+  const handleApproveClick = (user: UserListItem): void => {
+    setApproveTarget(user)
+  }
+
+  const handleApproveConfirm = (
+    user: UserListItem,
+    roleCode: ApproveRegistrationRoleCode,
+  ): void => {
+    statusMutation.mutate({
+      userId: user.id,
+      status: UserAccountStatus.Approved,
+      roleCode,
+    })
   }
 
   const handleReject = (user: UserListItem): void => {
@@ -178,6 +215,18 @@ export function UsersPageContent(): ReactElement {
         <p className="text-muted-foreground">{m.users_page_subtitle()}</p>
       </div>
 
+      <UserApproveDialog
+        user={approveTarget}
+        open={approveTarget !== null}
+        pending={statusMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setApproveTarget(null)
+          }
+        }}
+        onConfirm={handleApproveConfirm}
+      />
+
       <section aria-labelledby="users-pending-heading">
         <Heading level="h2" id="users-pending-heading" className="mb-4 text-lg">
           {m.users_pending_section_title()}
@@ -185,7 +234,7 @@ export function UsersPageContent(): ReactElement {
         <UsersTable
           items={pendingUsers}
           currentUserId={currentUserId}
-          onApprove={handleApprove}
+          onApprove={handleApproveClick}
           onReject={handleReject}
           showActions
           pending
@@ -200,7 +249,7 @@ export function UsersPageContent(): ReactElement {
         <UsersTable
           items={otherUsers}
           currentUserId={currentUserId}
-          onApprove={handleApprove}
+          onApprove={handleApproveClick}
           onReject={handleReject}
           showActions={false}
           pending={false}

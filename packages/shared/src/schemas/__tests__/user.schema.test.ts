@@ -54,6 +54,36 @@ describe('UserAccountStatusPatchInputSchema', () => {
     )
   })
 
+  it('defaults roleCode to operator when approving without roleCode', () => {
+    const parsed = UserAccountStatusPatchInputSchema.parse({ status: 'approved' })
+
+    expect(parsed.status).toBe(UserAccountStatus.Approved)
+    if (parsed.status === UserAccountStatus.Approved) {
+      expect(parsed.roleCode).toBe('operator')
+    }
+  })
+
+  it('accepts viewer role on approval', () => {
+    const parsed = UserAccountStatusPatchInputSchema.parse({
+      status: 'approved',
+      roleCode: 'viewer',
+    })
+
+    expect(parsed).toEqual({ status: UserAccountStatus.Approved, roleCode: 'viewer' })
+  })
+
+  it('rejects admin role on approval', () => {
+    expect(() =>
+      UserAccountStatusPatchInputSchema.parse({ status: 'approved', roleCode: 'admin' }),
+    ).toThrow()
+  })
+
+  it('rejects roleCode on rejection', () => {
+    expect(() =>
+      UserAccountStatusPatchInputSchema.parse({ status: 'rejected', roleCode: 'operator' }),
+    ).toThrow(/roleCode is only allowed when approving/)
+  })
+
   it('rejects pending as a patch target', () => {
     expect(() => UserAccountStatusPatchInputSchema.parse({ status: 'pending' })).toThrow()
   })

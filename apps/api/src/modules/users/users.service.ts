@@ -69,7 +69,28 @@ export class UsersService {
       throw new ValidationError('Status naloga može menjati samo korisnik na čekanju.')
     }
 
-    const updated = await this.repo.updateAccountStatus(id, input.status)
+    if (isProtectedSuperAdminEmail(before.email, this.protectedSuperAdminEmail)) {
+      throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
+    }
+
+    const updated =
+      input.status === UserAccountStatus.Approved
+        ? await this.repo.approvePendingUser(id, input.roleCode, actor.actorUserId)
+        : await this.repo.updateAccountStatus(id, input.status)
+
+    const auditChanges =
+      input.status === UserAccountStatus.Approved
+        ? {
+            before: { accountStatus: before.accountStatus, roles: sortedRoles(before.roles) },
+            after: {
+              accountStatus: updated.accountStatus,
+              roles: sortedRoles(updated.roles),
+            },
+          }
+        : {
+            before: { accountStatus: before.accountStatus },
+            after: { accountStatus: updated.accountStatus },
+          }
 
     await this.audit.log({
       entityType: 'user',
@@ -78,10 +99,7 @@ export class UsersService {
       actorUserId: actor.actorUserId,
       actorIp: actor.actorIp,
       actorUserAgent: actor.actorUserAgent,
-      changes: {
-        before: { accountStatus: before.accountStatus },
-        after: { accountStatus: updated.accountStatus },
-      },
+      changes: auditChanges,
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.Users)

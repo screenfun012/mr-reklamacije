@@ -70,17 +70,41 @@ async function seedApprovedUser(db: TestDbContext['db']): Promise<void> {
 }
 
 const PENDING_USER_ID = '22222222-2222-4222-8222-222222222222'
+const PENDING_VIEWER_APPROVE_ID = '22222222-2222-4222-8222-222222222223'
+const PENDING_ADMIN_ROLE_REJECT_ID = '22222222-2222-4222-8222-222222222224'
+const PENDING_ROLLBACK_ID = '22222222-2222-4222-8222-222222222225'
+const PENDING_REJECT_ID = '22222222-2222-4222-8222-222222222226'
+const PENDING_ROLES_422_ID = '22222222-2222-4222-8222-222222222227'
+const PENDING_NO_APPROVE_PERM_ID = '22222222-2222-4222-8222-222222222228'
 
-async function seedPendingUser(db: TestDbContext['db']): Promise<void> {
+async function seedPendingUser(
+  db: TestDbContext['db'],
+  id: string,
+  email: string,
+  name: string,
+): Promise<void> {
+  await db.delete(schema.userRoles).where(eq(schema.userRoles.userId, id))
+
   await db
     .insert(schema.users)
     .values({
-      id: PENDING_USER_ID,
-      email: 'pera.peric.test@gmail.com',
-      name: 'Pera Perić',
+      id,
+      email,
+      name,
       accountStatus: UserAccountStatus.Pending,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: schema.users.id,
+      set: {
+        email,
+        name,
+        accountStatus: UserAccountStatus.Pending,
+      },
+    })
+}
+
+async function seedDefaultPendingUser(db: TestDbContext['db']): Promise<void> {
+  await seedPendingUser(db, PENDING_USER_ID, 'pera.peric.test@gmail.com', 'Pera Perić')
 }
 
 async function seedAdminUser(db: TestDbContext['db']): Promise<void> {
@@ -142,7 +166,7 @@ async function putUserRoles(
   })
 }
 
-describe('Users module', () => {
+describe.sequential('Users module', () => {
   let ctx: TestDbContext
   let container: Container
   let eventBus: RecordingEventBus
@@ -152,7 +176,7 @@ describe('Users module', () => {
     eventBus = new RecordingEventBus()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
     await seedAdminUser(ctx.db)
-    await seedPendingUser(ctx.db)
+    await seedDefaultPendingUser(ctx.db)
     await seedApprovedUser(ctx.db)
     await seedRolesAdminActor(ctx.db)
     await seedProtectedSuperAdmin(ctx.db)
@@ -205,7 +229,7 @@ describe('Users module', () => {
   })
 
   describe('when updating account status', () => {
-    it('approves a pending user, writes audit log, and emits SSE', async () => {
+    it('approves a pending user with default operator role, writes audit log, and emits SSE', async () => {
       const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
 
       const response = await app.request(`/api/users/${PENDING_USER_ID}/account-status`, {
@@ -216,27 +240,106 @@ describe('Users module', () => {
 
       expect(response.status).toBe(200)
 
-      const updated = (await response.json()) as { accountStatus: string }
+      const updated = (await response.json()) as { accountStatus: string; roles: string[] }
       expect(updated.accountStatus).toBe(UserAccountStatus.Approved)
+      expect(updated.roles).toEqual([SYSTEM_ROLE_OPERATOR])
+
+      const roleRows = await ctx.db
+        .select({ code: schema.roles.code })
+        .from(schema.userRoles)
+        .innerJoin(schema.roles, eq(schema.userRoles.roleId, schema.roles.id))
+        .where(eq(schema.userRoles.userId, PENDING_USER_ID))
+
+      expect(roleRows.map((row) => row.code)).toEqual([SYSTEM_ROLE_OPERATOR])
 
       const auditRows = await ctx.db
         .select()
         .from(schema.auditLog)
         .where(eq(schema.auditLog.entityId, PENDING_USER_ID))
 
-      expect(auditRows).toHaveLength(1)
-      expect(auditRows[0]?.action).toBe(AuditAction.Update)
-      expect(auditRows[0]?.entityType).toBe('user')
+      const approveAudit = auditRows.find(
+        (row) =>
+          row.action === AuditAction.Update &&
+          row.changes !== null &&
+          typeof row.changes === 'object' &&
+          'after' in row.changes &&
+          (row.changes as { after?: { roles?: string[] } }).after?.roles?.includes(
+            SYSTEM_ROLE_OPERATOR,
+          ),
+      )
+      expect(approveAudit).toBeDefined()
+      expect(approveAudit?.entityType).toBe('user')
 
       expect(eventBus.resourceEvents.map((event) => event.resource)).toContain(
         ResourceChangedKey.Users,
       )
     })
 
-    it('rejects a pending user', async () => {
+    it('approves a pending user with explicit viewer role', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_VIEWER_APPROVE_ID,
+        'viewer.approve@mrengines.rs',
+        'Viewer Approve',
+      )
+
       const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
 
-      const response = await app.request(`/api/users/${PENDING_USER_ID}/account-status`, {
+      const response = await app.request(`/api/users/${PENDING_VIEWER_APPROVE_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_VIEWER }),
+      })
+
+      expect(response.status).toBe(200)
+
+      const updated = (await response.json()) as { accountStatus: string; roles: string[] }
+      expect(updated.accountStatus).toBe(UserAccountStatus.Approved)
+      expect(updated.roles).toEqual([SYSTEM_ROLE_VIEWER])
+    })
+
+    it('returns 400 when approving with admin roleCode and leaves user pending', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_ADMIN_ROLE_REJECT_ID,
+        'admin.reject@mrengines.rs',
+        'Admin Reject',
+      )
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(
+        `/api/users/${PENDING_ADMIN_ROLE_REJECT_ID}/account-status`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_ADMIN }),
+        },
+      )
+
+      expect(response.status).toBe(400)
+
+      const [user] = await ctx.db
+        .select({ accountStatus: schema.users.accountStatus })
+        .from(schema.users)
+        .where(eq(schema.users.id, PENDING_ADMIN_ROLE_REJECT_ID))
+
+      expect(user?.accountStatus).toBe(UserAccountStatus.Pending)
+
+      const roleRows = await ctx.db
+        .select()
+        .from(schema.userRoles)
+        .where(eq(schema.userRoles.userId, PENDING_ADMIN_ROLE_REJECT_ID))
+
+      expect(roleRows).toHaveLength(0)
+    })
+
+    it('rejects a pending user', async () => {
+      await seedPendingUser(ctx.db, PENDING_REJECT_ID, 'reject@mrengines.rs', 'Reject Me')
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(`/api/users/${PENDING_REJECT_ID}/account-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: UserAccountStatus.Rejected }),
@@ -276,18 +379,53 @@ describe('Users module', () => {
     })
 
     it('returns 403 when actor lacks approve permission for approval', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_NO_APPROVE_PERM_ID,
+        'no-approve@mrengines.rs',
+        'No Approve',
+      )
+
       const app = createUsersTestApp(
         container,
         testUser(['users.view', 'users.reject_registration'], TEST_USER_ID),
       )
 
-      const response = await app.request(`/api/users/${PENDING_USER_ID}/account-status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: UserAccountStatus.Approved }),
-      })
+      const response = await app.request(
+        `/api/users/${PENDING_NO_APPROVE_PERM_ID}/account-status`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: UserAccountStatus.Approved }),
+        },
+      )
 
       expect(response.status).toBe(403)
+    })
+
+    it('does not approve when selected role is unavailable (no partial update)', async () => {
+      await seedPendingUser(ctx.db, PENDING_ROLLBACK_ID, 'rollback@mrengines.rs', 'Rollback Me')
+      await ctx.db
+        .update(schema.roles)
+        .set({ deletedAt: new Date() })
+        .where(eq(schema.roles.code, SYSTEM_ROLE_OPERATOR))
+
+      const before = await container.usersRepository.findAccountStatusById(PENDING_ROLLBACK_ID)
+      expect(before?.accountStatus).toBe(UserAccountStatus.Pending)
+      expect(before?.roles).toEqual([])
+
+      await expect(
+        container.usersService.updateAccountStatus(
+          PENDING_ROLLBACK_ID,
+          { status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_OPERATOR },
+          {
+            actorUserId: TEST_USER_ID,
+            actorIp: '127.0.0.1',
+            actorUserAgent: 'test',
+            permissions: [...ADMIN_USER_PERMISSIONS],
+          },
+        ),
+      ).rejects.toMatchObject({ status: 400 })
     })
   })
 
@@ -374,18 +512,25 @@ describe('Users module', () => {
     })
 
     it('returns 422 when assigning roles to pending user', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_ROLES_422_ID,
+        'pending-roles@mrengines.rs',
+        'Pending Roles',
+      )
+
       const app = createUsersTestApp(
         container,
         testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
       )
 
-      const response = await putUserRoles(app, PENDING_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      const response = await putUserRoles(app, PENDING_ROLES_422_ID, [SYSTEM_ROLE_OPERATOR])
       expect(response.status).toBe(422)
 
       const pendingRoles = await ctx.db
         .select()
         .from(schema.userRoles)
-        .where(eq(schema.userRoles.userId, PENDING_USER_ID))
+        .where(eq(schema.userRoles.userId, PENDING_ROLES_422_ID))
 
       expect(pendingRoles).toHaveLength(0)
     })
