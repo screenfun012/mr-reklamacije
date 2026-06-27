@@ -31,19 +31,31 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequestUrl: getRequestUrlMock,
 }))
 
+function resetLocaleToSerbian(): void {
+  // Paraglide setLocale touches localStorage when window exists — keep SSR-like env for resets.
+  vi.stubGlobal('window', undefined)
+  setLocale('sr', { reload: false })
+}
+
 describe('syncRequestLocale', () => {
   beforeEach(() => {
-    setLocale('sr', { reload: false })
+    resetLocaleToSerbian()
     getRequestHeadersMock.mockClear()
     getRequestUrlMock.mockClear()
   })
 
   afterEach(() => {
-    setLocale('sr', { reload: false })
+    vi.unstubAllGlobals()
+    resetLocaleToSerbian()
   })
 
   it('returns current locale in the browser without calling server helpers', async () => {
     vi.stubGlobal('window', {})
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    })
 
     const locale = await syncRequestLocale()
 
@@ -52,8 +64,6 @@ describe('syncRequestLocale', () => {
   })
 
   it('sets locale from the SSR request cookie before rendering', async () => {
-    vi.stubGlobal('window', undefined)
-
     const locale = await syncRequestLocale()
 
     expect(getRequestHeadersMock).toHaveBeenCalledTimes(1)

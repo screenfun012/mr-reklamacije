@@ -12,9 +12,18 @@ function createAuthStub(sessionPayload: unknown): MRAuthClientForRouteRoles {
   }
 }
 
+function stubBrowserGlobals(): void {
+  vi.stubGlobal('window', {})
+  vi.stubGlobal('localStorage', {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  })
+}
+
 describe('createRootAuthBeforeLoad', () => {
   beforeEach(() => {
-    vi.stubGlobal('window', {})
+    stubBrowserGlobals()
   })
 
   afterEach(() => {
@@ -49,7 +58,7 @@ describe('createRootAuthBeforeLoad', () => {
 
 describe('resolveAuthSessionForGuard', () => {
   beforeEach(() => {
-    vi.stubGlobal('window', {})
+    stubBrowserGlobals()
   })
 
   afterEach(() => {
