@@ -1,10 +1,7 @@
 import { m } from '@mr/i18n'
 import {
   Button,
-  cn,
-  dataTableDestructiveActionClassName,
   dataTableRowHoverOnlyClassName,
-  dataTableTextActionClassName,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -86,22 +83,16 @@ export function ResourceTable<
                       <div className="flex justify-end gap-2">
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className={dataTableTextActionClassName}
                           onClick={() => onEdit(item)}
                         >
                           {definition.editActionLabel()}
                         </Button>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant={item.isActive ? 'destructive' : 'outline'}
                           size="sm"
-                          className={
-                            item.isActive
-                              ? dataTableDestructiveActionClassName
-                              : dataTableTextActionClassName
-                          }
                           onClick={() => onToggleActive(item)}
                         >
                           {item.isActive
@@ -114,10 +105,7 @@ export function ResourceTable<
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className={cn(
-                                'size-8 px-0 hover:bg-destructive/10',
-                                dataTableDestructiveActionClassName,
-                              )}
+                              className="size-8 text-destructive hover:text-destructive"
                               aria-label={m.action_delete()}
                               onClick={() => onHardDelete(item)}
                             >
@@ -131,10 +119,7 @@ export function ResourceTable<
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className={cn(
-                                      'size-8 px-0 hover:bg-destructive/10',
-                                      dataTableDestructiveActionClassName,
-                                    )}
+                                    className="size-8 text-destructive hover:text-destructive"
                                     disabled
                                     aria-label={m.action_delete()}
                                   >

@@ -7,15 +7,7 @@ import {
   type UserListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  Button,
-  dataTableDestructiveActionClassName,
-  dataTableRowHoverOnlyClassName,
-  dataTableTextActionClassName,
-  Heading,
-  Skeleton,
-  toast,
-} from '@mr/ui'
+import { Button, dataTableRowHoverOnlyClassName, Heading, Skeleton, toast } from '@mr/ui'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
@@ -95,9 +87,7 @@ function UsersTable({
                         <div className="flex justify-end gap-2">
                           <Button
                             type="button"
-                            variant="ghost"
                             size="sm"
-                            className={dataTableTextActionClassName}
                             disabled={actionsDisabled}
                             onClick={() => onApprove(user)}
                           >
@@ -105,9 +95,8 @@ function UsersTable({
                           </Button>
                           <Button
                             type="button"
-                            variant="ghost"
                             size="sm"
-                            className={dataTableDestructiveActionClassName}
+                            variant="destructive"
                             disabled={actionsDisabled}
                             onClick={() => onReject(user)}
                           >

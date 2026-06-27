@@ -209,7 +209,8 @@
   --mr-primary-hover: #f0414a;
   --mr-primary-active: #a8111a;
   --mr-red-50-wash: #fdecef;
-  --mr-list-item-hover: #3c3d41;
+  /* Must contrast with --popover (--mr-surface-raised #3c3d41); same hex made hover invisible. */
+  --mr-list-item-hover: #4a4b50;
   --mr-calendar-today: #454649;
   --mr-disabled-bg: #3c3d41;
   --mr-disabled-text: #7f8084;
