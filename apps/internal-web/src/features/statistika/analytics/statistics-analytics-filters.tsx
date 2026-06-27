@@ -10,6 +10,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
+import { useLocale } from '~/lib/locale'
 
 const DATE_DEBOUNCE_MS = 300
 const STATISTICS_PERIOD_ROLLING = '__rolling24__'
@@ -57,6 +58,7 @@ export function StatisticsAnalyticsFilters({
   search,
   onSearchChange,
 }: StatisticsAnalyticsFiltersProps): React.ReactElement {
+  const { locale } = useLocale()
   const periodValue = resolvePeriodValue(search)
   const showCustomRange = periodValue === STATISTICS_PERIOD_CUSTOM
   const [dateFromDraft, setDateFromDraft] = useState(search.dateFrom)
@@ -84,7 +86,7 @@ export function StatisticsAnalyticsFilters({
         label: m.statistika_analytics_filter_period_custom(),
       },
     ],
-    [yearOptions],
+    [yearOptions, locale],
   )
 
   const kindOptions = useMemo(
@@ -96,7 +98,7 @@ export function StatisticsAnalyticsFilters({
           definition.key === 'domace' ? KIND_FILTER_LABELS.domace() : KIND_FILTER_LABELS.emotive(),
       })),
     ],
-    [],
+    [locale],
   )
 
   const manufacturerOptions = useMemo(

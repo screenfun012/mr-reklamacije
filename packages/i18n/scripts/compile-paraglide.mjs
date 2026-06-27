@@ -5,6 +5,7 @@
  * @see https://inlang.com/m/gerre34r/library-inlang-paraglideJs/strategy
  *
  * Strategy notes:
+ * - cookie persists locale for SSR hard refresh (synced from localStorage on bootstrap).
  * - localStorage persists user choice under `localStorageKey` (mrr:locale).
  * - globalVariable mirrors `setLocale` into in-memory `_locale` so Vitest/node
  *   callers get consistent `getLocale()` after `setLocale(..., { reload: false })`
@@ -40,6 +41,6 @@ await compile({
   project: join(pkgRoot, 'project.inlang'),
   outdir,
   cleanOutdir: false,
-  strategy: ['localStorage', 'globalVariable', 'preferredLanguage', 'baseLocale'],
+  strategy: ['cookie', 'localStorage', 'globalVariable', 'preferredLanguage', 'baseLocale'],
   localStorageKey: 'mrr:locale',
 })

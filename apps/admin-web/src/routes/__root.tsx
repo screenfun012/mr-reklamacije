@@ -3,7 +3,7 @@ import '@fontsource-variable/figtree/index.css'
 import '@fontsource/jetbrains-mono/400.css'
 
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
-import { m } from '@mr/i18n'
+import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
 import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
 import { Toaster } from '@mr/ui'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
@@ -35,6 +35,7 @@ function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOTSTRAP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>

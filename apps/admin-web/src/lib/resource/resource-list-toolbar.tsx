@@ -9,6 +9,8 @@ import { FilterSelect, Input, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 
+import { useLocale } from '~/lib/locale'
+
 const SEARCH_DEBOUNCE_MS = 300
 
 export interface ResourceListToolbarProps {
@@ -55,6 +57,7 @@ export function ResourceListToolbar({
   onSearchChange,
   showManufacturerFilter = false,
 }: ResourceListToolbarProps): React.ReactElement {
+  const { locale } = useLocale()
   const [searchDraft, setSearchDraft] = useState(search.q ?? '')
   const debouncedQuery = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
 
@@ -64,7 +67,7 @@ export function ResourceListToolbar({
       { value: ResourceCatalogStatusFilter.Active, label: m.admin_catalog_filter_active() },
       { value: ResourceCatalogStatusFilter.Inactive, label: m.admin_catalog_filter_inactive() },
     ],
-    [],
+    [locale],
   )
 
   useEffect(() => {

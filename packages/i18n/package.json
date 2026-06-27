@@ -29,9 +29,18 @@
   "dependencies": {
     "@inlang/paraglide-js": "2.18.0"
   },
+  "peerDependencies": {
+    "@tanstack/react-start": ">=1.116.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-start": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@mr/eslint-config": "workspace:*",
     "@mr/tsconfig": "workspace:*",
+    "@tanstack/react-start": "1.167.59",
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

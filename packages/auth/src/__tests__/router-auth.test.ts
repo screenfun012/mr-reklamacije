@@ -28,8 +28,11 @@ describe('createRootAuthBeforeLoad', () => {
     const result = await beforeLoad()
 
     expect(authClient.getSession).toHaveBeenCalledTimes(1)
-    expect(result.authSession).toEqual({
-      user: { roles: ['operator'], permissions: [], name: '', email: '' },
+    expect(result).toEqual({
+      authSession: {
+        user: { roles: ['operator'], permissions: [], name: '', email: '' },
+      },
+      locale: 'sr',
     })
   })
 
@@ -40,7 +43,7 @@ describe('createRootAuthBeforeLoad', () => {
     }
     const beforeLoad = createRootAuthBeforeLoad(authClient)
 
-    await expect(beforeLoad()).resolves.toEqual({ authSession: null })
+    await expect(beforeLoad()).resolves.toEqual({ authSession: null, locale: 'sr' })
   })
 })
 

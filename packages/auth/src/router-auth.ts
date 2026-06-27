@@ -1,3 +1,5 @@
+import type { Locale } from '@mr/i18n'
+import { getLocale, syncRequestLocale } from '@mr/i18n'
 import type { MRAuthClientForRouteRoles } from './auth-client-types.js'
 import {
   resolveSessionPayload,
@@ -11,6 +13,7 @@ export const SESSION_ROUTE_STALE_MS = 300_000
 
 export type AuthRouterContext = {
   authSession?: SerializableAuthSession | null
+  locale?: Locale
 }
 
 export type RouteBeforeLoadArgs = {
@@ -31,20 +34,27 @@ function isBrowser(): boolean {
 export function createRootAuthBeforeLoad(
   authClient: MRAuthClientForRouteRoles,
   loadServerSession?: ServerSessionLoader,
-): () => Promise<{ authSession: SerializableAuthSession | null }> {
+): () => Promise<{ authSession: SerializableAuthSession | null; locale: Locale }> {
   return async () => {
     const onServer = !isBrowser()
 
+    if (onServer) {
+      await syncRequestLocale()
+    }
+
     if (onServer && !loadServerSession) {
-      return { authSession: null }
+      return { authSession: null, locale: getLocale() }
     }
 
     try {
       const raw = onServer ? await loadServerSession!() : await authClient.getSession()
-      return { authSession: toSerializableAuthSession(resolveSessionPayload(raw)) }
+      return {
+        authSession: toSerializableAuthSession(resolveSessionPayload(raw)),
+        locale: getLocale(),
+      }
     } catch {
       // Network/API unavailable — treat as unauthenticated so public routes (e.g. /login) still render.
-      return { authSession: null }
+      return { authSession: null, locale: getLocale() }
     }
   }
 }

@@ -12,6 +12,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
+import { useLocale } from '~/lib/locale'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -34,6 +35,7 @@ export interface ClaimsFiltersProps {
 }
 
 export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
+  const { locale } = useLocale()
   const [searchDraft, setSearchDraft] = useState(search.search ?? '')
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
   const { data: manufacturers } = useSuspenseQuery(
@@ -49,7 +51,7 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
           definition.key === 'domace' ? KIND_FILTER_LABELS.domace() : KIND_FILTER_LABELS.emotive(),
       })),
     ],
-    [],
+    [locale],
   )
 
   const outcomeOptions = useMemo(
@@ -60,7 +62,7 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
         label: OUTCOME_LABELS[definition.labelKey](),
       })),
     ],
-    [],
+    [locale],
   )
 
   const manufacturerOptions = useMemo(

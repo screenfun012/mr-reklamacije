@@ -31,7 +31,7 @@ export function StatistikaExportSection({
   canExportPartial,
   canExportFull,
 }: StatistikaExportSectionProps): React.ReactElement {
-  useLocale()
+  const { locale } = useLocale()
   const { exportWorkbook, isExporting } = useExcelExport()
   const [scope, setScope] = useState<ExcelExportInput['scope']>(ExcelExportScope.All)
   const [claimYear, setClaimYear] = useState('')
@@ -45,7 +45,7 @@ export function StatistikaExportSection({
       { value: ExcelExportScope.Emotive, label: m.statistika_export_scope_emotive() },
       { value: ExcelExportScope.Domace, label: m.statistika_export_scope_domace() },
     ],
-    [],
+    [locale],
   )
 
   const outcomeOptions = useMemo(
@@ -56,7 +56,7 @@ export function StatistikaExportSection({
         label: OUTCOME_LABELS[definition.labelKey](),
       })),
     ],
-    [],
+    [locale],
   )
 
   const isFullExport = useMemo(() => {

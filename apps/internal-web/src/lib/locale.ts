@@ -21,20 +21,17 @@ function isLocale(value: unknown): value is Locale {
 }
 
 function getServerSnapshot(): Locale {
-  return baseLocale
+  return getLocale()
 }
 
 function getSnapshot(): Locale {
-  if (typeof window === 'undefined') {
-    return baseLocale
-  }
   return getLocale()
 }
 
 /**
  * Locale picker + reactive reads aligned with Paraglide `m.*` (they call
  * `getLocale()` internally). `setLocale(..., { reload: false })` persists via
- * Paraglide strategies (`mrr:locale`); `notify()` re-renders subscribed hooks.
+ * Paraglide strategies (`mrr:locale` + cookie); `notify()` re-renders subscribed hooks.
  */
 export function useLocale(): {
   locale: Locale
@@ -53,3 +50,5 @@ export function useLocale(): {
     },
   }
 }
+
+export { baseLocale }
