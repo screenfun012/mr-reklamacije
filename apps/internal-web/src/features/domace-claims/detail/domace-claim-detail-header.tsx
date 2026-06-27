@@ -16,20 +16,20 @@ const EMPTY = '—'
 
 export interface DomaceClaimDetailHeaderProps {
   claim: DomaceClaimDetail
-  canEditBasic: boolean
-  editingBasic: boolean
+  canEditData: boolean
+  editingData: boolean
   canChangeOutcome: boolean
   canReopen: boolean
-  onEditBasic: () => void
+  onEditData: () => void
 }
 
 export function DomaceClaimDetailHeader({
   claim,
-  canEditBasic,
-  editingBasic,
+  canEditData,
+  editingData,
   canChangeOutcome,
   canReopen,
-  onEditBasic,
+  onEditData,
 }: DomaceClaimDetailHeaderProps): React.ReactElement {
   const metaLine = formatClaimDetailMetaLine([
     claim.customerName,
@@ -37,7 +37,7 @@ export function DomaceClaimDetailHeader({
     claim.dateOfClaim ? formatListDate(claim.dateOfClaim) : null,
   ])
 
-  const showEdit = canEditBasic && !editingBasic
+  const showEdit = canEditData && !editingData
   const isLocked = claim.outcome !== ClaimOutcome.Pending
   const showStatusActions = canChangeOutcome || (canReopen && isLocked)
   const showActionBar = showEdit || showStatusActions
@@ -62,7 +62,7 @@ export function DomaceClaimDetailHeader({
               variant="outline"
               size="sm"
               className="gap-1"
-              onClick={onEditBasic}
+              onClick={onEditData}
             >
               <Pencil className="size-4" />
               {m.emotive_claims_detail_basic_edit()}

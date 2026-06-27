@@ -79,13 +79,13 @@ export function DomaceClaimBasicSection({
       {editing ? (
         <BasicEditMode claim={claim} onDone={() => setEditing(false)} />
       ) : (
-        <BasicReadOnly claim={claim} hideMr={hideMrInReadOnly} />
+        <DomaceClaimBasicReadOnly claim={claim} hideMr={hideMrInReadOnly} />
       )}
     </section>
   )
 }
 
-function BasicReadOnly({
+export function DomaceClaimBasicReadOnly({
   claim,
   hideMr = false,
 }: {

@@ -16,6 +16,7 @@ import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
 import { DomaceClaimFindingsSection } from './domace-claim-findings-section.js'
 import { DomaceClaimFaultsSection } from './domace-claim-faults-section.js'
+import { DomaceClaimOverviewEdit } from './domace-claim-overview-edit.js'
 import { DomaceClaimAttachmentsTab } from './domace-claim-attachments-tab.js'
 import { DomaceClaimReportTab } from './domace-claim-report-tab.js'
 
@@ -48,31 +49,32 @@ export function DomaceClaimDetailView({
     claim.outcome === ClaimOutcome.Accepted &&
     permissions?.includes('domace_claims.update') === true
   const canEditFindings = permissions?.includes('domace_claims.update') === true
+  const canEditData = canEditBasic || canEditAmount
 
-  const [editingBasic, setEditingBasic] = useState(false)
+  const [editingData, setEditingData] = useState(false)
 
   const handleTabChange = (nextTab: string): void => {
     const parsed = nextTab as ClaimDetailTabValue
     if (parsed !== ClaimDetailTab.Pregled) {
-      setEditingBasic(false)
+      setEditingData(false)
     }
     onTabChange(parsed)
   }
 
-  const handleEditBasic = (): void => {
+  const handleEditData = (): void => {
     onTabChange(ClaimDetailTab.Pregled)
-    setEditingBasic(true)
+    setEditingData(true)
   }
 
   return (
     <div className="flex flex-col gap-6">
       <DomaceClaimDetailHeader
         claim={claim}
-        canEditBasic={canEditBasic}
-        editingBasic={editingBasic}
+        canEditData={canEditData}
+        editingData={editingData}
         canChangeOutcome={canChangeOutcome}
         canReopen={canReopen}
-        onEditBasic={handleEditBasic}
+        onEditData={handleEditData}
       />
 
       <Tabs value={tab} onValueChange={handleTabChange}>
@@ -88,16 +90,19 @@ export function DomaceClaimDetailView({
         </TabsList>
 
         <TabsContent value={ClaimDetailTab.Pregled} className="flex flex-col gap-6">
-          <DomaceClaimBasicSection
-            claim={claim}
-            canEdit={canEditBasic}
-            editing={editingBasic}
-            onEditingChange={setEditingBasic}
-            showSectionEditButton={false}
-            hideMrInReadOnly
-          />
-
-          <DomaceClaimAmountSection claim={claim} canEdit={canEditAmount} />
+          {editingData ? (
+            <DomaceClaimOverviewEdit claim={claim} onDone={() => setEditingData(false)} />
+          ) : (
+            <>
+              <DomaceClaimBasicSection
+                claim={claim}
+                canEdit={canEditBasic}
+                showSectionEditButton={false}
+                hideMrInReadOnly
+              />
+              <DomaceClaimAmountSection claim={claim} />
+            </>
+          )}
 
           <DomaceClaimFindingsSection claim={claim} canEdit={canEditFindings} />
 
