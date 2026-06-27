@@ -127,6 +127,13 @@
       "when": 1782700000000,
       "tag": "0017_engine_types_manufacturer_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1782600070873,
+      "tag": "0018_faults_fk_indexes",
+      "breakpoints": true
     }
   ]
 }

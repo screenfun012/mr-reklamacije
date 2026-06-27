@@ -170,6 +170,9 @@ export const emotiveClaimFaults = pgTable(
       columns: [t.externalPartyId],
       foreignColumns: [externalParties.id],
     }).onDelete('restrict'),
+    index('idx_emotive_claim_faults_claim_id').on(t.claimId),
+    index('idx_emotive_claim_faults_employee_id').on(t.employeeId),
+    index('idx_emotive_claim_faults_department_id').on(t.departmentId),
   ],
 )
 
@@ -313,6 +316,9 @@ export const domaceClaimFaults = pgTable(
       columns: [t.externalPartyId],
       foreignColumns: [externalParties.id],
     }).onDelete('restrict'),
+    index('idx_domace_claim_faults_claim_id').on(t.claimId),
+    index('idx_domace_claim_faults_employee_id').on(t.employeeId),
+    index('idx_domace_claim_faults_department_id').on(t.departmentId),
   ],
 )
 
