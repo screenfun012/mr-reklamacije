@@ -69,6 +69,7 @@ export {
 export * from './queries/index.js'
 export * from './permissions.js'
 export * from './constants/roles.js'
+export * from './constants/protected-super-admin.js'
 export * from './constants/limits.js'
 export * from './errors/codes.js'
 export * from './schemas/reference-data.schema.js'

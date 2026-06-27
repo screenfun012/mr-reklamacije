@@ -2,7 +2,11 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
-import type { UserAccountStatusPatchInput, UserListItem } from '../schemas/user.schema.js'
+import type {
+  UserAccountStatusPatchInput,
+  UserListItem,
+  UserRolesReplaceInput,
+} from '../schemas/user.schema.js'
 
 const USERS_LIST_STALE_MS = 30_000
 
@@ -24,6 +28,17 @@ export async function patchUserAccountStatus(
 ): Promise<UserListItem> {
   return fetchJson<UserListItem>(`/api/users/${userId}/account-status`, {
     method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export async function patchUserRoles(
+  userId: string,
+  input: UserRolesReplaceInput,
+): Promise<UserListItem> {
+  return fetchJson<UserListItem>(`/api/users/${userId}/roles`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })

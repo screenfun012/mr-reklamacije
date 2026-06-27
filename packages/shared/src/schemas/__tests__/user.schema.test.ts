@@ -4,6 +4,7 @@ import { UserAccountStatus } from '../../enums.js'
 import {
   UserAccountStatusPatchInputSchema,
   UserListItemSchema,
+  UserRolesReplaceInputSchema,
   UsersListQuerySchema,
 } from '../user.schema.js'
 
@@ -55,5 +56,35 @@ describe('UserAccountStatusPatchInputSchema', () => {
 
   it('rejects pending as a patch target', () => {
     expect(() => UserAccountStatusPatchInputSchema.parse({ status: 'pending' })).toThrow()
+  })
+})
+
+describe('UserRolesReplaceInputSchema', () => {
+  it('accepts a non-empty list of system role codes', () => {
+    const parsed = UserRolesReplaceInputSchema.parse({ roleCodes: ['operator'] })
+
+    expect(parsed.roleCodes).toEqual(['operator'])
+  })
+
+  it('accepts multiple distinct system roles', () => {
+    const parsed = UserRolesReplaceInputSchema.parse({
+      roleCodes: ['operator', 'viewer'],
+    })
+
+    expect(parsed.roleCodes).toEqual(['operator', 'viewer'])
+  })
+
+  it('rejects an empty role list', () => {
+    expect(() => UserRolesReplaceInputSchema.parse({ roleCodes: [] })).toThrow()
+  })
+
+  it('rejects duplicate role codes', () => {
+    expect(() =>
+      UserRolesReplaceInputSchema.parse({ roleCodes: ['operator', 'operator'] }),
+    ).toThrow(/Duplicate role codes/)
+  })
+
+  it('rejects unknown role codes', () => {
+    expect(() => UserRolesReplaceInputSchema.parse({ roleCodes: ['super_admin'] })).toThrow()
   })
 })

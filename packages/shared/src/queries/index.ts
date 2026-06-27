@@ -92,4 +92,9 @@ export {
   type EmployeesReferenceFilters,
   type ReferenceLookupFilters,
 } from './reference-data.js'
-export { patchUserAccountStatus, usersListOptions, usersListQueryKey } from './users.js'
+export {
+  patchUserAccountStatus,
+  patchUserRoles,
+  usersListOptions,
+  usersListQueryKey,
+} from './users.js'
