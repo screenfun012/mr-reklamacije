@@ -14,6 +14,7 @@ import {
   backfillApprovedUserRoles,
   findApprovedUsersWithoutRoles,
 } from '../../seed/backfill-approved-user-roles.js'
+import { seedPermissions } from '../../seed/permissions.js'
 import { seedRoles } from '../../seed/roles.js'
 import { getIntegrationDatabaseUrl } from '../../test-helpers/integration-db.js'
 
@@ -32,6 +33,11 @@ describe('backfillApprovedUserRoles (integration)', () => {
     pool = createPool(getIntegrationDatabaseUrl())
     db = createDb(pool) as unknown as NodePgDatabase<typeof schema>
 
+    // seedRoles inserts role_permissions (FK -> permissions). Seed permissions
+    // first so this suite is self-sufficient and not order-dependent on the
+    // global seed surviving another suite's TRUNCATE (shared integration DB).
+    // Both seeds are idempotent (onConflictDoNothing).
+    await seedPermissions(db)
     await seedRoles(db)
 
     await db.insert(schema.users).values([
