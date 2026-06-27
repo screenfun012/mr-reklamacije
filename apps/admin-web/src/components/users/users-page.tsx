@@ -2,7 +2,9 @@ import {
   DEFAULT_APPROVE_REGISTRATION_ROLE,
   UserAccountStatus,
   formatListDateTime,
+  isProtectedSuperAdminEmail,
   patchUserAccountStatus,
+  patchUserRoles,
   usersListOptions,
   usersListQueryKey,
   type ApproveRegistrationRoleCode,
@@ -17,23 +19,47 @@ import { authClient } from '~/lib/auth-client'
 
 import { UserAccountStatusBadge } from './user-account-status-badge'
 import { UserApproveDialog } from './user-approve-dialog'
+import { UserRolesBadges } from './user-roles-badges'
+import { UserRolesEditDialog } from './user-roles-edit-dialog'
+
+function canEditUserRoles(user: UserListItem, currentUserId: string | undefined): boolean {
+  if (user.accountStatus !== UserAccountStatus.Approved) {
+    return false
+  }
+
+  if (currentUserId !== undefined && user.id === currentUserId) {
+    return false
+  }
+
+  if (isProtectedSuperAdminEmail(user.email)) {
+    return false
+  }
+
+  return true
+}
 
 function UsersTable({
   items,
   currentUserId,
   onApprove,
   onReject,
+  onEditRoles,
   showActions,
+  showRoleEdit,
   pending,
   actionsDisabled,
+  rolesEditDisabled,
 }: {
   items: readonly UserListItem[]
   currentUserId: string | undefined
   onApprove: (user: UserListItem) => void
   onReject: (user: UserListItem) => void
+  onEditRoles: (user: UserListItem) => void
   showActions: boolean
+  showRoleEdit: boolean
   pending: boolean
   actionsDisabled: boolean
+  rolesEditDisabled: boolean
 }): ReactElement {
   if (items.length === 0) {
     return (
@@ -51,7 +77,7 @@ function UsersTable({
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[880px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/20 text-left">
               <th className="px-4 py-3 font-medium text-muted-foreground">{m.users_col_name()}</th>
@@ -59,10 +85,11 @@ function UsersTable({
               <th className="px-4 py-3 font-medium text-muted-foreground">
                 {m.users_col_status()}
               </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">{m.users_col_roles()}</th>
               <th className="px-4 py-3 font-medium text-muted-foreground">
                 {m.users_col_registered()}
               </th>
-              {showActions ? (
+              {showActions || showRoleEdit ? (
                 <th className="px-4 py-3 font-medium text-muted-foreground">
                   <span className="sr-only">{m.users_col_actions()}</span>
                 </th>
@@ -73,6 +100,7 @@ function UsersTable({
             {items.map((user) => {
               const isSelf = currentUserId !== undefined && user.id === currentUserId
               const canAct = showActions && !isSelf
+              const canEditRoles = showRoleEdit && canEditUserRoles(user, currentUserId)
 
               return (
                 <tr key={user.id} className={dataTableRowHoverOnlyClassName}>
@@ -81,10 +109,13 @@ function UsersTable({
                   <td className="px-4 py-3">
                     <UserAccountStatusBadge status={user.accountStatus} />
                   </td>
+                  <td className="px-4 py-3">
+                    <UserRolesBadges roles={user.roles} />
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatListDateTime(user.createdAt)}
                   </td>
-                  {showActions ? (
+                  {showActions || showRoleEdit ? (
                     <td className="px-4 py-3">
                       {canAct ? (
                         <div className="flex justify-end gap-2">
@@ -106,6 +137,18 @@ function UsersTable({
                             {m.users_reject_button()}
                           </Button>
                         </div>
+                      ) : canEditRoles ? (
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={rolesEditDisabled}
+                            onClick={() => onEditRoles(user)}
+                          >
+                            {m.users_roles_edit_button()}
+                          </Button>
+                        </div>
                       ) : null}
                     </td>
                   ) : null}
@@ -125,6 +168,7 @@ export function UsersPageContent(): ReactElement {
   const currentUserId = session?.user.id
   const { data: users } = useSuspenseQuery(usersListOptions())
   const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
+  const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
 
   const pendingUsers = users.filter((user) => user.accountStatus === UserAccountStatus.Pending)
   const otherUsers = users.filter((user) => user.accountStatus !== UserAccountStatus.Pending)
@@ -187,6 +231,39 @@ export function UsersPageContent(): ReactElement {
     },
   })
 
+  const rolesMutation = useMutation({
+    mutationFn: ({
+      userId,
+      roleCodes,
+    }: {
+      userId: string
+      roleCodes: ApproveRegistrationRoleCode[]
+    }) => patchUserRoles(userId, { roleCodes }),
+    onMutate: async ({ userId, roleCodes }) => {
+      await queryClient.cancelQueries({ queryKey: usersListQueryKey() })
+      const previous = queryClient.getQueryData<UserListItem[]>(usersListQueryKey())
+
+      queryClient.setQueryData<UserListItem[]>(usersListQueryKey(), (old) =>
+        old?.map((user) => (user.id === userId ? { ...user, roles: [...roleCodes].sort() } : user)),
+      )
+
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(usersListQueryKey(), context.previous)
+      }
+      toast.error(m.users_roles_update_error())
+    },
+    onSuccess: () => {
+      setRolesEditTarget(null)
+      toast.success(m.users_roles_update_success())
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: usersListQueryKey() })
+    },
+  })
+
   const handleApproveClick = (user: UserListItem): void => {
     setApproveTarget(user)
   }
@@ -204,6 +281,13 @@ export function UsersPageContent(): ReactElement {
 
   const handleReject = (user: UserListItem): void => {
     statusMutation.mutate({ userId: user.id, status: UserAccountStatus.Rejected })
+  }
+
+  const handleRolesEditConfirm = (
+    user: UserListItem,
+    roleCodes: ApproveRegistrationRoleCode[],
+  ): void => {
+    rolesMutation.mutate({ userId: user.id, roleCodes })
   }
 
   return (
@@ -227,6 +311,18 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handleApproveConfirm}
       />
 
+      <UserRolesEditDialog
+        user={rolesEditTarget}
+        open={rolesEditTarget !== null}
+        pending={rolesMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRolesEditTarget(null)
+          }
+        }}
+        onConfirm={handleRolesEditConfirm}
+      />
+
       <section aria-labelledby="users-pending-heading">
         <Heading level="h2" id="users-pending-heading" className="mb-4 text-lg">
           {m.users_pending_section_title()}
@@ -236,9 +332,12 @@ export function UsersPageContent(): ReactElement {
           currentUserId={currentUserId}
           onApprove={handleApproveClick}
           onReject={handleReject}
+          onEditRoles={setRolesEditTarget}
           showActions
+          showRoleEdit={false}
           pending
           actionsDisabled={statusMutation.isPending}
+          rolesEditDisabled={rolesMutation.isPending}
         />
       </section>
 
@@ -251,9 +350,12 @@ export function UsersPageContent(): ReactElement {
           currentUserId={currentUserId}
           onApprove={handleApproveClick}
           onReject={handleReject}
+          onEditRoles={setRolesEditTarget}
           showActions={false}
+          showRoleEdit
           pending={false}
           actionsDisabled={statusMutation.isPending}
+          rolesEditDisabled={rolesMutation.isPending}
         />
       </section>
     </div>

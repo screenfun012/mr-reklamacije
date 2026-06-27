@@ -23,7 +23,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/seed/run.ts",
-    "db:seed:engine-manufacturers": "tsx src/seed/run-engine-manufacturers.ts"
+    "db:seed:engine-manufacturers": "tsx src/seed/run-engine-manufacturers.ts",
+    "db:backfill:approved-user-roles": "tsx src/seed/run-backfill-approved-user-roles.ts"
   },
   "dependencies": {
     "@mr/shared": "workspace:*",
