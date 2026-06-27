@@ -76,6 +76,41 @@ const PENDING_ROLLBACK_ID = '22222222-2222-4222-8222-222222222225'
 const PENDING_REJECT_ID = '22222222-2222-4222-8222-222222222226'
 const PENDING_ROLES_422_ID = '22222222-2222-4222-8222-222222222227'
 const PENDING_NO_APPROVE_PERM_ID = '22222222-2222-4222-8222-222222222228'
+const SESSION_REVOKE_PENDING_ID = '22222222-2222-4222-8222-222222222229'
+const PENDING_REJECT_SESSION_ID = '22222222-2222-4222-8222-222222222230'
+
+const TARGET_SESSION_TOKEN = 'target-session-revoke-integration-token'
+const ACTOR_SESSION_TOKEN = 'actor-session-revoke-integration-token'
+const PENDING_SESSION_TOKEN = 'pending-session-revoke-integration-token'
+
+async function insertTestSession(
+  db: TestDbContext['db'],
+  userId: string,
+  token: string,
+): Promise<void> {
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  await db
+    .insert(schema.sessions)
+    .values({
+      userId,
+      token,
+      expiresAt,
+    })
+    .onConflictDoUpdate({
+      target: schema.sessions.token,
+      set: { expiresAt, userId },
+    })
+}
+
+async function countSessionsForUser(db: TestDbContext['db'], userId: string): Promise<number> {
+  const rows = await db
+    .select({ id: schema.sessions.id })
+    .from(schema.sessions)
+    .where(eq(schema.sessions.userId, userId))
+
+  return rows.length
+}
 
 async function seedPendingUser(
   db: TestDbContext['db'],
@@ -581,6 +616,75 @@ describe.sequential('Users module', () => {
       expect(effective).toContain('users.view')
       expect(effective).toContain('roles.assign')
       expect(effective).toContain('emotive_claims.delete')
+    })
+  })
+
+  describe('when roles change (session revoke)', () => {
+    it('revokes target sessions after PUT /roles and leaves actor sessions intact', async () => {
+      await insertTestSession(ctx.db, APPROVED_USER_ID, TARGET_SESSION_TOKEN)
+      await insertTestSession(ctx.db, ROLES_ADMIN_ACTOR_ID, ACTOR_SESSION_TOKEN)
+
+      expect(await countSessionsForUser(ctx.db, APPROVED_USER_ID)).toBe(1)
+      expect(await countSessionsForUser(ctx.db, ROLES_ADMIN_ACTOR_ID)).toBe(1)
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(200)
+
+      expect(await countSessionsForUser(ctx.db, APPROVED_USER_ID)).toBe(0)
+      expect(await countSessionsForUser(ctx.db, ROLES_ADMIN_ACTOR_ID)).toBe(1)
+    })
+
+    it('revokes target sessions after approve with role and leaves actor sessions intact', async () => {
+      await seedPendingUser(
+        ctx.db,
+        SESSION_REVOKE_PENDING_ID,
+        'session-revoke@mrengines.rs',
+        'Session Revoke Pending',
+      )
+      await insertTestSession(ctx.db, SESSION_REVOKE_PENDING_ID, PENDING_SESSION_TOKEN)
+      await insertTestSession(ctx.db, TEST_USER_ID, ACTOR_SESSION_TOKEN)
+
+      expect(await countSessionsForUser(ctx.db, SESSION_REVOKE_PENDING_ID)).toBe(1)
+      expect(await countSessionsForUser(ctx.db, TEST_USER_ID)).toBe(1)
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(`/api/users/${SESSION_REVOKE_PENDING_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: UserAccountStatus.Approved }),
+      })
+
+      expect(response.status).toBe(200)
+
+      expect(await countSessionsForUser(ctx.db, SESSION_REVOKE_PENDING_ID)).toBe(0)
+      expect(await countSessionsForUser(ctx.db, TEST_USER_ID)).toBe(1)
+    })
+
+    it('does not revoke sessions when rejecting a pending user', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_REJECT_SESSION_ID,
+        'reject-session@mrengines.rs',
+        'Reject Session',
+      )
+      await insertTestSession(ctx.db, PENDING_REJECT_SESSION_ID, 'reject-pending-session-token')
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(`/api/users/${PENDING_REJECT_SESSION_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: UserAccountStatus.Rejected }),
+      })
+
+      expect(response.status).toBe(200)
+      expect(await countSessionsForUser(ctx.db, PENDING_REJECT_SESSION_ID)).toBe(1)
     })
   })
 })

@@ -37,6 +37,7 @@ import { ReportImageReadAdapter } from '../modules/attachments/report-image-read
 import { ClaimReportsRepository, ClaimReportsService } from '../modules/claim-reports/index.js'
 import { ExcelRepository, ExcelService } from '../modules/excel/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
+import { createBetterAuthUserSessions } from '../infrastructure/auth/better-auth-user-sessions.js'
 import { LocalVolumeStorageService } from '../infrastructure/storage/local-volume-storage.js'
 
 /**
@@ -129,11 +130,13 @@ export function buildContainer(
   const customersService = new CustomersService(customersRepository, auditService, eventBus)
 
   const usersRepository = new UsersRepository(db)
+  const userSessions = createBetterAuthUserSessions(auth)
   const usersService = new UsersService(
     usersRepository,
     auditService,
     eventBus,
     resolveProtectedSuperAdminEmail(env.PROTECTED_SUPER_ADMIN_EMAIL),
+    userSessions,
   )
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)

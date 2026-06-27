@@ -15,6 +15,7 @@ import {
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { UserSessionsPort } from '../../core/ports/user-sessions-port.js'
 import type { UsersRepository } from './users.repository.js'
 import type {
   UserAccountStatusPatchInput,
@@ -40,7 +41,16 @@ export class UsersService {
     private readonly audit: AuditPort,
     private readonly eventBus: EventBus,
     private readonly protectedSuperAdminEmail: string,
+    private readonly userSessions: UserSessionsPort,
   ) {}
+
+  private async revokeTargetSessionsAfterRoleChange(
+    targetUserId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    if (targetUserId === actorUserId) return
+    await this.userSessions.revokeAllForUser(targetUserId)
+  }
 
   async list(query: UsersListQuery): Promise<UserListResponse> {
     return this.repo.list(query)
@@ -104,6 +114,10 @@ export class UsersService {
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
 
+    if (input.status === UserAccountStatus.Approved) {
+      await this.revokeTargetSessionsAfterRoleChange(id, actor.actorUserId)
+    }
+
     return updated
   }
 
@@ -148,6 +162,8 @@ export class UsersService {
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
+
+    await this.revokeTargetSessionsAfterRoleChange(id, actor.actorUserId)
 
     return updated
   }
