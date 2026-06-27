@@ -20,7 +20,13 @@ export {
 } from './components/claim-attachments/attachment-file-icon.js'
 export { cn } from './lib/cn.js'
 export {
+  dataTableDestructiveActionClassName,
+  dataTableIconActionClassName,
+  dataTableRowBorderClassName,
+  dataTableRowHoverOnlyClassName,
   dataTableRowInteractiveClassName,
+  dataTableRowNavigableClassName,
+  dataTableTextActionClassName,
   fieldControlClassName,
   fieldPopoverContentClassName,
   listItemInteractiveClassName,

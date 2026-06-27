@@ -16,3 +16,22 @@ export const listItemSelectedClassName = 'bg-[var(--mr-list-item-hover)] font-me
 
 /** Clickable data table rows (list navigation). Hover only — no row click in admin tables. */
 export const dataTableRowInteractiveClassName = 'transition-colors hover:bg-muted/40'
+
+export const dataTableRowBorderClassName = 'border-b border-border last:border-b-0'
+
+/** Internal claims list — row navigates to detail on click. */
+export const dataTableRowNavigableClassName = `cursor-pointer ${dataTableRowBorderClassName} ${dataTableRowInteractiveClassName}`
+
+/** Admin catalog tables — visual hover only, no row navigation. */
+export const dataTableRowHoverOnlyClassName = `${dataTableRowBorderClassName} ${dataTableRowInteractiveClassName}`
+
+/** Icon control in actions column — subtle hover, subordinate to row highlight. */
+export const dataTableIconActionClassName =
+  'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground'
+
+/** Text button in actions column — neutral until direct hover. */
+export const dataTableTextActionClassName = 'font-normal hover:bg-muted/60'
+
+/** Destructive text action in actions column — muted until direct hover. */
+export const dataTableDestructiveActionClassName =
+  'font-normal text-destructive hover:bg-destructive/10 hover:text-destructive'

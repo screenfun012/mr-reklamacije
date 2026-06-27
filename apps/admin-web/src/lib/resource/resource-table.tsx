@@ -1,5 +1,15 @@
 import { m } from '@mr/i18n'
-import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@mr/ui'
+import {
+  Button,
+  cn,
+  dataTableDestructiveActionClassName,
+  dataTableRowHoverOnlyClassName,
+  dataTableTextActionClassName,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@mr/ui'
 import { Trash2 } from 'lucide-react'
 
 import type { ResourceColumnDef, ResourceDefinition } from './types.js'
@@ -66,7 +76,7 @@ export function ResourceTable<
                 const canHardDelete = lifecycle !== undefined && usageCount === 0
 
                 return (
-                  <tr key={item.id} className="border-b border-border last:border-b-0">
+                  <tr key={item.id} className={dataTableRowHoverOnlyClassName}>
                     {definition.columns.map((column) => (
                       <td key={column.id} className={`px-4 py-3 ${column.cellClassName ?? ''}`}>
                         {column.cell(item)}
@@ -76,16 +86,22 @@ export function ResourceTable<
                       <div className="flex justify-end gap-2">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
+                          className={dataTableTextActionClassName}
                           onClick={() => onEdit(item)}
                         >
                           {definition.editActionLabel()}
                         </Button>
                         <Button
                           type="button"
-                          variant={item.isActive ? 'destructive' : 'outline'}
+                          variant="ghost"
                           size="sm"
+                          className={
+                            item.isActive
+                              ? dataTableDestructiveActionClassName
+                              : dataTableTextActionClassName
+                          }
                           onClick={() => onToggleActive(item)}
                         >
                           {item.isActive
@@ -98,7 +114,10 @@ export function ResourceTable<
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-8 text-destructive hover:text-destructive"
+                              className={cn(
+                                'size-8 px-0 hover:bg-destructive/10',
+                                dataTableDestructiveActionClassName,
+                              )}
                               aria-label={m.action_delete()}
                               onClick={() => onHardDelete(item)}
                             >
@@ -112,7 +131,10 @@ export function ResourceTable<
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="size-8 text-destructive hover:text-destructive"
+                                    className={cn(
+                                      'size-8 px-0 hover:bg-destructive/10',
+                                      dataTableDestructiveActionClassName,
+                                    )}
                                     disabled
                                     aria-label={m.action_delete()}
                                   >

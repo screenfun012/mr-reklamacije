@@ -9,7 +9,14 @@ import {
   type ClaimsSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { ClaimKindBadge, Heading, OutcomeBadge, Skeleton } from '@mr/ui'
+import {
+  ClaimKindBadge,
+  dataTableIconActionClassName,
+  dataTableRowNavigableClassName,
+  Heading,
+  OutcomeBadge,
+  Skeleton,
+} from '@mr/ui'
 import {
   createColumnHelper,
   flexRender,
@@ -185,7 +192,7 @@ function createClaimsTableColumns(
               to={detailLink.to}
               params={detailLink.params}
               search={detailLink.search}
-              className="inline-flex size-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+              className={dataTableIconActionClassName}
               aria-label={m.emotive_claims_detail_view_action()}
               onClick={(event) => event.stopPropagation()}
             >
@@ -193,7 +200,7 @@ function createClaimsTableColumns(
             </Link>
             <button
               type="button"
-              className="inline-flex size-8 items-center justify-center rounded-md text-destructive opacity-60"
+              className={`${dataTableIconActionClassName} opacity-60`}
               disabled
               aria-label="Obriši"
               onClick={(event) => event.stopPropagation()}
@@ -281,7 +288,7 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
               return (
                 <tr
                   key={row.id}
-                  className="cursor-pointer border-b border-border last:border-b-0 hover:bg-muted/30"
+                  className={dataTableRowNavigableClassName}
                   onClick={() => {
                     void navigate(detailLink)
                   }}

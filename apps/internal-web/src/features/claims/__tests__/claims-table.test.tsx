@@ -127,6 +127,24 @@ describe('ClaimsTable', () => {
     )
   })
 
+  it('applies shared navigable row hover class on data rows', async () => {
+    const onSearchChange = vi.fn()
+    await renderWithRouter(
+      <ClaimsTable
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={onSearchChange}
+      />,
+    )
+
+    const dataRows = screen.getAllByRole('row').slice(1)
+    for (const row of dataRows) {
+      expect(row.className).toContain('hover:bg-muted/40')
+      expect(row.className).toContain('cursor-pointer')
+    }
+  })
+
   it('calls onSearchChange with expected search when date received header is clicked', async () => {
     const user = userEvent.setup()
     const onSearchChange = vi.fn()

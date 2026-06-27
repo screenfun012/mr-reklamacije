@@ -7,7 +7,15 @@ import {
   type UserListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading, Skeleton, toast } from '@mr/ui'
+import {
+  Button,
+  dataTableDestructiveActionClassName,
+  dataTableRowHoverOnlyClassName,
+  dataTableTextActionClassName,
+  Heading,
+  Skeleton,
+  toast,
+} from '@mr/ui'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
@@ -72,7 +80,7 @@ function UsersTable({
               const canAct = showActions && !isSelf
 
               return (
-                <tr key={user.id} className="border-b border-border last:border-b-0">
+                <tr key={user.id} className={dataTableRowHoverOnlyClassName}>
                   <td className="px-4 py-3 font-medium">{user.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                   <td className="px-4 py-3">
@@ -87,7 +95,9 @@ function UsersTable({
                         <div className="flex justify-end gap-2">
                           <Button
                             type="button"
+                            variant="ghost"
                             size="sm"
+                            className={dataTableTextActionClassName}
                             disabled={actionsDisabled}
                             onClick={() => onApprove(user)}
                           >
@@ -95,8 +105,9 @@ function UsersTable({
                           </Button>
                           <Button
                             type="button"
+                            variant="ghost"
                             size="sm"
-                            variant="destructive"
+                            className={dataTableDestructiveActionClassName}
                             disabled={actionsDisabled}
                             onClick={() => onReject(user)}
                           >
