@@ -5,9 +5,8 @@ import {
   SYSTEM_ROLE_VIEWER,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
+import { BADGE_SHELL_CLASSES } from '@mr/ui'
 import type { ReactElement } from 'react'
-
-const BADGE_SHELL = 'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium'
 
 const ROLE_LABEL: Record<string, () => string> = {
   [SYSTEM_ROLE_ADMIN]: () => m.users_role_admin(),
@@ -16,11 +15,16 @@ const ROLE_LABEL: Record<string, () => string> = {
   [SYSTEM_ROLE_CLIENT]: () => m.users_role_client(),
 }
 
+/** Role badge colors via brandbook mr-* tokens (same class shape as OUTCOME_BADGE_CLASSES). */
 const ROLE_CLASSES: Record<string, string> = {
-  [SYSTEM_ROLE_ADMIN]: 'border-violet-500/30 bg-violet-500/10 text-violet-800 dark:text-violet-200',
-  [SYSTEM_ROLE_OPERATOR]: 'border-sky-500/30 bg-sky-500/10 text-sky-800 dark:text-sky-200',
-  [SYSTEM_ROLE_VIEWER]: 'border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-200',
-  [SYSTEM_ROLE_CLIENT]: 'border-teal-500/30 bg-teal-500/10 text-teal-800 dark:text-teal-200',
+  [SYSTEM_ROLE_ADMIN]:
+    'border-mr-brand/45 bg-mr-brand-subtle text-mr-brand-strong shadow-sm shadow-mr-brand/15 dark:border-mr-brand/55 dark:bg-mr-brand/20 dark:text-mr-brand-400 dark:shadow-mr-brand/10',
+  [SYSTEM_ROLE_OPERATOR]:
+    'border-mr-info/45 bg-mr-info-subtle text-mr-info-strong shadow-sm shadow-mr-info/15 dark:border-mr-info/55 dark:bg-mr-info/20 dark:text-mr-info dark:shadow-mr-info/10',
+  [SYSTEM_ROLE_VIEWER]:
+    'border-mr-neutral-border bg-mr-neutral-subtle text-mr-neutral-muted shadow-sm dark:border-mr-neutral-muted/45 dark:bg-mr-neutral-muted/20 dark:text-mr-neutral-border',
+  [SYSTEM_ROLE_CLIENT]:
+    'border-mr-accent/45 bg-mr-accent-subtle text-mr-accent-strong shadow-sm shadow-mr-accent/15 dark:border-mr-accent/55 dark:bg-mr-accent/20 dark:text-mr-accent dark:shadow-mr-accent/10',
 }
 
 const ROLE_DISPLAY_ORDER = [
@@ -57,7 +61,7 @@ export function UserRolesBadges({ roles }: UserRolesBadgesProps): ReactElement {
       {sorted.map((role) => (
         <span
           key={role}
-          className={`${BADGE_SHELL} ${ROLE_CLASSES[role] ?? 'border-border bg-muted/40 text-muted-foreground'}`}
+          className={`${BADGE_SHELL_CLASSES} ${ROLE_CLASSES[role] ?? 'border-border bg-muted/40 text-muted-foreground'}`}
         >
           {ROLE_LABEL[role]?.() ?? role}
         </span>

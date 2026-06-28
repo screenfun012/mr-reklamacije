@@ -63,6 +63,14 @@ When this document and `docs/09-ui-ux.md` disagree, **this document wins** until
 | Warning | `#F5A623` | `#FEF3E2` | PDF p.15 | `mr-warning`, `mr-warning-subtle` |
 | Error | `#D92D20` | `#FBE9E8` | PDF p.15 | `mr-error`, `mr-error-subtle` |
 | Info | `#2E90FA` | `#E8F1FE` | PDF p.15 | `mr-info`, `mr-info-subtle` |
+| Accent | `#0E9384` | `#E6F5F3` | brand extension — **confirmed (Nikola)** | `mr-accent`, `mr-accent-subtle` |
+
+> **Accent (teal `#0E9384`)** is a 6th semantic hue added beyond the PDF palette.
+> It exists because the five PDF hues (brand-red, error-red, success-green,
+> warning-amber, info-blue) plus neutral were all already mapped to roles/statuses,
+> leaving no collision-free color for the **client** role badge. Strong text variant
+> `mr-accent-strong` `#0B7268`. Use it for the client role only unless a future need
+> is reviewed.
 
 ---
 

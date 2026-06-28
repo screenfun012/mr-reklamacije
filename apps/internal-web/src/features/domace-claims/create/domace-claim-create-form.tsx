@@ -128,7 +128,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           {showSuccess ? (
             <div
               role="status"
-              className="flex flex-col gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"
+              className="flex flex-col gap-2 rounded-md border border-mr-success/30 bg-mr-success/5 px-4 py-3 text-sm text-mr-success-strong dark:text-mr-success"
             >
               <p>{m.domace_claims_create_success()}</p>
               {createdClaimId ? (
@@ -136,7 +136,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
                   to="/reklamacije/domace/$id"
                   params={{ id: createdClaimId }}
                   search={CLAIM_DETAIL_DEFAULT_SEARCH}
-                  className="font-medium underline underline-offset-2 hover:text-emerald-800 dark:hover:text-emerald-300"
+                  className="font-medium underline underline-offset-2 hover:text-mr-success dark:hover:text-mr-success-strong"
                 >
                   {m.domace_claims_create_success_view()}
                 </Link>

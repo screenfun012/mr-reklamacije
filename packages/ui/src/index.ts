@@ -137,4 +137,10 @@ export {
   type ClaimDetailTabPlaceholderProps,
 } from './components/claim-detail-tab-placeholder.js'
 export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'
+export {
+  BADGE_SHELL_CLASSES,
+  BADGE_ICON_CLASSES,
+  BADGE_PENDING_ICON_PULSE_CLASSES,
+  BADGE_ENTER_ANIMATION_CLASSES,
+} from './lib/badge-styles.js'
 export { ListPagination, type ListPaginationProps } from './components/list-pagination.js'

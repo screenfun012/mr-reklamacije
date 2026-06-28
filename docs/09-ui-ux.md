@@ -51,6 +51,28 @@ are defined there. Do not duplicate hex values in this file.
 Outcome and kind badges use brandbook semantic tokens via `@mr/shared` constants
 (`OUTCOME_BADGE_CLASSES`, `KIND_BADGE_CLASSES`) — not Tailwind amber/emerald defaults.
 
+### Badge colors (all badges)
+
+Every badge routes color through brandbook `mr-*` tokens and shares the pill shell
+`BADGE_SHELL_CLASSES` from `@mr/ui` (consistent hover/transition). Never hardcode
+Tailwind palette colors (`violet-*`, `sky-*`, `amber-*`, …) in a badge.
+
+Admin user/role + status badges map as follows (colors chosen so a role badge and a
+status badge in the same table row are always distinct):
+
+| Badge | Value | Token |
+|-------|-------|-------|
+| role: admin | brand red | `mr-brand` |
+| role: operator | info blue | `mr-info` |
+| role: viewer | neutral gray | `mr-neutral` |
+| role: client | accent teal | `mr-accent` |
+| status: pending | warning amber | `mr-warning` |
+| status: approved | success green | `mr-success` |
+| status: rejected | error red | `mr-error` |
+
+admin (brand red) and rejected (error red) are both red, but an admin user can never
+have a rejected status (protected super-admin), so that pair never renders together.
+
 ### Typography scale
 
 Use the **`Heading`** component from `@mr/ui` with brandbook levels. Do not use ad-hoc

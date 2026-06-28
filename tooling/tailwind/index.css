@@ -68,6 +68,12 @@
   --color-mr-info-strong: #175cd3;
   --color-mr-info-subtle: #e8f1fe;
 
+  /* Accent teal — 6th semantic hue (brand extension, approved by Nikola).
+     Distinct from all status/role colors; used for the client role badge. */
+  --color-mr-accent: #0e9384;
+  --color-mr-accent-strong: #0b7268;
+  --color-mr-accent-subtle: #e6f5f3;
+
   /* Neutral scale (PDF p.16 + derived neutral-400) */
   --color-mr-neutral-subtle: #f5f5f5;
   --color-mr-neutral-muted: #5a5b60;
