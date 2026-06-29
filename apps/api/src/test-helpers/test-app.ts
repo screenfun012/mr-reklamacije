@@ -11,6 +11,7 @@ import { buildContainer, type Container } from '../core/container.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 import { registerAttachmentsRoutes } from '../modules/attachments/index.js'
+import { registerAuditLogRoutes } from '../modules/audit/index.js'
 import { registerClaimReportsRoutes } from '../modules/claim-reports/index.js'
 import { registerExcelRoutes } from '../modules/excel/index.js'
 import { registerStatisticsRoutes } from '../modules/statistics/index.js'
@@ -213,6 +214,24 @@ export function createUsersTestApp(
   })
 
   registerUsersRoutes(app, container)
+
+  return app
+}
+
+export function createAuditLogTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerAuditLogRoutes(app, container)
 
   return app
 }

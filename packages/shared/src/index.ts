@@ -84,6 +84,8 @@ export * from './schemas/excel-export.schema.js'
 export * from './schemas/attachment.schema.js'
 export * from './schemas/claim-report.schema.js'
 export * from './schemas/user.schema.js'
+export * from './schemas/audit-log.schema.js'
+export * from './constants/audit.js'
 export {
   ResourceCatalogSearchSchema,
   ResourceCatalogStatusFilter,

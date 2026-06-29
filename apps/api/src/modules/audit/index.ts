@@ -1,2 +1,5 @@
 export type { AuditEntry } from '../../core/ports/audit-port.js'
 export { AuditService } from './audit.service.js'
+export { AuditLogRepository } from './audit-log.repository.js'
+export { AuditLogService } from './audit-log.service.js'
+export { registerAuditLogRoutes } from './audit-log.routes.js'

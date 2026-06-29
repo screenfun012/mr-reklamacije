@@ -13,6 +13,7 @@ import {
 import { createSignupOriginGuard } from './core/middleware/signup-origin-guard.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
 import { registerHealthRoutes } from './routes/health.js'
+import { registerAuditLogRoutes } from './modules/audit/index.js'
 import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
 import { registerCustomersRoutes } from './modules/customers/index.js'
 import { registerUsersRoutes } from './modules/users/index.js'
@@ -91,6 +92,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerExternalPartiesRoutes(app, container)
   registerCustomersRoutes(app, container)
   registerUsersRoutes(app, container)
+  registerAuditLogRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)

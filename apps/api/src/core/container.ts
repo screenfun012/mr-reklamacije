@@ -10,7 +10,7 @@ import { createDb } from '../infrastructure/db.js'
 import type { AuditPort } from './ports/audit-port.js'
 import type { EventBus } from './ports/event-bus-port.js'
 import { ClaimContextService } from './claims/claim-context.service.js'
-import { AuditService } from '../modules/audit/index.js'
+import { AuditLogRepository, AuditLogService, AuditService } from '../modules/audit/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
@@ -53,6 +53,8 @@ export interface Container {
   auth: ReturnType<typeof createAuth>
   permissionResolver: ReturnType<typeof createPermissionResolver>
   auditService: AuditPort
+  auditLogRepository: AuditLogRepository
+  auditLogService: AuditLogService
   employeesRepository: EmployeesRepository
   employeesService: EmployeesService
   engineTypesRepository: EngineTypesRepository
@@ -110,6 +112,8 @@ export function buildContainer(
   })
   const permissionResolver = createPermissionResolver(db)
   const auditService = new AuditService(db)
+  const auditLogRepository = new AuditLogRepository(db)
+  const auditLogService = new AuditLogService(auditLogRepository)
 
   const employeesRepository = new EmployeesRepository(db)
   const employeesService = new EmployeesService(employeesRepository)
@@ -219,6 +223,8 @@ export function buildContainer(
     auth,
     permissionResolver,
     auditService,
+    auditLogRepository,
+    auditLogService,
     employeesRepository,
     employeesService,
     engineTypesRepository,
