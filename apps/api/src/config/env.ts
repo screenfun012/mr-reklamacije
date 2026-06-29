@@ -36,6 +36,13 @@ const EnvSchema = z.object({
     error: 'BETTER_AUTH_SECRET must be at least 32 characters',
   }),
   BETTER_AUTH_URL: z.url(),
+  /**
+   * Dedicated HMAC secret for signing attachment download URLs (defense in depth).
+   * Optional: when unset, signing falls back to BETTER_AUTH_SECRET, so behaviour is
+   * unchanged until this is provided. Introducing/rotating it invalidates any
+   * outstanding signed attachment URLs — negligible, since their TTL is 5 minutes.
+   */
+  ATTACHMENT_SIGNING_SECRET: z.string().min(32).optional(),
   /** Protected super-admin account — role/status changes are always rejected server-side. */
   PROTECTED_SUPER_ADMIN_EMAIL: z.string().email().default(PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT),
 
