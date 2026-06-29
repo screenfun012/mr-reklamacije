@@ -134,6 +134,7 @@ export const ExternalPartyListItemSchema = z.object({
   name: z.string(),
   kind: z.enum(externalPartyKindValues),
   isActive: z.boolean(),
+  usageCount: z.number().int().nonnegative(),
 })
 
 export type ExternalPartyListItem = z.infer<typeof ExternalPartyListItemSchema>
@@ -144,6 +145,18 @@ export const ExternalPartyCreateInputSchema = z.object({
 })
 
 export type ExternalPartyCreateInput = z.infer<typeof ExternalPartyCreateInputSchema>
+
+export const ExternalPartyUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    kind: z.enum(externalPartyKindValues).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type ExternalPartyUpdateInput = z.infer<typeof ExternalPartyUpdateInputSchema>
 
 export const CustomerListItemSchema = z.object({
   id: z.string().uuid(),
@@ -203,9 +216,32 @@ export const DepartmentListItemSchema = z.object({
   nameEn: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  usageCount: z.number().int().nonnegative(),
 })
 
 export type DepartmentListItem = z.infer<typeof DepartmentListItemSchema>
+
+export const DepartmentCreateInputSchema = z.object({
+  code: z.string().trim().min(1).max(50),
+  nameSr: z.string().trim().min(1).max(200),
+  nameEn: z.string().trim().min(1).max(200),
+  sortOrder: z.number().int().min(0).optional(),
+})
+
+export type DepartmentCreateInput = z.infer<typeof DepartmentCreateInputSchema>
+
+export const DepartmentUpdateInputSchema = z
+  .object({
+    nameSr: z.string().trim().min(1).max(200).optional(),
+    nameEn: z.string().trim().min(1).max(200).optional(),
+    sortOrder: z.number().int().min(0).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type DepartmentUpdateInput = z.infer<typeof DepartmentUpdateInputSchema>
 
 export interface ReferenceListResponse<T> {
   items: T[]

@@ -1,6 +1,6 @@
-import { and, eq, ilike, isNull, type SQL } from 'drizzle-orm'
+import { and, eq, ilike, isNull, sql, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
-import { InternalError } from '../../core/errors/domain-errors.js'
+import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
@@ -8,15 +8,29 @@ import { externalParties } from './external-parties.schema.js'
 import type {
   ExternalPartyCreateInput,
   ExternalPartyListItem,
+  ExternalPartyUpdateInput,
   ReferenceListQuery,
   ReferenceListResponse,
 } from './external-parties.validators.js'
+
+/** Usage = fault attributions referencing this party (FK restrict on both fault tables). */
+const externalPartyUsageCountSql = sql<number>`(
+  COALESCE((
+    SELECT COUNT(*)::int FROM emotive_claim_faults
+    WHERE emotive_claim_faults.external_party_id = external_parties.id
+  ), 0)
+  + COALESCE((
+    SELECT COUNT(*)::int FROM domace_claim_faults
+    WHERE domace_claim_faults.external_party_id = external_parties.id
+  ), 0)
+)`.mapWith(Number)
 
 interface ExternalPartyRow {
   id: string
   name: string
   kind: ExternalPartyListItem['kind']
   isActive: boolean
+  usageCount: number
 }
 
 function mapExternalPartyRow(row: ExternalPartyRow): ExternalPartyListItem {
@@ -25,8 +39,16 @@ function mapExternalPartyRow(row: ExternalPartyRow): ExternalPartyListItem {
     name: row.name,
     kind: row.kind,
     isActive: row.isActive,
+    usageCount: row.usageCount,
   }
 }
+
+const EXTERNAL_PARTY_COLUMNS = {
+  id: externalParties.id,
+  name: externalParties.name,
+  kind: externalParties.kind,
+  isActive: externalParties.isActive,
+} as const
 
 export class ExternalPartiesRepository {
   constructor(private readonly db: ApiDatabase) {}
@@ -49,12 +71,7 @@ export class ExternalPartiesRepository {
     }
 
     const rows = await this.db
-      .select({
-        id: externalParties.id,
-        name: externalParties.name,
-        kind: externalParties.kind,
-        isActive: externalParties.isActive,
-      })
+      .select({ ...EXTERNAL_PARTY_COLUMNS, usageCount: externalPartyUsageCountSql })
       .from(externalParties)
       .where(and(...conditions))
       .orderBy(externalParties.name, externalParties.id)
@@ -72,6 +89,16 @@ export class ExternalPartiesRepository {
     }
   }
 
+  async findById(id: string): Promise<ExternalPartyListItem | null> {
+    const [row] = await this.db
+      .select({ ...EXTERNAL_PARTY_COLUMNS, usageCount: externalPartyUsageCountSql })
+      .from(externalParties)
+      .where(and(eq(externalParties.id, id), isNull(externalParties.deletedAt)))
+      .limit(1)
+
+    return row === undefined ? null : mapExternalPartyRow(row)
+  }
+
   async create(input: ExternalPartyCreateInput): Promise<ExternalPartyListItem> {
     const [created] = await this.db
       .insert(externalParties)
@@ -80,17 +107,52 @@ export class ExternalPartiesRepository {
         kind: input.kind,
         isActive: true,
       })
-      .returning({
-        id: externalParties.id,
-        name: externalParties.name,
-        kind: externalParties.kind,
-        isActive: externalParties.isActive,
-      })
+      .returning(EXTERNAL_PARTY_COLUMNS)
 
     if (created === undefined) {
       throw new InternalError('Failed to create external party')
     }
 
-    return mapExternalPartyRow(created)
+    return mapExternalPartyRow({ ...created, usageCount: 0 })
+  }
+
+  async update(id: string, input: ExternalPartyUpdateInput): Promise<ExternalPartyListItem> {
+    const [updated] = await this.db
+      .update(externalParties)
+      .set({
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.kind !== undefined ? { kind: input.kind } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      })
+      .where(and(eq(externalParties.id, id), isNull(externalParties.deletedAt)))
+      .returning(EXTERNAL_PARTY_COLUMNS)
+
+    if (updated === undefined) {
+      throw new NotFoundError('External party', id)
+    }
+
+    const usageCount = await this.getUsageCount(id)
+    return mapExternalPartyRow({ ...updated, usageCount })
+  }
+
+  async getUsageCount(id: string): Promise<number> {
+    const [row] = await this.db
+      .select({ usageCount: externalPartyUsageCountSql })
+      .from(externalParties)
+      .where(and(eq(externalParties.id, id), isNull(externalParties.deletedAt)))
+      .limit(1)
+
+    return row?.usageCount ?? 0
+  }
+
+  async hardDelete(id: string): Promise<void> {
+    const [deleted] = await this.db
+      .delete(externalParties)
+      .where(and(eq(externalParties.id, id), isNull(externalParties.deletedAt)))
+      .returning({ id: externalParties.id })
+
+    if (deleted === undefined) {
+      throw new NotFoundError('External party', id)
+    }
   }
 }

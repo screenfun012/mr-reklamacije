@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  FilterSelect,
   Input,
   toast,
 } from '@mr/ui'
@@ -153,6 +154,25 @@ export function ResourceFormDialog<
                     onChange={(next) => setFieldValue(field.key, next)}
                   />
                 </Suspense>
+              )
+            }
+
+            if (field.type === 'select') {
+              return (
+                <div key={field.key} className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor={fieldId}>
+                    {field.label()}
+                  </label>
+                  <FilterSelect
+                    id={fieldId}
+                    value={value}
+                    options={field.options()}
+                    placeholder={field.label()}
+                    aria-label={field.label()}
+                    disabled={isPending}
+                    onValueChange={(next) => setFieldValue(field.key, next)}
+                  />
+                </div>
               )
             }
 

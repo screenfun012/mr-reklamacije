@@ -129,7 +129,11 @@ export function buildContainer(
   )
 
   const externalPartiesRepository = new ExternalPartiesRepository(db)
-  const externalPartiesService = new ExternalPartiesService(externalPartiesRepository, auditService)
+  const externalPartiesService = new ExternalPartiesService(
+    externalPartiesRepository,
+    auditService,
+    eventBus,
+  )
 
   const customersRepository = new CustomersRepository(db)
   const customersService = new CustomersService(customersRepository, auditService, eventBus)
@@ -150,7 +154,7 @@ export function buildContainer(
   const claimSourcesService = new ClaimSourcesService(claimSourcesRepository)
 
   const departmentsRepository = new DepartmentsRepository(db)
-  const departmentsService = new DepartmentsService(departmentsRepository)
+  const departmentsService = new DepartmentsService(departmentsRepository, auditService, eventBus)
 
   const emotiveFaultsRepository = new FaultsRepository(schema.emotiveClaimFaults)
   const mrRegistryRepository = new MrRegistryRepository(db)

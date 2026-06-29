@@ -162,6 +162,10 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 ---
 
+## 8a. Known issues (real bugs, fix later — don't trip over)
+
+- **Users-list keyset pagination is broken past page 1 (latent).** `apps/api/src/modules/users/users.repository.ts` builds the keyset cursor from `createdAt.getTime()` (a number) and feeds it to `keysetBefore`, which emits `created_at < $n` → `timestamptz < bigint`, which Postgres **rejects** (`operator does not exist`). It never fires today because the users list stays under one page (≤50 users), so the cursor is never sent. The moment users exceed 50, "next page" 500s. **Fix (small, isolated):** mirror the audit-log read repo — carry `created_at::text` in the cursor and compare with `::timestamptz` (`audit-log.repository.ts`), or key on a sortable column. Not urgent (tens of users), but fix before the list grows. All other keyset usages (customers, departments, …) key on text/integer columns and are fine.
+
 ## 8. Known drift (docs/rules vs reality — fix later, don't trip over)
 
 - **UUID v7 vs v4:** `.cursor/rules/06` + `docs/02` say "UUID v7 only, `crypto.randomUUID()` forbidden for PKs." **Reality:** schema uses `uuid('id').primaryKey().defaultRandom()` (v4). Repo reality wins for now. **Decision for later (not in passing):** either migrate the schema to v7 (sortable IDs → better index locality) or relax the rule to "v4 OK". Pick deliberately; don't change PK generation mid-task.

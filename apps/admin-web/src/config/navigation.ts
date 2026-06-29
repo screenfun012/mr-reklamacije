@@ -5,7 +5,9 @@ import {
   Cog,
   Cpu,
   Globe,
+  Handshake,
   LayoutDashboard,
+  Network,
   ScrollText,
   Users,
 } from 'lucide-react'
@@ -79,5 +81,17 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_customers,
     to: '/settings/customers',
     icon: Building2,
+  },
+  {
+    key: 'departments',
+    label: m.nav_departments,
+    to: '/settings/departments',
+    icon: Network,
+  },
+  {
+    key: 'external-parties',
+    label: m.nav_external_parties,
+    to: '/settings/external-parties',
+    icon: Handshake,
   },
 ]

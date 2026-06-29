@@ -3,6 +3,8 @@ export const ResourceChangedKey = {
   Customers: 'customers',
   EngineTypes: 'engineTypes',
   EngineManufacturers: 'engineManufacturers',
+  Departments: 'departments',
+  ExternalParties: 'externalParties',
   Users: 'users',
 } as const
 

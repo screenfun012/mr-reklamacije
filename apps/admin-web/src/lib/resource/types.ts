@@ -25,7 +25,21 @@ export interface ResourceReferenceSelectFieldDef extends ResourceFormFieldBase {
   referenceKey: ResourceReferenceSelectKey
 }
 
-export type ResourceFormFieldDef = ResourceTextFormFieldDef | ResourceReferenceSelectFieldDef
+export interface ResourceSelectOption {
+  value: string
+  label: string
+}
+
+export interface ResourceSelectFormFieldDef extends ResourceFormFieldBase {
+  type: 'select'
+  /** Static option list (called at render to pick up the active locale). */
+  options: () => readonly ResourceSelectOption[]
+}
+
+export type ResourceFormFieldDef =
+  | ResourceTextFormFieldDef
+  | ResourceReferenceSelectFieldDef
+  | ResourceSelectFormFieldDef
 
 export interface ResourceColumnDef<TItem> {
   id: string

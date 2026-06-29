@@ -15,10 +15,21 @@ export function registerExternalPartiesRoutes(
 
   routes.get(
     '/',
-    requirePermissions('emotive_claims.create', 'emotive_claims.update'),
+    requirePermissions(
+      'emotive_claims.create',
+      'emotive_claims.update',
+      'settings.external_parties.create',
+      'settings.external_parties.manage',
+    ),
     controller.list,
   )
-  routes.post('/', requirePermission('settings.external_parties.create'), controller.create)
+  routes.post(
+    '/',
+    requirePermissions('settings.external_parties.create', 'settings.external_parties.manage'),
+    controller.create,
+  )
+  routes.patch('/:id', requirePermission('settings.external_parties.manage'), controller.update)
+  routes.delete('/:id', requirePermission('settings.external_parties.manage'), controller.delete)
 
   app.route('/api/external-parties', routes)
 }
