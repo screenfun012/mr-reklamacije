@@ -205,9 +205,34 @@ export const ClaimSourceListItemSchema = z.object({
   defaultCustomerId: z.string().uuid().nullable(),
   defaultCustomer: ClaimSourceDefaultCustomerSchema.nullable(),
   isActive: z.boolean(),
+  usageCount: z.number().int().nonnegative(),
 })
 
 export type ClaimSourceListItem = z.infer<typeof ClaimSourceListItemSchema>
+
+export const ClaimSourceCreateInputSchema = z.object({
+  code: z.string().trim().min(1).max(50),
+  name: z.string().trim().min(1).max(200),
+  claimNumberPrefix: z.string().trim().min(1).max(50).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  defaultCustomerId: z.string().uuid().optional(),
+})
+
+export type ClaimSourceCreateInput = z.infer<typeof ClaimSourceCreateInputSchema>
+
+export const ClaimSourceUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    claimNumberPrefix: z.string().trim().min(1).max(50).nullable().optional(),
+    sortOrder: z.number().int().min(0).optional(),
+    defaultCustomerId: z.string().uuid().nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type ClaimSourceUpdateInput = z.infer<typeof ClaimSourceUpdateInputSchema>
 
 export const DepartmentListItemSchema = z.object({
   id: z.string().uuid(),

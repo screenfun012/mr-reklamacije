@@ -1,6 +1,13 @@
-import { engineManufacturersReferenceOptions, type EngineManufacturerListItem } from '@mr/shared'
+import {
+  EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
+  customersReferenceOptions,
+  engineManufacturersReferenceOptions,
+  type CustomerListItem,
+  type EngineManufacturerListItem,
+} from '@mr/shared'
+import type { QueryKey, UseSuspenseQueryOptions } from '@tanstack/react-query'
 
-export type ResourceReferenceSelectKey = 'engine-manufacturers'
+export type ResourceReferenceSelectKey = 'engine-manufacturers' | 'customers'
 
 export interface ReferenceSelectOption {
   value: string
@@ -8,28 +15,41 @@ export interface ReferenceSelectOption {
   keywords?: string
 }
 
-interface ReferenceSelectConfig<TItem> {
-  queryOptions: () => ReturnType<typeof engineManufacturersReferenceOptions>
-  toOptions: (items: readonly TItem[]) => ReferenceSelectOption[]
+type ErasedQueryOptions = UseSuspenseQueryOptions<
+  readonly unknown[],
+  Error,
+  readonly unknown[],
+  QueryKey
+>
+
+export interface ReferenceSelectConfig {
+  queryOptions: () => ErasedQueryOptions
+  toOptions: (items: readonly unknown[]) => ReferenceSelectOption[]
 }
 
-export function getReferenceSelectConfig(
-  key: ResourceReferenceSelectKey,
-): ReferenceSelectConfig<EngineManufacturerListItem> {
-  switch (key) {
-    case 'engine-manufacturers':
-      return {
-        queryOptions: () => engineManufacturersReferenceOptions({ activeOnly: true }),
-        toOptions: (items) =>
-          items.map((item) => ({
-            value: item.id,
-            label: item.name,
-            keywords: item.code,
-          })),
-      }
-    default: {
-      const exhaustive: never = key
-      throw new Error(`Unknown reference select key: ${exhaustive}`)
-    }
-  }
+/**
+ * Type-safe per-entry definition; erased to a uniform shape at the boundary so
+ * the form field can consume any reference catalog without knowing its item type.
+ */
+function defineReferenceSelect<TItem>(config: {
+  queryOptions: () => unknown
+  toOptions: (items: readonly TItem[]) => ReferenceSelectOption[]
+}): ReferenceSelectConfig {
+  return config as unknown as ReferenceSelectConfig
+}
+
+const REFERENCE_SELECT_CONFIGS: Record<ResourceReferenceSelectKey, ReferenceSelectConfig> = {
+  'engine-manufacturers': defineReferenceSelect<EngineManufacturerListItem>({
+    queryOptions: () => engineManufacturersReferenceOptions({ activeOnly: true }),
+    toOptions: (items) =>
+      items.map((item) => ({ value: item.id, label: item.name, keywords: item.code })),
+  }),
+  customers: defineReferenceSelect<CustomerListItem>({
+    queryOptions: () => customersReferenceOptions(EMOTIVE_PARTNER_CUSTOMERS_REFERENCE),
+    toOptions: (items) => items.map((item) => ({ value: item.id, label: item.name })),
+  }),
+}
+
+export function getReferenceSelectConfig(key: ResourceReferenceSelectKey): ReferenceSelectConfig {
+  return REFERENCE_SELECT_CONFIGS[key]
 }

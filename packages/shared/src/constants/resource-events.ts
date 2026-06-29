@@ -5,6 +5,7 @@ export const ResourceChangedKey = {
   EngineManufacturers: 'engineManufacturers',
   Departments: 'departments',
   ExternalParties: 'externalParties',
+  ClaimSources: 'claimSources',
   Users: 'users',
 } as const
 

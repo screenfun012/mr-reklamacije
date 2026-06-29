@@ -18,6 +18,8 @@ export function queryKeyPrefixesForResourceChanged(
       return [['departments']] as const
     case ResourceChangedKey.ExternalParties:
       return [['external-parties']] as const
+    case ResourceChangedKey.ClaimSources:
+      return [['claim-sources']] as const
     case ResourceChangedKey.Users:
       return [['users']] as const
     default: {

@@ -151,7 +151,11 @@ export function buildContainer(
   )
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
-  const claimSourcesService = new ClaimSourcesService(claimSourcesRepository)
+  const claimSourcesService = new ClaimSourcesService(
+    claimSourcesRepository,
+    auditService,
+    eventBus,
+  )
 
   const departmentsRepository = new DepartmentsRepository(db)
   const departmentsService = new DepartmentsService(departmentsRepository, auditService, eventBus)

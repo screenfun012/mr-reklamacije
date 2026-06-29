@@ -6,6 +6,7 @@ import {
   Cpu,
   Globe,
   Handshake,
+  Inbox,
   LayoutDashboard,
   Network,
   ScrollText,
@@ -93,5 +94,11 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_external_parties,
     to: '/settings/external-parties',
     icon: Handshake,
+  },
+  {
+    key: 'claim-sources',
+    label: m.nav_claim_sources,
+    to: '/settings/claim-sources',
+    icon: Inbox,
   },
 ]
