@@ -74,6 +74,18 @@ export const UserIdParamSchema = z.object({
 
 export type UserIdParam = z.infer<typeof UserIdParamSchema>
 
+/** Password policy — mirrors Better-Auth `emailAndPassword` config (options.ts). */
+export const PASSWORD_MIN_LENGTH = 12
+export const PASSWORD_MAX_LENGTH = 128
+
+export const PasswordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH)
+
+export const UserPasswordResetInputSchema = z.object({
+  newPassword: PasswordSchema,
+})
+
+export type UserPasswordResetInput = z.infer<typeof UserPasswordResetInputSchema>
+
 export const UserRolesReplaceInputSchema = z.object({
   roleCodes: z
     .array(z.enum(systemRoleCodeValues))

@@ -4,6 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { PASSWORD_MIN_LENGTH } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
 
@@ -17,7 +18,7 @@ const registerSchema = z.object({
   firstName: z.string().min(1, m.field_first_name_required()),
   lastName: z.string().min(1, m.field_last_name_required()),
   email: z.email(m.field_email_invalid()),
-  password: z.string().min(12, m.field_password_min_length()),
+  password: z.string().min(PASSWORD_MIN_LENGTH, m.field_password_min_length()),
 })
 
 function RegisterComponent(): React.ReactElement {

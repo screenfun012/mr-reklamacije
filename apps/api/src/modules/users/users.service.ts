@@ -15,12 +15,14 @@ import {
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { UserPasswordPort } from '../../core/ports/user-password-port.js'
 import type { UserSessionsPort } from '../../core/ports/user-sessions-port.js'
 import type { UsersRepository } from './users.repository.js'
 import type {
   UserAccountStatusPatchInput,
   UserListItem,
   UserListResponse,
+  UserPasswordResetInput,
   UserRolesReplaceInput,
   UsersListQuery,
 } from './users.validators.js'
@@ -42,6 +44,7 @@ export class UsersService {
     private readonly eventBus: EventBus,
     private readonly protectedSuperAdminEmail: string,
     private readonly userSessions: UserSessionsPort,
+    private readonly userPassword: UserPasswordPort,
   ) {}
 
   private async revokeTargetSessionsAfterRoleChange(
@@ -166,5 +169,42 @@ export class UsersService {
     await this.revokeTargetSessionsAfterRoleChange(id, actor.actorUserId)
 
     return updated
+  }
+
+  async resetPassword(
+    id: string,
+    input: UserPasswordResetInput,
+    actor: HttpActorContext,
+  ): Promise<void> {
+    const target = await this.repo.findAccountStatusById(id)
+    if (target === null) {
+      throw new NotFoundError('User', id)
+    }
+
+    if (isProtectedSuperAdminEmail(target.email, this.protectedSuperAdminEmail)) {
+      throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
+    }
+
+    if (id === actor.actorUserId) {
+      throw new ForbiddenError('Sopstvenu lozinku menjate kroz standardni tok promene lozinke.')
+    }
+
+    await this.userPassword.setPassword(id, input.newPassword)
+
+    // Force re-login everywhere with the new password.
+    await this.userSessions.revokeAllForUser(id)
+
+    // Audit the reset WITHOUT the password value.
+    await this.audit.log({
+      entityType: 'user',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: actor.actorUserId,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
+      changes: { field: 'password', action: 'admin_reset' },
+    })
+
+    this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
   }
 }

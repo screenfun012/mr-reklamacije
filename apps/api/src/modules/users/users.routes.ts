@@ -20,6 +20,11 @@ export function registerUsersRoutes(
     controller.updateAccountStatus,
   )
   routes.put('/:id/roles', requirePermission('roles.assign'), controller.replaceRoles)
+  routes.post(
+    '/:id/reset-password',
+    requirePermission('users.reset_password'),
+    controller.resetPassword,
+  )
 
   app.route('/api/users', routes)
 }

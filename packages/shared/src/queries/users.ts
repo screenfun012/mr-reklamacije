@@ -1,10 +1,12 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
+import { fetchNoContent } from '../api/fetch-no-content.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
 import type {
   UserAccountStatusPatchInput,
   UserListItem,
+  UserPasswordResetInput,
   UserRolesReplaceInput,
 } from '../schemas/user.schema.js'
 
@@ -39,6 +41,17 @@ export async function patchUserRoles(
 ): Promise<UserListItem> {
   return fetchJson<UserListItem>(`/api/users/${userId}/roles`, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export async function resetUserPassword(
+  userId: string,
+  input: UserPasswordResetInput,
+): Promise<void> {
+  return fetchNoContent(`/api/users/${userId}/reset-password`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })

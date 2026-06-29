@@ -6,6 +6,7 @@ import type { Container } from '../../core/container.js'
 import {
   UserAccountStatusPatchInputSchema,
   UserIdParamSchema,
+  UserPasswordResetInputSchema,
   UserRolesReplaceInputSchema,
   UsersListQuerySchema,
 } from './users.validators.js'
@@ -47,6 +48,20 @@ export function createUsersController(container: Container) {
       const updated = await container.usersService.replaceRoles(id, input, getActorContext(c, user))
 
       return c.json(updated)
+    },
+
+    resetPassword: async (c: Context) => {
+      const user = c.get('user')
+      if (user === null) {
+        throw new UnauthorizedError()
+      }
+
+      const { id } = UserIdParamSchema.parse({ id: c.req.param('id') })
+      const body: unknown = await c.req.json()
+      const input = UserPasswordResetInputSchema.parse(body)
+      await container.usersService.resetPassword(id, input, getActorContext(c, user))
+
+      return c.body(null, 204)
     },
   }
 }

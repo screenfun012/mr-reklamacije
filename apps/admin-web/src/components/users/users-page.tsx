@@ -5,6 +5,7 @@ import {
   isProtectedSuperAdminEmail,
   patchUserAccountStatus,
   patchUserRoles,
+  resetUserPassword,
   usersListOptions,
   usersListQueryKey,
   type ApproveRegistrationRoleCode,
@@ -19,6 +20,7 @@ import { authClient } from '~/lib/auth-client'
 
 import { UserAccountStatusBadge } from './user-account-status-badge'
 import { UserApproveDialog } from './user-approve-dialog'
+import { UserPasswordResetDialog } from './user-password-reset-dialog'
 import { UserRolesBadges } from './user-roles-badges'
 import { UserRolesEditDialog } from './user-roles-edit-dialog'
 
@@ -44,22 +46,26 @@ function UsersTable({
   onApprove,
   onReject,
   onEditRoles,
+  onResetPassword,
   showActions,
   showRoleEdit,
   pending,
   actionsDisabled,
   rolesEditDisabled,
+  passwordResetDisabled,
 }: {
   items: readonly UserListItem[]
   currentUserId: string | undefined
   onApprove: (user: UserListItem) => void
   onReject: (user: UserListItem) => void
   onEditRoles: (user: UserListItem) => void
+  onResetPassword: (user: UserListItem) => void
   showActions: boolean
   showRoleEdit: boolean
   pending: boolean
   actionsDisabled: boolean
   rolesEditDisabled: boolean
+  passwordResetDisabled: boolean
 }): ReactElement {
   if (items.length === 0) {
     return (
@@ -138,7 +144,16 @@ function UsersTable({
                           </Button>
                         </div>
                       ) : canEditRoles ? (
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={passwordResetDisabled}
+                            onClick={() => onResetPassword(user)}
+                          >
+                            {m.users_reset_password_button()}
+                          </Button>
                           <Button
                             type="button"
                             size="sm"
@@ -169,6 +184,7 @@ export function UsersPageContent(): ReactElement {
   const { data: users } = useSuspenseQuery(usersListOptions())
   const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
   const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
+  const [passwordResetTarget, setPasswordResetTarget] = useState<UserListItem | null>(null)
 
   const pendingUsers = users.filter((user) => user.accountStatus === UserAccountStatus.Pending)
   const otherUsers = users.filter((user) => user.accountStatus !== UserAccountStatus.Pending)
@@ -264,8 +280,24 @@ export function UsersPageContent(): ReactElement {
     },
   })
 
+  const passwordMutation = useMutation({
+    mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+      resetUserPassword(userId, { newPassword }),
+    onError: () => {
+      toast.error(m.users_reset_password_error())
+    },
+    onSuccess: () => {
+      setPasswordResetTarget(null)
+      toast.success(m.users_reset_password_success())
+    },
+  })
+
   const handleApproveClick = (user: UserListItem): void => {
     setApproveTarget(user)
+  }
+
+  const handlePasswordResetConfirm = (user: UserListItem, newPassword: string): void => {
+    passwordMutation.mutate({ userId: user.id, newPassword })
   }
 
   const handleApproveConfirm = (
@@ -323,6 +355,18 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handleRolesEditConfirm}
       />
 
+      <UserPasswordResetDialog
+        user={passwordResetTarget}
+        open={passwordResetTarget !== null}
+        pending={passwordMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPasswordResetTarget(null)
+          }
+        }}
+        onConfirm={handlePasswordResetConfirm}
+      />
+
       <section aria-labelledby="users-pending-heading">
         <Heading level="h2" id="users-pending-heading" className="mb-4 text-lg">
           {m.users_pending_section_title()}
@@ -333,11 +377,13 @@ export function UsersPageContent(): ReactElement {
           onApprove={handleApproveClick}
           onReject={handleReject}
           onEditRoles={setRolesEditTarget}
+          onResetPassword={setPasswordResetTarget}
           showActions
           showRoleEdit={false}
           pending
           actionsDisabled={statusMutation.isPending}
           rolesEditDisabled={rolesMutation.isPending}
+          passwordResetDisabled={passwordMutation.isPending}
         />
       </section>
 
@@ -351,11 +397,13 @@ export function UsersPageContent(): ReactElement {
           onApprove={handleApproveClick}
           onReject={handleReject}
           onEditRoles={setRolesEditTarget}
+          onResetPassword={setPasswordResetTarget}
           showActions={false}
           showRoleEdit
           pending={false}
           actionsDisabled={statusMutation.isPending}
           rolesEditDisabled={rolesMutation.isPending}
+          passwordResetDisabled={passwordMutation.isPending}
         />
       </section>
     </div>

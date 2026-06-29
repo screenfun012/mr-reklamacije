@@ -10,7 +10,7 @@ import {
   SYSTEM_ROLE_VIEWER,
   UserAccountStatus,
 } from '@mr/shared'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -83,6 +83,17 @@ const TARGET_SESSION_TOKEN = 'target-session-revoke-integration-token'
 const ACTOR_SESSION_TOKEN = 'actor-session-revoke-integration-token'
 const PENDING_SESSION_TOKEN = 'pending-session-revoke-integration-token'
 
+const RESET_PW_NO_ACCOUNT_ID = '66666666-6666-4666-8666-666666666666'
+const RESET_PW_WITH_ACCOUNT_ID = '66666666-6666-4666-8666-666666666667'
+const RESET_PW_SESSION_USER_ID = '66666666-6666-4666-8666-666666666668'
+const RESET_PW_ACTOR_ID = '66666666-6666-4666-8666-666666666669'
+const RESET_PW_SESSION_TOKEN = 'reset-pw-target-session-token'
+const RESET_PW_ACTOR_SESSION_TOKEN = 'reset-pw-actor-session-token'
+const RESET_PW_VALID_PASSWORD = 'brand-new-secure-pass-123'
+const RESET_PW_OLD_PASSWORD = 'previous-secure-pass-000'
+const RESET_PW_SHORT_PASSWORD = 'too-short'
+const RESET_PW_PERMISSIONS = ['users.reset_password'] as const
+
 async function insertTestSession(
   db: TestDbContext['db'],
   userId: string,
@@ -110,6 +121,54 @@ async function countSessionsForUser(db: TestDbContext['db'], userId: string): Pr
     .where(eq(schema.sessions.userId, userId))
 
   return rows.length
+}
+
+async function seedApprovedUserWithId(
+  db: TestDbContext['db'],
+  id: string,
+  email: string,
+  name: string,
+): Promise<void> {
+  await db
+    .insert(schema.users)
+    .values({ id, email, name, accountStatus: UserAccountStatus.Approved })
+    .onConflictDoNothing()
+}
+
+async function seedCredentialAccount(
+  db: TestDbContext['db'],
+  userId: string,
+  password: string,
+): Promise<void> {
+  await db
+    .insert(schema.accounts)
+    .values({ accountId: userId, providerId: 'credential', userId, password })
+    .onConflictDoNothing()
+}
+
+async function getCredentialPasswordHash(
+  db: TestDbContext['db'],
+  userId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ password: schema.accounts.password })
+    .from(schema.accounts)
+    .where(and(eq(schema.accounts.userId, userId), eq(schema.accounts.providerId, 'credential')))
+    .limit(1)
+
+  return row?.password ?? null
+}
+
+async function resetPassword(
+  app: ReturnType<typeof createUsersTestApp>,
+  userId: string,
+  newPassword: string,
+): Promise<Response> {
+  return app.request(`/api/users/${userId}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newPassword }),
+  })
 }
 
 async function seedPendingUser(
@@ -215,6 +274,12 @@ describe.sequential('Users module', () => {
     await seedApprovedUser(ctx.db)
     await seedRolesAdminActor(ctx.db)
     await seedProtectedSuperAdmin(ctx.db)
+    await seedApprovedUserWithId(
+      ctx.db,
+      RESET_PW_ACTOR_ID,
+      'reset-actor@mrengines.rs',
+      'Reset Actor',
+    )
   })
 
   afterEach(async () => {
@@ -685,6 +750,184 @@ describe.sequential('Users module', () => {
 
       expect(response.status).toBe(200)
       expect(await countSessionsForUser(ctx.db, PENDING_REJECT_SESSION_ID)).toBe(1)
+    })
+  })
+
+  describe('when resetting a password (admin-initiated)', () => {
+    async function verifyPassword(userId: string, password: string): Promise<boolean> {
+      const hash = await getCredentialPasswordHash(ctx.db, userId)
+      if (hash === null) {
+        return false
+      }
+
+      const authCtx = await container.auth.$context
+      return authCtx.password.verify({ hash, password })
+    }
+
+    it('creates a credential account and sets the password when the user has none', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        RESET_PW_NO_ACCOUNT_ID,
+        'reset-no-account@mrengines.rs',
+        'Reset No Account',
+      )
+      expect(await getCredentialPasswordHash(ctx.db, RESET_PW_NO_ACCOUNT_ID)).toBeNull()
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(app, RESET_PW_NO_ACCOUNT_ID, RESET_PW_VALID_PASSWORD)
+      expect(response.status).toBe(204)
+
+      expect(await verifyPassword(RESET_PW_NO_ACCOUNT_ID, RESET_PW_VALID_PASSWORD)).toBe(true)
+    })
+
+    it('updates the password and writes audit without the password value', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        RESET_PW_WITH_ACCOUNT_ID,
+        'reset-with-account@mrengines.rs',
+        'Reset With Account',
+      )
+      await seedCredentialAccount(ctx.db, RESET_PW_WITH_ACCOUNT_ID, RESET_PW_OLD_PASSWORD)
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(app, RESET_PW_WITH_ACCOUNT_ID, RESET_PW_VALID_PASSWORD)
+      expect(response.status).toBe(204)
+
+      const hash = await getCredentialPasswordHash(ctx.db, RESET_PW_WITH_ACCOUNT_ID)
+      expect(hash).not.toBe(RESET_PW_OLD_PASSWORD)
+      expect(await verifyPassword(RESET_PW_WITH_ACCOUNT_ID, RESET_PW_VALID_PASSWORD)).toBe(true)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, RESET_PW_WITH_ACCOUNT_ID))
+
+      const resetAudit = auditRows.find(
+        (row) =>
+          row.action === AuditAction.Update &&
+          row.changes !== null &&
+          typeof row.changes === 'object' &&
+          (row.changes as { field?: string }).field === 'password',
+      )
+      expect(resetAudit).toBeDefined()
+      expect(resetAudit?.entityType).toBe('user')
+      expect(JSON.stringify(resetAudit?.changes)).not.toContain(RESET_PW_VALID_PASSWORD)
+
+      expect(eventBus.resourceEvents.map((event) => event.resource)).toContain(
+        ResourceChangedKey.Users,
+      )
+    })
+
+    it('returns 403 and does not change the password of the protected super-admin', async () => {
+      await seedCredentialAccount(ctx.db, PROTECTED_SUPER_ADMIN_ID, RESET_PW_OLD_PASSWORD)
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(app, PROTECTED_SUPER_ADMIN_ID, RESET_PW_VALID_PASSWORD)
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+
+      expect(await getCredentialPasswordHash(ctx.db, PROTECTED_SUPER_ADMIN_ID)).toBe(
+        RESET_PW_OLD_PASSWORD,
+      )
+    })
+
+    it('returns 403 when an actor tries to reset their own password', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(app, RESET_PW_ACTOR_ID, RESET_PW_VALID_PASSWORD)
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+    })
+
+    it('returns 400 for a password shorter than the minimum length', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        RESET_PW_NO_ACCOUNT_ID,
+        'reset-short@mrengines.rs',
+        'Reset Short',
+      )
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(app, RESET_PW_NO_ACCOUNT_ID, RESET_PW_SHORT_PASSWORD)
+      expect(response.status).toBe(400)
+
+      expect(await getCredentialPasswordHash(ctx.db, RESET_PW_NO_ACCOUNT_ID)).toBeNull()
+    })
+
+    it('returns 403 without users.reset_password permission', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        RESET_PW_WITH_ACCOUNT_ID,
+        'reset-no-perm@mrengines.rs',
+        'Reset No Perm',
+      )
+
+      const app = createUsersTestApp(container, testUser(['users.view'], RESET_PW_ACTOR_ID))
+
+      const response = await resetPassword(app, RESET_PW_WITH_ACCOUNT_ID, RESET_PW_VALID_PASSWORD)
+      expect(response.status).toBe(403)
+    })
+
+    it('returns 404 for a non-existent user', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(
+        app,
+        '66666666-6666-4666-8666-66666666ffff',
+        RESET_PW_VALID_PASSWORD,
+      )
+      expect(response.status).toBe(404)
+    })
+
+    it('revokes target sessions after reset and leaves actor sessions intact', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        RESET_PW_SESSION_USER_ID,
+        'reset-session@mrengines.rs',
+        'Reset Session',
+      )
+      await insertTestSession(ctx.db, RESET_PW_SESSION_USER_ID, RESET_PW_SESSION_TOKEN)
+      await insertTestSession(ctx.db, RESET_PW_ACTOR_ID, RESET_PW_ACTOR_SESSION_TOKEN)
+
+      expect(await countSessionsForUser(ctx.db, RESET_PW_SESSION_USER_ID)).toBe(1)
+      expect(await countSessionsForUser(ctx.db, RESET_PW_ACTOR_ID)).toBe(1)
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...RESET_PW_PERMISSIONS], RESET_PW_ACTOR_ID),
+      )
+
+      const response = await resetPassword(app, RESET_PW_SESSION_USER_ID, RESET_PW_VALID_PASSWORD)
+      expect(response.status).toBe(204)
+
+      expect(await countSessionsForUser(ctx.db, RESET_PW_SESSION_USER_ID)).toBe(0)
+      expect(await countSessionsForUser(ctx.db, RESET_PW_ACTOR_ID)).toBe(1)
     })
   })
 })

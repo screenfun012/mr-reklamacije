@@ -95,6 +95,7 @@ export {
 export {
   patchUserAccountStatus,
   patchUserRoles,
+  resetUserPassword,
   usersListOptions,
   usersListQueryKey,
 } from './users.js'
