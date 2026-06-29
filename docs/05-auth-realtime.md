@@ -64,6 +64,13 @@ Flow:
 Rate limit on `/api/auth/register-client`: **3 requests per hour per IP**
 (Cloudflare rule + Better-Auth built-in).
 
+> **Note (reality, post-`0016`):** alongside the `client_registration_requests`
+> flow above, the schema now also has `users.account_status`
+> (`pending`/`approved`/`rejected`, migration `0016`). The user-approval path
+> assigns the `operator` role on approval (protected super-admin excluded) and
+> revokes sessions on deactivation. Treat `account_status` as the newer, active
+> mechanism; the registration-requests flow above is the original design.
+
 ---
 
 ## Password policy

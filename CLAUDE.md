@@ -182,7 +182,7 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 **Open (from the health audit — not yet approved/done):**
 
-- nice-to-have: `turbo.json` `outputs` doesn't cover web-app build output (cache miss); separate `ATTACHMENT_SIGNING_SECRET` instead of reusing `BETTER_AUTH_SECRET`; a few `any`/`eslint-disable` in internal-web hooks; `~117 @ts-nocheck` in vendored TipTap components (confirmed **leave as-is**).
+- nice-to-have: separate `ATTACHMENT_SIGNING_SECRET` instead of reusing `BETTER_AUTH_SECRET`; `~117 @ts-nocheck` in vendored TipTap components (confirmed **leave as-is**). The few remaining `any`/`eslint-disable` in internal-web are vendored TipTap support hooks (`use-throttled-callback.ts`, `use-unmount.ts` — already `@ts-nocheck`'d), **not our code** — `api`/`shared`/`admin-web` are `any`-free. (`turbo.json` web-output cache miss resolved in commit `e611738`.)
 - Roadmap: project is past Phase 0/1 foundations; admin user/role management is in active build (Phase 3 territory). Custom outcomes are explicitly a **Phase 2 big project** (6-place hardcoding) — don't start casually.
 
 ---

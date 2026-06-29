@@ -15,7 +15,7 @@ globs: apps/admin-web/**/*.{tsx,ts,css}, apps/internal-web/**/*.{tsx,ts,css}, ap
 - **@tanstack/react-query** for server state
 - **recharts** for charts
 - **sonner** for toasts
-- **Inter** font (400/500/600/700), **JetBrains Mono** for IDs/codes
+- **Figtree Variable** font (per brandbook + `docs/09`), **JetBrains Mono** for IDs/codes
 
 Other libraries require a conversation with Nikola before adding.
 
