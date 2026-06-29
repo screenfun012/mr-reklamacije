@@ -1,73 +1,119 @@
+import { dashboardSummaryOptions, usersListOptions } from '@mr/shared'
 import { createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { Suspense, type ReactElement } from 'react'
 
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Heading } from '@mr/ui'
+import { Heading, Skeleton, cn } from '@mr/ui'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 
+import { StatCard } from '~/components/dashboard/stat-card'
 import { AdminShell } from '~/components/layout/admin-shell'
 import { adminRequireRoles } from '~/lib/auth-guard'
 import { authClient } from '~/lib/auth-client'
+import { countUsersByStatus } from '~/lib/dashboard-user-counts'
 
 export const Route = createFileRoute('/')({
   beforeLoad: adminRequireRoles(['admin']),
-  component: HomeComponent,
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.ensureQueryData(dashboardSummaryOptions()),
+      queryClient.ensureQueryData(usersListOptions()),
+    ])
+  },
+  component: HomeRoute,
 })
 
-function HomeComponent() {
+function HomeRoute(): ReactElement {
+  return (
+    <AdminShell>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
+    </AdminShell>
+  )
+}
+
+function MonthTrend({ delta }: { delta: number }): ReactElement {
+  if (delta === 0) {
+    return (
+      <span className="text-xs text-muted-foreground">{m.dashboard_trend_vs_last_month()}</span>
+    )
+  }
+
+  const isUp = delta > 0
+  return (
+    <span
+      className={cn(
+        'flex items-center gap-0.5 text-xs font-medium',
+        isUp ? 'text-mr-success-strong' : 'text-mr-error-strong',
+      )}
+      title={m.dashboard_trend_vs_last_month()}
+    >
+      {isUp ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+      {Math.abs(delta)}
+    </span>
+  )
+}
+
+function DashboardContent(): ReactElement {
   const { data: session } = authClient.useSession()
   const userName = session?.user?.name ?? session?.user?.email ?? ''
 
+  const { data: summary } = useSuspenseQuery(dashboardSummaryOptions())
+  const { data: users } = useSuspenseQuery(usersListOptions())
+  const { active, pendingApproval } = countUsersByStatus(users)
+
   return (
-    <AdminShell>
-      <div className="flex flex-col gap-6">
-        <div>
-          <Heading level="h1" className="mb-2">
-            {m.dashboard_welcome({ userName })}
-          </Heading>
-          <p className="text-muted-foreground">{m.nav_dashboard()}</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{m.dashboard_card_open_claims()}</CardTitle>
-              <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-muted-foreground">0</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{m.dashboard_card_this_month()}</CardTitle>
-              <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-muted-foreground">0</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{m.dashboard_card_active_users()}</CardTitle>
-              <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-muted-foreground">0</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{m.dashboard_card_quick_access()}</CardTitle>
-              <CardDescription>{m.dashboard_coming_soon()}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Phase 1</p>
-            </CardContent>
-          </Card>
-        </div>
+    <div className="flex flex-col gap-6">
+      <div>
+        <Heading level="h1" className="mb-2">
+          {m.dashboard_welcome({ userName })}
+        </Heading>
+        <p className="text-muted-foreground">{m.nav_dashboard()}</p>
       </div>
-    </AdminShell>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title={m.dashboard_card_open_claims()}
+          value={summary.stats.pending}
+          hint={m.dashboard_card_open_claims_hint()}
+        />
+        <StatCard
+          title={m.dashboard_card_this_month()}
+          value={summary.stats.newThisMonth}
+          hint={m.dashboard_card_this_month_hint()}
+          trend={<MonthTrend delta={summary.trends.newThisMonth.delta} />}
+        />
+        <StatCard
+          title={m.dashboard_card_active_users()}
+          value={active}
+          hint={m.dashboard_card_active_users_hint()}
+        />
+        <StatCard
+          title={m.dashboard_card_pending_approvals()}
+          value={pendingApproval}
+          hint={m.dashboard_card_pending_approvals_hint()}
+          to="/users"
+        />
+      </div>
+    </div>
+  )
+}
+
+function DashboardSkeleton(): ReactElement {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-36 w-full" />
+      </div>
+    </div>
   )
 }
