@@ -11,6 +11,7 @@ function user(accountStatus: UserListItem['accountStatus'], id: string): UserLis
     accountStatus,
     createdAt: '2026-01-01T00:00:00.000Z',
     roles: [],
+    requestedCompany: null,
   }
 }
 

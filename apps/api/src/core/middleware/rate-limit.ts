@@ -113,3 +113,9 @@ export const signupRateLimiter = createRateLimiter({
   windowMs: 60 * 60_000,
   max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
 })
+
+/** Portal client self-registration: 3 attempts per hour per IP (mirrors signup). */
+export const clientRegistrationRateLimiter = createRateLimiter({
+  windowMs: 60 * 60_000,
+  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
+})

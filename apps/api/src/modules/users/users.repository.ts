@@ -14,6 +14,7 @@ interface UserRow {
   name: string
   accountStatus: UserListItem['accountStatus']
   createdAt: Date
+  requestedCompany: string | null
 }
 
 function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
@@ -24,8 +25,18 @@ function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
     accountStatus: row.accountStatus,
     createdAt: row.createdAt.toISOString(),
     roles: [...roleCodes],
+    requestedCompany: row.requestedCompany,
   }
 }
+
+const userListColumns = {
+  id: users.id,
+  email: users.email,
+  name: users.name,
+  accountStatus: users.accountStatus,
+  createdAt: users.createdAt,
+  requestedCompany: users.requestedCompany,
+} as const
 
 export class UsersRepository {
   constructor(private readonly db: ApiDatabase) {}
@@ -49,13 +60,7 @@ export class UsersRepository {
     }
 
     const rows = await this.db
-      .select({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        accountStatus: users.accountStatus,
-        createdAt: users.createdAt,
-      })
+      .select(userListColumns)
       .from(users)
       .where(and(...conditions))
       .orderBy(desc(users.createdAt), desc(users.id))
@@ -77,13 +82,7 @@ export class UsersRepository {
 
   async findAccountStatusById(id: string): Promise<UserListItem | null> {
     const [row] = await this.db
-      .select({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        accountStatus: users.accountStatus,
-        createdAt: users.createdAt,
-      })
+      .select(userListColumns)
       .from(users)
       .where(and(eq(users.id, id), isNull(users.deletedAt)))
       .limit(1)
@@ -105,13 +104,7 @@ export class UsersRepository {
       .update(users)
       .set({ accountStatus })
       .where(and(eq(users.id, id), isNull(users.deletedAt)))
-      .returning({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        accountStatus: users.accountStatus,
-        createdAt: users.createdAt,
-      })
+      .returning(userListColumns)
 
     if (updated === undefined) {
       throw new NotFoundError('User', id)
@@ -130,13 +123,7 @@ export class UsersRepository {
   ): Promise<UserListItem> {
     return this.db.transaction(async (tx) => {
       const [userRow] = await tx
-        .select({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          accountStatus: users.accountStatus,
-          createdAt: users.createdAt,
-        })
+        .select(userListColumns)
         .from(users)
         .where(
           and(
@@ -192,13 +179,7 @@ export class UsersRepository {
         .update(users)
         .set({ accountStatus: UserAccountStatus.Approved })
         .where(eq(users.id, id))
-        .returning({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          accountStatus: users.accountStatus,
-          createdAt: users.createdAt,
-        })
+        .returning(userListColumns)
 
       if (updated === undefined) {
         throw new NotFoundError('User', id)
@@ -231,13 +212,7 @@ export class UsersRepository {
   ): Promise<UserListItem> {
     return this.db.transaction(async (tx) => {
       const [userRow] = await tx
-        .select({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          accountStatus: users.accountStatus,
-          createdAt: users.createdAt,
-        })
+        .select(userListColumns)
         .from(users)
         .where(and(eq(users.id, id), isNull(users.deletedAt)))
         .limit(1)

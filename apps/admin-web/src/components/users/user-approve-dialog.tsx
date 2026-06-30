@@ -111,6 +111,15 @@ export function UserApproveDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {user !== null && user.requestedCompany !== null && user.requestedCompany !== '' ? (
+            <div className="rounded-md border border-mr-info-subtle bg-mr-info-subtle/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">
+                {m.users_approve_dialog_requested_company_label()}:{' '}
+              </span>
+              <span className="font-medium">{user.requestedCompany}</span>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <p id="approve-role-label" className="text-sm font-medium">
               {m.users_approve_dialog_role_label()}

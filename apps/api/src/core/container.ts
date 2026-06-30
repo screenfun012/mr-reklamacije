@@ -14,6 +14,7 @@ import { AuditLogRepository, AuditLogService, AuditService } from '../modules/au
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
+import { RegistrationService } from '../modules/registration/index.js'
 import { FaultsRepository } from './claims/faults.repository.js'
 import { MrRegistryRepository, MrRegistryService } from './mr-registry/index.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
@@ -67,6 +68,7 @@ export interface Container {
   customersService: CustomersService
   usersRepository: UsersRepository
   usersService: UsersService
+  registrationService: RegistrationService
   claimSourcesRepository: ClaimSourcesRepository
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
@@ -149,6 +151,8 @@ export function buildContainer(
     userSessions,
     userPassword,
   )
+
+  const registrationService = new RegistrationService(db, auth)
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
   const claimSourcesService = new ClaimSourcesService(
@@ -245,6 +249,7 @@ export function buildContainer(
     customersService,
     usersRepository,
     usersService,
+    registrationService,
     claimSourcesRepository,
     claimSourcesService,
     departmentsRepository,

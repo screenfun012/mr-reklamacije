@@ -27,6 +27,16 @@ const EnvSchema = z.object({
         .map((o) => o.trim())
         .filter(Boolean),
     ),
+  /** Origins allowed to call POST /api/registration (portal client self-registration). */
+  CLIENT_SIGNUP_ORIGINS: z
+    .string()
+    .default('http://localhost:3003')
+    .transform((s) =>
+      s
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ),
 
   // Database
   DATABASE_URL: z.string().min(1),

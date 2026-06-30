@@ -35,6 +35,9 @@ export const users = pgTable(
     emailVerified: boolean('email_verified').notNull().default(false),
     name: text('name').notNull(),
     image: text('image'),
+    // Free-text company name a client typed at portal self-registration; a hint the
+    // admin reads when linking the real customer at approval. Null for staff users.
+    requestedCompany: text('requested_company'),
     isActive: boolean('is_active').notNull().default(true),
     accountStatus: text('account_status')
       .notNull()

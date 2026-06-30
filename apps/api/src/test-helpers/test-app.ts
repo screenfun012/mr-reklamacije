@@ -10,6 +10,8 @@ import type { MRSessionUser } from '../core/auth/session-types.js'
 import { buildContainer, type Container } from '../core/container.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
+import { createSignupOriginGuard } from '../core/middleware/signup-origin-guard.js'
+import { registerRegistrationRoutes } from '../modules/registration/index.js'
 import { registerAttachmentsRoutes } from '../modules/attachments/index.js'
 import { registerAuditLogRoutes } from '../modules/audit/index.js'
 import { registerClaimReportsRoutes } from '../modules/claim-reports/index.js'
@@ -38,6 +40,7 @@ export function createTestEnv(databaseUrl: string): Env {
     API_BASE_URL: 'http://127.0.0.1:3000',
     PUBLIC_ORIGINS: ['http://127.0.0.1:5173'],
     SELF_SIGNUP_ORIGINS: ['http://127.0.0.1:3002'],
+    CLIENT_SIGNUP_ORIGINS: ['http://127.0.0.1:3003'],
     DATABASE_URL: databaseUrl,
     BETTER_AUTH_SECRET: 'test-secret-minimum-32-characters-long',
     BETTER_AUTH_URL: 'http://127.0.0.1:3000',
@@ -214,6 +217,19 @@ export function createUsersTestApp(
   })
 
   registerUsersRoutes(app, container)
+
+  return app
+}
+
+export function createRegistrationTestApp(container: Container): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  // Mirror the production middleware for this public route: the portal-origin
+  // guard runs before the handler (rate limiting is verified separately).
+  app.use('/api/registration', createSignupOriginGuard(container.env.CLIENT_SIGNUP_ORIGINS))
+
+  registerRegistrationRoutes(app, container)
 
   return app
 }

@@ -33,6 +33,8 @@ export const UserListItemSchema = z.object({
   accountStatus: z.enum(userAccountStatusValues),
   createdAt: z.string(),
   roles: z.array(z.string()),
+  /** Free-text company a client typed at portal registration; null for staff. */
+  requestedCompany: z.string().nullable(),
 })
 
 export type UserListItem = z.infer<typeof UserListItemSchema>
