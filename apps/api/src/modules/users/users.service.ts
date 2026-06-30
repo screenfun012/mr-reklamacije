@@ -1,6 +1,7 @@
 import {
   AuditAction,
   ResourceChangedKey,
+  SYSTEM_ROLE_CLIENT,
   UserAccountStatus,
   isProtectedSuperAdminEmail,
   type Permission,
@@ -86,9 +87,24 @@ export class UsersService {
       throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
     }
 
+    // Approving a client also links the user to customer(s); that is a separate,
+    // named capability (docs/13) — require it on top of the approval permission.
+    if (
+      input.status === UserAccountStatus.Approved &&
+      input.roleCode === SYSTEM_ROLE_CLIENT &&
+      !actor.permissions.includes('customers.link_users')
+    ) {
+      throw new ForbiddenError()
+    }
+
     const updated =
       input.status === UserAccountStatus.Approved
-        ? await this.repo.approvePendingUser(id, input.roleCode, actor.actorUserId)
+        ? await this.repo.approvePendingUser(
+            id,
+            input.roleCode,
+            actor.actorUserId,
+            input.customerIds,
+          )
         : await this.repo.updateAccountStatus(id, input.status)
 
     const auditChanges =
@@ -98,6 +114,9 @@ export class UsersService {
             after: {
               accountStatus: updated.accountStatus,
               roles: sortedRoles(updated.roles),
+              ...(input.roleCode === SYSTEM_ROLE_CLIENT
+                ? { linkedCustomerIds: [...input.customerIds].sort() }
+                : {}),
             },
           }
         : {

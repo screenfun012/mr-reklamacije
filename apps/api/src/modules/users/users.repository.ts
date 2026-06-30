@@ -1,11 +1,11 @@
-import { UserAccountStatus } from '@mr/shared'
+import { CustomerKind, SYSTEM_ROLE_CLIENT, UserAccountStatus } from '@mr/shared'
 import { and, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import { keysetBefore } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
-import { roles, userRoles, users } from './users.schema.js'
+import { customers, customerUsers, roles, userRoles, users } from './users.schema.js'
 import type { UserListItem, UserListResponse, UsersListQuery } from './users.validators.js'
 
 interface UserRow {
@@ -126,6 +126,7 @@ export class UsersRepository {
     id: string,
     roleCode: string,
     assignedBy: string,
+    customerIds: readonly string[],
   ): Promise<UserListItem> {
     return this.db.transaction(async (tx) => {
       const [userRow] = await tx
@@ -160,6 +161,31 @@ export class UsersRepository {
         throw new ValidationError('Izabrana uloga nije validna.')
       }
 
+      // Validate the linked customers BEFORE any write so an invalid customer
+      // rolls the whole approval back — the role is never assigned (atomicity).
+      const uniqueCustomerIds = [...new Set(customerIds)]
+      if (roleCode === SYSTEM_ROLE_CLIENT) {
+        if (uniqueCustomerIds.length === 0) {
+          throw new ValidationError('Klijent mora biti vezan za bar jednu firmu.')
+        }
+
+        const linkable = await tx
+          .select({ id: customers.id })
+          .from(customers)
+          .where(
+            and(
+              inArray(customers.id, uniqueCustomerIds),
+              eq(customers.kind, CustomerKind.EmotivePartner),
+              eq(customers.isActive, true),
+              isNull(customers.deletedAt),
+            ),
+          )
+
+        if (linkable.length !== uniqueCustomerIds.length) {
+          throw new ValidationError('Jedna ili više izabranih firmi nije validna.')
+        }
+      }
+
       await tx.delete(userRoles).where(eq(userRoles.userId, id))
 
       const [updated] = await tx
@@ -183,6 +209,16 @@ export class UsersRepository {
         roleId: roleRow.id,
         assignedBy,
       })
+
+      if (roleCode === SYSTEM_ROLE_CLIENT && uniqueCustomerIds.length > 0) {
+        await tx.insert(customerUsers).values(
+          uniqueCustomerIds.map((customerId) => ({
+            customerId,
+            userId: id,
+            assignedBy,
+          })),
+        )
+      }
 
       return mapUserRow(updated, [roleRow.code])
     })

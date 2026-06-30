@@ -2,10 +2,12 @@ import { schema } from '@mr/db'
 import {
   ADMIN_PERMISSIONS,
   AuditAction,
+  CustomerKind,
   ERROR_CODE,
   PROTECTED_SUPER_ADMIN_EMAIL_DEFAULT,
   ResourceChangedKey,
   SYSTEM_ROLE_ADMIN,
+  SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_OPERATOR,
   SYSTEM_ROLE_VIEWER,
   UserAccountStatus,
@@ -258,6 +260,40 @@ async function putUserRoles(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ roleCodes }),
   })
+}
+
+const CLIENT_APPROVE_PERMISSIONS = [...ADMIN_USER_PERMISSIONS, 'customers.link_users'] as const
+
+const LINKABLE_CUSTOMER_ID = '77777777-7777-4777-8777-777777777777'
+const MISSING_CUSTOMER_ID = '77777777-7777-4777-8777-7777777700ff'
+const PENDING_CLIENT_OK_ID = '22222222-2222-4222-8222-222222222231'
+const PENDING_CLIENT_NO_CUSTOMER_ID = '22222222-2222-4222-8222-222222222232'
+const PENDING_CLIENT_BAD_CUSTOMER_ID = '22222222-2222-4222-8222-222222222233'
+const PENDING_CLIENT_NO_PERM_ID = '22222222-2222-4222-8222-222222222234'
+const PENDING_OPERATOR_WITH_CUSTOMER_ID = '22222222-2222-4222-8222-222222222235'
+
+async function seedLinkableCustomer(db: TestDbContext['db']): Promise<void> {
+  await db
+    .insert(schema.customers)
+    .values({
+      id: LINKABLE_CUSTOMER_ID,
+      kind: CustomerKind.EmotivePartner,
+      name: 'Bosch GmbH',
+      isActive: true,
+    })
+    .onConflictDoNothing()
+}
+
+async function getAccountStatus(
+  db: TestDbContext['db'],
+  userId: string,
+): Promise<string | undefined> {
+  const [user] = await db
+    .select({ accountStatus: schema.users.accountStatus })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+
+  return user?.accountStatus
 }
 
 describe.sequential('Users module', () => {
@@ -517,7 +553,7 @@ describe.sequential('Users module', () => {
       await expect(
         container.usersService.updateAccountStatus(
           PENDING_ROLLBACK_ID,
-          { status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_OPERATOR },
+          { status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_OPERATOR, customerIds: [] },
           {
             actorUserId: TEST_USER_ID,
             actorIp: '127.0.0.1',
@@ -928,6 +964,199 @@ describe.sequential('Users module', () => {
 
       expect(await countSessionsForUser(ctx.db, RESET_PW_SESSION_USER_ID)).toBe(0)
       expect(await countSessionsForUser(ctx.db, RESET_PW_ACTOR_ID)).toBe(1)
+    })
+  })
+
+  describe('when approving as a client (portal access)', () => {
+    it('approves as client, links the customer atomically, audits the link, and emits SSE', async () => {
+      await seedLinkableCustomer(ctx.db)
+      await seedPendingUser(ctx.db, PENDING_CLIENT_OK_ID, 'client.ok@firma.rs', 'Client Ok')
+      // The approval commits via its nested transaction (shared connection), so a
+      // prior run can leave a committed customer_users row — clear it for idempotency.
+      await ctx.db
+        .delete(schema.customerUsers)
+        .where(eq(schema.customerUsers.userId, PENDING_CLIENT_OK_ID))
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await app.request(`/api/users/${PENDING_CLIENT_OK_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCode: SYSTEM_ROLE_CLIENT,
+          customerIds: [LINKABLE_CUSTOMER_ID],
+        }),
+      })
+
+      expect(response.status).toBe(200)
+
+      const updated = (await response.json()) as { accountStatus: string; roles: string[] }
+      expect(updated.accountStatus).toBe(UserAccountStatus.Approved)
+      expect(updated.roles).toEqual([SYSTEM_ROLE_CLIENT])
+
+      const links = await ctx.db
+        .select({ customerId: schema.customerUsers.customerId })
+        .from(schema.customerUsers)
+        .where(eq(schema.customerUsers.userId, PENDING_CLIENT_OK_ID))
+
+      expect(links.map((row) => row.customerId)).toEqual([LINKABLE_CUSTOMER_ID])
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, PENDING_CLIENT_OK_ID))
+
+      const approveAudit = auditRows.find(
+        (row) =>
+          row.changes !== null &&
+          typeof row.changes === 'object' &&
+          'after' in row.changes &&
+          Array.isArray(
+            (row.changes as { after?: { linkedCustomerIds?: string[] } }).after?.linkedCustomerIds,
+          ),
+      )
+      expect(approveAudit).toBeDefined()
+      expect(
+        (approveAudit?.changes as { after?: { linkedCustomerIds?: string[] } }).after
+          ?.linkedCustomerIds,
+      ).toEqual([LINKABLE_CUSTOMER_ID])
+
+      expect(eventBus.resourceEvents.map((event) => event.resource)).toContain(
+        ResourceChangedKey.Users,
+      )
+    })
+
+    it('returns 400 when approving a client without customerIds and leaves the user pending', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_CLIENT_NO_CUSTOMER_ID,
+        'client.nocust@firma.rs',
+        'Client NoCust',
+      )
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await app.request(
+        `/api/users/${PENDING_CLIENT_NO_CUSTOMER_ID}/account-status`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: UserAccountStatus.Approved,
+            roleCode: SYSTEM_ROLE_CLIENT,
+          }),
+        },
+      )
+
+      expect(response.status).toBe(400)
+      expect(await getAccountStatus(ctx.db, PENDING_CLIENT_NO_CUSTOMER_ID)).toBe(
+        UserAccountStatus.Pending,
+      )
+    })
+
+    it('returns 400 when approving a non-client role with customerIds', async () => {
+      await seedLinkableCustomer(ctx.db)
+      await seedPendingUser(
+        ctx.db,
+        PENDING_OPERATOR_WITH_CUSTOMER_ID,
+        'op.cust@firma.rs',
+        'Operator Cust',
+      )
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await app.request(
+        `/api/users/${PENDING_OPERATOR_WITH_CUSTOMER_ID}/account-status`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: UserAccountStatus.Approved,
+            roleCode: SYSTEM_ROLE_OPERATOR,
+            customerIds: [LINKABLE_CUSTOMER_ID],
+          }),
+        },
+      )
+
+      expect(response.status).toBe(400)
+    })
+
+    it('rejects with 400 when a linked customer is invalid (validated before any write)', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_CLIENT_BAD_CUSTOMER_ID,
+        'client.bad@firma.rs',
+        'Client Bad',
+      )
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await app.request(
+        `/api/users/${PENDING_CLIENT_BAD_CUSTOMER_ID}/account-status`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: UserAccountStatus.Approved,
+            roleCode: SYSTEM_ROLE_CLIENT,
+            customerIds: [MISSING_CUSTOMER_ID],
+          }),
+        },
+      )
+
+      // Customers are validated inside the approval transaction BEFORE any write,
+      // so an invalid customer aborts the whole approval — the role is never
+      // assigned and no link is created. Post-state cannot be asserted here: the
+      // repository transaction shares the per-test BEGIN/ROLLBACK connection, so
+      // its ROLLBACK also discards the test's own seed (same harness limitation as
+      // the "no partial update" rollback test above, which asserts only rejection).
+      expect(response.status).toBe(400)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.ValidationError)
+    })
+
+    it('returns 403 when the actor lacks customers.link_users and leaves the user pending', async () => {
+      await seedLinkableCustomer(ctx.db)
+      await seedPendingUser(
+        ctx.db,
+        PENDING_CLIENT_NO_PERM_ID,
+        'client.noperm@firma.rs',
+        'Client NoPerm',
+      )
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(`/api/users/${PENDING_CLIENT_NO_PERM_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCode: SYSTEM_ROLE_CLIENT,
+          customerIds: [LINKABLE_CUSTOMER_ID],
+        }),
+      })
+
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+      expect(await getAccountStatus(ctx.db, PENDING_CLIENT_NO_PERM_ID)).toBe(
+        UserAccountStatus.Pending,
+      )
     })
   })
 })

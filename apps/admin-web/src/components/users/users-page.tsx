@@ -1,5 +1,6 @@
 import {
   DEFAULT_APPROVE_REGISTRATION_ROLE,
+  SYSTEM_ROLE_CLIENT,
   UserAccountStatus,
   formatListDateTime,
   isProtectedSuperAdminEmail,
@@ -8,6 +9,7 @@ import {
   resetUserPassword,
   usersListOptions,
   usersListQueryKey,
+  type AccountApprovalRoleCode,
   type ApproveRegistrationRoleCode,
   type UserListItem,
 } from '@mr/shared'
@@ -107,6 +109,10 @@ function UsersTable({
               const isSelf = currentUserId !== undefined && user.id === currentUserId
               const canAct = showActions && !isSelf
               const canEditRoles = showRoleEdit && canEditUserRoles(user, currentUserId)
+              // A client's role is bound to a linked customer; the generic role
+              // editor cannot express that, so it is hidden for clients (they keep
+              // the password reset action). Client roles are managed via approval.
+              const isClient = user.roles.includes(SYSTEM_ROLE_CLIENT)
 
               return (
                 <tr key={user.id} className={dataTableRowHoverOnlyClassName}>
@@ -154,15 +160,17 @@ function UsersTable({
                           >
                             {m.users_reset_password_button()}
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={rolesEditDisabled}
-                            onClick={() => onEditRoles(user)}
-                          >
-                            {m.users_roles_edit_button()}
-                          </Button>
+                          {isClient ? null : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={rolesEditDisabled}
+                              onClick={() => onEditRoles(user)}
+                            >
+                              {m.users_roles_edit_button()}
+                            </Button>
+                          )}
                         </div>
                       ) : null}
                     </td>
@@ -194,15 +202,18 @@ export function UsersPageContent(): ReactElement {
       userId,
       status,
       roleCode,
+      customerIds,
     }: {
       userId: string
       status: typeof UserAccountStatus.Approved | typeof UserAccountStatus.Rejected
-      roleCode?: ApproveRegistrationRoleCode
+      roleCode?: AccountApprovalRoleCode
+      customerIds?: string[]
     }) =>
       status === UserAccountStatus.Approved
         ? patchUserAccountStatus(userId, {
             status,
             roleCode: roleCode ?? DEFAULT_APPROVE_REGISTRATION_ROLE,
+            customerIds: customerIds ?? [],
           })
         : patchUserAccountStatus(userId, { status }),
     onMutate: async ({ userId, status, roleCode }) => {
@@ -302,12 +313,14 @@ export function UsersPageContent(): ReactElement {
 
   const handleApproveConfirm = (
     user: UserListItem,
-    roleCode: ApproveRegistrationRoleCode,
+    roleCode: AccountApprovalRoleCode,
+    customerIds: string[],
   ): void => {
     statusMutation.mutate({
       userId: user.id,
       status: UserAccountStatus.Approved,
       roleCode,
+      customerIds,
     })
   }
 

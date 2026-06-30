@@ -63,13 +63,76 @@ describe('UserAccountStatusPatchInputSchema', () => {
     }
   })
 
-  it('accepts viewer role on approval', () => {
+  it('accepts viewer role on approval with empty customerIds', () => {
     const parsed = UserAccountStatusPatchInputSchema.parse({
       status: 'approved',
       roleCode: 'viewer',
     })
 
-    expect(parsed).toEqual({ status: UserAccountStatus.Approved, roleCode: 'viewer' })
+    expect(parsed).toEqual({
+      status: UserAccountStatus.Approved,
+      roleCode: 'viewer',
+      customerIds: [],
+    })
+  })
+
+  it('accepts client role with linked customerIds', () => {
+    const parsed = UserAccountStatusPatchInputSchema.parse({
+      status: 'approved',
+      roleCode: 'client',
+      customerIds: ['99999999-9999-4999-8999-999999999999'],
+    })
+
+    expect(parsed).toEqual({
+      status: UserAccountStatus.Approved,
+      roleCode: 'client',
+      customerIds: ['99999999-9999-4999-8999-999999999999'],
+    })
+  })
+
+  it('dedupes customerIds when approving a client', () => {
+    const parsed = UserAccountStatusPatchInputSchema.parse({
+      status: 'approved',
+      roleCode: 'client',
+      customerIds: [
+        '99999999-9999-4999-8999-999999999999',
+        '99999999-9999-4999-8999-999999999999',
+        '88888888-8888-4888-8888-888888888888',
+      ],
+    })
+
+    if (parsed.status === UserAccountStatus.Approved) {
+      expect(parsed.customerIds).toEqual([
+        '99999999-9999-4999-8999-999999999999',
+        '88888888-8888-4888-8888-888888888888',
+      ])
+    }
+  })
+
+  it('rejects client approval without customerIds', () => {
+    expect(() =>
+      UserAccountStatusPatchInputSchema.parse({ status: 'approved', roleCode: 'client' }),
+    ).toThrow(/customerIds is required when approving a client/)
+  })
+
+  it('rejects client approval with an empty customerIds list', () => {
+    expect(() =>
+      UserAccountStatusPatchInputSchema.parse({
+        status: 'approved',
+        roleCode: 'client',
+        customerIds: [],
+      }),
+    ).toThrow(/customerIds is required when approving a client/)
+  })
+
+  it('rejects customerIds for a non-client role', () => {
+    expect(() =>
+      UserAccountStatusPatchInputSchema.parse({
+        status: 'approved',
+        roleCode: 'operator',
+        customerIds: ['99999999-9999-4999-8999-999999999999'],
+      }),
+    ).toThrow(/customerIds is only allowed for the client role/)
   })
 
   it('rejects admin role on approval', () => {
@@ -82,6 +145,15 @@ describe('UserAccountStatusPatchInputSchema', () => {
     expect(() =>
       UserAccountStatusPatchInputSchema.parse({ status: 'rejected', roleCode: 'operator' }),
     ).toThrow(/roleCode is only allowed when approving/)
+  })
+
+  it('rejects customerIds on rejection', () => {
+    expect(() =>
+      UserAccountStatusPatchInputSchema.parse({
+        status: 'rejected',
+        customerIds: ['99999999-9999-4999-8999-999999999999'],
+      }),
+    ).toThrow(/customerIds is only allowed when approving/)
   })
 
   it('rejects pending as a patch target', () => {
