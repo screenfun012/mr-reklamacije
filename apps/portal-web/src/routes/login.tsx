@@ -15,6 +15,7 @@ import { authClient } from '~/lib/auth-client'
 
 const loginSearchSchema = z.object({
   reason: z.literal(LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE).optional(),
+  activated: z.boolean().optional(),
 })
 
 export const Route = createFileRoute('/login')({
@@ -33,7 +34,7 @@ type SignInData = { twoFactorRedirect?: boolean } | null | undefined
 
 function LoginComponent(): React.ReactElement {
   const navigate = useNavigate()
-  const { reason } = loginRoute.useSearch()
+  const { reason, activated } = loginRoute.useSearch()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
@@ -95,6 +96,14 @@ function LoginComponent(): React.ReactElement {
           </Heading>
         </CardHeader>
         <CardContent>
+          {activated === true ? (
+            <div
+              role="status"
+              className="mb-4 rounded-md border border-mr-success-subtle bg-mr-success-subtle/40 p-3 text-sm text-foreground"
+            >
+              {m.portal_login_activated()}
+            </div>
+          ) : null}
           {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (
             <div
               role="alert"

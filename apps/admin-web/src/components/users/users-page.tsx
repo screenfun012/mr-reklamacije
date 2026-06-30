@@ -6,6 +6,7 @@ import {
   isProtectedSuperAdminEmail,
   patchUserAccountStatus,
   patchUserRoles,
+  resendClientActivation,
   resetUserPassword,
   usersListOptions,
   usersListQueryKey,
@@ -49,12 +50,14 @@ function UsersTable({
   onReject,
   onEditRoles,
   onResetPassword,
+  onResendActivation,
   showActions,
   showRoleEdit,
   pending,
   actionsDisabled,
   rolesEditDisabled,
   passwordResetDisabled,
+  resendActivationDisabled,
 }: {
   items: readonly UserListItem[]
   currentUserId: string | undefined
@@ -62,12 +65,14 @@ function UsersTable({
   onReject: (user: UserListItem) => void
   onEditRoles: (user: UserListItem) => void
   onResetPassword: (user: UserListItem) => void
+  onResendActivation: (user: UserListItem) => void
   showActions: boolean
   showRoleEdit: boolean
   pending: boolean
   actionsDisabled: boolean
   rolesEditDisabled: boolean
   passwordResetDisabled: boolean
+  resendActivationDisabled: boolean
 }): ReactElement {
   if (items.length === 0) {
     return (
@@ -151,6 +156,17 @@ function UsersTable({
                         </div>
                       ) : canEditRoles ? (
                         <div className="flex justify-end gap-2">
+                          {isClient ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={resendActivationDisabled}
+                              onClick={() => onResendActivation(user)}
+                            >
+                              {m.users_resend_activation_button()}
+                            </Button>
+                          ) : null}
                           <Button
                             type="button"
                             size="sm"
@@ -303,6 +319,24 @@ export function UsersPageContent(): ReactElement {
     },
   })
 
+  const resendActivationMutation = useMutation({
+    mutationFn: ({ userId }: { userId: string }) => resendClientActivation(userId),
+    onError: () => {
+      toast.error(m.users_resend_activation_error())
+    },
+    onSuccess: (result) => {
+      if (result.sent) {
+        toast.success(m.users_resend_activation_success())
+      } else {
+        toast.warning(m.users_resend_activation_not_sent())
+      }
+    },
+  })
+
+  const handleResendActivation = (user: UserListItem): void => {
+    resendActivationMutation.mutate({ userId: user.id })
+  }
+
   const handleApproveClick = (user: UserListItem): void => {
     setApproveTarget(user)
   }
@@ -391,12 +425,14 @@ export function UsersPageContent(): ReactElement {
           onReject={handleReject}
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
+          onResendActivation={handleResendActivation}
           showActions
           showRoleEdit={false}
           pending
           actionsDisabled={statusMutation.isPending}
           rolesEditDisabled={rolesMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
+          resendActivationDisabled={resendActivationMutation.isPending}
         />
       </section>
 
@@ -411,12 +447,14 @@ export function UsersPageContent(): ReactElement {
           onReject={handleReject}
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
+          onResendActivation={handleResendActivation}
           showActions={false}
           showRoleEdit
           pending={false}
           actionsDisabled={statusMutation.isPending}
           rolesEditDisabled={rolesMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
+          resendActivationDisabled={resendActivationMutation.isPending}
         />
       </section>
     </div>
