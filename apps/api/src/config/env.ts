@@ -75,6 +75,11 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+
+  // Transactional email (Resend) for client activation. Both optional: when either
+  // is absent, email is disabled (NoOp) and the admin falls back to manual reset.
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional(),
 })
 
 export type Env = z.infer<typeof EnvSchema>

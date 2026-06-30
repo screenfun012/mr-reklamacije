@@ -97,7 +97,9 @@ export {
 export {
   patchUserAccountStatus,
   patchUserRoles,
+  resendClientActivation,
   resetUserPassword,
   usersListOptions,
   usersListQueryKey,
 } from './users.js'
+export { completeActivation } from './activation.js'

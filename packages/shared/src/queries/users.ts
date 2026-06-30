@@ -5,6 +5,7 @@ import { fetchNoContent } from '../api/fetch-no-content.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
 import type {
   UserAccountStatusPatchInput,
+  UserAccountStatusResult,
   UserListItem,
   UserPasswordResetInput,
   UserRolesReplaceInput,
@@ -27,11 +28,19 @@ export function usersListOptions() {
 export async function patchUserAccountStatus(
   userId: string,
   input: UserAccountStatusPatchInput,
-): Promise<UserListItem> {
-  return fetchJson<UserListItem>(`/api/users/${userId}/account-status`, {
+): Promise<UserAccountStatusResult> {
+  return fetchJson<UserAccountStatusResult>(`/api/users/${userId}/account-status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
+  })
+}
+
+/** Resend the activation email for an approved client (mints a fresh token). */
+export async function resendClientActivation(userId: string): Promise<{ sent: boolean }> {
+  return fetchJson<{ sent: boolean }>(`/api/users/${userId}/resend-activation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
   })
 }
 

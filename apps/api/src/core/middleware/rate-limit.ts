@@ -119,3 +119,9 @@ export const clientRegistrationRateLimiter = createRateLimiter({
   windowMs: 60 * 60_000,
   max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
 })
+
+/** Portal activation completion: 10 attempts per hour per IP (allows password retries). */
+export const activationRateLimiter = createRateLimiter({
+  windowMs: 60 * 60_000,
+  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 10,
+})

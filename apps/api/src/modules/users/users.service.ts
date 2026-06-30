@@ -15,12 +15,14 @@ import {
 } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { ClientActivationPort } from '../../core/ports/client-activation-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { UserPasswordPort } from '../../core/ports/user-password-port.js'
 import type { UserSessionsPort } from '../../core/ports/user-sessions-port.js'
 import type { UsersRepository } from './users.repository.js'
 import type {
   UserAccountStatusPatchInput,
+  UserAccountStatusResult,
   UserListItem,
   UserListResponse,
   UserPasswordResetInput,
@@ -46,6 +48,7 @@ export class UsersService {
     private readonly protectedSuperAdminEmail: string,
     private readonly userSessions: UserSessionsPort,
     private readonly userPassword: UserPasswordPort,
+    private readonly activation: ClientActivationPort,
   ) {}
 
   private async revokeTargetSessionsAfterRoleChange(
@@ -64,7 +67,7 @@ export class UsersService {
     id: string,
     input: UserAccountStatusPatchInput,
     actor: HttpActorContext & { permissions: readonly Permission[] },
-  ): Promise<UserListItem> {
+  ): Promise<UserAccountStatusResult> {
     if (id === actor.actorUserId) {
       throw new ForbiddenError('Ne možete menjati status sopstvenog naloga.')
     }
@@ -140,7 +143,58 @@ export class UsersService {
       await this.revokeTargetSessionsAfterRoleChange(id, actor.actorUserId)
     }
 
-    return updated
+    // Best-effort activation email (clients only). Runs AFTER the approval has
+    // committed and is audited — a failed send never breaks the approval.
+    let activationEmailSent: boolean | null = null
+    if (input.status === UserAccountStatus.Approved && input.roleCode === SYSTEM_ROLE_CLIENT) {
+      const activationUser = await this.repo.findActivationUserById(id)
+      if (activationUser !== null) {
+        activationEmailSent = await this.activation.sendActivationFor(activationUser)
+      }
+    }
+
+    return { ...updated, activationEmailSent }
+  }
+
+  /** Resend the activation email for an approved client (invalidates older tokens). */
+  async resendActivation(id: string, actor: HttpActorContext): Promise<{ sent: boolean }> {
+    const target = await this.repo.findAccountStatusById(id)
+    if (target === null) {
+      throw new NotFoundError('User', id)
+    }
+
+    if (isProtectedSuperAdminEmail(target.email, this.protectedSuperAdminEmail)) {
+      throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
+    }
+
+    if (!target.roles.includes(SYSTEM_ROLE_CLIENT)) {
+      throw new ValidationError('Aktivacioni link se šalje samo klijentima.')
+    }
+
+    if (target.accountStatus !== UserAccountStatus.Approved) {
+      throw new UnprocessableEntityError(
+        'Nalog mora biti odobren da bi se poslao aktivacioni link.',
+      )
+    }
+
+    const activationUser = await this.repo.findActivationUserById(id)
+    if (activationUser === null) {
+      throw new NotFoundError('User', id)
+    }
+
+    const sent = await this.activation.sendActivationFor(activationUser)
+
+    await this.audit.log({
+      entityType: 'user',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: actor.actorUserId,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
+      changes: { field: 'activation_email', action: 'resend', sent },
+    })
+
+    return { sent }
   }
 
   async replaceRoles(

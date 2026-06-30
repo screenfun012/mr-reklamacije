@@ -141,6 +141,13 @@
       "when": 1782822155850,
       "tag": "0019_sweet_viper",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1782851369737,
+      "tag": "0020_amusing_tarantula",
+      "breakpoints": true
     }
   ]
 }

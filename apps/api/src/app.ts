@@ -6,6 +6,7 @@ import { createSessionMiddleware } from './core/auth/session-middleware.js'
 import type { BetterAuthFullSession, MRSessionUser } from './core/auth/session-types.js'
 import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
 import {
+  activationRateLimiter,
   clientRegistrationRateLimiter,
   generalRateLimiter,
   loginRateLimiter,
@@ -19,6 +20,7 @@ import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
 import { registerCustomersRoutes } from './modules/customers/index.js'
 import { registerUsersRoutes } from './modules/users/index.js'
 import { registerRegistrationRoutes } from './modules/registration/index.js'
+import { registerActivationRoutes } from './modules/activation/index.js'
 import { registerDepartmentsRoutes } from './modules/departments/index.js'
 import { registerClaimsRoutes } from './modules/claims/index.js'
 import { registerDashboardRoutes } from './modules/dashboard/index.js'
@@ -55,6 +57,9 @@ function isPublicPath(path: string): boolean {
   if (path === '/api/registration') {
     return true
   }
+  if (path === '/api/activation') {
+    return true
+  }
   return false
 }
 
@@ -80,6 +85,8 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   app.use('/api/auth/sign-up/email', createSignupOriginGuard(container.env.SELF_SIGNUP_ORIGINS))
   app.use('/api/registration', clientRegistrationRateLimiter)
   app.use('/api/registration', createSignupOriginGuard(container.env.CLIENT_SIGNUP_ORIGINS))
+  app.use('/api/activation', activationRateLimiter)
+  app.use('/api/activation', createSignupOriginGuard(container.env.CLIENT_SIGNUP_ORIGINS))
   app.use('*', createSessionMiddleware(container.auth))
 
   app.use('*', async (c, next) => {
@@ -100,6 +107,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerCustomersRoutes(app, container)
   registerUsersRoutes(app, container)
   registerRegistrationRoutes(app, container)
+  registerActivationRoutes(app, container)
   registerAuditLogRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)

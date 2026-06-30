@@ -85,6 +85,7 @@ export * from './schemas/attachment.schema.js'
 export * from './schemas/claim-report.schema.js'
 export * from './schemas/user.schema.js'
 export * from './schemas/registration.schema.js'
+export * from './schemas/activation.schema.js'
 export * from './schemas/audit-log.schema.js'
 export * from './constants/audit.js'
 export {

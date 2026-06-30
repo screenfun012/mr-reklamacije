@@ -39,6 +39,17 @@ export const UserListItemSchema = z.object({
 
 export type UserListItem = z.infer<typeof UserListItemSchema>
 
+/**
+ * Account-status PATCH response: the user plus, when a client was just approved,
+ * whether the activation email was sent (`null` when not applicable). Superset of
+ * UserListItem so existing consumers keep working.
+ */
+export const UserAccountStatusResultSchema = UserListItemSchema.extend({
+  activationEmailSent: z.boolean().nullable(),
+})
+
+export type UserAccountStatusResult = z.infer<typeof UserAccountStatusResultSchema>
+
 export const UserListResponseSchema = ReferenceListResponseSchema(UserListItemSchema)
 
 export type UserListResponse = z.infer<typeof UserListResponseSchema>

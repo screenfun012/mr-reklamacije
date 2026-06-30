@@ -11,7 +11,9 @@ import { buildContainer, type Container } from '../core/container.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 import { createSignupOriginGuard } from '../core/middleware/signup-origin-guard.js'
+import type { EmailPort } from '../core/ports/email-port.js'
 import { registerRegistrationRoutes } from '../modules/registration/index.js'
+import { registerActivationRoutes } from '../modules/activation/index.js'
 import { registerAttachmentsRoutes } from '../modules/attachments/index.js'
 import { registerAuditLogRoutes } from '../modules/audit/index.js'
 import { registerClaimReportsRoutes } from '../modules/claim-reports/index.js'
@@ -234,6 +236,17 @@ export function createRegistrationTestApp(container: Container): Hono<{ Variable
   return app
 }
 
+export function createActivationTestApp(container: Container): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('/api/activation', createSignupOriginGuard(container.env.CLIENT_SIGNUP_ORIGINS))
+
+  registerActivationRoutes(app, container)
+
+  return app
+}
+
 export function createAuditLogTestApp(
   container: Container,
   user: MRSessionUser | null,
@@ -257,6 +270,7 @@ export function buildTestContainer(
   pool: Container['pool'],
   databaseUrl: string,
   eventBus?: EventBus,
+  emailPort?: EmailPort,
 ): Container {
-  return buildContainer(createTestEnv(databaseUrl), fakeLogger(), db, pool, eventBus)
+  return buildContainer(createTestEnv(databaseUrl), fakeLogger(), db, pool, eventBus, emailPort)
 }

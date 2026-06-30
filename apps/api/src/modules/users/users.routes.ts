@@ -25,6 +25,11 @@ export function registerUsersRoutes(
     requirePermission('users.reset_password'),
     controller.resetPassword,
   )
+  routes.post(
+    '/:id/resend-activation',
+    requirePermission('users.approve_registration'),
+    controller.resendActivation,
+  )
 
   app.route('/api/users', routes)
 }

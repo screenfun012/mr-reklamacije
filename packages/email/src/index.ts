@@ -1,0 +1,7 @@
+export {
+  createEmailSender,
+  createNoopEmailSender,
+  type EmailSender,
+  type EmailSenderConfig,
+  type SendEmailParams,
+} from './email-sender.js'

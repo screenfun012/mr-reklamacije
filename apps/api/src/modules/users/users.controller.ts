@@ -63,5 +63,17 @@ export function createUsersController(container: Container) {
 
       return c.body(null, 204)
     },
+
+    resendActivation: async (c: Context) => {
+      const user = c.get('user')
+      if (user === null) {
+        throw new UnauthorizedError()
+      }
+
+      const { id } = UserIdParamSchema.parse({ id: c.req.param('id') })
+      const result = await container.usersService.resendActivation(id, getActorContext(c, user))
+
+      return c.json(result)
+    },
   }
 }

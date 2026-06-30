@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm
 
 import type { ApiDatabase } from '../../core/database.js'
 import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import type { ActivatableUser } from '../../core/ports/client-activation-port.js'
 import { keysetBefore } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
 import { customers, customerUsers, roles, userRoles, users } from './users.schema.js'
@@ -94,6 +95,21 @@ export class UsersRepository {
     const roleCodesByUserId = await this.loadRoleCodesByUserIds([row.id])
 
     return mapUserRow(row, roleCodesByUserId.get(row.id) ?? [])
+  }
+
+  async findActivationUserById(id: string): Promise<ActivatableUser | null> {
+    const [row] = await this.db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        preferredLanguage: users.preferredLanguage,
+      })
+      .from(users)
+      .where(and(eq(users.id, id), isNull(users.deletedAt)))
+      .limit(1)
+
+    return row ?? null
   }
 
   async updateAccountStatus(

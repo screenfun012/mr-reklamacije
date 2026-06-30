@@ -15,6 +15,9 @@ import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-so
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
 import { RegistrationService } from '../modules/registration/index.js'
+import { ActivationRepository, ActivationService } from '../modules/activation/index.js'
+import type { EmailPort } from './ports/email-port.js'
+import { createEmailPort } from '../infrastructure/email/email-adapter.js'
 import { FaultsRepository } from './claims/faults.repository.js'
 import { MrRegistryRepository, MrRegistryService } from './mr-registry/index.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
@@ -69,6 +72,9 @@ export interface Container {
   usersRepository: UsersRepository
   usersService: UsersService
   registrationService: RegistrationService
+  emailPort: EmailPort
+  activationRepository: ActivationRepository
+  activationService: ActivationService
   claimSourcesRepository: ClaimSourcesRepository
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
@@ -105,6 +111,7 @@ export function buildContainer(
   db: NodePgDatabase<typeof schema>,
   pool: Pool,
   eventBus: EventBus = new InProcessEventBus(),
+  emailPort: EmailPort = createEmailPort(env),
 ): Container {
   const auth = createAuth(db, {
     trustedOrigins: env.PUBLIC_ORIGINS,
@@ -143,6 +150,17 @@ export function buildContainer(
   const usersRepository = new UsersRepository(db)
   const userSessions = createBetterAuthUserSessions(auth)
   const userPassword = createBetterAuthUserPassword(auth)
+
+  const activationRepository = new ActivationRepository(db)
+  const portalBaseUrl = env.CLIENT_SIGNUP_ORIGINS[0] ?? 'http://localhost:3003'
+  const activationService = new ActivationService(
+    activationRepository,
+    emailPort,
+    auth,
+    portalBaseUrl,
+    logger,
+  )
+
   const usersService = new UsersService(
     usersRepository,
     auditService,
@@ -150,6 +168,7 @@ export function buildContainer(
     resolveProtectedSuperAdminEmail(env.PROTECTED_SUPER_ADMIN_EMAIL),
     userSessions,
     userPassword,
+    activationService,
   )
 
   const registrationService = new RegistrationService(db, auth)
@@ -250,6 +269,9 @@ export function buildContainer(
     usersRepository,
     usersService,
     registrationService,
+    emailPort,
+    activationRepository,
+    activationService,
     claimSourcesRepository,
     claimSourcesService,
     departmentsRepository,
