@@ -48,11 +48,17 @@ const auditContext = {
   actorUserAgent: null,
 }
 
+// The rolling trend window is SQL-driven (CURRENT_DATE in statistics-claim-filter),
+// not JS-driven, so vi.setSystemTime cannot move it. Clamp claim dates to the first
+// of the current month so daysAgo(N) never spills into the previous month bucket
+// (which broke on days 1..N of a month). See CLAUDE.md §Testing time note.
 function daysAgo(days: number): Date {
+  const now = new Date()
   const date = new Date()
   date.setHours(12, 0, 0, 0)
   date.setDate(date.getDate() - days)
-  return date
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0)
+  return date < firstOfMonth ? firstOfMonth : date
 }
 
 function dateInYear(year: number, month: number, day: number): Date {
