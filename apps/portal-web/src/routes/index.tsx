@@ -1,35 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
-import { Link } from '@tanstack/react-router'
-
-import { PortalShell } from '~/components/layout/portal-shell'
 import { portalRequireRoles } from '~/lib/auth-guard'
-import { authClient } from '~/lib/auth-client'
 
+const requireClient = portalRequireRoles(['client', 'admin'])
+
+// The portal's real home is the claims list; "/" just guards the role and
+// forwards there. First-entry welcome is gated at login, not here.
 export const Route = createFileRoute('/')({
-  beforeLoad: portalRequireRoles(['client', 'admin']),
-  component: HomeComponent,
+  beforeLoad: async (ctx) => {
+    await requireClient(ctx)
+    throw redirect({ to: '/claims' })
+  },
 })
-
-function HomeComponent() {
-  const { data: session } = authClient.useSession()
-  const userName = session?.user?.name ?? session?.user?.email ?? ''
-
-  return (
-    <PortalShell>
-      <Card className="mx-auto w-full max-w-lg text-center shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">{m.dashboard_welcome({ userName })}</CardTitle>
-          <CardDescription className="text-base">{m.portal_dashboard_subtitle()}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link to="/claims">{m.portal_claims_title()}</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </PortalShell>
-  )
-}

@@ -15,6 +15,7 @@ import { Lock } from 'lucide-react'
 import { LanguageSwitcher } from '~/components/layout/language-switcher'
 import { LoginHero } from '~/features/auth/login-hero'
 import { authClient } from '~/lib/auth-client'
+import { hasSeenWelcome } from '~/lib/welcome-flag'
 
 const loginSearchSchema = z.object({
   reason: z.literal(LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE).optional(),
@@ -80,7 +81,8 @@ function LoginComponent(): React.ReactElement {
           return
         }
 
-        await navigate({ to: '/' })
+        // First entry gets the welcome; returning clients go straight to claims.
+        await navigate({ to: hasSeenWelcome() ? '/claims' : '/welcome' })
       } catch (err) {
         console.error('[login] unexpected error:', err)
         setAuthError(m.auth_login_error_generic())
