@@ -20,6 +20,7 @@ import { useLocale } from '~/lib/locale'
 export interface UserMenuProps {
   userName: string
   userEmail: string
+  company?: string | undefined
   onLogout: () => void
 }
 
@@ -38,9 +39,13 @@ function getInitials(name: string, email: string): string {
   return initials.toUpperCase()
 }
 
-export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
+export function UserMenu({ userName, userEmail, company, onLogout }: UserMenuProps) {
   const { locale, setLocale } = useLocale()
   const initials = getInitials(userName, userEmail)
+  const secondaryLine =
+    company !== undefined && company.length > 0
+      ? `${company} · ${m.portal_account_fleet()}`
+      : userEmail
 
   const handleLocaleChange = (value: string): void => {
     setLocale(value as Locale)
@@ -60,14 +65,14 @@ export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
         </div>
         <div className="hidden flex-col leading-tight sm:flex">
           <span className="text-sm font-medium">{userName}</span>
-          <span className="text-xs text-muted-foreground">{userEmail}</span>
+          <span className="text-xs text-muted-foreground">{secondaryLine}</span>
         </div>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="text-sm font-medium">{userName}</span>
-          <span className="text-xs font-normal text-muted-foreground">{userEmail}</span>
+          <span className="text-xs font-normal text-muted-foreground">{secondaryLine}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 

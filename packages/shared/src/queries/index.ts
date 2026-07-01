@@ -40,6 +40,8 @@ export {
 export {
   claimsListOptions,
   claimsListQueryKey,
+  CLIENT_CLAIMS_FETCH_PAGE_SIZE,
+  clientClaimsListOptions,
   normalizeClaimsListFilters,
   type ClaimsListFilters,
   type ClaimsListSort,

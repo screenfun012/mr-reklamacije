@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@mr/ui'
+import { Link } from '@tanstack/react-router'
 
 import { PortalShell } from '~/components/layout/portal-shell'
 import { portalRequireRoles } from '~/lib/auth-guard'
@@ -24,7 +25,9 @@ function HomeComponent() {
           <CardDescription className="text-base">{m.portal_dashboard_subtitle()}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{m.dashboard_coming_soon()}</p>
+          <Button asChild>
+            <Link to="/claims">{m.portal_claims_title()}</Link>
+          </Button>
         </CardContent>
       </Card>
     </PortalShell>

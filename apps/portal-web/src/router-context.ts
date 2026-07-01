@@ -1,3 +1,6 @@
 import type { AuthRouterContext } from '@mr/auth/route-guards'
+import type { QueryClient } from '@tanstack/react-query'
 
-export type PortalRouterContext = AuthRouterContext
+export interface PortalRouterContext extends AuthRouterContext {
+  queryClient: QueryClient
+}
