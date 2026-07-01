@@ -1,4 +1,12 @@
-import { ClaimKind, ClaimOutcome, ClaimSortBy, ClaimSortDir, normalizeName } from '@mr/shared'
+import { schema } from '@mr/db'
+import {
+  ClaimKind,
+  ClaimOutcome,
+  ClaimSortBy,
+  ClaimSortDir,
+  normalizeName,
+  SYSTEM_ROLE_CLIENT,
+} from '@mr/shared'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -7,11 +15,16 @@ import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import {
   ensureTestUser,
   getClaimSourceIdByCode,
+  getCustomerIdByName,
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
 import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
-import { buildTestContainer } from '../../../test-helpers/test-app.js'
+import {
+  buildTestContainer,
+  createClaimsTestApp,
+  testUser,
+} from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { ClaimsActor } from '../claims.types.js'
 import type { ClaimListQuery } from '../claims.validators.js'
@@ -346,6 +359,56 @@ describe('ClaimsService integration', () => {
       )
 
       expect(result.items.map((item) => item.id)).toEqual([datedId, nullClaimId])
+    })
+  })
+
+  describe('GET /api/claims — client whitelist (portal list endpoint)', () => {
+    it('strips handler/internal fields for a client and only returns their company', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const engineType = await createTestEngineType(container, `ENG-CLIENT-${Date.now()}`)
+      await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `UNIFIED-CLIENT-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'unified-client-wl',
+          employeeId: await getEmployeeIdByNormalizedName(
+            ctx.db,
+            normalizeName('Dejan Milovanović'),
+          ),
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          customerId: customerSelman,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const app = createClaimsTestApp(
+        container,
+        testUser(
+          ['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'],
+          TEST_USER_ID,
+          [SYSTEM_ROLE_CLIENT],
+        ),
+      )
+      const res = await app.request(`/api/claims?page=1&pageSize=50&customerId=${customerSelman}`)
+      expect(res.status).toBe(200)
+
+      const body = (await res.json()) as { items: Array<Record<string, unknown>> }
+      expect(body.items.length).toBeGreaterThan(0)
+      for (const item of body.items) {
+        for (const key of ['employeeName', 'employeeId', 'sourceId', 'customerId']) {
+          expect(key in item).toBe(false)
+        }
+        expect(item['kind']).toBe('emotive')
+      }
     })
   })
 })

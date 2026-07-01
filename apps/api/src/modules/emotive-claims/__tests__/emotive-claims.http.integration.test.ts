@@ -204,6 +204,39 @@ describe('EmotiveClaims HTTP', () => {
       expect(body.items.some((item) => item.id === visible.id)).toBe(true)
       expect(body.items.every((item) => item.customerId === customerSelman)).toBe(true)
     })
+
+    it('client list items are whitelisted — no handler (employeeName/employeeId)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      await createClaimViaHttp({
+        customerId: customerSelman,
+        mrNumber: 'HTTP-CLIENT-LIST/26',
+        warrantyReport: 'client-list-wl',
+      })
+
+      const app = createEmotiveClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, [SYSTEM_ROLE_CLIENT]),
+      )
+      const res = await app.request(
+        `/api/emotive-claims?page=1&pageSize=50&customerId=${customerSelman}&search=client-list-wl`,
+      )
+      expect(res.status).toBe(200)
+
+      const body = (await res.json()) as { items: Array<Record<string, unknown>> }
+      expect(body.items.length).toBeGreaterThan(0)
+      for (const item of body.items) {
+        for (const key of ['employeeName', 'employeeId', 'sourceId', 'customerId']) {
+          expect(key in item).toBe(false)
+        }
+        expect(item['kind']).toBe('emotive')
+        expect(item['outcome']).toBeTruthy()
+      }
+    })
   })
 
   describe('GET /api/emotive-claims/:id', () => {
@@ -231,7 +264,7 @@ describe('EmotiveClaims HTTP', () => {
       expect(body.internalNotes).toBe('Interna napomena za operatera')
     })
 
-    it('hides internalNotes for client role', async () => {
+    it('client detail is a strict whitelist — no faults (krivica), handler, or internal notes', async () => {
       const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
       await ctx.db
         .insert(schema.customerUsers)
@@ -242,10 +275,16 @@ describe('EmotiveClaims HTTP', () => {
         })
         .onConflictDoNothing()
 
+      const dejanId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
       const created = await createClaimViaHttp({
         customerId: customerSelman,
-        internalNotes: 'Ne sme da vidi klijent',
-        mrNumber: 'HTTP-CLIENT-NOTES/26',
+        internalNotes: 'TAJNA INTERNA BELESKA',
+        mrNumber: 'HTTP-CLIENT-WL/26',
+        warrantyReport: 'client-detail-wl',
+        faults: [{ faultType: 'employee', employeeId: dejanId, notes: 'TAJNA KRIVICA' }],
       })
 
       const app = createEmotiveClaimsTestApp(
@@ -255,8 +294,56 @@ describe('EmotiveClaims HTTP', () => {
       const res = await app.request(`/api/emotive-claims/${created.id}`)
       expect(res.status).toBe(200)
 
-      const body = (await res.json()) as Record<string, unknown>
-      expect('internalNotes' in body).toBe(false)
+      const text = await res.text()
+      const body = JSON.parse(text) as Record<string, unknown>
+
+      // Internal keys must be ABSENT (whitelist, not blacklist).
+      for (const key of [
+        'faults',
+        'employeeId',
+        'employeeName',
+        'internalNotes',
+        'updatedBy',
+        'updatedAt',
+        'sourceId',
+        'sourceCode',
+        'customerId',
+      ]) {
+        expect(key in body).toBe(false)
+      }
+
+      // Client-safe fields present.
+      expect(body['warrantyReport']).toBe('client-detail-wl')
+      expect(body['outcome']).toBe(ClaimOutcome.Pending)
+      expect(body['customerName']).toBeTruthy()
+      expect(body['kind']).toBe('emotive')
+
+      // Raw secret strings never appear anywhere in the payload.
+      expect(text).not.toContain('TAJNA KRIVICA')
+      expect(text).not.toContain('TAJNA INTERNA BELESKA')
+      expect(text).not.toContain('Dejan')
+    })
+
+    it('client gets 404 for another company’s claim (no cross-company leak)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const customerVitobello = await getCustomerIdByName(ctx.db, 'VITOBELLO')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      // Claim belongs to VITOBELLO — NOT the client's linked company.
+      const other = await createClaimViaHttp({
+        customerId: customerVitobello,
+        mrNumber: 'HTTP-OTHER-CO/26',
+      })
+
+      const app = createEmotiveClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, [SYSTEM_ROLE_CLIENT]),
+      )
+      const res = await app.request(`/api/emotive-claims/${other.id}`)
+      expect(res.status).toBe(404)
     })
   })
 

@@ -1,3 +1,4 @@
+import { SYSTEM_ROLE_CLIENT, toClientClaimListItem } from '@mr/shared'
 import type { Context } from 'hono'
 
 import type { Container } from '../../core/container.js'
@@ -21,12 +22,19 @@ function toActor(user: MRSessionUser): ClaimsActor {
   }
 }
 
+function isClientRole(user: MRSessionUser): boolean {
+  return user.roles.includes(SYSTEM_ROLE_CLIENT)
+}
+
 export function createClaimsController(container: Container) {
   return {
     list: async (c: Context) => {
       const user = requireUser(c)
       const query = ClaimListQuerySchema.parse(c.req.query())
       const result = await container.claimsService.list(query, toActor(user))
+      if (isClientRole(user)) {
+        return c.json({ ...result, items: result.items.map(toClientClaimListItem) })
+      }
       return c.json(result)
     },
   }

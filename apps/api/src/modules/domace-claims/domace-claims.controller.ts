@@ -1,4 +1,9 @@
-import { SYSTEM_ROLE_CLIENT } from '@mr/shared'
+import {
+  SYSTEM_ROLE_CLIENT,
+  toClientClaimDetail,
+  toClientClaimListItem,
+  type ClientClaimDetail,
+} from '@mr/shared'
 import type { Context } from 'hono'
 import { z } from 'zod'
 
@@ -31,14 +36,13 @@ function isClientRole(user: MRSessionUser): boolean {
 function serializeClaimDetail(
   detail: DomaceClaimDetail,
   user: MRSessionUser,
-): DomaceClaimDetail | Omit<DomaceClaimDetail, 'internalNotes'> {
+): DomaceClaimDetail | ClientClaimDetail {
   if (!isClientRole(user)) {
     return detail
   }
 
-  const { internalNotes, ...withoutInternalNotes } = detail
-  void internalNotes
-  return withoutInternalNotes
+  // Clients get a strict whitelist — no faults (krivica), no handler, no internal notes.
+  return toClientClaimDetail(detail)
 }
 
 function requireUser(c: Context): MRSessionUser {
@@ -55,6 +59,9 @@ export function createDomaceClaimsController(container: Container) {
       const user = requireUser(c)
       const query = DomaceClaimListQuerySchema.parse(c.req.query())
       const result = await container.domaceClaimsService.list(query, toActor(user))
+      if (isClientRole(user)) {
+        return c.json({ ...result, items: result.items.map(toClientClaimListItem) })
+      }
       return c.json(result)
     },
 
