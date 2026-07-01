@@ -122,7 +122,7 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows one overview save and a separate findings save on accepted claims', async () => {
+  it('shows overview, findings and inspection-report saves on accepted claims', async () => {
     renderDetail(makeClaim())
 
     expect(
@@ -131,10 +131,11 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
 
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
+    // Overview + findings + the new client-visible inspection report each save separately.
     await waitFor(() => {
       expect(
         screen.getAllByRole('button', { name: m.emotive_claims_detail_basic_save() }),
-      ).toHaveLength(2)
+      ).toHaveLength(3)
     })
   })
 

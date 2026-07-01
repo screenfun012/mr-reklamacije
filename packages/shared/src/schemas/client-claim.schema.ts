@@ -45,6 +45,8 @@ export type ClientClaimListItem = z.infer<typeof ClientClaimListItemSchema>
 
 export const ClientClaimDetailSchema = ClientClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
+  // Worker-written English summary intended for the client to read on screen.
+  inspectionReport: z.string().nullable(),
 })
 
 export type ClientClaimDetail = z.infer<typeof ClientClaimDetailSchema>
@@ -85,5 +87,6 @@ export function toClientClaimDetail(
   return {
     ...toClientClaimListItem(detail),
     engineTypeManufacturer: detail.engineTypeManufacturer,
+    inspectionReport: detail.inspectionReport,
   }
 }

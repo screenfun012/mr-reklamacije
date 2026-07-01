@@ -39,6 +39,7 @@ export const DomaceClaimCreateInputSchema = z
     dateOfFinish: z.coerce.date().optional(),
     totalAmount: z.number().nonnegative().optional(),
     internalNotes: z.string().trim().max(8000).optional(),
+    inspectionReport: z.string().trim().max(8000).optional(),
     faults: z.array(DomaceClaimFaultInputSchema).default([]),
   })
   .refine((value) => Boolean(value.mrNumber) || Boolean(value.customerName), {
@@ -61,6 +62,7 @@ export const DomaceClaimUpdateInputSchema = z
     claimNumber: z.string().trim().max(50).nullable().optional(),
     dateOfFinish: z.coerce.date().nullable().optional(),
     internalNotes: z.string().trim().max(8000).nullable().optional(),
+    inspectionReport: z.string().trim().max(8000).nullable().optional(),
     faults: z.array(DomaceClaimFaultInputSchema).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -131,6 +133,7 @@ export type DomaceClaimListItem = z.infer<typeof DomaceClaimListItemSchema>
 export const DomaceClaimDetailSchema = DomaceClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
   internalNotes: z.string().nullable(),
+  inspectionReport: z.string().nullable(),
   updatedBy: z.string().uuid().nullable(),
   updatedAt: z.string(),
   faults: z.array(DomaceClaimFaultItemSchema),

@@ -284,6 +284,7 @@ export class EmotiveClaimsRepository {
           customerId,
           claimNumber: input.claimNumber ?? null,
           internalNotes: input.internalNotes ?? null,
+          inspectionReport: input.inspectionReport ?? null,
           createdBy: actorId,
           updatedBy: actorId,
         })
@@ -458,6 +459,7 @@ export class EmotiveClaimsRepository {
         customerName: customers.name,
         createdAt: emotiveClaims.createdAt,
         internalNotes: emotiveClaims.internalNotes,
+        inspectionReport: emotiveClaims.inspectionReport,
         updatedBy: emotiveClaims.updatedBy,
         updatedAt: emotiveClaims.updatedAt,
       })
@@ -499,6 +501,7 @@ export class EmotiveClaimsRepository {
 
     const {
       internalNotes,
+      inspectionReport,
       updatedBy,
       updatedAt,
       engineTypeManufacturer,
@@ -513,6 +516,7 @@ export class EmotiveClaimsRepository {
       sourceCode,
       sourceName,
       internalNotes,
+      inspectionReport,
       updatedBy,
       updatedAt: formatTimestamp(updatedAt),
       faults: faults.map(mapFaultRow),
@@ -570,6 +574,9 @@ export class EmotiveClaimsRepository {
     }
     if (input.internalNotes !== undefined) {
       patch.internalNotes = input.internalNotes
+    }
+    if (input.inspectionReport !== undefined) {
+      patch.inspectionReport = input.inspectionReport
     }
 
     await this.db.transaction(async (tx) => {

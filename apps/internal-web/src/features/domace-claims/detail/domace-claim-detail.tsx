@@ -15,6 +15,7 @@ import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
 import { DomaceClaimFindingsSection } from './domace-claim-findings-section.js'
+import { DomaceClaimInspectionReportSection } from './domace-claim-inspection-report-section.js'
 import { DomaceClaimFaultsSection } from './domace-claim-faults-section.js'
 import { DomaceClaimOverviewEdit } from './domace-claim-overview-edit.js'
 import { DomaceClaimAttachmentsTab } from './domace-claim-attachments-tab.js'
@@ -105,6 +106,8 @@ export function DomaceClaimDetailView({
           )}
 
           <DomaceClaimFindingsSection claim={claim} canEdit={canEditFindings} />
+
+          <DomaceClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
 
           <p className="text-xs text-muted-foreground">
             {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}

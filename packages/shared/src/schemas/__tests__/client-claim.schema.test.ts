@@ -35,6 +35,7 @@ const fullDetail: EmotiveClaimDetail = {
   sourceCode: 'SELMAN',
   sourceName: 'Selman partner',
   internalNotes: 'TAJNA INTERNA BELESKA',
+  inspectionReport: 'Cylinder head inspected, within tolerance.',
   updatedBy: '77777777-7777-4777-8777-777777777777',
   updatedAt: '2026-04-18T10:00:00.000Z',
   faults: [
@@ -87,6 +88,8 @@ describe('toClientClaimDetail', () => {
 
     expect(ClientClaimDetailSchema.parse(detail)).toEqual(detail)
     expect(detail.engineTypeManufacturer).toBe('Bosch')
+    // Client-visible worker summary IS exposed (unlike internal notes / faults).
+    expect(detail.inspectionReport).toBe('Cylinder head inspected, within tolerance.')
 
     for (const key of LEAKY_KEYS) {
       expect(key in detail).toBe(false)

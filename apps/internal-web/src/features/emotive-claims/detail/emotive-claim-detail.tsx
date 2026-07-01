@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
 import { EmotiveClaimFindingsSection } from './emotive-claim-findings-section.js'
+import { EmotiveClaimInspectionReportSection } from './emotive-claim-inspection-report-section.js'
 import { EmotiveClaimFaultsSection } from './emotive-claim-faults-section.js'
 import { EmotiveClaimAttachmentsTab } from './emotive-claim-attachments-tab.js'
 import { EmotiveClaimReportTab } from './emotive-claim-report-tab.js'
@@ -95,6 +96,8 @@ export function EmotiveClaimDetailView({
           />
 
           <EmotiveClaimFindingsSection claim={claim} canEdit={canEditFindings} />
+
+          <EmotiveClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
 
           <p className="text-xs text-muted-foreground">
             {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}

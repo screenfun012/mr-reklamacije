@@ -49,6 +49,9 @@ export const emotiveClaims = pgTable(
     claimYear: integer('claim_year').notNull(),
     customerId: uuid('customer_id'),
     internalNotes: text('internal_notes'),
+    // Short worker-written English summary shown to the client on the portal
+    // (distinct from internal_notes and the rich claim_reports document).
+    inspectionReport: text('inspection_report'),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
@@ -211,6 +214,9 @@ export const domaceClaims = pgTable(
     claimYear: integer('claim_year').notNull(),
     totalAmount: decimal('total_amount', { precision: 14, scale: 2, mode: 'number' }),
     internalNotes: text('internal_notes'),
+    // Short worker-written English summary shown to the client on the portal
+    // (distinct from internal_notes and the rich claim_reports document).
+    inspectionReport: text('inspection_report'),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),

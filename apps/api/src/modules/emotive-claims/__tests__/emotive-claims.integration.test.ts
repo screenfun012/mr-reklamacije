@@ -203,6 +203,25 @@ describe('EmotiveClaimsService integration', () => {
       expect(created.customerId).toBe(customerId)
     })
 
+    it('stores and updates the client-visible inspection report', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ inspectionReport: 'Cylinder head within tolerance.' }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.inspectionReport).toBe('Cylinder head within tolerance.')
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Updated: valve seats re-cut.' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const detail = await container.emotiveClaimsService.findById(created.id, FULL_OPERATOR)
+      expect(detail.inspectionReport).toBe('Updated: valve seats re-cut.')
+    })
+
     it('stores engine_code when provided', async () => {
       const created = await container.emotiveClaimsService.create(
         await buildCreateInput({ engineCode: 'WW328394203' }),

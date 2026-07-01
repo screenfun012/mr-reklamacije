@@ -34,6 +34,7 @@ export const EmotiveClaimCreateInputSchema = z.object({
   dateOfFinish: z.coerce.date().optional(),
   customerId: z.string().uuid().optional(),
   internalNotes: z.string().trim().max(8000).optional(),
+  inspectionReport: z.string().trim().max(8000).optional(),
   faults: z.array(EmotiveClaimFaultInputSchema).default([]),
 })
 
@@ -53,6 +54,7 @@ export const EmotiveClaimUpdateInputSchema = z
     dateOfFinish: z.coerce.date().nullable().optional(),
     customerId: z.string().uuid().nullable().optional(),
     internalNotes: z.string().trim().max(8000).nullable().optional(),
+    inspectionReport: z.string().trim().max(8000).nullable().optional(),
     faults: z.array(EmotiveClaimFaultInputSchema).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -121,6 +123,7 @@ export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
   sourceCode: z.string().nullable(),
   sourceName: z.string().nullable(),
   internalNotes: z.string().nullable(),
+  inspectionReport: z.string().nullable(),
   updatedBy: z.string().uuid().nullable(),
   updatedAt: z.string(),
   faults: z.array(EmotiveClaimFaultItemSchema),

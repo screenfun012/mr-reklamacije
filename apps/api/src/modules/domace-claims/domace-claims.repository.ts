@@ -223,6 +223,7 @@ export class DomaceClaimsRepository {
           totalAmount: input.totalAmount ?? null,
           claimNumber: input.claimNumber ?? null,
           internalNotes: input.internalNotes ?? null,
+          inspectionReport: input.inspectionReport ?? null,
           createdBy: actorId,
           updatedBy: actorId,
         })
@@ -388,6 +389,7 @@ export class DomaceClaimsRepository {
         totalAmount: domaceClaims.totalAmount,
         createdAt: domaceClaims.createdAt,
         internalNotes: domaceClaims.internalNotes,
+        inspectionReport: domaceClaims.inspectionReport,
         updatedBy: domaceClaims.updatedBy,
         updatedAt: domaceClaims.updatedAt,
       })
@@ -421,12 +423,20 @@ export class DomaceClaimsRepository {
       .leftJoin(externalParties, eq(domaceClaimFaults.externalPartyId, externalParties.id))
       .where(eq(domaceClaimFaults.claimId, id))
 
-    const { internalNotes, updatedBy, updatedAt, engineTypeManufacturer, ...listFields } = row
+    const {
+      internalNotes,
+      inspectionReport,
+      updatedBy,
+      updatedAt,
+      engineTypeManufacturer,
+      ...listFields
+    } = row
 
     return {
       ...mapListItem(listFields),
       engineTypeManufacturer,
       internalNotes,
+      inspectionReport,
       updatedBy,
       updatedAt: formatTimestamp(updatedAt),
       faults: faults.map(mapFaultRow),
@@ -481,6 +491,9 @@ export class DomaceClaimsRepository {
     }
     if (input.internalNotes !== undefined) {
       patch.internalNotes = input.internalNotes
+    }
+    if (input.inspectionReport !== undefined) {
+      patch.inspectionReport = input.inspectionReport
     }
 
     await this.db.transaction(async (tx) => {
