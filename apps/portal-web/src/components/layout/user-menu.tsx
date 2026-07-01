@@ -13,10 +13,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@mr/ui'
-import { Globe, LogOut, Monitor, Moon, Sun } from 'lucide-react'
+import { Globe, LogOut } from 'lucide-react'
 
 import { useLocale } from '~/lib/locale'
-import { useTheme, type Theme } from '~/lib/theme'
 
 export interface UserMenuProps {
   userName: string
@@ -40,13 +39,8 @@ function getInitials(name: string, email: string): string {
 }
 
 export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
-  const { theme, resolvedTheme, setTheme } = useTheme()
   const { locale, setLocale } = useLocale()
   const initials = getInitials(userName, userEmail)
-
-  const handleThemeChange = (value: string): void => {
-    setTheme(value as Theme)
-  }
 
   const handleLocaleChange = (value: string): void => {
     setLocale(value as Locale)
@@ -75,33 +69,6 @@ export function UserMenu({ userName, userEmail, onLogout }: UserMenuProps) {
           <span className="text-sm font-medium">{userName}</span>
           <span className="text-xs font-normal text-muted-foreground">{userEmail}</span>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            {resolvedTheme === 'dark' ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />}
-            <span>{m.theme_label()}</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent className="w-44">
-              <DropdownMenuRadioGroup value={theme} onValueChange={handleThemeChange}>
-                <DropdownMenuRadioItem value="system">
-                  <Monitor aria-hidden="true" />
-                  <span>{m.theme_system()}</span>
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="light">
-                  <Sun aria-hidden="true" />
-                  <span>{m.theme_light()}</span>
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="dark">
-                  <Moon aria-hidden="true" />
-                  <span>{m.theme_dark()}</span>
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
-
         <DropdownMenuSeparator />
 
         <DropdownMenuSub>

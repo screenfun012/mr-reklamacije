@@ -4,7 +4,6 @@ import '@fontsource/jetbrains-mono/400.css'
 
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
 import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
-import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -31,11 +30,11 @@ export const Route = createRootRouteWithContext<PortalRouterContext>()({
 
 function RootDocument({ children }: { children: ReactNode }) {
   const { locale } = useLocale()
+  // Portal is dark-locked (client-facing industrial design) — no theme toggle.
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} className="dark" style={{ colorScheme: 'dark' }} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOTSTRAP_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body suppressHydrationWarning>
