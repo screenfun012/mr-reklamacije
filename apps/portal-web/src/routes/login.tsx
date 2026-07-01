@@ -9,8 +9,11 @@ import {
   loginAuthErrorMessage,
 } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
+import { Button, Input } from '@mr/ui'
+import { Lock } from 'lucide-react'
 
+import { LanguageSwitcher } from '~/components/layout/language-switcher'
+import { LoginHero } from '~/features/auth/login-hero'
 import { authClient } from '~/lib/auth-client'
 
 const loginSearchSchema = z.object({
@@ -88,18 +91,37 @@ function LoginComponent(): React.ReactElement {
   })
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <Heading level="h2" as="h1">
-            {m.auth_login_title_portal()}
-          </Heading>
-        </CardHeader>
-        <CardContent>
+    <main className="relative flex min-h-screen flex-col bg-mr-bg-base lg:flex-row">
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-6 py-5 lg:px-10">
+        <Link to="/login" className="flex items-center gap-2">
+          <img src="/mr-crest.png" alt="MR Engines" className="h-9 w-auto lg:h-11" />
+        </Link>
+        <LanguageSwitcher />
+      </div>
+
+      <LoginHero />
+
+      <div className="flex flex-1 items-center justify-center bg-mr-surface-form px-6 py-24 lg:border-l lg:border-border">
+        <div className="animate-mr-fade-up w-full max-w-[392px]">
+          <div className="mb-8 flex flex-col gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="mr-shear inline-block h-2.5 w-2.5 bg-primary" aria-hidden="true">
+                <span className="mr-shear-content sr-only">•</span>
+              </span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-mr-text-tertiary">
+                {m.portal_login_brand_tag()}
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {m.portal_login_form_title()}
+            </h1>
+            <p className="text-sm text-muted-foreground">{m.portal_login_form_subtitle()}</p>
+          </div>
+
           {activated === true ? (
             <div
               role="status"
-              className="mb-4 rounded-md border border-mr-success-subtle bg-mr-success-subtle/40 p-3 text-sm text-foreground"
+              className="mb-4 rounded-md border border-mr-status-accepted-border bg-mr-status-accepted-bg p-3 text-sm text-foreground"
             >
               {m.portal_login_activated()}
             </div>
@@ -107,11 +129,12 @@ function LoginComponent(): React.ReactElement {
           {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (
             <div
               role="alert"
-              className="mb-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground"
+              className="mb-4 rounded-md border border-border bg-mr-surface-raised p-3 text-sm text-foreground"
             >
               {m.auth_login_insufficient_role()}
             </div>
           ) : null}
+
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -123,14 +146,15 @@ function LoginComponent(): React.ReactElement {
             <form.Field
               name="email"
               children={(field) => (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="email" className="text-sm font-medium">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="email" className="text-sm font-medium text-mr-text-body">
                     {m.auth_login_email()}
                   </label>
                   <Input
                     id="email"
                     type="email"
                     autoComplete="email"
+                    className="h-[46px] bg-white/[0.04]"
                     value={field.state.value}
                     onChange={(e) => {
                       field.handleChange(e.target.value)
@@ -150,14 +174,15 @@ function LoginComponent(): React.ReactElement {
             <form.Field
               name="password"
               children={(field) => (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="password" className="text-sm font-medium">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="password" className="text-sm font-medium text-mr-text-body">
                     {m.auth_login_password()}
                   </label>
                   <Input
                     id="password"
                     type="password"
                     autoComplete="current-password"
+                    className="h-[46px] bg-white/[0.04]"
                     value={field.state.value}
                     onChange={(e) => {
                       field.handleChange(e.target.value)
@@ -175,24 +200,29 @@ function LoginComponent(): React.ReactElement {
             />
 
             {authError !== null && (
-              <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {authError}
               </div>
             )}
 
-            <Button type="submit" loading={isPending} className="w-full">
+            <Button type="submit" loading={isPending} className="h-12 w-full">
               {m.auth_login_submit()}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
               {m.portal_login_no_account()}{' '}
-              <Link to="/register" className="font-medium text-mr-info-strong hover:underline">
+              <Link to="/register" className="font-medium text-primary hover:underline">
                 {m.auth_login_register_link()}
               </Link>
             </p>
           </form>
-        </CardContent>
-      </Card>
+
+          <p className="mt-8 flex items-center justify-center gap-2 font-mono text-xs text-mr-text-tertiary">
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+            {m.portal_login_secure()}
+          </p>
+        </div>
+      </div>
     </main>
   )
 }
