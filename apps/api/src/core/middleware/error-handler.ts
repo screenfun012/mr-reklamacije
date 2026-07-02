@@ -33,8 +33,15 @@ export function registerGlobalErrorHandler<E extends Env>(app: Hono<E>, logger: 
     }
 
     if (err instanceof AppError) {
+      // `err` key → pino's error serializer, so a carried cause (the real
+      // underlying failure) lands in the log with its message + stack.
       logger.warn(
-        { code: err.code, status: err.status, message: err.message },
+        {
+          code: err.code,
+          status: err.status,
+          message: err.message,
+          ...(err.cause !== undefined ? { err: err.cause } : {}),
+        },
         'handled application error',
       )
 

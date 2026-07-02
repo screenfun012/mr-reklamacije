@@ -1,13 +1,34 @@
 import { CustomerKind, SYSTEM_ROLE_CLIENT, UserAccountStatus } from '@mr/shared'
-import { and, desc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm'
+import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { ActivatableUser } from '../../core/ports/client-activation-port.js'
-import { keysetBefore } from '../../core/utils/drizzle-keyset.js'
-import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
+import {
+  buildPaginatedSlice,
+  parseOptionalKeysetCursor,
+  type KeysetCursor,
+} from '../../core/utils/pagination.js'
 import { customers, customerUsers, roles, userRoles, users } from './users.schema.js'
 import type { UserListItem, UserListResponse, UsersListQuery } from './users.validators.js'
+
+/**
+ * Exact created_at as Postgres text — the keyset cursor value. Comparing text
+ * back via `::timestamptz` keeps full microsecond precision; a JS
+ * `Date.getTime()` cursor would emit `timestamptz < bigint`, which Postgres
+ * rejects (same pattern as audit-log.repository.ts).
+ */
+const createdAtCursorSql = sql<string>`${users.createdAt}::text`
+
+/** Keyset condition for ORDER BY created_at DESC, id DESC at full timestamp precision. */
+function keysetBeforeUsers(cursor: KeysetCursor | null): SQL | undefined {
+  if (cursor === null) {
+    return undefined
+  }
+
+  const primary = String(cursor.primary)
+  return sql`(${users.createdAt} < ${primary}::timestamptz OR (${users.createdAt} = ${primary}::timestamptz AND ${users.id} < ${cursor.id}))`
+}
 
 interface UserRow {
   id: string
@@ -55,20 +76,20 @@ export class UsersRepository {
       conditions.push(or(ilike(users.name, pattern), ilike(users.email, pattern))!)
     }
 
-    const keysetCondition = keysetBefore(users.createdAt, users.id, cursor)
+    const keysetCondition = keysetBeforeUsers(cursor)
     if (keysetCondition !== undefined) {
       conditions.push(keysetCondition)
     }
 
     const rows = await this.db
-      .select(userListColumns)
+      .select({ ...userListColumns, createdAtText: createdAtCursorSql })
       .from(users)
       .where(and(...conditions))
       .orderBy(desc(users.createdAt), desc(users.id))
       .limit(query.limit + 1)
 
     const page = buildPaginatedSlice(rows, query.limit, (row) => ({
-      primary: row.createdAt.getTime(),
+      primary: row.createdAtText,
       id: row.id,
     }))
 

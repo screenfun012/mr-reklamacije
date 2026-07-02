@@ -78,8 +78,8 @@ export class InternalError extends AppError {
 }
 
 export class ServiceUnavailableError extends AppError {
-  constructor(message = 'Servis trenutno nije dostupan') {
-    super(ERROR_CODE.ServiceUnavailable, 503, message)
+  constructor(message = 'Servis trenutno nije dostupan', options?: ErrorOptions) {
+    super(ERROR_CODE.ServiceUnavailable, 503, message, options)
     Object.setPrototypeOf(this, ServiceUnavailableError.prototype)
   }
 }

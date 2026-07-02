@@ -362,6 +362,40 @@ describe.sequential('Users module', () => {
       const response = await app.request('/api/users')
       expect(response.status).toBe(403)
     })
+
+    // Regression: the keyset cursor used to carry createdAt.getTime() (a number),
+    // producing `timestamptz < bigint` — Postgres rejected it and page 2 500-ed.
+    // The cursor now carries created_at::text compared via ::timestamptz.
+    it('paginates past the first page via the keyset cursor without overlap', async () => {
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const firstResponse = await app.request('/api/users?limit=2')
+      expect(firstResponse.status).toBe(200)
+      const firstPage = (await firstResponse.json()) as {
+        items: Array<{ id: string }>
+        nextCursor: string | null
+        hasMore: boolean
+      }
+      expect(firstPage.items).toHaveLength(2)
+      expect(firstPage.hasMore).toBe(true)
+      const nextCursor = firstPage.nextCursor
+      if (nextCursor === null) {
+        throw new Error('Expected a next cursor on the first page')
+      }
+
+      const secondResponse = await app.request(
+        `/api/users?limit=2&cursor=${encodeURIComponent(nextCursor)}`,
+      )
+      expect(secondResponse.status).toBe(200)
+      const secondPage = (await secondResponse.json()) as {
+        items: Array<{ id: string }>
+        nextCursor: string | null
+      }
+      expect(secondPage.items.length).toBeGreaterThan(0)
+
+      const firstIds = new Set(firstPage.items.map((item) => item.id))
+      expect(secondPage.items.some((item) => firstIds.has(item.id))).toBe(false)
+    })
   })
 
   describe('when updating account status', () => {

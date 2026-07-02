@@ -4,6 +4,7 @@ import type { MRSessionUser } from '../../core/auth/session-types.js'
 import type { Container } from '../../core/container.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import { getActorContext } from '../../core/http/actor-context.js'
+import { buildAttachmentContentDisposition } from '../../core/http/content-disposition.js'
 import { ExcelExportInputSchema } from './excel.validators.js'
 import type { ExcelActor } from './excel.types.js'
 
@@ -17,11 +18,6 @@ function requireUser(c: Context): MRSessionUser {
 
 function toActor(user: MRSessionUser): ExcelActor {
   return { id: user.id, permissions: user.permissions }
-}
-
-function buildAttachmentContentDisposition(fileName: string): string {
-  const encoded = encodeURIComponent(fileName)
-  return `attachment; filename="${fileName.replace(/"/g, '')}"; filename*=UTF-8''${encoded}`
 }
 
 export function createExcelController(container: Container): {

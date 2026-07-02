@@ -36,7 +36,9 @@ export async function renderClaimReportPdf(bodyHtml: string): Promise<Buffer> {
     } finally {
       await browser.close()
     }
-  } catch {
-    throw new ServiceUnavailableError(PDF_UNAVAILABLE_MESSAGE)
+  } catch (error) {
+    // Client gets the generic 503; the real failure (missing Chromium, render
+    // crash, …) travels as `cause` and is logged by the global error handler.
+    throw new ServiceUnavailableError(PDF_UNAVAILABLE_MESSAGE, { cause: error })
   }
 }
