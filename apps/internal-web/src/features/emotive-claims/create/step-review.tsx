@@ -6,13 +6,13 @@ import {
   type EmployeeListItem,
   type EngineManufacturerListItem,
   type ExternalPartyListItem,
+  formatFieldError,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Heading } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
 import { TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
-import { formatFieldError } from './format-field-error.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
 
 interface StepReviewProps {

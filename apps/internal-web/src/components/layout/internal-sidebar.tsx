@@ -2,6 +2,7 @@ import { MrEnginesLogo } from '@mr/ui'
 import { getRouteApi, Link } from '@tanstack/react-router'
 
 import { internalNavItems } from '~/config/navigation'
+import { useTheme } from '~/lib/theme'
 
 const rootRoute = getRouteApi('__root__')
 
@@ -15,6 +16,7 @@ function hasAnyPermission(
 
 export function InternalSidebar() {
   const { authSession } = rootRoute.useRouteContext()
+  const { resolvedTheme } = useTheme()
   const userPermissions = authSession?.user?.permissions ?? []
 
   const visibleItems = internalNavItems.filter((item) => {
@@ -30,7 +32,7 @@ export function InternalSidebar() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-5 border-b border-sidebar-border">
-        <MrEnginesLogo />
+        <MrEnginesLogo theme={resolvedTheme} />
       </div>
 
       <nav className="flex-1 p-2" aria-label="Main navigation">

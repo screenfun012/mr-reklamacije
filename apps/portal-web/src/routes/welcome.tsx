@@ -1,17 +1,52 @@
 import { m } from '@mr/i18n'
+import { clientClaimsListOptions } from '@mr/shared'
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 
+import { MaskedIcon } from '~/components/masked-icon'
+import { authClient } from '~/lib/auth-client'
 import { portalRequireRoles } from '~/lib/auth-guard'
 import { markWelcomeSeen } from '~/lib/welcome-flag'
 
 export const Route = createFileRoute('/welcome')({
   beforeLoad: portalRequireRoles(['client', 'admin']),
+  loader: async ({ context }) => {
+    // Prefetch (never throw) — the greeting falls back to the account name and
+    // this warms the dashboard cache for the very next navigation.
+    await context.queryClient.prefetchQuery(clientClaimsListOptions())
+  },
   component: WelcomeComponent,
 })
 
+function GlassCard({
+  index,
+  title,
+  body,
+  delay,
+}: {
+  index: string
+  title: string
+  body: string
+  delay: string
+}) {
+  return (
+    <div
+      className="mrp-fade-up-slow rounded-[14px] border border-white/[0.13] bg-[rgba(13,13,16,0.55)] px-5 py-[22px] backdrop-blur-[18px]"
+      style={{ animationDelay: delay }}
+    >
+      <span className="mb-3 block font-mono text-[11px] font-semibold text-[#ff4b52]">{index}</span>
+      <div className="mb-1.5 text-base font-bold">{title}</div>
+      <div className="text-[13.5px] leading-[1.5] text-white/65">{body}</div>
+    </div>
+  )
+}
+
 function WelcomeComponent() {
   const navigate = useNavigate()
+  const { data: session } = authClient.useSession()
+  const { data: claims } = useQuery(clientClaimsListOptions())
+
+  const company = claims?.items[0]?.customerName ?? session?.user.name ?? ''
 
   const handleEnter = (): void => {
     markWelcomeSeen()
@@ -19,64 +54,77 @@ function WelcomeComponent() {
   }
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-mr-bg-base px-6 text-center">
-      {/* top radial-red glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: 'radial-gradient(70% 55% at 50% 0%, rgba(237,28,36,0.16), transparent 60%)',
-        }}
+    <main className="relative flex min-h-screen items-center overflow-hidden bg-[#08080a] text-white">
+      <img
+        src="/portal/hero-misa.jpg"
+        alt=""
+        className="mrp-ken-burns absolute inset-0 size-full object-cover"
+        style={{ objectPosition: '75% 25%' }}
       />
-      {/* blueprint grid, radially masked */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-          maskImage: 'radial-gradient(90% 70% at 50% 30%, #000 25%, transparent 75%)',
-          WebkitMaskImage: 'radial-gradient(90% 70% at 50% 30%, #000 25%, transparent 75%)',
-        }}
-      />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,8,10,0.92)_0%,rgba(8,8,10,0.62)_52%,rgba(8,8,10,0.15)_100%)]" />
+      <span
+        className="absolute -bottom-[190px] -left-[190px] z-[1] size-[600px] text-white/[0.05]"
+        style={{ animation: 'mrpSpin 160s linear infinite' }}
+      >
+        <MaskedIcon name="cog" className="size-full" />
+      </span>
 
-      <div className="relative z-10 flex flex-col items-center gap-6">
+      <div className="relative z-[2] max-w-[880px] px-6 py-16 sm:px-[7vw]">
         <img
-          src="/mr-crest.png"
+          src="/portal/logo-white.png"
           alt="MR Engines"
-          className="animate-mr-fade-up h-[74px] w-auto"
-          style={{ animationDelay: '0ms' }}
+          className="mrp-fade-up-slow mb-11 h-auto w-[170px]"
+          style={{ animationDelay: '0.05s' }}
         />
-        <span
-          className="animate-mr-line h-[3px] w-[60px] bg-primary"
-          style={{ animationDelay: '250ms' }}
-          aria-hidden="true"
-        />
-        <h1
-          className="animate-mr-fade-up max-w-2xl text-[clamp(30px,4vw,42px)] font-extrabold tracking-[-0.02em] text-foreground"
-          style={{ animationDelay: '350ms' }}
+        <div
+          className="mrp-fade-up-slow mb-4 font-mono text-[11.5px] font-semibold tracking-[0.22em] text-[#ff4b52]"
+          style={{ animationDelay: '0.15s' }}
         >
-          {m.portal_welcome_title()}
+          {m.portal_welcome_eyebrow()}
+        </div>
+        <h1
+          className="mrp-fade-up-slow mb-4 text-[clamp(42px,4.6vw,62px)] font-extrabold leading-[1.05] tracking-[-0.02em]"
+          style={{ animationDelay: '0.25s' }}
+        >
+          {m.portal_welcome_hello({ company })}
         </h1>
         <p
-          className="animate-mr-fade-up max-w-xl text-[15px] leading-relaxed text-mr-text-body"
-          style={{ animationDelay: '550ms' }}
+          className="mrp-fade-up-slow mb-10 max-w-[540px] text-lg leading-[1.55] text-white/75"
+          style={{ animationDelay: '0.35s' }}
         >
-          {m.portal_welcome_subtitle()}
+          {m.portal_welcome_intro()}
         </p>
-        <div className="animate-mr-fade-up mt-2" style={{ animationDelay: '800ms' }}>
-          <button
-            type="button"
-            onClick={handleEnter}
-            className="mr-shear inline-flex items-center gap-2 bg-primary px-7 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-mr-brand-400"
-          >
-            <span className="mr-shear-content inline-flex items-center gap-2">
-              {m.portal_welcome_enter()}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </span>
-          </button>
+
+        <div className="mb-[42px] grid max-w-[780px] grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <GlassCard
+            index="01"
+            title={m.portal_welcome_card_1_title()}
+            body={m.portal_welcome_card_1_body()}
+            delay="0.45s"
+          />
+          <GlassCard
+            index="02"
+            title={m.portal_welcome_card_2_title()}
+            body={m.portal_welcome_card_2_body()}
+            delay="0.55s"
+          />
+          <GlassCard
+            index="03"
+            title={m.portal_welcome_card_3_title()}
+            body={m.portal_welcome_card_3_body()}
+            delay="0.65s"
+          />
         </div>
+
+        <button
+          type="button"
+          onClick={handleEnter}
+          className="mrp-fade-up-slow inline-flex h-[54px] cursor-pointer items-center gap-2.5 rounded-[10px] border-none bg-[#f2f2f3] px-[38px] font-sans text-[15px] font-bold uppercase tracking-[0.09em] text-[#101013] shadow-[0_16px_38px_rgba(0,0,0,0.4)] transition-[background,transform] duration-200 hover:-translate-y-px hover:bg-white"
+          style={{ animationDelay: '0.75s' }}
+        >
+          {m.portal_welcome_cta()}
+          <span className="font-normal">→</span>
+        </button>
       </div>
     </main>
   )

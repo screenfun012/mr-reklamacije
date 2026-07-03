@@ -1,5 +1,12 @@
 import { schema } from '@mr/db'
-import { ClaimKind, ClaimOutcome, claimDetailPath, normalizeName } from '@mr/shared'
+import {
+  ClaimKind,
+  ClaimOutcome,
+  ClientClaimPhase,
+  claimDetailPath,
+  normalizeName,
+  SYSTEM_ROLE_CLIENT,
+} from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -13,7 +20,11 @@ import {
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
 import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
-import { buildTestContainer } from '../../../test-helpers/test-app.js'
+import {
+  buildTestContainer,
+  createDashboardTestApp,
+  testUser,
+} from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { DashboardActor } from '../dashboard.types.js'
 
@@ -217,6 +228,196 @@ describe('DashboardService integration', () => {
       await expect(
         container.dashboardService.getSummary({ id: TEST_USER_ID, permissions: [] }),
       ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('rejects own-customer-only actors — the internal summary is GLOBAL data', async () => {
+      // Regression: a portal client (view_own_customer) must never read the
+      // internal dashboard (other customers' names/MR numbers leak through it).
+      await expect(
+        container.dashboardService.getSummary({
+          id: TEST_USER_ID,
+          permissions: ['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'],
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+  })
+
+  describe('client portal summary (/api/dashboard/client-summary)', () => {
+    // Shared integration DB: every test uses its OWN client user + fresh
+    // customer so counts are exact regardless of other suites/runs.
+    const CLIENT_PERMS = [
+      'emotive_claims.view_own_customer',
+      'domace_claims.view_own_customer',
+    ] as const
+
+    function uniqueMr(prefix: string): string {
+      return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}/26`
+    }
+
+    async function createLinkedCustomer(userId: string): Promise<string> {
+      const [customer] = await ctx.db
+        .insert(schema.customers)
+        .values({
+          kind: 'emotive_partner',
+          name: `DASH-CLIENT-${userId.slice(0, 8)}-${Date.now()}`,
+        })
+        .returning({ id: schema.customers.id })
+      if (customer === undefined) {
+        throw new Error('failed to insert test customer')
+      }
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customer.id, userId, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+      return customer.id
+    }
+
+    async function createEmotiveForCustomer(
+      mrNumber: string,
+      customerId: string,
+      employee: 'with_employee' | 'no_employee' = 'no_employee',
+    ): Promise<string> {
+      const engineType = await createTestEngineType(container, `ENG-CS-${Date.now()}-${mrNumber}`)
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: daysAgo(3),
+          mrNumber,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'Client summary test claim',
+          customerId,
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          faults: [],
+          ...(employee === 'with_employee'
+            ? {
+                employeeId: await getEmployeeIdByNormalizedName(
+                  ctx.db,
+                  normalizeName('Dejan Milovanović'),
+                ),
+              }
+            : {}),
+        },
+        {
+          id: TEST_USER_ID,
+          permissions: ['emotive_claims.view', 'emotive_claims.create', 'domace_claims.view'],
+        },
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('returns phase counts and a derived activity feed scoped to the linked customer', async () => {
+      const clientUserId = '99999999-9999-4999-8999-999999999999'
+      await ensureTestUser(ctx.db, clientUserId)
+      const myCustomer = await createLinkedCustomer(clientUserId)
+      const otherCustomer = await createLinkedCustomer(TEST_USER_ID)
+
+      const otherMr = uniqueMr('CS-OTHER')
+      const receivedId = await createEmotiveForCustomer(uniqueMr('CS-REC'), myCustomer)
+      const progressId = await createEmotiveForCustomer(
+        uniqueMr('CS-PROG'),
+        myCustomer,
+        'with_employee',
+      )
+      const resolvedId = await createEmotiveForCustomer(
+        uniqueMr('CS-DONE'),
+        myCustomer,
+        'with_employee',
+      )
+      await container.emotiveClaimsService.changeOutcome(
+        resolvedId,
+        { outcome: ClaimOutcome.Accepted },
+        {
+          id: TEST_USER_ID,
+          permissions: ['emotive_claims.view', 'emotive_claims.change_outcome'],
+        },
+        auditContext,
+      )
+      // Another customer's claim must be invisible in stats AND activity.
+      await createEmotiveForCustomer(otherMr, otherCustomer, 'with_employee')
+
+      const summary = await container.dashboardService.getClientSummary({
+        id: clientUserId,
+        permissions: [...CLIENT_PERMS],
+      })
+
+      expect(summary.stats).toEqual({ received: 1, inProgress: 1, resolved: 1, total: 3 })
+
+      const eventsFor = (id: string) =>
+        summary.activity.filter((item) => item.claimId === id).map((item) => item.event)
+      expect(eventsFor(receivedId)).toContain(ClientClaimPhase.Received)
+      expect(eventsFor(progressId)).toContain(ClientClaimPhase.Received)
+      expect(eventsFor(resolvedId)).toContain(ClientClaimPhase.Outcome)
+      const outcomeEvent = summary.activity.find(
+        (item) => item.claimId === resolvedId && item.event === ClientClaimPhase.Outcome,
+      )
+      expect(outcomeEvent?.outcome).toBe(ClaimOutcome.Accepted)
+      expect(summary.activity.some((item) => item.mrNumber === otherMr)).toBe(false)
+
+      // The projection must carry NO audit internals or claim internals.
+      const serialized = JSON.stringify(summary)
+      for (const forbidden of ['before', 'after', 'actorIp', 'actorUserAgent', 'changes']) {
+        expect(serialized).not.toContain(`"${forbidden}"`)
+      }
+    })
+
+    it('derives an in-progress event when a handler is assigned to a pending claim', async () => {
+      const clientUserId = '77777777-7777-4777-8777-777777777776'
+      await ensureTestUser(ctx.db, clientUserId)
+      const myCustomer = await createLinkedCustomer(clientUserId)
+      const claimId = await createEmotiveForCustomer(uniqueMr('CS-ASSIGN'), myCustomer)
+
+      await container.emotiveClaimsService.update(
+        claimId,
+        {
+          employeeId: await getEmployeeIdByNormalizedName(
+            ctx.db,
+            normalizeName('Dejan Milovanović'),
+          ),
+        },
+        { id: TEST_USER_ID, permissions: ['emotive_claims.view', 'emotive_claims.update'] },
+        auditContext,
+      )
+
+      const summary = await container.dashboardService.getClientSummary({
+        id: clientUserId,
+        permissions: [...CLIENT_PERMS],
+      })
+
+      expect(summary.stats.inProgress).toBe(1)
+      expect(
+        summary.activity.some(
+          (item) => item.claimId === claimId && item.event === ClientClaimPhase.InProgress,
+        ),
+      ).toBe(true)
+    })
+
+    it('returns zeroed stats and empty activity for a client with no linked customers', async () => {
+      const UNLINKED_USER_ID = '88888888-8888-4888-8888-888888888887'
+      await ensureTestUser(ctx.db, UNLINKED_USER_ID)
+
+      const summary = await container.dashboardService.getClientSummary({
+        id: UNLINKED_USER_ID,
+        permissions: [...CLIENT_PERMS],
+      })
+
+      expect(summary.stats).toEqual({ received: 0, inProgress: 0, resolved: 0, total: 0 })
+      expect(summary.activity).toEqual([])
+    })
+
+    it('gates the routes: client passes /client-summary but NOT the internal /summary', async () => {
+      const clientUserId = '66666666-6666-4666-8666-666666666665'
+      await ensureTestUser(ctx.db, clientUserId)
+      const app = createDashboardTestApp(
+        container,
+        testUser([...CLIENT_PERMS], clientUserId, [SYSTEM_ROLE_CLIENT]),
+      )
+
+      const clientSummaryRes = await app.request('/api/dashboard/client-summary')
+      expect(clientSummaryRes.status).toBe(200)
+
+      const internalSummaryRes = await app.request('/api/dashboard/summary')
+      expect(internalSummaryRes.status).toBe(403)
     })
   })
 

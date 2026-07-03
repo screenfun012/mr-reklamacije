@@ -17,7 +17,7 @@ import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
 import type { ReportImageReadPort } from '../../core/ports/report-image-read-port.js'
 import { renderClaimReportDocx } from './claim-report-export-docx.js'
-import { renderClaimReportPdf } from './claim-report-export-pdf.js'
+import { ClaimReportPdfRenderer } from './claim-report-export-pdf.js'
 import { hydrateClaimReportImages } from './hydrate-claim-report-images.js'
 import { ClaimReportsRepository } from './claim-reports.repository.js'
 import { sanitizeClaimReportHtml } from './sanitize-claim-report-html.js'
@@ -70,6 +70,7 @@ export class ClaimReportsService {
     private readonly claimContext: ClaimContextPort,
     private readonly reportImageRead: ReportImageReadPort,
     private readonly audit: AuditPort,
+    private readonly pdfRenderer: ClaimReportPdfRenderer,
     private readonly claimReportPdfEnabled: boolean,
   ) {}
 
@@ -162,14 +163,41 @@ export class ClaimReportsService {
     actor: ClaimReportsActor,
     auditContext: ClaimReportsAuditContext,
   ): Promise<ClaimReportExportResult> {
+    if (!actor.permissions.includes('claim_reports.export')) {
+      throw new ForbiddenError()
+    }
+
+    return this.renderPdfExport(query, actor, auditContext, 'internal')
+  }
+
+  /**
+   * Client-portal PDF export of the SAME claim report document. Gated at the
+   * route by `export.own_claims`; row-level access is enforced by
+   * `loadClaimContext` (→ 404 for a claim the client does not own), so this
+   * deliberately does NOT require the operator-only `claim_reports.export`.
+   */
+  async exportClientPdf(
+    query: ClaimReportQuery,
+    actor: ClaimReportsActor,
+    auditContext: ClaimReportsAuditContext,
+  ): Promise<ClaimReportExportResult> {
+    return this.renderPdfExport(query, actor, auditContext, 'client_portal')
+  }
+
+  private async renderPdfExport(
+    query: ClaimReportQuery,
+    actor: ClaimReportsActor,
+    auditContext: ClaimReportsAuditContext,
+    surface: 'internal' | 'client_portal',
+  ): Promise<ClaimReportExportResult> {
     if (!this.claimReportPdfEnabled) {
       throw new ServiceUnavailableError(
         'PDF izvoz trenutno nije dostupan. Koristite štampu iz pregleda izveštaja.',
       )
     }
 
-    const prepared = await this.prepareExportHtml(query, actor)
-    const buffer = await renderClaimReportPdf(prepared.html)
+    const prepared = await this.buildExportHtml(query, actor)
+    const buffer = await this.pdfRenderer.render(prepared.html)
 
     await this.audit.log({
       entityType: 'claim_report',
@@ -182,6 +210,7 @@ export class ClaimReportsService {
         claimKind: query.claimKind,
         claimId: query.claimId,
         format: 'pdf',
+        surface,
       },
     })
 
@@ -200,6 +229,16 @@ export class ClaimReportsService {
       throw new ForbiddenError()
     }
 
+    return this.buildExportHtml(query, actor)
+  }
+
+  // Builds the export-ready HTML (row-scope check + sanitize + inline images).
+  // No permission gate here — callers decide (operator export vs client export);
+  // `loadClaimContext` still enforces row-level ownership for whoever calls.
+  private async buildExportHtml(
+    query: ClaimReportQuery,
+    actor: ClaimReportsActor,
+  ): Promise<{ html: string; reportId: string }> {
     await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
 
     const existing = await this.repo.findByClaim(query)

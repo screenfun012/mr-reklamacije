@@ -102,6 +102,7 @@ describe('ClaimReportsService integration', () => {
   })
 
   afterEach(async () => {
+    await container.claimReportPdfRenderer.dispose()
     await ctx.cleanup()
   })
 
@@ -247,6 +248,7 @@ describe('ClaimReports HTTP integration', () => {
   })
 
   afterEach(async () => {
+    await container.claimReportPdfRenderer.dispose()
     await rm(container.env.UPLOAD_DIR, { recursive: true, force: true })
     await ctx.cleanup()
   })
@@ -441,6 +443,7 @@ describe('ClaimReports export integration', () => {
   })
 
   afterEach(async () => {
+    await container.claimReportPdfRenderer.dispose()
     await rm(container.env.UPLOAD_DIR, { recursive: true, force: true })
     await ctx.cleanup()
   })
@@ -566,6 +569,73 @@ describe('ClaimReports export integration', () => {
 
     const response = await app.request(
       `/api/claim-reports/export/pdf?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    if (response.status === 503) {
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.ServiceUnavailable)
+      return
+    }
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('application/pdf')
+    const buffer = Buffer.from(await response.arrayBuffer())
+    expect(buffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
+  })
+
+  // Distinct user ids so each case gets its own export-rate-limit bucket
+  // (the limiter is keyed by user.id and shared across the file at max 5/min).
+  it('returns 403 for client pdf export without export.own_claims', async () => {
+    // Has claim_reports.export but NOT export.own_claims → forbidden on the client route.
+    const app = createClaimReportsTestApp(
+      container,
+      testUser(['claim_reports.export', 'domace_claims.view'], 'client-export-403'),
+    )
+    const claimId = await createDomaceClaim(container)
+
+    const response = await app.request(
+      `/api/claim-reports/export/client/pdf?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    expect(response.status).toBe(403)
+  })
+
+  it('returns 404 for client pdf export when the report is empty', async () => {
+    const app = createClaimReportsTestApp(
+      container,
+      testUser(['export.own_claims', 'domace_claims.view'], 'client-export-404'),
+    )
+    const claimId = await createDomaceClaim(container)
+
+    const response = await app.request(
+      `/api/claim-reports/export/client/pdf?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it('exports the same report document via the client pdf route (export.own_claims)', async () => {
+    // Distinct, seeded user id: separate rate-limit bucket + valid FK for the export audit.
+    const clientUserId = '11111111-1111-4111-8111-111111111111'
+    await ensureTestUser(ctx.db, clientUserId)
+    const app = createClaimReportsTestApp(
+      container,
+      testUser(['export.own_claims', 'domace_claims.view'], clientUserId),
+    )
+    const claimId = await createDomaceClaim(container)
+
+    await container.claimReportsService.upsert(
+      { claimKind: ClaimKind.Domace, claimId },
+      SAMPLE_BODY,
+      {
+        id: TEST_USER_ID,
+        permissions: ['claim_reports.view', 'claim_reports.update', 'domace_claims.view'],
+      },
+      auditContext,
+    )
+
+    const response = await app.request(
+      `/api/claim-reports/export/client/pdf?claimKind=${ClaimKind.Domace}&claimId=${claimId}`,
     )
 
     if (response.status === 503) {

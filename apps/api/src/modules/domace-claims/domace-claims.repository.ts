@@ -289,8 +289,10 @@ export class DomaceClaimsRepository {
     }
 
     if (query.search !== undefined) {
+      // Must stay textually identical to idx_domace_claims_search_fts (and to
+      // the unified claims list search) so the GIN index actually serves it.
       conditions.push(
-        sql`to_tsvector('simple', coalesce(${domaceClaims.warrantyReport}, '') || ' ' || coalesce(${domaceClaims.customerName}, '')) @@ websearch_to_tsquery('simple', ${query.search})`,
+        sql`to_tsvector('simple', coalesce(${domaceClaims.warrantyReport}, '') || ' ' || coalesce(${domaceClaims.mrNumber}, '') || ' ' || coalesce(${domaceClaims.customerName}, '')) @@ websearch_to_tsquery('simple', ${query.search})`,
       )
     }
 

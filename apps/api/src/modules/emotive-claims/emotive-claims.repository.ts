@@ -350,8 +350,10 @@ export class EmotiveClaimsRepository {
     }
 
     if (query.search !== undefined) {
+      // Must stay textually identical to idx_emotive_claims_search_fts (and to
+      // the unified claims list search) so the GIN index actually serves it.
       conditions.push(
-        sql`to_tsvector('simple', ${emotiveClaims.warrantyReport}) @@ websearch_to_tsquery('simple', ${query.search})`,
+        sql`to_tsvector('simple', coalesce(${emotiveClaims.warrantyReport}, '') || ' ' || ${emotiveClaims.mrNumber}) @@ websearch_to_tsquery('simple', ${query.search})`,
       )
     }
 

@@ -49,6 +49,19 @@ export const ClaimOutcome = {
 
 export type ClaimOutcome = (typeof ClaimOutcome)[keyof typeof ClaimOutcome]
 
+/**
+ * The client portal collapses the claim lifecycle into exactly three phases
+ * (Received → In progress → Outcome). Internal statuses never ship to clients;
+ * the server derives the phase and sends only this value.
+ */
+export const ClientClaimPhase = {
+  Received: 'received',
+  InProgress: 'in_progress',
+  Outcome: 'outcome',
+} as const
+
+export type ClientClaimPhase = (typeof ClientClaimPhase)[keyof typeof ClientClaimPhase]
+
 export const FaultType = {
   Employee: 'employee',
   Department: 'department',

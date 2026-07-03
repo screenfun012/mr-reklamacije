@@ -13,9 +13,3 @@ export const KIND_ICON_CLASSES: Record<ClaimKindType, string> = {
   [ClaimKind.Domace]: 'text-mr-brand',
   [ClaimKind.Emotive]: 'text-mr-info',
 }
-
-/** @deprecated Dots replaced by Lucide icons in ClaimKindBadge. Kept for registry compatibility. */
-export const KIND_DOT_CLASSES: Record<ClaimKindType, string> = {
-  [ClaimKind.Domace]: 'bg-mr-brand',
-  [ClaimKind.Emotive]: 'bg-mr-info',
-}

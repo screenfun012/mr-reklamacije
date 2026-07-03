@@ -1,3 +1,4 @@
+import { formatFieldError } from '@mr/shared'
 import type { CustomerListItem, EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
@@ -15,7 +16,6 @@ import { EngineTypeSearchableSelectField } from '../../claims/engine-type-search
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
 import { SELECT_EMPTY_SENTINEL, TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
-import { formatFieldError } from './format-field-error.js'
 
 function manufacturerOptions(
   manufacturers: readonly EngineManufacturerListItem[],

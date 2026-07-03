@@ -57,3 +57,6 @@ tmp/
 # Local backup, not tracked
 files/mr-reklamacije-mvp-spec.zip
 mr-reklamacije-mvp-spec.zip
+
+# design handoff bundles — never commit binaries
+*.zip

@@ -2,10 +2,7 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
 import type { ClaimKind } from '../enums.js'
-import type {
-  AttachmentListResponse,
-  AttachmentSignedUrlResponse,
-} from '../schemas/attachment.schema.js'
+import type { AttachmentListResponse } from '../schemas/attachment.schema.js'
 import { attachmentKeys } from './attachment-keys.js'
 
 const ATTACHMENTS_LIST_STALE_MS = 30_000
@@ -31,6 +28,11 @@ export function buildAttachmentDownloadUrl(
   return `/api/attachments/${id}/download`
 }
 
-export async function fetchAttachmentSignedUrl(id: string): Promise<AttachmentSignedUrlResponse> {
-  return fetchJson<AttachmentSignedUrlResponse>(`/api/attachments/${id}/signed-url`)
+/**
+ * Grid-sized thumbnail (~400px JPEG, generated at upload). The server falls
+ * back to the original when no thumbnail exists (videos, HEIC), so this is
+ * always safe to use in photo grids.
+ */
+export function buildAttachmentThumbnailUrl(id: string): string {
+  return `/api/attachments/${id}/download?variant=thumbnail`
 }

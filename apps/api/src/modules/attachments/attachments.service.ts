@@ -10,6 +10,7 @@ import {
   detectAttachmentMimeType,
   extensionForMimeType,
   isImageAttachmentMimeType,
+  type AllowedAttachmentMimeType,
 } from '@mr/shared'
 import { createHash, randomUUID } from 'node:crypto'
 
@@ -34,6 +35,7 @@ import {
 } from '../../infrastructure/storage/storage.interface.js'
 import {
   generateImageThumbnail,
+  optimizeAttachmentImage,
   optimizeReportImage,
   readImageDimensions,
   shouldGenerateImageThumbnail,
@@ -54,6 +56,17 @@ import type {
 
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_PER_CLAIM_MB * 1024 * 1024
+
+/** Recompression can change the format (e.g. png → jpeg) — keep the display name honest. */
+function alignFileNameExtension(fileName: string, mimeType: AllowedAttachmentMimeType): string {
+  const extension = extensionForMimeType(mimeType)
+  if (fileName.toLowerCase().endsWith(`.${extension}`)) {
+    return fileName
+  }
+  const dotIndex = fileName.lastIndexOf('.')
+  const base = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName
+  return `${base}.${extension}`
+}
 
 export interface AttachmentUploadFileInput {
   readonly fileName: string
@@ -126,15 +139,22 @@ export class AttachmentsService {
     return buildSignedAttachmentUrl(this.apiBaseUrl, id, this.signingSecret)
   }
 
-  async getDownloadPayload(
+  /**
+   * Access-checked download metadata. `variant: 'thumbnail'` serves the
+   * pre-generated grid thumbnail (falls back to the original when none
+   * exists). The ETag derives from the stored content hash — content is
+   * immutable, so clients can revalidate with a body-less 304 instead of
+   * re-downloading photos on every view.
+   */
+  async getDownloadMeta(
     id: string,
     actor: AttachmentsActor,
-    disposition: 'inline' | 'attachment',
+    variant: 'original' | 'thumbnail',
   ): Promise<{
-    data: Buffer
+    storagePath: string
     mimeType: string
     fileName: string
-    disposition: 'inline' | 'attachment'
+    etag: string | null
   }> {
     await this.findById(id, actor)
     const row = await this.repo.findRawById(id)
@@ -142,20 +162,31 @@ export class AttachmentsService {
       throw new NotFoundError('Attachment', id)
     }
 
-    const data = await this.storage.read(row.storagePath)
+    const thumbnailPath = variant === 'thumbnail' ? row.thumbnailPath : null
     return {
-      data,
-      mimeType: row.mimeType,
+      storagePath: thumbnailPath ?? row.storagePath,
+      // Thumbnails are always generated as JPEG (see generateImageThumbnail).
+      mimeType: thumbnailPath !== null ? 'image/jpeg' : row.mimeType,
       fileName: row.fileName,
-      disposition,
+      etag:
+        row.contentSha256 === null
+          ? null
+          : `"${row.contentSha256}${thumbnailPath !== null ? '-thumb' : ''}"`,
     }
   }
 
-  async getRawDownloadByToken(
+  /** Streamed file body for a path previously resolved via getDownloadMeta/raw. */
+  async openDownloadStream(
+    storagePath: string,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; size: number }> {
+    return this.storage.readStream(storagePath)
+  }
+
+  async getRawDownloadMeta(
     id: string,
     expiresAtEpochSeconds: number,
     token: string,
-  ): Promise<{ data: Buffer; mimeType: string; fileName: string }> {
+  ): Promise<{ storagePath: string; mimeType: string; fileName: string }> {
     if (!verifySignedAttachmentToken(id, expiresAtEpochSeconds, token, this.signingSecret)) {
       throw new ForbiddenError('Invalid or expired signed URL')
     }
@@ -165,9 +196,8 @@ export class AttachmentsService {
       throw new NotFoundError('Attachment', id)
     }
 
-    const data = await this.storage.read(row.storagePath)
     return {
-      data,
+      storagePath: row.storagePath,
       mimeType: row.mimeType,
       fileName: row.fileName,
     }
@@ -199,18 +229,24 @@ export class AttachmentsService {
         throw new PayloadTooLargeError(`File exceeds ${MAX_FILE_SIZE_MB} MB limit`)
       }
 
-      if (runningTotalBytes + file.data.byteLength > MAX_TOTAL_SIZE_BYTES) {
-        throw new PayloadTooLargeError(
-          `Claim attachment total size exceeds ${MAX_TOTAL_SIZE_PER_CLAIM_MB} MB`,
-        )
-      }
-
       const detectedMime = detectAttachmentMimeType(new Uint8Array(file.data))
       if (detectedMime === null) {
         throw new UnsupportedMediaTypeError('Unsupported file type')
       }
 
-      const contentSha256 = createHash('sha256').update(file.data).digest('hex')
+      // Photos are recompressed before anything else (dedupe hash, storage,
+      // limits) so only the optimized bytes ever exist in the system.
+      const optimized = await optimizeAttachmentImage(file.data, detectedMime)
+      const storedData = optimized?.data ?? file.data
+      const storedMime = optimized?.mimeType ?? detectedMime
+
+      if (runningTotalBytes + storedData.byteLength > MAX_TOTAL_SIZE_BYTES) {
+        throw new PayloadTooLargeError(
+          `Claim attachment total size exceeds ${MAX_TOTAL_SIZE_PER_CLAIM_MB} MB`,
+        )
+      }
+
+      const contentSha256 = createHash('sha256').update(storedData).digest('hex')
       const existing = await this.repo.findByContentHash(
         input.claimKind,
         input.claimId,
@@ -224,7 +260,7 @@ export class AttachmentsService {
       }
 
       const attachmentId = randomUUID()
-      const extension = extensionForMimeType(detectedMime)
+      const extension = extensionForMimeType(storedMime)
       const storagePath = buildAttachmentStoragePath({
         claimKind: input.claimKind,
         claimYear: claim.claimYear,
@@ -235,26 +271,29 @@ export class AttachmentsService {
 
       await this.storage.upload({
         path: storagePath,
-        data: file.data,
-        mimeType: detectedMime,
+        data: storedData,
+        mimeType: storedMime,
       })
 
-      const dimensions = shouldGenerateImageThumbnail(detectedMime)
-        ? await readImageDimensions(file.data)
-        : null
+      const dimensions =
+        optimized !== null
+          ? { width: optimized.width, height: optimized.height }
+          : shouldGenerateImageThumbnail(storedMime)
+            ? await readImageDimensions(storedData)
+            : null
 
       const thumbnailPath =
-        dimensions !== null && shouldGenerateImageThumbnail(detectedMime)
-          ? await generateImageThumbnail(this.storage, storagePath, file.data)
+        dimensions !== null && shouldGenerateImageThumbnail(storedMime)
+          ? await generateImageThumbnail(this.storage, storagePath, storedData)
           : null
 
       const created = await this.repo.insert({
         claimKind: input.claimKind,
         claimId: input.claimId,
-        fileName: sanitizeUploadFileName(file.fileName),
+        fileName: alignFileNameExtension(sanitizeUploadFileName(file.fileName), storedMime),
         storagePath,
-        mimeType: detectedMime,
-        fileSizeBytes: file.data.byteLength,
+        mimeType: storedMime,
+        fileSizeBytes: storedData.byteLength,
         contentSha256,
         width: dimensions?.width ?? null,
         height: dimensions?.height ?? null,
@@ -266,7 +305,7 @@ export class AttachmentsService {
         uploadedBy: actor.id,
       })
 
-      runningTotalBytes += file.data.byteLength
+      runningTotalBytes += storedData.byteLength
 
       await this.audit.log({
         entityType: 'attachment',

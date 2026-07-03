@@ -116,9 +116,12 @@ export const emotiveClaims = pgTable(
     // (e.g., snowball extension with Serbian rules) in Docker image
     // and/or production DB. Current 'simple' config works everywhere
     // but lacks stemming (tražim != tražu).
-    index('idx_emotive_claims_warranty_report_fts').using(
+    // NOTE: this expression must stay TEXTUALLY identical to the search
+    // predicates in emotive-claims.repository.ts and claims.repository.ts —
+    // Postgres only uses an expression index when the expressions match.
+    index('idx_emotive_claims_search_fts').using(
       'gin',
-      sql`to_tsvector('simple', ${t.warrantyReport})`,
+      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || ${t.mrNumber})`,
     ),
   ],
 )
@@ -176,6 +179,8 @@ export const emotiveClaimFaults = pgTable(
     index('idx_emotive_claim_faults_claim_id').on(t.claimId),
     index('idx_emotive_claim_faults_employee_id').on(t.employeeId),
     index('idx_emotive_claim_faults_department_id').on(t.departmentId),
+    // external-parties usage counts + ON DELETE restrict checks scan this FK.
+    index('idx_emotive_claim_faults_external_party_id').on(t.externalPartyId),
   ],
 )
 
@@ -265,9 +270,11 @@ export const domaceClaims = pgTable(
     index('idx_domace_claims_manufacturer_id').on(t.manufacturerId),
     index('idx_domace_claims_manufacturer_id_claim_year').on(t.manufacturerId, t.claimYear),
     // Same `simple` FTS config as emotive_claims; Serbian stemmer TODO applies here too.
-    index('idx_domace_claims_warranty_customer_fts').using(
+    // NOTE: expression must stay TEXTUALLY identical to the search predicates
+    // in domace-claims.repository.ts and claims.repository.ts (index matching).
+    index('idx_domace_claims_search_fts').using(
       'gin',
-      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || coalesce(${t.customerName}, ''))`,
+      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || coalesce(${t.mrNumber}, '') || ' ' || coalesce(${t.customerName}, ''))`,
     ),
   ],
 )
@@ -325,6 +332,8 @@ export const domaceClaimFaults = pgTable(
     index('idx_domace_claim_faults_claim_id').on(t.claimId),
     index('idx_domace_claim_faults_employee_id').on(t.employeeId),
     index('idx_domace_claim_faults_department_id').on(t.departmentId),
+    // external-parties usage counts + ON DELETE restrict checks scan this FK.
+    index('idx_domace_claim_faults_external_party_id').on(t.externalPartyId),
   ],
 )
 

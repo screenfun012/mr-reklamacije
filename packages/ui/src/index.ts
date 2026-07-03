@@ -132,10 +132,6 @@ export type { AppShellProps } from './layouts/app-shell.types.js'
 export { MrEnginesLogo, type MrEnginesLogoProps } from './components/mr-engines-logo.js'
 export { RouteNotFound } from './components/route-not-found.js'
 export { ClaimKindBadge, type ClaimKindBadgeProps } from './components/claim-kind-badge.js'
-export {
-  ClaimDetailTabPlaceholder,
-  type ClaimDetailTabPlaceholderProps,
-} from './components/claim-detail-tab-placeholder.js'
 export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'
 export {
   BADGE_SHELL_CLASSES,

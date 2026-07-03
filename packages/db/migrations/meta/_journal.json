@@ -155,6 +155,13 @@
       "when": 1782946981925,
       "tag": "0021_organic_thor_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1783109503598,
+      "tag": "0022_elite_franklin_richards",
+      "breakpoints": true
     }
   ]
 }

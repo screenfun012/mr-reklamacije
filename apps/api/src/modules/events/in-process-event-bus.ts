@@ -38,6 +38,13 @@ function roleChannel(roleCode: string): string {
 export class InProcessEventBus implements EventBus {
   private readonly emitter = new EventEmitter()
 
+  constructor() {
+    // Every SSE connection adds a listener per role channel; Node's default
+    // cap of 10 would log MaxListenersExceededWarning at 11 concurrent
+    // same-role users. Listener cleanup is symmetric (see subscribeUser).
+    this.emitter.setMaxListeners(0)
+  }
+
   publishClaimCreated(payload: ClaimEventPayload): void {
     this.publishClaimEvent(ClaimEventType.Created, payload)
   }

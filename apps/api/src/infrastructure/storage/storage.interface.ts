@@ -20,6 +20,8 @@ export interface FileMetadata {
 export interface StorageService {
   upload(opts: UploadOpts): Promise<StoredFile>
   read(path: string): Promise<Buffer>
+  /** Streamed read for downloads — the file never sits fully on the heap. */
+  readStream(path: string): Promise<{ stream: ReadableStream<Uint8Array>; size: number }>
   delete(path: string): Promise<void>
   exists(path: string): Promise<boolean>
   getMetadata(path: string): Promise<FileMetadata>

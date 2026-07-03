@@ -21,6 +21,13 @@ export function registerClaimReportsRoutes(
   exportRoutes.use('*', claimReportExportRateLimiter)
   exportRoutes.get('/pdf', requirePermission('claim_reports.export'), controller.exportPdf)
   exportRoutes.get('/docx', requirePermission('claim_reports.export'), controller.exportDocx)
+  // Client portal: same report document, gated by own-claims export; row-level
+  // ownership is enforced in the service (404 for a claim the client doesn't own).
+  exportRoutes.get(
+    '/client/pdf',
+    requirePermission('export.own_claims'),
+    controller.exportClientPdf,
+  )
 
   app.route('/api/claim-reports/export', exportRoutes)
   app.route('/api/claim-reports', routes)

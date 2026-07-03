@@ -1,8 +1,11 @@
-import { ClaimKind, ClaimOutcome, type DashboardSummary } from '@mr/shared'
-import { sql, type SQL } from 'drizzle-orm'
+import { schema } from '@mr/db'
+import { ClaimKind, ClaimOutcome, type ClientPortalStats, type DashboardSummary } from '@mr/shared'
+import { eq, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import type { DashboardScope } from './dashboard.types.js'
+
+const { customerUsers } = schema
 
 const OVERDUE_DAYS_THRESHOLD = 7
 const LIST_LIMIT = 20
@@ -49,6 +52,11 @@ function activeDomaceWhere(alias: string): SQL {
 }
 
 function anchorDate(alias: string): SQL {
+  // emotive_claims.date_of_claim is NOT NULL — raw column keeps its index
+  // usable; domace genuinely needs the created_at fallback.
+  if (alias === 'ec') {
+    return sql`${sql.raw(alias)}.date_of_claim`
+  }
   return sql`COALESCE(${sql.raw(alias)}.date_of_claim, (${sql.raw(alias)}.created_at AT TIME ZONE 'UTC')::date)`
 }
 
@@ -62,8 +70,117 @@ function mapListRow(row: ListRow): DashboardSummary['overdue'][number] {
   }
 }
 
+interface ClientStatsRow extends Record<string, unknown> {
+  received: number | string
+  in_progress: number | string
+  resolved: number | string
+  total: number | string
+}
+
+export interface ClientClaimAuditRow {
+  claimId: string
+  mrNumber: string | null
+  claimNumber: string | null
+  action: string
+  changes: unknown
+  occurredAt: Date
+}
+
+interface ClientClaimAuditDbRow extends Record<string, unknown> {
+  claim_id: string
+  mr_number: string | null
+  claim_number: string | null
+  action: string
+  changes: unknown
+  // Raw execute() returns timestamptz as either Date or pg text form.
+  occurred_at: Date | string
+}
+
+/** `null` = unrestricted (internal full-view actor); a list = own-customer scope. */
+function clientCustomerFilter(customerIds: string[] | null): SQL {
+  if (customerIds === null) {
+    return sql`TRUE`
+  }
+  return sql`ec.customer_id IN (${sql.join(
+    customerIds.map((id) => sql`${id}`),
+    sql`, `,
+  )})`
+}
+
 export class DashboardRepository {
   constructor(private readonly db: ApiDatabase) {}
+
+  async getUserCustomerIds(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ customerId: customerUsers.customerId })
+      .from(customerUsers)
+      .where(eq(customerUsers.userId, userId))
+
+    return rows.map((row) => row.customerId)
+  }
+
+  /**
+   * Portal phase counts across all of the scope's EMOTIVE claims (clients have
+   * no domace claims). Mirrors `deriveClientClaimPhase`: pending without a
+   * handler = received, pending with a handler = in progress, resolved outcome
+   * = resolved. Archived claims are invisible to clients everywhere.
+   */
+  async getClientStats(customerIds: string[] | null): Promise<ClientPortalStats> {
+    const result = await this.db.execute<ClientStatsRow>(sql`
+      SELECT
+        count(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending} AND ec.employee_id IS NULL)::int AS received,
+        count(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending} AND ec.employee_id IS NOT NULL)::int AS in_progress,
+        count(*) FILTER (WHERE ec.outcome IN (${ClaimOutcome.Accepted}, ${ClaimOutcome.Rejected}))::int AS resolved,
+        count(*)::int AS total
+      FROM emotive_claims ec
+      WHERE ${activeEmotiveWhere('ec')} AND ${clientCustomerFilter(customerIds)}
+    `)
+
+    const row = result.rows[0]
+    return {
+      received: row === undefined ? 0 : toInt(row.received),
+      inProgress: row === undefined ? 0 : toInt(row.in_progress),
+      resolved: row === undefined ? 0 : toInt(row.resolved),
+      total: row === undefined ? 0 : toInt(row.total),
+    }
+  }
+
+  /**
+   * Recent audit rows for the scope's claims, newest first. Only the columns
+   * needed to DERIVE feed events leave this query; the service projects them
+   * down further — audit internals (actor, IP, diffs) never reach a client.
+   */
+  async getClientClaimAuditRows(
+    customerIds: string[] | null,
+    limit: number,
+  ): Promise<ClientClaimAuditRow[]> {
+    const result = await this.db.execute<ClientClaimAuditDbRow>(sql`
+      SELECT
+        al.entity_id AS claim_id,
+        ec.mr_number,
+        ec.claim_number,
+        al.action,
+        al.changes,
+        al.created_at AS occurred_at
+      FROM audit_log al
+      INNER JOIN emotive_claims ec ON ec.id = al.entity_id
+      WHERE al.entity_type = 'emotive_claim'
+        AND al.action IN ('create', 'update')
+        AND ${activeEmotiveWhere('ec')}
+        AND ${clientCustomerFilter(customerIds)}
+      ORDER BY al.created_at DESC
+      LIMIT ${limit}
+    `)
+
+    return result.rows.map((row) => ({
+      claimId: row.claim_id,
+      mrNumber: row.mr_number,
+      claimNumber: row.claim_number,
+      action: row.action,
+      changes: row.changes,
+      occurredAt: row.occurred_at instanceof Date ? row.occurred_at : new Date(row.occurred_at),
+    }))
+  }
 
   async getSummary(scope: DashboardScope): Promise<DashboardSummary> {
     const [statsBundle, overdue, recent, chart] = await Promise.all([

@@ -27,5 +27,11 @@ export function createDashboardController(container: Container) {
       const result = await container.dashboardService.getSummary(toActor(user))
       return c.json(result)
     },
+
+    clientSummary: async (c: Context) => {
+      const user = requireUser(c)
+      const result = await container.dashboardService.getClientSummary(toActor(user))
+      return c.json(result)
+    },
   }
 }

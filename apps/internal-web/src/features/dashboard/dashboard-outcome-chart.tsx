@@ -1,6 +1,6 @@
 import type { DashboardChartMonth } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@mr/ui'
+import { Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
 import {
   Bar,
   BarChart,
@@ -77,19 +77,6 @@ export function DashboardClaimsChart({ data }: DashboardClaimsChartProps) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-export function DashboardClaimsChartSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-48" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-72 w-full rounded-lg" />
       </CardContent>
     </Card>
   )

@@ -1,7 +1,5 @@
 import { Hono } from 'hono'
 
-import { CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
-
 import type { AppVariables } from '../../app.js'
 import { requirePermissions } from '../../core/auth/require-permissions.js'
 import type { Container } from '../../core/container.js'
@@ -14,7 +12,19 @@ export function registerDashboardRoutes(
   const controller = createDashboardController(container)
   const routes = new Hono<{ Variables: AppVariables }>()
 
-  routes.get('/summary', requirePermissions(...CLAIMS_LIST_VIEW_PERMISSIONS), controller.summary)
+  // Internal dashboard aggregates GLOBAL data — full view permissions only.
+  // `view_own_customer` (portal clients) must NOT pass; clients use the scoped
+  // /client-summary projection below.
+  routes.get(
+    '/summary',
+    requirePermissions('emotive_claims.view', 'domace_claims.view'),
+    controller.summary,
+  )
+  routes.get(
+    '/client-summary',
+    requirePermissions('emotive_claims.view', 'emotive_claims.view_own_customer'),
+    controller.clientSummary,
+  )
 
   app.route('/api/dashboard', routes)
 }

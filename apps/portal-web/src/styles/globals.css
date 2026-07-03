@@ -5,104 +5,100 @@
 @import '@mr/tailwind-preset';
 @import 'tw-animate-css';
 
+/**
+ * Portal design system v2 ("Precision Engineering", design_handoff_client_portal).
+ *
+ * Portal-scoped ONLY — never imported by admin-web / internal-web, so nothing
+ * here affects them or the shared @mr/tailwind-preset. The design ships its own
+ * complete two-theme token table (README §Theming); tokens are declared as
+ * `--mrp-*` CSS variables that flip with the `.light` class on <html>, and are
+ * exposed to Tailwind via `@theme inline` so utilities like `bg-mrp-surface`
+ * resolve through the live variable.
+ */
+
 @theme {
   --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
-/**
- * Portal design system (dark-locked, client-facing).
- *
- * Portal-scoped ONLY — this file is never imported by admin-web / internal-web,
- * so nothing here affects them or the shared @mr/tailwind-preset. We re-map a
- * handful of role tokens to the client-portal brandbook palette and add a few
- * portal-only tokens the shared preset doesn't have. Colors stay HEX/rgba to
- * match the existing token system (repo convention; the design ships exact hex).
- * Source: design_handoff_client_portal (README design tokens).
- */
-
-/* Portal-only tokens exposed as Tailwind utilities (bg-*, text-*, border-*). */
-@theme {
-  /* Surfaces / text the shared preset lacks */
-  --color-mr-bg-base: #141414; /* login / welcome full-screen base */
-  --color-mr-surface-form: #191a1c; /* login form panel */
-  --color-mr-border-strong: rgba(255, 255, 255, 0.12); /* inputs, dividers */
-  --color-mr-text-tertiary: #6e7075; /* labels, placeholders, mono captions */
-  --color-mr-text-body: #c9cacc; /* report body copy */
-
-  /* Status hues on dark (lighter text/icon variants + tints) */
-  --color-mr-status-accepted: #3dd693;
-  --color-mr-status-accepted-bg: rgba(31, 169, 113, 0.13);
-  --color-mr-status-accepted-border: rgba(31, 169, 113, 0.32);
-  --color-mr-status-progress: #f5a623;
-  --color-mr-status-progress-bg: rgba(245, 166, 35, 0.12);
-  --color-mr-status-progress-border: rgba(245, 166, 35, 0.32);
-  --color-mr-status-rejected: #f0625b;
-  --color-mr-status-rejected-bg: rgba(217, 45, 32, 0.13);
-  --color-mr-status-rejected-border: rgba(217, 45, 32, 0.36);
-
-  /* Elevated shadows */
-  --shadow-mr-card: 0 40px 100px -40px rgba(0, 0, 0, 0.9);
-  --shadow-mr-dropdown: 0 24px 56px -22px rgba(0, 0, 0, 0.85);
-}
-
-/* Smaller brand radius (buttons/inputs 4px, cards 6px via the preset scale). */
 :root {
-  --radius: 0.375rem;
+  /* Dark theme (default) — README token table, left column. */
+  --mrp-bg: #0b0b0d;
+  --mrp-surface: #131316;
+  --mrp-raised: #1a1a1f;
+  --mrp-border: rgba(255, 255, 255, 0.09);
+  --mrp-border2: rgba(255, 255, 255, 0.16);
+  --mrp-text: #f2f2f3;
+  --mrp-text2: #9c9da3;
+  --mrp-red: #ed1c24;
+  --mrp-redh: #ff4b52;
+  --mrp-grid: rgba(255, 255, 255, 0.033);
+  --mrp-hdr: rgba(11, 11, 13, 0.78);
+  --mrp-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --mrp-inbg: rgba(255, 255, 255, 0.045);
+  --mrp-gear: rgba(255, 255, 255, 0.05);
+  --mrp-btn: #f2f2f3;
+  --mrp-btnfg: #101013;
+  --mrp-btnhv: #ffffff;
+  --mrp-logoc: #ffffff;
 }
 
-/*
- * Override the shared dark role tokens with the portal palette. Declared after
- * `@import '@mr/tailwind-preset'`, so in the portal bundle these win; the preset
- * `--background`/`--card`/`--border` mappings resolve through these role vars.
- * Portal is dark-locked (html always has `.dark`).
- */
-.dark {
-  --mr-bg: #18191a; /* app shell (claims / detail) */
-  --mr-surface: #202123; /* cards, panels, inputs */
-  --mr-surface-raised: #25272a; /* card hover */
-  --mr-text-primary: #f5f5f5;
-  --mr-border: rgba(255, 255, 255, 0.07);
-  --mr-primary-active: #c8141b; /* brand.red.deep */
+.light {
+  /* Light theme — README token table, right column. */
+  --mrp-bg: #f4f4f5;
+  --mrp-surface: #ffffff;
+  --mrp-raised: #fafafa;
+  --mrp-border: rgba(20, 20, 25, 0.1);
+  --mrp-border2: rgba(20, 20, 25, 0.2);
+  --mrp-text: #17171a;
+  --mrp-text2: #5c5d63;
+  --mrp-redh: #c8141b;
+  --mrp-grid: rgba(20, 20, 25, 0.045);
+  --mrp-hdr: rgba(244, 244, 245, 0.82);
+  --mrp-shadow: 0 18px 44px rgba(20, 20, 25, 0.12);
+  --mrp-inbg: rgba(20, 20, 25, 0.03);
+  --mrp-gear: rgba(20, 20, 25, 0.05);
+  --mrp-btn: #17171a;
+  --mrp-btnfg: #ffffff;
+  --mrp-btnhv: #2b2b31;
+  --mrp-logoc: #ed1c24;
 }
 
-/* Signature 15° left shear (hero CTAs + eyebrow tick); content counter-shears. */
-@layer utilities {
-  .mr-shear {
-    transform: skewX(-15deg);
-  }
+@theme inline {
+  --color-mrp-bg: var(--mrp-bg);
+  --color-mrp-surface: var(--mrp-surface);
+  --color-mrp-raised: var(--mrp-raised);
+  --color-mrp-border: var(--mrp-border);
+  --color-mrp-border2: var(--mrp-border2);
+  --color-mrp-text: var(--mrp-text);
+  --color-mrp-text2: var(--mrp-text2);
+  --color-mrp-red: var(--mrp-red);
+  --color-mrp-redh: var(--mrp-redh);
+  --color-mrp-hdr: var(--mrp-hdr);
+  --color-mrp-inbg: var(--mrp-inbg);
+  --color-mrp-gear: var(--mrp-gear);
+  --color-mrp-btn: var(--mrp-btn);
+  --color-mrp-btnfg: var(--mrp-btnfg);
+  --color-mrp-btnhv: var(--mrp-btnhv);
+  --color-mrp-logoc: var(--mrp-logoc);
 
-  .mr-shear-content {
-    display: inline-block;
-    transform: skewX(15deg);
-  }
-
-  .animate-mr-fade-up {
-    animation: mrFadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-
-  .animate-mr-fade-in {
-    animation: mrFadeIn 0.8s ease both;
-  }
-
-  .animate-mr-line {
-    transform-origin: left center;
-    animation: mrLine 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-
-  .mr-breathe {
-    animation: mrBreathe 9s ease-in-out infinite;
-  }
-
-  .mr-glow {
-    animation: mrGlow 1.7s ease-in-out infinite;
-  }
+  /* Status hues — identical in both themes (README). Brand red ≠ rejected red. */
+  --color-mrp-info: #2e90fa;
+  --color-mrp-info-bg: rgba(46, 144, 250, 0.13);
+  --color-mrp-warn: #f5a623;
+  --color-mrp-warn-bg: rgba(245, 166, 35, 0.13);
+  --color-mrp-ok: #1fa971;
+  --color-mrp-ok-bg: rgba(31, 169, 113, 0.13);
+  --color-mrp-bad: #e05c52;
+  --color-mrp-bad-bg: rgba(217, 45, 32, 0.13);
 }
 
-@keyframes mrFadeUp {
+/* ---------- Animations (README §Interactions — durations matter) ---------- */
+
+@keyframes mrpFadeUp {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(18px);
   }
 
   to {
@@ -111,7 +107,7 @@
   }
 }
 
-@keyframes mrFadeIn {
+@keyframes mrpFadeIn {
   from {
     opacity: 0;
   }
@@ -121,45 +117,138 @@
   }
 }
 
-@keyframes mrLine {
+@keyframes mrpKen {
   from {
-    transform: scaleX(0);
+    transform: scale(1.02);
   }
 
   to {
-    transform: scaleX(1);
+    transform: scale(1.09);
   }
 }
 
-@keyframes mrGlow {
-  0%,
+@keyframes mrpSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mrpMarquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes mrpRingWarn {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 9px rgba(245, 166, 35, 0);
+  }
+
   100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+  }
+}
+
+@keyframes mrpGrowW {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes mrpPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+
+  to {
     opacity: 1;
-  }
-
-  50% {
-    opacity: 0.4;
+    transform: translateY(0) scale(1);
   }
 }
 
-@keyframes mrBreathe {
-  0%,
-  100% {
-    opacity: 0.4;
+@layer utilities {
+  .mrp-fade-up {
+    animation: mrpFadeUp 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
 
-  50% {
-    opacity: 0.85;
+  .mrp-fade-up-slow {
+    animation: mrpFadeUp 0.6s ease both;
   }
+
+  .mrp-fade-in {
+    animation: mrpFadeIn 0.25s ease both;
+  }
+
+  .mrp-pop-in {
+    animation: mrpPopIn 0.55s ease both;
+  }
+
+  .mrp-ken-burns {
+    animation: mrpKen 28s ease-in-out infinite alternate;
+  }
+
+  .mrp-spin-cog {
+    animation: mrpSpin 5s linear infinite;
+  }
+
+  .mrp-ring-warn {
+    animation: mrpRingWarn 1.8s infinite;
+  }
+
+  .mrp-marquee-track {
+    animation: mrpMarquee 36s linear infinite;
+  }
+
+  /* Timeline fill grows to its target width once on mount. */
+  .mrp-grow-w {
+    animation: mrpGrowW 1.1s 0.3s both;
+  }
+
+  /* Blueprint grid — 1px lines every 56px, faded with a vertical mask. */
+  .mrp-grid-bg {
+    background-image:
+      linear-gradient(var(--mrp-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--mrp-grid) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .mrp-grid-fade-down {
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 55%);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 55%);
+  }
+
+  .mrp-grid-fade-up {
+    mask-image: linear-gradient(180deg, transparent 20%, rgba(0, 0, 0, 0.8) 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 20%, rgba(0, 0, 0, 0.8) 100%);
+  }
+}
+
+.mrp-input::placeholder {
+  color: currentColor;
+  opacity: 0.38;
+}
+
+.mrp-input:focus {
+  border-color: #ed1c24;
+  box-shadow: 0 0 0 3px rgba(237, 28, 36, 0.18);
 }
 
 /* Accessibility: honor reduced-motion — no looping/entry animations. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-mr-fade-up,
-  .animate-mr-fade-in,
-  .animate-mr-line,
-  .mr-breathe,
-  .mr-glow {
+  .mrp-fade-up,
+  .mrp-fade-up-slow,
+  .mrp-fade-in,
+  .mrp-pop-in,
+  .mrp-ken-burns,
+  .mrp-spin-cog,
+  .mrp-ring-warn,
+  .mrp-marquee-track,
+  .mrp-grow-w {
     animation: none !important;
   }
 }

@@ -34,13 +34,13 @@ describe('@mr/i18n messages', () => {
     expect(getLocale()).toBe('sr')
   })
 
-  it('returns portal-web auth title and subtitle per locale', () => {
+  it('returns portal-web login copy per locale', () => {
     setLocale('sr')
-    expect(m.auth_login_title_portal()).toBe('Prijava — Portal')
-    expect(m.portal_dashboard_subtitle()).toBe('Pregled vaših reklamacija')
+    expect(m.portal_login_title()).toBe('Prijava')
+    expect(m.portal_hero_title()).toBe('Vaš motor. Pod kontrolom.')
     setLocale('en')
-    expect(m.auth_login_title_portal()).toBe('Login — Portal')
-    expect(m.portal_dashboard_subtitle()).toBe('Overview of your claims')
+    expect(m.portal_login_title()).toBe('Sign in')
+    expect(m.portal_hero_title()).toBe('Your engine. Under control.')
   })
 
   it('returns internal-web nav labels per locale', () => {

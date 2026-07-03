@@ -60,6 +60,8 @@ import './claim-report-editor.scss'
 
 const REPORT_IMAGE_MAX_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 const REPORT_IMAGE_ACCEPT = ALLOWED_IMAGE_MIME_TYPES.join(',')
+// Full-document getJSON/getHTML runs at most once per quiet window, not per keystroke.
+const EDITOR_SERIALIZE_DEBOUNCE_MS = 300
 
 export interface ClaimReportEditorProps {
   initialContent: ClaimReportContentJson
@@ -178,6 +180,7 @@ export default function ClaimReportEditor({
   const { height } = useWindowSize()
   const [mobileView, setMobileView] = useState<'main' | 'highlighter' | 'link'>('main')
   const toolbarRef = useRef<HTMLDivElement>(null)
+  const serializeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleImageUpload = useCallback(
     async (
@@ -254,12 +257,48 @@ export default function ClaimReportEditor({
       },
     },
     onUpdate: ({ editor: activeEditor }) => {
-      onChange({
-        contentJson: activeEditor.getJSON() as ClaimReportContentJson,
-        contentHtml: activeEditor.getHTML(),
-      })
+      // getJSON + getHTML on a big report are too expensive per keystroke —
+      // serialize once per quiet window instead; blur/unmount flush below.
+      if (serializeTimerRef.current !== null) {
+        clearTimeout(serializeTimerRef.current)
+      }
+      serializeTimerRef.current = setTimeout(() => {
+        serializeTimerRef.current = null
+        onChange({
+          contentJson: activeEditor.getJSON() as ClaimReportContentJson,
+          contentHtml: activeEditor.getHTML(),
+        })
+      }, EDITOR_SERIALIZE_DEBOUNCE_MS)
     },
   })
+
+  useEffect(() => {
+    if (editor === null) {
+      return
+    }
+
+    // Flush a pending serialization immediately when typing stops via blur or
+    // when the editor unmounts (sheet closing) — no keystrokes may be lost.
+    const flushPendingChange = (): void => {
+      if (serializeTimerRef.current === null) {
+        return
+      }
+      clearTimeout(serializeTimerRef.current)
+      serializeTimerRef.current = null
+      if (!editor.isDestroyed) {
+        onChange({
+          contentJson: editor.getJSON() as ClaimReportContentJson,
+          contentHtml: editor.getHTML(),
+        })
+      }
+    }
+
+    editor.on('blur', flushPendingChange)
+    return () => {
+      editor.off('blur', flushPendingChange)
+      flushPendingChange()
+    }
+  }, [editor, onChange])
 
   useEffect(() => {
     if (editor === null) {
@@ -280,9 +319,13 @@ export default function ClaimReportEditor({
     }
   }, [isMobile, mobileView])
 
+  // Stable provider value — an inline object would re-render the whole
+  // toolbar tree on every keystroke.
+  const editorContextValue = useMemo(() => ({ editor }), [editor])
+
   return (
     <div className="claim-report-editor-wrapper" data-testid="claim-report-editor">
-      <EditorContext.Provider value={{ editor }}>
+      <EditorContext.Provider value={editorContextValue}>
         <Toolbar
           ref={toolbarRef}
           style={{

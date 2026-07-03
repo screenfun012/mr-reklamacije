@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { ClaimKind, ClaimOutcome } from '../../enums.js'
+import { ClaimKind, ClaimOutcome, ClientClaimPhase } from '../../enums.js'
 import type { EmotiveClaimDetail } from '../emotive-claim.schema.js'
 import {
   ClientClaimDetailSchema,
   ClientClaimListItemSchema,
+  deriveClientClaimPhase,
   toClientClaimDetail,
   toClientClaimListItem,
 } from '../client-claim.schema.js'
@@ -55,7 +56,6 @@ const fullDetail: EmotiveClaimDetail = {
 
 const LEAKY_KEYS = [
   'employeeId',
-  'employeeName',
   'faults',
   'internalNotes',
   'updatedBy',
@@ -67,6 +67,20 @@ const LEAKY_KEYS = [
   'sequenceNumber',
 ]
 
+describe('deriveClientClaimPhase', () => {
+  it('maps outcome + handler assignment onto the three portal phases', () => {
+    expect(deriveClientClaimPhase(ClaimOutcome.Pending, null)).toBe(ClientClaimPhase.Received)
+    expect(deriveClientClaimPhase(ClaimOutcome.Pending, fullDetail.employeeId)).toBe(
+      ClientClaimPhase.InProgress,
+    )
+    expect(deriveClientClaimPhase(ClaimOutcome.Accepted, null)).toBe(ClientClaimPhase.Outcome)
+    expect(deriveClientClaimPhase(ClaimOutcome.Rejected, fullDetail.employeeId)).toBe(
+      ClientClaimPhase.Outcome,
+    )
+    expect(deriveClientClaimPhase(ClaimOutcome.Archived, null)).toBe(ClientClaimPhase.Outcome)
+  })
+})
+
 describe('toClientClaimListItem', () => {
   it('keeps only client-safe fields', () => {
     const item = toClientClaimListItem(fullDetail)
@@ -75,21 +89,27 @@ describe('toClientClaimListItem', () => {
     expect(item.customerName).toBe('JONKER')
     expect(item.outcome).toBe(ClaimOutcome.Pending)
     expect(item.warrantyReport).toBe('Kvar na motoru')
+    // The phase ships instead of the signals behind it.
+    expect(item.progressPhase).toBe(ClientClaimPhase.InProgress)
 
-    for (const key of LEAKY_KEYS) {
+    for (const key of [...LEAKY_KEYS, 'employeeName']) {
       expect(key in item).toBe(false)
     }
   })
 })
 
 describe('toClientClaimDetail', () => {
-  it('strips faults, handler, internal notes — no secret value survives', () => {
+  it('strips faults, internal notes and ids — no secret value survives', () => {
     const detail = toClientClaimDetail(fullDetail)
 
     expect(ClientClaimDetailSchema.parse(detail)).toEqual(detail)
     expect(detail.engineTypeManufacturer).toBe('Bosch')
     // Client-visible worker summary IS exposed (unlike internal notes / faults).
     expect(detail.inspectionReport).toBe('Cylinder head inspected, within tolerance.')
+    // The assigned technician's NAME is a deliberate whitelist extension
+    // (approved 2026-07-03) — the employee id must still never leak.
+    expect(detail.employeeName).toBe('Dejan Milovanović')
+    expect(detail.progressPhase).toBe(ClientClaimPhase.InProgress)
 
     for (const key of LEAKY_KEYS) {
       expect(key in detail).toBe(false)
@@ -98,6 +118,7 @@ describe('toClientClaimDetail', () => {
     const serialized = JSON.stringify(detail)
     expect(serialized).not.toContain('TAJNA KRIVICA')
     expect(serialized).not.toContain('TAJNA INTERNA BELESKA')
-    expect(serialized).not.toContain('Dejan')
+    expect(serialized).not.toContain('44444444-4444-4444-8444-444444444444')
+    expect(serialized).not.toContain('SELMAN')
   })
 })

@@ -1,6 +1,7 @@
 import { schema } from '@mr/db'
 import {
   ClaimKind,
+  ClaimOutcome,
   type ClaimListItem,
   type DomaceClaimListItem,
   type EmotiveClaimListItem,
@@ -131,23 +132,24 @@ export class ClaimsRepository {
 
     const unionSql = sql.join(branches, sql` UNION ALL `)
     const offset = (query.page - 1) * query.pageSize
-
-    const countResult = await this.db.execute<{ total: number | string }>(sql`
-      SELECT count(*)::int AS total
-      FROM (${unionSql}) AS unified
-    `)
-
-    const total = toInt(countResult.rows[0]?.total ?? 0)
-
     const orderBy = buildClaimListOrderBy(query)
 
-    const listResult = await this.db.execute<UnifiedListRow>(sql`
-      SELECT *
-      FROM (${unionSql}) AS unified
-      ORDER BY ${orderBy}
-      LIMIT ${query.pageSize}
-      OFFSET ${offset}
-    `)
+    // Count + page run concurrently — same scan cost, half the latency.
+    const [countResult, listResult] = await Promise.all([
+      this.db.execute<{ total: number | string }>(sql`
+        SELECT count(*)::int AS total
+        FROM (${unionSql}) AS unified
+      `),
+      this.db.execute<UnifiedListRow>(sql`
+        SELECT *
+        FROM (${unionSql}) AS unified
+        ORDER BY ${orderBy}
+        LIMIT ${query.pageSize}
+        OFFSET ${offset}
+      `),
+    ])
+
+    const total = toInt(countResult.rows[0]?.total ?? 0)
 
     return {
       items: listResult.rows.map(mapUnifiedRow),
@@ -210,8 +212,15 @@ export class ClaimsRepository {
     }
 
     if (query.search !== undefined) {
+      // Local columns via the idx_emotive_claims_search_fts GIN expression
+      // (must match textually); customer name via an indexed semi-join —
+      // a cross-table tsvector could never use an index.
       conditions.push(
-        sql`to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || coalesce(ec.mr_number, '') || ' ' || coalesce(c.name, '')) @@ websearch_to_tsquery('simple', ${query.search})`,
+        sql`(to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || ec.mr_number) @@ websearch_to_tsquery('simple', ${query.search})
+          OR ec.customer_id IN (
+            SELECT id FROM customers
+            WHERE to_tsvector('simple', name) @@ websearch_to_tsquery('simple', ${query.search})
+          ))`,
       )
     }
 
@@ -222,6 +231,9 @@ export class ClaimsRepository {
           sql`, `,
         )})`,
       )
+      // Own-customer viewers (portal clients) never see archived claims —
+      // archiving is an internal housekeeping state, not a client outcome.
+      conditions.push(sql`ec.outcome <> ${ClaimOutcome.Archived}`)
     }
 
     const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : sql`TRUE`

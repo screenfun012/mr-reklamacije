@@ -4,6 +4,7 @@ import type { Container } from './core/container.js'
 import { requireAuth } from './core/auth/require-auth.js'
 import { createSessionMiddleware } from './core/auth/session-middleware.js'
 import type { BetterAuthFullSession, MRSessionUser } from './core/auth/session-types.js'
+import { requestBodyLimit } from './core/middleware/body-limit.js'
 import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
 import {
   activationRateLimiter,
@@ -79,6 +80,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
 
   registerGlobalErrorHandler(app, container.logger)
   app.use('*', createRequestLogger(container.logger))
+  app.use('*', requestBodyLimit)
   app.use('*', generalRateLimiter)
   app.use('/api/auth/sign-in/email', loginRateLimiter)
   app.use('/api/auth/sign-up/email', signupRateLimiter)

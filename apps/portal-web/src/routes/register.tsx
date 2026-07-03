@@ -1,195 +1,175 @@
 import { useState } from 'react'
 
+import { m } from '@mr/i18n'
+import { registerClient, formatFieldError } from '@mr/shared'
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { registerClient } from '@mr/shared'
-import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
+import { LangThemeControls } from '~/components/lang-theme-controls'
+import { PortalButton } from '~/components/portal-button'
+import { PortalFieldError, PortalInput, PortalLabel } from '~/components/portal-field'
+import { HeroPanel } from '~/features/auth/hero-panel'
 
 export const Route = createFileRoute('/register')({
   component: RegisterComponent,
 })
 
 const registerSchema = z.object({
-  name: z.string().min(1, m.portal_register_name_required()),
+  companyName: z.string().trim().min(1, m.portal_register_company_required()),
+  name: z.string().trim().min(1, m.portal_register_name_required()),
   email: z.email(m.field_email_invalid()),
-  companyName: z.string().min(1, m.portal_register_company_required()),
 })
 
+interface SignupField {
+  key: 'companyName' | 'name' | 'email'
+  label: string
+  type: string
+  autoComplete: string
+  placeholder?: string
+}
+
 function RegisterComponent(): React.ReactElement {
-  const [error, setError] = useState<string | null>(null)
-  const [isSuccess, setIsSuccess] = useState(false)
+  const navigate = useNavigate()
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
   const form = useForm({
-    defaultValues: { name: '', email: '', companyName: '' },
+    defaultValues: { companyName: '', name: '', email: '' },
     validators: {
       onChange: registerSchema,
       onSubmit: registerSchema,
     },
     onSubmit: async ({ value }) => {
-      setError(null)
+      setSubmitError(null)
       setIsPending(true)
-
       try {
         await registerClient({
           name: value.name.trim(),
           email: value.email.trim(),
           companyName: value.companyName.trim(),
         })
-        setIsSuccess(true)
+        await navigate({ to: '/pending' })
       } catch (err) {
         console.error('[register] unexpected error:', err)
-        setError(m.auth_register_error_generic())
+        setSubmitError(m.portal_activate_error_generic())
       } finally {
         setIsPending(false)
       }
     },
   })
 
+  // The account has no password at this stage BY DESIGN: it is set through the
+  // activation email after MR staff approve the request (see the pending screen).
+  const fields: SignupField[] = [
+    {
+      key: 'companyName',
+      label: m.portal_signup_company_label(),
+      type: 'text',
+      autoComplete: 'organization',
+      placeholder: 'Auto Servis d.o.o.',
+    },
+    {
+      key: 'name',
+      label: m.portal_signup_contact_label(),
+      type: 'text',
+      autoComplete: 'name',
+    },
+    {
+      key: 'email',
+      label: m.portal_login_email_label(),
+      type: 'email',
+      autoComplete: 'email',
+      placeholder: 'name@company.com',
+    },
+  ]
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <Heading level="h2" as="h1">
-            {m.auth_register_title()}
-          </Heading>
-          <p className="text-sm text-muted-foreground">{m.portal_register_subtitle()}</p>
-        </CardHeader>
-        <CardContent>
-          {isSuccess ? (
-            <div className="flex flex-col gap-4">
-              <div
-                role="status"
-                className="rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground"
-              >
-                {m.portal_register_success_pending()}
-              </div>
-              <Link to="/login" className="text-sm font-medium text-mr-info-strong hover:underline">
-                {m.auth_register_back_to_login()}
-              </Link>
+    <main className="flex min-h-screen bg-mrp-bg">
+      <HeroPanel variant="signup" />
+
+      <div className="relative grid min-h-screen flex-1 place-items-center overflow-hidden bg-mrp-bg px-6 py-12 lg:min-w-[460px] lg:px-10">
+        <div className="mrp-grid-bg absolute inset-0" />
+        <div className="absolute right-8 top-7 z-[3]">
+          <LangThemeControls />
+        </div>
+
+        <div
+          className="mrp-fade-up relative z-[2] w-full max-w-[396px]"
+          style={{ animationDelay: '0.1s' }}
+        >
+          <h1 className="mb-2 text-[30px] font-extrabold tracking-[-0.02em]">
+            {m.portal_signup_title()}
+          </h1>
+          <p className="mb-7 text-[15px] text-mrp-text2">{m.portal_signup_subtitle()}</p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void form.handleSubmit()
+            }}
+            noValidate
+          >
+            {fields.map((f) => (
+              <form.Field
+                key={f.key}
+                name={f.key}
+                children={(field) => (
+                  <div className="mb-4">
+                    <PortalLabel htmlFor={f.key}>{f.label}</PortalLabel>
+                    <PortalInput
+                      id={f.key}
+                      type={f.type}
+                      autoComplete={f.autoComplete}
+                      placeholder={f.placeholder}
+                      className="h-[46px] px-[15px] text-[15px]"
+                      value={field.state.value}
+                      onChange={(e) => {
+                        field.handleChange(e.target.value)
+                      }}
+                      onBlur={field.handleBlur}
+                      disabled={isPending}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <PortalFieldError>
+                        {formatFieldError(field.state.meta.errors[0])}
+                      </PortalFieldError>
+                    )}
+                  </div>
+                )}
+              />
+            ))}
+
+            <div className="mb-6 mt-0.5 flex gap-[11px] rounded-[10px] border border-[rgba(46,144,250,0.26)] bg-[rgba(46,144,250,0.09)] px-[15px] py-[13px]">
+              <span className="mt-[5px] size-2 flex-none rounded-full bg-mrp-info" />
+              <span className="text-[13.5px] leading-[1.5] text-mrp-text2">
+                {m.portal_signup_note()}
+              </span>
             </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                void form.handleSubmit()
-              }}
-              className="flex flex-col gap-4"
-              noValidate
-            >
-              <form.Field
-                name="name"
-                children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="name" className="text-sm font-medium">
-                      {m.portal_register_name_label()}
-                    </label>
-                    <Input
-                      id="name"
-                      type="text"
-                      autoComplete="name"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
 
-              <form.Field
-                name="email"
-                children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="email" className="text-sm font-medium">
-                      {m.auth_login_email()}
-                    </label>
-                    <Input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
-
-              <form.Field
-                name="companyName"
-                children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="companyName" className="text-sm font-medium">
-                      {m.portal_register_company_label()}
-                    </label>
-                    <Input
-                      id="companyName"
-                      type="text"
-                      autoComplete="organization"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
-
-              {error !== null && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" loading={isPending} className="w-full">
-                {m.auth_register_submit()}
-              </Button>
-
-              <Link
-                to="/login"
-                className="text-center text-sm text-muted-foreground hover:underline"
+            {submitError !== null && (
+              <div
+                role="alert"
+                className="mb-5 rounded-[10px] border border-[rgba(217,45,32,0.36)] bg-mrp-bad-bg p-3 text-sm text-mrp-bad"
               >
-                {m.auth_register_back_to_login()}
-              </Link>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+                {submitError}
+              </div>
+            )}
+
+            <PortalButton type="submit" disabled={isPending}>
+              {m.portal_signup_submit()}
+              <span className="font-normal">→</span>
+            </PortalButton>
+          </form>
+
+          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-mrp-text2">
+            {m.portal_signup_have_account()}
+            <Link to="/login" className="font-bold text-mrp-redh hover:underline">
+              {m.portal_login_title()}
+            </Link>
+          </div>
+        </div>
+      </div>
     </main>
   )
-}
-
-function formatFieldError(err: unknown): string {
-  if (err === null || err === undefined) return ''
-  if (typeof err === 'string') return err
-  if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-    return err.message
-  }
-  return String(err)
 }

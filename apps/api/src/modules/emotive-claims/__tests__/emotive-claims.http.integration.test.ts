@@ -301,7 +301,6 @@ describe('EmotiveClaims HTTP', () => {
       for (const key of [
         'faults',
         'employeeId',
-        'employeeName',
         'internalNotes',
         'updatedBy',
         'updatedAt',
@@ -317,11 +316,17 @@ describe('EmotiveClaims HTTP', () => {
       expect(body['outcome']).toBe(ClaimOutcome.Pending)
       expect(body['customerName']).toBeTruthy()
       expect(body['kind']).toBe('emotive')
+      // Deliberate whitelist extension (approved 2026-07-03): the client may
+      // see the assigned technician's NAME + the derived portal phase — never
+      // the employee id or the signals behind the phase.
+      expect(body['employeeName']).toBe('Dejan Milovanović')
+      expect(body['progressPhase']).toBe('in_progress')
 
-      // Raw secret strings never appear anywhere in the payload.
+      // Raw secret strings never appear anywhere in the payload — including
+      // the handler's employee id (the name is allowed, the id is not).
       expect(text).not.toContain('TAJNA KRIVICA')
       expect(text).not.toContain('TAJNA INTERNA BELESKA')
-      expect(text).not.toContain('Dejan')
+      expect(text).not.toContain(dejanId)
     })
 
     it('client gets 404 for another company’s claim (no cross-company leak)', async () => {

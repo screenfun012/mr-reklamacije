@@ -1,3 +1,4 @@
+import { formatFieldError } from '@mr/shared'
 import { useState } from 'react'
 
 import { useForm } from '@tanstack/react-form'
@@ -218,11 +219,3 @@ function LoginComponent(): React.ReactElement {
 // Standard-Schema errors arrive as objects with a `message` field; plain-string
 // errors are passed through verbatim. Defensive against undefined because
 // `errors[0]` is typed as `unknown`.
-function formatFieldError(err: unknown): string {
-  if (err === null || err === undefined) return ''
-  if (typeof err === 'string') return err
-  if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-    return err.message
-  }
-  return String(err)
-}

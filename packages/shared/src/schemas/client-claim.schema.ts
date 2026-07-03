@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { ClaimKind, ClaimOutcome } from '../enums.js'
+import { ClaimKind, ClaimOutcome, ClientClaimPhase } from '../enums.js'
 import type { ClaimListItem } from './claim-list.schema.js'
 import type { DomaceClaimDetail } from './domace-claim.schema.js'
 import type { EmotiveClaimDetail } from './emotive-claim.schema.js'
@@ -13,6 +13,28 @@ const claimOutcomeValues = [
 ] as const
 
 const claimKindValues = [ClaimKind.Emotive, ClaimKind.Domace] as const
+
+export const clientClaimPhaseValues = [
+  ClientClaimPhase.Received,
+  ClientClaimPhase.InProgress,
+  ClientClaimPhase.Outcome,
+] as const
+
+/**
+ * Derives the portal's three-phase status without leaking the signals behind
+ * it: a resolved outcome is the Outcome phase; while pending, an assigned
+ * handler is the "someone is working on it" signal. Only the resulting phase
+ * is ever sent to a client — never `employeeId` itself.
+ */
+export function deriveClientClaimPhase(
+  outcome: ClaimOutcome,
+  employeeId: string | null,
+): ClientClaimPhase {
+  if (outcome !== ClaimOutcome.Pending) {
+    return ClientClaimPhase.Outcome
+  }
+  return employeeId === null ? ClientClaimPhase.Received : ClientClaimPhase.InProgress
+}
 
 /**
  * Client-facing claim shapes — a strict WHITELIST. Only fields explicitly listed
@@ -39,6 +61,8 @@ export const ClientClaimListItemSchema = z.object({
   claimYear: z.coerce.number().int(),
   customerName: z.string().nullable(),
   createdAt: z.string(),
+  // Server-derived three-phase portal status (see deriveClientClaimPhase).
+  progressPhase: z.enum(clientClaimPhaseValues),
 })
 
 export type ClientClaimListItem = z.infer<typeof ClientClaimListItemSchema>
@@ -47,6 +71,10 @@ export const ClientClaimDetailSchema = ClientClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
   // Worker-written English summary intended for the client to read on screen.
   inspectionReport: z.string().nullable(),
+  // Assigned technician's display name — deliberate whitelist extension approved
+  // 2026-07-03 so the client knows who works on their engine. Name only; no
+  // employee id, email or any other employee data.
+  employeeName: z.string().nullable(),
 })
 
 export type ClientClaimDetail = z.infer<typeof ClientClaimDetailSchema>
@@ -77,10 +105,11 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
     claimYear: item.claimYear,
     customerName: item.customerName,
     createdAt: item.createdAt,
+    progressPhase: deriveClientClaimPhase(item.outcome, item.employeeId),
   }
 }
 
-/** Whitelist a full claim detail down to the client-safe shape (no faults/employee/notes). */
+/** Whitelist a full claim detail down to the client-safe shape (no faults/notes/employee ids). */
 export function toClientClaimDetail(
   detail: EmotiveClaimDetail | DomaceClaimDetail,
 ): ClientClaimDetail {
@@ -88,5 +117,6 @@ export function toClientClaimDetail(
     ...toClientClaimListItem(detail),
     engineTypeManufacturer: detail.engineTypeManufacturer,
     inspectionReport: detail.inspectionReport,
+    employeeName: detail.employeeName,
   }
 }

@@ -1,7 +1,7 @@
 import type { AttachmentListItem } from '@mr/shared'
 import {
   AttachmentPreviewKind,
-  buildAttachmentDownloadUrl,
+  buildAttachmentThumbnailUrl,
   formatAttachmentFileSize,
   getAttachmentPreviewKind,
 } from '@mr/shared'
@@ -25,11 +25,9 @@ function gridThumbnailUrl(item: AttachmentListItem): string | null {
     return null
   }
 
-  if (item.thumbnailPath !== null) {
-    return buildAttachmentDownloadUrl(item.id, 'inline')
-  }
-
-  return buildAttachmentDownloadUrl(item.id, 'inline')
+  // ~400px server-generated thumbnail; the endpoint falls back to the
+  // original when none exists, so no client-side branching is needed.
+  return buildAttachmentThumbnailUrl(item.id)
 }
 
 export function ClaimAttachmentsGrid({

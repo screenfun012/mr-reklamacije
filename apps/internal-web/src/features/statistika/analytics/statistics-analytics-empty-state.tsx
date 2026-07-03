@@ -28,11 +28,3 @@ export function StatisticsAnalyticsEmptyBanner({
     </div>
   )
 }
-
-export function StatisticsChartEmptyState(): React.ReactElement {
-  return (
-    <p className="py-8 text-center text-sm text-muted-foreground">
-      {m.statistika_analytics_chart_empty()}
-    </p>
-  )
-}

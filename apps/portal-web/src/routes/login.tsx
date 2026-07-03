@@ -1,19 +1,21 @@
 import { useState } from 'react'
 
-import { useForm } from '@tanstack/react-form'
-import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { z } from 'zod'
-
 import {
   LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE,
+  loginAuthErrorKind,
   loginAuthErrorMessage,
 } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { Button, Input } from '@mr/ui'
-import { Lock } from 'lucide-react'
+import { PORTAL_SUPPORT_EMAIL, formatFieldError } from '@mr/shared'
+import { useForm } from '@tanstack/react-form'
+import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
+import { z } from 'zod'
 
-import { LanguageSwitcher } from '~/components/layout/language-switcher'
-import { LoginHero } from '~/features/auth/login-hero'
+import { LangThemeControls } from '~/components/lang-theme-controls'
+import { MaskedIcon } from '~/components/masked-icon'
+import { PortalButton } from '~/components/portal-button'
+import { PortalFieldError, PortalInput, PortalLabel } from '~/components/portal-field'
+import { HeroPanel } from '~/features/auth/hero-panel'
 import { authClient } from '~/lib/auth-client'
 import { hasSeenWelcome } from '~/lib/welcome-flag'
 
@@ -59,6 +61,12 @@ function LoginComponent(): React.ReactElement {
         })
 
         if (result.error) {
+          // An unapproved account gets the dedicated pending screen (design),
+          // not an inline error.
+          if (loginAuthErrorKind(result.error.code, result.error.message) === 'pending') {
+            await navigate({ to: '/pending' })
+            return
+          }
           setAuthError(
             loginAuthErrorMessage(
               result.error.code,
@@ -93,37 +101,32 @@ function LoginComponent(): React.ReactElement {
   })
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-mr-bg-base lg:flex-row">
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-6 py-5 lg:px-10">
-        <Link to="/login" className="flex items-center gap-2">
-          <img src="/mr-crest.png" alt="MR Engines" className="h-9 w-auto lg:h-11" />
-        </Link>
-        <LanguageSwitcher />
-      </div>
+    <main className="flex min-h-screen bg-mrp-bg">
+      <HeroPanel variant="login" />
 
-      <LoginHero />
+      <div className="relative grid min-h-screen flex-1 place-items-center overflow-hidden bg-mrp-bg px-6 py-12 lg:min-w-[460px] lg:px-10">
+        <div className="mrp-grid-bg absolute inset-0" />
+        <div className="absolute -right-40 -top-[220px] size-[520px] rounded-full bg-[radial-gradient(circle,rgba(237,28,36,0.13),transparent_65%)]" />
+        <div className="absolute right-8 top-7 z-[3]">
+          <LangThemeControls />
+        </div>
 
-      <div className="flex flex-1 items-center justify-center bg-mr-surface-form px-6 py-24 lg:border-l lg:border-border">
-        <div className="animate-mr-fade-up w-full max-w-[392px]">
-          <div className="mb-8 flex flex-col gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="mr-shear inline-block h-2.5 w-2.5 bg-primary" aria-hidden="true">
-                <span className="mr-shear-content sr-only">•</span>
-              </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-mr-text-tertiary">
-                {m.portal_login_brand_tag()}
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {m.portal_login_form_title()}
+        <div
+          className="mrp-fade-up relative z-[2] w-full max-w-[384px]"
+          style={{ animationDelay: '0.15s' }}
+        >
+          <div className="mb-2.5 flex items-center gap-[11px]">
+            <MaskedIcon name="cog" className="size-[22px] text-mrp-red" />
+            <h1 className="text-[32px] font-extrabold tracking-[-0.02em]">
+              {m.portal_login_title()}
             </h1>
-            <p className="text-sm text-muted-foreground">{m.portal_login_form_subtitle()}</p>
           </div>
+          <p className="mb-8 text-[15px] text-mrp-text2">{m.portal_login_subtitle()}</p>
 
           {activated === true ? (
             <div
               role="status"
-              className="mb-4 rounded-md border border-mr-status-accepted-border bg-mr-status-accepted-bg p-3 text-sm text-foreground"
+              className="mb-5 rounded-[10px] border border-[rgba(31,169,113,0.32)] bg-mrp-ok-bg p-3 text-sm"
             >
               {m.portal_login_activated()}
             </div>
@@ -131,7 +134,7 @@ function LoginComponent(): React.ReactElement {
           {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (
             <div
               role="alert"
-              className="mb-4 rounded-md border border-border bg-mr-surface-raised p-3 text-sm text-foreground"
+              className="mb-5 rounded-[10px] border border-mrp-border2 bg-mrp-raised p-3 text-sm"
             >
               {m.auth_login_insufficient_role()}
             </div>
@@ -142,21 +145,18 @@ function LoginComponent(): React.ReactElement {
               e.preventDefault()
               void form.handleSubmit()
             }}
-            className="flex flex-col gap-4"
             noValidate
           >
             <form.Field
               name="email"
               children={(field) => (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="email" className="text-sm font-medium text-mr-text-body">
-                    {m.auth_login_email()}
-                  </label>
-                  <Input
+                <div className="mb-5">
+                  <PortalLabel htmlFor="email">{m.portal_login_email_label()}</PortalLabel>
+                  <PortalInput
                     id="email"
                     type="email"
                     autoComplete="email"
-                    className="h-[46px] bg-white/[0.04]"
+                    placeholder="name@company.com"
                     value={field.state.value}
                     onChange={(e) => {
                       field.handleChange(e.target.value)
@@ -165,9 +165,9 @@ function LoginComponent(): React.ReactElement {
                     disabled={isPending}
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <span className="text-sm text-destructive">
+                    <PortalFieldError>
                       {formatFieldError(field.state.meta.errors[0])}
-                    </span>
+                    </PortalFieldError>
                   )}
                 </div>
               )}
@@ -176,15 +176,13 @@ function LoginComponent(): React.ReactElement {
             <form.Field
               name="password"
               children={(field) => (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="password" className="text-sm font-medium text-mr-text-body">
-                    {m.auth_login_password()}
-                  </label>
-                  <Input
+                <div className="mb-7">
+                  <PortalLabel htmlFor="password">{m.portal_login_password_label()}</PortalLabel>
+                  <PortalInput
                     id="password"
                     type="password"
                     autoComplete="current-password"
-                    className="h-[46px] bg-white/[0.04]"
+                    placeholder="••••••••"
                     value={field.state.value}
                     onChange={(e) => {
                       field.handleChange(e.target.value)
@@ -193,47 +191,52 @@ function LoginComponent(): React.ReactElement {
                     disabled={isPending}
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <span className="text-sm text-destructive">
+                    <PortalFieldError>
                       {formatFieldError(field.state.meta.errors[0])}
-                    </span>
+                    </PortalFieldError>
                   )}
                 </div>
               )}
             />
 
             {authError !== null && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div
+                role="alert"
+                className="mb-5 rounded-[10px] border border-[rgba(217,45,32,0.36)] bg-mrp-bad-bg p-3 text-sm text-mrp-bad"
+              >
                 {authError}
               </div>
             )}
 
-            <Button type="submit" loading={isPending} className="h-12 w-full">
-              {m.auth_login_submit()}
-            </Button>
-
-            <p className="text-center text-sm text-muted-foreground">
-              {m.portal_login_no_account()}{' '}
-              <Link to="/register" className="font-medium text-primary hover:underline">
-                {m.auth_login_register_link()}
-              </Link>
-            </p>
+            <PortalButton type="submit" disabled={isPending}>
+              {m.portal_login_title()}
+              <span className="font-normal">→</span>
+            </PortalButton>
           </form>
 
-          <p className="mt-8 flex items-center justify-center gap-2 font-mono text-xs text-mr-text-tertiary">
-            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-            {m.portal_login_secure()}
+          <div className="my-[30px] mb-[18px] flex items-center gap-3.5">
+            <span className="h-px flex-1 bg-mrp-border" />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-mrp-text2">
+              {m.portal_login_new_partner()}
+            </span>
+            <span className="h-px flex-1 bg-mrp-border" />
+          </div>
+
+          <PortalButton
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              void navigate({ to: '/register' })
+            }}
+          >
+            {m.portal_login_request_access()}
+          </PortalButton>
+
+          <p className="mt-[34px] text-center font-mono text-[11px] tracking-[0.04em] text-mrp-text2">
+            mrengines.rs · {PORTAL_SUPPORT_EMAIL}
           </p>
         </div>
       </div>
     </main>
   )
-}
-
-function formatFieldError(err: unknown): string {
-  if (err === null || err === undefined) return ''
-  if (typeof err === 'string') return err
-  if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-    return err.message
-  }
-  return String(err)
 }

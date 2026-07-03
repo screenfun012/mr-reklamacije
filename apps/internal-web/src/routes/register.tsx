@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { PASSWORD_MIN_LENGTH } from '@mr/shared'
+import { PASSWORD_MIN_LENGTH, formatFieldError } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
 
@@ -234,13 +234,4 @@ function RegisterComponent(): React.ReactElement {
       </Card>
     </main>
   )
-}
-
-function formatFieldError(err: unknown): string {
-  if (err === null || err === undefined) return ''
-  if (typeof err === 'string') return err
-  if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-    return err.message
-  }
-  return String(err)
 }

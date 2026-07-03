@@ -38,6 +38,12 @@ function toIsoDate(value: Date): string {
 }
 
 export function anchorDate(alias: string): SQL {
+  // emotive_claims.date_of_claim is NOT NULL — the raw column keeps
+  // idx_emotive_claims_date_of_claim usable; a COALESCE there would force a
+  // full scan for nothing. Domace genuinely needs the created_at fallback.
+  if (alias === 'ec') {
+    return sql`${sql.raw(alias)}.date_of_claim`
+  }
   return sql`COALESCE(${sql.raw(alias)}.date_of_claim, (${sql.raw(alias)}.created_at AT TIME ZONE 'UTC')::date)`
 }
 
@@ -141,15 +147,18 @@ function resolvedOutcomeWhere(alias: string): SQL {
 }
 
 export function buildResolvedClaimWhere(alias: string, ctx: StatisticsQueryContext): SQL {
+  // Half-open range on the raw timestamptz column — casting the COLUMN
+  // (`::date`) would make idx_*_outcome_resolved_at unusable. Comparing
+  // against `date::timestamptz` boundaries is semantically identical.
   const conditions: SQL[] = [
     buildActiveClaimWhere(alias, ctx),
     resolvedOutcomeWhere(alias),
-    sql`${sql.raw(alias)}.outcome_resolved_at::date >= ${ctx.period.resolvedRangeStart}`,
+    sql`${sql.raw(alias)}.outcome_resolved_at >= ${ctx.period.resolvedRangeStart}::date::timestamptz`,
   ]
 
   if (ctx.period.resolvedRangeEnd !== undefined) {
     conditions.push(
-      sql`${sql.raw(alias)}.outcome_resolved_at::date <= ${ctx.period.resolvedRangeEnd}`,
+      sql`${sql.raw(alias)}.outcome_resolved_at < (${ctx.period.resolvedRangeEnd}::date + 1)::timestamptz`,
     )
   }
 

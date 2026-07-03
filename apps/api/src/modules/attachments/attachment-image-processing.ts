@@ -1,5 +1,6 @@
 import {
   isImageAttachmentMimeType,
+  MAX_ATTACHMENT_IMAGE_WIDTH,
   MAX_REPORT_IMAGE_WIDTH,
   REPORT_IMAGE_JPEG_QUALITY,
   REPORT_IMAGE_WEBP_QUALITY,
@@ -65,12 +66,13 @@ export function shouldGenerateImageThumbnail(mimeType: string): boolean {
   return isImageAttachmentMimeType(mimeType) && mimeType !== 'image/heic'
 }
 
-export async function optimizeReportImage(
+async function optimizeImage(
   data: Buffer,
   mimeType: string,
+  maxWidth: number,
 ): Promise<OptimizedReportImage> {
   const resized = sharp(data).rotate().resize({
-    width: MAX_REPORT_IMAGE_WIDTH,
+    width: maxWidth,
     fit: 'inside',
     withoutEnlargement: true,
   })
@@ -98,5 +100,34 @@ export async function optimizeReportImage(
     mimeType: 'image/jpeg',
     width: output.info.width,
     height: output.info.height,
+  }
+}
+
+export async function optimizeReportImage(
+  data: Buffer,
+  mimeType: string,
+): Promise<OptimizedReportImage> {
+  return optimizeImage(data, mimeType, MAX_REPORT_IMAGE_WIDTH)
+}
+
+/**
+ * Recompresses a claim-attachment photo for storage (max edge + quality 80) —
+ * only the optimized bytes are kept, which is what caps storage growth from
+ * multi-MB phone photos. Returns `null` when the file should be stored as-is:
+ * not an image, HEIC (sharp lacks a decoder here), or a decode failure — a
+ * broken image must not block the upload.
+ */
+export async function optimizeAttachmentImage(
+  data: Buffer,
+  mimeType: string,
+): Promise<OptimizedReportImage | null> {
+  if (!shouldGenerateImageThumbnail(mimeType)) {
+    return null
+  }
+
+  try {
+    return await optimizeImage(data, mimeType, MAX_ATTACHMENT_IMAGE_WIDTH)
+  } catch {
+    return null
   }
 }

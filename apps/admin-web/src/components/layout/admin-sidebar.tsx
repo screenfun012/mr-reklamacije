@@ -2,12 +2,15 @@ import { MrEnginesLogo } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
 
 import { adminNavItems } from '~/config/navigation'
+import { useTheme } from '~/lib/theme'
 
 export function AdminSidebar() {
+  const { resolvedTheme } = useTheme()
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-5 border-b border-sidebar-border">
-        <MrEnginesLogo />
+        <MrEnginesLogo theme={resolvedTheme} />
       </div>
 
       <nav className="flex-1 p-2" aria-label="Main navigation">

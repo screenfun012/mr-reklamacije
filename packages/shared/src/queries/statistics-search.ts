@@ -10,7 +10,7 @@ const claimKindValues = [ClaimKind.Emotive, ClaimKind.Domace] as const
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
 
-export const STATISTICS_MAX_CUSTOM_RANGE_MONTHS = 36
+const STATISTICS_MAX_CUSTOM_RANGE_MONTHS = 36
 
 export const StatisticsSearchSchema = z
   .object({

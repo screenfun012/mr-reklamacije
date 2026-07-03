@@ -119,18 +119,33 @@ export function createAttachmentsController(container: Container): {
       const user = requireUser(c)
       const { id } = AttachmentIdParamSchema.parse(c.req.param())
       const disposition = c.req.query('disposition') === 'attachment' ? 'attachment' : 'inline'
-      const payload = await container.attachmentsService.getDownloadPayload(
-        id,
-        toActor(user),
-        disposition,
+      const variant = c.req.query('variant') === 'thumbnail' ? 'thumbnail' : 'original'
+      const meta = await container.attachmentsService.getDownloadMeta(id, toActor(user), variant)
+
+      // Inline images are immutable (content-addressed) — let the browser
+      // cache them and revalidate via ETag; documents stay no-store.
+      const cacheable = disposition === 'inline' && meta.mimeType.startsWith('image/')
+      const cacheControl = cacheable ? 'private, max-age=86400' : 'private, no-store'
+
+      if (cacheable && meta.etag !== null && c.req.header('if-none-match') === meta.etag) {
+        return new Response(null, {
+          status: 304,
+          headers: { ETag: meta.etag, 'Cache-Control': cacheControl },
+        })
+      }
+
+      const { stream, size } = await container.attachmentsService.openDownloadStream(
+        meta.storagePath,
       )
 
-      return new Response(new Uint8Array(payload.data), {
+      return new Response(stream, {
         headers: {
-          'Content-Type': payload.mimeType,
-          'Content-Disposition': encodeContentDisposition(payload.fileName, payload.disposition),
+          'Content-Type': meta.mimeType,
+          'Content-Length': String(size),
+          'Content-Disposition': encodeContentDisposition(meta.fileName, disposition),
           'X-Content-Type-Options': 'nosniff',
-          'Cache-Control': 'private, no-store',
+          'Cache-Control': cacheControl,
+          ...(cacheable && meta.etag !== null ? { ETag: meta.etag } : {}),
         },
       })
     },
@@ -144,16 +159,20 @@ export function createAttachmentsController(container: Container): {
 
     raw: async (c: Context) => {
       const query = RawAttachmentQuerySchema.parse(c.req.query())
-      const payload = await container.attachmentsService.getRawDownloadByToken(
+      const meta = await container.attachmentsService.getRawDownloadMeta(
         query.id,
         query.exp,
         query.sig,
       )
+      const { stream, size } = await container.attachmentsService.openDownloadStream(
+        meta.storagePath,
+      )
 
-      return new Response(new Uint8Array(payload.data), {
+      return new Response(stream, {
         headers: {
-          'Content-Type': payload.mimeType,
-          'Content-Disposition': encodeContentDisposition(payload.fileName, 'inline'),
+          'Content-Type': meta.mimeType,
+          'Content-Length': String(size),
+          'Content-Disposition': encodeContentDisposition(meta.fileName, 'inline'),
           'X-Content-Type-Options': 'nosniff',
           'Cache-Control': 'private, max-age=300',
         },

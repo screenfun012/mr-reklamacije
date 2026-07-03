@@ -7,6 +7,7 @@ import {
   normalizeName,
   SYSTEM_ROLE_CLIENT,
 } from '@mr/shared'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -408,7 +409,64 @@ describe('ClaimsService integration', () => {
           expect(key in item).toBe(false)
         }
         expect(item['kind']).toBe('emotive')
+        // The server-derived portal phase ships instead of the raw signals.
+        expect(['received', 'in_progress', 'outcome']).toContain(item['progressPhase'])
       }
+    })
+
+    it('hides archived claims from the client list but keeps them for internal users', async () => {
+      const clientUserId = '55555555-5555-4555-8555-555555555554'
+      await ensureTestUser(ctx.db, clientUserId)
+      const [customer] = await ctx.db
+        .insert(schema.customers)
+        .values({ kind: 'emotive_partner', name: `CLAIMS-ARCH-${Date.now()}` })
+        .returning({ id: schema.customers.id })
+      if (customer === undefined) {
+        throw new Error('failed to insert test customer')
+      }
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customer.id, userId: clientUserId, assignedBy: TEST_USER_ID })
+
+      const engineType = await createTestEngineType(container, `ENG-ARCH-${Date.now()}`)
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `ARCH-CLIENT-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'archived-visibility',
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          customerId: customer.id,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome: ClaimOutcome.Archived })
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      const clientApp = createClaimsTestApp(
+        container,
+        testUser(
+          ['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'],
+          clientUserId,
+          [SYSTEM_ROLE_CLIENT],
+        ),
+      )
+      const clientRes = await clientApp.request('/api/claims?page=1&pageSize=50')
+      expect(clientRes.status).toBe(200)
+      const clientBody = (await clientRes.json()) as { items: Array<{ id: string }> }
+      expect(clientBody.items.some((item) => item.id === created.id)).toBe(false)
+
+      // Internal full-view actors still see the archived row.
+      const internalResult = await container.claimsService.list(
+        listQuery({ outcome: ClaimOutcome.Archived, customerId: customer.id }),
+        FULL_OPERATOR,
+      )
+      expect(internalResult.items.some((item) => item.id === created.id)).toBe(true)
     })
   })
 })

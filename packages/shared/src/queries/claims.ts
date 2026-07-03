@@ -1,8 +1,10 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
+import type { ClaimKind } from '../enums.js'
 import type { ClaimListQuery, ClaimListResponse } from '../schemas/claim-list.schema.js'
-import type { ClientClaimListResponse } from '../schemas/client-claim.schema.js'
+import type { ClientClaimDetail, ClientClaimListResponse } from '../schemas/client-claim.schema.js'
+import type { ClientPortalSummary } from '../schemas/client-portal.schema.js'
 import { claimKeys, type ClaimsListSort } from './claim-keys.js'
 import { normalizeClaimsListFilters, type ClaimsListFilters } from './claims-filters.js'
 import { serializeEmotiveClaimsListParams } from './serialize-search-params.js'
@@ -49,22 +51,19 @@ export function claimsListOptions(
   })
 }
 
-/**
- * Client portal fetches its whole claim set in one page and paginates it
- * client-side. This is the ceiling; a client with more than this needs
- * server-side pagination (see CLAUDE.md drift note).
- */
-export const CLIENT_CLAIMS_FETCH_PAGE_SIZE = 50 satisfies ClaimsPageSize
+/** Portal dashboard shows a 2-column card grid; 10 cards per server page. */
+export const CLIENT_CLAIMS_PAGE_SIZE = 10 satisfies ClaimsPageSize
 
 /**
- * Client-portal claims list. Same `/api/claims` endpoint, but typed as the
- * whitelisted `ClientClaimListResponse` so portal code cannot even reference
- * stripped fields (employee/faults/notes). The server enforces the strip +
- * row-level `own_customer` scope; this is the type-level half of that contract.
+ * Client-portal claims list, paginated SERVER-SIDE (no client-side cap). Same
+ * `/api/claims` endpoint, but typed as the whitelisted `ClientClaimListResponse`
+ * so portal code cannot even reference stripped fields (employee/faults/notes).
+ * The server enforces the strip + row-level `own_customer` scope (and hides
+ * archived claims from clients); this is the type-level half of that contract.
  */
 export function clientClaimsListOptions(
   page = 1,
-  pageSize: ClaimsPageSize = CLIENT_CLAIMS_FETCH_PAGE_SIZE,
+  pageSize: ClaimsPageSize = CLIENT_CLAIMS_PAGE_SIZE,
 ) {
   return queryOptions({
     queryKey: ['claims', 'client-list', page, pageSize] as const,
@@ -73,4 +72,41 @@ export function clientClaimsListOptions(
     staleTime: CLAIMS_LIST_STALE_MS,
     placeholderData: keepPreviousData,
   })
+}
+
+/**
+ * Portal dashboard summary: phase counts across ALL of the client's claims +
+ * the recent-activity feed. Served by a dedicated client-safe projection
+ * endpoint (own-customer scope; no audit internals ever leave the server).
+ */
+export function clientPortalSummaryOptions() {
+  return queryOptions({
+    queryKey: ['dashboard', 'client-summary'] as const,
+    queryFn: async () => fetchJson<ClientPortalSummary>('/api/dashboard/client-summary'),
+    staleTime: CLAIMS_LIST_STALE_MS,
+  })
+}
+
+/**
+ * Client-portal claim detail (emotive only — clients have no domace claims).
+ * Hits `/api/emotive-claims/:id`, typed as the whitelisted `ClientClaimDetail`.
+ * The server strips to client-safe fields + enforces the own-customer scope
+ * (returns 404 for another customer's claim).
+ */
+export function clientEmotiveClaimDetailOptions(id: string) {
+  return queryOptions({
+    queryKey: ['emotive-claims', 'client-detail', id] as const,
+    queryFn: async () => fetchJson<ClientClaimDetail>(`/api/emotive-claims/${id}`),
+    staleTime: CLAIMS_LIST_STALE_MS,
+  })
+}
+
+/**
+ * URL for the client claim-report PDF. Serves the SAME report document authored
+ * in the internal app (claim-reports export pipeline), gated by `export.own_claims`
+ * with own-customer row scope (404 for another customer's claim); rate-limited.
+ */
+export function clientClaimReportPdfUrl(claimKind: ClaimKind, claimId: string): string {
+  const params = new URLSearchParams({ claimKind, claimId })
+  return `/api/claim-reports/export/client/pdf?${params.toString()}`
 }

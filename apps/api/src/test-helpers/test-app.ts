@@ -27,6 +27,7 @@ import { registerDomaceClaimsRoutes } from '../modules/domace-claims/index.js'
 import { registerEmployeesRoutes } from '../modules/employees/index.js'
 import { registerEmotiveClaimsRoutes } from '../modules/emotive-claims/index.js'
 import { registerClaimsRoutes } from '../modules/claims/index.js'
+import { registerDashboardRoutes } from '../modules/dashboard/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
 import { registerEngineManufacturersRoutes } from '../modules/engine-manufacturers/index.js'
 import type { EventBus } from '../modules/events/index.js'
@@ -262,6 +263,24 @@ export function createClaimsTestApp(
   })
 
   registerClaimsRoutes(app, container)
+
+  return app
+}
+
+export function createDashboardTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerDashboardRoutes(app, container)
 
   return app
 }

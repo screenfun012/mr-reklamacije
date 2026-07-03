@@ -41,6 +41,9 @@ export const customers = pgTable(
       'customers_kind_check',
       sql`${t.kind} IN ('emotive_partner', 'domestic_company', 'domestic_individual')`,
     ),
+    // Unified claims search matches customers via a semi-join on this
+    // expression (see claims.repository.ts) — must stay textually identical.
+    index('idx_customers_name_fts').using('gin', sql`to_tsvector('simple', ${t.name})`),
   ],
 )
 

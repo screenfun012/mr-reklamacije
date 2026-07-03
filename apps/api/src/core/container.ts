@@ -38,7 +38,11 @@ import {
 } from '../modules/external-parties/index.js'
 import { AttachmentsRepository, AttachmentsService } from '../modules/attachments/index.js'
 import { ReportImageReadAdapter } from '../modules/attachments/report-image-read.adapter.js'
-import { ClaimReportsRepository, ClaimReportsService } from '../modules/claim-reports/index.js'
+import {
+  ClaimReportPdfRenderer,
+  ClaimReportsRepository,
+  ClaimReportsService,
+} from '../modules/claim-reports/index.js'
 import { ExcelRepository, ExcelService } from '../modules/excel/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
 import { createBetterAuthUserPassword } from '../infrastructure/auth/better-auth-user-password.js'
@@ -94,6 +98,7 @@ export interface Container {
   attachmentsRepository: AttachmentsRepository
   attachmentsService: AttachmentsService
   claimReportsRepository: ClaimReportsRepository
+  claimReportPdfRenderer: ClaimReportPdfRenderer
   claimReportsService: ClaimReportsService
   excelRepository: ExcelRepository
   excelService: ExcelService
@@ -235,11 +240,13 @@ export function buildContainer(
   )
 
   const claimReportsRepository = new ClaimReportsRepository(db)
+  const claimReportPdfRenderer = new ClaimReportPdfRenderer()
   const claimReportsService = new ClaimReportsService(
     claimReportsRepository,
     claimContextService,
     reportImageRead,
     auditService,
+    claimReportPdfRenderer,
     env.CLAIM_REPORT_PDF_ENABLED,
   )
 
@@ -291,6 +298,7 @@ export function buildContainer(
     attachmentsRepository,
     attachmentsService,
     claimReportsRepository,
+    claimReportPdfRenderer,
     claimReportsService,
     excelRepository,
     excelService,

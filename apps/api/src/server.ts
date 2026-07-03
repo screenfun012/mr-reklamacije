@@ -79,10 +79,16 @@ function shutdown(signal: string): void {
 
   httpServer.close(() => {
     clearTimeout(forceTimer)
-    void container.pool.end().finally(() => {
-      logger.info('DB pool closed')
-      process.exit(0)
-    })
+    void container.claimReportPdfRenderer
+      .dispose()
+      .catch(() => {
+        // Browser already gone — nothing to release.
+      })
+      .then(() => container.pool.end())
+      .finally(() => {
+        logger.info('DB pool closed')
+        process.exit(0)
+      })
   })
 }
 

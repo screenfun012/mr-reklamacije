@@ -50,6 +50,11 @@ export const auditLog = pgTable(
     ),
     index('idx_audit_log_actor_user_id_created_at').on(t.actorUserId, t.createdAt.desc()),
     index('idx_audit_log_action_created_at').on(t.action, t.createdAt.desc()),
+    // The unfiltered admin audit list orders by exactly this (+ keyset cursor);
+    // without it every page view sorts the whole, fastest-growing table.
+    index('idx_audit_log_created_at_id').on(t.createdAt.desc(), t.id.desc()),
+    // Portal activity feed: newest rows per entity type with an early-stop LIMIT.
+    index('idx_audit_log_entity_type_created_at').on(t.entityType, t.createdAt.desc()),
   ],
 )
 

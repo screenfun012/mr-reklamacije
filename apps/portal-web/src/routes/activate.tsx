@@ -1,12 +1,14 @@
 import { useState } from 'react'
 
+import { m } from '@mr/i18n'
+import { ApiError, PASSWORD_MIN_LENGTH, completeActivation, formatFieldError } from '@mr/shared'
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { ApiError, PASSWORD_MIN_LENGTH, completeActivation } from '@mr/shared'
-import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
+import { PortalLogo } from '~/components/masked-icon'
+import { PortalButton } from '~/components/portal-button'
+import { PortalFieldError, PortalInput, PortalLabel } from '~/components/portal-field'
 
 const activateSearchSchema = z.object({
   token: z.string().optional(),
@@ -59,86 +61,89 @@ function ActivateComponent(): React.ReactElement {
     },
   })
 
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <Heading level="h2" as="h1">
-            {m.portal_activate_title()}
-          </Heading>
-          <p className="text-sm text-muted-foreground">{m.portal_activate_subtitle()}</p>
-        </CardHeader>
-        <CardContent>
-          {token === undefined || token === '' ? (
-            <div className="flex flex-col gap-4">
-              <div
-                role="alert"
-                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-              >
-                {m.portal_activate_missing_token()}
-              </div>
-              <Link to="/login" className="text-sm font-medium text-mr-info-strong hover:underline">
-                {m.auth_register_back_to_login()}
-              </Link>
-            </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                void form.handleSubmit()
-              }}
-              className="flex flex-col gap-4"
-              noValidate
-            >
-              <form.Field
-                name="password"
-                children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="password" className="text-sm font-medium">
-                      {m.portal_activate_password_label()}
-                    </label>
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
+  const missingToken = token === undefined || token === ''
 
-              {error !== null && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
+  return (
+    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-mrp-bg p-6 sm:p-10">
+      <img
+        src="/portal/bg-workshop.jpg"
+        alt=""
+        className="absolute inset-0 size-full object-cover opacity-50"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,9,11,0.85),rgba(9,9,11,0.96))]" />
+
+      <div className="mrp-pop-in relative w-full max-w-[460px] rounded-[18px] border border-mrp-border bg-mrp-surface px-8 pb-10 pt-11 shadow-[var(--mrp-shadow)] sm:px-[42px]">
+        <PortalLogo className="mb-[30px] h-10 w-[150px]" />
+
+        <h1 className="mb-2 text-[26px] font-extrabold tracking-[-0.02em]">
+          {m.portal_activate_title()}
+        </h1>
+        <p className="mb-7 text-[15px] leading-[1.55] text-mrp-text2">
+          {m.portal_activate_subtitle()}
+        </p>
+
+        {missingToken ? (
+          <div className="flex flex-col gap-5">
+            <div
+              role="alert"
+              className="rounded-[10px] border border-[rgba(217,45,32,0.36)] bg-mrp-bad-bg p-3 text-sm text-mrp-bad"
+            >
+              {m.portal_activate_missing_token()}
+            </div>
+            <Link to="/login" className="text-sm font-bold text-mrp-redh hover:underline">
+              {m.portal_pending_back()}
+            </Link>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void form.handleSubmit()
+            }}
+            noValidate
+          >
+            <form.Field
+              name="password"
+              children={(field) => (
+                <div className="mb-6">
+                  <PortalLabel htmlFor="password">{m.portal_activate_password_label()}</PortalLabel>
+                  <PortalInput
+                    id="password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={field.state.value}
+                    onChange={(e) => {
+                      field.handleChange(e.target.value)
+                    }}
+                    onBlur={field.handleBlur}
+                    disabled={isPending}
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <PortalFieldError>
+                      {formatFieldError(field.state.meta.errors[0])}
+                    </PortalFieldError>
+                  )}
                 </div>
               )}
+            />
 
-              <Button type="submit" loading={isPending} className="w-full">
-                {m.portal_activate_submit()}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+            {error !== null && (
+              <div
+                role="alert"
+                className="mb-5 rounded-[10px] border border-[rgba(217,45,32,0.36)] bg-mrp-bad-bg p-3 text-sm text-mrp-bad"
+              >
+                {error}
+              </div>
+            )}
+
+            <PortalButton type="submit" disabled={isPending}>
+              {m.portal_activate_submit()}
+              <span className="font-normal">→</span>
+            </PortalButton>
+          </form>
+        )}
+      </div>
     </main>
   )
-}
-
-function formatFieldError(err: unknown): string {
-  if (err === null || err === undefined) return ''
-  if (typeof err === 'string') return err
-  if (typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
-    return err.message
-  }
-  return String(err)
 }

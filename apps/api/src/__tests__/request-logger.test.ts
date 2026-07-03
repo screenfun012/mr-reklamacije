@@ -12,17 +12,34 @@ describe('request logger', () => {
 
     const app = new Hono()
     app.use('*', createRequestLogger(logger))
-    app.get('/health', (c) => c.json({ ok: true }))
+    app.get('/api/claims', (c) => c.json({ ok: true }))
 
-    await app.request('/health')
+    await app.request('/api/claims')
 
     expect(infoMock).toHaveBeenCalledTimes(1)
     const [payload, message] = infoMock.mock.calls[0] as [Record<string, unknown>, string]
     expect(payload['method']).toBe('GET')
-    expect(payload['path']).toBe('/health')
+    expect(payload['path']).toBe('/api/claims')
     expect(payload['status']).toBe(200)
     expect(typeof payload['durationMs']).toBe('number')
     expect(payload['durationMs']).toBeGreaterThanOrEqual(0)
     expect(message).toBe('request')
+  })
+
+  it('skips health probes — they would flood the log', async () => {
+    const infoMock = vi.fn()
+    const logger = { info: infoMock } as unknown as Logger
+
+    const app = new Hono()
+    app.use('*', createRequestLogger(logger))
+    app.get('/health', (c) => c.json({ ok: true }))
+    app.get('/api/health', (c) => c.json({ ok: true }))
+
+    const first = await app.request('/health')
+    const second = await app.request('/api/health')
+
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+    expect(infoMock).not.toHaveBeenCalled()
   })
 })

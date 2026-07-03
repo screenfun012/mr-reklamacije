@@ -15,7 +15,7 @@ export function getRouter() {
     defaultNotFoundComponent: RouteNotFound,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
-    defaultPreloadDelay: 0,
+    defaultPreloadDelay: 100,
     scrollRestoration: true,
   })
 

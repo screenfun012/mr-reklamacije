@@ -9,9 +9,7 @@ const AUDIT_LOG_PAGE_SIZE = 50
 /** Filter fields a caller may set — cursor/limit are managed by the query itself. */
 export type AuditLogFilters = Omit<AuditLogListQuery, 'cursor' | 'limit'>
 
-export function auditLogListQueryKey(
-  filters: AuditLogFilters,
-): readonly ['audit-log', AuditLogFilters] {
+function auditLogListQueryKey(filters: AuditLogFilters): readonly ['audit-log', AuditLogFilters] {
   return ['audit-log', filters] as const
 }
 

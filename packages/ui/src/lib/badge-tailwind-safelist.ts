@@ -1,6 +1,0 @@
-/**
- * Ensures Tailwind emits badge utilities referenced from @mr/shared registry strings.
- * Class names must appear as literals in scanned @mr/ui sources.
- */
-export const BADGE_TAILWIND_SAFELIST =
-  'border-mr-warning/45 bg-mr-warning-subtle text-mr-warning-strong shadow-mr-warning/15 dark:border-mr-warning/55 dark:bg-mr-warning/20 dark:text-mr-warning dark:shadow-mr-warning/10 text-mr-warning border-mr-success/45 bg-mr-success-subtle text-mr-success-strong shadow-mr-success/15 dark:border-mr-success/55 dark:bg-mr-success/20 dark:text-mr-success dark:shadow-mr-success/10 text-mr-success border-mr-error/45 bg-mr-error-subtle text-mr-error-strong shadow-mr-error/15 dark:border-mr-error/55 dark:bg-mr-error/20 dark:text-mr-error dark:shadow-mr-error/10 text-mr-error border-mr-neutral-border bg-mr-neutral-subtle text-mr-neutral-muted dark:border-mr-neutral-muted/45 dark:bg-mr-neutral-muted/20 dark:text-mr-neutral-border border-mr-brand/40 bg-mr-brand-subtle text-mr-brand-strong shadow-mr-brand/15 dark:border-mr-brand/55 dark:bg-mr-brand/20 dark:text-mr-brand-400 dark:shadow-mr-brand/10 text-mr-brand border-mr-info/45 bg-mr-info-subtle text-mr-info-strong shadow-mr-info/15 dark:border-mr-info/55 dark:bg-mr-info/20 dark:text-mr-info dark:shadow-mr-info/10 text-mr-info' as const

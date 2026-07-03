@@ -132,14 +132,6 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number]
 
 /**
- * Returns true if the given string is a valid Permission.
- * Used at runtime boundaries (e.g., seeding DB from config).
- */
-export function isPermission(value: string): value is Permission {
-  return (PERMISSIONS as readonly string[]).includes(value)
-}
-
-/**
  * System role permission sets. These are hardcoded in code, not DB,
  * because they define minimum required permissions for each system role
  * (admin can never lose admin powers due to DB drift; operator can't

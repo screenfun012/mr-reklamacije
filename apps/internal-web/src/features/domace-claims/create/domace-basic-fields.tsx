@@ -1,3 +1,4 @@
+import { formatFieldError } from '@mr/shared'
 import type { EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { DatePicker, Input, SearchableSelect } from '@mr/ui'
@@ -5,7 +6,6 @@ import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import { TEXTAREA_FIELD_CLASS } from '../../emotive-claims/create/form-field-styles.js'
-import { formatFieldError } from '../../emotive-claims/create/format-field-error.js'
 import type { DomaceClaimFormValues } from './domace-claim-create-schemas.js'
 
 interface DomaceBasicFieldsProps {

@@ -131,8 +131,8 @@ export function useElementRect({
     window.addEventListener('resize', handleUpdate, true)
 
     cleanup.push(() => {
-      window.removeEventListener('scroll', handleUpdate)
-      window.removeEventListener('resize', handleUpdate)
+      window.removeEventListener('scroll', handleUpdate, true)
+      window.removeEventListener('resize', handleUpdate, true)
     })
 
     return () => {
@@ -152,14 +152,4 @@ export function useBodyRect(options: Omit<ElementRectOptions, 'element'> = {}): 
     ...options,
     element: isClientSide() ? document.body : null,
   })
-}
-
-/**
- * Convenience hook for tracking a ref element's rect
- */
-export function useRefRect<T extends Element>(
-  ref: React.RefObject<T>,
-  options: Omit<ElementRectOptions, 'element'> = {},
-): RectState {
-  return useElementRect({ ...options, element: ref })
 }

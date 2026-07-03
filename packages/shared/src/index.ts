@@ -87,8 +87,12 @@ export * from './schemas/user.schema.js'
 export * from './schemas/registration.schema.js'
 export * from './schemas/activation.schema.js'
 export * from './schemas/client-claim.schema.js'
+export * from './schemas/client-portal.schema.js'
 export * from './schemas/audit-log.schema.js'
 export * from './constants/audit.js'
+export * from './constants/support-contact.js'
+export { stripClientVisibleMarker } from './utils/sanitize-report.js'
+export { formatFieldError } from './utils/format-field-error.js'
 export {
   ResourceCatalogSearchSchema,
   ResourceCatalogStatusFilter,

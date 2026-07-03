@@ -9,32 +9,43 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "src/paraglide/**"]
     },
+    "@mr/eslint-config#build": {
+      "outputs": []
+    },
+    "@mr/tsconfig#build": {
+      "outputs": []
+    },
+    "@mr/tailwind-preset#build": {
+      "outputs": []
+    },
     "@mr/i18n#typecheck": {
       "dependsOn": ["build"]
     },
-    "lint": {},
+    "lint": {
+      "dependsOn": ["^build"]
+    },
     "typecheck": {
       "dependsOn": ["^build"]
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "outputs": []
     },
     "test:integration": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "cache": false,
+      "dependsOn": ["^build"]
     },
     "@mr/auth#test:integration": {
-      "dependsOn": ["@mr/db#test:integration", "^build"],
-      "outputs": ["coverage/**"]
+      "cache": false,
+      "dependsOn": ["@mr/db#test:integration", "^build"]
     },
     "api#test:integration": {
-      "dependsOn": ["@mr/auth#test:integration", "^build"],
-      "outputs": ["coverage/**"]
+      "cache": false,
+      "dependsOn": ["@mr/auth#test:integration", "^build"]
     },
     "@mr/i18n#test": {
       "dependsOn": ["build"],
-      "outputs": ["coverage/**"]
+      "outputs": []
     }
   }
 }

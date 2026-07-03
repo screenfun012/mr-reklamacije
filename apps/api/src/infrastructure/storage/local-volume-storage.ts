@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createReadStream } from 'node:fs'
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { Readable } from 'node:stream'
 
 import type { StorageService, UploadOpts } from './storage.interface.js'
 
@@ -30,6 +32,18 @@ export class LocalVolumeStorageService implements StorageService {
 
   async read(relativePath: string): Promise<Buffer> {
     return readFile(resolvePath(this.rootDir, relativePath))
+  }
+
+  async readStream(
+    relativePath: string,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; size: number }> {
+    const absolutePath = resolvePath(this.rootDir, relativePath)
+    const fileStat = await stat(absolutePath)
+    const nodeStream = createReadStream(absolutePath)
+    return {
+      stream: Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>,
+      size: fileStat.size,
+    }
   }
 
   async delete(relativePath: string): Promise<void> {

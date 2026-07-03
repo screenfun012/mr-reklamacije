@@ -15,6 +15,7 @@ export function getRouter() {
     context: { queryClient } as PortalRouterContext,
     defaultNotFoundComponent: RouteNotFound,
     defaultPreload: 'intent',
+    defaultPreloadDelay: 100,
     scrollRestoration: true,
   })
 
