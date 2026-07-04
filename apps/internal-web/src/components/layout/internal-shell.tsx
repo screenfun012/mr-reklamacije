@@ -1,7 +1,7 @@
-import { AppShell } from '@mr/ui'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { MaskedIcon } from '~/components/masked-icon'
 import { authClient } from '~/lib/auth-client'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
@@ -14,8 +14,11 @@ export interface InternalShellProps {
 }
 
 /**
- * Internal app shell. Composes the @mr/ui AppShell with sidebar and topbar
- * for the employee-facing frontend (operators / viewers via Phase 1.0 RBAC).
+ * Internal app shell ("MR Interna" redesign): fixed 236px sidebar + sticky
+ * blurred topbar + main area with the blueprint-grid texture and the slow
+ * rotating cog watermark. `overflow-x: clip` (NOT hidden) contains the
+ * offscreen cog without creating a scroll container, so the sticky topbar
+ * keeps working against the page scroll.
  */
 export function InternalShell({ children }: InternalShellProps) {
   useRealtimeEventStream()
@@ -30,11 +33,21 @@ export function InternalShell({ children }: InternalShellProps) {
   }
 
   return (
-    <AppShell
-      sidebar={<InternalSidebar />}
-      topbar={<InternalTopbar userEmail={userEmail} userName={userName} onLogout={handleLogout} />}
-    >
-      {children}
-    </AppShell>
+    <div className="flex min-h-screen items-stretch bg-mri-bg font-sans text-mri-text">
+      <InternalSidebar userName={userName} userEmail={userEmail} onLogout={handleLogout} />
+
+      <div className="relative min-w-0 flex-1 overflow-x-clip">
+        <div aria-hidden="true" className="mri-grid-bg mri-grid-fade-down absolute inset-0" />
+        <MaskedIcon
+          name="cog"
+          spinning
+          className="pointer-events-none absolute -right-[180px] top-10 size-[440px] text-mri-gear"
+        />
+
+        <InternalTopbar />
+
+        <main className="relative px-8 pb-[72px] pt-9">{children}</main>
+      </div>
+    </div>
   )
 }

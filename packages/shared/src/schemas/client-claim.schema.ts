@@ -21,19 +21,14 @@ export const clientClaimPhaseValues = [
 ] as const
 
 /**
- * Derives the portal's three-phase status without leaking the signals behind
- * it: a resolved outcome is the Outcome phase; while pending, an assigned
- * handler is the "someone is working on it" signal. Only the resulting phase
- * is ever sent to a client — never `employeeId` itself.
+ * Derives the portal's three-phase status. The portal must mirror the internal
+ * outcome directly (Nikola, 2026-07-04): every pending claim reads "in
+ * progress" — the same story the internal app tells — and a resolved outcome
+ * is the Outcome phase. `Received` remains only as the always-completed first
+ * step of the detail timeline, never as a live status.
  */
-export function deriveClientClaimPhase(
-  outcome: ClaimOutcome,
-  employeeId: string | null,
-): ClientClaimPhase {
-  if (outcome !== ClaimOutcome.Pending) {
-    return ClientClaimPhase.Outcome
-  }
-  return employeeId === null ? ClientClaimPhase.Received : ClientClaimPhase.InProgress
+export function deriveClientClaimPhase(outcome: ClaimOutcome): ClientClaimPhase {
+  return outcome === ClaimOutcome.Pending ? ClientClaimPhase.InProgress : ClientClaimPhase.Outcome
 }
 
 /**
@@ -105,7 +100,7 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
     claimYear: item.claimYear,
     customerName: item.customerName,
     createdAt: item.createdAt,
-    progressPhase: deriveClientClaimPhase(item.outcome, item.employeeId),
+    progressPhase: deriveClientClaimPhase(item.outcome),
   }
 }
 

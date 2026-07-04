@@ -8,6 +8,10 @@ import {
   type ClaimOutcome,
   type DomaceClaimDetail,
 } from '@mr/shared'
+import { ClaimOutcome as ClaimOutcomeValues } from '@mr/shared'
+import { m } from '@mr/i18n'
+
+import { showInternalToast } from '~/lib/internal-toast'
 
 interface ChangeOutcomeContext {
   previous: DomaceClaimDetail | undefined
@@ -41,6 +45,11 @@ export function useChangeDomaceClaimOutcome(
     },
     onSuccess: (updated) => {
       queryClient.setQueryData(detailKey, updated)
+      if (updated.outcome === ClaimOutcomeValues.Accepted) {
+        showInternalToast(m.internal_toast_outcome_accepted())
+      } else if (updated.outcome === ClaimOutcomeValues.Rejected) {
+        showInternalToast(m.internal_toast_outcome_rejected())
+      }
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: detailKey })

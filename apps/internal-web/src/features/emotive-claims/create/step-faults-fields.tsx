@@ -1,6 +1,8 @@
 import type { DepartmentListItem, EmployeeListItem, ExternalPartyListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 
+import { InternalNote } from '~/components/internal-note'
+
 import { FaultRowsEditor } from '../faults/fault-rows-editor.js'
 import type { EmotiveClaimFaultDraft } from './emotive-claim-create-schemas.js'
 
@@ -32,12 +34,7 @@ export function StepFaultsFields({
 }: StepFaultsFieldsProps): React.ReactElement {
   return (
     <div className="flex flex-col gap-4">
-      <div
-        role="note"
-        className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
-      >
-        {m.emotive_claims_create_faults_optional_note()}
-      </div>
+      <InternalNote tone="info">{m.emotive_claims_create_faults_optional_note()}</InternalNote>
 
       <form.Field
         name="faults"

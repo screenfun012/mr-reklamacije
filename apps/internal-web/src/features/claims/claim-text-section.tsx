@@ -1,7 +1,8 @@
 import { ApiError } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading } from '@mr/ui'
 import { useEffect, useRef, useState } from 'react'
+
+import { InternalButton } from '~/components/internal-button'
 
 import { TEXTAREA_FIELD_CLASS } from '../emotive-claims/create/form-field-styles.js'
 
@@ -62,11 +63,11 @@ export function ClaimTextSection({
   const showReadOnlyEmpty = !canEdit && (value === null || value.trim() === '')
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-      <Heading level="h3" as="h2" id={headingId} className="text-foreground">
+    <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
+      <h2 id={headingId} className="text-[15px] font-extrabold text-mri-text">
         {heading}
-      </Heading>
-      {hint !== undefined ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      </h2>
+      {hint !== undefined ? <p className="text-xs text-mri-text2">{hint}</p> : null}
 
       {canEdit ? (
         <div className="flex flex-col gap-3">
@@ -80,21 +81,30 @@ export function ClaimTextSection({
           />
 
           {saveError ? (
-            <p className="text-sm text-destructive" role="alert">
+            <p className="text-sm text-mri-bad" role="alert">
               {saveError}
             </p>
           ) : null}
 
           <div>
-            <Button type="button" onClick={handleSave} loading={isSaving}>
+            <InternalButton
+              type="button"
+              variant="green"
+              className="h-10 w-auto px-5 text-xs"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              <span aria-hidden="true" className="font-normal">
+                ✓
+              </span>{' '}
               {m.emotive_claims_detail_basic_save()}
-            </Button>
+            </InternalButton>
           </div>
         </div>
       ) : showReadOnlyEmpty ? (
-        <p className="text-sm text-muted-foreground">{emptyText}</p>
+        <p className="text-sm italic text-mri-text2">{emptyText}</p>
       ) : (
-        <p className="text-sm whitespace-pre-wrap text-foreground">{value}</p>
+        <p className="text-sm whitespace-pre-wrap text-mri-text">{value}</p>
       )}
     </section>
   )

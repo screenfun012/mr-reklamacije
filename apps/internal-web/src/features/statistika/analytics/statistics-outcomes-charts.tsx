@@ -2,17 +2,17 @@ import {
   computeOutcomeDistributionPercents,
   formatStatisticsDays,
   hasProcessingTimeSample,
-  STATISTICS_OUTCOME_CHART_COLORS,
   type StatisticsOutcomes,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
+import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
 import { Info } from 'lucide-react'
 import {
+  Bar,
+  BarChart,
   Cell,
+  LabelList,
   Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -21,6 +21,11 @@ import {
   YAxis,
 } from 'recharts'
 
+import {
+  STATISTICS_AXIS_TICK,
+  STATISTICS_MONO_GRADIENTS,
+  STATISTICS_OUTCOME_COLORS,
+} from './chart-theme.js'
 import { formatMonthLabel } from './statistics-formatters.js'
 import { formatManufacturerTooltipValue } from './statistics-manufacturer-formatters.js'
 import { StatisticsOutcomesDonutTooltip } from './statistics-outcomes-chart-tooltip.js'
@@ -60,21 +65,21 @@ function buildDonutSlices(outcomes: StatisticsOutcomes): DonutSlice[] {
       label: pendingLabel,
       value: distribution.pending,
       percent: percents.pendingPercent,
-      fill: STATISTICS_OUTCOME_CHART_COLORS.pending.fill,
+      fill: STATISTICS_OUTCOME_COLORS.pending,
     },
     {
       key: 'accepted',
       label: acceptedLabel,
       value: distribution.accepted,
       percent: percents.acceptedPercent,
-      fill: STATISTICS_OUTCOME_CHART_COLORS.accepted.fill,
+      fill: STATISTICS_OUTCOME_COLORS.accepted,
     },
     {
       key: 'rejected',
       label: rejectedLabel,
       value: distribution.rejected,
       percent: percents.rejectedPercent,
-      fill: STATISTICS_OUTCOME_CHART_COLORS.rejected.fill,
+      fill: STATISTICS_OUTCOME_COLORS.rejected,
     },
   ]
 
@@ -94,13 +99,13 @@ function buildAcceptanceRateRows(
 function outcomeLegendFormatter(value: string): React.ReactNode {
   const color =
     value === m.statistika_analytics_outcomes_outcome_pending()
-      ? STATISTICS_OUTCOME_CHART_COLORS.pending.fill
+      ? STATISTICS_OUTCOME_COLORS.pending
       : value === m.statistika_analytics_outcomes_outcome_accepted()
-        ? STATISTICS_OUTCOME_CHART_COLORS.accepted.fill
-        : STATISTICS_OUTCOME_CHART_COLORS.rejected.fill
+        ? STATISTICS_OUTCOME_COLORS.accepted
+        : STATISTICS_OUTCOME_COLORS.rejected
 
   return (
-    <span className="inline-flex items-center gap-2 text-sm text-foreground">
+    <span className="inline-flex items-center gap-2 text-xs text-mri-text2">
       <span
         className="size-2.5 rounded-full"
         style={{ backgroundColor: color }}
@@ -135,15 +140,15 @@ export function StatisticsOutcomesCharts({
     return (
       <section className="flex flex-col gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
             {m.statistika_analytics_outcomes_section_title()}
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm text-mri-text2">
             {m.statistika_analytics_outcomes_section_description()}
           </p>
         </div>
         <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          <CardContent className="py-8 text-center text-sm text-mri-text2">
             {m.statistika_analytics_outcomes_no_data()}
           </CardContent>
         </Card>
@@ -154,10 +159,10 @@ export function StatisticsOutcomesCharts({
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">
+        <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
           {m.statistika_analytics_outcomes_section_title()}
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1.5 text-sm text-mri-text2">
           {m.statistika_analytics_outcomes_section_description()}
         </p>
       </div>
@@ -173,19 +178,34 @@ export function StatisticsOutcomesCharts({
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
+                      animationDuration={650}
                       data={donutSlices}
                       dataKey="value"
                       nameKey="label"
                       innerRadius="60%"
                       outerRadius="90%"
                       paddingAngle={2}
-                      stroke="var(--card)"
+                      stroke="var(--mri-surface)"
                       strokeWidth={2}
                     >
                       {donutSlices.map((slice) => (
                         <Cell key={slice.key} fill={slice.fill} />
                       ))}
                     </Pie>
+                    <text
+                      x="50%"
+                      y="46%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 26,
+                        fontWeight: 700,
+                        fill: 'var(--mri-text)',
+                      }}
+                    >
+                      {distribution.total}
+                    </text>
                     <Tooltip
                       content={({ active, payload }) => {
                         const slice = payload?.[0]?.payload as DonutSlice | undefined
@@ -208,7 +228,7 @@ export function StatisticsOutcomesCharts({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p className="py-12 text-sm text-muted-foreground">
+              <p className="py-12 text-sm text-mri-text2">
                 {m.statistika_analytics_outcomes_no_data()}
               </p>
             )}
@@ -229,33 +249,33 @@ export function StatisticsOutcomesCharts({
                 </span>
               </span>
             </CardTitle>
-            <p className="text-xs text-muted-foreground/75">
+            <p className="text-xs text-mri-text2">
               {m.statistika_analytics_outcomes_processing_historical_note()}
             </p>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-center">
             <div className="grid grid-cols-3 gap-3 text-center text-sm">
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
                   {m.statistika_analytics_outcomes_processing_average()}
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
                   {hasSample ? formatProcessingDays(processingTime.averageDays) : '—'}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
                   {m.statistika_analytics_outcomes_processing_median()}
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
                   {hasSample ? formatProcessingDays(processingTime.medianDays) : '—'}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">
+              <div className="rounded-[10px] border border-[rgba(245,166,35,0.35)] bg-mri-warn-bg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
                   {m.statistika_analytics_outcomes_processing_max()}
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-warn">
                   {hasSample ? formatProcessingDays(processingTime.maxDays) : '—'}
                 </p>
               </div>
@@ -270,16 +290,30 @@ export function StatisticsOutcomesCharts({
         </CardHeader>
         <CardContent>
           {hasAcceptanceData ? (
-            <div className="h-72 w-full">
+            <div className="h-[190px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={acceptanceRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={acceptanceRows} margin={{ top: 18, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="statistics-acceptance-gradient" x1="0" y1="1" x2="0" y2="0">
+                      <stop
+                        offset="0%"
+                        stopColor={STATISTICS_MONO_GRADIENTS.green.from}
+                        stopOpacity={0.9}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={STATISTICS_MONO_GRADIENTS.green.to}
+                        stopOpacity={1}
+                      />
+                    </linearGradient>
+                  </defs>
                   <XAxis
                     dataKey="label"
                     tickLine={false}
                     axisLine={false}
                     interval="preserveStartEnd"
                     minTickGap={24}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <YAxis
                     domain={[0, 100]}
@@ -287,7 +321,7 @@ export function StatisticsOutcomesCharts({
                     tickLine={false}
                     axisLine={false}
                     width={40}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
@@ -321,21 +355,32 @@ export function StatisticsOutcomesCharts({
                       )
                     }}
                   />
-                  <Line
-                    type="monotone"
+                  <Bar
+                    animationDuration={650}
                     dataKey="rate"
                     name={m.statistika_analytics_outcomes_acceptance_rate_axis()}
-                    stroke={STATISTICS_OUTCOME_CHART_COLORS.accepted.fillStrong}
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: STATISTICS_OUTCOME_CHART_COLORS.accepted.fillStrong }}
-                    activeDot={{ r: 5 }}
-                    connectNulls={false}
-                  />
-                </LineChart>
+                    fill="url(#statistics-acceptance-gradient)"
+                    radius={[4, 4, 2, 2]}
+                    maxBarSize={22}
+                  >
+                    <LabelList
+                      dataKey="rate"
+                      position="top"
+                      formatter={(value: unknown) =>
+                        typeof value === 'number' && value > 0 ? `${Math.round(value)}%` : ''
+                      }
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 9,
+                        fill: STATISTICS_MONO_GRADIENTS.green.to,
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-12 text-center text-sm text-muted-foreground">
+            <p className="py-12 text-center text-sm text-mri-text2">
               {m.statistika_analytics_outcomes_no_data()}
             </p>
           )}

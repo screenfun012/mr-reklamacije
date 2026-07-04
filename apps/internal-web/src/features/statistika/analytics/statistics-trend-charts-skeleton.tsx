@@ -178,7 +178,7 @@ export function StatisticsTrendChartsPlaceholder({
 }: StatisticsTrendChartsPlaceholderProps): React.ReactElement {
   return (
     <section className="rounded-lg border border-border bg-card p-4">
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-mri-text2">{message}</p>
     </section>
   )
 }

@@ -22,7 +22,7 @@ export function OfficePreviewFallback({
       className="flex h-full min-h-[12rem] w-full flex-1 items-center justify-center p-4"
       data-testid="office-preview-fallback"
     >
-      <div className="flex max-w-lg flex-col items-center gap-4 rounded-lg border border-border bg-background p-8 text-center">
+      <div className="flex max-w-lg flex-col items-center gap-4 rounded-[14px] border border-mri-border bg-mri-surface bg-background p-8 text-center">
         <AttachmentFileIcon mimeType={mimeType} className="size-16 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>

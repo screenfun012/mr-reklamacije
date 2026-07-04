@@ -12,10 +12,16 @@ import {
   SelectValue,
 } from '@mr/ui'
 
+import { InternalFieldGroup } from '~/components/internal-field-group'
+
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
-import { SELECT_EMPTY_SENTINEL, TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
+import {
+  FORM_CONTROL_CLASS,
+  SELECT_EMPTY_SENTINEL,
+  TEXTAREA_FIELD_CLASS,
+} from './form-field-styles.js'
 
 function manufacturerOptions(
   manufacturers: readonly EngineManufacturerListItem[],
@@ -59,47 +65,51 @@ export function StepBasicFields({
   disabled,
 }: StepBasicFieldsProps): React.ReactElement {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid gap-4 sm:grid-cols-2">
       <form.Field
         name="mrNumber"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="mrNumber"
             label={m.emotive_claims_create_field_mr_number()}
+            required
             error={stepErrors['mrNumber'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <Input
               id="mrNumber"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="claimNumber"
         children={(field) => (
-          <FieldGroup id="claimNumber" label={m.emotive_claims_create_field_claim_number()}>
+          <InternalFieldGroup id="claimNumber" label={m.emotive_claims_create_field_claim_number()}>
             <Input
               id="claimNumber"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="customerId"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="customerId"
             label={m.emotive_claims_create_field_customer()}
+            required
             error={stepErrors['customerId'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <Select
@@ -111,6 +121,7 @@ export function StepBasicFields({
             >
               <SelectTrigger
                 id="customerId"
+                className={FORM_CONTROL_CLASS}
                 aria-label={m.emotive_claims_create_field_customer()}
                 onBlur={field.handleBlur}
               >
@@ -127,20 +138,21 @@ export function StepBasicFields({
                 ))}
               </SelectContent>
             </Select>
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="manufacturerId"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="manufacturerId"
             label={m.emotive_claims_create_field_manufacturer()}
             error={stepErrors['manufacturerId'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <SearchableSelect
               id="manufacturerId"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               options={manufacturerOptions(manufacturers)}
               placeholder={m.emotive_claims_create_select_placeholder()}
@@ -155,7 +167,7 @@ export function StepBasicFields({
               }}
               onBlur={field.handleBlur}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
@@ -164,13 +176,15 @@ export function StepBasicFields({
           <form.Field
             name="engineTypeId"
             children={(field) => (
-              <FieldGroup
+              <InternalFieldGroup
                 id="engineTypeId"
                 label={m.emotive_claims_create_field_engine_type()}
+                required
                 error={stepErrors['engineTypeId'] ?? formatFieldError(field.state.meta.errors[0])}
               >
                 <EngineTypeSearchableSelectField
                   id="engineTypeId"
+                  className={FORM_CONTROL_CLASS}
                   value={field.state.value}
                   manufacturerId={manufacturerId}
                   orphanEngineType={orphanEngineType}
@@ -179,7 +193,7 @@ export function StepBasicFields({
                   onValueChange={field.handleChange}
                   onBlur={field.handleBlur}
                 />
-              </FieldGroup>
+              </InternalFieldGroup>
             )}
           />
         )}
@@ -188,28 +202,30 @@ export function StepBasicFields({
       <form.Field
         name="engineCode"
         children={(field) => (
-          <FieldGroup id="engineCode" label={m.emotive_claims_create_field_engine_code()}>
+          <InternalFieldGroup id="engineCode" label={m.emotive_claims_create_field_engine_code()}>
             <Input
               id="engineCode"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="dateOfFinish"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="dateOfFinish"
             label={m.emotive_claims_create_field_date_finish()}
             error={stepErrors['dateOfFinish'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <DatePicker
               id="dateOfFinish"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value.length > 0 ? field.state.value : undefined}
               onChange={(value) => {
                 field.handleChange(value ?? '')
@@ -217,20 +233,22 @@ export function StepBasicFields({
               disabled={disabled}
               aria-label={m.emotive_claims_create_field_date_finish()}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="dateOfClaim"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="dateOfClaim"
             label={m.emotive_claims_create_field_date_claim()}
+            required
             error={stepErrors['dateOfClaim'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <DatePicker
               id="dateOfClaim"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value.length > 0 ? field.state.value : undefined}
               onChange={(value) => {
                 field.handleChange(value ?? '')
@@ -238,16 +256,17 @@ export function StepBasicFields({
               disabled={disabled}
               aria-label={m.emotive_claims_create_field_date_claim()}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="warrantyReport"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="warrantyReport"
             label={m.emotive_claims_create_field_warranty_report()}
+            className="sm:col-span-2"
             error={stepErrors['warrantyReport'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <textarea
@@ -258,28 +277,9 @@ export function StepBasicFields({
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
-    </div>
-  )
-}
-
-interface FieldGroupProps {
-  id: string
-  label: string
-  error?: string
-  children: React.ReactNode
-}
-
-function FieldGroup({ id, label, error, children }: FieldGroupProps): React.ReactElement {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {error ? <span className="text-sm text-destructive">{error}</span> : null}
     </div>
   )
 }

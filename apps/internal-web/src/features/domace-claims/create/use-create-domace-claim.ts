@@ -10,6 +10,10 @@ import {
   type DomaceClaimDetail,
 } from '@mr/shared'
 
+import { m } from '@mr/i18n'
+
+import { showInternalToast } from '~/lib/internal-toast'
+
 import { serializeDomaceCreateBody } from './serialize-domace-create-body.js'
 
 export function useCreateDomaceClaim() {
@@ -22,7 +26,8 @@ export function useCreateDomaceClaim() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(serializeDomaceCreateBody(input)),
       }),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      showInternalToast(m.internal_toast_claim_saved({ mrNumber: created.mrNumber ?? '—' }))
       await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
       await invalidateStatisticsSummary(queryClient)

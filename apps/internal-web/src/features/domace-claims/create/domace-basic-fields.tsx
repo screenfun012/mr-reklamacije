@@ -3,9 +3,14 @@ import type { EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 
+import { InternalFieldGroup } from '~/components/internal-field-group'
+
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
-import { TEXTAREA_FIELD_CLASS } from '../../emotive-claims/create/form-field-styles.js'
+import {
+  FORM_CONTROL_CLASS,
+  TEXTAREA_FIELD_CLASS,
+} from '../../emotive-claims/create/form-field-styles.js'
 import type { DomaceClaimFormValues } from './domace-claim-create-schemas.js'
 
 interface DomaceBasicFieldsProps {
@@ -38,70 +43,74 @@ export function DomaceBasicFields({
   disabled,
 }: DomaceBasicFieldsProps): React.ReactElement {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid gap-4 sm:grid-cols-2">
       <form.Field
         name="mrNumber"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="mrNumber"
             label={m.domace_claims_create_field_mr_number()}
             error={stepErrors['mrNumber'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <Input
               id="mrNumber"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="claimNumber"
         children={(field) => (
-          <FieldGroup id="claimNumber" label={m.domace_claims_create_field_claim_number()}>
+          <InternalFieldGroup id="claimNumber" label={m.domace_claims_create_field_claim_number()}>
             <Input
               id="claimNumber"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="customerName"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="customerName"
             label={m.domace_claims_create_field_customer_name()}
             error={stepErrors['customerName']}
           >
             <Input
               id="customerName"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="manufacturerId"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="manufacturerId"
             label={m.emotive_claims_create_field_manufacturer()}
             error={stepErrors['manufacturerId']}
           >
             <SearchableSelect
               id="manufacturerId"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               options={manufacturers.map((manufacturer) => ({
                 value: manufacturer.id,
@@ -120,7 +129,7 @@ export function DomaceBasicFields({
               }}
               onBlur={field.handleBlur}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
@@ -129,9 +138,13 @@ export function DomaceBasicFields({
           <form.Field
             name="engineTypeId"
             children={(field) => (
-              <FieldGroup id="engineTypeId" label={m.domace_claims_create_field_engine_type()}>
+              <InternalFieldGroup
+                id="engineTypeId"
+                label={m.domace_claims_create_field_engine_type()}
+              >
                 <EngineTypeSearchableSelectField
                   id="engineTypeId"
+                  className={FORM_CONTROL_CLASS}
                   value={field.state.value}
                   manufacturerId={manufacturerId}
                   orphanEngineType={orphanEngineType}
@@ -140,7 +153,7 @@ export function DomaceBasicFields({
                   onValueChange={field.handleChange}
                   onBlur={field.handleBlur}
                 />
-              </FieldGroup>
+              </InternalFieldGroup>
             )}
           />
         )}
@@ -149,28 +162,30 @@ export function DomaceBasicFields({
       <form.Field
         name="engineCode"
         children={(field) => (
-          <FieldGroup id="engineCode" label={m.domace_claims_create_field_engine_code()}>
+          <InternalFieldGroup id="engineCode" label={m.domace_claims_create_field_engine_code()}>
             <Input
               id="engineCode"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="dateOfFinish"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="dateOfFinish"
             label={m.domace_claims_create_field_date_finish()}
             error={stepErrors['dateOfFinish'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <DatePicker
               id="dateOfFinish"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value.length > 0 ? field.state.value : undefined}
               onChange={(value) => {
                 field.handleChange(value ?? '')
@@ -178,20 +193,21 @@ export function DomaceBasicFields({
               disabled={disabled}
               aria-label={m.domace_claims_create_field_date_finish()}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="dateOfClaim"
         children={(field) => (
-          <FieldGroup
+          <InternalFieldGroup
             id="dateOfClaim"
             label={m.domace_claims_create_field_date_claim()}
             error={stepErrors['dateOfClaim'] ?? formatFieldError(field.state.meta.errors[0])}
           >
             <DatePicker
               id="dateOfClaim"
+              className={FORM_CONTROL_CLASS}
               value={field.state.value.length > 0 ? field.state.value : undefined}
               onChange={(value) => {
                 field.handleChange(value ?? '')
@@ -199,14 +215,18 @@ export function DomaceBasicFields({
               disabled={disabled}
               aria-label={m.domace_claims_create_field_date_claim()}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
 
       <form.Field
         name="warrantyReport"
         children={(field) => (
-          <FieldGroup id="warrantyReport" label={m.domace_claims_create_field_warranty_report()}>
+          <InternalFieldGroup
+            id="warrantyReport"
+            label={m.domace_claims_create_field_warranty_report()}
+            className="sm:col-span-2"
+          >
             <textarea
               id="warrantyReport"
               className={TEXTAREA_FIELD_CLASS}
@@ -215,28 +235,9 @@ export function DomaceBasicFields({
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-          </FieldGroup>
+          </InternalFieldGroup>
         )}
       />
-    </div>
-  )
-}
-
-interface FieldGroupProps {
-  id: string
-  label: string
-  error?: string | undefined
-  children: React.ReactNode
-}
-
-function FieldGroup({ id, label, error, children }: FieldGroupProps): React.ReactElement {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {error ? <span className="text-sm text-destructive">{error}</span> : null}
     </div>
   )
 }

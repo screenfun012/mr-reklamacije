@@ -6,9 +6,14 @@ import { z } from 'zod'
 
 import { PASSWORD_MIN_LENGTH, formatFieldError } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
 
+import { AuthHeroPanel } from '~/components/auth/auth-hero-panel'
+import { AuthTextField } from '~/components/auth/auth-text-field'
+import { InternalButton, internalButtonClasses } from '~/components/internal-button'
+import { InternalNote } from '~/components/internal-note'
+import { InternalLogo } from '~/components/masked-icon'
 import { authClient } from '~/lib/auth-client'
+import { showInternalToast } from '~/lib/internal-toast'
 
 export const Route = createFileRoute('/register')({
   component: RegisterComponent,
@@ -20,6 +25,10 @@ const registerSchema = z.object({
   email: z.email(m.field_email_invalid()),
   password: z.string().min(PASSWORD_MIN_LENGTH, m.field_password_min_length()),
 })
+
+function fieldError(errors: ReadonlyArray<unknown>): string | null {
+  return errors.length > 0 ? formatFieldError(errors[0]) : null
+}
 
 function RegisterComponent(): React.ReactElement {
   const [formError, setFormError] = useState<string | null>(null)
@@ -60,6 +69,7 @@ function RegisterComponent(): React.ReactElement {
         }
 
         setIsSuccess(true)
+        showInternalToast(m.internal_toast_registration_sent())
       } catch (err) {
         console.error('[register] unexpected error:', err)
         setFormError(m.auth_register_error_generic())
@@ -70,30 +80,29 @@ function RegisterComponent(): React.ReactElement {
   })
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[url('/background.png')] bg-cover bg-center bg-no-repeat"
-      />
-      <Card className="relative z-10 w-full max-w-md border border-white/15 bg-card/75 shadow-xl backdrop-blur-md">
-        <CardHeader>
-          <Heading level="h2" as="h1">
+    <main className="flex min-h-screen bg-mri-bg font-sans text-mri-text">
+      <AuthHeroPanel variant="register" />
+
+      <div className="relative grid min-w-0 flex-1 place-items-center overflow-hidden px-10 py-12 lg:min-w-[460px]">
+        <div aria-hidden="true" className="mri-grid-bg absolute inset-0" />
+
+        <div
+          className="mri-fade-up relative z-[2] w-full max-w-[396px]"
+          style={{ animationDelay: '0.1s' }}
+        >
+          <InternalLogo className="mb-9 h-8 w-[124px] lg:hidden" />
+
+          <h1 className="mb-2 text-[30px] font-extrabold tracking-[-0.02em]">
             {m.auth_register_title()}
-          </Heading>
-        </CardHeader>
-        <CardContent>
+          </h1>
+          <p className="mb-7 text-[15px] text-mri-text2">{m.internal_register_subtitle()}</p>
+
           {isSuccess ? (
-            <div className="flex flex-col gap-4">
-              <div
-                role="status"
-                className="rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground"
-              >
+            <div className="flex flex-col gap-5">
+              <InternalNote tone="info" role="status">
                 {m.auth_register_success_pending()}
-              </div>
-              <Link
-                to="/login"
-                className="text-center text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
+              </InternalNote>
+              <Link to="/login" className={internalButtonClasses('outline')}>
                 {m.auth_register_back_to_login()}
               </Link>
             </div>
@@ -103,135 +112,103 @@ function RegisterComponent(): React.ReactElement {
                 e.preventDefault()
                 void form.handleSubmit()
               }}
-              className="flex flex-col gap-4"
+              className="flex flex-col"
               noValidate
             >
-              <form.Field
-                name="firstName"
-                children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="firstName" className="text-sm font-medium">
-                      {m.auth_register_first_name()}
-                    </label>
-                    <Input
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <form.Field
+                  name="firstName"
+                  children={(field) => (
+                    <AuthTextField
                       id="firstName"
+                      label={m.auth_register_first_name()}
                       autoComplete="given-name"
                       value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
+                      onChange={field.handleChange}
                       onBlur={field.handleBlur}
                       disabled={isPending}
+                      error={fieldError(field.state.meta.errors)}
                     />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
-
-              <form.Field
-                name="lastName"
-                children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="lastName" className="text-sm font-medium">
-                      {m.auth_register_last_name()}
-                    </label>
-                    <Input
+                  )}
+                />
+                <form.Field
+                  name="lastName"
+                  children={(field) => (
+                    <AuthTextField
                       id="lastName"
+                      label={m.auth_register_last_name()}
                       autoComplete="family-name"
                       value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
+                      onChange={field.handleChange}
                       onBlur={field.handleBlur}
                       disabled={isPending}
+                      error={fieldError(field.state.meta.errors)}
                     />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
-                )}
-              />
+                  )}
+                />
+              </div>
 
               <form.Field
                 name="email"
                 children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="email" className="text-sm font-medium">
-                      {m.auth_login_email()}
-                    </label>
-                    <Input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
+                  <AuthTextField
+                    id="email"
+                    type="email"
+                    label={m.auth_login_email()}
+                    autoComplete="email"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    onBlur={field.handleBlur}
+                    disabled={isPending}
+                    error={fieldError(field.state.meta.errors)}
+                    className="mb-4"
+                  />
                 )}
               />
 
               <form.Field
                 name="password"
                 children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="password" className="text-sm font-medium">
-                      {m.auth_login_password()}
-                    </label>
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
+                  <AuthTextField
+                    id="password"
+                    type="password"
+                    label={m.auth_login_password()}
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    onBlur={field.handleBlur}
+                    disabled={isPending}
+                    error={fieldError(field.state.meta.errors)}
+                    className="mb-[18px]"
+                  />
                 )}
               />
 
-              {formError !== null && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <InternalNote tone="info" className="mb-6">
+                {m.internal_register_note()}
+              </InternalNote>
+
+              {formError !== null ? (
+                <InternalNote tone="error" role="alert" className="mb-5">
                   {formError}
-                </div>
-              )}
+                </InternalNote>
+              ) : null}
 
-              <Button type="submit" loading={isPending} className="w-full">
-                {m.auth_register_submit()}
-              </Button>
+              <InternalButton type="submit" disabled={isPending}>
+                {m.auth_register_submit()} <span className="font-normal">→</span>
+              </InternalButton>
 
-              <Link
-                to="/login"
-                className="text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
-              >
-                {m.auth_register_back_to_login()}
-              </Link>
+              <div className="mt-6 flex items-center justify-center gap-2 text-sm text-mri-text2">
+                {m.internal_register_have_account()}
+                <Link to="/login" className="font-bold text-mri-redh hover:underline">
+                  {m.auth_login_title()}
+                </Link>
+              </div>
             </form>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
   )
 }

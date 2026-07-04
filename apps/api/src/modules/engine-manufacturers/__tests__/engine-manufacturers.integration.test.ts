@@ -383,6 +383,21 @@ describe('EngineManufacturers reference module', () => {
       expect(body.items.length).toBeGreaterThan(0)
     })
 
+    it('lists manufacturers with claim VIEW permission (list-filter catalog)', async () => {
+      // Regression (2026-07-05): viewers hit the claims-list manufacturer
+      // filter — read access must not require edit/manage permissions.
+      await container.engineManufacturersRepository.create({
+        code: 'VIEW-MFG',
+        name: 'View Mfg',
+      })
+      const app = createReferenceTestApp(container, testUser(['emotive_claims.view']))
+      const res = await app.request('/api/engine-manufacturers?limit=5')
+      expect(res.status).toBe(200)
+
+      const body = (await res.json()) as { items: unknown[] }
+      expect(body.items.length).toBeGreaterThan(0)
+    })
+
     it('updates manufacturer via PATCH with manage permission', async () => {
       const created = await container.engineManufacturersRepository.create({
         code: 'PATCH-MFG',

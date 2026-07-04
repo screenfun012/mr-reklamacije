@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 
 import { prefetchClaimEditReferences } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Heading, Skeleton } from '@mr/ui'
+import { Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { DomaceClaimCreateForm } from '~/features/domace-claims/create/domace-claim-create-form'
@@ -19,18 +19,21 @@ export const Route = createFileRoute('/_shell/reklamacije/domace/nova')({
 
 function DomaceClaimNovaPage(): React.ReactElement {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <div>
+    <div className="mx-auto flex w-full max-w-[860px] flex-col">
+      <div className="mb-[30px]">
         <Link
           to="/reklamacije"
           search={{ page: 1, pageSize: 10 }}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="mri-fade-up mb-[18px] inline-block text-sm font-semibold text-mri-text2 transition-colors hover:text-mri-redh"
         >
           {m.domace_claims_create_back_to_list()}
         </Link>
-        <Heading level="h1" className="mt-2">
+        <h1
+          className="mri-fade-up text-[32px] font-extrabold tracking-[-0.02em] text-mri-text"
+          style={{ animationDelay: '0.05s' }}
+        >
           {m.domace_claims_new_claim()}
-        </Heading>
+        </h1>
       </div>
       <Suspense fallback={<DomaceClaimCreateSkeleton />}>
         <DomaceClaimCreateForm />
@@ -41,7 +44,7 @@ function DomaceClaimNovaPage(): React.ReactElement {
 
 function DomaceClaimNovaPending(): React.ReactElement {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6">
       <Skeleton className="h-8 w-48" />
       <DomaceClaimCreateSkeleton />
     </div>
@@ -50,7 +53,7 @@ function DomaceClaimNovaPending(): React.ReactElement {
 
 function DomaceClaimCreateSkeleton(): React.ReactElement {
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border p-6">
+    <div className="flex flex-col gap-4 rounded-[14px] border border-mri-border bg-mri-surface p-6">
       <Skeleton className="h-6 w-64" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />

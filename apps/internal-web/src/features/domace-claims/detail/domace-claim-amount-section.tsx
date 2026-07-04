@@ -1,6 +1,6 @@
 import { ApiError, ClaimOutcome, formatEuroAmount, type DomaceClaimDetail } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Heading, Input } from '@mr/ui'
+import { Input } from '@mr/ui'
 
 interface DomaceClaimAmountSectionProps {
   claim: DomaceClaimDetail
@@ -14,10 +14,10 @@ export function DomaceClaimAmountSection({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-      <Heading level="h3" as="h2" className="text-foreground">
+    <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
+      <h2 className="text-[15px] font-extrabold text-mri-text">
         {m.domace_claims_detail_section_amount()}
-      </Heading>
+      </h2>
 
       {claim.totalAmount !== null ? (
         <p className="text-sm text-muted-foreground">

@@ -5,11 +5,11 @@ import {
   type AttachmentListItem,
   type AttachmentListQuery,
 } from '@mr/shared'
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { NotFoundError } from '../../core/errors/domain-errors.js'
-import { attachments } from './attachments.schema.js'
+import { attachments, emotiveClaims } from './attachments.schema.js'
 import type { AttachmentsViewScope } from './attachments.types.js'
 
 function mapClaimIdColumn(claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace) {
@@ -45,11 +45,32 @@ function visibilityFilter(scope: AttachmentsViewScope) {
     return undefined
   }
 
-  return eq(attachments.visibility, AttachmentVisibility.ClientVisible)
+  // Client rule (Nikola, 2026-07-04): workshop PHOTOS are always visible to
+  // the client — any image format, as soon as the operator uploads them.
+  // Documents (and report images) stay internal unless explicitly marked
+  // client_visible.
+  return or(
+    eq(attachments.visibility, AttachmentVisibility.ClientVisible),
+    and(
+      eq(attachments.purpose, AttachmentPurpose.ClaimAttachment),
+      ilike(attachments.mimeType, 'image/%'),
+    ),
+  )
 }
 
 export class AttachmentsRepository {
   constructor(private readonly db: ApiDatabase) {}
+
+  /** Owning customer of an EMOTIVE claim — routes portal SSE signals. */
+  async findEmotiveClaimCustomerId(claimId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ customerId: emotiveClaims.customerId })
+      .from(emotiveClaims)
+      .where(eq(emotiveClaims.id, claimId))
+      .limit(1)
+
+    return rows[0]?.customerId ?? null
+  }
 
   async listByClaim(
     query: AttachmentListQuery,

@@ -1,28 +1,16 @@
 import {
   collapseRankRowsForDisplay,
-  resolveStatisticsRankColor,
-  STATISTICS_RANK_CYCLE_COLORS,
-  STATISTICS_SOURCE_FIXED_COLORS,
   type StatisticsByEmployee,
   type StatisticsByEngineType,
   type StatisticsBySource,
-  type StatisticsRankChartColor,
   type StatisticsRankDisplayRow,
   type StatisticsRankRow,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
+import { STATISTICS_AXIS_TICK, STATISTICS_MONO_GRADIENTS } from './chart-theme.js'
 import { resolveBreakdownDisplayName } from './statistics-breakdown-formatters.js'
 import { StatisticsManufacturerRankTooltip } from './statistics-manufacturer-chart-tooltip.js'
 
@@ -34,59 +22,40 @@ export interface StatisticsBreakdownChartsProps {
 
 interface BreakdownChartRow extends StatisticsRankDisplayRow<StatisticsRankRow> {
   label: string
-  fill: string
-  colorIndex: number
 }
 
-function breakdownGradientId(prefix: string, code: string): string {
-  return `statistics-breakdown-${prefix}-${code.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+type MonoGradient = (typeof STATISTICS_MONO_GRADIENTS)[keyof typeof STATISTICS_MONO_GRADIENTS]
+
+function breakdownGradientId(prefix: string): string {
+  return `statistics-breakdown-${prefix}`
 }
 
-function BreakdownChartGradients({
+/** Design: each breakdown chart is ONE monochrome gradient — never a palette. */
+function BreakdownChartGradient({
   prefix,
-  rows,
-  resolveColor,
+  gradient,
 }: {
   prefix: string
-  rows: readonly BreakdownChartRow[]
-  resolveColor: (code: string, cycleIndex: number) => StatisticsRankChartColor
+  gradient: MonoGradient
 }): React.ReactElement {
   return (
     <defs>
-      {rows.map((row) => {
-        const colors = resolveColor(row.code, row.colorIndex)
-        return (
-          <linearGradient
-            key={row.code}
-            id={breakdownGradientId(prefix, row.code)}
-            x1="0"
-            y1="0"
-            x2="1"
-            y2="0"
-          >
-            <stop offset="0%" stopColor={colors.fillStrong} stopOpacity={1} />
-            <stop offset="100%" stopColor={colors.fill} stopOpacity={0.9} />
-          </linearGradient>
-        )
-      })}
+      <linearGradient id={breakdownGradientId(prefix)} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor={gradient.from} stopOpacity={1} />
+        <stop offset="100%" stopColor={gradient.to} stopOpacity={0.9} />
+      </linearGradient>
     </defs>
   )
 }
 
 function buildBreakdownChartRows(
   items: readonly StatisticsRankRow[],
-  resolveColor: (code: string, cycleIndex: number) => StatisticsRankChartColor,
   rollupOthers: boolean,
 ): BreakdownChartRow[] {
-  return collapseRankRowsForDisplay(items, 10, { rollupOthers }).map((row, index) => {
-    const colors = resolveColor(row.code, index)
-    return {
-      ...row,
-      label: resolveBreakdownDisplayName(row),
-      fill: colors.fill,
-      colorIndex: index,
-    }
-  })
+  return collapseRankRowsForDisplay(items, 10, { rollupOthers }).map((row) => ({
+    ...row,
+    label: resolveBreakdownDisplayName(row),
+  }))
 }
 
 function computeChartHeight(rowCount: number): number {
@@ -97,7 +66,7 @@ interface BreakdownRankCardProps {
   prefix: string
   title: string
   items: readonly StatisticsRankRow[]
-  resolveColor: (code: string, cycleIndex: number) => StatisticsRankChartColor
+  gradient: MonoGradient
   rollupOthers: boolean
 }
 
@@ -105,10 +74,10 @@ function BreakdownRankCard({
   prefix,
   title,
   items,
-  resolveColor,
+  gradient,
   rollupOthers,
 }: BreakdownRankCardProps): React.ReactElement | null {
-  const chartRows = buildBreakdownChartRows(items, resolveColor, rollupOthers)
+  const chartRows = buildBreakdownChartRows(items, rollupOthers)
 
   if (chartRows.length === 0) {
     return null
@@ -125,21 +94,27 @@ function BreakdownRankCard({
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
         <div className="grid min-h-[5.5rem] shrink-0 grid-cols-3 gap-3 text-center text-sm">
-          <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-            <p className="text-xs text-muted-foreground">{m.statistika_analytics_total()}</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{totalClaims}</p>
+          <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+            <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+              {m.statistika_analytics_total()}
+            </p>
+            <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
+              {totalClaims}
+            </p>
           </div>
-          <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+            <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
               {m.statistika_analytics_breakdown_claims()}
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+            <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
               {chartRows.length}
             </p>
           </div>
-          <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-            <p className="text-xs text-muted-foreground">{topRow?.label ?? '—'}</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+          <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+            <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+              {topRow?.label ?? '—'}
+            </p>
+            <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
               {topRow?.total ?? 0}
             </p>
           </div>
@@ -151,22 +126,14 @@ function BreakdownRankCard({
               layout="vertical"
               margin={{ top: 8, right: 16, left: 8, bottom: 0 }}
             >
-              <BreakdownChartGradients
-                prefix={prefix}
-                rows={chartRows}
-                resolveColor={resolveColor}
-              />
-              <CartesianGrid
-                strokeDasharray="3 3"
-                className="stroke-border/70"
-                horizontal={false}
-              />
+              <BreakdownChartGradient prefix={prefix} gradient={gradient} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--mri-border)" horizontal={false} />
               <XAxis
                 type="number"
                 allowDecimals={false}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={STATISTICS_AXIS_TICK}
               />
               <YAxis
                 type="category"
@@ -174,33 +141,22 @@ function BreakdownRankCard({
                 width={112}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={STATISTICS_AXIS_TICK}
               />
               <Tooltip content={<StatisticsManufacturerRankTooltip />} />
-              <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                {chartRows.map((row) => (
-                  <Cell key={row.code} fill={`url(#${breakdownGradientId(prefix, row.code)})`} />
-                ))}
-              </Bar>
+              <Bar
+                animationDuration={650}
+                dataKey="total"
+                fill={`url(#${breakdownGradientId(prefix)})`}
+                radius={[0, 6, 6, 0]}
+                maxBarSize={28}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
     </Card>
   )
-}
-
-function resolveSourceColor(code: string, cycleIndex: number): StatisticsRankChartColor {
-  return resolveStatisticsRankColor(code, cycleIndex, {
-    fixedColors: STATISTICS_SOURCE_FIXED_COLORS,
-    cycleColors: STATISTICS_RANK_CYCLE_COLORS,
-  })
-}
-
-function resolveCyclicColor(code: string, cycleIndex: number): StatisticsRankChartColor {
-  return resolveStatisticsRankColor(code, cycleIndex, {
-    cycleColors: STATISTICS_RANK_CYCLE_COLORS,
-  })
 }
 
 export function StatisticsBreakdownCharts({
@@ -221,10 +177,10 @@ export function StatisticsBreakdownCharts({
       {showSource ? (
         <>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
               {m.statistika_analytics_source_section_title()}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-mri-text2">
               {m.statistika_analytics_source_section_description()}
             </p>
           </div>
@@ -232,7 +188,7 @@ export function StatisticsBreakdownCharts({
             prefix="source"
             title={m.statistika_analytics_source_section_title()}
             items={bySource.items}
-            resolveColor={resolveSourceColor}
+            gradient={STATISTICS_MONO_GRADIENTS.blue}
             rollupOthers={false}
           />
         </>
@@ -241,10 +197,10 @@ export function StatisticsBreakdownCharts({
       {showEmployee ? (
         <>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
               {m.statistika_analytics_employee_section_title()}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-mri-text2">
               {m.statistika_analytics_employee_section_description()}
             </p>
           </div>
@@ -252,7 +208,7 @@ export function StatisticsBreakdownCharts({
             prefix="employee"
             title={m.statistika_analytics_employee_section_title()}
             items={byEmployee.items}
-            resolveColor={resolveCyclicColor}
+            gradient={STATISTICS_MONO_GRADIENTS.red}
             rollupOthers
           />
         </>
@@ -261,10 +217,10 @@ export function StatisticsBreakdownCharts({
       {showEngineType ? (
         <>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
               {m.statistika_analytics_engine_type_section_title()}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-mri-text2">
               {m.statistika_analytics_engine_type_section_description()}
             </p>
           </div>
@@ -272,7 +228,7 @@ export function StatisticsBreakdownCharts({
             prefix="engine-type"
             title={m.statistika_analytics_engine_type_section_title()}
             items={byEngineType.items}
-            resolveColor={resolveCyclicColor}
+            gradient={STATISTICS_MONO_GRADIENTS.gray}
             rollupOthers
           />
         </>

@@ -1,6 +1,6 @@
 import { ApiError } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading } from '@mr/ui'
+import { InternalButton } from '~/components/internal-button'
 import { useEffect, useRef, useState } from 'react'
 
 import { TEXTAREA_FIELD_CLASS } from '../emotive-claims/create/form-field-styles.js'
@@ -49,10 +49,10 @@ export function ClaimFindingsSection({
   const showReadOnlyEmpty = !canEdit && (internalNotes === null || internalNotes.trim() === '')
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-      <Heading level="h3" as="h2" id="claimFindingsHeading" className="text-foreground">
+    <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
+      <h2 id="claimFindingsHeading" className="text-[15px] font-extrabold text-mri-text">
         {m.emotive_claims_detail_section_notes()}
-      </Heading>
+      </h2>
 
       {canEdit ? (
         <div className="flex flex-col gap-3">
@@ -66,15 +66,24 @@ export function ClaimFindingsSection({
           />
 
           {saveError ? (
-            <p className="text-sm text-destructive" role="alert">
+            <p className="text-sm text-mri-bad" role="alert">
               {saveError}
             </p>
           ) : null}
 
           <div>
-            <Button type="button" onClick={handleSave} loading={isSaving}>
+            <InternalButton
+              type="button"
+              variant="green"
+              className="h-10 w-auto px-5 text-xs"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              <span aria-hidden="true" className="font-normal">
+                ✓
+              </span>{' '}
               {m.emotive_claims_detail_basic_save()}
-            </Button>
+            </InternalButton>
           </div>
         </div>
       ) : showReadOnlyEmpty ? (

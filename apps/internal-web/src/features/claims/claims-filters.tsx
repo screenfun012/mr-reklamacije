@@ -7,10 +7,11 @@ import {
   type OutcomeLabelKey,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { DatePicker, FilterSelect, Input, SearchableSelect } from '@mr/ui'
+import { cn, DatePicker, FilterSelect, Input, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
+import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
 import { useLocale } from '~/lib/locale'
 
@@ -40,18 +41,6 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
-  )
-
-  const kindOptions = useMemo(
-    () => [
-      { value: FILTER_ALL_SENTINEL, label: KIND_FILTER_LABELS.all() },
-      ...CLAIM_KIND_REGISTRY.map((definition) => ({
-        value: definition.key,
-        label:
-          definition.key === 'domace' ? KIND_FILTER_LABELS.domace() : KIND_FILTER_LABELS.emotive(),
-      })),
-    ],
-    [locale],
   )
 
   const outcomeOptions = useMemo(
@@ -93,40 +82,78 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
     })
   }, [debouncedSearch, onSearchChange, search])
 
+  const kindValue = search.kind ?? FILTER_ALL_SENTINEL
+  const kindSegments = [
+    { value: FILTER_ALL_SENTINEL, label: KIND_FILTER_LABELS.all() },
+    // Design order: Sve / EMOTIVE / DOMAĆE.
+    ...[...CLAIM_KIND_REGISTRY]
+      .sort((a) => (a.key === 'emotive' ? -1 : 1))
+      .map((definition) => ({
+        value: definition.key,
+        label:
+          definition.key === 'domace' ? KIND_FILTER_LABELS.domace() : KIND_FILTER_LABELS.emotive(),
+      })),
+  ]
+
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end">
-      <FilterSelect
-        label={m.claims_filter_kind()}
-        value={search.kind ?? FILTER_ALL_SENTINEL}
-        options={kindOptions}
-        placeholder={KIND_FILTER_LABELS.all()}
-        aria-label={m.claims_filter_kind()}
-        onValueChange={(value) => {
-          onSearchChange({
-            ...search,
-            kind: value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['kind']),
-            page: 1,
-          })
-        }}
-      />
+    <div className="flex flex-col gap-4 rounded-[14px] border border-mri-border bg-mri-surface p-5 sm:flex-row sm:flex-wrap sm:items-end">
+      <div className="flex flex-col gap-[7px]">
+        <InternalFieldLabel>{m.claims_filter_kind()}</InternalFieldLabel>
+        <div
+          role="group"
+          aria-label={m.claims_filter_kind()}
+          className="flex overflow-hidden rounded-[9px] border border-mri-border2"
+        >
+          {kindSegments.map((segment, index) => (
+            <button
+              key={segment.value}
+              type="button"
+              onClick={() => {
+                onSearchChange({
+                  ...search,
+                  kind:
+                    segment.value === FILTER_ALL_SENTINEL
+                      ? undefined
+                      : (segment.value as ClaimsSearch['kind']),
+                  page: 1,
+                })
+              }}
+              aria-pressed={kindValue === segment.value}
+              className={cn(
+                'cursor-pointer px-[15px] py-[9px] text-xs font-semibold uppercase transition-colors duration-200',
+                index > 0 && 'border-l border-mri-border',
+                kindValue === segment.value
+                  ? 'bg-mri-red text-white'
+                  : 'bg-transparent text-mri-text2 hover:text-mri-text',
+              )}
+            >
+              {segment.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <FilterSelect
-        label={m.emotive_claims_filter_outcome()}
-        value={search.outcome ?? FILTER_ALL_SENTINEL}
-        options={outcomeOptions}
-        placeholder={m.emotive_claims_filter_outcome_all()}
-        aria-label={m.emotive_claims_filter_outcome()}
-        onValueChange={(value) => {
-          onSearchChange({
-            ...search,
-            outcome: value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['outcome']),
-            page: 1,
-          })
-        }}
-      />
+      <div className="flex min-w-[9rem] flex-col gap-[7px]">
+        <InternalFieldLabel>{m.emotive_claims_filter_outcome()}</InternalFieldLabel>
+        <FilterSelect
+          value={search.outcome ?? FILTER_ALL_SENTINEL}
+          options={outcomeOptions}
+          placeholder={m.emotive_claims_filter_outcome_all()}
+          className={INTERNAL_CONTROL_CLASSES}
+          aria-label={m.emotive_claims_filter_outcome()}
+          onValueChange={(value) => {
+            onSearchChange({
+              ...search,
+              outcome:
+                value === FILTER_ALL_SENTINEL ? undefined : (value as ClaimsSearch['outcome']),
+              page: 1,
+            })
+          }}
+        />
+      </div>
 
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.claims_filter_manufacturer()}</span>
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.claims_filter_manufacturer()}</InternalFieldLabel>
         <SearchableSelect
           value={search.manufacturerId ?? ''}
           options={manufacturerOptions}
@@ -134,6 +161,7 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
           searchPlaceholder={m.field_search_placeholder()}
           emptyOptionLabel={m.claims_filter_manufacturer_all()}
           noResultsLabel={m.field_no_results()}
+          className={INTERNAL_CONTROL_CLASSES}
           aria-label={m.claims_filter_manufacturer()}
           onValueChange={(manufacturerId) => {
             onSearchChange({
@@ -145,9 +173,10 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
         />
       </div>
 
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.emotive_claims_filter_date_from()}</span>
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.emotive_claims_filter_date_from()}</InternalFieldLabel>
         <DatePicker
+          className={INTERNAL_CONTROL_CLASSES}
           value={search.dateFrom}
           onChange={(dateFrom) => {
             onSearchChange({
@@ -160,9 +189,10 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
         />
       </div>
 
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.emotive_claims_filter_date_to()}</span>
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.emotive_claims_filter_date_to()}</InternalFieldLabel>
         <DatePicker
+          className={INTERNAL_CONTROL_CLASSES}
           value={search.dateTo}
           onChange={(dateTo) => {
             onSearchChange({
@@ -175,10 +205,11 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
         />
       </div>
 
-      <label className="flex min-w-[12rem] flex-[2] flex-col gap-1.5 text-sm">
-        <span className="font-medium text-foreground">{m.emotive_claims_filter_search()}</span>
+      <label className="flex min-w-[12rem] flex-[2] flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.emotive_claims_filter_search()}</InternalFieldLabel>
         <Input
           type="search"
+          className={INTERNAL_CONTROL_CLASSES}
           placeholder={m.emotive_claims_filter_search_placeholder()}
           value={searchDraft}
           onChange={(event) => setSearchDraft(event.target.value)}

@@ -7,8 +7,10 @@ import {
   type DashboardStatTrend,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle, cn } from '@mr/ui'
+import { cn } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
+
+import { InternalCard } from '~/components/internal-card'
 
 import { DashboardStatTrendBadge } from './dashboard-stat-trend-badge'
 
@@ -17,7 +19,7 @@ export interface DashboardStatCardsProps {
   trends: DashboardTrends
 }
 
-type StatAccent = 'neutral' | 'pending' | 'accepted' | 'rejected'
+type StatAccent = 'neutral' | 'pending' | 'accepted' | 'rejected' | 'month' | 'emotive' | 'domace'
 
 type StatCardLinkSearch = Pick<ClaimsSearch, 'outcome' | 'kind'>
 
@@ -27,22 +29,31 @@ interface StatCardConfig {
   accent: StatAccent
   linkSearch?: StatCardLinkSearch
   trend?: DashboardStatTrend
+  /** Rising count is BAD for this card (pending) — flips the trend colors. */
+  trendInverted?: boolean
 }
 
-const CARD_ACCENT_CLASSES: Record<StatAccent, string> = {
-  neutral: '',
-  pending:
-    'border-mr-warning/45 bg-mr-warning-subtle/40 dark:border-mr-warning/55 dark:bg-mr-warning/15',
-  accepted:
-    'border-mr-success/45 bg-mr-success-subtle/40 dark:border-mr-success/55 dark:bg-mr-success/15',
-  rejected: 'border-mr-error/45 bg-mr-error-subtle/40 dark:border-mr-error/55 dark:bg-mr-error/15',
-}
-
-const VALUE_ACCENT_CLASSES: Record<StatAccent, string> = {
-  neutral: 'text-foreground',
-  pending: 'text-mr-warning-strong dark:text-mr-warning',
-  accepted: 'text-mr-success-strong dark:text-mr-success',
-  rejected: 'text-mr-error-strong dark:text-mr-error',
+/** Design accents: status cards get a tinted border; every card gets a dot. */
+const ACCENT_STYLES: Record<StatAccent, { border: string; dot: string; value: string }> = {
+  neutral: { border: 'border-mri-border', dot: 'bg-mri-text2', value: 'text-mri-text' },
+  pending: {
+    border: 'border-[rgba(245,166,35,0.35)]',
+    dot: 'bg-mri-warn',
+    value: 'text-mri-warn',
+  },
+  accepted: {
+    border: 'border-[rgba(31,169,113,0.3)]',
+    dot: 'bg-mri-ok',
+    value: 'text-mri-ok',
+  },
+  rejected: {
+    border: 'border-[rgba(224,92,82,0.3)]',
+    dot: 'bg-mri-bad',
+    value: 'text-mri-bad',
+  },
+  month: { border: 'border-mri-border', dot: 'bg-mri-info', value: 'text-mri-text' },
+  emotive: { border: 'border-mri-border', dot: 'bg-mri-info', value: 'text-mri-text' },
+  domace: { border: 'border-mri-border', dot: 'bg-mri-domace', value: 'text-mri-text' },
 }
 
 function buildCards(stats: DashboardStats, trends: DashboardTrends): StatCardConfig[] {
@@ -54,6 +65,7 @@ function buildCards(stats: DashboardStats, trends: DashboardTrends): StatCardCon
       accent: 'pending',
       linkSearch: { outcome: ClaimOutcome.Pending },
       trend: trends.pending,
+      trendInverted: true,
     },
     {
       title: m.dashboard_card_accepted(),
@@ -70,39 +82,48 @@ function buildCards(stats: DashboardStats, trends: DashboardTrends): StatCardCon
     {
       title: m.dashboard_card_this_month(),
       value: stats.newThisMonth,
-      accent: 'neutral',
+      accent: 'month',
       trend: trends.newThisMonth,
     },
     {
       title: m.dashboard_card_emotive(),
       value: stats.byKind.emotive,
-      accent: 'neutral',
+      accent: 'emotive',
       linkSearch: { kind: ClaimKind.Emotive },
     },
     {
       title: m.dashboard_card_domace(),
       value: stats.byKind.domace,
-      accent: 'neutral',
+      accent: 'domace',
       linkSearch: { kind: ClaimKind.Domace },
     },
   ]
 }
 
-function StatCard({ card }: { card: StatCardConfig }) {
+function StatCard({ card, index }: { card: StatCardConfig; index: number }) {
+  const accent = ACCENT_STYLES[card.accent]
   const cardBody = (
-    <Card className={cn(CARD_ACCENT_CLASSES[card.accent], card.linkSearch && 'h-full')}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{card.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-end justify-between gap-2">
-          <div className={cn('text-3xl font-bold tabular-nums', VALUE_ACCENT_CLASSES[card.accent])}>
-            {card.value}
-          </div>
-          {card.trend ? <DashboardStatTrendBadge trend={card.trend} /> : null}
-        </div>
-      </CardContent>
-    </Card>
+    <InternalCard
+      className={cn('mri-fade-up h-full rounded-xl px-[18px] py-4', accent.border)}
+      style={{ animationDelay: `${(0.06 + index * 0.05).toFixed(2)}s` }}
+    >
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <span className="whitespace-nowrap font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+          {card.title}
+        </span>
+        <span aria-hidden="true" className={cn('size-[7px] flex-none rounded-full', accent.dot)} />
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span
+          className={cn('font-mono text-[27px] font-bold leading-none tabular-nums', accent.value)}
+        >
+          {card.value}
+        </span>
+        {card.trend ? (
+          <DashboardStatTrendBadge trend={card.trend} inverted={card.trendInverted === true} />
+        ) : null}
+      </div>
+    </InternalCard>
   )
 
   if (!card.linkSearch) {
@@ -113,7 +134,7 @@ function StatCard({ card }: { card: StatCardConfig }) {
     <Link
       to="/reklamacije"
       search={{ page: 1, pageSize: 10, ...card.linkSearch }}
-      className="block cursor-pointer rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="block cursor-pointer rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mri-red"
     >
       {cardBody}
     </Link>
@@ -124,9 +145,9 @@ export function DashboardStatCards({ stats, trends }: DashboardStatCardsProps) {
   const cards = buildCards(stats, trends)
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-      {cards.map((card) => (
-        <StatCard key={card.title} card={card} />
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3.5">
+      {cards.map((card, index) => (
+        <StatCard key={card.title} card={card} index={index} />
       ))}
     </div>
   )
@@ -134,16 +155,12 @@ export function DashboardStatCards({ stats, trends }: DashboardStatCardsProps) {
 
 export function DashboardStatCardsSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3.5">
       {Array.from({ length: 7 }, (_, index) => (
-        <Card key={index}>
-          <CardHeader className="pb-2">
-            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="h-9 w-16 animate-pulse rounded bg-muted" />
-          </CardContent>
-        </Card>
+        <InternalCard key={index} className="rounded-xl px-[18px] py-4">
+          <div className="mb-3 h-3 w-24 animate-pulse rounded bg-mri-inbg" />
+          <div className="h-7 w-14 animate-pulse rounded bg-mri-inbg" />
+        </InternalCard>
       ))}
     </div>
   )

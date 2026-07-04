@@ -11,7 +11,9 @@ import {
   externalPartiesReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, CardTitle, Heading } from '@mr/ui'
+import { InternalButton } from '~/components/internal-button'
+import { InternalCard } from '~/components/internal-card'
+import { InternalNote } from '~/components/internal-note'
 
 import { StepFaultsFields } from '../../emotive-claims/create/step-faults-fields.js'
 import { DomaceBasicFields } from './domace-basic-fields.js'
@@ -85,81 +87,80 @@ export function DomaceClaimCreateForm(): React.ReactElement {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{m.domace_claims_create_title()}</CardTitle>
-        <p className="text-sm text-muted-foreground">{m.domace_claims_create_subtitle()}</p>
-      </CardHeader>
-      <CardContent>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            void form.handleSubmit()
-          }}
-          className="flex flex-col gap-8"
-          noValidate
-        >
-          <section className="flex flex-col gap-4">
-            <Heading level="h3" as="h2" className="text-foreground">
-              {m.domace_claims_create_section_basic()}
-            </Heading>
-            <DomaceBasicFields
-              form={form}
-              manufacturers={manufacturers}
-              stepErrors={stepErrors}
-              disabled={isPending}
-            />
-          </section>
+    <InternalCard className="mri-fade-up p-6 sm:p-7" style={{ animationDelay: '0.1s' }}>
+      <p className="mb-6 text-sm text-mri-text2">{m.domace_claims_create_subtitle()}</p>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          void form.handleSubmit()
+        }}
+        className="flex flex-col gap-8"
+        noValidate
+      >
+        <section className="flex flex-col gap-4">
+          <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
+            {m.domace_claims_create_section_basic()}
+          </h2>
+          <DomaceBasicFields
+            form={form}
+            manufacturers={manufacturers}
+            stepErrors={stepErrors}
+            disabled={isPending}
+          />
+        </section>
 
-          <section className="flex flex-col gap-4">
-            <Heading level="h3" as="h2" className="text-foreground">
-              {m.domace_claims_create_section_faults()}
-            </Heading>
-            <StepFaultsFields
-              form={form}
-              departments={departments}
-              employees={employees}
-              externalParties={externalParties}
-              stepErrors={stepErrors}
-              disabled={isPending}
-            />
-          </section>
+        <section className="flex flex-col gap-4">
+          <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
+            {m.domace_claims_create_section_faults()}
+          </h2>
+          <StepFaultsFields
+            form={form}
+            departments={departments}
+            employees={employees}
+            externalParties={externalParties}
+            stepErrors={stepErrors}
+            disabled={isPending}
+          />
+        </section>
 
-          {showSuccess ? (
-            <div
-              role="status"
-              className="flex flex-col gap-2 rounded-md border border-mr-success/30 bg-mr-success/5 px-4 py-3 text-sm text-mr-success-strong dark:text-mr-success"
-            >
-              <p>{m.domace_claims_create_success()}</p>
+        {showSuccess ? (
+          <InternalNote tone="info" role="status">
+            <span className="flex flex-col gap-1">
+              <span>{m.domace_claims_create_success()}</span>
               {createdClaimId ? (
                 <Link
                   to="/reklamacije/domace/$id"
                   params={{ id: createdClaimId }}
                   search={CLAIM_DETAIL_DEFAULT_SEARCH}
-                  className="font-medium underline underline-offset-2 hover:text-mr-success dark:hover:text-mr-success-strong"
+                  className="font-semibold text-mri-redh hover:underline"
                 >
                   {m.domace_claims_create_success_view()}
                 </Link>
               ) : null}
-            </div>
-          ) : null}
+            </span>
+          </InternalNote>
+        ) : null}
 
-          {submitError ? (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-            >
-              {submitError}
-            </div>
-          ) : null}
+        {submitError ? (
+          <InternalNote tone="error" role="alert">
+            {submitError}
+          </InternalNote>
+        ) : null}
 
-          <div className="flex justify-end">
-            <Button type="submit" loading={isPending}>
-              {m.action_save()}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="flex justify-end">
+          <InternalButton
+            type="submit"
+            variant="green"
+            className="h-[46px] w-auto px-6 text-[12.5px]"
+            disabled={isPending}
+          >
+            <span aria-hidden="true" className="font-normal">
+              ✓
+            </span>{' '}
+            {m.action_save()}
+          </InternalButton>
+        </div>
+      </form>
+    </InternalCard>
   )
 }

@@ -4,6 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 
 import { StatisticsAnalyticsFilters } from './statistics-analytics-filters.js'
+import { StatisticsKpiRow } from './statistics-kpi-row.js'
 import {
   isStatisticsSummaryEmpty,
   StatisticsAnalyticsEmptyBanner,
@@ -41,7 +42,11 @@ function StatistikaAnalyticsContent({
     <>
       <StatisticsAnalyticsFilters search={search} onSearchChange={onSearchChange} />
 
-      <p className="text-sm text-muted-foreground">{formatStatisticsPeriodSubtitle(search)}</p>
+      <p className="font-mono text-[11px] tracking-[0.06em] text-mri-text2">
+        {formatStatisticsPeriodSubtitle(search)}
+      </p>
+
+      <StatisticsKpiRow summary={data} />
 
       {isEmpty ? (
         <StatisticsAnalyticsEmptyBanner
@@ -76,7 +81,7 @@ export function StatistikaAnalyticsSection({
         <h2 className="text-base font-semibold text-foreground">
           {m.statistika_analytics_title()}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{m.statistika_analytics_description()}</p>
+        <p className="mt-1.5 text-sm text-mri-text2">{m.statistika_analytics_description()}</p>
       </div>
 
       <Suspense fallback={<StatisticsTrendChartsSkeleton />}>

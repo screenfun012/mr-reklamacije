@@ -11,8 +11,13 @@ import {
   TwoFactorVerifyForm,
 } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
 
+import { AuthHeroPanel } from '~/components/auth/auth-hero-panel'
+import { AuthTextField } from '~/components/auth/auth-text-field'
+import { InternalButton, internalButtonClasses } from '~/components/internal-button'
+import { InternalNote } from '~/components/internal-note'
+import { LocaleThemeControls } from '~/components/layout/locale-theme-controls'
+import { InternalLogo, MaskedIcon } from '~/components/masked-icon'
 import { authClient } from '~/lib/auth-client'
 
 const loginSearchSchema = z.object({
@@ -97,26 +102,39 @@ function LoginComponent(): React.ReactElement {
   })
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[url('/background.png')] bg-cover bg-center bg-no-repeat"
-      />
-      <Card className="relative z-10 w-full max-w-md border border-white/15 bg-card/75 shadow-xl backdrop-blur-md">
-        <CardHeader>
-          <Heading level="h2" as="h1">
-            {m.auth_login_title_internal()}
-          </Heading>
-        </CardHeader>
-        <CardContent>
+    <main className="flex min-h-screen bg-mri-bg font-sans text-mri-text">
+      <AuthHeroPanel variant="login" />
+
+      <div className="relative grid min-w-0 flex-1 place-items-center overflow-hidden px-10 py-12 lg:min-w-[460px]">
+        <div aria-hidden="true" className="mri-grid-bg absolute inset-0" />
+        <div
+          aria-hidden="true"
+          className="absolute -right-40 -top-[220px] size-[520px] rounded-full bg-[radial-gradient(circle,rgba(237,28,36,0.13),transparent_65%)]"
+        />
+        <div className="absolute right-8 top-7 z-[3]">
+          <LocaleThemeControls />
+        </div>
+
+        <div
+          className="mri-fade-up relative z-[2] w-full max-w-[384px]"
+          style={{ animationDelay: '0.15s' }}
+        >
+          <InternalLogo className="mb-9 h-8 w-[124px] lg:hidden" />
+
+          <div className="mb-2.5 flex items-center gap-[11px]">
+            <MaskedIcon name="cog" className="size-[22px] text-mri-red" />
+            <h1 className="text-[32px] font-extrabold tracking-[-0.02em]">
+              {m.auth_login_title()}
+            </h1>
+          </div>
+          <p className="mb-8 text-[15px] text-mri-text2">{m.internal_login_subtitle()}</p>
+
           {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (
-            <div
-              role="alert"
-              className="mb-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground"
-            >
+            <InternalNote tone="warn" role="alert" className="mb-5">
               {m.auth_login_insufficient_role()}
-            </div>
+            </InternalNote>
           ) : null}
+
           {showTwoFactorStep ? (
             <div className="flex flex-col gap-4">
               <TwoFactorVerifyForm
@@ -125,9 +143,9 @@ function LoginComponent(): React.ReactElement {
                 onError={(message: string) => setAuthError(message)}
               />
               {authError !== null ? (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                <InternalNote tone="error" role="alert">
                   {authError}
-                </div>
+                </InternalNote>
               ) : null}
             </div>
           ) : null}
@@ -138,83 +156,83 @@ function LoginComponent(): React.ReactElement {
                 e.preventDefault()
                 void form.handleSubmit()
               }}
-              className="flex flex-col gap-4"
+              className="flex flex-col"
               noValidate
             >
               <form.Field
                 name="email"
                 children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="email" className="text-sm font-medium">
-                      {m.auth_login_email()}
-                    </label>
-                    <Input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
+                  <AuthTextField
+                    id="email"
+                    type="email"
+                    label={m.auth_login_email()}
+                    autoComplete="email"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    onBlur={field.handleBlur}
+                    disabled={isPending}
+                    error={
+                      field.state.meta.errors.length > 0
+                        ? formatFieldError(field.state.meta.errors[0])
+                        : null
+                    }
+                    className="mb-5"
+                  />
                 )}
               />
 
               <form.Field
                 name="password"
                 children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="password" className="text-sm font-medium">
-                      {m.auth_login_password()}
-                    </label>
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="current-password"
-                      value={field.state.value}
-                      onChange={(e) => {
-                        field.handleChange(e.target.value)
-                      }}
-                      onBlur={field.handleBlur}
-                      disabled={isPending}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
-                        {formatFieldError(field.state.meta.errors[0])}
-                      </span>
-                    )}
-                  </div>
+                  <AuthTextField
+                    id="password"
+                    type="password"
+                    label={m.auth_login_password()}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    onBlur={field.handleBlur}
+                    disabled={isPending}
+                    error={
+                      field.state.meta.errors.length > 0
+                        ? formatFieldError(field.state.meta.errors[0])
+                        : null
+                    }
+                    className="mb-7"
+                  />
                 )}
               />
 
-              {authError !== null && (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+              {authError !== null ? (
+                <InternalNote tone="error" role="alert" className="mb-5">
                   {authError}
-                </div>
-              )}
+                </InternalNote>
+              ) : null}
 
-              <Button type="submit" loading={isPending} className="w-full">
-                {m.auth_login_submit()}
-              </Button>
+              <InternalButton type="submit" disabled={isPending}>
+                {m.auth_login_submit()} <span className="font-normal">→</span>
+              </InternalButton>
 
-              <Link
-                to="/register"
-                className="text-center text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
+              <div className="my-[26px] flex items-center gap-3.5">
+                <span aria-hidden="true" className="h-px flex-1 bg-mri-border" />
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-mri-text2">
+                  {m.internal_login_new_employee()}
+                </span>
+                <span aria-hidden="true" className="h-px flex-1 bg-mri-border" />
+              </div>
+
+              <Link to="/register" className={internalButtonClasses('outline')}>
                 {m.auth_login_register_link()}
               </Link>
+
+              <p className="mt-8 text-center font-mono text-[11px] tracking-[0.04em] text-mri-text2">
+                interno.mrengines.rs · {m.internal_login_staff_only()}
+              </p>
             </form>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
   )
 }

@@ -9,14 +9,8 @@ import {
   type ClaimsSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  ClaimKindBadge,
-  dataTableIconActionClassName,
-  dataTableRowNavigableClassName,
-  Heading,
-  OutcomeBadge,
-  Skeleton,
-} from '@mr/ui'
+import { dataTableIconActionClassName, dataTableRowNavigableClassName, Skeleton } from '@mr/ui'
+
 import {
   createColumnHelper,
   flexRender,
@@ -27,6 +21,9 @@ import {
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
+
+import { KindPill } from '~/components/kind-pill'
+import { OutcomePill } from '~/components/outcome-pill'
 
 import {
   claimsTableSortingFromSearch,
@@ -111,7 +108,7 @@ function createClaimsTableColumns(
     columnHelper.display({
       id: 'kind',
       header: () => m.claims_col_kind(),
-      cell: ({ row }) => <ClaimKindBadge kind={row.original.kind} />,
+      cell: ({ row }) => <KindPill kind={row.original.kind} />,
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({
@@ -129,7 +126,7 @@ function createClaimsTableColumns(
     columnHelper.display({
       id: 'outcome',
       header: () => m.emotive_claims_col_outcome(),
-      cell: ({ row }) => <OutcomeBadge outcome={row.original.outcome} />,
+      cell: ({ row }) => <OutcomePill outcome={row.original.outcome} />,
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({
@@ -238,20 +235,22 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
   if (items.length === 0) {
     return (
       <div
-        className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center"
+        className="rounded-2xl border border-dashed border-mri-border2 bg-mri-surface px-6 py-12 text-center"
         role="status"
       >
-        <p className="text-sm font-medium text-foreground">{m.emotive_claims_empty_title()}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_empty_description()}</p>
+        <p className="text-sm font-semibold text-mri-text">{m.emotive_claims_empty_title()}</p>
+        <p className="mt-1 text-sm italic text-mri-text2">{m.emotive_claims_empty_description()}</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
-        <Heading level="h2">{m.emotive_claims_list_title()}</Heading>
-        <span className="text-sm text-muted-foreground">
+    <div className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
+      <div className="flex items-center justify-between border-b border-mri-border px-5 py-4">
+        <h2 className="text-[15px] font-extrabold text-mri-text">
+          {m.emotive_claims_list_title()}
+        </h2>
+        <span className="font-mono text-[11px] text-mri-text2">
           {m.emotive_claims_count({ count: total })}
         </span>
       </div>
@@ -259,7 +258,7 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
         <table className="w-full min-w-[1160px] text-sm">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-border bg-muted/20 text-left">
+              <tr key={headerGroup.id} className="border-b border-mri-border bg-mri-inbg text-left">
                 {headerGroup.headers.map((header) => {
                   const sorted = header.column.getIsSorted()
                   const ariaSort = header.column.getCanSort()
@@ -269,7 +268,7 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
                   return (
                     <th
                       key={header.id}
-                      className="px-4 py-3 font-medium text-muted-foreground"
+                      className="px-4 py-3 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2"
                       aria-sort={ariaSort}
                     >
                       {header.isPlaceholder

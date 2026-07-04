@@ -1,8 +1,9 @@
 import { m } from '@mr/i18n'
 import { ClaimOutcome, OUTCOME_REGISTRY, type ClaimOutcome as ClaimOutcomeType } from '@mr/shared'
-import { Button, Heading } from '@mr/ui'
 import { Lock } from 'lucide-react'
 import { useState } from 'react'
+
+import { InternalButton, type InternalButtonVariant } from '~/components/internal-button'
 
 import { useChangeEmotiveClaimOutcome } from './use-change-emotive-claim-outcome'
 
@@ -22,8 +23,6 @@ const COMPLETION_OUTCOMES: readonly ClaimOutcomeType[] = [
   ClaimOutcome.Rejected,
 ]
 
-type ActionVariant = 'default' | 'destructive' | 'outline'
-
 const ACTION_LABEL: Record<ClaimOutcomeType, () => string> = {
   [ClaimOutcome.Accepted]: () => m.emotive_claims_detail_status_action_accept(),
   [ClaimOutcome.Rejected]: () => m.emotive_claims_detail_status_action_reject(),
@@ -31,9 +30,9 @@ const ACTION_LABEL: Record<ClaimOutcomeType, () => string> = {
   [ClaimOutcome.Archived]: () => m.outcome_archived(),
 }
 
-const ACTION_VARIANT: Record<ClaimOutcomeType, ActionVariant> = {
-  [ClaimOutcome.Accepted]: 'default',
-  [ClaimOutcome.Rejected]: 'destructive',
+const ACTION_VARIANT: Record<ClaimOutcomeType, InternalButtonVariant> = {
+  [ClaimOutcome.Accepted]: 'green',
+  [ClaimOutcome.Rejected]: 'outline-red',
   [ClaimOutcome.Pending]: 'outline',
   [ClaimOutcome.Archived]: 'outline',
 }
@@ -88,19 +87,19 @@ export function EmotiveClaimStatusActions({
     <div
       className={
         layout === 'section'
-          ? 'flex flex-col gap-3 rounded-lg border border-border p-6'
+          ? 'flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6'
           : 'flex flex-wrap items-center gap-3'
       }
     >
       {layout === 'section' ? (
-        <Heading level="h3" as="h2" className="text-foreground">
+        <h2 className="text-[15px] font-extrabold text-mri-text">
           {m.emotive_claims_detail_status_section()}
-        </Heading>
+        </h2>
       ) : null}
 
       {isLocked ? (
         <div
-          className="flex items-center gap-2 text-sm text-muted-foreground"
+          className="flex items-center gap-2 text-sm text-mri-text2"
           role="status"
           data-testid="emotive-claim-lock-indicator"
         >
@@ -111,47 +110,52 @@ export function EmotiveClaimStatusActions({
 
       {confirmingReject ? (
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-foreground">
+          <span className="text-sm text-mri-text">
             {m.emotive_claims_detail_status_reject_confirm()}
           </span>
-          <Button
+          <InternalButton
             type="button"
-            variant="destructive"
-            size="sm"
+            variant="red"
+            className="h-9 w-auto px-4 text-[11.5px]"
             disabled={isPending}
             onClick={confirmReject}
           >
             {m.emotive_claims_detail_status_reject_confirm_yes()}
-          </Button>
-          <Button
+          </InternalButton>
+          <InternalButton
             type="button"
             variant="outline"
-            size="sm"
+            className="h-9 w-auto px-4 text-[11.5px]"
             disabled={isPending}
             onClick={() => setConfirmingReject(false)}
           >
             {m.emotive_claims_detail_status_cancel()}
-          </Button>
+          </InternalButton>
         </div>
       ) : (
         <div className="flex flex-wrap gap-3">
           {targets.map((definition) => (
-            <Button
+            <InternalButton
               key={definition.key}
               type="button"
               variant={ACTION_VARIANT[definition.key]}
-              size="sm"
+              className="h-10 w-auto px-5 text-xs"
               disabled={isPending}
               onClick={() => handleTarget(definition.key)}
             >
+              {definition.key === ClaimOutcome.Accepted ? (
+                <span aria-hidden="true" className="font-normal">
+                  ✓
+                </span>
+              ) : null}
               {ACTION_LABEL[definition.key]()}
-            </Button>
+            </InternalButton>
           ))}
         </div>
       )}
 
       {mutation.isError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-sm text-mri-bad" role="alert">
           {m.emotive_claims_detail_status_error()}
         </p>
       ) : null}

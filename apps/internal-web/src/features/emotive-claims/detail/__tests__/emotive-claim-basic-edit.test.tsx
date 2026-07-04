@@ -242,9 +242,13 @@ describe('EmotiveClaimBasicSection', () => {
     renderSection(true)
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
-    fireEvent.change(screen.getByLabelText(m.emotive_claims_create_field_mr_number()), {
-      target: { value: '' },
-    })
+    // exact: false — the required marker (" *") is part of the label now.
+    fireEvent.change(
+      screen.getByLabelText(m.emotive_claims_create_field_mr_number(), { exact: false }),
+      {
+        target: { value: '' },
+      },
+    )
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
     // Client-side guard: no network call, and we remain in edit mode (Save still shown).

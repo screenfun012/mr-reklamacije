@@ -4,24 +4,22 @@ import { cn } from '@mr/ui'
 
 export interface DashboardStatTrendBadgeProps {
   trend: DashboardStatTrend
+  /** Rising count is BAD for this metric (e.g. pending) — flips the colors. */
+  inverted?: boolean
 }
 
-export function DashboardStatTrendBadge({ trend }: DashboardStatTrendBadgeProps) {
+/** Mono trend chip next to a KPI value: "▲ 2" / "▼ 1" / "→ 0". */
+export function DashboardStatTrendBadge({ trend, inverted = false }: DashboardStatTrendBadgeProps) {
   const { delta } = trend
   const direction = delta === 0 ? 'flat' : delta > 0 ? 'up' : 'down'
-  const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→'
+  const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '→'
 
-  const toneClass =
-    direction === 'up'
-      ? 'border-mr-info/45 bg-mr-info-subtle text-mr-info-strong dark:border-mr-info/55 dark:bg-mr-info/20 dark:text-mr-info'
-      : 'border-mr-neutral-border bg-mr-neutral-subtle text-mr-neutral-muted dark:border-mr-neutral-muted/45 dark:bg-mr-neutral-muted/20 dark:text-mr-neutral-border'
+  const good = direction === 'up' ? !inverted : inverted
+  const toneClass = direction === 'flat' ? 'text-mri-text2' : good ? 'text-mri-ok' : 'text-mri-bad'
 
   return (
     <span
-      className={cn(
-        'inline-flex shrink-0 items-center gap-0.5 rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums',
-        toneClass,
-      )}
+      className={cn('font-mono text-[11px] font-semibold tabular-nums', toneClass)}
       title={m.dashboard_trend_vs_last_month()}
     >
       {arrow} {Math.abs(delta)}

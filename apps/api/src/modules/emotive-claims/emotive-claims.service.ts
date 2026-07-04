@@ -77,7 +77,7 @@ export class EmotiveClaimsService {
       changes: { after: created },
     })
 
-    this.events.publishClaimCreated(emotiveEventPayload(created.id))
+    this.events.publishClaimCreated(emotiveEventPayload(created.id), created.customerId)
 
     return created
   }
@@ -131,7 +131,7 @@ export class EmotiveClaimsService {
       changes: { before, after: updated },
     })
 
-    this.events.publishClaimUpdated(emotiveEventPayload(id))
+    this.events.publishClaimUpdated(emotiveEventPayload(id), updated.customerId)
 
     return updated
   }
@@ -167,7 +167,7 @@ export class EmotiveClaimsService {
       changes: { before },
     })
 
-    this.events.publishClaimDeleted(emotiveEventPayload(id))
+    this.events.publishClaimDeleted(emotiveEventPayload(id), before.customerId)
   }
 
   async restore(
@@ -197,7 +197,7 @@ export class EmotiveClaimsService {
       changes: { before, after: restored },
     })
 
-    this.events.publishClaimUpdated(emotiveEventPayload(id))
+    this.events.publishClaimUpdated(emotiveEventPayload(id), restored.customerId)
 
     return restored
   }
@@ -233,7 +233,7 @@ export class EmotiveClaimsService {
         : { before, after: updated, outcome: input.outcome },
     })
 
-    this.events.publishClaimUpdated(emotiveEventPayload(id))
+    this.events.publishClaimUpdated(emotiveEventPayload(id), updated.customerId)
 
     return updated
   }

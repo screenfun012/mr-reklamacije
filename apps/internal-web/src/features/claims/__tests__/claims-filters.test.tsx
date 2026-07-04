@@ -4,7 +4,7 @@ import {
 } from '@mr/shared'
 import { setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { Suspense } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -55,12 +55,19 @@ describe('ClaimsFilters', () => {
     expect(engineManufacturersReferenceOptions(ACTIVE_MANUFACTURERS_LOOKUP).queryKey).toBeDefined()
   })
 
-  it('renders kind and outcome filters with visible trigger labels', async () => {
+  it('renders kind segments and outcome filter with visible trigger labels', async () => {
     await renderFilters()
 
-    expect(screen.getByRole('combobox', { name: 'Vrsta' })).toHaveTextContent('Sve')
+    // Kind is a segmented control now — "Sve" is the pressed segment by default.
+    const kindGroup = screen.getByRole('group', { name: 'Vrsta' })
+    const allSegment = within(kindGroup).getByRole('button', { name: 'Sve' })
+    expect(allSegment).toHaveAttribute('aria-pressed', 'true')
+    expect(within(kindGroup).getByRole('button', { name: 'EMOTIVE' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+
     expect(screen.getByRole('combobox', { name: 'Ishod' })).toHaveTextContent('Svi ishodi')
-    expect(screen.getByRole('combobox', { name: 'Vrsta' }).textContent).not.toContain('Sve Sve')
     expect(screen.getByRole('combobox', { name: 'Ishod' }).textContent).not.toContain(
       'Svi ishodi Svi ishodi',
     )

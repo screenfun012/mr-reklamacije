@@ -137,8 +137,8 @@ describe('DashboardClaimList', () => {
     )
 
     const badge = screen.getByText('8 dana')
-    expect(badge).toHaveClass('text-mr-warning-strong')
-    expect(badge).not.toHaveClass('text-mr-error-strong')
+    expect(badge).toHaveClass('text-mri-warn')
+    expect(badge).not.toHaveClass('text-mri-bad')
   })
 
   it('renders days badge with error styling for critical overdue age', async () => {
@@ -160,7 +160,7 @@ describe('DashboardClaimList', () => {
     )
 
     const badge = screen.getByText('388 dana')
-    expect(badge).toHaveClass('text-mr-error-strong')
-    expect(badge).not.toHaveClass('text-mr-warning-strong')
+    expect(badge).toHaveClass('text-mri-bad')
+    expect(badge).not.toHaveClass('text-mri-warn')
   })
 })

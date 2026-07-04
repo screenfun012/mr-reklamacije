@@ -107,6 +107,41 @@ describe('AttachmentsService integration', () => {
     expect(await container.storageService.exists(raw?.storagePath ?? '')).toBe(true)
   })
 
+  it('client scope sees claim PHOTOS regardless of visibility, but never documents', async () => {
+    const claimId = await createDomaceClaim(container)
+    const uploader = { id: TEST_USER_ID, permissions: ['attachments.upload', 'domace_claims.view'] }
+
+    // Operator uploads both as plain internal — no toggle involved.
+    await container.attachmentsService.upload(
+      {
+        claimKind: ClaimKind.Domace,
+        claimId,
+        visibility: AttachmentVisibility.Internal,
+        files: [
+          { fileName: 'engine.jpg', data: MINIMAL_JPEG },
+          { fileName: 'report.pdf', data: Buffer.from('%PDF-1.4\n% regression fixture') },
+        ],
+      },
+      uploader,
+      auditContext,
+    )
+
+    const clientList = await container.attachmentsService.list(
+      { claimKind: ClaimKind.Domace, claimId },
+      { id: TEST_USER_ID, permissions: ['attachments.view_client_visible', 'domace_claims.view'] },
+    )
+
+    // Images are always client-visible by rule (2026-07-04); documents are not.
+    expect(clientList.items).toHaveLength(1)
+    expect(clientList.items[0]?.mimeType).toBe('image/jpeg')
+
+    const internalList = await container.attachmentsService.list(
+      { claimKind: ClaimKind.Domace, claimId },
+      { id: TEST_USER_ID, permissions: ['attachments.view_internal', 'domace_claims.view'] },
+    )
+    expect(internalList.items).toHaveLength(2)
+  })
+
   it('skips duplicate uploads with the same sha256 on the same claim', async () => {
     const claimId = await createDomaceClaim(container)
     const actor = { id: TEST_USER_ID, permissions: ['attachments.upload', 'domace_claims.view'] }

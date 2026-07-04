@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, Skeleton } from '@mr/ui'
+import { InternalCard } from '~/components/internal-card'
 
 /**
  * Loading skeleton for the dashboard claims chart. Lives in its own
@@ -7,13 +7,9 @@ import { Card, CardContent, CardHeader, Skeleton } from '@mr/ui'
  */
 export function DashboardClaimsChartSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-48" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-72 w-full rounded-lg" />
-      </CardContent>
-    </Card>
+    <InternalCard className="px-[26px] py-6">
+      <div className="mb-6 h-5 w-48 animate-pulse rounded bg-mri-inbg" />
+      <div className="h-[190px] w-full animate-pulse rounded-lg bg-mri-inbg" />
+    </InternalCard>
   )
 }

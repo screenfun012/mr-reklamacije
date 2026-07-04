@@ -24,6 +24,7 @@ import {
 } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
+import type { EventBus } from '../../core/ports/event-bus-port.js'
 import {
   buildSignedAttachmentUrl,
   verifySignedAttachmentToken,
@@ -112,9 +113,23 @@ export class AttachmentsService {
     private readonly storage: StorageService,
     private readonly claimContext: ClaimContextPort,
     private readonly audit: AuditPort,
+    private readonly events: EventBus,
     private readonly signingSecret: string,
     private readonly apiBaseUrl: string,
   ) {}
+
+  /**
+   * Attachment changes ride the claim-updated signal: internal lists refresh
+   * and — for EMOTIVE claims — the owning customer's portal photos refresh too.
+   */
+  private async publishClaimAttachmentsChanged(
+    claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
+    claimId: string,
+  ): Promise<void> {
+    const customerId =
+      claimKind === ClaimKind.Emotive ? await this.repo.findEmotiveClaimCustomerId(claimId) : null
+    this.events.publishClaimUpdated({ kind: claimKind, id: claimId }, customerId)
+  }
 
   async list(query: AttachmentListQuery, actor: AttachmentsActor): Promise<AttachmentListResponse> {
     const scope = resolveViewScope(actor)
@@ -324,6 +339,10 @@ export class AttachmentsService {
       items.push(created)
     }
 
+    if (items.length > 0) {
+      await this.publishClaimAttachmentsChanged(input.claimKind, input.claimId)
+    }
+
     return { items, skippedDuplicates }
   }
 
@@ -473,5 +492,7 @@ export class AttachmentsService {
         claimId: attachment.claimId,
       },
     })
+
+    await this.publishClaimAttachmentsChanged(attachment.claimKind, attachment.claimId)
   }
 }

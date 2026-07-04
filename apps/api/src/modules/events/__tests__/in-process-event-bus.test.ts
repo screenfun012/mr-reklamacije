@@ -45,6 +45,44 @@ describe('InProcessEventBus', () => {
     })
   })
 
+  describe('customer channels (portal clients)', () => {
+    it('delivers claim events to the owning customer only, without leaking customerId', () => {
+      const received: AppEvent[] = []
+      const other: AppEvent[] = []
+      const unsubscribeOwn = bus.subscribeUser('client-1', [], (event) => received.push(event), [
+        'customer-a',
+      ])
+      const unsubscribeOther = bus.subscribeUser('client-2', [], (event) => other.push(event), [
+        'customer-b',
+      ])
+
+      bus.publishClaimUpdated({ kind: ClaimKind.Emotive, id: 'claim-9' }, 'customer-a')
+
+      expect(other).toEqual([])
+      expect(received).toEqual([
+        {
+          type: ClaimEventType.Updated,
+          payload: { kind: ClaimKind.Emotive, id: 'claim-9' },
+        },
+      ])
+
+      unsubscribeOwn()
+      unsubscribeOther()
+    })
+
+    it('skips the customer channel when no customerId is provided', () => {
+      const received: AppEvent[] = []
+      const unsubscribe = bus.subscribeUser('client-1', [], (event) => received.push(event), [
+        'customer-a',
+      ])
+
+      bus.publishClaimUpdated({ kind: ClaimKind.Domace, id: 'claim-10' })
+
+      expect(received).toEqual([])
+      unsubscribe()
+    })
+  })
+
   describe('when unsubscribed', () => {
     it('stops delivering events and clears listeners', () => {
       const received: AppEvent[] = []

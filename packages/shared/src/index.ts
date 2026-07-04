@@ -109,7 +109,12 @@ export * from './constants/claim-events.js'
 export * from './constants/resource-events.js'
 export * from './constants/resource-query-map.js'
 export * from './constants/app-events.js'
-export { THEME_BOOTSTRAP_SCRIPT, THEME_STORAGE_KEY } from './theme/theme-bootstrap-script.js'
+export {
+  buildThemeBootstrapScript,
+  THEME_BOOTSTRAP_SCRIPT,
+  THEME_STORAGE_KEY,
+  type ThemeBootstrapDefault,
+} from './theme/theme-bootstrap-script.js'
 export {
   isListPageSize,
   LIST_PAGE_SIZE_OPTIONS,

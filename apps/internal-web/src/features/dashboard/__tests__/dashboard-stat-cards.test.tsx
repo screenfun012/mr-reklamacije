@@ -69,7 +69,7 @@ describe('DashboardStatCards', () => {
   it('links kind cards to filtered claims list', async () => {
     await renderWithRouter(<DashboardStatCards stats={sampleStats} trends={sampleTrends} />)
 
-    expect(screen.getByRole('link', { name: /inostrane/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /emotive/i })).toHaveAttribute(
       'href',
       `/reklamacije?page=1&pageSize=10&kind=${ClaimKind.Emotive}`,
     )
@@ -91,7 +91,7 @@ describe('DashboardStatCards', () => {
 
     const badges = screen.getAllByTitle('u odnosu na prošli mesec')
     expect(badges).toHaveLength(2)
-    expect(badges.some((badge) => badge.textContent === '↑ 2')).toBe(true)
-    expect(badges.some((badge) => badge.textContent === '↓ 1')).toBe(true)
+    expect(badges.some((badge) => badge.textContent === '▲ 2')).toBe(true)
+    expect(badges.some((badge) => badge.textContent === '▼ 1')).toBe(true)
   })
 })

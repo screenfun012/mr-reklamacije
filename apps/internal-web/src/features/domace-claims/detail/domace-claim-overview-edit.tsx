@@ -5,7 +5,7 @@ import {
   type DomaceClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading } from '@mr/ui'
+import { Button } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -104,10 +104,10 @@ function PendingOverviewEdit({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-        <Heading level="h3" as="h2" className="text-foreground">
+      <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
+        <h2 className="text-[15px] font-extrabold text-mri-text">
           {m.domace_claims_create_section_basic()}
-        </Heading>
+        </h2>
 
         <DomaceBasicFields
           form={form}
@@ -165,17 +165,17 @@ function AcceptedOverviewEdit({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-        <Heading level="h3" as="h2" className="text-foreground">
+      <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
+        <h2 className="text-[15px] font-extrabold text-mri-text">
           {m.domace_claims_create_section_basic()}
-        </Heading>
+        </h2>
         <DomaceClaimBasicReadOnly claim={claim} hideMr />
       </section>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
-        <Heading level="h3" as="h2" className="text-foreground">
+      <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
+        <h2 className="text-[15px] font-extrabold text-mri-text">
           {m.domace_claims_detail_section_amount()}
-        </Heading>
+        </h2>
         <DomaceClaimAmountEditField
           amountInput={amountInput}
           onAmountInputChange={setAmountInput}

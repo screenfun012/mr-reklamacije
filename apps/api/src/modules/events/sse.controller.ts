@@ -11,12 +11,21 @@ export function createSseController(container: Container) {
       const user = c.get('user')!
 
       return streamSSE(c, async (stream) => {
-        const unsubscribe = container.eventBus.subscribeUser(user.id, user.roles, (event) => {
-          void stream.writeSSE({
-            data: JSON.stringify(event),
-            event: event.type,
-          })
-        })
+        // Portal clients listen on their customers' channels — the only claim
+        // signals they ever receive are for their own firm's claims.
+        const customerIds = await container.dashboardRepository.getUserCustomerIds(user.id)
+
+        const unsubscribe = container.eventBus.subscribeUser(
+          user.id,
+          user.roles,
+          (event) => {
+            void stream.writeSSE({
+              data: JSON.stringify(event),
+              event: event.type,
+            })
+          },
+          customerIds,
+        )
 
         const heartbeat = setInterval(() => {
           if (stream.aborted) {

@@ -5,7 +5,7 @@ import {
   type DomaceClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Heading } from '@mr/ui'
+import { Button } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
@@ -57,11 +57,11 @@ export function DomaceClaimBasicSection({
   const [editing, setEditing] = useControlledEditing(controlledEditing, onEditingChange)
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border p-6">
+    <section className="flex flex-col gap-4 rounded-[14px] border border-mri-border bg-mri-surface p-6">
       <div className="flex items-center justify-between">
-        <Heading level="h3" as="h2" className="text-foreground">
+        <h2 className="text-[15px] font-extrabold text-mri-text">
           {m.domace_claims_create_section_basic()}
-        </Heading>
+        </h2>
         {canEdit && !editing && showSectionEditButton ? (
           <Button
             type="button"
@@ -94,7 +94,7 @@ export function DomaceClaimBasicReadOnly({
 }): React.ReactElement {
   return (
     <>
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
         {hideMr ? null : (
           <DetailItem
             label={m.domace_claims_create_field_mr_number()}
@@ -130,8 +130,10 @@ export function DomaceClaimBasicReadOnly({
         />
       </dl>
       <div className="flex flex-col gap-0.5 text-sm">
-        <dt className="text-muted-foreground">{m.domace_claims_create_field_warranty_report()}</dt>
-        <dd className="whitespace-pre-wrap font-medium text-foreground">
+        <dt className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+          {m.domace_claims_create_field_warranty_report()}
+        </dt>
+        <dd className="whitespace-pre-wrap text-[14.5px] font-semibold text-mri-text">
           {claim.warrantyReport ?? EMPTY}
         </dd>
       </div>
@@ -233,8 +235,16 @@ function DetailItem({
 }): ReactNode {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono ? 'font-mono text-xs text-foreground' : 'font-medium text-foreground'}>
+      <dt className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+        {label}
+      </dt>
+      <dd
+        className={
+          mono
+            ? 'font-mono text-[13px] font-semibold text-mri-text'
+            : 'text-[14.5px] font-semibold text-mri-text'
+        }
+      >
         {value ?? EMPTY}
       </dd>
     </div>

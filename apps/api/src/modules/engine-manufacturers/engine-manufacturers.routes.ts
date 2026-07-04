@@ -15,7 +15,12 @@ export function registerEngineManufacturersRoutes(
 
   routes.get(
     '/',
+    // Claim VIEWERS read the catalog too — the list filter needs it, and they
+    // already see manufacturer names on every claim row. Mutations below stay
+    // settings-gated.
     requirePermissions(
+      'emotive_claims.view',
+      'domace_claims.view',
       'emotive_claims.create',
       'emotive_claims.update',
       'domace_claims.create',

@@ -1,10 +1,14 @@
 /// <reference types="vite/client" />
 import '@fontsource-variable/figtree/index.css'
 import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/500.css'
+import '@fontsource/jetbrains-mono/600.css'
+import '@fontsource/jetbrains-mono/700.css'
 
 import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
 import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
-import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
+import { buildThemeBootstrapScript } from '@mr/shared'
+import { Toaster } from '@mr/ui'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -35,11 +39,12 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang={locale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOTSTRAP_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: buildThemeBootstrapScript('dark') }} />
         <HeadContent />
       </head>
       <body suppressHydrationWarning>
         <div key={locale}>{children}</div>
+        <Toaster position="bottom-center" />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />
       </body>

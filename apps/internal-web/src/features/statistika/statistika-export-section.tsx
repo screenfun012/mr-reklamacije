@@ -6,11 +6,14 @@ import {
   type OutcomeLabelKey,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, DatePicker, FilterSelect, Input } from '@mr/ui'
+import { DatePicker, FilterSelect, Input } from '@mr/ui'
 import { Download, Loader2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
+import { InternalButton } from '~/components/internal-button'
+import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
+import { showInternalToast } from '~/lib/internal-toast'
 import { useLocale } from '~/lib/locale'
 
 import { useExcelExport } from './use-excel-export'
@@ -82,31 +85,40 @@ export function StatistikaExportSection({
       outcome: outcome === FILTER_ALL_SENTINEL ? undefined : outcome,
     })
 
+    showInternalToast(m.internal_toast_export_started())
     await exportWorkbook(input)
   }, [claimYear, dateFrom, dateTo, exportWorkbook, outcome, scope])
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
+    <section className="relative flex flex-col gap-4 overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface p-6">
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,#ed1c24,transparent_70%)]"
+      />
       <div>
-        <h2 className="text-base font-semibold text-foreground">{m.statistika_export_title()}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{m.statistika_export_description()}</p>
+        <h2 className="text-[15px] font-extrabold text-mri-text">{m.statistika_export_title()}</h2>
+        <p className="mt-1.5 text-sm text-mri-text2">{m.statistika_export_description()}</p>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-        <FilterSelect
-          label={m.statistika_export_scope()}
-          value={scope}
-          options={scopeOptions}
-          placeholder={m.statistika_export_scope_all()}
-          aria-label={m.statistika_export_scope()}
-          onValueChange={(value) => {
-            setScope(value as ExcelExportInput['scope'])
-          }}
-        />
+        <div className="flex min-w-[11rem] flex-col gap-[7px]">
+          <InternalFieldLabel>{m.statistika_export_scope()}</InternalFieldLabel>
+          <FilterSelect
+            value={scope}
+            options={scopeOptions}
+            placeholder={m.statistika_export_scope_all()}
+            className={INTERNAL_CONTROL_CLASSES}
+            aria-label={m.statistika_export_scope()}
+            onValueChange={(value) => {
+              setScope(value as ExcelExportInput['scope'])
+            }}
+          />
+        </div>
 
-        <div className="flex min-w-[8rem] flex-col gap-1.5 text-sm">
-          <span className="font-medium text-foreground">{m.statistika_export_year()}</span>
+        <div className="flex min-w-[8rem] flex-col gap-[7px] text-sm">
+          <InternalFieldLabel>{m.statistika_export_year()}</InternalFieldLabel>
           <Input
+            className={INTERNAL_CONTROL_CLASSES}
             inputMode="numeric"
             placeholder={m.statistika_export_year_placeholder()}
             value={claimYear}
@@ -117,51 +129,60 @@ export function StatistikaExportSection({
           />
         </div>
 
-        <div className="flex min-w-[10rem] flex-col gap-1.5 text-sm">
-          <span className="font-medium text-foreground">{m.emotive_claims_filter_date_from()}</span>
+        <div className="flex min-w-[10rem] flex-col gap-[7px] text-sm">
+          <InternalFieldLabel>{m.emotive_claims_filter_date_from()}</InternalFieldLabel>
           <DatePicker
+            className={INTERNAL_CONTROL_CLASSES}
             value={dateFrom}
             onChange={setDateFrom}
             aria-label={m.emotive_claims_filter_date_from()}
           />
         </div>
 
-        <div className="flex min-w-[10rem] flex-col gap-1.5 text-sm">
-          <span className="font-medium text-foreground">{m.emotive_claims_filter_date_to()}</span>
+        <div className="flex min-w-[10rem] flex-col gap-[7px] text-sm">
+          <InternalFieldLabel>{m.emotive_claims_filter_date_to()}</InternalFieldLabel>
           <DatePicker
+            className={INTERNAL_CONTROL_CLASSES}
             value={dateTo}
             onChange={setDateTo}
             aria-label={m.emotive_claims_filter_date_to()}
           />
         </div>
 
-        <FilterSelect
-          label={m.emotive_claims_filter_outcome()}
-          value={outcome}
-          options={outcomeOptions}
-          placeholder={m.emotive_claims_filter_outcome_all()}
-          aria-label={m.emotive_claims_filter_outcome()}
-          onValueChange={setOutcome}
-        />
+        <div className="flex min-w-[9rem] flex-col gap-[7px]">
+          <InternalFieldLabel>{m.emotive_claims_filter_outcome()}</InternalFieldLabel>
+          <FilterSelect
+            value={outcome}
+            options={outcomeOptions}
+            placeholder={m.emotive_claims_filter_outcome_all()}
+            className={INTERNAL_CONTROL_CLASSES}
+            aria-label={m.emotive_claims_filter_outcome()}
+            onValueChange={setOutcome}
+          />
+        </div>
 
-        <Button
-          type="button"
-          disabled={isExporting || exportBlocked}
-          onClick={() => {
-            void handleExport()
-          }}
-        >
-          {isExporting ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Download className="size-4" aria-hidden="true" />
-          )}
-          {isExporting ? m.statistika_export_pending() : m.statistika_export_button()}
-        </Button>
+        <div className="ml-auto">
+          <InternalButton
+            type="button"
+            variant="red"
+            className="h-[46px] w-auto px-[22px] text-[12.5px]"
+            disabled={isExporting || exportBlocked}
+            onClick={() => {
+              void handleExport()
+            }}
+          >
+            {isExporting ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="size-4" aria-hidden="true" />
+            )}
+            {isExporting ? m.statistika_export_pending() : m.statistika_export_button()}
+          </InternalButton>
+        </div>
       </div>
 
       {exportBlocked ? (
-        <p className="text-sm text-muted-foreground">{m.statistika_export_permission_hint()}</p>
+        <p className="text-sm text-mri-text2">{m.statistika_export_permission_hint()}</p>
       ) : null}
     </section>
   )

@@ -29,7 +29,7 @@ export interface SearchableSelectProps {
   onValueChange: (value: string) => void
   onBlur?: () => void
   'aria-label'?: string
-  className?: string
+  className?: string | undefined
 }
 
 export function filterSearchableSelectOptions(

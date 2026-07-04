@@ -1,6 +1,6 @@
 import type { StatisticsTrends } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
+import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
 import {
   Area,
   AreaChart,
@@ -14,7 +14,11 @@ import {
   YAxis,
 } from 'recharts'
 
-import { STATISTICS_CHART_COLORS, STATISTICS_GRADIENT_IDS } from './chart-theme.js'
+import {
+  STATISTICS_AXIS_TICK,
+  STATISTICS_CHART_COLORS,
+  STATISTICS_GRADIENT_IDS,
+} from './chart-theme.js'
 import { StatisticsChartTooltip } from './statistics-chart-tooltip.js'
 import {
   formatMonthLabel,
@@ -58,7 +62,7 @@ function coloredLegendFormatter(value: string): React.ReactNode {
         : STATISTICS_CHART_COLORS.total
 
   return (
-    <span className="inline-flex items-center gap-2 text-sm text-foreground">
+    <span className="inline-flex items-center gap-2 text-xs text-mri-text2">
       <span
         className="size-2.5 rounded-full"
         style={{ backgroundColor: color }}
@@ -76,9 +80,11 @@ interface PairStatTileProps {
 
 function PairStatTile({ label, value }: PairStatTileProps): React.ReactElement {
   return (
-    <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3 text-center text-sm">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{value}</p>
+    <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3 text-center text-sm">
+      <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+        {label}
+      </p>
+      <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">{value}</p>
     </div>
   )
 }
@@ -130,34 +136,32 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <ChartGradients />
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-border/70"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--mri-border)" vertical={false} />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
                   minTickGap={16}
-                  className="text-xs fill-muted-foreground"
+                  tick={STATISTICS_AXIS_TICK}
                 />
                 <YAxis
                   allowDecimals={false}
                   tickLine={false}
                   axisLine={false}
                   width={32}
-                  className="text-xs fill-muted-foreground"
+                  tick={STATISTICS_AXIS_TICK}
                 />
                 <Tooltip content={<StatisticsChartTooltip />} />
                 <Legend formatter={coloredLegendFormatter} />
                 <Bar
+                  animationDuration={650}
                   dataKey="emotive"
                   name={emotiveLabel}
                   fill={`url(#${STATISTICS_GRADIENT_IDS.emotive})`}
                   radius={[6, 6, 0, 0]}
                 />
                 <Bar
+                  animationDuration={650}
                   dataKey="domace"
                   name={domaceLabel}
                   fill={`url(#${STATISTICS_GRADIENT_IDS.domace})`}
@@ -181,7 +185,7 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                 <PairStatTile label={emotiveLabel} value={yearlyEmotiveTotal} />
                 <PairStatTile label={domaceLabel} value={yearlyDomaceTotal} />
               </div>
-              <p className="text-sm text-muted-foreground">{yearlyRangeLabel}</p>
+              <p className="text-sm text-mri-text2">{yearlyRangeLabel}</p>
             </PairChartMeta>
             <div className={`${PAIR_CHART_HEIGHT} w-full shrink-0`}>
               <ResponsiveContainer width="100%" height="100%">
@@ -189,25 +193,26 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                   <ChartGradients />
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    className="stroke-border/70"
+                    stroke="var(--mri-border)"
                     vertical={false}
                   />
                   <XAxis
                     dataKey="label"
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <YAxis
                     allowDecimals={false}
                     tickLine={false}
                     axisLine={false}
                     width={32}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <Tooltip content={<StatisticsChartTooltip />} />
                   <Legend formatter={coloredLegendFormatter} />
                   <Bar
+                    animationDuration={650}
                     dataKey="emotive"
                     name={emotiveLabel}
                     fill={`url(#${STATISTICS_GRADIENT_IDS.emotive})`}
@@ -215,6 +220,7 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                     maxBarSize={56}
                   />
                   <Bar
+                    animationDuration={650}
                     dataKey="domace"
                     name={domaceLabel}
                     fill={`url(#${STATISTICS_GRADIENT_IDS.domace})`}
@@ -248,9 +254,7 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                   value={formatTrendDelta(trends.volumeTrend.delta)}
                 />
               </div>
-              <p className="text-sm text-muted-foreground">
-                {trendSummaryText(trends.volumeTrend)}
-              </p>
+              <p className="text-sm text-mri-text2">{trendSummaryText(trends.volumeTrend)}</p>
             </PairChartMeta>
             <div className={`${PAIR_CHART_HEIGHT} w-full shrink-0`}>
               <ResponsiveContainer width="100%" height="100%">
@@ -258,7 +262,7 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                   <ChartGradients />
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    className="stroke-border/70"
+                    stroke="var(--mri-border)"
                     vertical={false}
                   />
                   <XAxis
@@ -266,17 +270,18 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                     tickLine={false}
                     axisLine={false}
                     minTickGap={20}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <YAxis
                     allowDecimals={false}
                     tickLine={false}
                     axisLine={false}
                     width={32}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <Tooltip content={<StatisticsChartTooltip />} />
                   <Area
+                    animationDuration={650}
                     type="monotone"
                     dataKey="total"
                     name={totalLabel}

@@ -121,15 +121,16 @@ export class DashboardRepository {
 
   /**
    * Portal phase counts across all of the scope's EMOTIVE claims (clients have
-   * no domace claims). Mirrors `deriveClientClaimPhase`: pending without a
-   * handler = received, pending with a handler = in progress, resolved outcome
-   * = resolved. Archived claims are invisible to clients everywhere.
+   * no domace claims). Mirrors `deriveClientClaimPhase` (2026-07-04): every
+   * pending claim counts as "in progress" — the portal mirrors the internal
+   * outcome directly; "received" is the running total of everything the
+   * workshop has taken in. Archived claims are invisible to clients everywhere.
    */
   async getClientStats(customerIds: string[] | null): Promise<ClientPortalStats> {
     const result = await this.db.execute<ClientStatsRow>(sql`
       SELECT
-        count(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending} AND ec.employee_id IS NULL)::int AS received,
-        count(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending} AND ec.employee_id IS NOT NULL)::int AS in_progress,
+        count(*)::int AS received,
+        count(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending})::int AS in_progress,
         count(*) FILTER (WHERE ec.outcome IN (${ClaimOutcome.Accepted}, ${ClaimOutcome.Rejected}))::int AS resolved,
         count(*)::int AS total
       FROM emotive_claims ec

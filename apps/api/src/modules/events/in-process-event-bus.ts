@@ -31,9 +31,15 @@ function roleChannel(roleCode: string): string {
   return `role:${roleCode}`
 }
 
+function customerChannel(customerId: string): string {
+  return `customer:${customerId}`
+}
+
 /**
  * Single-process EventEmitter hub. Claim mutations fan out to operator/viewer/admin
- * role channels so open list views can invalidate via SSE.
+ * role channels so open list views can invalidate via SSE, and to the owning
+ * customer's channel so portal clients get the same signal for THEIR claims
+ * only — the event carries just `kind + id`, never any claim data.
  */
 export class InProcessEventBus implements EventBus {
   private readonly emitter = new EventEmitter()
@@ -45,16 +51,16 @@ export class InProcessEventBus implements EventBus {
     this.emitter.setMaxListeners(0)
   }
 
-  publishClaimCreated(payload: ClaimEventPayload): void {
-    this.publishClaimEvent(ClaimEventType.Created, payload)
+  publishClaimCreated(payload: ClaimEventPayload, customerId?: string | null): void {
+    this.publishClaimEvent(ClaimEventType.Created, payload, customerId)
   }
 
-  publishClaimUpdated(payload: ClaimEventPayload): void {
-    this.publishClaimEvent(ClaimEventType.Updated, payload)
+  publishClaimUpdated(payload: ClaimEventPayload, customerId?: string | null): void {
+    this.publishClaimEvent(ClaimEventType.Updated, payload, customerId)
   }
 
-  publishClaimDeleted(payload: ClaimEventPayload): void {
-    this.publishClaimEvent(ClaimEventType.Deleted, payload)
+  publishClaimDeleted(payload: ClaimEventPayload, customerId?: string | null): void {
+    this.publishClaimEvent(ClaimEventType.Deleted, payload, customerId)
   }
 
   publishResourceChanged(resource: ResourceChangedKey): void {
@@ -79,8 +85,13 @@ export class InProcessEventBus implements EventBus {
     userId: string,
     roleCodes: readonly string[],
     listener: (event: AppEvent) => void,
+    customerIds: readonly string[] = [],
   ): () => void {
-    const channels = [userChannel(userId), ...roleCodes.map(roleChannel)]
+    const channels = [
+      userChannel(userId),
+      ...roleCodes.map(roleChannel),
+      ...customerIds.map(customerChannel),
+    ]
 
     for (const channel of channels) {
       this.emitter.on(channel, listener)
@@ -99,10 +110,17 @@ export class InProcessEventBus implements EventBus {
     return channels.reduce((sum, channel) => sum + this.emitter.listenerCount(channel), 0)
   }
 
-  private publishClaimEvent(type: ClaimAppEvent['type'], payload: ClaimEventPayload): void {
+  private publishClaimEvent(
+    type: ClaimAppEvent['type'],
+    payload: ClaimEventPayload,
+    customerId?: string | null,
+  ): void {
     const event: ClaimAppEvent = { type, payload }
     for (const role of CLAIM_LIST_ROLE_CHANNELS) {
       this.publishToRole(role, event)
+    }
+    if (customerId !== undefined && customerId !== null) {
+      this.emitter.emit(customerChannel(customerId), event)
     }
   }
 }

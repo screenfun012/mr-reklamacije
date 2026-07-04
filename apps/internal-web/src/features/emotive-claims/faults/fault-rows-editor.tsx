@@ -5,11 +5,15 @@ import {
   type ExternalPartyListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { SELECT_EMPTY_SENTINEL } from '../create/form-field-styles.js'
+import { InternalButton } from '~/components/internal-button'
+import { InternalFieldGroup } from '~/components/internal-field-group'
+import { InternalFieldLabel } from '~/components/internal-field'
+
+import { FORM_CONTROL_CLASS, SELECT_EMPTY_SENTINEL } from '../create/form-field-styles.js'
 import type { EmotiveClaimFaultDraft } from './fault-draft.js'
 
 interface FaultRowsEditorProps {
@@ -54,32 +58,31 @@ export function FaultRowsEditor({
       {value.map((fault, index) => (
         <div
           key={`fault-${index}`}
-          className="rounded-lg border border-border p-4 flex flex-col gap-3"
+          className="flex flex-col gap-3 rounded-[13px] border border-mri-border bg-mri-inbg/40 p-4"
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">
+            <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mri-redh">
               {m.emotive_claims_create_fault_row_title({ index: index + 1 })}
             </p>
-            <Button
+            <InternalButton
               type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1"
+              variant="ghost"
+              className="h-8 w-auto gap-1.5 px-2 text-[11.5px]"
               disabled={disabled}
               onClick={() => {
                 onChange(value.filter((_, i) => i !== index))
                 setEmployeeDepartmentByIndex((prev) => reindexAfterRemoval(prev, index))
               }}
             >
-              <Trash2 className="size-4" />
+              <Trash2 className="size-3.5" aria-hidden="true" />
               {m.emotive_claims_create_fault_remove()}
-            </Button>
+            </InternalButton>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`fault-type-${index}`} className="text-sm font-medium">
+          <div className="flex flex-col gap-[7px]">
+            <InternalFieldLabel htmlFor={`fault-type-${index}`}>
               {m.emotive_claims_create_fault_type()}
-            </label>
+            </InternalFieldLabel>
             <Select
               value={fault.faultType}
               disabled={disabled}
@@ -96,6 +99,7 @@ export function FaultRowsEditor({
             >
               <SelectTrigger
                 id={`fault-type-${index}`}
+                className={FORM_CONTROL_CLASS}
                 aria-label={m.emotive_claims_create_fault_type()}
               >
                 <SelectValue />
@@ -179,18 +183,18 @@ export function FaultRowsEditor({
         </div>
       ))}
 
-      <Button
+      <InternalButton
         type="button"
-        variant="outline"
-        className="self-start gap-2"
+        variant="dashed"
+        className="h-[46px] w-full text-[13px]"
         disabled={disabled}
         onClick={() => {
           onChange([...value, { faultType: FaultType.Department, departmentId: '' }])
         }}
       >
-        <Plus className="size-4" />
+        <Plus className="size-4" aria-hidden="true" />
         {m.emotive_claims_create_fault_add()}
-      </Button>
+      </InternalButton>
     </div>
   )
 }
@@ -248,10 +252,7 @@ function FaultReferenceSelect({
   onChange,
 }: FaultReferenceSelectProps): React.ReactElement {
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
+    <InternalFieldGroup id={id} label={label} error={error}>
       <Select
         value={value.length > 0 ? value : SELECT_EMPTY_SENTINEL}
         disabled={disabled}
@@ -259,7 +260,7 @@ function FaultReferenceSelect({
           onChange(next === SELECT_EMPTY_SENTINEL ? '' : next)
         }}
       >
-        <SelectTrigger id={id} aria-label={label}>
+        <SelectTrigger id={id} className={FORM_CONTROL_CLASS} aria-label={label}>
           <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
         </SelectTrigger>
         <SelectContent>
@@ -273,7 +274,6 @@ function FaultReferenceSelect({
           ))}
         </SelectContent>
       </Select>
-      {error ? <span className="text-sm text-destructive">{error}</span> : null}
-    </div>
+    </InternalFieldGroup>
   )
 }

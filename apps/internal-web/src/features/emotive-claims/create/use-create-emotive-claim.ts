@@ -11,6 +11,10 @@ import {
   type EmotiveClaimDetail,
 } from '@mr/shared'
 
+import { m } from '@mr/i18n'
+
+import { showInternalToast } from '~/lib/internal-toast'
+
 import { serializeEmotiveCreateBody } from './serialize-emotive-create-body.js'
 
 export function useCreateEmotiveClaim() {
@@ -24,7 +28,8 @@ export function useCreateEmotiveClaim() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(serializeEmotiveCreateBody(input)),
       }),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      showInternalToast(m.internal_toast_claim_saved({ mrNumber: created.mrNumber }))
       await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
       await invalidateStatisticsSummary(queryClient)

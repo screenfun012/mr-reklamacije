@@ -154,7 +154,7 @@ describe('DomaceClaimCreateForm', () => {
     // captured at module-import locale, which need not match the render locale.
     await waitFor(() => {
       const group = screen.getByLabelText(m.domace_claims_create_field_mr_number()).closest('div')
-      expect(group?.querySelector('.text-destructive')).not.toBeNull()
+      expect(group?.querySelector('.text-mri-bad')).not.toBeNull()
     })
     expect(fetchSpy).not.toHaveBeenCalled()
   })

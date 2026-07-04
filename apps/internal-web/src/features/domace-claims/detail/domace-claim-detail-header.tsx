@@ -7,7 +7,10 @@ import {
   type DomaceClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, ClaimKindBadge, Heading, OutcomeBadge } from '@mr/ui'
+import { Button, Heading } from '@mr/ui'
+
+import { KindPill } from '~/components/kind-pill'
+import { OutcomePill } from '~/components/outcome-pill'
 import { Pencil } from 'lucide-react'
 
 import { DomaceClaimStatusActions } from './domace-claim-status-actions.js'
@@ -48,8 +51,8 @@ export function DomaceClaimDetailHeader({
         <Heading level="h1" className="font-mono text-foreground">
           {claim.mrNumber ?? EMPTY}
         </Heading>
-        <OutcomeBadge outcome={claim.outcome} />
-        <ClaimKindBadge kind={ClaimKind.Domace} />
+        <OutcomePill outcome={claim.outcome} />
+        <KindPill kind={ClaimKind.Domace} />
       </div>
 
       <p className="text-sm text-muted-foreground">{metaLine || EMPTY}</p>

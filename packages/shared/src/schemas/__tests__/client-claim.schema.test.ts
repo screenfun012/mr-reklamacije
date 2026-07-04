@@ -68,16 +68,11 @@ const LEAKY_KEYS = [
 ]
 
 describe('deriveClientClaimPhase', () => {
-  it('maps outcome + handler assignment onto the three portal phases', () => {
-    expect(deriveClientClaimPhase(ClaimOutcome.Pending, null)).toBe(ClientClaimPhase.Received)
-    expect(deriveClientClaimPhase(ClaimOutcome.Pending, fullDetail.employeeId)).toBe(
-      ClientClaimPhase.InProgress,
-    )
-    expect(deriveClientClaimPhase(ClaimOutcome.Accepted, null)).toBe(ClientClaimPhase.Outcome)
-    expect(deriveClientClaimPhase(ClaimOutcome.Rejected, fullDetail.employeeId)).toBe(
-      ClientClaimPhase.Outcome,
-    )
-    expect(deriveClientClaimPhase(ClaimOutcome.Archived, null)).toBe(ClientClaimPhase.Outcome)
+  it('mirrors the internal outcome: pending is always in progress', () => {
+    expect(deriveClientClaimPhase(ClaimOutcome.Pending)).toBe(ClientClaimPhase.InProgress)
+    expect(deriveClientClaimPhase(ClaimOutcome.Accepted)).toBe(ClientClaimPhase.Outcome)
+    expect(deriveClientClaimPhase(ClaimOutcome.Rejected)).toBe(ClientClaimPhase.Outcome)
+    expect(deriveClientClaimPhase(ClaimOutcome.Archived)).toBe(ClientClaimPhase.Outcome)
   })
 })
 

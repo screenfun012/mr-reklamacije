@@ -11,7 +11,10 @@ import {
   externalPartiesReferenceOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
+import { InternalButton } from '~/components/internal-button'
+import { InternalCard } from '~/components/internal-card'
+import { InternalNote } from '~/components/internal-note'
+import { WizardStepper } from '~/components/wizard-stepper'
 
 import {
   EMOTIVE_CLAIM_FORM_DEFAULTS,
@@ -116,31 +119,16 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
     }
   }
 
-  const stepTitle = (): string => {
-    switch (currentStep) {
-      case 'basic':
-        return m.emotive_claims_create_step_basic_title()
-      case 'faults':
-        return m.emotive_claims_create_step_faults_title()
-      case 'review':
-        return m.emotive_claims_create_step_review_title()
-    }
-  }
+  const stepLabels = [
+    m.emotive_claims_create_step_basic_title(),
+    m.emotive_claims_create_step_faults_title(),
+    m.emotive_claims_create_step_review_title(),
+  ]
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{m.emotive_claims_create_title()}</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {m.emotive_claims_create_step_indicator({
-            current: wizardStepIndex(currentStep) + 1,
-            total: 3,
-          })}
-          {' — '}
-          {stepTitle()}
-        </p>
-      </CardHeader>
-      <CardContent>
+    <div className="mri-fade-up flex flex-col" style={{ animationDelay: '0.1s' }}>
+      <WizardStepper steps={stepLabels} currentIndex={wizardStepIndex(currentStep)} />
+      <InternalCard className="p-6 sm:p-7">
         <form
           onSubmit={(event) => {
             event.preventDefault()
@@ -186,36 +174,54 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
           ) : null}
 
           {submitError ? (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-            >
+            <InternalNote tone="error" role="alert">
               {submitError}
-            </div>
+            </InternalNote>
           ) : null}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button
+            <InternalButton
               type="button"
               variant="outline"
+              className="h-[46px] w-auto px-6 text-[12.5px]"
               disabled={isPending || previousWizardStep(currentStep) === null}
               onClick={handleBack}
             >
+              <span aria-hidden="true" className="font-normal">
+                ←
+              </span>{' '}
               {m.emotive_claims_create_back()}
-            </Button>
+            </InternalButton>
 
             {currentStep === 'review' ? (
-              <Button type="submit" loading={isPending}>
+              <InternalButton
+                type="submit"
+                variant="green"
+                className="h-[46px] w-auto px-6 text-[12.5px]"
+                disabled={isPending}
+              >
+                <span aria-hidden="true" className="font-normal">
+                  ✓
+                </span>{' '}
                 {m.action_save()}
-              </Button>
+              </InternalButton>
             ) : (
-              <Button type="button" disabled={isPending} onClick={handleNext}>
-                {m.emotive_claims_create_next()}
-              </Button>
+              <InternalButton
+                type="button"
+                variant="primary"
+                className="h-[46px] w-auto px-6 text-[12.5px]"
+                disabled={isPending}
+                onClick={handleNext}
+              >
+                {m.emotive_claims_create_next()}{' '}
+                <span aria-hidden="true" className="font-normal">
+                  →
+                </span>
+              </InternalButton>
             )}
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </InternalCard>
+    </div>
   )
 }

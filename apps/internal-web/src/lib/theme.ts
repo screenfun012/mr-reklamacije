@@ -7,25 +7,31 @@ export type ResolvedTheme = 'light' | 'dark'
 const STORAGE_KEY = THEME_STORAGE_KEY
 const VALID_THEMES: ReadonlyArray<Theme> = ['light', 'dark', 'system']
 
+/**
+ * The internal redesign is dark-first: users WITHOUT a stored preference get
+ * dark. A stored choice (including 'system') is always respected.
+ */
+const DEFAULT_THEME: Theme = 'dark'
+
 function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (VALID_THEMES as ReadonlyArray<string>).includes(value)
 }
 
 function readStoredTheme(): Theme {
   if (typeof window === 'undefined') {
-    return 'system'
+    return DEFAULT_THEME
   }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    return isTheme(raw) ? raw : 'system'
+    return isTheme(raw) ? raw : DEFAULT_THEME
   } catch {
-    return 'system'
+    return DEFAULT_THEME
   }
 }
 
 function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return 'light'
+    return 'dark'
   }
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
@@ -44,6 +50,8 @@ function applyDocumentClass(resolved: ResolvedTheme): void {
   } else {
     root.classList.remove('dark')
   }
+  // Native controls (date inputs, scrollbars) must follow the theme.
+  root.style.colorScheme = resolved
 }
 
 interface ThemeStore {
@@ -52,10 +60,10 @@ interface ThemeStore {
 }
 
 const listeners = new Set<() => void>()
-let currentTheme: Theme = typeof window === 'undefined' ? 'system' : readStoredTheme()
+let currentTheme: Theme = typeof window === 'undefined' ? DEFAULT_THEME : readStoredTheme()
 let currentResolved: ResolvedTheme = resolve(currentTheme)
 let snapshot: ThemeStore = { theme: currentTheme, resolvedTheme: currentResolved }
-const serverSnapshot: ThemeStore = { theme: 'system', resolvedTheme: 'light' }
+const serverSnapshot: ThemeStore = { theme: DEFAULT_THEME, resolvedTheme: 'dark' }
 
 function notify(): void {
   snapshot = { theme: currentTheme, resolvedTheme: currentResolved }

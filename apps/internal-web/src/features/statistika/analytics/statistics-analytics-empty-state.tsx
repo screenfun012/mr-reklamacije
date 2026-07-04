@@ -16,7 +16,7 @@ export function StatisticsAnalyticsEmptyBanner({
 }: StatisticsAnalyticsEmptyBannerProps): React.ReactElement {
   return (
     <div
-      className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
+      className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-mri-text2"
       role="status"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

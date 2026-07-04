@@ -12,10 +12,15 @@ import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react
 import { Plus } from 'lucide-react'
 import { useCallback } from 'react'
 
+import { internalButtonClasses } from '~/components/internal-button'
+import { internalRequireRoles } from '~/lib/auth-guard'
 import { ClaimsListContent } from '~/features/claims/claims-list-content'
 import { ClaimsTableSkeleton } from '~/features/claims/claims-table'
 
 export const Route = createFileRoute('/_shell/reklamacije/')({
+  // Internal app is for employees + viewers; a client session (possible in dev
+  // via shared localhost cookies) must bounce to login, not error-boundary.
+  beforeLoad: internalRequireRoles(['operator', 'viewer', 'admin']),
   validateSearch: (search) => ClaimsSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: async ({ context: { queryClient }, deps: search }) => {
@@ -58,22 +63,30 @@ function ReklamacijeComponent() {
           <Heading level="h1">{m.nav_reklamacije()}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_page_subtitle()}</p>
         </div>
-        <div className="flex flex-wrap gap-2 self-start">
+        <div className="flex flex-wrap gap-2.5 self-start">
           {canCreate ? (
-            <Button asChild className="gap-2">
-              <Link to="/reklamacije/emotive/nova">
-                <Plus className="size-4" />
-                {m.emotive_claims_new_claim()}
-              </Link>
-            </Button>
+            <Link
+              to="/reklamacije/emotive/nova"
+              className={internalButtonClasses(
+                'primary',
+                'h-[46px] w-auto px-[22px] text-[12.5px]',
+              )}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              {m.emotive_claims_new_claim()}
+            </Link>
           ) : null}
           {canCreateDomace ? (
-            <Button asChild variant="outline" className="gap-2">
-              <Link to="/reklamacije/domace/nova">
-                <Plus className="size-4" />
-                {m.domace_claims_new_claim()}
-              </Link>
-            </Button>
+            <Link
+              to="/reklamacije/domace/nova"
+              className={internalButtonClasses(
+                'outline',
+                'h-[46px] w-auto px-[22px] text-[12.5px]',
+              )}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              {m.domace_claims_new_claim()}
+            </Link>
           ) : null}
         </div>
       </div>

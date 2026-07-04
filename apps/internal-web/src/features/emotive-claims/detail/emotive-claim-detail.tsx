@@ -99,7 +99,7 @@ export function EmotiveClaimDetailView({
 
           <EmotiveClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
 
-          <p className="text-xs text-muted-foreground">
+          <p className="font-mono text-[11px] tracking-[0.04em] text-mri-text2">
             {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
           </p>
         </TabsContent>

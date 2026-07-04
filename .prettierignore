@@ -21,3 +21,6 @@ apps/internal-web/src/components/tiptap/**
 apps/internal-web/src/components/styles/_variables.scss
 apps/internal-web/src/hooks/**
 apps/internal-web/src/lib/tiptap-utils.ts
+
+# Design handoff reference artifacts (prototype HTML/JS — never reformat)
+design_handoff_internal_app/**

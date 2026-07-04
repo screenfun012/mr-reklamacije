@@ -13,6 +13,7 @@ import {
 interface EngineTypeSearchableSelectFieldProps {
   id: string
   value: string
+  className?: string | undefined
   manufacturerId: string
   disabled: boolean
   orphanEngineType?: EngineTypeOrphanOption | undefined
@@ -24,6 +25,7 @@ interface EngineTypeSearchableSelectFieldProps {
 function OrphanOnlyEngineTypeSelect({
   id,
   value,
+  className,
   disabled,
   orphanEngineType,
   onValueChange,
@@ -34,6 +36,7 @@ function OrphanOnlyEngineTypeSelect({
     <SearchableSelect
       id={id}
       value={value}
+      className={className}
       options={buildEngineTypeSearchableOptions([], value, orphanEngineType)}
       placeholder={m.emotive_claims_create_select_placeholder()}
       searchPlaceholder={m.field_search_placeholder()}
@@ -50,6 +53,7 @@ function OrphanOnlyEngineTypeSelect({
 function EngineTypeSearchableSelectLoaded({
   id,
   value,
+  className,
   manufacturerId,
   disabled,
   orphanEngineType,
@@ -65,6 +69,7 @@ function EngineTypeSearchableSelectLoaded({
     <SearchableSelect
       id={id}
       value={value}
+      className={className}
       options={buildEngineTypeSearchableOptions(data, value, orphanEngineType)}
       placeholder={m.emotive_claims_create_select_placeholder()}
       searchPlaceholder={m.field_search_placeholder()}
@@ -90,6 +95,7 @@ export function EngineTypeSearchableSelectField(
       <SearchableSelect
         id={props.id}
         value=""
+        className={props.className}
         options={[]}
         placeholder={m.field_select_manufacturer_first()}
         searchPlaceholder={m.field_search_placeholder()}
@@ -107,6 +113,7 @@ export function EngineTypeSearchableSelectField(
         <SearchableSelect
           id={props.id}
           value={props.value}
+          className={props.className}
           options={[]}
           placeholder={m.emotive_claims_create_select_placeholder()}
           searchPlaceholder={m.field_search_placeholder()}

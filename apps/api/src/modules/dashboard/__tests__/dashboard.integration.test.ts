@@ -341,7 +341,9 @@ describe('DashboardService integration', () => {
         permissions: [...CLIENT_PERMS],
       })
 
-      expect(summary.stats).toEqual({ received: 1, inProgress: 1, resolved: 1, total: 3 })
+      // 2026-07-04 rule: received = everything taken in, inProgress = every
+      // pending claim (handler assignment no longer splits the phases).
+      expect(summary.stats).toEqual({ received: 3, inProgress: 2, resolved: 1, total: 3 })
 
       const eventsFor = (id: string) =>
         summary.activity.filter((item) => item.claimId === id).map((item) => item.event)

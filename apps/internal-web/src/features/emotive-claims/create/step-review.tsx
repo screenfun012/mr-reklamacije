@@ -9,8 +9,10 @@ import {
   formatFieldError,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Heading } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
+
+import { InternalFieldGroup } from '~/components/internal-field-group'
+import { InternalNote } from '~/components/internal-note'
 
 import { TEXTAREA_FIELD_CLASS } from './form-field-styles.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
@@ -55,10 +57,15 @@ export function StepReview({
       <form.Field
         name="warrantyReport"
         children={(field) => (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="warrantyReport" className="text-sm font-medium">
-              {m.emotive_claims_create_field_warranty_report()}
-            </label>
+          <InternalFieldGroup
+            id="warrantyReport"
+            label={m.emotive_claims_create_field_warranty_report()}
+            error={
+              field.state.meta.errors.length > 0
+                ? formatFieldError(field.state.meta.errors[0])
+                : undefined
+            }
+          >
             <textarea
               id="warrantyReport"
               className={TEXTAREA_FIELD_CLASS}
@@ -67,20 +74,15 @@ export function StepReview({
               onBlur={field.handleBlur}
               disabled={disabled}
             />
-            {field.state.meta.errors.length > 0 ? (
-              <span className="text-sm text-destructive">
-                {formatFieldError(field.state.meta.errors[0])}
-              </span>
-            ) : null}
-          </div>
+          </InternalFieldGroup>
         )}
       />
 
       <section className="flex flex-col gap-3">
-        <Heading level="h3" as="h2" className="text-foreground">
+        <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
           {m.emotive_claims_create_review_basic_title()}
-        </Heading>
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+        </h2>
+        <dl className="flex flex-col">
           <ReviewItem label={m.emotive_claims_create_field_mr_number()} value={values.mrNumber} />
           <ReviewItem
             label={m.emotive_claims_create_field_claim_number()}
@@ -108,29 +110,31 @@ export function StepReview({
       </section>
 
       <section className="flex flex-col gap-3">
-        <Heading level="h3" as="h2" className="text-foreground">
+        <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
           {m.emotive_claims_create_review_faults_title()}
-        </Heading>
+        </h2>
         {values.faults.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm italic text-mri-text2">
             {m.emotive_claims_create_review_faults_empty()}
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-[10px] border border-mri-border">
             <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left">
+              <thead className="bg-mri-inbg text-left">
                 <tr>
-                  <th className="px-4 py-2 font-medium">{m.emotive_claims_create_fault_type()}</th>
-                  <th className="px-4 py-2 font-medium">
+                  <th className="px-4 py-2 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+                    {m.emotive_claims_create_fault_type()}
+                  </th>
+                  <th className="px-4 py-2 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
                     {m.emotive_claims_create_review_fault_target()}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {values.faults.map((fault, index) => (
-                  <tr key={`review-fault-${index}`} className="border-t border-border">
-                    <td className="px-4 py-2">{faultLabel(fault.faultType)}</td>
-                    <td className="px-4 py-2">
+                  <tr key={`review-fault-${index}`} className="border-t border-mri-border">
+                    <td className="px-4 py-2 text-mri-text">{faultLabel(fault.faultType)}</td>
+                    <td className="px-4 py-2 font-semibold text-mri-text">
                       {resolveFaultTarget(fault, departments, employees, externalParties)}
                     </td>
                   </tr>
@@ -140,15 +144,19 @@ export function StepReview({
           </div>
         )}
       </section>
+
+      <InternalNote tone="info">{m.internal_create_review_note()}</InternalNote>
     </div>
   )
 }
 
 function ReviewItem({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
-    <div>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium text-foreground">{value}</dd>
+    <div className="flex items-baseline justify-between gap-4 border-b border-mri-border py-2.5 last:border-b-0">
+      <dt className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+        {label}
+      </dt>
+      <dd className="text-right text-[14.5px] font-semibold text-mri-text">{value}</dd>
     </div>
   )
 }

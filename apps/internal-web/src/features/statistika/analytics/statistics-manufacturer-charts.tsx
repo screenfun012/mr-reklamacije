@@ -1,18 +1,15 @@
 import {
   collapseManufacturerRowsForDisplay,
   computeManufacturerOutcomePercents,
-  resolveManufacturerColor,
-  STATISTICS_OUTCOME_CHART_COLORS,
   type StatisticsByManufacturer,
   type StatisticsManufacturerDisplayRow,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from '@mr/ui'
+import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -20,6 +17,11 @@ import {
   YAxis,
 } from 'recharts'
 
+import {
+  STATISTICS_AXIS_TICK,
+  STATISTICS_MONO_GRADIENTS,
+  STATISTICS_OUTCOME_COLORS,
+} from './chart-theme.js'
 import {
   StatisticsManufacturerOutcomeTooltip,
   StatisticsManufacturerRankTooltip,
@@ -32,51 +34,27 @@ export interface StatisticsManufacturerChartsProps {
 
 interface ManufacturerChartRow extends StatisticsManufacturerDisplayRow {
   label: string
-  fill: string
-  colorIndex: number
 }
 
-function manufacturerGradientId(code: string): string {
-  return `statistics-manufacturer-${code.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-}
+const RANK_GRADIENT_ID = 'statistics-manufacturer-rank-gradient'
 
-function ManufacturerChartGradients({
-  rows,
-}: {
-  rows: readonly ManufacturerChartRow[]
-}): React.ReactElement {
+/** Design: rank bars are ONE red brand gradient — never a per-row palette. */
+function ManufacturerChartGradients(): React.ReactElement {
   return (
     <defs>
-      {rows.map((row) => {
-        const colors = resolveManufacturerColor(row.code, row.colorIndex)
-        return (
-          <linearGradient
-            key={row.code}
-            id={manufacturerGradientId(row.code)}
-            x1="0"
-            y1="0"
-            x2="1"
-            y2="0"
-          >
-            <stop offset="0%" stopColor={colors.fillStrong} stopOpacity={1} />
-            <stop offset="100%" stopColor={colors.fill} stopOpacity={0.9} />
-          </linearGradient>
-        )
-      })}
+      <linearGradient id={RANK_GRADIENT_ID} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor={STATISTICS_MONO_GRADIENTS.red.from} stopOpacity={1} />
+        <stop offset="100%" stopColor={STATISTICS_MONO_GRADIENTS.red.to} stopOpacity={0.9} />
+      </linearGradient>
     </defs>
   )
 }
 
 function buildChartRows(items: StatisticsByManufacturer['items']): ManufacturerChartRow[] {
-  return collapseManufacturerRowsForDisplay(items).map((row, index) => {
-    const colors = resolveManufacturerColor(row.code, index)
-    return {
-      ...row,
-      label: resolveManufacturerDisplayName(row),
-      fill: colors.fill,
-      colorIndex: index,
-    }
-  })
+  return collapseManufacturerRowsForDisplay(items).map((row) => ({
+    ...row,
+    label: resolveManufacturerDisplayName(row),
+  }))
 }
 
 function computeChartHeight(rowCount: number): number {
@@ -86,13 +64,13 @@ function computeChartHeight(rowCount: number): number {
 function outcomeLegendFormatter(value: string): React.ReactNode {
   const color =
     value === m.statistika_analytics_manufacturer_outcome_pending()
-      ? STATISTICS_OUTCOME_CHART_COLORS.pending.fill
+      ? STATISTICS_OUTCOME_COLORS.pending
       : value === m.statistika_analytics_manufacturer_outcome_accepted()
-        ? STATISTICS_OUTCOME_CHART_COLORS.accepted.fill
-        : STATISTICS_OUTCOME_CHART_COLORS.rejected.fill
+        ? STATISTICS_OUTCOME_COLORS.accepted
+        : STATISTICS_OUTCOME_COLORS.rejected
 
   return (
-    <span className="inline-flex items-center gap-2 text-sm text-foreground">
+    <span className="inline-flex items-center gap-2 text-xs text-mri-text2">
       <span
         className="size-2.5 rounded-full"
         style={{ backgroundColor: color }}
@@ -123,15 +101,15 @@ export function StatisticsManufacturerCharts({
     return (
       <section className="flex flex-col gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
             {m.statistika_analytics_manufacturer_section_title()}
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm text-mri-text2">
             {m.statistika_analytics_manufacturer_section_description()}
           </p>
         </div>
         <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          <CardContent className="py-8 text-center text-sm text-mri-text2">
             {m.statistika_analytics_manufacturer_claims()}: 0
           </CardContent>
         </Card>
@@ -142,10 +120,10 @@ export function StatisticsManufacturerCharts({
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">
+        <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
           {m.statistika_analytics_manufacturer_section_title()}
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1.5 text-sm text-mri-text2">
           {m.statistika_analytics_manufacturer_section_description()}
         </p>
       </div>
@@ -157,23 +135,27 @@ export function StatisticsManufacturerCharts({
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-4">
             <div className="grid min-h-[5.5rem] shrink-0 grid-cols-3 gap-3 text-center text-sm">
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">{m.statistika_analytics_total()}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+                  {m.statistika_analytics_total()}
+                </p>
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
                   {totalClaims}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
                   {m.statistika_analytics_manufacturer_claims()}
                 </p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
                   {chartRows.length}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">{topRow?.label ?? '—'}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+                  {topRow?.label ?? '—'}
+                </p>
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
                   {topRow?.total ?? 0}
                 </p>
               </div>
@@ -185,10 +167,10 @@ export function StatisticsManufacturerCharts({
                   layout="vertical"
                   margin={{ top: 8, right: 16, left: 8, bottom: 0 }}
                 >
-                  <ManufacturerChartGradients rows={chartRows} />
+                  <ManufacturerChartGradients />
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    className="stroke-border/70"
+                    stroke="var(--mri-border)"
                     horizontal={false}
                   />
                   <XAxis
@@ -196,7 +178,7 @@ export function StatisticsManufacturerCharts({
                     allowDecimals={false}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <YAxis
                     type="category"
@@ -204,14 +186,16 @@ export function StatisticsManufacturerCharts({
                     width={112}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <Tooltip content={<StatisticsManufacturerRankTooltip />} />
-                  <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                    {chartRows.map((row) => (
-                      <Cell key={row.code} fill={`url(#${manufacturerGradientId(row.code)})`} />
-                    ))}
-                  </Bar>
+                  <Bar
+                    animationDuration={650}
+                    dataKey="total"
+                    fill={`url(#${RANK_GRADIENT_ID})`}
+                    radius={[0, 6, 6, 0]}
+                    maxBarSize={28}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -224,21 +208,27 @@ export function StatisticsManufacturerCharts({
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-4">
             <div className="grid min-h-[5.5rem] shrink-0 grid-cols-3 gap-3 text-center text-sm">
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">{pendingLabel}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-mr-warning-strong">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+                  {pendingLabel}
+                </p>
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-warn">
                   {totalPending}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">{acceptedLabel}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-mr-success-strong">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+                  {acceptedLabel}
+                </p>
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-ok">
                   {totalAccepted}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-2 py-3">
-                <p className="text-xs text-muted-foreground">{rejectedLabel}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-mr-error-strong">
+              <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+                  {rejectedLabel}
+                </p>
+                <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-bad">
                   {totalRejected}
                 </p>
               </div>
@@ -253,7 +243,7 @@ export function StatisticsManufacturerCharts({
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    className="stroke-border/70"
+                    stroke="var(--mri-border)"
                     horizontal={false}
                   />
                   <XAxis
@@ -261,7 +251,7 @@ export function StatisticsManufacturerCharts({
                     tickFormatter={(value: number) => `${Math.round(value * 100)}%`}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <YAxis
                     type="category"
@@ -269,7 +259,7 @@ export function StatisticsManufacturerCharts({
                     width={112}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={STATISTICS_AXIS_TICK}
                   />
                   <Tooltip
                     content={({ active, label }) => {
@@ -287,19 +277,19 @@ export function StatisticsManufacturerCharts({
                               label: pendingLabel,
                               count: row.pending,
                               percent: percents.pendingPercent,
-                              color: STATISTICS_OUTCOME_CHART_COLORS.pending.fill,
+                              color: STATISTICS_OUTCOME_COLORS.pending,
                             },
                             {
                               label: acceptedLabel,
                               count: row.accepted,
                               percent: percents.acceptedPercent,
-                              color: STATISTICS_OUTCOME_CHART_COLORS.accepted.fill,
+                              color: STATISTICS_OUTCOME_COLORS.accepted,
                             },
                             {
                               label: rejectedLabel,
                               count: row.rejected,
                               percent: percents.rejectedPercent,
-                              color: STATISTICS_OUTCOME_CHART_COLORS.rejected.fill,
+                              color: STATISTICS_OUTCOME_COLORS.rejected,
                             },
                           ]}
                         />
@@ -308,23 +298,26 @@ export function StatisticsManufacturerCharts({
                   />
                   <Legend formatter={outcomeLegendFormatter} />
                   <Bar
+                    animationDuration={650}
                     dataKey="pending"
                     name={pendingLabel}
                     stackId="outcome"
-                    fill={STATISTICS_OUTCOME_CHART_COLORS.pending.fill}
+                    fill={STATISTICS_OUTCOME_COLORS.pending}
                     radius={[0, 0, 0, 0]}
                   />
                   <Bar
+                    animationDuration={650}
                     dataKey="accepted"
                     name={acceptedLabel}
                     stackId="outcome"
-                    fill={STATISTICS_OUTCOME_CHART_COLORS.accepted.fill}
+                    fill={STATISTICS_OUTCOME_COLORS.accepted}
                   />
                   <Bar
+                    animationDuration={650}
                     dataKey="rejected"
                     name={rejectedLabel}
                     stackId="outcome"
-                    fill={STATISTICS_OUTCOME_CHART_COLORS.rejected.fill}
+                    fill={STATISTICS_OUTCOME_COLORS.rejected}
                     radius={[0, 6, 6, 0]}
                   />
                 </BarChart>
