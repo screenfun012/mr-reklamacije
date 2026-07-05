@@ -18,19 +18,32 @@ import {
   useReactTable,
   type Column,
 } from '@tanstack/react-table'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { KindPill } from '~/components/kind-pill'
 import { OutcomePill } from '~/components/outcome-pill'
 
+import { ClaimDeleteDialog } from './claim-delete-dialog'
 import {
   claimsTableSortingFromSearch,
   createNextSortSearch,
   isSortableClaimColumnId,
   sortableColumnAriaSort,
 } from './claims-table-sort'
+import { useDeleteClaim } from './use-delete-claim'
+
+interface ClaimsTableDeleteConfig {
+  canDelete: (item: ClaimListItem) => boolean
+  onDeleteRequest: (item: ClaimListItem) => void
+}
+
+function claimDeletePermission(
+  item: ClaimListItem,
+): 'emotive_claims.delete' | 'domace_claims.delete' {
+  return item.kind === ClaimKind.Domace ? 'domace_claims.delete' : 'emotive_claims.delete'
+}
 
 export interface ClaimsTableProps {
   items: readonly ClaimListItem[]
@@ -40,6 +53,8 @@ export interface ClaimsTableProps {
 }
 
 const columnHelper = createColumnHelper<ClaimListItem>()
+
+const rootRoute = getRouteApi('__root__')
 
 function claimCustomerName(item: ClaimListItem): string | null {
   return item.customerName
@@ -103,6 +118,7 @@ function SortableColumnHeader({
 function createClaimsTableColumns(
   search: ClaimsSearch,
   onSearchChange: (next: ClaimsSearch) => void,
+  deleteConfig: ClaimsTableDeleteConfig,
 ) {
   return [
     columnHelper.display({
@@ -195,15 +211,19 @@ function createClaimsTableColumns(
             >
               <Eye className="size-4" />
             </Link>
-            <button
-              type="button"
-              className={`${dataTableIconActionClassName} opacity-60`}
-              disabled
-              aria-label="Obriši"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Trash2 className="size-4" />
-            </button>
+            {deleteConfig.canDelete(row.original) ? (
+              <button
+                type="button"
+                className={`${dataTableIconActionClassName} hover:text-mri-error`}
+                aria-label={m.action_delete()}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  deleteConfig.onDeleteRequest(row.original)
+                }}
+              >
+                <Trash2 className="size-4" />
+              </button>
+            ) : null}
           </div>
         )
       },
@@ -214,11 +234,34 @@ function createClaimsTableColumns(
 
 export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTableProps) {
   const navigate = useNavigate()
+  const { authSession } = rootRoute.useRouteContext()
+  const permissions = authSession?.user?.permissions ?? []
+  const [deleteTarget, setDeleteTarget] = useState<ClaimListItem | null>(null)
+  const deleteMutation = useDeleteClaim()
+
+  const onDeleteRequest = useCallback((item: ClaimListItem) => {
+    setDeleteTarget(item)
+  }, [])
+  const canDelete = useCallback(
+    (item: ClaimListItem) => permissions.includes(claimDeletePermission(item)),
+    [permissions],
+  )
+
   const columns = useMemo(
-    () => createClaimsTableColumns(search, onSearchChange),
-    [onSearchChange, search],
+    () => createClaimsTableColumns(search, onSearchChange, { canDelete, onDeleteRequest }),
+    [onSearchChange, search, canDelete, onDeleteRequest],
   )
   const sorting = useMemo(() => claimsTableSortingFromSearch(search), [search])
+
+  const handleConfirmDelete = (): void => {
+    if (deleteTarget === null) {
+      return
+    }
+    deleteMutation.mutate(
+      { kind: deleteTarget.kind, id: deleteTarget.id },
+      { onSuccess: () => setDeleteTarget(null) },
+    )
+  }
 
   const table = useReactTable({
     data: [...items],
@@ -245,71 +288,87 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
   }
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
-      <div className="flex items-center justify-between border-b border-mri-border px-5 py-4">
-        <h2 className="text-[15px] font-extrabold text-mri-text">
-          {m.emotive_claims_list_title()}
-        </h2>
-        <span className="font-mono text-[11px] text-mri-text2">
-          {m.emotive_claims_count({ count: total })}
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1160px] text-sm">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-mri-border bg-mri-inbg text-left">
-                {headerGroup.headers.map((header) => {
-                  const sorted = header.column.getIsSorted()
-                  const ariaSort = header.column.getCanSort()
-                    ? sortableColumnAriaSort(sorted)
-                    : undefined
-
-                  return (
-                    <th
-                      key={header.id}
-                      className="px-4 py-3 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2"
-                      aria-sort={ariaSort}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  )
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => {
-              const detailLink = claimDetailLink(row.original)
-
-              return (
+    <>
+      <div className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
+        <div className="flex items-center justify-between border-b border-mri-border px-5 py-4">
+          <h2 className="text-[15px] font-extrabold text-mri-text">
+            {m.emotive_claims_list_title()}
+          </h2>
+          <span className="font-mono text-[11px] text-mri-text2">
+            {m.emotive_claims_count({ count: total })}
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1160px] text-sm">
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
                 <tr
-                  key={row.id}
-                  className={dataTableRowNavigableClassName}
-                  onClick={() => {
-                    void navigate(detailLink)
-                  }}
+                  key={headerGroup.id}
+                  className="border-b border-mri-border bg-mri-inbg text-left"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className={
-                        (cell.column.columnDef.meta as { cellClassName?: string } | undefined)
-                          ?.cellClassName ?? 'px-4 py-3'
-                      }
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    const sorted = header.column.getIsSorted()
+                    const ariaSort = header.column.getCanSort()
+                      ? sortableColumnAriaSort(sorted)
+                      : undefined
+
+                    return (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2"
+                        aria-sort={ariaSort}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    )
+                  })}
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => {
+                const detailLink = claimDetailLink(row.original)
+
+                return (
+                  <tr
+                    key={row.id}
+                    className={dataTableRowNavigableClassName}
+                    onClick={() => {
+                      void navigate(detailLink)
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={
+                          (cell.column.columnDef.meta as { cellClassName?: string } | undefined)
+                            ?.cellClassName ?? 'px-4 py-3'
+                        }
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+      <ClaimDeleteDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+          }
+        }}
+        claim={deleteTarget}
+        deleting={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+      />
+    </>
   )
 }
 

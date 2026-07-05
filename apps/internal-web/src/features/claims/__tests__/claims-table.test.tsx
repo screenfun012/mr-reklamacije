@@ -1,5 +1,6 @@
 import { ClaimKind, ClaimSortBy, ClaimSortDir } from '@mr/shared'
 import { setLocale } from '@mr/i18n'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -13,6 +14,20 @@ import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ClaimsTable } from '../claims-table.js'
+
+// The table reads the actor's permissions from the root route context; mock it
+// so a test can grant a specific delete permission (real router stays for links).
+const { mockState } = vi.hoisted(() => ({ mockState: { permissions: [] as string[] } }))
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return {
+    ...actual,
+    getRouteApi: () => ({
+      useRouteContext: () => ({ authSession: { user: { permissions: mockState.permissions } } }),
+    }),
+  }
+})
 
 const defaultSearch = { page: 1, pageSize: 10 as const }
 
@@ -81,12 +96,18 @@ async function renderWithRouter(node: ReactElement): Promise<void> {
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
   await router.load()
-  render(<RouterProvider router={router as never} />)
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router as never} />
+    </QueryClientProvider>,
+  )
 }
 
 describe('ClaimsTable', () => {
   beforeEach(() => {
     setLocale('sr')
+    mockState.permissions = []
   })
 
   it('renders empty state when there are no rows', async () => {
@@ -195,5 +216,31 @@ describe('ClaimsTable', () => {
       sortBy: ClaimSortBy.DateOfFinish,
       sortDir: ClaimSortDir.Desc,
     })
+  })
+
+  it('shows a delete action only for kinds the actor may delete and opens the confirm dialog', async () => {
+    const user = userEvent.setup()
+    mockState.permissions = ['emotive_claims.delete'] // emotive deletable, domace not
+
+    await renderWithRouter(
+      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+    )
+
+    const deleteButtons = screen.getAllByRole('button', { name: 'Obriši' })
+    expect(deleteButtons).toHaveLength(1)
+
+    await user.click(deleteButtons[0]!)
+
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Obriši reklamaciju')
+    expect(dialog).toHaveTextContent('5376/26')
+  })
+
+  it('shows no delete action without the delete permission', async () => {
+    await renderWithRouter(
+      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Obriši' })).not.toBeInTheDocument()
   })
 })
