@@ -409,8 +409,10 @@ describe('ClaimsService integration', () => {
           expect(key in item).toBe(false)
         }
         expect(item['kind']).toBe('emotive')
-        // The server-derived portal phase ships instead of the raw signals.
-        expect(['received', 'in_progress', 'outcome']).toContain(item['progressPhase'])
+        // Portal status derives from `outcome` (no redundant progressPhase field);
+        // archived claims are hidden from clients, so outcome is pending/decided.
+        expect('progressPhase' in item).toBe(false)
+        expect(['pending', 'accepted', 'rejected']).toContain(item['outcome'])
       }
     })
 

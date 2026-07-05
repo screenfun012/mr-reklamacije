@@ -60,15 +60,19 @@ import './claim-report-editor.scss'
 
 const REPORT_IMAGE_MAX_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 const REPORT_IMAGE_ACCEPT = ALLOWED_IMAGE_MIME_TYPES.join(',')
-// Full-document getJSON/getHTML runs at most once per quiet window, not per keystroke.
-const EDITOR_SERIALIZE_DEBOUNCE_MS = 300
 
 export interface ClaimReportEditorProps {
   initialContent: ClaimReportContentJson
   editable: boolean
   claimKind: ClaimKind
   claimId: string
-  onChange: (payload: { contentJson: ClaimReportContentJson; contentHtml: string }) => void
+  /**
+   * Persist the current content. Called on blur and on unmount (sheet close)
+   * only — never per keystroke — so editing is never interrupted. `onUpdate`
+   * just marks the document dirty; the full getJSON/getHTML serialization runs
+   * once, at persist time, and only when there are unsaved changes.
+   */
+  onPersist: (payload: { contentJson: ClaimReportContentJson; contentHtml: string }) => void
 }
 
 interface MainToolbarContentProps {
@@ -174,13 +178,13 @@ export default function ClaimReportEditor({
   editable,
   claimKind,
   claimId,
-  onChange,
+  onPersist,
 }: ClaimReportEditorProps): React.ReactElement {
   const isMobile = useIsBreakpoint()
   const { height } = useWindowSize()
   const [mobileView, setMobileView] = useState<'main' | 'highlighter' | 'link'>('main')
   const toolbarRef = useRef<HTMLDivElement>(null)
-  const serializeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dirtyRef = useRef(false)
 
   const handleImageUpload = useCallback(
     async (
@@ -256,19 +260,10 @@ export default function ClaimReportEditor({
         class: 'claim-report-editor tiptap',
       },
     },
-    onUpdate: ({ editor: activeEditor }) => {
-      // getJSON + getHTML on a big report are too expensive per keystroke —
-      // serialize once per quiet window instead; blur/unmount flush below.
-      if (serializeTimerRef.current !== null) {
-        clearTimeout(serializeTimerRef.current)
-      }
-      serializeTimerRef.current = setTimeout(() => {
-        serializeTimerRef.current = null
-        onChange({
-          contentJson: activeEditor.getJSON() as ClaimReportContentJson,
-          contentHtml: activeEditor.getHTML(),
-        })
-      }, EDITOR_SERIALIZE_DEBOUNCE_MS)
+    onUpdate: () => {
+      // Cheap per-keystroke marker only — no serialization here. The full
+      // getJSON/getHTML runs once, at persist time (blur/unmount).
+      dirtyRef.current = true
     },
   })
 
@@ -277,28 +272,25 @@ export default function ClaimReportEditor({
       return
     }
 
-    // Flush a pending serialization immediately when typing stops via blur or
-    // when the editor unmounts (sheet closing) — no keystrokes may be lost.
-    const flushPendingChange = (): void => {
-      if (serializeTimerRef.current === null) {
+    // Persist on blur and on unmount (sheet close) — the only two moments, so
+    // typing never triggers a save/remount. Skips when nothing changed.
+    const persist = (): void => {
+      if (!dirtyRef.current || editor.isDestroyed) {
         return
       }
-      clearTimeout(serializeTimerRef.current)
-      serializeTimerRef.current = null
-      if (!editor.isDestroyed) {
-        onChange({
-          contentJson: editor.getJSON() as ClaimReportContentJson,
-          contentHtml: editor.getHTML(),
-        })
-      }
+      dirtyRef.current = false
+      onPersist({
+        contentJson: editor.getJSON() as ClaimReportContentJson,
+        contentHtml: editor.getHTML(),
+      })
     }
 
-    editor.on('blur', flushPendingChange)
+    editor.on('blur', persist)
     return () => {
-      editor.off('blur', flushPendingChange)
-      flushPendingChange()
+      editor.off('blur', persist)
+      persist()
     }
-  }, [editor, onChange])
+  }, [editor, onPersist])
 
   useEffect(() => {
     if (editor === null) {

@@ -1,5 +1,10 @@
 import { m } from '@mr/i18n'
-import { ClaimOutcome, ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
+import {
+  ClaimOutcome,
+  ClientClaimPhase,
+  deriveClientClaimPhase,
+  type ClientClaimListItem,
+} from '@mr/shared'
 
 /**
  * Visual mapping of the server-derived three-phase status, straight from the
@@ -27,33 +32,21 @@ export interface StatusChipConfig {
   icon: 'dot' | 'cog' | 'x'
 }
 
-type PhaseSource = Pick<ClientClaimListItem, 'progressPhase' | 'outcome'>
+type PhaseSource = Pick<ClientClaimListItem, 'outcome'>
 
 /**
- * Resolves the portal phase primarily from `outcome` (present in every role's
- * payload). `progressPhase` refines pending claims for client sessions; an
- * admin browsing the portal gets the UNwhitelisted API shape without it, so a
- * pending claim then simply reads as "received" instead of crashing.
+ * Live claim status — delegates to the SHARED deriveClientClaimPhase so the
+ * portal and the server can never disagree. Status is a pure function of
+ * `outcome` (pending → in progress, resolved → outcome), so there is no
+ * client-side re-derivation to drift. `Received` is not a live status; it lives
+ * only on the timeline (first step) and in the activity feed (event type).
  */
 export function portalPhase(claim: PhaseSource): ClientClaimPhase {
-  if (claim.outcome !== ClaimOutcome.Pending) {
-    return ClientClaimPhase.Outcome
-  }
-  return claim.progressPhase === ClientClaimPhase.InProgress
-    ? ClientClaimPhase.InProgress
-    : ClientClaimPhase.Received
+  return deriveClientClaimPhase(claim.outcome)
 }
 
 export function statusChipConfig(claim: PhaseSource): StatusChipConfig {
   const phase = portalPhase(claim)
-  if (phase === ClientClaimPhase.Received) {
-    return {
-      label: m.portal_status_received(),
-      color: PHASE_COLOR.info,
-      tint: PHASE_TINT.info,
-      icon: 'dot',
-    }
-  }
   if (phase === ClientClaimPhase.InProgress) {
     return {
       label: m.portal_status_in_progress(),
@@ -85,12 +78,9 @@ export interface TriBarConfig {
   s2Pulsing: boolean
 }
 
-/** 3-segment card progress bar: received → blue first, in progress → amber two, outcome → all. */
+/** 3-segment card progress bar: in progress → amber first two, outcome → all three. */
 export function triBarConfig(claim: PhaseSource, trackColor: string): TriBarConfig {
   const phase = portalPhase(claim)
-  if (phase === ClientClaimPhase.Received) {
-    return { s1: PHASE_COLOR.info, s2: trackColor, s3: trackColor, s2Pulsing: false }
-  }
   if (phase === ClientClaimPhase.InProgress) {
     return { s1: PHASE_COLOR.warn, s2: PHASE_COLOR.warn, s3: trackColor, s2Pulsing: true }
   }

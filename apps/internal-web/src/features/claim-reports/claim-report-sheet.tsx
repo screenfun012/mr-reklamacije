@@ -1,9 +1,4 @@
-import {
-  claimReportOptions,
-  type ClaimKind,
-  type ClaimReportContentJson,
-  type ClaimReportUpsertBody,
-} from '@mr/shared'
+import { claimReportOptions, type ClaimKind, type ClaimReportContentJson } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   Dialog,
@@ -15,7 +10,7 @@ import {
   toast,
 } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect } from 'react'
 
 import { type ClaimReportSaveStatus, useClaimReportAutosave } from './use-claim-report-autosave.js'
 
@@ -58,33 +53,11 @@ export function ClaimReportSheet({
     enabled: open,
   })
 
-  const [draft, setDraft] = useState<ClaimReportUpsertBody | null>(null)
-  const baselineFingerprint = useMemo(() => {
-    if (data === undefined) {
-      return null
-    }
-
-    return JSON.stringify(data.contentJson)
-  }, [data])
-
-  useEffect(() => {
-    if (data === undefined) {
-      return
-    }
-
-    setDraft({
-      contentJson: data.contentJson,
-      contentHtml: data.contentHtml,
-    })
-  }, [data])
-
-  const { saveStatus } = useClaimReportAutosave({
+  const { saveStatus, save } = useClaimReportAutosave({
     claimKind,
     claimId,
-    enabled: open,
     canEdit,
-    draft,
-    baselineFingerprint,
+    baseline: data?.contentJson ?? null,
   })
 
   useEffect(() => {
@@ -93,11 +66,11 @@ export function ClaimReportSheet({
     }
   }, [saveStatus])
 
-  const handleEditorChange = useCallback(
+  const handlePersist = useCallback(
     (payload: { contentJson: ClaimReportContentJson; contentHtml: string }) => {
-      setDraft(payload)
+      save(payload)
     },
-    [],
+    [save],
   )
 
   return (
@@ -126,7 +99,7 @@ export function ClaimReportSheet({
               <Skeleton className="h-10 w-full rounded-md" />
               <Skeleton className="min-h-[20rem] flex-1 rounded-md" />
             </div>
-          ) : isError || data === undefined || draft === null ? (
+          ) : isError || data === undefined ? (
             <div className="flex flex-1 items-center justify-center p-6">
               <p className="text-sm text-muted-foreground">{m.claim_report_save_status_error()}</p>
             </div>
@@ -139,13 +112,17 @@ export function ClaimReportSheet({
                 </div>
               }
             >
+              {/* Stable key: a save must never remount the editor (that was the
+                  cursor/toolbar-destroying bug). It remounts only on claim
+                  switch. initialContent is read once at mount; later cache
+                  updates from a save don't disturb the live editor. */}
               <LazyClaimReportEditor
-                key={`${claimKind}:${claimId}:${data.updatedAt ?? 'new'}`}
-                initialContent={draft.contentJson}
+                key={`${claimKind}:${claimId}`}
+                initialContent={data.contentJson}
                 editable={canEdit}
                 claimKind={claimKind}
                 claimId={claimId}
-                onChange={handleEditorChange}
+                onPersist={handlePersist}
               />
             </Suspense>
           )}

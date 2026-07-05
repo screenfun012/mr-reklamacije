@@ -1,9 +1,4 @@
-import {
-  SYSTEM_ROLE_CLIENT,
-  toClientClaimDetail,
-  toClientClaimListItem,
-  type ClientClaimDetail,
-} from '@mr/shared'
+import { toClientClaimDetail, toClientClaimListItem, type ClientClaimDetail } from '@mr/shared'
 import type { Context } from 'hono'
 import { z } from 'zod'
 
@@ -29,19 +24,28 @@ function toActor(user: MRSessionUser): DomaceClaimsActor {
   return { id: user.id, permissions: user.permissions }
 }
 
-function isClientRole(user: MRSessionUser): boolean {
-  return user.roles.includes(SYSTEM_ROLE_CLIENT)
+/**
+ * Field breadth follows the VIEW SCOPE, not the role name — an actor with the
+ * full `domace_claims.view` permission gets the raw internal claim; an
+ * own-customer-scoped actor gets the strict whitelist. Mirrors the service's
+ * ROW-scope permission so breadth and row access can never disagree, and any
+ * future scoped role is whitelisted automatically. (Clients hold no domace
+ * claims today, but keying on the scope keeps this correct if that changes.)
+ */
+function hasFullClaimView(user: MRSessionUser): boolean {
+  return user.permissions.includes('domace_claims.view')
 }
 
 function serializeClaimDetail(
   detail: DomaceClaimDetail,
   user: MRSessionUser,
 ): DomaceClaimDetail | ClientClaimDetail {
-  if (!isClientRole(user)) {
+  if (hasFullClaimView(user)) {
     return detail
   }
 
-  // Clients get a strict whitelist — no faults (krivica), no handler, no internal notes.
+  // Scoped viewers get a strict whitelist — no faults (krivica), no handler, no
+  // internal notes, no source, no pricing.
   return toClientClaimDetail(detail)
 }
 
@@ -59,7 +63,7 @@ export function createDomaceClaimsController(container: Container) {
       const user = requireUser(c)
       const query = DomaceClaimListQuerySchema.parse(c.req.query())
       const result = await container.domaceClaimsService.list(query, toActor(user))
-      if (isClientRole(user)) {
+      if (!hasFullClaimView(user)) {
         return c.json({ ...result, items: result.items.map(toClientClaimListItem) })
       }
       return c.json(result)

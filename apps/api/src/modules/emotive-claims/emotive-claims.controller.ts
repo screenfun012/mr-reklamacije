@@ -1,9 +1,4 @@
-import {
-  SYSTEM_ROLE_CLIENT,
-  toClientClaimDetail,
-  toClientClaimListItem,
-  type ClientClaimDetail,
-} from '@mr/shared'
+import { toClientClaimDetail, toClientClaimListItem, type ClientClaimDetail } from '@mr/shared'
 import type { Context } from 'hono'
 import { z } from 'zod'
 
@@ -28,19 +23,30 @@ function toActor(user: MRSessionUser): EmotiveClaimsActor {
   return { id: user.id, permissions: user.permissions }
 }
 
-function isClientRole(user: MRSessionUser): boolean {
-  return user.roles.includes(SYSTEM_ROLE_CLIENT)
+/**
+ * Field breadth follows the VIEW SCOPE, not the role name. Holders of the full
+ * `emotive_claims.view` permission (operator / viewer / admin) get the raw
+ * internal claim; an own-customer-scoped actor — the `client` role today, or
+ * ANY future partner role holding only `emotive_claims.view_own_customer` —
+ * gets the strict whitelist. This is the SAME permission the service uses for
+ * ROW scope (resolveListScope), so field breadth and row access can never
+ * disagree, and a new scoped role is whitelisted automatically with no code
+ * change (the whole point of the whitelist safety net).
+ */
+function hasFullClaimView(user: MRSessionUser): boolean {
+  return user.permissions.includes('emotive_claims.view')
 }
 
 function serializeClaimDetail(
   detail: EmotiveClaimDetail,
   user: MRSessionUser,
 ): EmotiveClaimDetail | ClientClaimDetail {
-  if (!isClientRole(user)) {
+  if (hasFullClaimView(user)) {
     return detail
   }
 
-  // Clients get a strict whitelist — no faults (krivica), no handler, no internal notes.
+  // Scoped viewers get a strict whitelist — no faults (krivica), no handler, no
+  // internal notes, no source, no pricing.
   return toClientClaimDetail(detail)
 }
 
@@ -58,7 +64,7 @@ export function createEmotiveClaimsController(container: Container) {
       const user = requireUser(c)
       const query = EmotiveClaimListQuerySchema.parse(c.req.query())
       const result = await container.emotiveClaimsService.list(query, toActor(user))
-      if (isClientRole(user)) {
+      if (!hasFullClaimView(user)) {
         return c.json({ ...result, items: result.items.map(toClientClaimListItem) })
       }
       return c.json(result)

@@ -1,4 +1,4 @@
-import { SYSTEM_ROLE_CLIENT, toClientClaimListItem } from '@mr/shared'
+import { ClaimKind, toClientClaimListItem } from '@mr/shared'
 import type { Context } from 'hono'
 
 import type { Container } from '../../core/container.js'
@@ -22,8 +22,17 @@ function toActor(user: MRSessionUser): ClaimsActor {
   }
 }
 
-function isClientRole(user: MRSessionUser): boolean {
-  return user.roles.includes(SYSTEM_ROLE_CLIENT)
+/**
+ * Field breadth follows the VIEW SCOPE per kind, not the role name. An item is
+ * whitelisted unless the actor holds the FULL-view permission for that item's
+ * kind (`emotive_claims.view` / `domace_claims.view`) — the same permissions
+ * the service keys ROW scope on. So a `client` (own-customer emotive only) is
+ * whitelisted, an operator/viewer/admin (full view) is not, and a hypothetical
+ * mixed-scope role gets each kind's correct breadth — no role-name coupling.
+ */
+function hasFullViewForKind(user: MRSessionUser, kind: ClaimKind): boolean {
+  const permission = kind === ClaimKind.Emotive ? 'emotive_claims.view' : 'domace_claims.view'
+  return user.permissions.includes(permission)
 }
 
 export function createClaimsController(container: Container) {
@@ -32,10 +41,10 @@ export function createClaimsController(container: Container) {
       const user = requireUser(c)
       const query = ClaimListQuerySchema.parse(c.req.query())
       const result = await container.claimsService.list(query, toActor(user))
-      if (isClientRole(user)) {
-        return c.json({ ...result, items: result.items.map(toClientClaimListItem) })
-      }
-      return c.json(result)
+      const items = result.items.map((item) =>
+        hasFullViewForKind(user, item.kind) ? item : toClientClaimListItem(item),
+      )
+      return c.json({ ...result, items })
     },
   }
 }

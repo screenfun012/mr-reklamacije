@@ -84,8 +84,9 @@ describe('toClientClaimListItem', () => {
     expect(item.customerName).toBe('JONKER')
     expect(item.outcome).toBe(ClaimOutcome.Pending)
     expect(item.warrantyReport).toBe('Kvar na motoru')
-    // The phase ships instead of the signals behind it.
-    expect(item.progressPhase).toBe(ClientClaimPhase.InProgress)
+    // Status is derived from `outcome` on the portal (deriveClientClaimPhase),
+    // so no redundant `progressPhase` field ships.
+    expect('progressPhase' in item).toBe(false)
 
     for (const key of [...LEAKY_KEYS, 'employeeName']) {
       expect(key in item).toBe(false)
@@ -104,7 +105,7 @@ describe('toClientClaimDetail', () => {
     // The assigned technician's NAME is a deliberate whitelist extension
     // (approved 2026-07-03) — the employee id must still never leak.
     expect(detail.employeeName).toBe('Dejan Milovanović')
-    expect(detail.progressPhase).toBe(ClientClaimPhase.InProgress)
+    expect('progressPhase' in detail).toBe(false)
 
     for (const key of LEAKY_KEYS) {
       expect(key in detail).toBe(false)

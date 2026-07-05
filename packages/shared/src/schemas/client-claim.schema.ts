@@ -21,11 +21,15 @@ export const clientClaimPhaseValues = [
 ] as const
 
 /**
- * Derives the portal's three-phase status. The portal must mirror the internal
- * outcome directly (Nikola, 2026-07-04): every pending claim reads "in
- * progress" — the same story the internal app tells — and a resolved outcome
- * is the Outcome phase. `Received` remains only as the always-completed first
- * step of the detail timeline, never as a live status.
+ * THE single source of truth for the portal's live claim status. The portal
+ * mirrors the internal outcome directly (Nikola, 2026-07-04): every pending
+ * claim reads "in progress" — the same story the internal app tells — and a
+ * resolved outcome is the Outcome phase. Because status is now a pure function
+ * of `outcome` (which is already in the client whitelist), the server and the
+ * portal both call THIS — there is no separate `progressPhase` wire field and
+ * no second client-side derivation to drift out of sync. `Received` survives
+ * only as the always-completed first step of the detail timeline and as an
+ * activity-feed event type — never as a live status.
  */
 export function deriveClientClaimPhase(outcome: ClaimOutcome): ClientClaimPhase {
   return outcome === ClaimOutcome.Pending ? ClientClaimPhase.InProgress : ClientClaimPhase.Outcome
@@ -56,8 +60,6 @@ export const ClientClaimListItemSchema = z.object({
   claimYear: z.coerce.number().int(),
   customerName: z.string().nullable(),
   createdAt: z.string(),
-  // Server-derived three-phase portal status (see deriveClientClaimPhase).
-  progressPhase: z.enum(clientClaimPhaseValues),
 })
 
 export type ClientClaimListItem = z.infer<typeof ClientClaimListItemSchema>
@@ -100,7 +102,6 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
     claimYear: item.claimYear,
     customerName: item.customerName,
     createdAt: item.createdAt,
-    progressPhase: deriveClientClaimPhase(item.outcome),
   }
 }
 

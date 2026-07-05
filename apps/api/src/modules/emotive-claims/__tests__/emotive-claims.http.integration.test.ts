@@ -198,11 +198,12 @@ describe('EmotiveClaims HTTP', () => {
       )
       expect(res.status).toBe(200)
 
-      const body = (await res.json()) as {
-        items: Array<{ id: string; customerId: string | null }>
-      }
-      expect(body.items.some((item) => item.id === visible.id)).toBe(true)
-      expect(body.items.every((item) => item.customerId === customerSelman)).toBe(true)
+      const body = (await res.json()) as { items: Array<Record<string, unknown>> }
+      // The own claim is visible to the linked scoped viewer...
+      expect(body.items.some((item) => item['id'] === visible.id)).toBe(true)
+      // ...and the list is whitelisted — internal `customerId` is stripped
+      // (breadth now follows the scope permission, not the role name).
+      expect(body.items.every((item) => !('customerId' in item))).toBe(true)
     })
 
     it('client list items are whitelisted — no handler (employeeName/employeeId)', async () => {
@@ -317,13 +318,56 @@ describe('EmotiveClaims HTTP', () => {
       expect(body['customerName']).toBeTruthy()
       expect(body['kind']).toBe('emotive')
       // Deliberate whitelist extension (approved 2026-07-03): the client may
-      // see the assigned technician's NAME + the derived portal phase — never
-      // the employee id or the signals behind the phase.
+      // see the assigned technician's NAME — never the employee id. Portal
+      // status is derived from `outcome` (above), so no `progressPhase` ships.
       expect(body['employeeName']).toBe('Dejan Milovanović')
-      expect(body['progressPhase']).toBe('in_progress')
+      expect('progressPhase' in body).toBe(false)
 
       // Raw secret strings never appear anywhere in the payload — including
       // the handler's employee id (the name is allowed, the id is not).
+      expect(text).not.toContain('TAJNA KRIVICA')
+      expect(text).not.toContain('TAJNA INTERNA BELESKA')
+      expect(text).not.toContain(dejanId)
+    })
+
+    it('whitelist follows the SCOPE permission, not the role — a non-client role with only view_own_customer is still whitelisted', async () => {
+      // Regression (2026-07-05 security audit): field breadth must be keyed on
+      // the view PERMISSION, not the literal `client` role. A future custom
+      // partner role granted only emotive_claims.view_own_customer must NOT
+      // receive faults/employeeId/internalNotes/source.
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const dejanId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+      const created = await createClaimViaHttp({
+        customerId: customerSelman,
+        internalNotes: 'TAJNA INTERNA BELESKA',
+        mrNumber: 'HTTP-PARTNER-WL/26',
+        warrantyReport: 'partner-detail-wl',
+        faults: [{ faultType: 'employee', employeeId: dejanId, notes: 'TAJNA KRIVICA' }],
+      })
+
+      // NON-client role — the old role-keyed gate would have leaked full detail.
+      const app = createEmotiveClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, ['partner_readonly']),
+      )
+      const res = await app.request(`/api/emotive-claims/${created.id}`)
+      expect(res.status).toBe(200)
+
+      const text = await res.text()
+      const body = JSON.parse(text) as Record<string, unknown>
+
+      for (const key of ['faults', 'employeeId', 'internalNotes', 'sourceId', 'customerId']) {
+        expect(key in body).toBe(false)
+      }
+      expect(body['warrantyReport']).toBe('partner-detail-wl')
       expect(text).not.toContain('TAJNA KRIVICA')
       expect(text).not.toContain('TAJNA INTERNA BELESKA')
       expect(text).not.toContain(dejanId)
