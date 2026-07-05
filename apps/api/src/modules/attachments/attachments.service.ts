@@ -107,6 +107,20 @@ function resolveViewScope(actor: AttachmentsActor): AttachmentsViewScope {
   throw new ForbiddenError()
 }
 
+/**
+ * Whether a claim attachment is visible to portal clients — the TS twin of the
+ * repository's SQL visibilityFilter client clause: a photo (image) is always
+ * client-visible, plus anything explicitly marked client_visible. Upload/delete
+ * targets are always claim attachments, so purpose is not needed here. Keep in
+ * sync with attachments.repository.ts visibilityFilter.
+ */
+function isClientVisibleClaimAttachment(item: { visibility: string; mimeType: string }): boolean {
+  return (
+    item.visibility === AttachmentVisibility.ClientVisible ||
+    isImageAttachmentMimeType(item.mimeType)
+  )
+}
+
 export class AttachmentsService {
   constructor(
     private readonly repo: AttachmentsRepository,
@@ -119,15 +133,20 @@ export class AttachmentsService {
   ) {}
 
   /**
-   * Attachment changes ride the claim-updated signal: internal lists refresh
-   * and — for EMOTIVE claims — the owning customer's portal photos refresh too.
+   * Attachment changes ride the claim-updated signal so internal views refresh.
+   * The owning customer's portal is only signalled when the change is actually
+   * client-visible (a photo) — uploading/deleting an INTERNAL document never
+   * wakes portal clients into a needless refetch.
    */
   private async publishClaimAttachmentsChanged(
     claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
     claimId: string,
+    clientVisible: boolean,
   ): Promise<void> {
     const customerId =
-      claimKind === ClaimKind.Emotive ? await this.repo.findEmotiveClaimCustomerId(claimId) : null
+      clientVisible && claimKind === ClaimKind.Emotive
+        ? await this.repo.findEmotiveClaimCustomerId(claimId)
+        : null
     this.events.publishClaimUpdated({ kind: claimKind, id: claimId }, customerId)
   }
 
@@ -340,7 +359,12 @@ export class AttachmentsService {
     }
 
     if (items.length > 0) {
-      await this.publishClaimAttachmentsChanged(input.claimKind, input.claimId)
+      // Only signal the portal when a client-visible photo was added.
+      await this.publishClaimAttachmentsChanged(
+        input.claimKind,
+        input.claimId,
+        items.some(isClientVisibleClaimAttachment),
+      )
     }
 
     return { items, skippedDuplicates }
@@ -493,6 +517,10 @@ export class AttachmentsService {
       },
     })
 
-    await this.publishClaimAttachmentsChanged(attachment.claimKind, attachment.claimId)
+    await this.publishClaimAttachmentsChanged(
+      attachment.claimKind,
+      attachment.claimId,
+      isClientVisibleClaimAttachment(attachment),
+    )
   }
 }

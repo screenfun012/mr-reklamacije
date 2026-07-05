@@ -1,4 +1,4 @@
-import { ResourceChangedKey, ResourceEventType } from '@mr/shared'
+import { ClaimEventType, ClaimKind, ResourceChangedKey, ResourceEventType } from '@mr/shared'
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -47,6 +47,31 @@ describe('parseAppEventFromSseData', () => {
     })
   })
 
+  it('parses claim lifecycle events', () => {
+    const event = parseAppEventFromSseData(
+      JSON.stringify({
+        type: ClaimEventType.Updated,
+        payload: { kind: ClaimKind.Emotive, id: 'claim-1' },
+      }),
+    )
+
+    expect(event).toEqual({
+      type: ClaimEventType.Updated,
+      payload: { kind: ClaimKind.Emotive, id: 'claim-1' },
+    })
+  })
+
+  it('returns null for a claim event with a missing/invalid payload', () => {
+    expect(
+      parseAppEventFromSseData(JSON.stringify({ type: ClaimEventType.Updated, payload: {} })),
+    ).toBeNull()
+    expect(
+      parseAppEventFromSseData(
+        JSON.stringify({ type: ClaimEventType.Created, payload: { kind: 'nope', id: 'x' } }),
+      ),
+    ).toBeNull()
+  })
+
   it('returns null for malformed JSON', () => {
     expect(parseAppEventFromSseData('not-json')).toBeNull()
   })
@@ -87,5 +112,21 @@ describe('handleAppEvent', () => {
     })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['engine-manufacturers'] })
+  })
+
+  it('invalidates the unified list, the kind list and the claim detail on a claim event', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    handleAppEvent(queryClient, {
+      type: ClaimEventType.Updated,
+      payload: { kind: ClaimKind.Emotive, id: 'claim-9' },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['claims', 'list'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['emotive-claims', 'list'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['emotive-claims', 'detail', 'claim-9'],
+    })
   })
 })

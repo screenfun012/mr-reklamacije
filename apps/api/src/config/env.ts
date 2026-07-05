@@ -11,6 +11,11 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
   API_BASE_URL: z.url(),
+  // Number of API replicas this deploy runs. Realtime uses an in-process event
+  // bus, so SSE only works within ONE instance; set this to match the deploy so
+  // startup warns loudly (instead of failing silently) if replicas are scaled
+  // up before a distributed bus (Postgres LISTEN/NOTIFY / Redis) is in place.
+  API_REPLICA_COUNT: z.coerce.number().int().positive().default(1),
   PUBLIC_ORIGINS: z.string().transform((s) =>
     s
       .split(',')

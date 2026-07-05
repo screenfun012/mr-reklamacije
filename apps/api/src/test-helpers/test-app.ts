@@ -42,6 +42,7 @@ export function createTestEnv(databaseUrl: string): Env {
     PORT: 3000,
     HOST: '127.0.0.1',
     API_BASE_URL: 'http://127.0.0.1:3000',
+    API_REPLICA_COUNT: 1,
     PUBLIC_ORIGINS: ['http://127.0.0.1:5173'],
     SELF_SIGNUP_ORIGINS: ['http://127.0.0.1:3002'],
     CLIENT_SIGNUP_ORIGINS: ['http://127.0.0.1:3003'],

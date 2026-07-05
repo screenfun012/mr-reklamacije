@@ -13,6 +13,15 @@ const env = parseEnv()
 const logger = createLogger('api')
 const container = createContainer(env, logger)
 
+if (env.API_REPLICA_COUNT > 1) {
+  // The in-process event bus cannot propagate SSE across instances — a claim
+  // mutated on one replica never reaches a client connected to another.
+  logger.warn(
+    { replicaCount: env.API_REPLICA_COUNT },
+    'Multiple API replicas with an in-process event bus: realtime (SSE) will NOT propagate across instances. Swap InProcessEventBus for a distributed bus (Postgres LISTEN/NOTIFY or Redis) before scaling.',
+  )
+}
+
 const app = createApp(container)
 
 let isShuttingDown = false

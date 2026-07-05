@@ -30,6 +30,7 @@ export {
   type StatisticsSummaryFilters,
 } from './statistics-filters.js'
 export { invalidateStatisticsSummary } from './invalidate-statistics-summary.js'
+export { invalidateInternalClaimQueries } from './invalidate-internal-claim-queries.js'
 export {
   ClaimDetailSearchSchema,
   ClaimDetailTab,

@@ -1,4 +1,4 @@
-import { ResourceEventType } from '@mr/shared'
+import { ClaimEventType, ResourceEventType } from '@mr/shared'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
@@ -8,6 +8,15 @@ import { handleAppEvent, parseAppEventFromSseData } from './handle-app-event'
 const SSE_URL = '/api/events/me'
 const INITIAL_BACKOFF_MS = 1_000
 const MAX_BACKOFF_MS = 30_000
+
+// Every named SSE event the internal app reacts to: catalog sync + claim
+// lifecycle (so open lists/detail/stats live-update across users).
+const HANDLED_EVENT_TYPES = [
+  ResourceEventType.Changed,
+  ClaimEventType.Created,
+  ClaimEventType.Updated,
+  ClaimEventType.Deleted,
+] as const
 
 /**
  * Keeps a single EventSource open while the user is authenticated and invalidates
@@ -40,7 +49,7 @@ export function useRealtimeEventStream(): void {
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS)
     }
 
-    const onResourceChanged = (message: MessageEvent<string>): void => {
+    const onAppEvent = (message: MessageEvent<string>): void => {
       const event = parseAppEventFromSseData(message.data)
       if (event !== null) {
         handleAppEvent(queryClientRef.current, event)
@@ -59,7 +68,9 @@ export function useRealtimeEventStream(): void {
         backoffMs = INITIAL_BACKOFF_MS
       })
 
-      es.addEventListener(ResourceEventType.Changed, onResourceChanged)
+      for (const type of HANDLED_EVENT_TYPES) {
+        es.addEventListener(type, onAppEvent)
+      }
 
       es.onerror = () => {
         es?.close()

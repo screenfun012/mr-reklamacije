@@ -3,9 +3,9 @@ import type { AppEvent, ClaimEventPayload, ResourceChangedKey } from '@mr/shared
 import type { EventBus } from '../core/ports/event-bus-port.js'
 
 export type RecordedClaimEvent =
-  | { type: 'created'; payload: ClaimEventPayload }
-  | { type: 'updated'; payload: ClaimEventPayload }
-  | { type: 'deleted'; payload: ClaimEventPayload }
+  | { type: 'created'; payload: ClaimEventPayload; customerId: string | null }
+  | { type: 'updated'; payload: ClaimEventPayload; customerId: string | null }
+  | { type: 'deleted'; payload: ClaimEventPayload; customerId: string | null }
 
 export type RecordedResourceEvent = { type: 'resource_changed'; resource: ResourceChangedKey }
 
@@ -13,16 +13,16 @@ export class RecordingEventBus implements EventBus {
   readonly events: RecordedClaimEvent[] = []
   readonly resourceEvents: RecordedResourceEvent[] = []
 
-  publishClaimCreated(payload: ClaimEventPayload): void {
-    this.events.push({ type: 'created', payload })
+  publishClaimCreated(payload: ClaimEventPayload, customerId: string | null = null): void {
+    this.events.push({ type: 'created', payload, customerId })
   }
 
-  publishClaimUpdated(payload: ClaimEventPayload): void {
-    this.events.push({ type: 'updated', payload })
+  publishClaimUpdated(payload: ClaimEventPayload, customerId: string | null = null): void {
+    this.events.push({ type: 'updated', payload, customerId })
   }
 
-  publishClaimDeleted(payload: ClaimEventPayload): void {
-    this.events.push({ type: 'deleted', payload })
+  publishClaimDeleted(payload: ClaimEventPayload, customerId: string | null = null): void {
+    this.events.push({ type: 'deleted', payload, customerId })
   }
 
   publishResourceChanged(resource: ResourceChangedKey): void {
@@ -33,10 +33,12 @@ export class RecordingEventBus implements EventBus {
     _userId: string,
     _roleCodes: readonly string[],
     _listener: (event: AppEvent) => void,
+    _customerIds?: readonly string[],
   ): () => void {
     void _userId
     void _roleCodes
     void _listener
+    void _customerIds
     return () => {}
   }
 }
