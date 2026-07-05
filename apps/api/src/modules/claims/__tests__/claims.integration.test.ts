@@ -416,6 +416,67 @@ describe('ClaimsService integration', () => {
       }
     })
 
+    it('scopes a client to their OWN customer — never leaks another customer’s claims (no customerId filter)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const customerVitobello = await getCustomerIdByName(ctx.db, 'VITOBELLO')
+
+      // TEST_USER (the client) is linked to SELMAN only.
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const engineType = await createTestEngineType(container, `ENG-SCOPE-${Date.now()}`)
+      const selmanSource = await getClaimSourceIdByCode(ctx.db, 'SELMAN')
+      const own = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `SCOPE-OWN-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'scope-own',
+          sourceId: selmanSource,
+          customerId: customerSelman,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const foreign = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `SCOPE-FOREIGN-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'scope-foreign',
+          sourceId: selmanSource,
+          customerId: customerVitobello,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const app = createClaimsTestApp(
+        container,
+        testUser(
+          ['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'],
+          TEST_USER_ID,
+          [SYSTEM_ROLE_CLIENT],
+        ),
+      )
+      // NO customerId filter — the own_customer SCOPE alone must exclude the foreign claim.
+      const res = await app.request('/api/claims?page=1&pageSize=50')
+      expect(res.status).toBe(200)
+
+      const body = (await res.json()) as { items: Array<{ id: string; kind: string }> }
+      const ids = body.items.map((item) => item.id)
+      expect(ids).toContain(own.id)
+      expect(ids).not.toContain(foreign.id)
+      // A client is an emotive partner — no domace claims leak into the unified list.
+      expect(body.items.every((item) => item.kind === 'emotive')).toBe(true)
+    })
+
     it('hides archived claims from the client list but keeps them for internal users', async () => {
       const clientUserId = '55555555-5555-4555-8555-555555555554'
       await ensureTestUser(ctx.db, clientUserId)

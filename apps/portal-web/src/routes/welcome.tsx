@@ -9,7 +9,7 @@ import { portalRequireRoles } from '~/lib/auth-guard'
 import { markWelcomeSeen } from '~/lib/welcome-flag'
 
 export const Route = createFileRoute('/welcome')({
-  beforeLoad: portalRequireRoles(['client', 'admin']),
+  beforeLoad: portalRequireRoles(['client']),
   loader: async ({ context }) => {
     // Prefetch (never throw) — the greeting falls back to the account name and
     // this warms the dashboard cache for the very next navigation.

@@ -50,10 +50,15 @@ export function formatPortalTimeAgo(iso: string, locale: Locale, now: Date): str
   return label.toUpperCase()
 }
 
-/** Public claim identifier — the MR NUMBER with the design's `MR-` presentation prefix. */
+/**
+ * Public claim identifier — the MR NUMBER exactly as entered in the internal
+ * app (no added prefix). The design's `MR-` presentation prefix was removed:
+ * mr_number values already carry their own form (e.g. `MR-3333`, `ONLY-EM-2/26`)
+ * and prefixing produced `MR-MR-3333`. The portal must mirror the internal number.
+ */
 export function formatPortalClaimId(mrNumber: string | null, claimNumber: string | null): string {
   if (mrNumber !== null && mrNumber !== '') {
-    return `MR-${mrNumber}`
+    return mrNumber
   }
   return claimNumber ?? '—'
 }

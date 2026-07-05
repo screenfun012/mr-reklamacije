@@ -9,7 +9,7 @@ import { usePortalEventStream } from '~/lib/use-portal-event-stream'
  * one connection per session, same pattern as the internal shell.
  */
 export const Route = createFileRoute('/claims')({
-  beforeLoad: portalRequireRoles(['client', 'admin']),
+  beforeLoad: portalRequireRoles(['client']),
   component: ClaimsLayout,
 })
 
