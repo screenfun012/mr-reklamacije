@@ -14,7 +14,7 @@ import { InternalButton } from '~/components/internal-button'
 import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
 import { showInternalToast } from '~/lib/internal-toast'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 
 import { useExcelExport } from './use-excel-export'
 

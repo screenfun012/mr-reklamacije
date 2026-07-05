@@ -5,7 +5,7 @@ import { Link } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
 
 import { formatInternalDateEyebrow } from '~/lib/internal-format'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 
 import { DashboardClaimsChartSkeleton } from './dashboard-chart-skeleton'

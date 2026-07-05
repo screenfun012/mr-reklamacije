@@ -1,7 +1,7 @@
 import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
 
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import { usePortalTheme } from '~/lib/theme'
 
 const SEGMENT_ACTIVE = 'bg-mrp-red text-white'

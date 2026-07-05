@@ -7,7 +7,7 @@ import {
   type StatisticsRankRow,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
+import { StatCard, StatCardContent, StatCardHeader, StatCardTitle } from './statistics-card.js'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { STATISTICS_AXIS_TICK, STATISTICS_MONO_GRADIENTS } from './chart-theme.js'
@@ -88,11 +88,11 @@ function BreakdownRankCard({
   const topRow = chartRows[0]
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4">
+    <StatCard className="flex h-full flex-col">
+      <StatCardHeader>
+        <StatCardTitle>{title}</StatCardTitle>
+      </StatCardHeader>
+      <StatCardContent className="flex flex-1 flex-col gap-4">
         <div className="grid min-h-[5.5rem] shrink-0 grid-cols-3 gap-3 text-center text-sm">
           <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
             <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
@@ -154,8 +154,8 @@ function BreakdownRankCard({
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </CardContent>
-    </Card>
+      </StatCardContent>
+    </StatCard>
   )
 }
 

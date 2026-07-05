@@ -1,7 +1,7 @@
 import { m, type Locale } from '@mr/i18n'
 import { cn } from '@mr/ui'
 
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import { useTheme } from '~/lib/theme'
 
 function LocaleSegment({

@@ -16,7 +16,7 @@ import {
 import { Link } from '@tanstack/react-router'
 import { Globe, LogOut, Monitor, Moon, Shield, Sun } from 'lucide-react'
 
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import { useTheme, type Theme } from '~/lib/theme'
 
 export interface UserMenuProps {

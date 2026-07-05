@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 
 import { InternalCard } from '~/components/internal-card'
 import { formatInternalChartMonth } from '~/lib/internal-format'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 
 export interface DashboardClaimsChartProps {
   data: readonly DashboardChartMonth[]

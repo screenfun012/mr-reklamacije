@@ -12,7 +12,7 @@ import type { ReactNode } from 'react'
 
 import { authClient } from '~/lib/auth-client'
 import { loadServerSession } from '~/lib/auth-guard'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import type { AdminRouterContext } from '~/router-context'
 import globalsCss from '~/styles/globals.css?url'
 

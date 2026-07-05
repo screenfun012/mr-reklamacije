@@ -5,7 +5,7 @@ import {
   type StatisticsOutcomes,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
+import { StatCard, StatCardContent, StatCardHeader, StatCardTitle } from './statistics-card.js'
 import { Info } from 'lucide-react'
 import {
   Bar,
@@ -147,11 +147,11 @@ export function StatisticsOutcomesCharts({
             {m.statistika_analytics_outcomes_section_description()}
           </p>
         </div>
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-mri-text2">
+        <StatCard>
+          <StatCardContent className="py-8 text-center text-sm text-mri-text2">
             {m.statistika_analytics_outcomes_no_data()}
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
       </section>
     )
   }
@@ -168,11 +168,11 @@ export function StatisticsOutcomesCharts({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-        <Card className="flex h-full flex-col">
-          <CardHeader>
-            <CardTitle>{m.statistika_analytics_outcomes_distribution_title()}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col items-center justify-center gap-4">
+        <StatCard className="flex h-full flex-col">
+          <StatCardHeader>
+            <StatCardTitle>{m.statistika_analytics_outcomes_distribution_title()}</StatCardTitle>
+          </StatCardHeader>
+          <StatCardContent className="flex flex-1 flex-col items-center justify-center gap-4">
             {donutSlices.length > 0 ? (
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -232,12 +232,12 @@ export function StatisticsOutcomesCharts({
                 {m.statistika_analytics_outcomes_no_data()}
               </p>
             )}
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
 
-        <Card className="flex h-full flex-col">
-          <CardHeader className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
+        <StatCard className="flex h-full flex-col">
+          <StatCardHeader className="space-y-1">
+            <StatCardTitle className="flex items-center gap-2">
               <span>{m.statistika_analytics_outcomes_processing_title()}</span>
               <span
                 className="inline-flex text-muted-foreground/70"
@@ -248,12 +248,12 @@ export function StatisticsOutcomesCharts({
                   {m.statistika_analytics_outcomes_processing_historical_hint()}
                 </span>
               </span>
-            </CardTitle>
+            </StatCardTitle>
             <p className="text-xs text-mri-text2">
               {m.statistika_analytics_outcomes_processing_historical_note()}
             </p>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col justify-center">
+          </StatCardHeader>
+          <StatCardContent className="flex flex-1 flex-col justify-center">
             <div className="grid grid-cols-3 gap-3 text-center text-sm">
               <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
                 <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
@@ -280,15 +280,15 @@ export function StatisticsOutcomesCharts({
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{m.statistika_analytics_outcomes_acceptance_rate_title()}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <StatCard>
+        <StatCardHeader>
+          <StatCardTitle>{m.statistika_analytics_outcomes_acceptance_rate_title()}</StatCardTitle>
+        </StatCardHeader>
+        <StatCardContent>
           {hasAcceptanceData ? (
             <div className="h-[190px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -384,8 +384,8 @@ export function StatisticsOutcomesCharts({
               {m.statistika_analytics_outcomes_no_data()}
             </p>
           )}
-        </CardContent>
-      </Card>
+        </StatCardContent>
+      </StatCard>
     </section>
   )
 }

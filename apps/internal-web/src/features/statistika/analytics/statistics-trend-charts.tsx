@@ -1,6 +1,6 @@
 import type { StatisticsTrends } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
+import { StatCard, StatCardContent, StatCardHeader, StatCardTitle } from './statistics-card.js'
 import {
   Area,
   AreaChart,
@@ -127,11 +127,11 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>{m.statistika_analytics_by_month_title()}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <StatCard>
+        <StatCardHeader>
+          <StatCardTitle>{m.statistika_analytics_by_month_title()}</StatCardTitle>
+        </StatCardHeader>
+        <StatCardContent>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -170,15 +170,15 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </StatCardContent>
+      </StatCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-        <Card className="flex h-full flex-col">
-          <CardHeader>
-            <CardTitle>{m.statistika_analytics_by_year_title()}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col">
+        <StatCard className="flex h-full flex-col">
+          <StatCardHeader>
+            <StatCardTitle>{m.statistika_analytics_by_year_title()}</StatCardTitle>
+          </StatCardHeader>
+          <StatCardContent className="flex flex-1 flex-col">
             <PairChartMeta>
               <div className="grid grid-cols-3 gap-3">
                 <PairStatTile label={m.statistika_analytics_total()} value={yearlyGrandTotal} />
@@ -230,15 +230,15 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
 
-        <Card className="flex h-full flex-col">
-          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-            <CardTitle>{m.statistika_analytics_volume_trend_title()}</CardTitle>
+        <StatCard className="flex h-full flex-col">
+          <StatCardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+            <StatCardTitle>{m.statistika_analytics_volume_trend_title()}</StatCardTitle>
             <TrendDirectionBadge direction={trends.volumeTrend.direction} />
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col">
+          </StatCardHeader>
+          <StatCardContent className="flex flex-1 flex-col">
             <PairChartMeta>
               <div className="grid grid-cols-3 gap-3">
                 <PairStatTile
@@ -294,8 +294,8 @@ export function StatisticsTrendCharts({ trends }: StatisticsTrendChartsProps): R
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
       </div>
     </div>
   )

@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { InternalButton } from '~/components/internal-button'
 import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 
 const DATE_DEBOUNCE_MS = 300
 const STATISTICS_PERIOD_ROLLING = '__rolling24__'

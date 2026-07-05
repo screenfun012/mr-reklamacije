@@ -1,5 +1,10 @@
-import { attachmentKeys, ClaimEventType, ClaimKind, type ClaimEventPayload } from '@mr/shared'
-import { useQueryClient, type QueryClient } from '@tanstack/react-query'
+import {
+  ClaimEventType,
+  ClaimKind,
+  invalidateClientClaimQueries,
+  type ClaimEventPayload,
+} from '@mr/shared'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
 const SSE_URL = '/api/events/me'
@@ -38,14 +43,6 @@ function parseClaimEventPayload(data: string): ClaimEventPayload | null {
   return { kind, id }
 }
 
-/** Signal-only invalidation, mirroring the internal app: never patches caches. */
-function invalidateForClaimEvent(queryClient: QueryClient, payload: ClaimEventPayload): void {
-  void queryClient.invalidateQueries({ queryKey: ['claims', 'client-list'] })
-  void queryClient.invalidateQueries({ queryKey: ['dashboard', 'client-summary'] })
-  void queryClient.invalidateQueries({ queryKey: ['emotive-claims', 'client-detail', payload.id] })
-  void queryClient.invalidateQueries({ queryKey: attachmentKeys.list(payload.kind, payload.id) })
-}
-
 /**
  * Portal realtime: one EventSource per authenticated session. The server routes
  * claim signals through the client's OWN customer channels (`customer:<id>`),
@@ -76,7 +73,7 @@ export function usePortalEventStream(): void {
     const onClaimEvent = (message: MessageEvent<string>): void => {
       const payload = parseClaimEventPayload(message.data)
       if (payload !== null) {
-        invalidateForClaimEvent(queryClientRef.current, payload)
+        invalidateClientClaimQueries(queryClientRef.current, payload)
       }
     }
 

@@ -18,7 +18,7 @@ import { ClaimCard } from '~/features/claims/claim-card'
 import { ActivityCard, DashboardStats, SupportCard } from '~/features/claims/dashboard-cards'
 import { DashboardSkeleton } from '~/features/claims/dashboard-skeleton'
 import { authClient } from '~/lib/auth-client'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import { formatPortalDateEyebrow } from '~/lib/portal-format'
 
 const dashboardSearchSchema = z.object({

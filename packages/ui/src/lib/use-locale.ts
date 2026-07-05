@@ -1,4 +1,4 @@
-import { baseLocale, getLocale, setLocale as paraglideSetLocale, type Locale } from '@mr/i18n'
+import { getLocale, setLocale as paraglideSetLocale, type Locale } from '@mr/i18n'
 import { useSyncExternalStore } from 'react'
 
 const subscribers = new Set<() => void>()
@@ -20,18 +20,19 @@ function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && ['sr', 'en'].includes(value)
 }
 
-function getServerSnapshot(): Locale {
+function getSnapshot(): Locale {
   return getLocale()
 }
 
-function getSnapshot(): Locale {
+function getServerSnapshot(): Locale {
   return getLocale()
 }
 
 /**
  * Locale picker + reactive reads aligned with Paraglide `m.*` (they call
  * `getLocale()` internally). `setLocale(..., { reload: false })` persists via
- * Paraglide strategies (`mrr:locale` + cookie); `notify()` re-renders subscribed hooks.
+ * Paraglide strategies (`mrr:locale` + cookie); `notify()` re-renders subscribed
+ * hooks. Shared by all three web apps — the single source for locale state.
  */
 export function useLocale(): {
   locale: Locale
@@ -50,5 +51,3 @@ export function useLocale(): {
     },
   }
 }
-
-export { baseLocale }

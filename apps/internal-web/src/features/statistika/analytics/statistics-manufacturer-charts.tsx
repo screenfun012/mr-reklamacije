@@ -5,7 +5,7 @@ import {
   type StatisticsManufacturerDisplayRow,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Card, CardContent, CardHeader, CardTitle } from './statistics-card.js'
+import { StatCard, StatCardContent, StatCardHeader, StatCardTitle } from './statistics-card.js'
 import {
   Bar,
   BarChart,
@@ -108,11 +108,11 @@ export function StatisticsManufacturerCharts({
             {m.statistika_analytics_manufacturer_section_description()}
           </p>
         </div>
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-mri-text2">
+        <StatCard>
+          <StatCardContent className="py-8 text-center text-sm text-mri-text2">
             {m.statistika_analytics_manufacturer_claims()}: 0
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
       </section>
     )
   }
@@ -129,11 +129,11 @@ export function StatisticsManufacturerCharts({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-        <Card className="flex h-full flex-col">
-          <CardHeader>
-            <CardTitle>{m.statistika_analytics_manufacturer_rank_title()}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4">
+        <StatCard className="flex h-full flex-col">
+          <StatCardHeader>
+            <StatCardTitle>{m.statistika_analytics_manufacturer_rank_title()}</StatCardTitle>
+          </StatCardHeader>
+          <StatCardContent className="flex flex-1 flex-col gap-4">
             <div className="grid min-h-[5.5rem] shrink-0 grid-cols-3 gap-3 text-center text-sm">
               <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
                 <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
@@ -199,14 +199,14 @@ export function StatisticsManufacturerCharts({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
 
-        <Card className="flex h-full flex-col">
-          <CardHeader>
-            <CardTitle>{m.statistika_analytics_manufacturer_outcome_title()}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4">
+        <StatCard className="flex h-full flex-col">
+          <StatCardHeader>
+            <StatCardTitle>{m.statistika_analytics_manufacturer_outcome_title()}</StatCardTitle>
+          </StatCardHeader>
+          <StatCardContent className="flex flex-1 flex-col gap-4">
             <div className="grid min-h-[5.5rem] shrink-0 grid-cols-3 gap-3 text-center text-sm">
               <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
                 <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
@@ -323,8 +323,8 @@ export function StatisticsManufacturerCharts({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </StatCardContent>
+        </StatCard>
       </div>
     </section>
   )

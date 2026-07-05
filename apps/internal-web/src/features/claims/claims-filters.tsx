@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 
 const SEARCH_DEBOUNCE_MS = 300
 

@@ -10,7 +10,7 @@ import {
 import { cn } from '@mr/ui'
 
 import { MaskedIcon } from '~/components/masked-icon'
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 import { formatPortalClaimId, formatPortalTimeAgo } from '~/lib/portal-format'
 
 import { PHASE_COLOR } from './claim-status-presentation'

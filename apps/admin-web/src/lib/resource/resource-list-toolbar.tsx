@@ -9,7 +9,7 @@ import { FilterSelect, Input, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 
 const SEARCH_DEBOUNCE_MS = 300
 

@@ -3,6 +3,7 @@ import type { Browser } from 'playwright'
 import { ServiceUnavailableError } from '../../core/errors/domain-errors.js'
 import { getClaimReportExportFontFaceCss } from './claim-report-export-font.js'
 import { wrapClaimReportExportHtml } from './claim-report-export-styles.js'
+import { Semaphore } from './render-semaphore.js'
 
 const PDF_UNAVAILABLE_MESSAGE =
   'PDF izvoz trenutno nije dostupan. Koristite štampu iz pregleda izveštaja.'
@@ -19,14 +20,13 @@ const MAX_CONCURRENT_RENDERS = 2
  */
 export class ClaimReportPdfRenderer {
   private browserPromise: Promise<Browser> | null = null
-  private activeRenders = 0
-  private readonly waiting: Array<() => void> = []
+  private readonly slots = new Semaphore(MAX_CONCURRENT_RENDERS)
 
   async render(bodyHtml: string): Promise<Buffer> {
     const fontFaceCss = await getClaimReportExportFontFaceCss()
     const htmlDocument = wrapClaimReportExportHtml(bodyHtml, fontFaceCss)
 
-    await this.acquireSlot()
+    await this.slots.acquire()
     try {
       try {
         return await this.renderWithSharedBrowser(htmlDocument)
@@ -42,7 +42,7 @@ export class ClaimReportPdfRenderer {
         }
       }
     } finally {
-      this.releaseSlot()
+      this.slots.release()
     }
   }
 
@@ -99,25 +99,6 @@ export class ClaimReportPdfRenderer {
       } catch {
         // Already dead — nothing to close.
       }
-    }
-  }
-
-  private async acquireSlot(): Promise<void> {
-    if (this.activeRenders < MAX_CONCURRENT_RENDERS) {
-      this.activeRenders += 1
-      return
-    }
-    await new Promise<void>((resolve) => {
-      this.waiting.push(resolve)
-    })
-    this.activeRenders += 1
-  }
-
-  private releaseSlot(): void {
-    this.activeRenders -= 1
-    const next = this.waiting.shift()
-    if (next !== undefined) {
-      next()
     }
   }
 }

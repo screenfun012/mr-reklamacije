@@ -9,7 +9,7 @@ import { DatePicker, FilterSelect, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Suspense, type ReactElement } from 'react'
 
-import { useLocale } from '~/lib/locale'
+import { useLocale } from '@mr/ui'
 
 import { auditActionLabel, auditEntityTypeLabel } from './audit-labels'
 

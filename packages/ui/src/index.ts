@@ -19,6 +19,7 @@ export {
   type AttachmentFileIconProps,
 } from './components/claim-attachments/attachment-file-icon.js'
 export { cn } from './lib/cn.js'
+export { useLocale } from './lib/use-locale.js'
 export {
   dataTableDestructiveActionClassName,
   dataTableIconActionClassName,

@@ -55,6 +55,20 @@ export function claimsListOptions(
 export const CLIENT_CLAIMS_PAGE_SIZE = 10 satisfies ClaimsPageSize
 
 /**
+ * The one place client-portal query keys are defined — used by BOTH the
+ * queryOptions below and the portal's SSE invalidation
+ * (invalidateClientClaimQueries), so a key can never drift between where it is
+ * written and where it is invalidated. `list` is prefixed by `lists()` so the
+ * SSE handler can invalidate every page at once.
+ */
+export const clientClaimKeys = {
+  lists: () => ['claims', 'client-list'] as const,
+  list: (page: number, pageSize: number) => [...clientClaimKeys.lists(), page, pageSize] as const,
+  summary: () => ['dashboard', 'client-summary'] as const,
+  detail: (id: string) => ['emotive-claims', 'client-detail', id] as const,
+}
+
+/**
  * Client-portal claims list, paginated SERVER-SIDE (no client-side cap). Same
  * `/api/claims` endpoint, but typed as the whitelisted `ClientClaimListResponse`
  * so portal code cannot even reference stripped fields (employee/faults/notes).
@@ -66,7 +80,7 @@ export function clientClaimsListOptions(
   pageSize: ClaimsPageSize = CLIENT_CLAIMS_PAGE_SIZE,
 ) {
   return queryOptions({
-    queryKey: ['claims', 'client-list', page, pageSize] as const,
+    queryKey: clientClaimKeys.list(page, pageSize),
     queryFn: async () =>
       fetchJson<ClientClaimListResponse>(`/api/claims?page=${page}&pageSize=${pageSize}`),
     staleTime: CLAIMS_LIST_STALE_MS,
@@ -81,7 +95,7 @@ export function clientClaimsListOptions(
  */
 export function clientPortalSummaryOptions() {
   return queryOptions({
-    queryKey: ['dashboard', 'client-summary'] as const,
+    queryKey: clientClaimKeys.summary(),
     queryFn: async () => fetchJson<ClientPortalSummary>('/api/dashboard/client-summary'),
     staleTime: CLAIMS_LIST_STALE_MS,
   })
@@ -95,7 +109,7 @@ export function clientPortalSummaryOptions() {
  */
 export function clientEmotiveClaimDetailOptions(id: string) {
   return queryOptions({
-    queryKey: ['emotive-claims', 'client-detail', id] as const,
+    queryKey: clientClaimKeys.detail(id),
     queryFn: async () => fetchJson<ClientClaimDetail>(`/api/emotive-claims/${id}`),
     staleTime: CLAIMS_LIST_STALE_MS,
   })

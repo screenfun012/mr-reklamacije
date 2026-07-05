@@ -42,6 +42,7 @@ export {
   claimsListOptions,
   claimsListQueryKey,
   CLIENT_CLAIMS_PAGE_SIZE,
+  clientClaimKeys,
   clientClaimsListOptions,
   clientClaimReportPdfUrl,
   clientEmotiveClaimDetailOptions,
@@ -51,6 +52,7 @@ export {
   type ClaimsListSort,
   type ClaimsPageSize,
 } from './claims.js'
+export { invalidateClientClaimQueries } from './invalidate-client-claim-queries.js'
 export {
   ClaimsSearchSchema,
   claimsFiltersFromSearch,
