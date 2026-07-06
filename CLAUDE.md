@@ -91,7 +91,8 @@ pnpm dev:audit-deps     # after bumping better-auth / nitro / @tanstack/react-st
 
 # Database
 pnpm --filter @mr/db run db:migrate     # apply migrations (also runs on api startup in prod)
-pnpm --filter @mr/db run db:seed        # idempotent system seeds
+pnpm --filter @mr/db run db:seed        # idempotent SYSTEM seeds only (prod-safe: permissions, roles, departments, claim_sources, engine_manufacturers)
+pnpm --filter @mr/db run db:seed:demo   # system + DEMO data (sample claims/employees/customers) — dev/test only, NEVER prod
 pnpm --filter @mr/db run db:generate    # generate a migration from schema diff
 pnpm create-admin                       # once per fresh DB
 
@@ -139,7 +140,7 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 **API design (07):** `/api/<resource>/<id>/<sub>/<verb>`; paths kebab-case, query/JSON camelCase, DB snake_case. `GET`/`POST`/`PATCH`(preferred)/`PUT`(rare)/`DELETE`(soft). Status codes per table (201+`Location` on create, 204 on delete, 422 semantic, 409 conflict, 429 rate). List response `{ items, total, page, pageSize }`; single = bare object; error `{ error, message, code, details }`. Verb endpoints for non-CRUD (`/:id/change-outcome`, `/:id/approve`). Whitelist sort fields. Audit in the **service** layer (so direct calls audit too).
 
-**Database (06):** schema in `packages/db/src/schema/*`, imported everywhere via `@mr/db`. Drizzle only; raw SQL via template literal when needed. Tables snake*case plural; FK `<singular>_id`; explicit index/constraint names (`idx*...`, `fk\_...`). Enum-like columns = `text`+ CHECK (extensible), not PG enum. Money`decimal(14,2)`. `date`for date-only (UTC midnight),`timestamptz` for moments. **Index FKs and WHERE/ORDER BY/JOIN columns** (Drizzle does NOT auto-create FK indexes) — but don't over-index. Multi-row writes in a transaction. Seeds idempotent (`onConflictDoNothing`), ordered: permissions → roles → departments → claim_sources → customers → engine_types → admin. **NEVER** `TRUNCATE`/`DROP`prod, connect to prod from local (except read-only tunnel), ship data-deleting migrations without Nikola's OK, or`ON DELETE CASCADE` on business tables except clear parent-child (faults).
+**Database (06):** schema in `packages/db/src/schema/*`, imported everywhere via `@mr/db`. Drizzle only; raw SQL via template literal when needed. Tables snake*case plural; FK `<singular>_id`; explicit index/constraint names (`idx*...`, `fk\_...`). Enum-like columns = `text`+ CHECK (extensible), not PG enum. Money`decimal(14,2)`. `date`for date-only (UTC midnight),`timestamptz` for moments. **Index FKs and WHERE/ORDER BY/JOIN columns** (Drizzle does NOT auto-create FK indexes) — but don't over-index. Multi-row writes in a transaction. Seeds idempotent (`onConflictDoNothing`), split: `runSystemSeeds`(permissions → roles → departments → claim_sources → engine_manufacturers; prod-safe) +`runDemoSeeds`(employees → customers → engine_types → demo claims; dev/test only — integration globalSetup runs both; real data comes from`import-legacy`). **NEVER** `TRUNCATE`/`DROP`prod, connect to prod from local (except read-only tunnel), ship data-deleting migrations without Nikola's OK, or`ON DELETE CASCADE` on business tables except clear parent-child (faults).
 
 **i18n (09-rule):** every user string via Paraglide `m.*`; keys English `namespace_context_variant` (`action_save`, `validation_required`, `nav_emotive_claims`). Both `sr.json` + `en.json` required (CI checks parity). Serbian is primary, informal "ti" form, follow the glossary (always "Prilog", never a synonym). ICU plurals (Serbian one/few/other). Never concatenate translated strings — interpolate. Don't translate IDs/MR numbers/proper nouns; format dates/numbers via `Intl.*`.
 

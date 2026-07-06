@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createDb, createPool } from '../client.js'
 import * as schema from '../schema/index.js'
+import { runDemoSeeds } from '../seed/run-demo-seeds.js'
 import { runSystemSeeds } from '../seed/run-system-seeds.js'
 import {
   assertIntegrationDatabase,
@@ -39,6 +40,7 @@ export default async function integrationGlobalSetup(): Promise<void> {
         migrationsFolder: resolve(__dirname, '../../migrations'),
       })
       await runSystemSeeds(db)
+      await runDemoSeeds(db)
     } finally {
       await pool.end()
     }
