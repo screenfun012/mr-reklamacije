@@ -1,6 +1,7 @@
 export { ApiError, parseApiErrorBody } from './api/api-error.js'
 export { fetchJson } from './api/fetch-json.js'
 export { fetchNoContent } from './api/fetch-no-content.js'
+export { proxyApiRequest } from './api/proxy-api-request.js'
 export { resolveFetchUrl } from './api/resolve-fetch-url.js'
 export { formatListDate } from './utils/format-list-date.js'
 export { claimDetailPath, type ClaimDetailLink } from './utils/claim-detail-path.js'
