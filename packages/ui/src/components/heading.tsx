@@ -39,7 +39,7 @@ export function Heading({
   const Component = as ?? DEFAULT_ELEMENT[level]
 
   return (
-    <Component className={cn(HEADING_LEVEL_CLASSES[level], className)} {...props}>
+    <Component className={cn('text-balance', HEADING_LEVEL_CLASSES[level], className)} {...props}>
       {children}
     </Component>
   )

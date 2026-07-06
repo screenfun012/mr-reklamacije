@@ -10,6 +10,12 @@ describe('Heading', () => {
     expect(heading.className).toContain('text-h1')
   })
 
+  it('balances multi-line wrapping on every level', () => {
+    render(<Heading level="h2">Balanced title</Heading>)
+    const heading = screen.getByRole('heading', { level: 2, name: 'Balanced title' })
+    expect(heading.className).toContain('text-balance')
+  })
+
   it('renders h3 level with text-h3 class', () => {
     render(<Heading level="h3">Section</Heading>)
     const heading = screen.getByRole('heading', { level: 3, name: 'Section' })

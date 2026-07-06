@@ -39,7 +39,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning className="antialiased">
         <div key={locale}>{children}</div>
         <Toaster richColors closeButton />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
