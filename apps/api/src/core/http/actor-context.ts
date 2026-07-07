@@ -1,6 +1,7 @@
 import type { Context } from 'hono'
 
 import type { MRSessionUser } from '../auth/session-types.js'
+import { clientIpOf } from './client-ip.js'
 
 export interface HttpActorContext {
   actorUserId: string
@@ -11,7 +12,7 @@ export interface HttpActorContext {
 export function getActorContext(c: Context, user: MRSessionUser): HttpActorContext {
   return {
     actorUserId: user.id,
-    actorIp: c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? null,
+    actorIp: clientIpOf(c),
     actorUserAgent: c.req.header('user-agent') ?? null,
   }
 }

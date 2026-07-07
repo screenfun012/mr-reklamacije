@@ -2,6 +2,7 @@ import { ERROR_CODE } from '@mr/shared'
 import type { Context, MiddlewareHandler } from 'hono'
 
 import { AppError } from '../errors/app-error.js'
+import { clientIpOf } from '../http/client-ip.js'
 
 interface RateLimitOptions {
   windowMs: number
@@ -22,17 +23,7 @@ interface Bucket {
 export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler {
   const buckets = new Map<string, Bucket>()
 
-  const defaultKey = (c: Context): string => {
-    const forwarded = c.req.header('x-forwarded-for')
-    if (forwarded) {
-      return forwarded.split(',')[0]!.trim()
-    }
-    const realIp = c.req.header('x-real-ip')
-    if (realIp) {
-      return realIp
-    }
-    return 'unknown'
-  }
+  const defaultKey = (c: Context): string => clientIpOf(c) ?? 'unknown'
 
   const keyOf = options.keyOf ?? defaultKey
 

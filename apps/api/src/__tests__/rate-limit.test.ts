@@ -73,4 +73,23 @@ describe('rate limiter', () => {
     expect(res1.status).toBe(200)
     expect(res2.status).toBe(200)
   })
+
+  it('forged leftmost x-forwarded-for entries cannot bypass the limit', async () => {
+    const app = new Hono()
+    registerGlobalErrorHandler(app, makeLogger())
+    const limiter = createRateLimiter({ windowMs: 60_000, max: 1 })
+    app.use('*', limiter)
+    app.get('/', (c) => c.text('ok'))
+
+    // Same real client (rightmost, proxy-appended), rotating forged prefixes.
+    const res1 = await app.request('/', {
+      headers: { 'x-forwarded-for': '6.6.6.1, 192.0.2.9' },
+    })
+    const res2 = await app.request('/', {
+      headers: { 'x-forwarded-for': '6.6.6.2, 192.0.2.9' },
+    })
+
+    expect(res1.status).toBe(200)
+    expect(res2.status).toBe(429)
+  })
 })
