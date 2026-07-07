@@ -7,8 +7,7 @@ import {
 
 import { authClient } from './auth-client'
 
-const apiOrigin = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3000'
-export const loadServerSession = createServerSessionLoader(apiOrigin)
+export const loadServerSession = createServerSessionLoader()
 
 export function internalRequireRoles(allowedRoles: readonly string[]) {
   return requireRoles(authClient, allowedRoles, loadServerSession)

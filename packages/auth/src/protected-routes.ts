@@ -24,7 +24,7 @@ function normalizePermissions(perms: unknown): readonly string[] {
  * TanStack Router `beforeLoad` guard factory (ANY logic across role codes).
  *
  * - Browser: reads settled `context.authSession` from root `beforeLoad` (no refetch)
- * - SSR: `loadServerSession` (pass `createServerSessionLoader(apiOrigin)` from the app)
+ * - SSR: `loadServerSession` (from `createServerSessionLoader()`; resolves the API origin at runtime)
  */
 export function requireRoles(
   authClient: MRAuthClientForRouteRoles,

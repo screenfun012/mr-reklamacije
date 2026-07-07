@@ -18,10 +18,14 @@ describe('createServerSessionLoader', () => {
   beforeEach(() => {
     getRequestHeadersMock.mockClear()
     vi.stubGlobal('fetch', vi.fn())
+    delete process.env['VITE_API_URL']
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000'
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env['API_INTERNAL_URL']
+    delete process.env['VITE_API_URL']
   })
 
   it('forwards cookies to the API get-session endpoint', async () => {
@@ -30,7 +34,7 @@ describe('createServerSessionLoader', () => {
       new Response(JSON.stringify({ user: { roles: ['admin'] } }), { status: 200 }),
     )
 
-    const load = createServerSessionLoader('http://localhost:3000')
+    const load = createServerSessionLoader()
     const result = await load()
 
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/auth/get-session', {
@@ -39,11 +43,26 @@ describe('createServerSessionLoader', () => {
     expect(result).toEqual({ user: { roles: ['admin'] } })
   })
 
+  it('resolves the API origin from API_INTERNAL_URL at runtime (regression: prod SSR must not hit localhost)', async () => {
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockResolvedValue(new Response('null', { status: 200 }))
+    process.env['API_INTERNAL_URL'] = 'http://api.railway.internal:3000'
+
+    await createServerSessionLoader()()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.railway.internal:3000/api/auth/get-session',
+      {
+        headers: { cookie: 'mrr.session_token=test' },
+      },
+    )
+  })
+
   it('returns null when the API responds with null', async () => {
     const fetchMock = vi.mocked(fetch)
     fetchMock.mockResolvedValue(new Response('null', { status: 200 }))
 
-    const load = createServerSessionLoader('http://localhost:3000')
+    const load = createServerSessionLoader()
     await expect(load()).resolves.toBeNull()
   })
 
@@ -51,7 +70,7 @@ describe('createServerSessionLoader', () => {
     const fetchMock = vi.mocked(fetch)
     fetchMock.mockRejectedValue(new TypeError('fetch failed'))
 
-    const load = createServerSessionLoader('http://localhost:3000')
+    const load = createServerSessionLoader()
     await expect(load()).resolves.toBeNull()
   })
 })
