@@ -49,9 +49,13 @@ export const authClientPlugins: BetterAuthClientPlugin[] = [
 export const AUTH_SESSION_STALE_MS = 300_000
 
 /**
- * Better-Auth client session options. Disables focus refetch so tab switches do not
- * trigger session reload; real logout is driven by API 401 handling instead.
+ * Better-Auth client session options. Re-validate the session when the tab
+ * regains focus: this is what lets a revoked/expired tab (e.g. single-device
+ * kicked it from another login) notice and kick itself to /login when the user
+ * returns, instead of showing a dead UI. Safe against false logouts — Better-Auth
+ * keeps the previous session on non-401 errors, so only a real 401 signs out
+ * (AuthProvider only redirects on a settled signed-in → signed-out transition).
  */
 export const authClientSessionOptions = {
-  refetchOnWindowFocus: false,
+  refetchOnWindowFocus: true,
 } as const
