@@ -2,7 +2,11 @@
 import '@fontsource-variable/figtree/index.css'
 import '@fontsource/jetbrains-mono/400.css'
 
-import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
+import {
+  AuthProvider,
+  createRootAuthBeforeLoad,
+  SESSION_ROUTE_STALE_MS,
+} from '@mr/auth/route-guards'
 import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
 import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
 import { Toaster } from '@mr/ui'
@@ -40,7 +44,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body suppressHydrationWarning className="antialiased">
-        <div key={locale}>{children}</div>
+        <div key={locale}>
+          <AuthProvider authClient={authClient}>{children}</AuthProvider>
+        </div>
         <Toaster richColors closeButton />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />

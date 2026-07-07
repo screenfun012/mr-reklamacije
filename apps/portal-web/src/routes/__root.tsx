@@ -12,7 +12,11 @@ import jetbrainsMono400Woff2 from '@fontsource/jetbrains-mono/files/jetbrains-mo
 import jetbrainsMono600Woff2 from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2?url'
 import jetbrainsMono700Woff2 from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2?url'
 
-import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
+import {
+  AuthProvider,
+  createRootAuthBeforeLoad,
+  SESSION_ROUTE_STALE_MS,
+} from '@mr/auth/route-guards'
 import { m, PORTAL_LOCALE_BOOTSTRAP_SCRIPT, syncPortalRequestLocale } from '@mr/i18n'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -79,7 +83,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body suppressHydrationWarning className="bg-mrp-bg font-sans text-mrp-text antialiased">
-        <div key={locale}>{children}</div>
+        <div key={locale}>
+          <AuthProvider authClient={authClient}>{children}</AuthProvider>
+        </div>
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />
       </body>

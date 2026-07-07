@@ -1,6 +1,7 @@
 import type { Locale } from '@mr/i18n'
 import { getLocale, syncRequestLocale } from '@mr/i18n'
 import type { MRAuthClientForRouteRoles } from './auth-client-types.js'
+import { getClientSession } from './client-session-store.js'
 import {
   resolveSessionPayload,
   toSerializableAuthSession,
@@ -44,6 +45,17 @@ export function createRootAuthBeforeLoad(
 
     if (onServer && !loadServerSession) {
       return { authSession: null, locale: getLocale() }
+    }
+
+    if (!onServer) {
+      // The AuthProvider keeps the reactive session here; reading it avoids a
+      // /get-session network round-trip on every client navigation. Falls back
+      // to a fetch only before the provider has settled (the first load is
+      // covered by the SSR-resolved context anyway).
+      const cached = getClientSession()
+      if (cached !== undefined) {
+        return { authSession: cached, locale: getLocale() }
+      }
     }
 
     try {

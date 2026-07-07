@@ -3,6 +3,7 @@ export {
   type MRAuthClientForPermissions,
   type MRAuthClientForRouteRoles,
 } from './auth-client-types.js'
+export { AuthProvider, useAuthSession, type AuthContextValue } from './auth-provider.js'
 export { Can, type CanProps } from './can.js'
 export {
   loginAuthErrorKind,

@@ -5,7 +5,11 @@ import '@fontsource/jetbrains-mono/500.css'
 import '@fontsource/jetbrains-mono/600.css'
 import '@fontsource/jetbrains-mono/700.css'
 
-import { createRootAuthBeforeLoad, SESSION_ROUTE_STALE_MS } from '@mr/auth/route-guards'
+import {
+  AuthProvider,
+  createRootAuthBeforeLoad,
+  SESSION_ROUTE_STALE_MS,
+} from '@mr/auth/route-guards'
 import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
 import { buildThemeBootstrapScript } from '@mr/shared'
 import { Toaster } from '@mr/ui'
@@ -43,7 +47,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body suppressHydrationWarning className="antialiased">
-        <div key={locale}>{children}</div>
+        <div key={locale}>
+          <AuthProvider authClient={authClient}>{children}</AuthProvider>
+        </div>
         <Toaster position="bottom-center" />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />
