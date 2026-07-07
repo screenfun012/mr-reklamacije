@@ -1,17 +1,11 @@
 import { createPool } from '../client.js'
+import { ensureRequiredExtensions } from '../extensions.js'
 
 /** Dev database name — integration tests must never connect here. */
 export const DEV_DATABASE_NAME = 'mr_reklamacije'
 
 export const DEFAULT_TEST_DATABASE_URL =
   'postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije_test'
-
-const INTEGRATION_EXTENSION_STATEMENTS = [
-  'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"',
-  'CREATE EXTENSION IF NOT EXISTS "pgcrypto"',
-  'CREATE EXTENSION IF NOT EXISTS "citext"',
-  'CREATE EXTENSION IF NOT EXISTS "pg_trgm"',
-] as const
 
 export function parseDatabaseName(connectionString: string): string {
   let parsed: URL
@@ -107,9 +101,7 @@ export async function ensureIntegrationExtensions(testDatabaseUrl: string): Prom
   const pool = createPool(testDatabaseUrl)
 
   try {
-    for (const statement of INTEGRATION_EXTENSION_STATEMENTS) {
-      await pool.query(statement)
-    }
+    await ensureRequiredExtensions(pool)
   } finally {
     await pool.end()
   }

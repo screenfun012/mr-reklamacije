@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm exec turbo run build --filter=internal-web"
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter internal-web start",
+    "healthcheckPath": "/login",
+    "healthcheckTimeout": 120,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}

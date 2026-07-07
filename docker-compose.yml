@@ -34,7 +34,10 @@ services:
         condition: service_healthy
     ports:
       - '3000:3000'
+    # The image defaults to the production build (Railway); prod-like dev keeps tsx watch
+    command: ['pnpm', '--filter', 'api', 'run', 'dev']
     environment:
+      NODE_ENV: development
       # Override DATABASE_URL — Docker DNS host is `postgres`, not localhost
       DATABASE_URL: postgresql://mr:mr_dev_password@postgres:5432/mr_reklamacije
     env_file:
@@ -50,6 +53,7 @@ services:
       # `packages/*/node_modules` with macOS store symlinks (wrong hashes in the container).
       - /app/packages/auth/node_modules
       - /app/packages/db/node_modules
+      - /app/packages/email/node_modules
       - /app/packages/excel/node_modules
       - /app/packages/i18n/node_modules
       - /app/packages/logger/node_modules

@@ -10,10 +10,20 @@
  * already exist; catalogs are matched by name/code before creating. All writes
  * run in a single transaction. Audit log and SSE are intentionally bypassed —
  * this is a bulk bootstrap, not user activity. Runs against DATABASE_URL from
- * apps/api/.env — point it at the target environment deliberately.
+ * apps/api/.env when present (dev), otherwise from the process environment
+ * (Railway one-off shell). The data file path can be overridden with
+ * `--file /data/legacy-data.json` (e.g. uploaded to the api volume).
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// Tolerate a missing .env — in production config comes from the process env.
+try {
+  process.loadEnvFile(fileURLToPath(new URL('../.env', import.meta.url)))
+} catch {
+  // no .env file — fine
+}
 
 import { schema } from '@mr/db'
 import {
@@ -111,6 +121,8 @@ const MANUFACTURER_PREFIXES: [string, string][] = [
 ]
 
 const apply = process.argv.includes('--apply')
+const fileFlagIndex = process.argv.indexOf('--file')
+const dataFileOverride = fileFlagIndex === -1 ? null : (process.argv[fileFlagIndex + 1] ?? null)
 const report: string[] = []
 
 function note(line: string): void {
@@ -156,7 +168,9 @@ function buildInternalNotes(
 }
 
 async function loadLegacyData(): Promise<LegacyData> {
-  const filePath = path.resolve(import.meta.dirname, '../../../.legacy-import/legacy-data.json')
+  const filePath =
+    dataFileOverride ??
+    path.resolve(import.meta.dirname, '../../../.legacy-import/legacy-data.json')
   const raw = await readFile(filePath, 'utf8')
   return JSON.parse(raw) as LegacyData
 }
@@ -537,7 +551,7 @@ async function importClaimFaults(
 async function main(): Promise<void> {
   const databaseUrl = process.env['DATABASE_URL']
   if (databaseUrl === undefined) {
-    console.error('DATABASE_URL is required (run with --env-file=.env)')
+    console.error('DATABASE_URL is required (apps/api/.env in dev, service env in production)')
     process.exit(1)
   }
 

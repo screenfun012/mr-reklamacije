@@ -8,11 +8,20 @@
  *
  * Report images are skipped (already optimized at upload); HEIC/videos/docs
  * are skipped (not recompressable here). Runs against DATABASE_URL/UPLOAD_DIR
- * from apps/api/.env — point those at the target environment deliberately.
+ * from apps/api/.env when present (dev), otherwise from the process
+ * environment (Railway one-off shell).
  */
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// Tolerate a missing .env — in production config comes from the process env.
+try {
+  process.loadEnvFile(fileURLToPath(new URL('../.env', import.meta.url)))
+} catch {
+  // no .env file — fine
+}
 
 import { schema } from '@mr/db'
 import { and, eq, gt, inArray } from 'drizzle-orm'
@@ -33,7 +42,9 @@ const apply = process.argv.includes('--apply')
 const databaseUrl = process.env['DATABASE_URL']
 const uploadDir = process.env['UPLOAD_DIR']
 if (databaseUrl === undefined || uploadDir === undefined) {
-  console.error('DATABASE_URL and UPLOAD_DIR are required (run with --env-file=.env)')
+  console.error(
+    'DATABASE_URL and UPLOAD_DIR are required (apps/api/.env in dev, service env in production)',
+  )
   process.exit(1)
 }
 
