@@ -1,7 +1,7 @@
 import {
-  DEFAULT_APPROVE_REGISTRATION_ROLE,
   SYSTEM_ROLE_CLIENT,
   UserAccountStatus,
+  buildAccountStatusPatchBody,
   formatListDateTime,
   isProtectedSuperAdminEmail,
   patchUserAccountStatus,
@@ -225,13 +225,10 @@ export function UsersPageContent(): ReactElement {
       roleCode?: AccountApprovalRoleCode
       customerIds?: string[]
     }) =>
-      status === UserAccountStatus.Approved
-        ? patchUserAccountStatus(userId, {
-            status,
-            roleCode: roleCode ?? DEFAULT_APPROVE_REGISTRATION_ROLE,
-            customerIds: customerIds ?? [],
-          })
-        : patchUserAccountStatus(userId, { status }),
+      patchUserAccountStatus(
+        userId,
+        buildAccountStatusPatchBody({ status, roleCode, customerIds }),
+      ),
     onMutate: async ({ userId, status, roleCode }) => {
       await queryClient.cancelQueries({ queryKey: usersListQueryKey() })
       const previous = queryClient.getQueryData<UserListItem[]>(usersListQueryKey())

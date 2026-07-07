@@ -94,6 +94,7 @@ export {
   type ReferenceLookupFilters,
 } from './reference-data.js'
 export {
+  buildAccountStatusPatchBody,
   patchUserAccountStatus,
   patchUserRoles,
   resendClientActivation,

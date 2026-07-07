@@ -112,7 +112,14 @@ export const UserAccountStatusPatchInputSchema = z
     return { status: value.status }
   })
 
+/** Parsed (post-transform) shape used by the API service. */
 export type UserAccountStatusPatchInput = z.infer<typeof UserAccountStatusPatchInputSchema>
+
+/**
+ * Request body shape the client sends (pre-transform): `customerIds` is optional
+ * and must be omitted for non-client roles — the schema rejects it otherwise.
+ */
+export type UserAccountStatusPatchBody = z.input<typeof UserAccountStatusPatchInputSchema>
 
 export const UserIdParamSchema = z.object({
   id: z.string().uuid(),
