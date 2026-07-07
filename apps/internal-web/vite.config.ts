@@ -24,7 +24,10 @@ const mrWebDevSettings = {
     exclude: ['@mr/ui', '@mr/auth', '@mr/i18n', '@mr/shared'],
   },
   ssr: {
-    noExternal: ['@mr/ui', '@mr/auth', '@mr/i18n', '@mr/shared'],
+    // @radix-ui: direct deps (vendored TipTap primitives) must be bundled — Nitro's
+    // externals tracer copies a partial tslib (module condition only) that node
+    // cannot resolve at runtime → 500 on every SSR route.
+    noExternal: ['@mr/ui', '@mr/auth', '@mr/i18n', '@mr/shared', /^@radix-ui\//],
   },
   resolve: {
     // Nitro/rolldown SSR: tslib CJS via __toESM yields undefined .default → prod 500.
