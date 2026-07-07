@@ -17,43 +17,25 @@ One project, multiple environments, multiple services per environment.
 
 Each environment contains these 5 services, all defined in one repo:
 
-| Service | Root dir | Build | Start | Port |
+| Service | Config file | Build | Start | Port |
 |---|---|---|---|---|
 | `postgres` | — | Railway managed | — | 5432 (internal) |
-| `api` | `apps/api` | `pnpm install --frozen-lockfile && pnpm --filter api build` | `pnpm --filter api start` | 3000 |
-| `admin-web` | `apps/admin-web` | `pnpm install --frozen-lockfile && pnpm --filter admin-web build` | `pnpm --filter admin-web start` | 3000 |
-| `internal-web` | `apps/internal-web` | same pattern | same pattern | 3000 |
-| `portal-web` | `apps/portal-web` | same pattern | same pattern | 3000 |
+| `api` | `apps/api/railway.json` | Dockerfile (`apps/api/Dockerfile`) | image CMD (`pnpm --filter api start`) | 3000 |
+| `admin-web` | `apps/admin-web/railway.json` | Nixpacks + `turbo run build --filter=admin-web` | `pnpm --filter admin-web start` | 3000 |
+| `internal-web` | `apps/internal-web/railway.json` | same pattern | same pattern | 3000 |
+| `portal-web` | `apps/portal-web/railway.json` | same pattern | same pattern | 3000 |
+
+All four services keep the **root directory at the repo root** (shared pnpm monorepo — packages are needed at build time); each service points to its own config file via **Settings → Config-as-code file path** (the path is absolute from the repo root and does not follow the root-directory setting). The `api` service additionally runs migrations before every deploy via `preDeployCommand: pnpm --filter @mr/db run db:migrate:deploy` — it installs the required Postgres extensions (`uuid-ossp`, `pgcrypto`, `citext`, `pg_trgm` — needed *before* migration `0000`, so they can never live in a migration file) and then applies all pending migrations. Idempotent, proven migrate-from-zero.
 
 ### Web app ↔ API routing (dev vs production)
 
 In **local development**, each TanStack Start app (`*-web`) uses a small Vite plugin in `vite.config.ts` (`mr-api-proxy`, built on `http-proxy-middleware`) that forwards **`/api/**`** to **`apps/api`** (e.g. `http://localhost:3000`). That plugin runs only in `pnpm dev`; it is **not** part of the Nitro production bundle. It exists mainly so the browser can call same-origin `/api/...` (including Better-Auth with multiple `Set-Cookie` headers during 2FA) while the API runs as a separate process.
 
-In **production** (Railway `pnpm start` / Nitro), the same **`/api/**`** path must be **routed at the edge or load balancer** to the **`api`** service — e.g. Cloudflare, nginx, or Caddy in front of the web service, or Railway private networking between services. Do not rely on Vite dev middleware in production.
+In **production** (Railway `pnpm start` / Nitro), each app ships a catch-all **`/api/$` server route** that streams `/api/**` to the API over Railway's **private network** (`proxyApiRequest` from `@mr/shared`, target from `API_INTERNAL_URL`). The browser always talks same-origin; no edge routing rules and no browser CORS are needed, and the API service does not need a public domain at all. In dev the Vite `mr-api-proxy` middleware intercepts first, so dev behavior is unchanged.
 
 ### Monorepo configuration
 
-Each web service has a `railway.json` in its app dir:
-
-```json
-{
-  "$schema": "https://railway.com/railway.schema.json",
-  "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter api build"
-  },
-  "deploy": {
-    "startCommand": "pnpm --filter api start",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 30,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3
-  }
-}
-```
-
-The root directory for each service in Railway UI is set to its `apps/<name>`
-folder. Nixpacks uses pnpm workspaces correctly when invoked from repo root.
+The real configs are checked in — one `railway.json` per app dir (`apps/api`, `apps/admin-web`, `apps/internal-web`, `apps/portal-web`). Web apps build with Nixpacks (`pnpm exec turbo run build --filter=<app>`, health check on `/login`); the api builds from `apps/api/Dockerfile` (production image: workspace build + Playwright Chromium, `CMD pnpm --filter api start`; docker-compose's `prod-like` profile overrides the command back to dev watch). Health check for the api is `/health`.
 
 ### Volume (for api service only)
 
@@ -117,7 +99,10 @@ For **production**:
 | `admin.mrengines.rs` | CNAME | admin-web.railway.app | ☁️ Proxied |
 | `interno.mrengines.rs` | CNAME | internal-web.railway.app | ☁️ Proxied |
 | `reklamacije.mrengines.rs` | CNAME | portal-web.railway.app | ☁️ Proxied |
-| `api.mrengines.rs` | CNAME | api.railway.app | ☁️ Proxied |
+
+No public record for the api — the web apps reach it over Railway's private network (`API_INTERNAL_URL`), and the browser only ever calls same-origin `/api/...`.
+
+**Disable the default `*.up.railway.app` domains** on all three web services once the Cloudflare domains work. This is not cosmetic: the api derives the client IP for rate limiting and the audit log from `CF-Connecting-IP` (falling back to the rightmost `X-Forwarded-For` entry — see `apps/api/src/core/http/client-ip.ts`), and Cloudflare only overwrites that header when it is actually in front of every request.
 
 For **staging**:
 
@@ -126,7 +111,6 @@ For **staging**:
 | `admin-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
 | `interno-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
 | `reklamacije-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
-| `api-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
 
 ### TLS
 
@@ -138,125 +122,92 @@ For **staging**:
 
 ## Environment variables
 
-### Common (all services)
-
-```
-NODE_ENV=production | staging
-LOG_LEVEL=info | debug
-TZ=Europe/Belgrade
-```
+The source of truth for what the API reads is `apps/api/src/config/env.ts` (Zod schema); `apps/api/.env.example` shows the dev shape. This list matches that schema. (File-size caps live in `@mr/shared/constants/limits.ts`; rate-limit numbers live in `apps/api/src/core/middleware/rate-limit.ts` — neither is env-configurable.) `OPENAI_API_KEY`, `RESEND_API_KEY`/`RESEND_FROM_EMAIL` and `ATTACHMENT_SIGNING_SECRET` are **optional in the schema** — the api boots without them, but translation is unavailable, activation emails silently no-op, and attachment signing falls back to `BETTER_AUTH_SECRET`. For production treat all four as required.
 
 ### `api` service
 
 ```
 # Server
+NODE_ENV=production
+LOG_LEVEL=info
+TZ=Europe/Belgrade
 PORT=3000
-HOST=0.0.0.0
-API_BASE_URL=https://api.mrengines.rs
+HOST=::                        # Railway private networking is IPv6 — 0.0.0.0 would be unreachable for the web apps
+API_BASE_URL=https://interno.mrengines.rs   # only used to build browser-facing signed attachment URLs → must be a public origin (the proxy carries /api/* to the api)
 PUBLIC_ORIGINS=https://admin.mrengines.rs,https://interno.mrengines.rs,https://reklamacije.mrengines.rs
+SELF_SIGNUP_ORIGINS=https://interno.mrengines.rs    # employee self-signup (internal only)
+CLIENT_SIGNUP_ORIGINS=https://reklamacije.mrengines.rs
 
 # Database
 DATABASE_URL=${{postgres.DATABASE_URL}}
 
 # Auth
-BETTER_AUTH_SECRET=<random 64-char string>
-BETTER_AUTH_URL=https://api.mrengines.rs
+BETTER_AUTH_SECRET=<random ≥32 chars>
+BETTER_AUTH_URL=https://interno.mrengines.rs   # public https origin so auth cookies get the Secure flag
+ATTACHMENT_SIGNING_SECRET=<random ≥32 chars, separate from BETTER_AUTH_SECRET>
+PROTECTED_SUPER_ADMIN_EMAIL=screenfun99@gmail.com
 
-# Session durations (minutes)
+# Scaling (optional; default 1)
+API_REPLICA_COUNT=1
+
+# Session idle timeouts (minutes)
 SESSION_IDLE_ADMIN_MIN=30
 SESSION_IDLE_OPERATOR_MIN=240
 SESSION_IDLE_VIEWER_MIN=240
 SESSION_IDLE_CLIENT_MIN=43200      # 30 days
 
-# OpenAI
+# OpenAI (translation)
 OPENAI_API_KEY=<from Nikola>
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_MAX_TOKENS_PER_REQUEST=2000
 
-# Storage
+# Storage (Railway volume mounted at /data)
 UPLOAD_DIR=/data/uploads
-MAX_FILE_SIZE_MB=25
-MAX_FILES_PER_CLAIM=50
-MAX_TOTAL_SIZE_PER_CLAIM_MB=500
 
-# Email
-EMAIL_PROVIDER=resend
+# Email (client activation mails)
 RESEND_API_KEY=<secret>
-EMAIL_FROM=no-reply@mrengines.rs
-EMAIL_FROM_NAME=MR Reklamacije
+RESEND_FROM_EMAIL=no-reply@mrengines.rs
 
-# Admin seed (only used on first bootstrap)
-ADMIN_SEED_EMAIL=nikola@mrengines.rs
-ADMIN_SEED_NAME=Nikola
-ADMIN_SEED_INITIAL_PASSWORD=<one-time; changed on first login>
-
-# Rate limiting
-RATE_LIMIT_EXPORT_PER_MIN=3
-RATE_LIMIT_TRANSLATION_PER_HOUR_CLIENT=60
-RATE_LIMIT_TRANSLATION_PER_HOUR_INTERNAL=300
-
-# Feature flags
-FEATURE_VIRUS_SCAN=false
-FEATURE_R2_STORAGE=false
+# PDF export (set false if Chromium misbehaves — app falls back to browser print)
+CLAIM_REPORT_PDF_ENABLED=true
 ```
 
 ### `admin-web`, `internal-web`, `portal-web`
 
+The web apps read exactly one runtime variable — the proxy target:
+
 ```
-PORT=3000
-HOST=0.0.0.0
-
-# Public URL (for redirects, SEO, SSR)
-PUBLIC_URL=https://admin.mrengines.rs        # or interno.* or reklamacije.*
-
-# Internal API URL (private Railway network)
 API_INTERNAL_URL=http://${{api.RAILWAY_PRIVATE_DOMAIN}}:3000
-
-# Auth (shared secret for session cookie verification in SSR loader)
-BETTER_AUTH_SECRET=${{api.BETTER_AUTH_SECRET}}
-
-# i18n default
-DEFAULT_LANGUAGE=sr
 ```
+
+(`PORT` is injected by Railway and honored by Nitro automatically. `VITE_API_URL` is a dev-only override that takes precedence over `API_INTERNAL_URL` — it must **not** be set on a production web service.)
 
 ### Secrets management
 
-- All secrets configured in Railway UI under each service
-- `BETTER_AUTH_SECRET` and `OPENAI_API_KEY` shared between services via Railway's `${{service.VAR}}` syntax
+- All secrets live **only on the `api` service** (Railway UI) — the web apps hold no secrets, just `API_INTERNAL_URL`
 - Never committed to git
-- `.env.example` in each app shows required vars with placeholder values
+- `.env.example` in each app shows the vars with placeholder values
 
 ---
 
 ## Database setup
 
-### Initial migration
+### Migrations on deploy
 
-On first deploy, the `api` service runs `pnpm db:migrate` as part of its start command:
+The `api` service's `railway.json` sets `preDeployCommand: pnpm --filter @mr/db run db:migrate:deploy` (`packages/db/src/migrate-deploy.ts`): it installs the required Postgres extensions, then applies all pending migrations. If it fails, the deploy aborts and the previous version keeps running — visible in Railway logs. Idempotent and proven from-zero (empty DB → extensions → all migrations → 31 tables).
 
-```json
-// apps/api/package.json
-{
-  "scripts": {
-    "start": "pnpm db:migrate && node dist/server.js"
-  }
-}
-```
+### First production deploy (runbook)
 
-If a migration fails, the service refuses to start. Visible in Railway logs.
+1. **Postgres** service created; **api** env vars set (list above); volume mounted at `/data`.
+2. **Deploy `api`** — pre-deploy migrates the empty DB automatically. Check `/health`.
+3. **System seed** (one-off shell on the api service): `pnpm --filter @mr/db run db:seed` — prod-safe reference data only (permissions, roles, departments, claim sources, engine manufacturers), idempotent. **Never** `db:seed:demo` in production.
+4. **First admin** (same one-off shell): `ADMIN_EMAIL=… ADMIN_PASSWORD=… ADMIN_NAME=… pnpm create-admin` — idempotent bootstrap; every later admin is created through the UI. Change the password on first login.
+5. **Legacy import** — needs `.legacy-import/legacy-data.json` (kept out of git, so it is never in the image). Put it on the volume first — from the one-off shell: `curl -o /data/legacy-data.json <temporary-signed-URL>` (or paste via `railway ssh`). Then dry-run: `pnpm --filter api import-legacy -- --file /data/legacy-data.json`, review the report, then add `--apply`. Done **together with Nikola** as a supervised one-off on the api service (never from a local machine against prod); delete `/data/legacy-data.json` afterwards.
+6. **Deploy the 3 web apps** with `API_INTERNAL_URL` set; health check is `/login`.
+7. **DNS (Cloudflare)** — CNAME records for the three web services only; the api stays on the private network with no public domain.
+8. **Verify**: login on all three apps, claims list + detail, SSE live update, file upload + thumbnail, PDF export, portal registration → approval → activation email (Resend).
 
-### Seed
-
-On first deploy, if `users` table is empty, run `pnpm db:seed:production`:
-- Permissions (seeded from code)
-- System roles (admin, operator, viewer, client)
-- Departments (10 predefined codes)
-- Claim sources (8 predefined)
-- Customers (EMOTIVE partner list)
-- Engine types (extracted from Excel)
-- Initial admin user (from `ADMIN_SEED_*` env vars)
-
-Seed is idempotent — safe to run multiple times.
+**Adding an env var later:** set it in Railway (api or web service), redeploy that service (env changes don't apply to running deploys), and mirror it in `apps/api/.env.example` + the list above in the same PR.
 
 ### Connection pooling
 
@@ -382,7 +333,7 @@ Initial setup: auto-promote enabled. Once we have real client traffic, switch to
 ### Uptime monitoring (external)
 
 **UptimeRobot** (free tier):
-- 5-min checks on `https://api.mrengines.rs/health`
+- 5-min checks on `https://interno.mrengines.rs/api/health` — exercises web app + proxy + api end-to-end (the api has no public domain of its own)
 - 5-min checks on each frontend `/login` page
 - Email alerts to Nikola
 
@@ -406,7 +357,7 @@ The admin panel has a `/admin/diagnostics` page showing:
 
 ## Health endpoints
 
-Each service exposes `/health`:
+The api exposes `/health`; web services are health-checked on `/login`. (The api's other public paths are `/api/auth/*`, `/api/registration`, `/api/activation` and the signature-protected `/api/attachments/raw` — everything else requires a session.)
 
 ```
 GET /health
@@ -524,6 +475,7 @@ For MVP, this is acceptable. Upgrade later if business needs it.
 - [ ] Volume attached to api service (10 GB)
 - [ ] Production environment variables set for each service
 - [ ] Cloudflare DNS records pointing at Railway services, proxied
+- [ ] Default `*.up.railway.app` domains disabled on the web services (client-IP trust depends on CF-only ingress)
 - [ ] Cloudflare WAF rules configured per subdomain (see `docs/01-architecture.md`)
 - [ ] DKIM/SPF/DMARC for email configured in Cloudflare DNS
 - [ ] Synology cron jobs for DB dump + volume rsync running
