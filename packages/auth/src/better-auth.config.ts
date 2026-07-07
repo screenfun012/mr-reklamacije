@@ -6,8 +6,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { customSession } from 'better-auth/plugins'
 
 import { createForcePendingOnSignupHook } from './hooks/force-pending-on-signup.js'
-import { createLoginAuditHook } from './hooks/login-audit.js'
 import { createOnUserRegisteredHook } from './hooks/on-user-registered.js'
+import { createSessionCreateAfterHook } from './hooks/session-create-after.js'
 import { createSessionCreateBeforeHook } from './hooks/session-create-before.js'
 import { sharedAuthOptions } from './options.js'
 import { createPermissionResolver } from './permissions.js'
@@ -91,7 +91,7 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
       session: {
         create: {
           before: createSessionCreateBeforeHook(db),
-          after: createLoginAuditHook(db),
+          after: createSessionCreateAfterHook(db),
         },
       },
     },
