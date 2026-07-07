@@ -51,6 +51,13 @@ export const sharedAuthOptions: BetterAuthOptions = {
   },
   session: {
     modelName: 'sessions',
+    // Explicit so the lifetime is intentional, not an inherited library default.
+    // 7-day absolute lifetime (docs/05), rolling: an active session is extended
+    // once it is older than updateAge, an idle one expires after expiresIn.
+    // Per-role idle timeouts (SESSION_IDLE_*_MIN) remain a documented future
+    // enhancement — Better-Auth has a single global lifetime, not per-role.
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       // Default JWE-backed cookie cache can serve stale session after 2FA
       // sign-in clears the session token until verify completes.
