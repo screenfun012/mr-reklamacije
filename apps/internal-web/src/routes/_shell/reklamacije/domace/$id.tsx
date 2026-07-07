@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  ClaimDetailSearchSchema,
-  domaceClaimDetailOptions,
-  prefetchClaimEditReferences,
-} from '@mr/shared'
+import { ApiError, ClaimDetailSearchSchema, domaceClaimDetailOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Skeleton } from '@mr/ui'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
@@ -16,10 +11,9 @@ export const Route = createFileRoute('/_shell/reklamacije/domace/$id')({
   beforeLoad: internalRequireDomaceClaimsView(),
   validateSearch: (search) => ClaimDetailSearchSchema.parse(search),
   loader: async ({ context: { queryClient }, params: { id } }) => {
-    // Fire-and-forget warm-up of the edit-form catalogs: the first detail
-    // open must not block on them. Failures are swallowed here because the
-    // same queries re-run (and surface errors) when the edit form mounts.
-    void prefetchClaimEditReferences(queryClient).catch(() => undefined)
+    // Only the claim aggregate is on the view's critical path. Edit-form
+    // catalogs load when the edit form mounts — prefetching them here fired
+    // 6 concurrent requests per claim open, starving the claim's own fetch.
     await queryClient.ensureQueryData(domaceClaimDetailOptions(id))
   },
   component: DomaceClaimDetailPage,
