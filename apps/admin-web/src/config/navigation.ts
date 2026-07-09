@@ -6,6 +6,7 @@ import {
   Cpu,
   Globe,
   Handshake,
+  HardHat,
   Inbox,
   LayoutDashboard,
   Network,
@@ -88,6 +89,12 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_departments,
     to: '/settings/departments',
     icon: Network,
+  },
+  {
+    key: 'employees',
+    label: m.nav_employees,
+    to: '/settings/employees',
+    icon: HardHat,
   },
   {
     key: 'external-parties',

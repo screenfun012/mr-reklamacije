@@ -1,13 +1,15 @@
 import {
   EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
   customersReferenceOptions,
+  departmentsReferenceOptions,
   engineManufacturersReferenceOptions,
   type CustomerListItem,
+  type DepartmentListItem,
   type EngineManufacturerListItem,
 } from '@mr/shared'
 import type { QueryKey, UseSuspenseQueryOptions } from '@tanstack/react-query'
 
-export type ResourceReferenceSelectKey = 'engine-manufacturers' | 'customers'
+export type ResourceReferenceSelectKey = 'engine-manufacturers' | 'customers' | 'departments'
 
 export interface ReferenceSelectOption {
   value: string
@@ -47,6 +49,11 @@ const REFERENCE_SELECT_CONFIGS: Record<ResourceReferenceSelectKey, ReferenceSele
   customers: defineReferenceSelect<CustomerListItem>({
     queryOptions: () => customersReferenceOptions(EMOTIVE_PARTNER_CUSTOMERS_REFERENCE),
     toOptions: (items) => items.map((item) => ({ value: item.id, label: item.name })),
+  }),
+  departments: defineReferenceSelect<DepartmentListItem>({
+    queryOptions: () => departmentsReferenceOptions({ activeOnly: true }),
+    toOptions: (items) =>
+      items.map((item) => ({ value: item.id, label: item.nameSr, keywords: item.code })),
   }),
 }
 
