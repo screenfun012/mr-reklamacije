@@ -20,6 +20,7 @@ export {
 } from './components/claim-attachments/attachment-file-icon.js'
 export { cn } from './lib/cn.js'
 export { useLocale } from './lib/use-locale.js'
+export { useSidebarState, type SidebarState } from './lib/use-sidebar-state.js'
 export {
   dataTableDestructiveActionClassName,
   dataTableIconActionClassName,
@@ -128,8 +129,6 @@ export {
 } from './primitives/dropdown-menu.js'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './primitives/tabs.js'
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './primitives/tooltip.js'
-export { AppShell } from './layouts/app-shell.js'
-export type { AppShellProps } from './layouts/app-shell.types.js'
 export { MrEnginesLogo, type MrEnginesLogoProps } from './components/mr-engines-logo.js'
 export { RouteNotFound } from './components/route-not-found.js'
 export { ClaimKindBadge, type ClaimKindBadgeProps } from './components/claim-kind-badge.js'

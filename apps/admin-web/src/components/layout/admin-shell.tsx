@@ -1,4 +1,4 @@
-import { AppShell } from '@mr/ui'
+import { useSidebarState } from '@mr/ui'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
@@ -13,22 +13,22 @@ export interface AdminShellProps {
 }
 
 /**
- * Admin app shell wrapper. Composes the @mr/ui AppShell with
- * admin-specific sidebar and topbar.
+ * Admin app shell: a full-width sticky header (☰ toggle + brand + user menu) on
+ * top, with the collapsible sidebar and main area below it — mirroring the
+ * internal app. Collapsible-sidebar state (desktop icon rail, mobile drawer)
+ * lives in the shared `useSidebarState` hook.
  *
- * Pulls user data from authClient.useSession() — during the first
- * SSR render the hook returns `data: undefined`, which manifests
- * as briefly blank user fields in the topbar until the browser
- * hydrates. Server-side session injection can replace this in
- * a later iteration if the flash becomes noticeable.
- *
- * Logout lives in the topbar UserMenu (9.1c.1.5b). The sidebar
- * footer was removed in the same step.
+ * User data comes from `authClient.useSession()`; during the first SSR render
+ * the hook returns `data: undefined`, so the user fields are briefly blank until
+ * the browser hydrates.
  */
 export function AdminShell({ children }: AdminShellProps) {
   const navigate = useNavigate()
   const { data: session } = authClient.useSession()
   useRealtimeEventStream()
+  const { collapsed, mobileOpen, onToggle, onCloseMobile } = useSidebarState(
+    'mrr:admin:sidebar-collapsed',
+  )
 
   const handleLogout = (): void => {
     void (async () => {
@@ -41,11 +41,20 @@ export function AdminShell({ children }: AdminShellProps) {
   const userName = session?.user.name ?? userEmail
 
   return (
-    <AppShell
-      sidebar={<AdminSidebar />}
-      topbar={<AdminTopbar userEmail={userEmail} userName={userName} onLogout={handleLogout} />}
-    >
-      {children}
-    </AppShell>
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-30 h-[60px] flex-none border-b border-border bg-background">
+        <AdminTopbar
+          userEmail={userEmail}
+          userName={userName}
+          onLogout={handleLogout}
+          onToggleSidebar={onToggle}
+        />
+      </header>
+
+      <div className="flex flex-1 items-stretch">
+        <AdminSidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={onCloseMobile} />
+        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+      </div>
+    </div>
   )
 }
