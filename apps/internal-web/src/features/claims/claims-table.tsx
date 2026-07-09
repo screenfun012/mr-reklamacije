@@ -214,7 +214,7 @@ function createClaimsTableColumns(
             {deleteConfig.canDelete(row.original) ? (
               <button
                 type="button"
-                className={`${dataTableIconActionClassName} hover:text-mri-error`}
+                className={`${dataTableIconActionClassName} hover:text-mri-bad`}
                 aria-label={m.action_delete()}
                 onClick={(event) => {
                   event.stopPropagation()
