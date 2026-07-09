@@ -61,3 +61,4 @@ mr-reklamacije-mvp-spec.zip
 # design handoff bundles — never commit binaries
 *.zip
 .legacy-import/
+.claude/settings.local.json
