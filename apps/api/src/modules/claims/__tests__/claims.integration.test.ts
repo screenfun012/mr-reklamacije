@@ -182,6 +182,29 @@ describe('ClaimsService integration', () => {
       expect(result.items.some((item) => item.mrNumber === 'FINDME-DO/26')).toBe(false)
     })
 
+    it('finds a numeric MR number by its leading digits (prefix search)', async () => {
+      // Regression: the 'simple' FTS parser keeps a numeric MR like "5376/26" as
+      // ONE token, so websearch_to_tsquery('5376') matched nothing — the search
+      // box looked broken for real MR numbers. Prefix search must find a numeric
+      // MR by a leading fragment. (Unique stamped MRs avoid the registry clash.)
+      const emotiveMr = `${Date.now()}0/26`
+      const domaceMr = `${Date.now()}1/26`
+      await createEmotive(emotiveMr)
+      await createDomace(domaceMr, 'Numerički Kupac')
+
+      const emotive = await container.claimsService.list(
+        listQuery({ search: emotiveMr.slice(0, 9) }),
+        FULL_OPERATOR,
+      )
+      expect(emotive.items.some((item) => item.mrNumber === emotiveMr)).toBe(true)
+
+      const domace = await container.claimsService.list(
+        listQuery({ search: domaceMr.slice(0, 9) }),
+        FULL_OPERATOR,
+      )
+      expect(domace.items.some((item) => item.mrNumber === domaceMr)).toBe(true)
+    })
+
     it('paginates with a single total across both sources', async () => {
       const token = `PAGETOK${Date.now()}`
       await createEmotive(`${token}-EM/26`)

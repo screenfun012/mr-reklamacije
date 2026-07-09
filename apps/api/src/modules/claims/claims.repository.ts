@@ -15,6 +15,19 @@ import type { ClaimListQuery, ClaimListResponse } from './claims.validators.js'
 
 const { customerUsers } = schema
 
+/**
+ * Prefix full-text query for the claims search box. `websearch_to_tsquery` only
+ * matches whole tokens, and the 'simple' parser keeps an MR number like
+ * "5376/26" as ONE token — so typing "5376" (or any partial) matched nothing.
+ * Tokenizing the term the same way and appending `:*` gives prefix matching
+ * ("5376"→"5376/26", "Bos"→"Bosch"), while the indexed `to_tsvector('simple', …)`
+ * expression stays textually identical, so the existing GIN search indexes still
+ * apply. Returns a NULL tsquery for a term with no lexemes (matches nothing).
+ */
+function searchPrefixTsQuery(term: string): SQL {
+  return sql`(SELECT string_agg(quote_literal(lexeme) || ':*', ' & ') FROM unnest(to_tsvector('simple', ${term})))::tsquery`
+}
+
 interface UnifiedListRow {
   [key: string]: unknown
   kind: string
@@ -216,10 +229,10 @@ export class ClaimsRepository {
       // (must match textually); customer name via an indexed semi-join —
       // a cross-table tsvector could never use an index.
       conditions.push(
-        sql`(to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || ec.mr_number) @@ websearch_to_tsquery('simple', ${query.search})
+        sql`(to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || ec.mr_number) @@ ${searchPrefixTsQuery(query.search)}
           OR ec.customer_id IN (
             SELECT id FROM customers
-            WHERE to_tsvector('simple', name) @@ websearch_to_tsquery('simple', ${query.search})
+            WHERE to_tsvector('simple', name) @@ ${searchPrefixTsQuery(query.search)}
           ))`,
       )
     }
@@ -296,7 +309,7 @@ export class ClaimsRepository {
 
     if (query.search !== undefined) {
       conditions.push(
-        sql`to_tsvector('simple', coalesce(dc.warranty_report, '') || ' ' || coalesce(dc.mr_number, '') || ' ' || coalesce(dc.customer_name, '')) @@ websearch_to_tsquery('simple', ${query.search})`,
+        sql`to_tsvector('simple', coalesce(dc.warranty_report, '') || ' ' || coalesce(dc.mr_number, '') || ' ' || coalesce(dc.customer_name, '')) @@ ${searchPrefixTsQuery(query.search)}`,
       )
     }
 
