@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 import { useRouterState } from '@tanstack/react-router'
 
+import { InternalLogo } from '~/components/masked-icon'
 import { LocaleThemeControls } from './locale-theme-controls'
 
 function sectionLabel(pathname: string): string {
@@ -19,19 +20,31 @@ function sectionLabel(pathname: string): string {
   return m.nav_pocetna()
 }
 
-/** Sticky blurred topbar: mono breadcrumb `INTERNO / {SECTION}` + EN/SR + theme. */
+/**
+ * Full-width sticky header: logo + app name (always visible), the current
+ * section, and the EN/SR + theme controls. Spans the whole app so the brand
+ * stays present even when the sidebar scrolls or (later) collapses.
+ */
 export function InternalTopbar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   return (
-    <div className="sticky top-0 z-20 border-b border-mri-border bg-mri-hdr backdrop-blur-[14px]">
-      <div className="flex h-[58px] items-center justify-between gap-4 px-8">
+    <header className="sticky top-0 z-30 border-b border-mri-border bg-mri-hdr backdrop-blur-[14px]">
+      <div className="flex h-[58px] items-center gap-4 px-6">
+        <div className="flex items-center gap-2.5">
+          <InternalLogo className="h-[30px] w-[113px]" />
+          <span className="hidden font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-mri-text2 sm:inline">
+            {m.internal_app_eyebrow()}
+          </span>
+        </div>
+        <span aria-hidden="true" className="hidden h-5 w-px bg-mri-border sm:block" />
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mri-text2">
-          {m.internal_breadcrumb_prefix()} <span className="text-mri-redh">/</span>{' '}
           {sectionLabel(pathname)}
         </span>
-        <LocaleThemeControls />
+        <div className="ml-auto">
+          <LocaleThemeControls />
+        </div>
       </div>
-    </div>
+    </header>
   )
 }

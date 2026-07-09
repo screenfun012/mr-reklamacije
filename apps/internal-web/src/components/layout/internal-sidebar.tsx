@@ -2,7 +2,6 @@ import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
 import { getRouteApi, Link } from '@tanstack/react-router'
 
-import { InternalLogo } from '~/components/masked-icon'
 import { internalNavItems } from '~/config/navigation'
 
 const rootRoute = getRouteApi('__root__')
@@ -56,14 +55,7 @@ export function InternalSidebar({ userName, userEmail, onLogout }: InternalSideb
   })
 
   return (
-    <aside className="sticky top-0 z-30 flex h-screen w-[236px] flex-none flex-col border-r border-mri-border bg-mri-surface">
-      <div className="border-b border-mri-border px-[22px] pb-[22px] pt-[26px]">
-        <InternalLogo className="h-[34px] w-32" />
-        <div className="mt-2.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.22em] text-mri-text2">
-          {m.internal_app_eyebrow()}
-        </div>
-      </div>
-
+    <aside className="sticky top-[58px] z-20 flex h-[calc(100vh-58px)] w-[236px] flex-none flex-col border-r border-mri-border bg-mri-surface">
       <nav
         aria-label="Main navigation"
         className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"

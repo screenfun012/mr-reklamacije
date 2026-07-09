@@ -14,11 +14,12 @@ export interface InternalShellProps {
 }
 
 /**
- * Internal app shell ("MR Interna" redesign): fixed 236px sidebar + sticky
- * blurred topbar + main area with the blueprint-grid texture and the slow
- * rotating cog watermark. `overflow-x: clip` (NOT hidden) contains the
- * offscreen cog without creating a scroll container, so the sticky topbar
- * keeps working against the page scroll.
+ * Internal app shell ("MR Interna" redesign): a full-width sticky header (brand
+ * + section + controls) on top, with the fixed 236px sidebar and the main area
+ * below it. The main column carries the blueprint-grid texture and the slow
+ * rotating cog watermark; `overflow-x: clip` (NOT hidden) contains the offscreen
+ * cog without creating a scroll container, so the sticky header/sidebar keep
+ * working against the page scroll.
  */
 export function InternalShell({ children }: InternalShellProps) {
   useRealtimeEventStream()
@@ -33,20 +34,22 @@ export function InternalShell({ children }: InternalShellProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-stretch bg-mri-bg font-sans text-mri-text">
-      <InternalSidebar userName={userName} userEmail={userEmail} onLogout={handleLogout} />
+    <div className="flex min-h-screen flex-col bg-mri-bg font-sans text-mri-text">
+      <InternalTopbar />
 
-      <div className="relative min-w-0 flex-1 overflow-x-clip">
-        <div aria-hidden="true" className="mri-grid-bg mri-grid-fade-down absolute inset-0" />
-        <MaskedIcon
-          name="cog"
-          spinning
-          className="pointer-events-none absolute -right-[180px] top-10 size-[440px] text-mri-gear"
-        />
+      <div className="flex flex-1 items-stretch">
+        <InternalSidebar userName={userName} userEmail={userEmail} onLogout={handleLogout} />
 
-        <InternalTopbar />
+        <div className="relative min-w-0 flex-1 overflow-x-clip">
+          <div aria-hidden="true" className="mri-grid-bg mri-grid-fade-down absolute inset-0" />
+          <MaskedIcon
+            name="cog"
+            spinning
+            className="pointer-events-none absolute -right-[180px] top-10 size-[440px] text-mri-gear"
+          />
 
-        <main className="relative px-8 pb-[72px] pt-9">{children}</main>
+          <main className="relative px-8 pb-[72px] pt-9">{children}</main>
+        </div>
       </div>
     </div>
   )
