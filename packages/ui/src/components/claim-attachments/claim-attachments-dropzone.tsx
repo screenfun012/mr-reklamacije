@@ -63,8 +63,8 @@ export function ClaimAttachmentsDropzone({
         aria-disabled={isDisabled}
         aria-busy={uploading}
         className={cn(
-          'flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center transition-colors',
-          dragActive && 'border-primary bg-primary/5',
+          'flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-mri-border bg-mri-inbg p-6 text-center transition-colors',
+          dragActive && 'border-mri-red bg-mri-red/5',
           isDisabled && 'cursor-not-allowed opacity-60',
         )}
         onClick={() => {
@@ -83,13 +83,9 @@ export function ClaimAttachmentsDropzone({
         onDrop={handleDrop}
         data-testid="claim-attachments-dropzone"
       >
-        <Upload className="size-8 text-muted-foreground" aria-hidden />
-        <p className="text-sm font-medium text-foreground">
-          {m.claim_attachments_dropzone_title()}
-        </p>
-        <p className="max-w-md text-xs text-muted-foreground">
-          {m.claim_attachments_dropzone_hint()}
-        </p>
+        <Upload className="size-8 text-mri-text2" aria-hidden />
+        <p className="text-sm font-medium text-mri-text">{m.claim_attachments_dropzone_title()}</p>
+        <p className="max-w-md text-xs text-mri-text2">{m.claim_attachments_dropzone_hint()}</p>
         <input
           ref={inputRef}
           type="file"
@@ -106,13 +102,13 @@ export function ClaimAttachmentsDropzone({
 
       {uploading ? (
         <div className="flex flex-col gap-1" aria-live="polite">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div className="h-2 overflow-hidden rounded-full bg-mri-inbg">
             <div
-              className="h-full bg-primary transition-[width] duration-150"
+              className="h-full bg-mri-red transition-[width] duration-150"
               style={{ width: `${uploadPercent}%` }}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-mri-text2">
             {m.claim_attachments_uploading({ percent: uploadPercent })}
           </p>
         </div>

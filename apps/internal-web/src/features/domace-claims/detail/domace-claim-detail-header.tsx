@@ -46,19 +46,19 @@ export function DomaceClaimDetailHeader({
   const showActionBar = showEdit || showStatusActions
 
   return (
-    <header className="flex flex-col gap-3 border-b border-border pb-6">
+    <header className="flex flex-col gap-3 border-b border-mri-border pb-6">
       <div className="flex flex-wrap items-center gap-2">
-        <Heading level="h1" className="font-mono text-foreground">
+        <Heading level="h1" className="font-mono text-mri-text">
           {claim.mrNumber ?? EMPTY}
         </Heading>
         <OutcomePill outcome={claim.outcome} />
         <KindPill kind={ClaimKind.Domace} />
       </div>
 
-      <p className="text-sm text-muted-foreground">{metaLine || EMPTY}</p>
+      <p className="text-sm text-mri-text2">{metaLine || EMPTY}</p>
 
       {showActionBar ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-mri-border pt-3">
           {showEdit ? (
             <Button
               type="button"

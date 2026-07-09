@@ -12,6 +12,10 @@ import { cn } from '../../lib/cn.js'
 import { Button } from '../../primitives/button.js'
 import { AttachmentFileIcon } from './attachment-file-icon.js'
 
+// ponytail: the claim-attachments components are internal-web-only and styled
+// with internal's --mri-* tokens. If admin/portal ever import them, hoist those
+// tokens to @mr/tailwind-preset first (see internal-web globals.css TODO) —
+// otherwise they render unstyled there.
 export interface ClaimAttachmentsGridProps {
   items: readonly AttachmentListItem[]
   canDelete?: (item: AttachmentListItem) => boolean
@@ -38,7 +42,7 @@ export function ClaimAttachmentsGrid({
 }: ClaimAttachmentsGridProps): React.ReactElement {
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground" data-testid="claim-attachments-empty">
+      <p className="text-sm text-mri-text2" data-testid="claim-attachments-empty">
         {m.claim_attachments_empty()}
       </p>
     )
@@ -58,8 +62,8 @@ export function ClaimAttachmentsGrid({
             <button
               type="button"
               className={cn(
-                'relative aspect-square overflow-hidden rounded-lg border border-border bg-muted/30',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'relative aspect-square overflow-hidden rounded-lg border border-mri-border bg-mri-inbg',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mri-red',
               )}
               aria-label={m.claim_attachments_grid_open()}
               onClick={() => onOpen(item)}
@@ -73,11 +77,8 @@ export function ClaimAttachmentsGrid({
                 />
               ) : (
                 <span className="flex size-full flex-col items-center justify-center gap-2 p-3">
-                  <AttachmentFileIcon
-                    mimeType={item.mimeType}
-                    className="size-10 text-muted-foreground"
-                  />
-                  <span className="line-clamp-2 text-center text-xs text-muted-foreground">
+                  <AttachmentFileIcon mimeType={item.mimeType} className="size-10 text-mri-text2" />
+                  <span className="line-clamp-2 text-center text-xs text-mri-text2">
                     {item.fileName}
                   </span>
                 </span>
@@ -86,10 +87,10 @@ export function ClaimAttachmentsGrid({
 
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground" title={item.fileName}>
+                <p className="truncate text-sm font-medium text-mri-text" title={item.fileName}>
                   {item.fileName}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-mri-text2">
                   {formatAttachmentFileSize(item.fileSizeBytes)}
                 </p>
               </div>
@@ -99,7 +100,7 @@ export function ClaimAttachmentsGrid({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  className="size-8 shrink-0 text-mri-text2 hover:text-mri-bad"
                   aria-label={m.claim_attachments_grid_delete()}
                   onClick={() => onDelete(item)}
                 >

@@ -137,7 +137,7 @@ export function ClaimAttachmentsTab({
   return (
     <div className="flex flex-col gap-6">
       {claimLocked ? (
-        <p className="text-sm text-muted-foreground">{m.claim_attachments_locked_hint()}</p>
+        <p className="text-sm text-mri-text2">{m.claim_attachments_locked_hint()}</p>
       ) : canUpload ? (
         <ClaimAttachmentsDropzone
           uploading={uploadMutation.isPending}

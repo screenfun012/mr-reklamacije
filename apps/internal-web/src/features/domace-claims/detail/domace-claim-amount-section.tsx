@@ -20,9 +20,9 @@ export function DomaceClaimAmountSection({
       </h2>
 
       {claim.totalAmount !== null ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-mri-text2">
           {m.domace_claims_detail_amount_current()}:{' '}
-          <span className="font-medium text-foreground">{formatEuroAmount(claim.totalAmount)}</span>
+          <span className="font-medium text-mri-text">{formatEuroAmount(claim.totalAmount)}</span>
         </p>
       ) : null}
     </section>

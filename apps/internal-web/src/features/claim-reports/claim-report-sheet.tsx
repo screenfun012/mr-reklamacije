@@ -85,7 +85,7 @@ export function ClaimReportSheet({
             <DialogDescription>{m.claim_report_sheet_description()}</DialogDescription>
           </div>
           <p
-            className="text-xs text-muted-foreground"
+            className="text-xs text-mri-text2"
             aria-live="polite"
             data-testid="claim-report-save-status"
           >
@@ -101,7 +101,7 @@ export function ClaimReportSheet({
             </div>
           ) : isError || data === undefined ? (
             <div className="flex flex-1 items-center justify-center p-6">
-              <p className="text-sm text-muted-foreground">{m.claim_report_save_status_error()}</p>
+              <p className="text-sm text-mri-text2">{m.claim_report_save_status_error()}</p>
             </div>
           ) : (
             <Suspense

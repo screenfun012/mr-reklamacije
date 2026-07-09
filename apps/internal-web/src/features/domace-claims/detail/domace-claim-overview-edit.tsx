@@ -207,7 +207,7 @@ function OverviewEditFooter({
   return (
     <div className="flex flex-col gap-2">
       {saveError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-sm text-mri-bad" role="alert">
           {saveError}
         </p>
       ) : null}

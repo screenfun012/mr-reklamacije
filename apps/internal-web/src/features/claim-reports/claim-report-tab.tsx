@@ -23,7 +23,7 @@ interface ClaimReportTabHeaderProps {
 
 function ClaimReportTabHeader({ children }: ClaimReportTabHeaderProps): React.ReactElement {
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-border bg-background/95 py-2 backdrop-blur-sm">
+    <div className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-mri-border bg-mri-hdr py-2 backdrop-blur-sm">
       {children}
     </div>
   )
@@ -49,8 +49,8 @@ export function ClaimReportTab({
 
   if (!canView) {
     return (
-      <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-border p-8">
-        <p className="text-sm text-muted-foreground">{m.claim_report_no_access()}</p>
+      <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-mri-border p-8">
+        <p className="text-sm text-mri-text2">{m.claim_report_no_access()}</p>
       </div>
     )
   }
@@ -83,23 +83,23 @@ export function ClaimReportTab({
   return (
     <div className="flex flex-col gap-4">
       {claimLocked ? (
-        <p className="text-sm text-muted-foreground">{m.claim_report_locked_hint()}</p>
+        <p className="text-sm text-mri-text2">{m.claim_report_locked_hint()}</p>
       ) : null}
 
       {isLoading ? (
         <div className="flex flex-col gap-3">
-          <div className="flex justify-end border-b border-border py-2">
+          <div className="flex justify-end border-b border-mri-border py-2">
             <Skeleton className="h-9 w-20 rounded-md" />
           </div>
           <Skeleton className="min-h-48 rounded-lg" />
         </div>
       ) : isError || data === undefined ? (
-        <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-border p-8">
-          <p className="text-sm text-muted-foreground">{m.claim_report_load_error()}</p>
+        <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-mri-border p-8">
+          <p className="text-sm text-mri-text2">{m.claim_report_load_error()}</p>
         </div>
       ) : isEmpty ? (
         <ClaimReportTabHeader>
-          <p className="mr-auto text-sm text-muted-foreground">{m.claim_report_empty()}</p>
+          <p className="mr-auto text-sm text-mri-text2">{m.claim_report_empty()}</p>
           {showEditButton ? (
             <Button type="button" onClick={() => setSheetOpen(true)}>
               {m.claim_report_create()}

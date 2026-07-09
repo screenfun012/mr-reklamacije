@@ -6,10 +6,12 @@ import {
   type ClaimDetailTabValue,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@mr/ui'
+import { Tabs, TabsContent } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
+
+import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
@@ -74,16 +76,20 @@ export function EmotiveClaimDetailView({
       />
 
       <Tabs value={tab} onValueChange={handleTabChange}>
-        <TabsList aria-label={m.emotive_claims_detail_title()}>
-          <TabsTrigger value={ClaimDetailTab.Pregled}>{m.claim_detail_tab_overview()}</TabsTrigger>
-          <TabsTrigger value={ClaimDetailTab.Kvarovi}>
+        <InternalTabsList aria-label={m.emotive_claims_detail_title()}>
+          <InternalTabsTrigger value={ClaimDetailTab.Pregled}>
+            {m.claim_detail_tab_overview()}
+          </InternalTabsTrigger>
+          <InternalTabsTrigger value={ClaimDetailTab.Kvarovi}>
             {faultsTabLabel(claim.faults.length)}
-          </TabsTrigger>
-          <TabsTrigger value={ClaimDetailTab.Prilozi}>
+          </InternalTabsTrigger>
+          <InternalTabsTrigger value={ClaimDetailTab.Prilozi}>
             {m.claim_detail_tab_attachments()}
-          </TabsTrigger>
-          <TabsTrigger value={ClaimDetailTab.Izvestaj}>{m.claim_detail_tab_report()}</TabsTrigger>
-        </TabsList>
+          </InternalTabsTrigger>
+          <InternalTabsTrigger value={ClaimDetailTab.Izvestaj}>
+            {m.claim_detail_tab_report()}
+          </InternalTabsTrigger>
+        </InternalTabsList>
 
         <TabsContent value={ClaimDetailTab.Pregled} className="flex flex-col gap-6">
           <EmotiveClaimBasicSection

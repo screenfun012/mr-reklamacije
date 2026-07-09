@@ -87,9 +87,9 @@ export function ClaimFindingsSection({
           </div>
         </div>
       ) : showReadOnlyEmpty ? (
-        <p className="text-sm text-muted-foreground">{m.emotive_claims_detail_notes_empty()}</p>
+        <p className="text-sm text-mri-text2">{m.emotive_claims_detail_notes_empty()}</p>
       ) : (
-        <p className="text-sm whitespace-pre-wrap text-foreground">{internalNotes}</p>
+        <p className="text-sm whitespace-pre-wrap text-mri-text">{internalNotes}</p>
       )}
     </section>
   )

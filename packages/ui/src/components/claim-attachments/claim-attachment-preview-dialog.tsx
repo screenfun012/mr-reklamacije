@@ -33,7 +33,7 @@ export interface ClaimAttachmentPreviewDialogProps {
 const PREVIEW_DIALOG_CLASS = 'h-[85vh] max-h-[85vh] w-[min(90vw,1400px)] max-w-[min(90vw,1400px)]'
 
 const PREVIEW_BODY_CLASS =
-  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/20 px-4 py-4 sm:px-6'
+  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-mri-inbg px-4 py-4 sm:px-6'
 
 export function ClaimAttachmentPreviewDialog({
   open,
@@ -66,7 +66,7 @@ export function ClaimAttachmentPreviewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide hideClose className={PREVIEW_DIALOG_CLASS}>
-        <DialogHeader className="shrink-0 space-y-0 border-b border-border px-4 py-3 text-left sm:px-6 sm:py-4">
+        <DialogHeader className="shrink-0 space-y-0 border-b border-mri-border px-4 py-3 text-left sm:px-6 sm:py-4">
           <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
             <div className="min-w-0 overflow-hidden">
               <DialogTitle className="truncate">{attachment.fileName}</DialogTitle>
@@ -152,7 +152,7 @@ export function ClaimAttachmentPreviewDialog({
               <iframe
                 src={inlineUrl}
                 title={attachment.fileName}
-                className="absolute inset-0 size-full border-0 bg-background"
+                className="absolute inset-0 size-full border-0 bg-mri-surface"
               />
             </div>
           ) : null}
@@ -172,12 +172,12 @@ export function ClaimAttachmentPreviewDialog({
           {previewKind === AttachmentPreviewKind.Office ? (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {officePreview ?? (
-                <div className="flex max-w-md flex-col items-center gap-4 self-center rounded-lg border border-border bg-background p-8 text-center">
+                <div className="flex max-w-md flex-col items-center gap-4 self-center rounded-lg border border-mri-border bg-mri-surface p-8 text-center">
                   <AttachmentFileIcon
                     mimeType={attachment.mimeType}
-                    className="size-16 text-muted-foreground"
+                    className="size-16 text-mri-text2"
                   />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-mri-text2">
                     {m.claim_attachments_preview_unsupported()}
                   </p>
                 </div>
@@ -187,12 +187,12 @@ export function ClaimAttachmentPreviewDialog({
 
           {previewKind === AttachmentPreviewKind.Unknown ? (
             <div className="flex min-h-0 flex-1 items-center justify-center">
-              <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-border bg-background p-8 text-center">
+              <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-mri-border bg-mri-surface p-8 text-center">
                 <AttachmentFileIcon
                   mimeType={attachment.mimeType}
-                  className="size-16 text-muted-foreground"
+                  className="size-16 text-mri-text2"
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-mri-text2">
                   {m.claim_attachments_preview_unsupported()}
                 </p>
               </div>

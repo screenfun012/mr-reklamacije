@@ -66,31 +66,31 @@ export function DomaceClaimFaultsSection({
 
 function FaultsReadOnly({ faults }: { faults: DomaceClaimFaultItem[] }): React.ReactElement {
   if (faults.length === 0) {
-    return <p className="text-sm text-muted-foreground">{m.emotive_claims_detail_faults_empty()}</p>
+    return <p className="text-sm text-mri-text2">{m.emotive_claims_detail_faults_empty()}</p>
   }
 
   return (
     <div className="overflow-x-auto rounded-[14px] border border-mri-border bg-mri-surface">
       <table className="min-w-full text-sm">
-        <thead className="bg-muted/40 text-left">
+        <thead className="bg-mri-inbg text-left">
           <tr>
-            <th className="px-4 py-2 font-medium text-muted-foreground">
+            <th className="px-4 py-2 font-medium text-mri-text2">
               {m.emotive_claims_create_fault_type()}
             </th>
-            <th className="px-4 py-2 font-medium text-muted-foreground">
+            <th className="px-4 py-2 font-medium text-mri-text2">
               {m.emotive_claims_create_review_fault_target()}
             </th>
-            <th className="px-4 py-2 font-medium text-muted-foreground">
+            <th className="px-4 py-2 font-medium text-mri-text2">
               {m.emotive_claims_detail_fault_notes()}
             </th>
           </tr>
         </thead>
         <tbody>
           {faults.map((fault) => (
-            <tr key={fault.id} className="border-t border-border">
+            <tr key={fault.id} className="border-t border-mri-border">
               <td className="px-4 py-2">{faultLabel(fault.faultType)}</td>
               <td className="px-4 py-2">{resolveFaultTarget(fault)}</td>
-              <td className="px-4 py-2 text-muted-foreground">{fault.notes ?? EMPTY}</td>
+              <td className="px-4 py-2 text-mri-text2">{fault.notes ?? EMPTY}</td>
             </tr>
           ))}
         </tbody>
@@ -153,7 +153,7 @@ function FaultsEditMode({
       />
 
       {saveError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-sm text-mri-bad" role="alert">
           {saveError}
         </p>
       ) : null}

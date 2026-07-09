@@ -198,7 +198,7 @@ function BasicEditMode({
       />
 
       {saveError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-sm text-mri-bad" role="alert">
           {saveError}
         </p>
       ) : null}
