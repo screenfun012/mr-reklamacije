@@ -2,6 +2,7 @@ import type { BetterAuthClientPlugin } from 'better-auth/client'
 import { customSessionClient, twoFactorClient } from 'better-auth/client/plugins'
 
 import type { Auth } from './better-auth.config.js'
+import { setClientSession } from './client-session-store.js'
 
 export { createAuthClient } from 'better-auth/react'
 export { twoFactorClient }
@@ -58,4 +59,38 @@ export const AUTH_SESSION_STALE_MS = 300_000
  */
 export const authClientSessionOptions = {
   refetchOnWindowFocus: true,
+} as const
+
+/**
+ * A Better-Auth response to one of these paths has just established (or completed
+ * via 2FA) a new session — the session cookie now differs from what the shared
+ * client-session cache holds.
+ */
+function establishesSession(url: URL | string): boolean {
+  const path = typeof url === 'string' ? url : url.pathname
+  return path.includes('/sign-in/') || path.includes('/two-factor/verify')
+}
+
+/**
+ * Shared fetch options for every app's Better-Auth client.
+ *
+ * `credentials: 'include'` sends the session cookie on every request.
+ *
+ * `onSuccess` fixes the "login needs two clicks" bug. After a sign-in (or 2FA
+ * verify) response sets the new session cookie, the shared client-session cache
+ * (client-session-store) still holds the pre-login value — settled signed-out.
+ * The very next `navigate()` reads that stale cache in the root `beforeLoad` and
+ * bounces straight back to /login, so the first click appears to do nothing;
+ * only once Better-Auth refetches the session in the background does a second
+ * click land. Resetting the cache to `undefined` here marks it unsettled, so the
+ * next `beforeLoad` does one fresh `getSession()` that reads the new cookie — the
+ * first click works. Applies to internal, admin and portal alike.
+ */
+export const authClientFetchOptions = {
+  credentials: 'include',
+  onSuccess: (context: { request: { url: URL | string } }): void => {
+    if (establishesSession(context.request.url)) {
+      setClientSession(undefined)
+    }
+  },
 } as const

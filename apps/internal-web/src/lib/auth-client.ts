@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
-import { authClientPlugins, authClientSessionOptions, createAuthClient } from '@mr/auth/client'
+import {
+  authClientFetchOptions,
+  authClientPlugins,
+  authClientSessionOptions,
+  createAuthClient,
+} from '@mr/auth/client'
 
 /**
  * Better-Auth client instance for internal-web frontend.
@@ -33,9 +38,7 @@ export const authClient = createAuthClient({
   baseURL,
   plugins: authClientPlugins,
   sessionOptions: authClientSessionOptions,
-  fetchOptions: {
-    credentials: 'include',
-  },
+  fetchOptions: authClientFetchOptions,
 })
 
 export type AuthClient = typeof authClient
