@@ -383,6 +383,7 @@
   "emotive_claims_create_fault_department": "Department",
   "emotive_claims_create_fault_employee": "Employee",
   "emotive_claims_create_fault_external": "External party",
+  "emotive_claims_create_fault_notes": "Note",
   "emotive_claims_create_fault_remove": "Remove",
   "emotive_claims_create_fault_row_title": "Fault {index}",
   "emotive_claims_create_fault_type": "Fault type",

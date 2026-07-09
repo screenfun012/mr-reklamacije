@@ -13,7 +13,11 @@ import { InternalButton } from '~/components/internal-button'
 import { InternalFieldGroup } from '~/components/internal-field-group'
 import { InternalFieldLabel } from '~/components/internal-field'
 
-import { FORM_CONTROL_CLASS, SELECT_EMPTY_SENTINEL } from '../create/form-field-styles.js'
+import {
+  FORM_CONTROL_CLASS,
+  SELECT_EMPTY_SENTINEL,
+  TEXTAREA_FIELD_CLASS,
+} from '../create/form-field-styles.js'
 import type { EmotiveClaimFaultDraft } from './fault-draft.js'
 
 interface FaultRowsEditorProps {
@@ -180,6 +184,22 @@ export function FaultRowsEditor({
               }}
             />
           ) : null}
+
+          <InternalFieldGroup
+            id={`fault-notes-${index}`}
+            label={m.emotive_claims_create_fault_notes()}
+          >
+            <textarea
+              id={`fault-notes-${index}`}
+              className={TEXTAREA_FIELD_CLASS}
+              value={fault.notes ?? ''}
+              disabled={disabled}
+              maxLength={4000}
+              onChange={(event) => {
+                replaceAt(index, { ...fault, notes: event.target.value })
+              }}
+            />
+          </InternalFieldGroup>
         </div>
       ))}
 

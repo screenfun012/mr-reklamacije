@@ -113,6 +113,16 @@ describe('FaultRowsEditor', () => {
     expect(optionLabels).not.toContain('Vera Verić')
   })
 
+  it('records a note typed into a fault row', async () => {
+    const user = userEvent.setup()
+    render(<Harness initial={[{ faultType: FaultType.Department, departmentId: 'dep-1' }]} />)
+
+    const notes = screen.getByRole('textbox', { name: m.emotive_claims_create_fault_notes() })
+    await user.type(notes, 'Curi ulje')
+
+    expect(notes).toHaveValue('Curi ulje')
+  })
+
   it('resets the culprit field when the fault type changes', async () => {
     const user = userEvent.setup()
     render(<Harness initial={[{ faultType: FaultType.Department, departmentId: 'dep-1' }]} />)

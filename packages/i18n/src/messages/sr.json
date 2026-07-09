@@ -383,6 +383,7 @@
   "emotive_claims_create_fault_department": "Odeljenje",
   "emotive_claims_create_fault_employee": "Radnik",
   "emotive_claims_create_fault_external": "Eksterna firma",
+  "emotive_claims_create_fault_notes": "Napomena",
   "emotive_claims_create_fault_remove": "Ukloni",
   "emotive_claims_create_fault_row_title": "Kvar {index}",
   "emotive_claims_create_fault_type": "Tip greške",

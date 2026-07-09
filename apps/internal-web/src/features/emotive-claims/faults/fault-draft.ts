@@ -21,13 +21,14 @@ export type EmotiveClaimFaultDraft = {
 }
 
 function faultDraftToPayload(fault: EmotiveClaimFaultDraft): unknown {
+  const notes = fault.notes?.trim() ? fault.notes.trim() : undefined
   if (fault.faultType === FaultType.Employee) {
-    return { faultType: fault.faultType, employeeId: fault.employeeId, notes: fault.notes }
+    return { faultType: fault.faultType, employeeId: fault.employeeId, notes }
   }
   if (fault.faultType === FaultType.Department) {
-    return { faultType: fault.faultType, departmentId: fault.departmentId, notes: fault.notes }
+    return { faultType: fault.faultType, departmentId: fault.departmentId, notes }
   }
-  return { faultType: fault.faultType, externalPartyId: fault.externalPartyId, notes: fault.notes }
+  return { faultType: fault.faultType, externalPartyId: fault.externalPartyId, notes }
 }
 
 export function faultDraftsToInput(faults: EmotiveClaimFaultDraft[]): EmotiveClaimFaultInput[] {
