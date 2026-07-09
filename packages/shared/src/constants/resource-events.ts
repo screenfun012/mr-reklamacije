@@ -4,6 +4,7 @@ export const ResourceChangedKey = {
   EngineTypes: 'engineTypes',
   EngineManufacturers: 'engineManufacturers',
   Departments: 'departments',
+  Employees: 'employees',
   ExternalParties: 'externalParties',
   ClaimSources: 'claimSources',
   Users: 'users',

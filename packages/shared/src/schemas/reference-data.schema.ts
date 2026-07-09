@@ -56,12 +56,33 @@ export const ReferenceListResponseSchema = <T extends z.ZodType>(itemSchema: T) 
 
 export const EmployeeListItemSchema = z.object({
   id: z.string().uuid(),
-  full_name: z.string(),
-  is_active: z.boolean(),
-  department_id: z.string().uuid().nullable(),
+  fullName: z.string(),
+  departmentId: z.string().uuid().nullable(),
+  departmentName: z.string().nullable(),
+  isActive: z.boolean(),
+  usageCount: z.number().int().nonnegative(),
 })
 
 export type EmployeeListItem = z.infer<typeof EmployeeListItemSchema>
+
+export const EmployeeCreateInputSchema = z.object({
+  fullName: z.string().trim().min(1).max(200),
+  departmentId: z.string().uuid().nullable().optional(),
+})
+
+export type EmployeeCreateInput = z.infer<typeof EmployeeCreateInputSchema>
+
+export const EmployeeUpdateInputSchema = z
+  .object({
+    fullName: z.string().trim().min(1).max(200).optional(),
+    departmentId: z.string().uuid().nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
+
+export type EmployeeUpdateInput = z.infer<typeof EmployeeUpdateInputSchema>
 
 export const EngineTypeListItemSchema = z.object({
   id: z.string().uuid(),

@@ -19,9 +19,30 @@ const DEPARTMENTS: DepartmentListItem[] = [
 ]
 
 const EMPLOYEES: EmployeeListItem[] = [
-  { id: 'emp-1', full_name: 'Ana Anić', is_active: true, department_id: 'dep-1' },
-  { id: 'emp-2', full_name: 'Bojan Bojić', is_active: true, department_id: 'dep-1' },
-  { id: 'emp-3', full_name: 'Vera Verić', is_active: true, department_id: 'dep-2' },
+  {
+    id: 'emp-1',
+    fullName: 'Ana Anić',
+    departmentId: 'dep-1',
+    departmentName: 'Glave',
+    isActive: true,
+    usageCount: 0,
+  },
+  {
+    id: 'emp-2',
+    fullName: 'Bojan Bojić',
+    departmentId: 'dep-1',
+    departmentName: 'Glave',
+    isActive: true,
+    usageCount: 0,
+  },
+  {
+    id: 'emp-3',
+    fullName: 'Vera Verić',
+    departmentId: 'dep-2',
+    departmentName: 'Blok',
+    isActive: true,
+    usageCount: 0,
+  },
 ]
 
 const EXTERNAL_PARTIES: ExternalPartyListItem[] = [

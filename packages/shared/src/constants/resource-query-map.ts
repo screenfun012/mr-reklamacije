@@ -16,6 +16,8 @@ export function queryKeyPrefixesForResourceChanged(
       return [['engine-manufacturers']] as const
     case ResourceChangedKey.Departments:
       return [['departments']] as const
+    case ResourceChangedKey.Employees:
+      return [['employees']] as const
     case ResourceChangedKey.ExternalParties:
       return [['external-parties']] as const
     case ResourceChangedKey.ClaimSources:

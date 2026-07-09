@@ -1,5 +1,6 @@
 import { schema } from '@mr/db'
-import { ERROR_CODE, normalizeName } from '@mr/shared'
+import { AuditAction, ERROR_CODE, normalizeName } from '@mr/shared'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
@@ -7,24 +8,32 @@ import {
   buildTestContainer,
   testUser,
 } from '../../../test-helpers/test-app.js'
-import { getDepartmentIdByCode } from '../../../test-helpers/fixtures.js'
+import {
+  ensureTestUser,
+  getDepartmentIdByCode,
+  TEST_USER_ID,
+} from '../../../test-helpers/fixtures.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { Container } from '../../../core/container.js'
 
-describe('Employees reference module', () => {
+const ACTOR = { actorUserId: TEST_USER_ID, actorIp: null, actorUserAgent: null }
+const MANAGE = ['employees.create', 'employees.update', 'employees.delete'] as const
+
+describe('Employees module', () => {
   let ctx: TestDbContext
   let container: Container
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
+    await ensureTestUser(ctx.db)
   })
 
   afterEach(async () => {
     await ctx.cleanup()
   })
 
-  describe('EmployeesRepository', () => {
+  describe('EmployeesRepository (reference list)', () => {
     it('lists seeded employees excluding soft-deleted rows', async () => {
       await ctx.db.insert(schema.employees).values({
         fullName: 'Deleted Worker',
@@ -36,7 +45,7 @@ describe('Employees reference module', () => {
       const result = await container.employeesRepository.list({ activeOnly: true, limit: 50 })
 
       expect(result.items.length).toBeGreaterThanOrEqual(24)
-      expect(result.items.some((item) => item.full_name === 'Deleted Worker')).toBe(false)
+      expect(result.items.some((item) => item.fullName === 'Deleted Worker')).toBe(false)
     })
 
     it('filters by departmentId', async () => {
@@ -48,7 +57,7 @@ describe('Employees reference module', () => {
       })
 
       expect(result.items.length).toBeGreaterThanOrEqual(2)
-      expect(result.items.every((item) => item.department_id === departmentId)).toBe(true)
+      expect(result.items.every((item) => item.departmentId === departmentId)).toBe(true)
     })
 
     it('paginates with cursor', async () => {
@@ -67,15 +76,64 @@ describe('Employees reference module', () => {
     })
   })
 
-  describe('EmployeesService', () => {
-    it('delegates list to repository', async () => {
-      const result = await container.employeesService.list({ activeOnly: true, limit: 5 })
-      expect(result.items).toHaveLength(5)
-      expect(result.hasMore).toBe(true)
+  describe('service CRUD (management)', () => {
+    it('creates an employee with usageCount 0 and writes audit', async () => {
+      const created = await container.employeesService.create({ fullName: 'Petar Petrović' }, ACTOR)
+
+      expect(created.usageCount).toBe(0)
+      expect(created.isActive).toBe(true)
+      expect(created.fullName).toBe('Petar Petrović')
+      expect(created.departmentName).toBeNull()
+
+      const audit = await ctx.db
+        .select({ action: schema.auditLog.action })
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+      expect(audit.some((row) => row.action === AuditAction.Create)).toBe(true)
+    })
+
+    it('rejects a duplicate name with 409', async () => {
+      await container.employeesService.create({ fullName: 'Marko Marković' }, ACTOR)
+
+      await expect(
+        container.employeesService.create({ fullName: 'Marko Marković' }, ACTOR),
+      ).rejects.toMatchObject({ status: 409 })
+    })
+
+    it('joins the department name and updates department + active flag', async () => {
+      const department = await container.departmentsService.create(
+        { code: 'EMP-DEP', nameSr: 'Montaža', nameEn: 'Assembly' },
+        ACTOR,
+      )
+      const created = await container.employeesService.create(
+        { fullName: 'Jovan Jovanović' },
+        ACTOR,
+      )
+
+      const updated = await container.employeesService.update(
+        created.id,
+        { departmentId: department.id, isActive: false },
+        ACTOR,
+      )
+
+      expect(updated.departmentId).toBe(department.id)
+      expect(updated.departmentName).toBe('Montaža')
+      expect(updated.isActive).toBe(false)
+    })
+
+    it('hard-deletes an unused employee', async () => {
+      const created = await container.employeesService.create(
+        { fullName: 'Obrisivi Radnik' },
+        ACTOR,
+      )
+
+      await container.employeesService.hardDelete(created.id, ACTOR)
+
+      expect(await container.employeesRepository.findById(created.id)).toBeNull()
     })
   })
 
-  describe('Employees HTTP', () => {
+  describe('HTTP', () => {
     it('returns 401 without auth', async () => {
       const app = createReferenceTestApp(container, null)
       const res = await app.request('/api/employees')
@@ -98,9 +156,11 @@ describe('Employees reference module', () => {
       const body = (await res.json()) as {
         items: Array<{
           id: string
-          full_name: string
-          is_active: boolean
-          department_id: string | null
+          fullName: string
+          departmentId: string | null
+          departmentName: string | null
+          isActive: boolean
+          usageCount: number
         }>
         nextCursor: string | null
         hasMore: boolean
@@ -108,7 +168,7 @@ describe('Employees reference module', () => {
 
       expect(body.items).toHaveLength(5)
       expect(body.hasMore).toBe(true)
-      expect(body.items[0]?.full_name.length).toBeGreaterThan(0)
+      expect(body.items[0]?.fullName.length).toBeGreaterThan(0)
     })
 
     it('filters by departmentId query param', async () => {
@@ -118,10 +178,37 @@ describe('Employees reference module', () => {
       expect(res.status).toBe(200)
 
       const body = (await res.json()) as {
-        items: Array<{ department_id: string | null }>
+        items: Array<{ departmentId: string | null }>
       }
 
-      expect(body.items.every((item) => item.department_id === departmentId)).toBe(true)
+      expect(body.items.every((item) => item.departmentId === departmentId)).toBe(true)
+    })
+
+    it('rejects POST without employees.create (403)', async () => {
+      const app = createReferenceTestApp(container, testUser(['employees.view']))
+      const res = await app.request('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: 'Ne Sme' }),
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('allows POST with employees.create (201)', async () => {
+      const app = createReferenceTestApp(container, testUser([...MANAGE], TEST_USER_ID))
+      const res = await app.request('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: 'Sme Da Kreira' }),
+      })
+      expect(res.status).toBe(201)
+    })
+
+    it('rejects DELETE without employees.delete (403)', async () => {
+      const created = await container.employeesService.create({ fullName: 'Za Brisanje' }, ACTOR)
+      const app = createReferenceTestApp(container, testUser(['employees.view']))
+      const res = await app.request(`/api/employees/${created.id}`, { method: 'DELETE' })
+      expect(res.status).toBe(403)
     })
   })
 })

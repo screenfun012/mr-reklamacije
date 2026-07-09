@@ -130,7 +130,7 @@ export function buildContainer(
   const auditLogService = new AuditLogService(auditLogRepository)
 
   const employeesRepository = new EmployeesRepository(db)
-  const employeesService = new EmployeesService(employeesRepository)
+  const employeesService = new EmployeesService(employeesRepository, auditService, eventBus)
 
   const engineTypesRepository = new EngineTypesRepository(db)
   const engineTypesService = new EngineTypesService(engineTypesRepository, auditService, eventBus)

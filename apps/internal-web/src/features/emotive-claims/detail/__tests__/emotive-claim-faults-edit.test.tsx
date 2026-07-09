@@ -34,9 +34,11 @@ const DEPARTMENTS: DepartmentListItem[] = [
 const EMPLOYEES: EmployeeListItem[] = [
   {
     id: '44444444-4444-4444-8444-444444444444',
-    full_name: 'Ana Anić',
-    is_active: true,
-    department_id: DEPARTMENT_ID,
+    fullName: 'Ana Anić',
+    departmentId: DEPARTMENT_ID,
+    departmentName: 'Odeljenje',
+    isActive: true,
+    usageCount: 0,
   },
 ]
 const EXTERNAL_PARTIES: ExternalPartyListItem[] = []

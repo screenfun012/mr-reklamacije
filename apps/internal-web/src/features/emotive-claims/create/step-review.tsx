@@ -184,7 +184,7 @@ function resolveFaultTarget(
     return departments.find((d) => d.id === fault.departmentId)?.nameSr ?? '—'
   }
   if (fault.faultType === FaultType.Employee) {
-    return employees.find((e) => e.id === fault.employeeId)?.full_name ?? '—'
+    return employees.find((e) => e.id === fault.employeeId)?.fullName ?? '—'
   }
   return externalParties.find((p) => p.id === fault.externalPartyId)?.name ?? '—'
 }

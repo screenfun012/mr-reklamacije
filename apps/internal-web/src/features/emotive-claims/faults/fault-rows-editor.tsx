@@ -162,8 +162,8 @@ export function FaultRowsEditor({
                 error={errors[`faults.${index}.employeeId`]}
                 disabled={disabled || !(employeeDepartmentByIndex[index] ?? '')}
                 options={employees
-                  .filter((employee) => employee.department_id === employeeDepartmentByIndex[index])
-                  .map((employee) => ({ id: employee.id, label: employee.full_name }))}
+                  .filter((employee) => employee.departmentId === employeeDepartmentByIndex[index])
+                  .map((employee) => ({ id: employee.id, label: employee.fullName }))}
                 onChange={(employeeId) => {
                   replaceAt(index, { ...fault, employeeId })
                 }}
@@ -229,8 +229,8 @@ function deriveEmployeeDepartments(
       return
     }
     const employee = employees.find((candidate) => candidate.id === fault.employeeId)
-    if (employee?.department_id) {
-      map[index] = employee.department_id
+    if (employee?.departmentId) {
+      map[index] = employee.departmentId
     }
   })
   return map

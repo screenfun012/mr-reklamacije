@@ -13,6 +13,9 @@ export function registerEmployeesRoutes(
   const routes = new Hono<{ Variables: AppVariables }>()
 
   routes.get('/', requirePermission('employees.view'), controller.list)
+  routes.post('/', requirePermission('employees.create'), controller.create)
+  routes.patch('/:id', requirePermission('employees.update'), controller.update)
+  routes.delete('/:id', requirePermission('employees.delete'), controller.delete)
 
   app.route('/api/employees', routes)
 }
