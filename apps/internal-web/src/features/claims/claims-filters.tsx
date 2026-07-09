@@ -9,6 +9,7 @@ import {
 import { m } from '@mr/i18n'
 import { cn, DatePicker, FilterSelect, Input, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
@@ -81,6 +82,28 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
       page: 1,
     })
   }, [debouncedSearch, onSearchChange, search])
+
+  const hasActiveFilters =
+    search.kind !== undefined ||
+    search.outcome !== undefined ||
+    search.manufacturerId !== undefined ||
+    search.dateFrom !== undefined ||
+    search.dateTo !== undefined ||
+    (search.search !== undefined && search.search.length > 0)
+
+  const handleClearFilters = (): void => {
+    setSearchDraft('')
+    onSearchChange({
+      ...search,
+      kind: undefined,
+      outcome: undefined,
+      manufacturerId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      search: undefined,
+      page: 1,
+    })
+  }
 
   const kindValue = search.kind ?? FILTER_ALL_SENTINEL
   const kindSegments = [
@@ -215,6 +238,17 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
           onChange={(event) => setSearchDraft(event.target.value)}
         />
       </label>
+
+      {hasActiveFilters ? (
+        <button
+          type="button"
+          onClick={handleClearFilters}
+          className="flex h-11 flex-none items-center gap-1.5 rounded-[9px] border border-mri-border px-3 text-[13px] font-semibold text-mri-text2 transition-colors hover:border-mri-border2 hover:text-mri-text"
+        >
+          <X className="size-4" aria-hidden="true" />
+          {m.claims_filter_clear()}
+        </button>
+      ) : null}
     </div>
   )
 }
