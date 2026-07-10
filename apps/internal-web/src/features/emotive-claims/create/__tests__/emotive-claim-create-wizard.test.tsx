@@ -1,0 +1,174 @@
+import {
+  CustomerKind,
+  customersReferenceOptions,
+  departmentsReferenceOptions,
+  employeesReferenceOptions,
+  engineManufacturersReferenceOptions,
+  engineTypesReferenceOptions,
+  externalPartiesReferenceOptions,
+  type CustomerListItem,
+  type EngineManufacturerListItem,
+  type EngineTypeListItem,
+} from '@mr/shared'
+import { m, setLocale } from '@mr/i18n'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import type { ReactElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { EmotiveClaimCreateWizard } from '../emotive-claim-create-wizard.js'
+
+const CUSTOMER_ID = '55555555-5555-4555-8555-555555555555'
+const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
+const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
+
+const CUSTOMERS: CustomerListItem[] = [
+  {
+    id: CUSTOMER_ID,
+    name: 'Auto Stanić',
+    kind: CustomerKind.EmotivePartner,
+    country: 'RS',
+    city: 'Beograd',
+    isActive: true,
+    usageCount: 0,
+  },
+]
+const MANUFACTURERS: EngineManufacturerListItem[] = [
+  { id: MANUFACTURER_ID, code: 'MERCEDES', name: 'Mercedes-Benz', sortOrder: 1, isActive: true },
+]
+const ENGINE_TYPES: EngineTypeListItem[] = [
+  {
+    id: ENGINE_TYPE_ID,
+    code: 'OM651',
+    manufacturerId: MANUFACTURER_ID,
+    manufacturerName: 'Mercedes-Benz',
+    displacementCc: 2143,
+    notes: null,
+    isActive: true,
+    usageCount: 0,
+  },
+]
+
+async function renderWizard(): Promise<void> {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity },
+      mutations: { retry: false },
+    },
+  })
+  client.setQueryData(
+    customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }).queryKey,
+    CUSTOMERS,
+  )
+  client.setQueryData(
+    engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
+    MANUFACTURERS,
+  )
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(departmentsReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(
+    engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
+    ENGINE_TYPES,
+  )
+
+  const node: ReactElement = (
+    <QueryClientProvider client={client}>
+      <EmotiveClaimCreateWizard />
+    </QueryClientProvider>
+  )
+  const rootRoute = createRootRoute({ component: () => node })
+  const listRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/reklamacije',
+    component: () => null,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([listRoute]),
+    history: createMemoryHistory({ initialEntries: ['/reklamacije/emotive/nova'] }),
+  })
+  await router.load()
+  render(<RouterProvider router={router as never} />)
+}
+
+function stubCreatedResponse(): ReturnType<typeof vi.fn> {
+  const fetchSpy = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 201,
+    json: async () => ({ id: '11111111-1111-4111-8111-111111111111', mrNumber: 'MR-TEST/26' }),
+  })
+  vi.stubGlobal('fetch', fetchSpy)
+  return fetchSpy
+}
+
+function postedToEmotive(fetchSpy: ReturnType<typeof vi.fn>): boolean {
+  return fetchSpy.mock.calls.some(([url, init]) => {
+    const request = init as RequestInit | undefined
+    return String(url).includes('/api/emotive-claims') && request?.method === 'POST'
+  })
+}
+
+async function completeBasicStep(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.type(
+    screen.getByLabelText(m.emotive_claims_create_field_mr_number(), { exact: false }),
+    'MR-TEST/26',
+  )
+
+  await user.click(screen.getByRole('combobox', { name: m.emotive_claims_create_field_customer() }))
+  await user.click(screen.getByRole('option', { name: 'Auto Stanić' }))
+
+  await user.click(
+    screen.getByRole('combobox', { name: m.emotive_claims_create_field_manufacturer() }),
+  )
+  await user.click(screen.getByRole('option', { name: 'Mercedes-Benz' }))
+
+  await user.click(
+    screen.getByRole('combobox', { name: m.emotive_claims_create_field_engine_type() }),
+  )
+  await user.click(screen.getByRole('option', { name: /OM651/ }))
+
+  await user.click(screen.getByRole('button', { name: m.emotive_claims_create_field_date_claim() }))
+  await user.click(screen.getByRole('button', { name: /(^|\D)15(\D|$)/ }))
+}
+
+describe('EmotiveClaimCreateWizard', () => {
+  beforeEach(() => {
+    setLocale('sr')
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  // Regression: advancing from the faults step to the review step must NOT save.
+  // The step CTA reuses one <button> node, so a native submit button used to fire
+  // on this transition and create the claim before the review step was ever shown.
+  it('reaches the review step without saving, then saves on explicit confirm', async () => {
+    const fetchSpy = stubCreatedResponse()
+    const user = userEvent.setup()
+    await renderWizard()
+
+    await completeBasicStep(user)
+
+    // basic -> faults
+    await user.click(screen.getByRole('button', { name: m.emotive_claims_create_next() }))
+    // faults -> review (must not save here)
+    await user.click(screen.getByRole('button', { name: m.emotive_claims_create_next() }))
+
+    // We are on the review step — its Save CTA is present — and nothing was saved yet.
+    const saveButton = screen.getByRole('button', { name: m.action_save() })
+    expect(postedToEmotive(fetchSpy)).toBe(false)
+
+    // Saving happens only on this explicit confirm.
+    await user.click(saveButton)
+    await waitFor(() => expect(postedToEmotive(fetchSpy)).toBe(true))
+  })
+})

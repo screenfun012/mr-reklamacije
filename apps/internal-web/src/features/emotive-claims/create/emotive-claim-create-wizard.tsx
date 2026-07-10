@@ -193,12 +193,16 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
               {m.emotive_claims_create_back()}
             </InternalButton>
 
+            {/* Submit explicitly via onClick, not a native type="submit": the primary
+                CTA reuses one <button> node across steps, so a submit button would fire
+                on the faults→review transition and save the claim before review is shown. */}
             {currentStep === 'review' ? (
               <InternalButton
-                type="submit"
+                type="button"
                 variant="green"
                 className="h-[46px] w-auto px-6 text-[12.5px]"
                 disabled={isPending}
+                onClick={() => void form.handleSubmit()}
               >
                 <span aria-hidden="true" className="font-normal">
                   ✓
