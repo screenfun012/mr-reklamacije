@@ -3,6 +3,7 @@ import {
   ClaimOutcome,
   CustomerKind,
   customersReferenceOptions,
+  employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   type CustomerListItem,
@@ -83,6 +84,7 @@ function renderLegacyOrphanSection(): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
@@ -141,6 +143,7 @@ function renderSection(canEdit: boolean): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>

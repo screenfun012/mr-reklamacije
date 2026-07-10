@@ -25,6 +25,7 @@ export interface DomaceClaimBasicEdit {
   engineCode: string | null
   dateOfClaim: string | null
   dateOfFinish: string | null
+  employeeId: string | null
   warrantyReport: string | null
 }
 
@@ -39,6 +40,7 @@ export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimD
     dateOfFinish: claim.dateOfFinish ?? '',
     dateOfClaim: claim.dateOfClaim ?? '',
     warrantyReport: claim.warrantyReport ?? '',
+    employeeId: claim.employeeId ?? '',
   }
 }
 
@@ -64,6 +66,7 @@ export function detailBasicValuesToPatch(
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: dateOfClaim === '' ? null : dateOfClaim,
     dateOfFinish: dateOfFinish === '' ? null : dateOfFinish,
+    employeeId: values.employeeId.trim() === '' ? null : values.employeeId,
     warrantyReport: warrantyReport === '' ? null : warrantyReport,
   }
 }

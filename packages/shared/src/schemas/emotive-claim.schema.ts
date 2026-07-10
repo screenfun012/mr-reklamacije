@@ -48,7 +48,7 @@ export const EmotiveClaimUpdateInputSchema = z
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().optional(),
     mrNumber: z.string().trim().min(1).max(50).optional(),
-    employeeId: z.string().uuid().optional(),
+    employeeId: z.string().uuid().nullable().optional(),
     sourceId: z.string().uuid().optional(),
     claimNumber: z.string().trim().max(50).nullable().optional(),
     dateOfFinish: z.coerce.date().nullable().optional(),

@@ -42,6 +42,7 @@ export const domaceClaimBasicFieldsSchema = z.object({
   dateOfFinish: optionalDateField,
   dateOfClaim: optionalDateField,
   warrantyReport: z.string().trim().max(8000),
+  employeeId: z.string().trim(),
 })
 
 const atLeastOneMrOrCustomerRefine = {
@@ -70,6 +71,7 @@ export type DomaceClaimFormValues = {
   dateOfFinish: string
   dateOfClaim: string
   warrantyReport: string
+  employeeId: string
   faults: EmotiveClaimFaultDraft[]
 }
 
@@ -83,6 +85,7 @@ export const DOMACE_CLAIM_FORM_DEFAULTS: DomaceClaimFormValues = {
   dateOfFinish: '',
   dateOfClaim: '',
   warrantyReport: '',
+  employeeId: '',
   faults: [],
 }
 
@@ -104,6 +107,7 @@ export function formValuesToCreateInput(values: DomaceClaimFormValues): DomaceCl
     dateOfClaim: emptyToUndefined(values.dateOfClaim),
     dateOfFinish: emptyToUndefined(values.dateOfFinish),
     warrantyReport: emptyToUndefined(values.warrantyReport),
+    employeeId: emptyToUndefined(values.employeeId),
     faults: faultDraftsToInput(values.faults),
   })
 }

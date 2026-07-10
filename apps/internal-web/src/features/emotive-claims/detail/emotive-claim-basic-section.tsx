@@ -2,6 +2,7 @@ import {
   ApiError,
   CustomerKind,
   customersReferenceOptions,
+  employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
   type EmotiveClaimDetail,
@@ -150,6 +151,7 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
 
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -186,6 +188,7 @@ function BasicEditMode({
       <StepBasicFields
         form={form}
         customers={customers}
+        employees={employees}
         manufacturers={manufacturers}
         orphanEngineType={
           claim.engineTypeId && claim.engineTypeCode
@@ -235,6 +238,7 @@ function claimToFormValues(claim: EmotiveClaimDetail): EmotiveClaimFormValues {
     dateOfFinish: claim.dateOfFinish ?? '',
     dateOfClaim: claim.dateOfClaim,
     warrantyReport: claim.warrantyReport ?? '',
+    employeeId: claim.employeeId ?? '',
   }
 }
 
@@ -252,6 +256,7 @@ function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasi
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: values.dateOfClaim,
     dateOfFinish: dateOfFinish === '' ? null : dateOfFinish,
+    employeeId: values.employeeId.trim() === '' ? null : values.employeeId,
     ...(warrantyReport !== '' ? { warrantyReport } : {}),
   }
 }

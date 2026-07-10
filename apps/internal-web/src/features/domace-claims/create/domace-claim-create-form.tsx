@@ -103,6 +103,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           </h2>
           <DomaceBasicFields
             form={form}
+            employees={employees}
             manufacturers={manufacturers}
             stepErrors={stepErrors}
             disabled={isPending}

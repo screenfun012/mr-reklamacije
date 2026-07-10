@@ -312,7 +312,7 @@ export class EmotiveClaimsService {
         message: 'Invalid or inactive engine manufacturer',
       })
     }
-    if (input.employeeId !== undefined) {
+    if (input.employeeId !== undefined && input.employeeId !== null) {
       checks.push({
         active: this.repo.isEmployeeActive(input.employeeId),
         message: 'Invalid or inactive employee',

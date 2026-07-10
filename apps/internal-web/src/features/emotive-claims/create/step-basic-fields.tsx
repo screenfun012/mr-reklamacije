@@ -1,5 +1,5 @@
 import { formatFieldError } from '@mr/shared'
-import type { CustomerListItem, EngineManufacturerListItem } from '@mr/shared'
+import type { CustomerListItem, EmployeeListItem, EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   DatePicker,
@@ -14,6 +14,7 @@ import {
 
 import { InternalFieldGroup } from '~/components/internal-field-group'
 
+import { EmployeeSelectField } from '../../claims/employee-select-field.js'
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
@@ -50,6 +51,7 @@ interface StepBasicFieldsProps {
     setFieldValue: (name: 'engineTypeId', value: string) => void
   }
   customers: CustomerListItem[]
+  employees: EmployeeListItem[]
   manufacturers: EngineManufacturerListItem[]
   orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
@@ -59,6 +61,7 @@ interface StepBasicFieldsProps {
 export function StepBasicFields({
   form,
   customers,
+  employees,
   manufacturers,
   orphanEngineType,
   stepErrors,
@@ -210,6 +213,23 @@ export function StepBasicFields({
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="employeeId"
+        children={(field) => (
+          <InternalFieldGroup id="employeeId" label={m.claims_field_assigned_worker()}>
+            <EmployeeSelectField
+              id="employeeId"
+              value={field.state.value}
+              employees={employees}
+              disabled={disabled}
+              aria-label={m.claims_field_assigned_worker()}
+              onValueChange={field.handleChange}
+              onBlur={field.handleBlur}
             />
           </InternalFieldGroup>
         )}

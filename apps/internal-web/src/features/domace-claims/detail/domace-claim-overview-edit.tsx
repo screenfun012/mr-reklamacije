@@ -1,6 +1,7 @@
 import {
   ApiError,
   ClaimOutcome,
+  employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -64,6 +65,7 @@ function PendingOverviewEdit({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const mutation = useUpdateDomaceClaimBasic(claim.id)
@@ -111,6 +113,7 @@ function PendingOverviewEdit({
 
         <DomaceBasicFields
           form={form}
+          employees={employees}
           manufacturers={manufacturers}
           orphanEngineType={
             claim.engineTypeId && claim.engineTypeCode

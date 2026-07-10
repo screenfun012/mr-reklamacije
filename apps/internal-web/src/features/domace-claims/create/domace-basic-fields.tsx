@@ -1,10 +1,11 @@
 import { formatFieldError } from '@mr/shared'
-import type { EngineManufacturerListItem } from '@mr/shared'
+import type { EmployeeListItem, EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 
 import { InternalFieldGroup } from '~/components/internal-field-group'
 
+import { EmployeeSelectField } from '../../claims/employee-select-field.js'
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import {
@@ -29,6 +30,7 @@ interface DomaceBasicFieldsProps {
     }>
     setFieldValue: (name: 'engineTypeId', value: string) => void
   }
+  employees: EmployeeListItem[]
   manufacturers: EngineManufacturerListItem[]
   orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
@@ -37,6 +39,7 @@ interface DomaceBasicFieldsProps {
 
 export function DomaceBasicFields({
   form,
+  employees,
   manufacturers,
   orphanEngineType,
   stepErrors,
@@ -170,6 +173,23 @@ export function DomaceBasicFields({
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="employeeId"
+        children={(field) => (
+          <InternalFieldGroup id="employeeId" label={m.claims_field_assigned_worker()}>
+            <EmployeeSelectField
+              id="employeeId"
+              value={field.state.value}
+              employees={employees}
+              disabled={disabled}
+              aria-label={m.claims_field_assigned_worker()}
+              onValueChange={field.handleChange}
+              onBlur={field.handleBlur}
             />
           </InternalFieldGroup>
         )}

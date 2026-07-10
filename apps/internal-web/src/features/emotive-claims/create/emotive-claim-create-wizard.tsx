@@ -143,6 +143,7 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
             <StepBasicFields
               form={form}
               customers={customers}
+              employees={employees}
               manufacturers={manufacturers}
               stepErrors={stepErrors}
               disabled={isPending}

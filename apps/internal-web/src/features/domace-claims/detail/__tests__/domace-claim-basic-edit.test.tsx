@@ -2,6 +2,7 @@ import {
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
+  employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   type DomaceClaimDetail,
@@ -86,6 +87,7 @@ function renderSection(canEdit: boolean): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>

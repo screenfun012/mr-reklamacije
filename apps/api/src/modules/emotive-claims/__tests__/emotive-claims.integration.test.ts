@@ -674,6 +674,34 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('when assigned employee is set', () => {
+    it('persists the assigned worker on create, resolves the name, and clears it on update', async () => {
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ employeeId, mrNumber: `EMP-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.employeeId).toBe(employeeId)
+      expect(created.employeeName).toBeTruthy()
+
+      const cleared = await container.emotiveClaimsService.update(
+        created.id,
+        { employeeId: null },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(cleared.employeeId).toBeNull()
+      expect(cleared.employeeName).toBeNull()
+    })
+  })
+
   describe('engine type and manufacturer pairing', () => {
     it('rejects create when engine type belongs to a different manufacturer', async () => {
       const bmwManufacturerId = await createEngineManufacturer(`BMW-PAIR-${Date.now()}`, 'BMW')

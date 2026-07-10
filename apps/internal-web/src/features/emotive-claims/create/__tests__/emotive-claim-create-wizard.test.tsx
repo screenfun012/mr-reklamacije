@@ -24,6 +24,10 @@ import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  EMOTIVE_CLAIM_FORM_DEFAULTS,
+  formValuesToCreateInput,
+} from '../emotive-claim-create-schemas.js'
 import { EmotiveClaimCreateWizard } from '../emotive-claim-create-wizard.js'
 
 const CUSTOMER_ID = '55555555-5555-4555-8555-555555555555'
@@ -170,5 +174,21 @@ describe('EmotiveClaimCreateWizard', () => {
     // Saving happens only on this explicit confirm.
     await user.click(saveButton)
     await waitFor(() => expect(postedToEmotive(fetchSpy)).toBe(true))
+  })
+})
+
+describe('formValuesToCreateInput', () => {
+  it('maps the assigned employee id', () => {
+    const employeeId = '88888888-8888-4888-8888-888888888888'
+    const input = formValuesToCreateInput({
+      ...EMOTIVE_CLAIM_FORM_DEFAULTS,
+      mrNumber: 'MR-1/26',
+      customerId: '55555555-5555-4555-8555-555555555555',
+      engineTypeId: '66666666-6666-4666-8666-666666666666',
+      dateOfClaim: '2026-05-01',
+      employeeId,
+    })
+
+    expect(input.employeeId).toBe(employeeId)
   })
 })

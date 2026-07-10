@@ -197,4 +197,15 @@ describe('formValuesToCreateInput', () => {
 
     expect(input.totalAmount).toBeUndefined()
   })
+
+  it('maps the assigned employee id', () => {
+    const employeeId = '55555555-5555-4555-8555-555555555555'
+    const input = formValuesToCreateInput({
+      ...DOMACE_CLAIM_FORM_DEFAULTS,
+      customerName: 'Kupac',
+      employeeId,
+    })
+
+    expect(input.employeeId).toBe(employeeId)
+  })
 })

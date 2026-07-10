@@ -47,6 +47,7 @@ export const emotiveClaimStepBasicSchema = z.object({
   dateOfFinish: optionalDateField,
   dateOfClaim: requiredDateField,
   warrantyReport: z.string().trim().max(8000).optional(),
+  employeeId: z.string().trim().optional(),
 })
 
 export type EmotiveClaimFormValues = {
@@ -59,6 +60,7 @@ export type EmotiveClaimFormValues = {
   dateOfFinish: string
   dateOfClaim: string
   warrantyReport: string
+  employeeId: string
   faults: EmotiveClaimFaultDraft[]
 }
 
@@ -72,6 +74,7 @@ export const EMOTIVE_CLAIM_FORM_DEFAULTS: EmotiveClaimFormValues = {
   dateOfFinish: '',
   dateOfClaim: '',
   warrantyReport: '',
+  employeeId: '',
   faults: [],
 }
 
@@ -86,6 +89,7 @@ export function formValuesToCreateInput(values: EmotiveClaimFormValues) {
     dateOfClaim: values.dateOfClaim,
     dateOfFinish: values.dateOfFinish.trim() === '' ? undefined : values.dateOfFinish,
     warrantyReport: values.warrantyReport.trim() === '' ? undefined : values.warrantyReport,
+    employeeId: values.employeeId.trim() === '' ? undefined : values.employeeId,
     faults: faultDraftsToInput(values.faults),
   })
 }

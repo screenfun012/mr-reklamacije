@@ -320,6 +320,7 @@
   "claims_detail_inspection_report_empty": "Još nema inspection report-a.",
   "claims_detail_inspection_report_hint": "EN — vidljivo klijentu na portalu.",
   "claims_detail_section_inspection_report": "Inspection report",
+  "claims_field_assigned_worker": "Zaduženi radnik",
   "claims_filter_clear": "Obriši filtere",
   "claims_filter_kind": "Vrsta",
   "claims_filter_kind_all": "Sve",
