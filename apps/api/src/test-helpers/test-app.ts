@@ -57,6 +57,8 @@ export function createTestEnv(databaseUrl: string): Env {
     OPENAI_MODEL: 'gpt-4o-mini',
     OPENAI_MAX_TOKENS_PER_REQUEST: 2000,
     UPLOAD_DIR: path.join(process.cwd(), '.tmp', 'test-uploads'),
+    S3_REGION: 'us-east-1',
+    S3_FORCE_PATH_STYLE: true,
     CLAIM_REPORT_PDF_ENABLED: true,
   }
 }

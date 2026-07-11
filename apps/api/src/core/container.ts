@@ -47,7 +47,8 @@ import { ExcelRepository, ExcelService } from '../modules/excel/index.js'
 import { InProcessEventBus } from '../modules/events/index.js'
 import { createBetterAuthUserPassword } from '../infrastructure/auth/better-auth-user-password.js'
 import { createBetterAuthUserSessions } from '../infrastructure/auth/better-auth-user-sessions.js'
-import { LocalVolumeStorageService } from '../infrastructure/storage/local-volume-storage.js'
+import { createStorageService } from '../infrastructure/storage/create-storage-service.js'
+import type { StorageService } from '../infrastructure/storage/storage.interface.js'
 
 /**
  * Application DI container. All stateful services are constructed here once
@@ -102,7 +103,7 @@ export interface Container {
   claimReportsService: ClaimReportsService
   excelRepository: ExcelRepository
   excelService: ExcelService
-  storageService: LocalVolumeStorageService
+  storageService: StorageService
 }
 
 export function createContainer(env: Env, logger: Logger): Container {
@@ -223,7 +224,7 @@ export function buildContainer(
   const statisticsRepository = new StatisticsRepository(db)
   const statisticsService = new StatisticsService(statisticsRepository)
 
-  const storageService = new LocalVolumeStorageService(env.UPLOAD_DIR)
+  const storageService = createStorageService(env)
   const attachmentsRepository = new AttachmentsRepository(db)
   const claimContextService = new ClaimContextService(
     emotiveClaimsRepository,

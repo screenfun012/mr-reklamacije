@@ -75,6 +75,20 @@ const EnvSchema = z.object({
   // File uploads (Railway volume in production; local path in dev)
   UPLOAD_DIR: z.string().min(1).default('./data/uploads'),
 
+  // Object storage (MinIO/S3) for attachments. Set all four (endpoint, bucket, keys)
+  // together to store attachments in S3 instead of UPLOAD_DIR — this removes the Railway
+  // volume so the service deploys without downtime. Set none => local filesystem (dev/CI);
+  // a partial set fails fast at boot (see create-storage-service).
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_BUCKET: z.string().min(1).optional(),
+  S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+
   // Claim report PDF export (Playwright). When false, API returns 503 and UI falls back to print.
   CLAIM_REPORT_PDF_ENABLED: z
     .enum(['true', 'false'])
