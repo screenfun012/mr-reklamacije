@@ -1,8 +1,21 @@
 # 17 — Object storage migration (attachments → MinIO on Railway)
 
-> Status: DESIGN + RUNBOOK (approved 2026-07-11). Goal: remove the `/data` volume from the
-> `api` service so Railway can deploy it **without downtime** (and unlock replicas/scaling),
-> while keeping everything on Railway. Attachments move to a MinIO (S3-compatible) service.
+> Status: **DONE — cutover completed & verified 2026-07-11.** Goal (achieved): remove the `/data`
+> volume from the `api` service so Railway deploys **without downtime** (and unlock replicas/scaling),
+> while keeping everything on Railway. Attachments now live in a MinIO (S3-compatible) service.
+>
+> **How the cutover actually ran (differs from the §6 plan below, both fine):**
+> - MinIO deployed as a Railway service group: **Console** + **Bucket** (Bucket = S3 server, own volume).
+> - api S3 vars set as Railway **reference variables** (no raw secret handled):
+>   `S3_ENDPOINT=${{Bucket.MINIO_PRIVATE_ENDPOINT}}` (=`http://bucket.railway.internal:9000`),
+>   `S3_BUCKET=attachments`, `S3_ACCESS_KEY_ID=${{Bucket.MINIO_ROOT_USER}}`,
+>   `S3_SECRET_ACCESS_KEY=${{Bucket.MINIO_ROOT_PASSWORD}}`.
+> - Bucket created + migration run via Railway's **in-browser Console (SSH)** on the api service —
+>   no Railway CLI / `railway login` required. Only **7 files / ~1.8 MB** actually existed (the
+>   "793 MB" volume metric was an artifact; `du -sh /data` = 1.8 MB). Migrated 7/7, verified
+>   (re-run dry = "to copy: 0, skipped 7") + GetObject roundtrip + browser render.
+> - `/data` volume then **deleted**; api rebuilt without it; attachments still render → fully on MinIO.
+> - Any future environment (e.g. staging) needs its own `attachments` bucket + the S3_* refs.
 
 ## 1. Why
 
