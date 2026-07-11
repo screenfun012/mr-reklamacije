@@ -302,6 +302,44 @@ describe('Attachments HTTP integration', () => {
     expect(rawResponse.headers.get('content-type')).toBe('image/jpeg')
   })
 
+  it('caches inline documents (not just images) with an ETag and revalidates via 304', async () => {
+    const app = createAttachmentsTestApp(container, ATTACHMENT_OPERATOR)
+    const claimId = await createDomaceClaim(container)
+
+    const formData = new FormData()
+    formData.set('claimKind', ClaimKind.Domace)
+    formData.set('claimId', claimId)
+    formData.set('visibility', AttachmentVisibility.Internal)
+    formData.set(
+      'files',
+      new File([Buffer.from('%PDF-1.4\n% cache regression')], 'report.pdf', {
+        type: 'application/pdf',
+      }),
+    )
+
+    const uploadResponse = await app.request('/api/attachments/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    expect(uploadResponse.status).toBe(201)
+    const uploadBody = (await uploadResponse.json()) as { items: Array<{ id: string }> }
+    const attachmentId = uploadBody.items[0]?.id
+    expect(attachmentId).toBeDefined()
+
+    const downloadResponse = await app.request(`/api/attachments/${attachmentId}/download`)
+    expect(downloadResponse.status).toBe(200)
+    expect(downloadResponse.headers.get('content-type')).toBe('application/pdf')
+    expect(downloadResponse.headers.get('cache-control')).toBe('private, max-age=86400')
+    const etag = downloadResponse.headers.get('etag')
+    expect(etag).not.toBeNull()
+
+    const revalidateResponse = await app.request(`/api/attachments/${attachmentId}/download`, {
+      headers: { 'if-none-match': etag as string },
+    })
+    expect(revalidateResponse.status).toBe(304)
+    expect(revalidateResponse.headers.get('etag')).toBe(etag)
+  })
+
   it('returns 403 when listing attachments without view permission', async () => {
     const app = createAttachmentsTestApp(container, testUser(['domace_claims.view']))
     const claimId = await createDomaceClaim(container)

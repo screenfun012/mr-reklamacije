@@ -122,9 +122,10 @@ export function createAttachmentsController(container: Container): {
       const variant = c.req.query('variant') === 'thumbnail' ? 'thumbnail' : 'original'
       const meta = await container.attachmentsService.getDownloadMeta(id, toActor(user), variant)
 
-      // Inline images are immutable (content-addressed) — let the browser
-      // cache them and revalidate via ETag; documents stay no-store.
-      const cacheable = disposition === 'inline' && meta.mimeType.startsWith('image/')
+      // Uploaded attachments are immutable (content-addressed by sha256), so any inline
+      // view (images, video, documents) may be browser-cached and revalidated via ETag.
+      // The "attachment" (save-to-disk) disposition stays no-store.
+      const cacheable = disposition === 'inline'
       const cacheControl = cacheable ? 'private, max-age=86400' : 'private, no-store'
 
       if (cacheable && meta.etag !== null && c.req.header('if-none-match') === meta.etag) {
