@@ -10,6 +10,13 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
+# Pre-install the Chromium browser + OS deps in an early, cacheable layer (pinned to
+# apps/api's Playwright version) so app-source changes don't re-download it (~170 MB) on
+# every deploy. The pnpm-driven `playwright install` below then finds it already present
+# (fast no-op); if this pin ever drifts from the lockfile it self-heals there. Keep this
+# version in sync with apps/api "playwright" when bumping it.
+RUN npx --yes playwright@1.61.0 install --with-deps chromium
+
 # Dependency layer keyed on the lockfile only — source changes don't re-download packages.
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm fetch
