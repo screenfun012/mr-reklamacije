@@ -7,6 +7,7 @@ import {
   SUPPORT_EMAIL_BY_KIND,
   type ClientSubmissionCreateInput,
   type EmotiveClaimCreateInput,
+  type EmotiveClaimDetail,
 } from '@mr/shared'
 import { and, eq, isNull } from 'drizzle-orm'
 
@@ -16,15 +17,18 @@ import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { EmotiveClaimsConversionPort } from '../../core/ports/emotive-claims-conversion-port.js'
 import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
-import type { EmotiveClaimsService } from '../emotive-claims/index.js'
-import type { EmotiveClaimDetail } from '../emotive-claims/emotive-claims.validators.js'
 import {
   renderSubmissionNotificationHtml,
   submissionNotificationSubject,
 } from './client-submissions.email.js'
 import type { ClientSubmissionsRepository } from './client-submissions.repository.js'
 import { attachments } from './client-submissions.schema.js'
+import type {
+  ClientSubmissionDetail,
+  ClientSubmissionListItem,
+} from './client-submissions.validators.js'
 
 /** Admin-configurable recipient for new-submission notifications (docs/18 §10). */
 const NOTIFY_EMAIL_SETTING_KEY = 'client_submissions.notify_email'
@@ -37,7 +41,7 @@ export class ClientSubmissionsService {
   constructor(
     private readonly db: ApiDatabase,
     private readonly repo: ClientSubmissionsRepository,
-    private readonly emotiveClaims: EmotiveClaimsService,
+    private readonly emotiveClaims: EmotiveClaimsConversionPort,
     private readonly emailPort: EmailPort,
     private readonly events: EventBus,
     private readonly audit: AuditPort,
@@ -46,6 +50,26 @@ export class ClientSubmissionsService {
     /** Internal-web origin used to build the "/pristiglo" link in the notification email. */
     private readonly internalBaseUrl: string,
   ) {}
+
+  /** Pending submissions for the internal Inbox, newest first ({ items, total, page, pageSize }). */
+  async listPending(params: { page: number; pageSize: number }): Promise<{
+    items: ClientSubmissionListItem[]
+    total: number
+    page: number
+    pageSize: number
+  }> {
+    const { items, total } = await this.repo.listPending(params)
+    return { items, total, page: params.page, pageSize: params.pageSize }
+  }
+
+  /** Full detail for one submission; throws NotFoundError (→ 404) when it does not exist. */
+  async getById(id: string): Promise<ClientSubmissionDetail> {
+    const submission = await this.repo.findById(id)
+    if (submission === null) {
+      throw new NotFoundError('Client submission', id)
+    }
+    return submission
+  }
 
   /** A logged-in portal client submits a request for their linked firm. */
   async create(

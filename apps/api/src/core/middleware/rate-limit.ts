@@ -116,3 +116,16 @@ export const activationRateLimiter = createRateLimiter({
   windowMs: 60 * 60_000,
   max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 10,
 })
+
+/** Portal client ticket submissions: 20 per hour per user (docs/18 §5; logged-in only). */
+export const clientSubmissionRateLimiter = createRateLimiter({
+  windowMs: 60 * 60_000,
+  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 1000 : 20,
+  keyOf: (c) => {
+    const user = c.get('user')
+    if (user === null) {
+      return 'client-submission:anonymous'
+    }
+    return `client-submission:${user.id}`
+  },
+})

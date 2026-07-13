@@ -33,6 +33,10 @@ import {
 } from '../modules/engine-manufacturers/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
 import {
+  ClientSubmissionsRepository,
+  ClientSubmissionsService,
+} from '../modules/client-submissions/index.js'
+import {
   ExternalPartiesRepository,
   ExternalPartiesService,
 } from '../modules/external-parties/index.js'
@@ -49,6 +53,7 @@ import { createBetterAuthUserPassword } from '../infrastructure/auth/better-auth
 import { createBetterAuthUserSessions } from '../infrastructure/auth/better-auth-user-sessions.js'
 import { createStorageService } from '../infrastructure/storage/create-storage-service.js'
 import type { StorageService } from '../infrastructure/storage/storage.interface.js'
+import { DbAppSettingsReader } from './settings/app-settings.reader.js'
 
 /**
  * Application DI container. All stateful services are constructed here once
@@ -87,6 +92,8 @@ export interface Container {
   eventBus: EventBus
   emotiveClaimsRepository: EmotiveClaimsRepository
   emotiveClaimsService: EmotiveClaimsService
+  clientSubmissionsRepository: ClientSubmissionsRepository
+  clientSubmissionsService: ClientSubmissionsService
   domaceClaimsRepository: DomaceClaimsRepository
   domaceClaimsService: DomaceClaimsService
   claimsRepository: ClaimsRepository
@@ -203,6 +210,21 @@ export function buildContainer(
     eventBus,
   )
 
+  const clientSubmissionsRepository = new ClientSubmissionsRepository(db)
+  // Internal-web origin for the "/pristiglo" link in notification emails (mirrors portalBaseUrl).
+  const internalBaseUrl = env.SELF_SIGNUP_ORIGINS[0] ?? 'http://localhost:3002'
+  const clientSubmissionsService = new ClientSubmissionsService(
+    db,
+    clientSubmissionsRepository,
+    emotiveClaimsService,
+    emailPort,
+    eventBus,
+    auditService,
+    new DbAppSettingsReader(db),
+    logger,
+    internalBaseUrl,
+  )
+
   const domaceFaultsRepository = new FaultsRepository(schema.domaceClaimFaults)
   const domaceClaimsRepository = new DomaceClaimsRepository(
     db,
@@ -288,6 +310,8 @@ export function buildContainer(
     eventBus,
     emotiveClaimsRepository,
     emotiveClaimsService,
+    clientSubmissionsRepository,
+    clientSubmissionsService,
     domaceClaimsRepository,
     domaceClaimsService,
     claimsRepository,

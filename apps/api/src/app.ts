@@ -28,6 +28,7 @@ import { registerDashboardRoutes } from './modules/dashboard/index.js'
 import { registerDomaceClaimsRoutes } from './modules/domace-claims/index.js'
 import { registerEmployeesRoutes } from './modules/employees/index.js'
 import { registerEmotiveClaimsRoutes } from './modules/emotive-claims/index.js'
+import { registerClientSubmissionsRoutes } from './modules/client-submissions/index.js'
 import { registerEngineTypesRoutes } from './modules/engine-types/index.js'
 import { registerEngineManufacturersRoutes } from './modules/engine-manufacturers/index.js'
 import { registerEventsRoutes } from './modules/events/index.js'
@@ -114,6 +115,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
+  registerClientSubmissionsRoutes(app, container)
   registerDomaceClaimsRoutes(app, container)
   registerMrRegistryRoutes(app, container)
   registerClaimsRoutes(app, container)
