@@ -1,8 +1,9 @@
 # docs/18 — Client Portal Submissions → Internal Inbox → Claim (ticket system)
 
-> **Status: PREDLOG (proposed).** Brainstormed and agreed with Nikola on 2026-07-13.
-> Implementation NOT started. This is the approved design direction; the implementation
-> plan follows separately. Domain terms kept verbatim (EMOTIVE, DOMACE, MR NUMBER).
+> **Status: DONE (implemented 2026-07-14)** on branch `feat/portal-inbox-tickets` — full gate green
+> (api integration 430 tests). NOT yet merged / pushed / deployed. Brainstormed and agreed with Nikola
+> on 2026-07-13; plan in `docs/superpowers/plans/2026-07-13-portal-inbox-tickets.md`. Domain terms kept
+> verbatim (EMOTIVE, DOMACE, MR NUMBER).
 
 ---
 
