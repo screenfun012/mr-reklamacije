@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { MessageSquarePlus } from 'lucide-react'
 
 import { authClient } from '~/lib/auth-client'
 import { companyInitials } from '~/lib/portal-format'
@@ -34,6 +35,14 @@ export function PortalHeader({
           <PortalLogo className="h-[34px] w-[126px]" />
         </Link>
         <div className="flex items-center gap-3">
+          <Link
+            to="/report"
+            aria-label={m.portal_submit_nav()}
+            className="flex items-center gap-2 rounded-[9px] border border-mrp-border2 bg-mrp-raised px-3 py-2 text-[12.5px] font-semibold text-mrp-text transition-colors hover:border-mrp-red hover:text-mrp-redh"
+          >
+            <MessageSquarePlus className="size-4 flex-none" />
+            <span className="hidden sm:inline">{m.portal_submit_nav()}</span>
+          </Link>
           <LangThemeControls compact />
           <span className="mx-1 hidden h-[26px] w-px bg-mrp-border sm:block" />
           <span className="grid size-9 flex-none place-items-center rounded-full bg-mrp-red text-[13px] font-bold text-white">

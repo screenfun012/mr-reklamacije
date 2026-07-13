@@ -1,5 +1,5 @@
 import { cn } from '@mr/ui'
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
 
 /** Mono micro-label above a form input. */
 export function PortalLabel({
@@ -38,6 +38,22 @@ export function PortalInput({ className, ...props }: InputHTMLAttributes<HTMLInp
       {...props}
       className={cn(
         'mrp-input h-12 w-full rounded-[9px] border border-mrp-border2 bg-mrp-inbg px-4 font-sans text-[15.5px] text-mrp-text outline-none transition-[border-color,box-shadow] duration-200',
+        className,
+      )}
+    />
+  )
+}
+
+/** Multiline sibling of PortalInput — same --inbg surface + red focus ring (.mrp-input). */
+export function PortalTextarea({
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={cn(
+        'mrp-input min-h-[136px] w-full resize-y rounded-[9px] border border-mrp-border2 bg-mrp-inbg px-4 py-3 font-sans text-[15.5px] leading-[1.55] text-mrp-text outline-none transition-[border-color,box-shadow] duration-200',
         className,
       )}
     />

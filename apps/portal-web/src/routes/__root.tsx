@@ -22,9 +22,10 @@ import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/reac
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
 
+import { Toaster, useLocale } from '@mr/ui'
+
 import { authClient } from '~/lib/auth-client'
 import { loadServerSession } from '~/lib/auth-guard'
-import { useLocale } from '@mr/ui'
 import { THEME_BOOTSTRAP_SCRIPT, usePortalTheme } from '~/lib/theme'
 import type { PortalRouterContext } from '~/router-context'
 import globalsCss from '~/styles/globals.css?url'
@@ -86,6 +87,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <div key={locale}>
           <AuthProvider authClient={authClient}>{children}</AuthProvider>
         </div>
+        <Toaster position="bottom-center" theme={theme} />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         <Scripts />
       </body>
