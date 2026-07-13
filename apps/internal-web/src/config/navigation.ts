@@ -27,6 +27,7 @@ export const internalNavItems: NavItem[] = [
     label: m.nav_pristiglo,
     to: '/pristiglo',
     icon: Inbox,
+    permission: 'client_submissions.manage',
   },
   {
     key: 'reklamacije',

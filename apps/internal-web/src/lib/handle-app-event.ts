@@ -1,6 +1,7 @@
 import {
   ClaimEventType,
   ClaimKind,
+  clientSubmissionKeys,
   ClientSubmissionEventType,
   invalidateInternalClaimQueries,
   queryKeyPrefixesForResourceChanged,
@@ -8,6 +9,7 @@ import {
   ResourceEventType,
   type AppEvent,
   type ClaimAppEvent,
+  type ClientSubmissionAppEvent,
   type ResourceChangedAppEvent,
 } from '@mr/shared'
 import type { QueryClient } from '@tanstack/react-query'
@@ -49,6 +51,15 @@ function isClaimAppEvent(value: unknown): value is ClaimAppEvent {
   )
 }
 
+function isClientSubmissionAppEvent(value: unknown): value is ClientSubmissionAppEvent {
+  return (
+    isRecord(value) &&
+    value['type'] === ClientSubmissionEventType.Changed &&
+    isRecord(value['payload']) &&
+    typeof value['payload']['id'] === 'string'
+  )
+}
+
 /**
  * Parses SSE `data` JSON into a typed AppEvent. Returns null for unknown or malformed payloads.
  */
@@ -60,7 +71,11 @@ export function parseAppEventFromSseData(data: string): AppEvent | null {
     return null
   }
 
-  if (isResourceChangedAppEvent(parsed) || isClaimAppEvent(parsed)) {
+  if (
+    isResourceChangedAppEvent(parsed) ||
+    isClaimAppEvent(parsed) ||
+    isClientSubmissionAppEvent(parsed)
+  ) {
     return parsed
   }
 
@@ -76,9 +91,10 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
     return
   }
 
-  // Client-submission (Inbox) signals are wired to the Inbox list + badge in the
-  // internal Inbox unit; ignore here so claim handling below stays type-safe.
+  // A client submission was created/converted/rejected by another user — refresh the
+  // Inbox pending list (every page) and, through the same prefix, the nav badge count.
   if (event.type === ClientSubmissionEventType.Changed) {
+    void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.lists() })
     return
   }
 

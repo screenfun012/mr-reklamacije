@@ -40,3 +40,43 @@ export const ClientSubmissionDetailSchema = ClientSubmissionListItemSchema.exten
 })
 
 export type ClientSubmissionDetail = z.infer<typeof ClientSubmissionDetailSchema>
+
+/** Internal Inbox list response: `{ items, total, page, pageSize }` (docs/07 list shape). */
+export const ClientSubmissionListResponseSchema = z.object({
+  items: z.array(ClientSubmissionListItemSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+})
+
+export type ClientSubmissionListResponse = z.infer<typeof ClientSubmissionListResponseSchema>
+
+/**
+ * A submission attachment as returned by `GET /client-submissions/:id/attachments`.
+ * Distinct from the claim-scoped `AttachmentListItem` — a submission attachment has no
+ * claim id/kind (see the API's `SubmissionAttachmentItem`).
+ */
+export const ClientSubmissionAttachmentItemSchema = z.object({
+  id: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSizeBytes: z.number().int().nonnegative(),
+  width: z.number().int().positive().nullable(),
+  height: z.number().int().positive().nullable(),
+  durationSeconds: z.number().int().positive().nullable(),
+  thumbnailPath: z.string().nullable(),
+  caption: z.string().nullable(),
+  uploadedBy: z.string().uuid().nullable(),
+  uploadedAt: z.string(),
+  contentSha256: z.string(),
+})
+
+export type ClientSubmissionAttachmentItem = z.infer<typeof ClientSubmissionAttachmentItemSchema>
+
+export const ClientSubmissionAttachmentListResponseSchema = z.object({
+  items: z.array(ClientSubmissionAttachmentItemSchema),
+})
+
+export type ClientSubmissionAttachmentListResponse = z.infer<
+  typeof ClientSubmissionAttachmentListResponseSchema
+>

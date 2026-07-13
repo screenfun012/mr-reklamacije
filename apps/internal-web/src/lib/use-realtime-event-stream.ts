@@ -1,4 +1,4 @@
-import { ClaimEventType, ResourceEventType } from '@mr/shared'
+import { ClaimEventType, ClientSubmissionEventType, ResourceEventType } from '@mr/shared'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
@@ -10,12 +10,14 @@ const INITIAL_BACKOFF_MS = 1_000
 const MAX_BACKOFF_MS = 30_000
 
 // Every named SSE event the internal app reacts to: catalog sync + claim
-// lifecycle (so open lists/detail/stats live-update across users).
+// lifecycle (so open lists/detail/stats live-update across users) + client
+// submissions (so the Pristiglo Inbox list & nav badge stay live).
 const HANDLED_EVENT_TYPES = [
   ResourceEventType.Changed,
   ClaimEventType.Created,
   ClaimEventType.Updated,
   ClaimEventType.Deleted,
+  ClientSubmissionEventType.Changed,
 ] as const
 
 /**

@@ -32,3 +32,7 @@ export function internalRequireDomaceClaimsCreate() {
 export function internalRequireDomaceClaimsView() {
   return requirePermissions(authClient, DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
 }
+
+export function internalRequireClientSubmissionsManage() {
+  return requirePermissions(authClient, ['client_submissions.manage'], loadServerSession)
+}

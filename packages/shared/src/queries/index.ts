@@ -1,6 +1,18 @@
 export { auditLogListOptions, type AuditLogFilters } from './audit-log.js'
 export { createAppQueryClient } from './create-app-query-client.js'
-export { createClientSubmission, uploadClientSubmissionAttachment } from './client-submissions.js'
+export {
+  buildClientSubmissionAttachmentDownloadUrl,
+  buildClientSubmissionAttachmentThumbnailUrl,
+  CLIENT_SUBMISSIONS_PAGE_SIZE,
+  clientSubmissionAttachmentsOptions,
+  clientSubmissionDetailOptions,
+  clientSubmissionKeys,
+  convertClientSubmission,
+  createClientSubmission,
+  pendingClientSubmissionsListOptions,
+  rejectClientSubmission,
+  uploadClientSubmissionAttachment,
+} from './client-submissions.js'
 export { registerClient } from './registration.js'
 export { attachmentKeys } from './attachment-keys.js'
 export {

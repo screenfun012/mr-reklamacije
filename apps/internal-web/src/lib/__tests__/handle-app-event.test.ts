@@ -1,4 +1,10 @@
-import { ClaimEventType, ClaimKind, ResourceChangedKey, ResourceEventType } from '@mr/shared'
+import {
+  ClaimEventType,
+  ClaimKind,
+  ClientSubmissionEventType,
+  ResourceChangedKey,
+  ResourceEventType,
+} from '@mr/shared'
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -72,6 +78,28 @@ describe('parseAppEventFromSseData', () => {
     ).toBeNull()
   })
 
+  it('parses client-submission events', () => {
+    const event = parseAppEventFromSseData(
+      JSON.stringify({
+        type: ClientSubmissionEventType.Changed,
+        payload: { id: 'sub-1' },
+      }),
+    )
+
+    expect(event).toEqual({
+      type: ClientSubmissionEventType.Changed,
+      payload: { id: 'sub-1' },
+    })
+  })
+
+  it('returns null for a client-submission event with a missing id', () => {
+    expect(
+      parseAppEventFromSseData(
+        JSON.stringify({ type: ClientSubmissionEventType.Changed, payload: {} }),
+      ),
+    ).toBeNull()
+  })
+
   it('returns null for malformed JSON', () => {
     expect(parseAppEventFromSseData('not-json')).toBeNull()
   })
@@ -128,5 +156,17 @@ describe('handleAppEvent', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['emotive-claims', 'detail', 'claim-9'],
     })
+  })
+
+  it('invalidates the Inbox list (list + badge) on a client-submission event', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    handleAppEvent(queryClient, {
+      type: ClientSubmissionEventType.Changed,
+      payload: { id: 'sub-1' },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['client-submissions', 'list'] })
   })
 })
