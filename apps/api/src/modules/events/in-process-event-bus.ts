@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 
 import {
   ClaimEventType,
+  ClientSubmissionEventType,
   ResourceChangedKey,
   ResourceEventType,
   SYSTEM_ROLE_ADMIN,
@@ -10,6 +11,7 @@ import {
   type AppEvent,
   type ClaimAppEvent,
   type ClaimEventPayload,
+  type ClientSubmissionAppEvent,
   type ResourceChangedAppEvent,
 } from '@mr/shared'
 
@@ -67,6 +69,18 @@ export class InProcessEventBus implements EventBus {
     const event: ResourceChangedAppEvent = {
       type: ResourceEventType.Changed,
       payload: { resource },
+    }
+    for (const role of RESOURCE_SYNC_ROLE_CHANNELS) {
+      this.publishToRole(role, event)
+    }
+  }
+
+  publishClientSubmissionChanged(submissionId: string): void {
+    // The Inbox is internal-only; fan out to the same internal role channels as
+    // catalog sync so open Inbox lists + the badge invalidate (signal-only).
+    const event: ClientSubmissionAppEvent = {
+      type: ClientSubmissionEventType.Changed,
+      payload: { id: submissionId },
     }
     for (const role of RESOURCE_SYNC_ROLE_CHANNELS) {
       this.publishToRole(role, event)

@@ -108,6 +108,7 @@ export {
 } from './utils/resource-catalog-client.js'
 export * from './constants/claim-report.js'
 export * from './constants/claim-events.js'
+export * from './constants/client-submission-events.js'
 export * from './constants/resource-events.js'
 export * from './constants/resource-query-map.js'
 export * from './constants/app-events.js'

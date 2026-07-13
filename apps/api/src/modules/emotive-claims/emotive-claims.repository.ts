@@ -3,7 +3,7 @@ import { ClaimKind } from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
-import type { ApiDatabase } from '../../core/database.js'
+import type { ApiClaimTxExecutor, ApiDatabase } from '../../core/database.js'
 import {
   initialOutcomeResolvedAt,
   outcomeResolvedAtForTransition,
@@ -263,49 +263,9 @@ export class EmotiveClaimsRepository {
     actorId: string,
     customerId: string | null,
   ): Promise<EmotiveClaimDetail> {
-    const claimYear = claimYearFromDate(input.dateOfClaim)
-
-    const createdId = await this.db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(emotiveClaims)
-        .values({
-          warrantyReport: input.warrantyReport ?? null,
-          engineTypeId: input.engineTypeId,
-          manufacturerId: input.manufacturerId ?? null,
-          engineCode: input.engineCode ?? null,
-          dateOfClaim: input.dateOfClaim,
-          mrNumber: input.mrNumber,
-          dateOfFinish: input.dateOfFinish ?? null,
-          employeeId: input.employeeId ?? null,
-          sourceId: input.sourceId ?? null,
-          outcome: input.outcome,
-          outcomeResolvedAt: initialOutcomeResolvedAt(input.outcome),
-          claimYear,
-          customerId,
-          claimNumber: input.claimNumber ?? null,
-          internalNotes: input.internalNotes ?? null,
-          inspectionReport: input.inspectionReport ?? null,
-          createdBy: actorId,
-          updatedBy: actorId,
-        })
-        .returning({ id: emotiveClaims.id })
-
-      const claimId = created?.id
-      if (claimId === undefined) {
-        throw new InternalError('Failed to insert emotive claim')
-      }
-
-      await this.faultsRepo.insertMany(tx, claimId, input.faults)
-
-      await this.mrRegistry.claimMr(input.mrNumber, ClaimKind.Emotive, claimId, tx)
-
-      await tx
-        .update(engineTypes)
-        .set({ usageCount: sql`${engineTypes.usageCount} + 1` })
-        .where(eq(engineTypes.id, input.engineTypeId))
-
-      return claimId
-    })
+    const createdId = await this.db.transaction((tx) =>
+      this.createWithinTransaction(tx, input, actorId, customerId),
+    )
 
     const detail = await this.findById(createdId, { type: 'all' })
     if (detail === null) {
@@ -313,6 +273,61 @@ export class EmotiveClaimsRepository {
     }
 
     return detail
+  }
+
+  /**
+   * Inserts the emotive claim (+ faults, MR registry entry, engine-type usage) inside a
+   * caller-provided transaction and returns the new claim id. Used both by `create` and by
+   * the client-submissions conversion, which extends the same transaction with the
+   * attachment re-point + submission status update so the whole conversion is atomic.
+   */
+  async createWithinTransaction(
+    tx: ApiClaimTxExecutor,
+    input: EmotiveClaimCreateInput,
+    actorId: string,
+    customerId: string | null,
+  ): Promise<string> {
+    const claimYear = claimYearFromDate(input.dateOfClaim)
+
+    const [created] = await tx
+      .insert(emotiveClaims)
+      .values({
+        warrantyReport: input.warrantyReport ?? null,
+        engineTypeId: input.engineTypeId,
+        manufacturerId: input.manufacturerId ?? null,
+        engineCode: input.engineCode ?? null,
+        dateOfClaim: input.dateOfClaim,
+        mrNumber: input.mrNumber,
+        dateOfFinish: input.dateOfFinish ?? null,
+        employeeId: input.employeeId ?? null,
+        sourceId: input.sourceId ?? null,
+        outcome: input.outcome,
+        outcomeResolvedAt: initialOutcomeResolvedAt(input.outcome),
+        claimYear,
+        customerId,
+        claimNumber: input.claimNumber ?? null,
+        internalNotes: input.internalNotes ?? null,
+        inspectionReport: input.inspectionReport ?? null,
+        createdBy: actorId,
+        updatedBy: actorId,
+      })
+      .returning({ id: emotiveClaims.id })
+
+    const claimId = created?.id
+    if (claimId === undefined) {
+      throw new InternalError('Failed to insert emotive claim')
+    }
+
+    await this.faultsRepo.insertMany(tx, claimId, input.faults)
+
+    await this.mrRegistry.claimMr(input.mrNumber, ClaimKind.Emotive, claimId, tx)
+
+    await tx
+      .update(engineTypes)
+      .set({ usageCount: sql`${engineTypes.usageCount} + 1` })
+      .where(eq(engineTypes.id, input.engineTypeId))
+
+    return claimId
   }
 
   async list(

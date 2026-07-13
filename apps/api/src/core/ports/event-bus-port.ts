@@ -19,6 +19,12 @@ export interface EventBus {
   publishResourceChanged(resource: ResourceChangedKey): void
 
   /**
+   * Signal-only notification that a client-submission changed (created/converted/rejected);
+   * fans out to internal role channels so the Inbox list + badge invalidate (docs/18).
+   */
+  publishClientSubmissionChanged(submissionId: string): void
+
+  /**
    * Registers an SSE listener for direct user events, role-scoped broadcasts
    * and — for portal clients — the channels of their linked customers.
    * Returns unsubscribe; must be called on disconnect to avoid leaks.

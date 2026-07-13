@@ -1,9 +1,14 @@
-import { ClientSubmissionStatus } from '@mr/shared'
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { ClientSubmissionStatus, type CustomerKind } from '@mr/shared'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { InternalError } from '../../core/errors/domain-errors.js'
-import { attachments, clientSubmissions, customers } from './client-submissions.schema.js'
+import {
+  attachments,
+  clientSubmissions,
+  customers,
+  customerUsers,
+} from './client-submissions.schema.js'
 import type {
   ClientSubmissionDetail,
   ClientSubmissionListItem,
@@ -65,8 +70,46 @@ const LIST_COLUMNS = {
   createdAt: clientSubmissions.createdAt,
 } as const
 
+/** A customer the caller resolution needs (id + display name). */
+export interface LinkedCustomer {
+  id: string
+  name: string
+}
+
+/** Drizzle write client — `this.db` by default, or a caller-provided transaction. */
+type UpdateExecutor = Pick<ApiDatabase, 'update'>
+
 export class ClientSubmissionsRepository {
   constructor(private readonly db: ApiDatabase) {}
+
+  /**
+   * The single customer a portal user submits on behalf of (the `view_own_customer` row
+   * scope). Deterministic when a user is linked to more than one firm — earliest link first,
+   * then by customer id — though the norm is exactly one. Ignores soft-deleted customers;
+   * returns null when the user is linked to no (live) customer.
+   */
+  async getPrimaryCustomerForUser(userId: string): Promise<LinkedCustomer | null> {
+    const [row] = await this.db
+      .select({ id: customers.id, name: customers.name })
+      .from(customerUsers)
+      .innerJoin(customers, eq(customerUsers.customerId, customers.id))
+      .where(and(eq(customerUsers.userId, userId), isNull(customers.deletedAt)))
+      .orderBy(asc(customerUsers.assignedAt), asc(customerUsers.customerId))
+      .limit(1)
+
+    return row ?? null
+  }
+
+  /** The `kind` of a customer (drives kind-aware conversion), or null if not found. */
+  async getCustomerKind(customerId: string): Promise<CustomerKind | null> {
+    const [row] = await this.db
+      .select({ kind: customers.kind })
+      .from(customers)
+      .where(and(eq(customers.id, customerId), isNull(customers.deletedAt)))
+      .limit(1)
+
+    return row?.kind ?? null
+  }
 
   async create(input: {
     customerId: string
@@ -142,8 +185,9 @@ export class ClientSubmissionsRepository {
     id: string,
     linkedEmotiveClaimId: string,
     handledByUserId: string,
+    executor: UpdateExecutor = this.db,
   ): Promise<void> {
-    await this.db
+    await executor
       .update(clientSubmissions)
       .set({
         status: ClientSubmissionStatus.Converted,

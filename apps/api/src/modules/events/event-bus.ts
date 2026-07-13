@@ -22,6 +22,10 @@ export class NoOpEventBus implements EventBus {
     void _resource
   }
 
+  publishClientSubmissionChanged(_submissionId: string): void {
+    void _submissionId
+  }
+
   subscribeUser(
     _userId: string,
     _roleCodes: readonly string[],

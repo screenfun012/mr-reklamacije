@@ -5,6 +5,7 @@ import {
   type EmotiveClaimFaultInput,
 } from '@mr/shared'
 
+import type { ApiClaimTxExecutor } from '../../core/database.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import {
   assertClaimEditable,
@@ -80,6 +81,28 @@ export class EmotiveClaimsService {
     this.events.publishClaimCreated(emotiveEventPayload(created.id), created.customerId)
 
     return created
+  }
+
+  /**
+   * Creates an emotive claim inside a caller-provided transaction (used by the
+   * client-submissions conversion to stay atomic with the attachment re-point + submission
+   * status update). Validates references exactly like {@link create}; the caller owns audit
+   * and event emission after the transaction commits. Returns the new claim id.
+   */
+  async createWithinTransaction(
+    tx: ApiClaimTxExecutor,
+    input: EmotiveClaimCreateInput,
+    actorUserId: string,
+  ): Promise<string> {
+    await this.validateCreateReferences(input)
+
+    const customerId =
+      input.customerId ??
+      (input.sourceId !== undefined
+        ? await this.repo.getSourceDefaultCustomerId(input.sourceId)
+        : null)
+
+    return this.repo.createWithinTransaction(tx, input, actorUserId, customerId)
   }
 
   async list(

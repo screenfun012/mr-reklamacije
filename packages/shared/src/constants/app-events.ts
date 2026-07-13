@@ -1,4 +1,8 @@
 import { ClaimEventType, type ClaimEventPayload } from './claim-events.js'
+import {
+  ClientSubmissionEventType,
+  type ClientSubmissionEventPayload,
+} from './client-submission-events.js'
 import { ResourceEventType, type ResourceChangedPayload } from './resource-events.js'
 
 /** Server → client SSE payload for claim lifecycle (docs/05-auth-realtime.md). */
@@ -13,8 +17,14 @@ export type ResourceChangedAppEvent = {
   payload: ResourceChangedPayload
 }
 
+/** Server → client SSE payload when a client-submission is created/converted/rejected (docs/18). */
+export type ClientSubmissionAppEvent = {
+  type: typeof ClientSubmissionEventType.Changed
+  payload: ClientSubmissionEventPayload
+}
+
 /**
  * Union of all SSE events the API may push. Extended in later phases
  * (permissions_changed, session_invalidated, …).
  */
-export type AppEvent = ClaimAppEvent | ResourceChangedAppEvent
+export type AppEvent = ClaimAppEvent | ResourceChangedAppEvent | ClientSubmissionAppEvent

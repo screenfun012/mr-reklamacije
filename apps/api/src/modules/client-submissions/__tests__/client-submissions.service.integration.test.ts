@@ -1,0 +1,405 @@
+import { schema } from '@mr/db'
+import {
+  AuditAction,
+  ClaimKind,
+  ClientSubmissionStatus,
+  CustomerKind,
+  EmotiveClaimCreateInputSchema,
+  SUPPORT_EMAIL_BY_KIND,
+  type EmotiveClaimCreateInput,
+} from '@mr/shared'
+import { and, eq, inArray } from 'drizzle-orm'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { Container } from '../../../core/container.js'
+import {
+  ForbiddenError,
+  MrKeyConflictError,
+  NotFoundError,
+} from '../../../core/errors/domain-errors.js'
+import type { HttpActorContext } from '../../../core/http/actor-context.js'
+import { DbAppSettingsReader } from '../../../core/settings/app-settings.reader.js'
+import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import { RecordingEmailPort } from '../../../test-helpers/recording-email-port.js'
+import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
+import { buildTestContainer } from '../../../test-helpers/test-app.js'
+import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
+import { ClientSubmissionsRepository } from '../client-submissions.repository.js'
+import { ClientSubmissionsService } from '../client-submissions.service.js'
+
+const INTERNAL_BASE_URL = 'http://127.0.0.1:3002'
+
+// Submitter/handler for convert + reject (customer comes from the submission, not from
+// customer_users, so the shared TEST_USER_ID is safe here).
+const ACTOR: HttpActorContext = {
+  actorUserId: TEST_USER_ID,
+  actorIp: '203.0.113.7',
+  actorUserAgent: 'vitest-agent',
+}
+
+function actorFor(userId: string): HttpActorContext {
+  return { actorUserId: userId, actorIp: '203.0.113.7', actorUserAgent: 'vitest-agent' }
+}
+
+// The employee who converts a claim needs create + read rights on emotive claims.
+const CONVERTER_ACTOR = {
+  id: TEST_USER_ID,
+  permissions: ['emotive_claims.create', 'emotive_claims.view'] as const,
+}
+const CONVERTER_AUDIT_CONTEXT = { actorUserId: TEST_USER_ID, actorIp: null, actorUserAgent: null }
+
+function uniqueSuffix(): string {
+  return crypto.randomUUID().slice(0, 8)
+}
+
+function buildClaimInput(
+  overrides: Partial<EmotiveClaimCreateInput> = {},
+): EmotiveClaimCreateInput {
+  const { engineTypeId, dateOfClaim, mrNumber, ...rest } = overrides
+  return EmotiveClaimCreateInputSchema.parse({
+    engineTypeId: engineTypeId ?? crypto.randomUUID(),
+    dateOfClaim: dateOfClaim ?? new Date('2026-07-01'),
+    mrNumber: mrNumber ?? `CS-CONV-${uniqueSuffix()}/26`,
+    ...rest,
+  })
+}
+
+describe('ClientSubmissionsService integration', () => {
+  let ctx: TestDbContext
+  let container: Container
+  let repository: ClientSubmissionsRepository
+  let events: RecordingEventBus
+  let email: RecordingEmailPort
+  let service: ClientSubmissionsService
+  // The convert path commits (db.transaction) on the shared single-connection harness, so
+  // its rows are NOT rolled back with the test — track and delete them so the repository
+  // suite's global `listPending` count stays accurate.
+  let submissionCleanup: string[]
+  let attachmentCleanup: string[]
+
+  function makeService(emailPort: RecordingEmailPort): ClientSubmissionsService {
+    return new ClientSubmissionsService(
+      ctx.db,
+      repository,
+      container.emotiveClaimsService,
+      emailPort,
+      events,
+      container.auditService,
+      new DbAppSettingsReader(ctx.db),
+      container.logger,
+      INTERNAL_BASE_URL,
+    )
+  }
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-07-13T10:00:00Z'))
+
+    ctx = await createTestDbContext()
+    events = new RecordingEventBus()
+    email = new RecordingEmailPort()
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, events, email)
+    repository = new ClientSubmissionsRepository(ctx.db)
+    service = makeService(email)
+    submissionCleanup = []
+    attachmentCleanup = []
+
+    await ensureTestUser(ctx.db)
+  })
+
+  afterEach(async () => {
+    if (attachmentCleanup.length > 0) {
+      await ctx.db
+        .delete(schema.attachments)
+        .where(inArray(schema.attachments.id, attachmentCleanup))
+    }
+    if (submissionCleanup.length > 0) {
+      await ctx.db
+        .delete(schema.clientSubmissions)
+        .where(inArray(schema.clientSubmissions.id, submissionCleanup))
+    }
+    await ctx.cleanup()
+    vi.useRealTimers()
+  })
+
+  async function seedUser(): Promise<string> {
+    const id = crypto.randomUUID()
+    await ctx.db
+      .insert(schema.users)
+      .values({ id, email: `cs-${id}@mrengines.rs`, name: 'CS User' })
+    return id
+  }
+
+  async function seedCustomer(
+    name: string,
+    kind: CustomerKind = CustomerKind.EmotivePartner,
+  ): Promise<string> {
+    const [customer] = await ctx.db
+      .insert(schema.customers)
+      .values({ kind, name })
+      .returning({ id: schema.customers.id })
+    return customer!.id
+  }
+
+  async function linkUserToCustomer(customerId: string, userId: string): Promise<void> {
+    await ctx.db
+      .insert(schema.customerUsers)
+      .values({ customerId, userId, assignedBy: TEST_USER_ID })
+  }
+
+  async function seedEngineType(): Promise<string> {
+    const [engineType] = await ctx.db
+      .insert(schema.engineTypes)
+      .values({ code: `CS-ENG-${uniqueSuffix()}` })
+      .returning({ id: schema.engineTypes.id })
+    return engineType!.id
+  }
+
+  async function createSubmission(customerId: string, message: string): Promise<string> {
+    const { id } = await repository.create({
+      customerId,
+      submittedByUserId: TEST_USER_ID,
+      message,
+    })
+    submissionCleanup.push(id)
+    return id
+  }
+
+  async function seedAttachmentOnSubmission(submissionId: string): Promise<string> {
+    const [attachment] = await ctx.db
+      .insert(schema.attachments)
+      .values({
+        clientSubmissionId: submissionId,
+        fileName: 'photo.jpg',
+        storagePath: `client-submissions/${submissionId}/photo.jpg`,
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 2048,
+      })
+      .returning({ id: schema.attachments.id })
+    attachmentCleanup.push(attachment!.id)
+    return attachment!.id
+  }
+
+  async function auditRowsFor(
+    entityType: string,
+    entityId: string,
+  ): Promise<Array<typeof schema.auditLog.$inferSelect>> {
+    return ctx.db
+      .select()
+      .from(schema.auditLog)
+      .where(
+        and(eq(schema.auditLog.entityType, entityType), eq(schema.auditLog.entityId, entityId)),
+      )
+  }
+
+  describe('create', () => {
+    it('resolves the linked customer, writes audit, sends email and emits an event', async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+
+      const { id } = await service.create(actorFor(submitterId), {
+        message: 'Motor lupa nakon ugradnje',
+      })
+
+      const detail = await repository.findById(id)
+      expect(detail).toMatchObject({
+        customerId,
+        message: 'Motor lupa nakon ugradnje',
+        status: ClientSubmissionStatus.Pending,
+      })
+
+      const audits = await auditRowsFor('client_submission', id)
+      expect(audits).toHaveLength(1)
+      expect(audits[0]).toMatchObject({
+        action: AuditAction.Create,
+        actorUserId: submitterId,
+        actorIp: '203.0.113.7',
+        actorUserAgent: 'vitest-agent',
+      })
+
+      expect(email.sent).toHaveLength(1)
+      expect(email.sent[0]!.to).toBe(SUPPORT_EMAIL_BY_KIND[ClaimKind.Emotive])
+      expect(email.sent[0]!.subject).toContain('Nova prijava')
+
+      expect(events.clientSubmissionEvents).toEqual([{ type: 'client_submission_changed', id }])
+    })
+
+    it('uses the configured notify_email setting when present', async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+      await ctx.db.insert(schema.appSettings).values({
+        key: 'client_submissions.notify_email',
+        value: 'ops@firma.rs',
+        valueType: 'string',
+      })
+
+      await service.create(actorFor(submitterId), { message: 'Test recipient override' })
+
+      expect(email.sent[0]!.to).toBe('ops@firma.rs')
+    })
+
+    it('does not fail the submission when the email send throws (best-effort)', async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+      const failingService = makeService(new RecordingEmailPort(true))
+
+      const { id } = await failingService.create(actorFor(submitterId), {
+        message: 'Email will fail',
+      })
+
+      expect(await repository.findById(id)).not.toBeNull()
+      expect(events.clientSubmissionEvents).toEqual([{ type: 'client_submission_changed', id }])
+    })
+
+    it('throws ForbiddenError (no email/event) when the user is linked to no customer', async () => {
+      const unlinkedUserId = await seedUser()
+
+      await expect(
+        service.create(actorFor(unlinkedUserId), { message: 'No firm' }),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+
+      expect(email.sent).toHaveLength(0)
+      expect(events.clientSubmissionEvents).toHaveLength(0)
+    })
+  })
+
+  describe('convert', () => {
+    it('creates an emotive claim, re-points attachments, marks converted and audits', async () => {
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      const engineTypeId = await seedEngineType()
+      const submissionId = await createSubmission(customerId, 'Klijentov razlog reklamacije')
+      const attachmentId = await seedAttachmentOnSubmission(submissionId)
+      const mrNumber = `CS-OK-${uniqueSuffix()}/26`
+
+      const claim = await service.convert(
+        ACTOR,
+        submissionId,
+        buildClaimInput({ engineTypeId, mrNumber }),
+      )
+
+      // Claim is created, warranty report defaults to the client's message, scoped to the firm.
+      expect(claim.customerId).toBe(customerId)
+      expect(claim.warrantyReport).toBe('Klijentov razlog reklamacije')
+      expect(claim.mrNumber).toBe(mrNumber)
+
+      const [attachment] = await ctx.db
+        .select()
+        .from(schema.attachments)
+        .where(eq(schema.attachments.id, attachmentId))
+      expect(attachment).toMatchObject({
+        emotiveClaimId: claim.id,
+        claimKind: ClaimKind.Emotive,
+        clientSubmissionId: null,
+      })
+
+      const submission = await repository.findById(submissionId)
+      expect(submission).toMatchObject({
+        status: ClientSubmissionStatus.Converted,
+        linkedEmotiveClaimId: claim.id,
+      })
+      expect(submission!.handledAt).not.toBeNull()
+
+      const convertAudits = await auditRowsFor('client_submission', submissionId)
+      expect(convertAudits).toHaveLength(1)
+      expect(convertAudits[0]!.action).toBe(AuditAction.Update)
+      expect(
+        (convertAudits[0]!.changes as { after: { linkedEmotiveClaimId: string } }).after,
+      ).toMatchObject({ linkedEmotiveClaimId: claim.id })
+
+      const claimAudits = await auditRowsFor('emotive_claim', claim.id)
+      expect(claimAudits).toHaveLength(1)
+      expect(claimAudits[0]!.action).toBe(AuditAction.Create)
+
+      const created = events.events.filter((event) => event.type === 'created')
+      expect(created).toHaveLength(1)
+      expect(created[0]!.payload).toMatchObject({ kind: ClaimKind.Emotive, id: claim.id })
+      expect(events.clientSubmissionEvents).toContainEqual({
+        type: 'client_submission_changed',
+        id: submissionId,
+      })
+    })
+
+    it('is atomic: a failed claim create leaves the submission pending with its attachment', async () => {
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      const engineTypeId = await seedEngineType()
+      const submissionId = await createSubmission(customerId, 'Za konverziju koja pada')
+      const attachmentId = await seedAttachmentOnSubmission(submissionId)
+      const takenMrNumber = `CS-DUP-${uniqueSuffix()}/26`
+
+      // Occupy the MR number with a committed claim so the conversion's claim create fails
+      // AFTER inserting its own row — proving the whole conversion transaction rolls back.
+      await container.emotiveClaimsService.create(
+        buildClaimInput({ engineTypeId, mrNumber: takenMrNumber }),
+        CONVERTER_ACTOR,
+        CONVERTER_AUDIT_CONTEXT,
+      )
+
+      await expect(
+        service.convert(
+          ACTOR,
+          submissionId,
+          buildClaimInput({ engineTypeId, mrNumber: takenMrNumber }),
+        ),
+      ).rejects.toBeInstanceOf(MrKeyConflictError)
+
+      const submission = await repository.findById(submissionId)
+      expect(submission).toMatchObject({
+        status: ClientSubmissionStatus.Pending,
+        linkedEmotiveClaimId: null,
+      })
+
+      const [attachment] = await ctx.db
+        .select()
+        .from(schema.attachments)
+        .where(eq(schema.attachments.id, attachmentId))
+      expect(attachment).toMatchObject({
+        clientSubmissionId: submissionId,
+        emotiveClaimId: null,
+        claimKind: null,
+      })
+    })
+
+    it('throws NotFoundError for a missing submission', async () => {
+      await expect(
+        service.convert(ACTOR, '00000000-0000-4000-8000-0000000000ff', buildClaimInput()),
+      ).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    it('throws NotFoundError for a non-pending submission', async () => {
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      const submissionId = await createSubmission(customerId, 'Vec odbijena')
+      await repository.markRejected(submissionId, 'Nije garancija', TEST_USER_ID)
+
+      await expect(service.convert(ACTOR, submissionId, buildClaimInput())).rejects.toBeInstanceOf(
+        NotFoundError,
+      )
+    })
+  })
+
+  describe('reject', () => {
+    it('marks the submission rejected, audits and emits an event', async () => {
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      const submissionId = await createSubmission(customerId, 'Za odbijanje')
+
+      await service.reject(ACTOR, submissionId, 'Van garantnog roka')
+
+      const submission = await repository.findById(submissionId)
+      expect(submission).toMatchObject({
+        status: ClientSubmissionStatus.Rejected,
+        rejectedReason: 'Van garantnog roka',
+        linkedEmotiveClaimId: null,
+      })
+
+      const audits = await auditRowsFor('client_submission', submissionId)
+      expect(audits).toHaveLength(1)
+      expect(audits[0]).toMatchObject({ action: AuditAction.Update, actorUserId: TEST_USER_ID })
+
+      expect(events.clientSubmissionEvents).toEqual([
+        { type: 'client_submission_changed', id: submissionId },
+      ])
+    })
+  })
+})

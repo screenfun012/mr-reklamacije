@@ -1,6 +1,7 @@
 import {
   ClaimEventType,
   ClaimKind,
+  ClientSubmissionEventType,
   invalidateInternalClaimQueries,
   queryKeyPrefixesForResourceChanged,
   ResourceChangedKey,
@@ -72,6 +73,12 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
     for (const prefix of queryKeyPrefixesForResourceChanged(event.payload.resource)) {
       void queryClient.invalidateQueries({ queryKey: prefix })
     }
+    return
+  }
+
+  // Client-submission (Inbox) signals are wired to the Inbox list + badge in the
+  // internal Inbox unit; ignore here so claim handling below stays type-safe.
+  if (event.type === ClientSubmissionEventType.Changed) {
     return
   }
 
