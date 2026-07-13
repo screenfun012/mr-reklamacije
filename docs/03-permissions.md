@@ -73,6 +73,13 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `attachments.delete_any` | Delete any attachment |
 | `attachments.change_visibility` | Toggle between internal and client-visible |
 
+### Module: `client_submissions` — client portal ticket intake
+
+| Permission | Description |
+|---|---|
+| `client_submissions.create` | Client submits a request (reason + attachments) from the portal |
+| `client_submissions.manage` | View, convert to a claim, or reject client submissions in the internal Inbox |
+
 ### Module: `claim_reports`
 
 | Permission | Description |

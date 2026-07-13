@@ -51,6 +51,10 @@ export const PERMISSIONS = [
   'attachments.change_visibility',
   'attachments.view_client_visible',
 
+  // client_submissions (portal ticket intake)
+  'client_submissions.create',
+  'client_submissions.manage',
+
   // claim_reports
   'claim_reports.view',
   'claim_reports.update',
@@ -162,6 +166,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'attachments.upload',
   'attachments.delete_own',
   'attachments.change_visibility',
+  'client_submissions.manage',
   'claim_reports.view',
   'claim_reports.update',
   'customers.view',
@@ -228,6 +233,7 @@ export const CLIENT_PERMISSIONS: readonly Permission[] = [
   'domace_claims.view_own_customer',
   'observations.view_client_visible',
   'attachments.view_client_visible',
+  'client_submissions.create',
   'export.own_claims',
   'translation.request',
 ] as const
