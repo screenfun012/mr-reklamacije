@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { InternalError } from '../../core/errors/domain-errors.js'
+import type { SubmissionAccessInfo } from '../../core/ports/submission-access-port.js'
 import {
   attachments,
   clientSubmissions,
@@ -95,6 +96,23 @@ export class ClientSubmissionsRepository {
       .innerJoin(customers, eq(customerUsers.customerId, customers.id))
       .where(and(eq(customerUsers.userId, userId), isNull(customers.deletedAt)))
       .orderBy(asc(customerUsers.assignedAt), asc(customerUsers.customerId))
+      .limit(1)
+
+    return row ?? null
+  }
+
+  /**
+   * Ownership + status of a submission — the slice the attachments service needs to authorize
+   * submission-attachment upload/list/serve. Implements `SubmissionAccessPort` structurally.
+   */
+  async findSubmissionAccess(submissionId: string): Promise<SubmissionAccessInfo | null> {
+    const [row] = await this.db
+      .select({
+        submittedByUserId: clientSubmissions.submittedByUserId,
+        status: clientSubmissions.status,
+      })
+      .from(clientSubmissions)
+      .where(and(eq(clientSubmissions.id, submissionId), isNull(clientSubmissions.deletedAt)))
       .limit(1)
 
     return row ?? null

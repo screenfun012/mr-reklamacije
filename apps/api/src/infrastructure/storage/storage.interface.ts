@@ -39,6 +39,17 @@ export function buildAttachmentStoragePath(input: AttachmentPathInput): string {
   return `${input.claimKind}/${input.claimYear}/${input.claimId}/${input.attachmentId}.${input.extension}`
 }
 
+export interface SubmissionAttachmentPathInput {
+  readonly submissionId: string
+  readonly attachmentId: string
+  readonly extension: string
+}
+
+/** Storage key for a portal-submission attachment (no claim year — a submission is pre-claim). */
+export function buildSubmissionAttachmentStoragePath(input: SubmissionAttachmentPathInput): string {
+  return `submissions/${input.submissionId}/${input.attachmentId}.${input.extension}`
+}
+
 export function buildAttachmentThumbnailPath(storagePath: string): string {
   const segments = storagePath.split('/')
   const fileName = segments.pop()

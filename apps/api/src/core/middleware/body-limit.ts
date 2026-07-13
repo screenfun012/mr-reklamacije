@@ -15,6 +15,13 @@ const UPLOAD_MAX_BODY_BYTES = (MAX_FILE_SIZE_MB * 5 + 5) * MB
 
 const UPLOAD_PATHS = new Set(['/api/attachments/upload', '/api/claim-reports/images'])
 
+// Dynamic upload path: POST /api/client-submissions/<uuid>/attachments (portal ticket files).
+const UPLOAD_PATH_PATTERNS = [/^\/api\/client-submissions\/[^/]+\/attachments$/]
+
+function isUploadPath(path: string): boolean {
+  return UPLOAD_PATHS.has(path) || UPLOAD_PATH_PATTERNS.some((pattern) => pattern.test(path))
+}
+
 function limitWith(maxSize: number): MiddlewareHandler {
   return bodyLimit({
     maxSize,
@@ -34,6 +41,6 @@ const uploadLimit = limitWith(UPLOAD_MAX_BODY_BYTES)
  * gate any authenticated client could exhaust the heap with one huge POST).
  */
 export const requestBodyLimit: MiddlewareHandler = (c, next) => {
-  const limiter = UPLOAD_PATHS.has(c.req.path) ? uploadLimit : defaultLimit
+  const limiter = isUploadPath(c.req.path) ? uploadLimit : defaultLimit
   return limiter(c, next)
 }

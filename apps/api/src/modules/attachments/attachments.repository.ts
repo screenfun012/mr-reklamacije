@@ -10,7 +10,7 @@ import { and, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
 import { NotFoundError } from '../../core/errors/domain-errors.js'
 import { attachments, emotiveClaims } from './attachments.schema.js'
-import type { AttachmentsViewScope } from './attachments.types.js'
+import type { AttachmentsViewScope, SubmissionAttachmentItem } from './attachments.types.js'
 
 function mapClaimIdColumn(claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace) {
   return claimKind === ClaimKind.Emotive ? attachments.emotiveClaimId : attachments.domaceClaimId
@@ -39,6 +39,23 @@ function mapRow(row: typeof attachments.$inferSelect, claimId: string): Attachme
     thumbnailPath: row.thumbnailPath,
     caption: row.caption,
     visibility: row.visibility,
+    uploadedBy: row.uploadedBy,
+    uploadedAt: formatTimestamp(row.uploadedAt),
+    contentSha256: row.contentSha256 ?? '',
+  }
+}
+
+function mapSubmissionRow(row: typeof attachments.$inferSelect): SubmissionAttachmentItem {
+  return {
+    id: row.id,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    fileSizeBytes: row.fileSizeBytes,
+    width: row.width,
+    height: row.height,
+    durationSeconds: row.durationSeconds,
+    thumbnailPath: row.thumbnailPath,
+    caption: row.caption,
     uploadedBy: row.uploadedBy,
     uploadedAt: formatTimestamp(row.uploadedAt),
     contentSha256: row.contentSha256 ?? '',
@@ -273,5 +290,120 @@ export class AttachmentsRepository {
       .limit(1)
 
     return rows[0] ?? null
+  }
+
+  // --- Portal-submission attachments (claim_kind NULL, client_submission_id set) ---
+
+  async listBySubmission(submissionId: string): Promise<SubmissionAttachmentItem[]> {
+    const rows = await this.db
+      .select()
+      .from(attachments)
+      .where(and(eq(attachments.clientSubmissionId, submissionId), isNull(attachments.deletedAt)))
+      .orderBy(attachments.uploadedAt)
+
+    return rows.map(mapSubmissionRow)
+  }
+
+  /** Raw row scoped to its submission — the submission id must match so a caller cannot fetch
+   * another submission's attachment through this submission's route. */
+  async findSubmissionAttachmentRaw(
+    attachmentId: string,
+    submissionId: string,
+  ): Promise<typeof attachments.$inferSelect | null> {
+    const rows = await this.db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.id, attachmentId),
+          eq(attachments.clientSubmissionId, submissionId),
+          isNull(attachments.deletedAt),
+        ),
+      )
+      .limit(1)
+
+    return rows[0] ?? null
+  }
+
+  async findSubmissionAttachmentByContentHash(
+    submissionId: string,
+    contentSha256: string,
+  ): Promise<SubmissionAttachmentItem | null> {
+    const rows = await this.db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.clientSubmissionId, submissionId),
+          eq(attachments.contentSha256, contentSha256),
+          isNull(attachments.deletedAt),
+        ),
+      )
+      .limit(1)
+
+    const row = rows[0]
+    return row === undefined ? null : mapSubmissionRow(row)
+  }
+
+  async countActiveForSubmission(
+    submissionId: string,
+  ): Promise<{ count: number; totalBytes: number }> {
+    const rows = await this.db
+      .select({
+        count: sql<number>`count(*)::int`,
+        totalBytes: sql<number>`coalesce(sum(${attachments.fileSizeBytes}), 0)::int`,
+      })
+      .from(attachments)
+      .where(and(eq(attachments.clientSubmissionId, submissionId), isNull(attachments.deletedAt)))
+
+    const row = rows[0]
+    return {
+      count: row?.count ?? 0,
+      totalBytes: row?.totalBytes ?? 0,
+    }
+  }
+
+  async insertSubmissionAttachment(input: {
+    submissionId: string
+    fileName: string
+    storagePath: string
+    mimeType: string
+    fileSizeBytes: number
+    contentSha256: string
+    width: number | null
+    height: number | null
+    thumbnailPath: string | null
+    caption: string | null
+    uploadedBy: string
+  }): Promise<SubmissionAttachmentItem> {
+    const rows = await this.db
+      .insert(attachments)
+      .values({
+        claimKind: null,
+        emotiveClaimId: null,
+        domaceClaimId: null,
+        clientSubmissionId: input.submissionId,
+        fileName: input.fileName,
+        storagePath: input.storagePath,
+        mimeType: input.mimeType,
+        fileSizeBytes: input.fileSizeBytes,
+        contentSha256: input.contentSha256,
+        width: input.width,
+        height: input.height,
+        durationSeconds: null,
+        thumbnailPath: input.thumbnailPath,
+        caption: input.caption,
+        visibility: AttachmentVisibility.Internal,
+        purpose: AttachmentPurpose.ClaimAttachment,
+        uploadedBy: input.uploadedBy,
+      })
+      .returning()
+
+    const row = rows[0]
+    if (row === undefined) {
+      throw new NotFoundError('Attachment', 'insert')
+    }
+
+    return mapSubmissionRow(row)
   }
 }

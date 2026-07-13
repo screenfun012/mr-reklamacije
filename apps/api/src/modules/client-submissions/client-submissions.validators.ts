@@ -18,6 +18,14 @@ export const ClientSubmissionIdParamSchema = z.object({
 
 export type ClientSubmissionIdParam = z.infer<typeof ClientSubmissionIdParamSchema>
 
+/** `:id/attachments/:attachmentId/download` — both segments validated as UUIDs. */
+export const SubmissionAttachmentParamSchema = z.object({
+  id: z.string().uuid(),
+  attachmentId: z.string().uuid(),
+})
+
+export type SubmissionAttachmentParam = z.infer<typeof SubmissionAttachmentParamSchema>
+
 /**
  * Inbox list query. v1 lists only `pending` submissions (the repository's single read);
  * `status` is accepted so the wire matches `?status=pending` and rejects other values until

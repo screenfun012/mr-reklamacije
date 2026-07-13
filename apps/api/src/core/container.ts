@@ -261,6 +261,7 @@ export function buildContainer(
     eventBus,
     env.ATTACHMENT_SIGNING_SECRET ?? env.BETTER_AUTH_SECRET,
     env.API_BASE_URL,
+    clientSubmissionsRepository,
   )
 
   const claimReportsRepository = new ClaimReportsRepository(db)

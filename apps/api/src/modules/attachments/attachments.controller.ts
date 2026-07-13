@@ -6,6 +6,8 @@ import type { MRSessionUser } from '../../core/auth/session-types.js'
 import type { Container } from '../../core/container.js'
 import { UnauthorizedError, ValidationError } from '../../core/errors/domain-errors.js'
 import { getActorContext } from '../../core/http/actor-context.js'
+import { buildAttachmentDownloadResponse } from '../../core/http/attachment-download.js'
+import { readUploadFiles } from '../../core/http/upload-files.js'
 import type { AttachmentsActor } from './attachments.types.js'
 import { AttachmentListQuerySchema } from './attachments.validators.js'
 
@@ -29,40 +31,6 @@ function requireUser(c: Context): MRSessionUser {
     throw new UnauthorizedError()
   }
   return user
-}
-
-function encodeContentDisposition(fileName: string, disposition: 'inline' | 'attachment'): string {
-  const safeName = fileName.replace(/[^\w.\- ()[\]]+/g, '_')
-  return `${disposition}; filename="${safeName}"`
-}
-
-async function readUploadFiles(
-  formData: FormData,
-): Promise<Array<{ fileName: string; data: Buffer; caption: string | null }>> {
-  const entries = [...formData.getAll('files'), ...formData.getAll('file')]
-  const captions = formData
-    .getAll('caption')
-    .map((value) => (typeof value === 'string' ? value : null))
-  const files: Array<{ fileName: string; data: Buffer; caption: string | null }> = []
-
-  for (const [index, entry] of entries.entries()) {
-    if (typeof entry === 'string') {
-      continue
-    }
-
-    const fileName =
-      'name' in entry && typeof entry.name === 'string' && entry.name.length > 0
-        ? entry.name
-        : 'upload'
-    const data = Buffer.from(await entry.arrayBuffer())
-    files.push({
-      fileName,
-      data,
-      caption: captions[index] ?? null,
-    })
-  }
-
-  return files
 }
 
 export function createAttachmentsController(container: Container): {
@@ -139,15 +107,14 @@ export function createAttachmentsController(container: Container): {
         meta.storagePath,
       )
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': meta.mimeType,
-          'Content-Length': String(size),
-          'Content-Disposition': encodeContentDisposition(meta.fileName, disposition),
-          'X-Content-Type-Options': 'nosniff',
-          'Cache-Control': cacheControl,
-          ...(cacheable && meta.etag !== null ? { ETag: meta.etag } : {}),
-        },
+      return buildAttachmentDownloadResponse({
+        stream,
+        size,
+        mimeType: meta.mimeType,
+        fileName: meta.fileName,
+        disposition,
+        cacheControl,
+        etag: cacheable ? meta.etag : null,
       })
     },
 
@@ -169,14 +136,13 @@ export function createAttachmentsController(container: Container): {
         meta.storagePath,
       )
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': meta.mimeType,
-          'Content-Length': String(size),
-          'Content-Disposition': encodeContentDisposition(meta.fileName, 'inline'),
-          'X-Content-Type-Options': 'nosniff',
-          'Cache-Control': 'private, max-age=300',
-        },
+      return buildAttachmentDownloadResponse({
+        stream,
+        size,
+        mimeType: meta.mimeType,
+        fileName: meta.fileName,
+        disposition: 'inline',
+        cacheControl: 'private, max-age=300',
       })
     },
 
