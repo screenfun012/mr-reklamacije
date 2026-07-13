@@ -30,6 +30,8 @@ export const CANONICAL_ENGINE_MANUFACTURERS: EngineManufacturerSeed[] = [
   { code: 'MAN', name: 'MAN', sortOrder: 190 },
   { code: 'DAF', name: 'DAF', sortOrder: 200 },
   { code: 'CUMMINS', name: 'Cummins', sortOrder: 210 },
+  { code: 'DACIA', name: 'Dacia', sortOrder: 213 },
+  { code: 'SKODA', name: 'Škoda', sortOrder: 216 },
   { code: 'OSTALO', name: 'Ostalo', sortOrder: 220 },
 ]
 
