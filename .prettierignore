@@ -11,6 +11,8 @@ pnpm-lock.yaml
 **/.generated/**
 **/routeTree.gen.ts
 packages/i18n/src/paraglide/**
+packages/i18n/project.inlang/**
+!packages/i18n/project.inlang/settings.json
 packages/db/migrations/meta/**
 **/.tanstack/**
 **/.nitro/**
