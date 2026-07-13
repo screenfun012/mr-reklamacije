@@ -6,6 +6,7 @@ import {
   formatFieldError,
   uploadClientSubmissionAttachment,
 } from '@mr/shared'
+import { compressImage } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -47,7 +48,10 @@ export function ReportForm() {
       try {
         const { id } = await createClientSubmission({ message: value.message.trim() })
         for (const file of files) {
-          await uploadClientSubmissionAttachment(id, file)
+          // Downscale/recompress images in the browser first (an 8 MB phone photo
+          // → a few hundred KB); non-images pass through untouched.
+          const optimized = await compressImage(file)
+          await uploadClientSubmissionAttachment(id, optimized)
         }
         showPortalToast(m.portal_submit_success())
         await navigate({ to: '/claims' })

@@ -1,5 +1,6 @@
 import { setLocale } from '@mr/i18n'
 import * as shared from '@mr/shared'
+import { compressImage } from '@mr/ui'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -24,10 +25,16 @@ vi.mock('@mr/shared', async () => {
   }
 })
 
+vi.mock('@mr/ui', async () => {
+  const actual = await vi.importActual<typeof import('@mr/ui')>('@mr/ui')
+  return { ...actual, compressImage: vi.fn() }
+})
+
 vi.mock('~/lib/portal-toast', () => ({ showPortalToast: vi.fn() }))
 
 const createSubmission = vi.mocked(shared.createClientSubmission)
 const uploadAttachment = vi.mocked(shared.uploadClientSubmissionAttachment)
+const compressImageMock = vi.mocked(compressImage)
 const toastMock = vi.mocked(showPortalToast)
 
 async function renderForm(): Promise<ReturnType<typeof createRouter>> {
@@ -101,17 +108,19 @@ describe('ReportForm', () => {
     })
   })
 
-  it('uploads each selected file to the created submission', async () => {
+  it('compresses each selected image, then uploads the compressed file', async () => {
     const user = userEvent.setup()
     createSubmission.mockResolvedValue({ id: 'sub-1' })
     uploadAttachment.mockResolvedValue()
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' })
+    const compressed = new File(['c'], 'photo.jpg', { type: 'image/jpeg' })
+    compressImageMock.mockResolvedValue(compressed)
     await renderForm()
 
     const fileInput = document.querySelector('input[type="file"]')
     if (!(fileInput instanceof HTMLInputElement)) {
       throw new Error('expected a file input in the attachment picker')
     }
-    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' })
     fireEvent.change(fileInput, { target: { files: [file] } })
 
     expect(await screen.findByText('photo.jpg')).toBeInTheDocument()
@@ -120,7 +129,8 @@ describe('ReportForm', () => {
     await user.click(submitButton())
 
     await waitFor(() => {
-      expect(uploadAttachment).toHaveBeenCalledWith('sub-1', file)
+      expect(compressImageMock).toHaveBeenCalledWith(file)
+      expect(uploadAttachment).toHaveBeenCalledWith('sub-1', compressed)
     })
   })
 })
