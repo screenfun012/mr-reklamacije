@@ -4,5 +4,5 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["dev-api-proxy.ts"]
+  "include": ["dev-api-proxy.ts", "security-headers.ts"]
 }

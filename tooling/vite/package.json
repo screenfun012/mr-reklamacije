@@ -10,6 +10,10 @@
     "./dev-api-proxy": {
       "types": "./dist/dev-api-proxy.d.ts",
       "import": "./dist/dev-api-proxy.js"
+    },
+    "./security-headers": {
+      "types": "./dist/security-headers.d.ts",
+      "import": "./dist/security-headers.js"
     }
   },
   "scripts": {

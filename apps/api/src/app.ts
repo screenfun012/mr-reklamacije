@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { secureHeaders } from 'hono/secure-headers'
 
 import type { Container } from './core/container.js'
 import { requireAuth } from './core/auth/require-auth.js'
@@ -66,20 +67,49 @@ function isPublicPath(path: string): boolean {
 }
 
 /**
+ * Security response headers for every API response (JSON, streamed files, errors).
+ *
+ * The API serves JSON and streamed file bytes — never an HTML app — so the CSP is
+ * locked to `default-src 'none'`. `frame-ancestors 'self'` (NOT `'none'`) and
+ * `X-Frame-Options: SAMEORIGIN` are deliberate: internal-web embeds inline PDF /
+ * document attachments (`/api/attachments/:id/download`) in a same-origin `<iframe>`
+ * preview, which `'none'` / `DENY` would block. `'self'` still blocks ALL
+ * cross-origin framing, which is the actual clickjacking threat.
+ *
+ * Installed as the outermost middleware so its post-`next()` pass sets headers on
+ * the final response of every request, including `app.onError` error responses
+ * (Hono's compose resolves the handled error upward, so this pass still runs).
+ */
+const apiSecureHeaders = secureHeaders({
+  contentSecurityPolicy: {
+    defaultSrc: ["'none'"],
+    frameAncestors: ["'self'"],
+    baseUri: ["'none'"],
+    formAction: ["'none'"],
+  },
+  xFrameOptions: 'SAMEORIGIN',
+  strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+  referrerPolicy: 'strict-origin-when-cross-origin',
+  permissionsPolicy: { camera: [], microphone: [], geolocation: [] },
+})
+
+/**
  * Hono app factory. Middleware order (outer to inner):
  * 1. registerGlobalErrorHandler (app.onError)
- * 2. Request logger
- * 3. General rate limiter
- * 4. Login rate limiter (sign-in email only)
- * 5. Session middleware
- * 6. Global requireAuth with opt-out for public prefixes (auth + health)
- * 7. Better-Auth `/api/auth/*`
- * 8. Routes (health, future modules)
+ * 2. Secure headers (outermost — covers every response, incl. errors)
+ * 3. Request logger
+ * 4. General rate limiter
+ * 5. Login rate limiter (sign-in email only)
+ * 6. Session middleware
+ * 7. Global requireAuth with opt-out for public prefixes (auth + health)
+ * 8. Better-Auth `/api/auth/*`
+ * 9. Routes (health, future modules)
  */
 export function createApp(container: Container): Hono<{ Variables: AppVariables }> {
   const app = new Hono<{ Variables: AppVariables }>()
 
   registerGlobalErrorHandler(app, container.logger)
+  app.use('*', apiSecureHeaders)
   app.use('*', createRequestLogger(container.logger))
   app.use('*', requestBodyLimit)
   app.use('*', generalRateLimiter)

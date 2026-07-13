@@ -5,6 +5,7 @@ import { nitro } from 'nitro/vite'
 import { defineConfig, mergeConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 import { devApiProxyPlugin } from '@mr/dev-vite/dev-api-proxy'
+import { spaSecurityRouteRules } from '@mr/dev-vite/security-headers'
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const i18nEntry = fileURLToPath(new URL('../../packages/i18n/src/index.ts', import.meta.url))
@@ -39,9 +40,8 @@ const mrWebDevSettings = {
   },
 } as const
 
-export default mergeConfig(
-  mrWebDevSettings,
-  defineConfig({
+export default defineConfig(({ command }) =>
+  mergeConfig(mrWebDevSettings, {
     server: {
       port: 3002,
       strictPort: true,
@@ -56,7 +56,9 @@ export default mergeConfig(
       tailwindcss(),
       tanstackStart({ srcDirectory: 'src' }),
       viteReact(),
-      nitro(),
+      // Security headers are baked into the production Nitro build only, so dev
+      // HMR/websockets are untouched. frame-src 'self' → same-origin inline PDF preview.
+      nitro(command === 'build' ? { routeRules: spaSecurityRouteRules() } : {}),
     ],
   }),
 )
