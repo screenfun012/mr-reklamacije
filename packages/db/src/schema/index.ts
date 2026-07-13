@@ -9,6 +9,7 @@
  *   - client-registrations.ts (Phase C.1): client_registration_requests
  *   - claims.ts (Phase C.2)
  *   - mr-registry.ts: mr_registry (global MR unique registry)
+ *   - client-submissions.ts (docs/18): client_submissions (portal inbox → claim)
  *   - attachments.ts (Phase C.3): attachments, claim_observations
  *   - claim-reports.ts (Phase 3.0): claim_reports
  *   - translation-cache.ts (Phase C.3): translation_cache
@@ -26,6 +27,7 @@ export * from './client-registrations.js'
 export * from './client-activation-tokens.js'
 export * from './claims.js'
 export * from './mr-registry.js'
+export * from './client-submissions.js'
 export * from './attachments.js'
 export * from './claim-reports.js'
 export * from './translation-cache.js'

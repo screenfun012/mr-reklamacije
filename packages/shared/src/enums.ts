@@ -136,3 +136,12 @@ export const ClaimReportStatus = {
 } as const
 
 export type ClaimReportStatus = (typeof ClaimReportStatus)[keyof typeof ClaimReportStatus]
+
+export const ClientSubmissionStatus = {
+  Pending: 'pending',
+  Converted: 'converted',
+  Rejected: 'rejected',
+} as const
+
+export type ClientSubmissionStatus =
+  (typeof ClientSubmissionStatus)[keyof typeof ClientSubmissionStatus]

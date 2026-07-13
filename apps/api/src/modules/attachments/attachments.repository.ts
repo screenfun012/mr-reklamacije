@@ -21,6 +21,11 @@ function formatTimestamp(value: Date): string {
 }
 
 function mapRow(row: typeof attachments.$inferSelect, claimId: string): AttachmentListItem {
+  // Claim attachments always carry claim_kind (one-of CHECK); a client-submission
+  // attachment (claim_kind NULL) is never listed through this claim-scoped projection.
+  if (row.claimKind === null) {
+    throw new Error('Attachment row is missing claim_kind — expected a claim attachment')
+  }
   return {
     id: row.id,
     claimKind: row.claimKind,

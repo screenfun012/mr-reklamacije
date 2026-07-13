@@ -1,0 +1,4755 @@
+{
+  "id": "26d0f18c-a034-4756-8b25-0d68afa497d4",
+  "prevId": "e37b3563-1ba2-455d-820e-9eb24629db68",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.permissions": {
+      "name": "permissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "module": {
+          "name": "module",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_sr": {
+          "name": "name_sr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_sr": {
+          "name": "description_sr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.role_permissions": {
+      "name": "role_permissions",
+      "schema": "",
+      "columns": {
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permission_id": {
+          "name": "permission_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_role_permissions_permission_id": {
+          "name": "idx_role_permissions_permission_id",
+          "columns": [
+            {
+              "expression": "permission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "role_permissions_role_id_fkey": {
+          "name": "role_permissions_role_id_fkey",
+          "tableFrom": "role_permissions",
+          "tableTo": "roles",
+          "columnsFrom": [
+            "role_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "role_permissions_permission_id_fkey": {
+          "name": "role_permissions_permission_id_fkey",
+          "tableFrom": "role_permissions",
+          "tableTo": "permissions",
+          "columnsFrom": [
+            "permission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "role_permissions_role_id_permission_id_pk": {
+          "name": "role_permissions_role_id_permission_id_pk",
+          "columns": [
+            "role_id",
+            "permission_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.roles": {
+      "name": "roles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_sr": {
+          "name": "name_sr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "roles_code_key": {
+          "name": "roles_code_key",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "roles_created_by_fkey": {
+          "name": "roles_created_by_fkey",
+          "tableFrom": "roles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "roles_updated_by_fkey": {
+          "name": "roles_updated_by_fkey",
+          "tableFrom": "roles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_roles": {
+      "name": "user_roles",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assigned_at": {
+          "name": "assigned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "assigned_by": {
+          "name": "assigned_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_user_roles_role_id": {
+          "name": "idx_user_roles_role_id",
+          "columns": [
+            {
+              "expression": "role_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_roles_user_id_fkey": {
+          "name": "user_roles_user_id_fkey",
+          "tableFrom": "user_roles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_roles_role_id_fkey": {
+          "name": "user_roles_role_id_fkey",
+          "tableFrom": "user_roles",
+          "tableTo": "roles",
+          "columnsFrom": [
+            "role_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_roles_assigned_by_fkey": {
+          "name": "user_roles_assigned_by_fkey",
+          "tableFrom": "user_roles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "assigned_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_roles_user_id_role_id_pk": {
+          "name": "user_roles_user_id_role_id_pk",
+          "columns": [
+            "user_id",
+            "role_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_company": {
+          "name": "requested_company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "account_status": {
+          "name": "account_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "preferred_language": {
+          "name": "preferred_language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sr'"
+        },
+        "two_factor_enabled": {
+          "name": "two_factor_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "last_login_at": {
+          "name": "last_login_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_login_ip": {
+          "name": "last_login_ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "users_email_key": {
+          "name": "users_email_key",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "users_preferred_language_check": {
+          "name": "users_preferred_language_check",
+          "value": "\"users\".\"preferred_language\" IN ('sr', 'en')"
+        },
+        "users_account_status_check": {
+          "name": "users_account_status_check",
+          "value": "\"users\".\"account_status\" IN ('pending', 'approved', 'rejected')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.accounts": {
+      "name": "accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_accounts_user_id": {
+          "name": "idx_accounts_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_accounts_provider_account": {
+          "name": "idx_accounts_provider_account",
+          "columns": [
+            {
+              "expression": "provider_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "accounts_user_id_fkey": {
+          "name": "accounts_user_id_fkey",
+          "tableFrom": "accounts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sessions_token_key": {
+          "name": "sessions_token_key",
+          "columns": [
+            {
+              "expression": "token",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sessions_user_id": {
+          "name": "idx_sessions_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sessions_user_id_fkey": {
+          "name": "sessions_user_id_fkey",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.two_factor_secrets": {
+      "name": "two_factor_secrets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "secret": {
+          "name": "secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "backup_codes": {
+          "name": "backup_codes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verified": {
+          "name": "verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "idx_two_factor_secrets_user_id": {
+          "name": "idx_two_factor_secrets_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "two_factor_secrets_user_id_fkey": {
+          "name": "two_factor_secrets_user_id_fkey",
+          "tableFrom": "two_factor_secrets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verification_tokens": {
+      "name": "verification_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_verification_tokens_identifier": {
+          "name": "idx_verification_tokens_identifier",
+          "columns": [
+            {
+              "expression": "identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_verification_tokens_expires_at": {
+          "name": "idx_verification_tokens_expires_at",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_users": {
+      "name": "customer_users",
+      "schema": "",
+      "columns": {
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assigned_at": {
+          "name": "assigned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "assigned_by": {
+          "name": "assigned_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_customer_users_user_id": {
+          "name": "idx_customer_users_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "customer_users_customer_id_fkey": {
+          "name": "customer_users_customer_id_fkey",
+          "tableFrom": "customer_users",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "customer_users_user_id_fkey": {
+          "name": "customer_users_user_id_fkey",
+          "tableFrom": "customer_users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "customer_users_assigned_by_fkey": {
+          "name": "customer_users_assigned_by_fkey",
+          "tableFrom": "customer_users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "assigned_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "customer_users_customer_id_user_id_pk": {
+          "name": "customer_users_customer_id_user_id_pk",
+          "columns": [
+            "customer_id",
+            "user_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customers": {
+      "name": "customers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax_id": {
+          "name": "tax_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_customers_name_fts": {
+          "name": "idx_customers_name_fts",
+          "columns": [
+            {
+              "expression": "to_tsvector('simple', \"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "customers_kind_check": {
+          "name": "customers_kind_check",
+          "value": "\"customers\".\"kind\" IN ('emotive_partner', 'domestic_company', 'domestic_individual')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.departments": {
+      "name": "departments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_sr": {
+          "name": "name_sr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "departments_code_key": {
+          "name": "departments_code_key",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.employees": {
+      "name": "employees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalized_name": {
+          "name": "normalized_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hire_date": {
+          "name": "hire_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "terminated_at": {
+          "name": "terminated_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "employees_normalized_name_key": {
+          "name": "employees_normalized_name_key",
+          "columns": [
+            {
+              "expression": "normalized_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_employees_department_id": {
+          "name": "idx_employees_department_id",
+          "columns": [
+            {
+              "expression": "department_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "employees_department_id_fkey": {
+          "name": "employees_department_id_fkey",
+          "tableFrom": "employees",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "employees_user_id_fkey": {
+          "name": "employees_user_id_fkey",
+          "tableFrom": "employees",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_log": {
+      "name": "audit_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actor_ip": {
+          "name": "actor_ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actor_user_agent": {
+          "name": "actor_user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "changes": {
+          "name": "changes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "context": {
+          "name": "context",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_audit_log_entity_type_entity_id_created_at": {
+          "name": "idx_audit_log_entity_type_entity_id_created_at",
+          "columns": [
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_log_actor_user_id_created_at": {
+          "name": "idx_audit_log_actor_user_id_created_at",
+          "columns": [
+            {
+              "expression": "actor_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_log_action_created_at": {
+          "name": "idx_audit_log_action_created_at",
+          "columns": [
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_log_created_at_id": {
+          "name": "idx_audit_log_created_at_id",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_log_entity_type_created_at": {
+          "name": "idx_audit_log_entity_type_created_at",
+          "columns": [
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "audit_log_actor_user_id_fkey": {
+          "name": "audit_log_actor_user_id_fkey",
+          "tableFrom": "audit_log",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "audit_log_action_check": {
+          "name": "audit_log_action_check",
+          "value": "\"audit_log\".\"action\" IN ('create', 'update', 'delete', 'restore', 'login', 'logout', 'permission_change', 'export', 'import')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.claim_sources": {
+      "name": "claim_sources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_customer_id": {
+          "name": "default_customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claim_number_prefix": {
+          "name": "claim_number_prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "claim_sources_code_key": {
+          "name": "claim_sources_code_key",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "claim_sources_default_customer_id_fkey": {
+          "name": "claim_sources_default_customer_id_fkey",
+          "tableFrom": "claim_sources",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "default_customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.engine_manufacturers": {
+      "name": "engine_manufacturers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "engine_manufacturers_code_key": {
+          "name": "engine_manufacturers_code_key",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.engine_types": {
+      "name": "engine_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "manufacturer_id": {
+          "name": "manufacturer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "displacement_cc": {
+          "name": "displacement_cc",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "usage_count": {
+          "name": "usage_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "engine_types_code_key": {
+          "name": "engine_types_code_key",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_engine_types_manufacturer_id": {
+          "name": "idx_engine_types_manufacturer_id",
+          "columns": [
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "engine_types_manufacturer_id_fkey": {
+          "name": "engine_types_manufacturer_id_fkey",
+          "tableFrom": "engine_types",
+          "tableTo": "engine_manufacturers",
+          "columnsFrom": [
+            "manufacturer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.external_parties": {
+      "name": "external_parties",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "external_parties_kind_check": {
+          "name": "external_parties_kind_check",
+          "value": "\"external_parties\".\"kind\" IN ('supplier', 'subcontractor', 'manufacturer', 'other')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.client_registration_requests": {
+      "name": "client_registration_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "company_name": {
+          "name": "company_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_language": {
+          "name": "preferred_language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sr'"
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "admin_note": {
+          "name": "admin_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "linked_customer_id": {
+          "name": "linked_customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_user_id": {
+          "name": "created_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "client_registration_requests_linked_customer_id_fkey": {
+          "name": "client_registration_requests_linked_customer_id_fkey",
+          "tableFrom": "client_registration_requests",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "linked_customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "client_registration_requests_created_user_id_fkey": {
+          "name": "client_registration_requests_created_user_id_fkey",
+          "tableFrom": "client_registration_requests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "client_registration_requests_reviewed_by_fkey": {
+          "name": "client_registration_requests_reviewed_by_fkey",
+          "tableFrom": "client_registration_requests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "reviewed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "client_registration_requests_preferred_language_check": {
+          "name": "client_registration_requests_preferred_language_check",
+          "value": "\"client_registration_requests\".\"preferred_language\" IN ('sr', 'en')"
+        },
+        "client_registration_requests_status_check": {
+          "name": "client_registration_requests_status_check",
+          "value": "\"client_registration_requests\".\"status\" IN ('pending', 'approved', 'rejected', 'needs_info')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.client_activation_tokens": {
+      "name": "client_activation_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "client_activation_tokens_token_hash_key": {
+          "name": "client_activation_tokens_token_hash_key",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_client_activation_tokens_user_id": {
+          "name": "idx_client_activation_tokens_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "client_activation_tokens_user_id_fkey": {
+          "name": "client_activation_tokens_user_id_fkey",
+          "tableFrom": "client_activation_tokens",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.domace_claim_faults": {
+      "name": "domace_claim_faults",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "claim_id": {
+          "name": "claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fault_type": {
+          "name": "fault_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_party_id": {
+          "name": "external_party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_domace_claim_faults_claim_id": {
+          "name": "idx_domace_claim_faults_claim_id",
+          "columns": [
+            {
+              "expression": "claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claim_faults_employee_id": {
+          "name": "idx_domace_claim_faults_employee_id",
+          "columns": [
+            {
+              "expression": "employee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claim_faults_department_id": {
+          "name": "idx_domace_claim_faults_department_id",
+          "columns": [
+            {
+              "expression": "department_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claim_faults_external_party_id": {
+          "name": "idx_domace_claim_faults_external_party_id",
+          "columns": [
+            {
+              "expression": "external_party_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "domace_claim_faults_claim_id_fkey": {
+          "name": "domace_claim_faults_claim_id_fkey",
+          "tableFrom": "domace_claim_faults",
+          "tableTo": "domace_claims",
+          "columnsFrom": [
+            "claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "domace_claim_faults_employee_id_fkey": {
+          "name": "domace_claim_faults_employee_id_fkey",
+          "tableFrom": "domace_claim_faults",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "domace_claim_faults_department_id_fkey": {
+          "name": "domace_claim_faults_department_id_fkey",
+          "tableFrom": "domace_claim_faults",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "domace_claim_faults_external_party_id_fkey": {
+          "name": "domace_claim_faults_external_party_id_fkey",
+          "tableFrom": "domace_claim_faults",
+          "tableTo": "external_parties",
+          "columnsFrom": [
+            "external_party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "domace_claim_faults_fault_type_check": {
+          "name": "domace_claim_faults_fault_type_check",
+          "value": "\"domace_claim_faults\".\"fault_type\" IN ('employee', 'department', 'external')"
+        },
+        "domace_claim_faults_one_of_check": {
+          "name": "domace_claim_faults_one_of_check",
+          "value": "\n        (\"domace_claim_faults\".\"fault_type\" = 'employee' AND \"domace_claim_faults\".\"employee_id\" IS NOT NULL\n          AND \"domace_claim_faults\".\"department_id\" IS NULL AND \"domace_claim_faults\".\"external_party_id\" IS NULL)\n        OR\n        (\"domace_claim_faults\".\"fault_type\" = 'department' AND \"domace_claim_faults\".\"employee_id\" IS NULL\n          AND \"domace_claim_faults\".\"department_id\" IS NOT NULL AND \"domace_claim_faults\".\"external_party_id\" IS NULL)\n        OR\n        (\"domace_claim_faults\".\"fault_type\" = 'external' AND \"domace_claim_faults\".\"employee_id\" IS NULL\n          AND \"domace_claim_faults\".\"department_id\" IS NULL AND \"domace_claim_faults\".\"external_party_id\" IS NOT NULL)\n      "
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.domace_claims": {
+      "name": "domace_claims",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sequence_number": {
+          "name": "sequence_number",
+          "type": "bigserial",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claim_number": {
+          "name": "claim_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_name": {
+          "name": "customer_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "warranty_report": {
+          "name": "warranty_report",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "engine_type_id": {
+          "name": "engine_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manufacturer_id": {
+          "name": "manufacturer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "engine_code": {
+          "name": "engine_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_of_claim": {
+          "name": "date_of_claim",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mr_number": {
+          "name": "mr_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_of_finish": {
+          "name": "date_of_finish",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome_resolved_at": {
+          "name": "outcome_resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claim_year": {
+          "name": "claim_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_amount": {
+          "name": "total_amount",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "internal_notes": {
+          "name": "internal_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inspection_report": {
+          "name": "inspection_report",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_domace_claims_date_of_claim": {
+          "name": "idx_domace_claims_date_of_claim",
+          "columns": [
+            {
+              "expression": "date_of_claim",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_date_of_claim_id": {
+          "name": "idx_domace_claims_date_of_claim_id",
+          "columns": [
+            {
+              "expression": "date_of_claim",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_claim_year_outcome": {
+          "name": "idx_domace_claims_claim_year_outcome",
+          "columns": [
+            {
+              "expression": "claim_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "outcome",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_outcome_resolved_at": {
+          "name": "idx_domace_claims_outcome_resolved_at",
+          "columns": [
+            {
+              "expression": "outcome_resolved_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_employee_id_claim_year": {
+          "name": "idx_domace_claims_employee_id_claim_year",
+          "columns": [
+            {
+              "expression": "employee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "claim_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_engine_type_id": {
+          "name": "idx_domace_claims_engine_type_id",
+          "columns": [
+            {
+              "expression": "engine_type_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_manufacturer_id": {
+          "name": "idx_domace_claims_manufacturer_id",
+          "columns": [
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_manufacturer_id_claim_year": {
+          "name": "idx_domace_claims_manufacturer_id_claim_year",
+          "columns": [
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "claim_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_domace_claims_search_fts": {
+          "name": "idx_domace_claims_search_fts",
+          "columns": [
+            {
+              "expression": "to_tsvector('simple', coalesce(\"warranty_report\", '') || ' ' || coalesce(\"mr_number\", '') || ' ' || coalesce(\"customer_name\", ''))",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "domace_claims_engine_type_id_fkey": {
+          "name": "domace_claims_engine_type_id_fkey",
+          "tableFrom": "domace_claims",
+          "tableTo": "engine_types",
+          "columnsFrom": [
+            "engine_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "domace_claims_manufacturer_id_fkey": {
+          "name": "domace_claims_manufacturer_id_fkey",
+          "tableFrom": "domace_claims",
+          "tableTo": "engine_manufacturers",
+          "columnsFrom": [
+            "manufacturer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "domace_claims_employee_id_fkey": {
+          "name": "domace_claims_employee_id_fkey",
+          "tableFrom": "domace_claims",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "domace_claims_created_by_fkey": {
+          "name": "domace_claims_created_by_fkey",
+          "tableFrom": "domace_claims",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "domace_claims_updated_by_fkey": {
+          "name": "domace_claims_updated_by_fkey",
+          "tableFrom": "domace_claims",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "domace_claims_sequence_number_unique": {
+          "name": "domace_claims_sequence_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "sequence_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "domace_claims_outcome_check": {
+          "name": "domace_claims_outcome_check",
+          "value": "\"domace_claims\".\"outcome\" IN ('pending', 'accepted', 'rejected', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.emotive_claim_faults": {
+      "name": "emotive_claim_faults",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "claim_id": {
+          "name": "claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fault_type": {
+          "name": "fault_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "department_id": {
+          "name": "department_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_party_id": {
+          "name": "external_party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_emotive_claim_faults_claim_id": {
+          "name": "idx_emotive_claim_faults_claim_id",
+          "columns": [
+            {
+              "expression": "claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claim_faults_employee_id": {
+          "name": "idx_emotive_claim_faults_employee_id",
+          "columns": [
+            {
+              "expression": "employee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claim_faults_department_id": {
+          "name": "idx_emotive_claim_faults_department_id",
+          "columns": [
+            {
+              "expression": "department_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claim_faults_external_party_id": {
+          "name": "idx_emotive_claim_faults_external_party_id",
+          "columns": [
+            {
+              "expression": "external_party_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "emotive_claim_faults_claim_id_fkey": {
+          "name": "emotive_claim_faults_claim_id_fkey",
+          "tableFrom": "emotive_claim_faults",
+          "tableTo": "emotive_claims",
+          "columnsFrom": [
+            "claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "emotive_claim_faults_employee_id_fkey": {
+          "name": "emotive_claim_faults_employee_id_fkey",
+          "tableFrom": "emotive_claim_faults",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claim_faults_department_id_fkey": {
+          "name": "emotive_claim_faults_department_id_fkey",
+          "tableFrom": "emotive_claim_faults",
+          "tableTo": "departments",
+          "columnsFrom": [
+            "department_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claim_faults_external_party_id_fkey": {
+          "name": "emotive_claim_faults_external_party_id_fkey",
+          "tableFrom": "emotive_claim_faults",
+          "tableTo": "external_parties",
+          "columnsFrom": [
+            "external_party_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "emotive_claim_faults_fault_type_check": {
+          "name": "emotive_claim_faults_fault_type_check",
+          "value": "\"emotive_claim_faults\".\"fault_type\" IN ('employee', 'department', 'external')"
+        },
+        "emotive_claim_faults_one_of_check": {
+          "name": "emotive_claim_faults_one_of_check",
+          "value": "\n        (\"emotive_claim_faults\".\"fault_type\" = 'employee' AND \"emotive_claim_faults\".\"employee_id\" IS NOT NULL\n          AND \"emotive_claim_faults\".\"department_id\" IS NULL AND \"emotive_claim_faults\".\"external_party_id\" IS NULL)\n        OR\n        (\"emotive_claim_faults\".\"fault_type\" = 'department' AND \"emotive_claim_faults\".\"employee_id\" IS NULL\n          AND \"emotive_claim_faults\".\"department_id\" IS NOT NULL AND \"emotive_claim_faults\".\"external_party_id\" IS NULL)\n        OR\n        (\"emotive_claim_faults\".\"fault_type\" = 'external' AND \"emotive_claim_faults\".\"employee_id\" IS NULL\n          AND \"emotive_claim_faults\".\"department_id\" IS NULL AND \"emotive_claim_faults\".\"external_party_id\" IS NOT NULL)\n      "
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.emotive_claims": {
+      "name": "emotive_claims",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sequence_number": {
+          "name": "sequence_number",
+          "type": "bigserial",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claim_number": {
+          "name": "claim_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "warranty_report": {
+          "name": "warranty_report",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "engine_type_id": {
+          "name": "engine_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "manufacturer_id": {
+          "name": "manufacturer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "engine_code": {
+          "name": "engine_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_of_claim": {
+          "name": "date_of_claim",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mr_number": {
+          "name": "mr_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_of_finish": {
+          "name": "date_of_finish",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome_resolved_at": {
+          "name": "outcome_resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claim_year": {
+          "name": "claim_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "internal_notes": {
+          "name": "internal_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inspection_report": {
+          "name": "inspection_report",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_emotive_claims_date_of_claim": {
+          "name": "idx_emotive_claims_date_of_claim",
+          "columns": [
+            {
+              "expression": "date_of_claim",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_date_of_claim_id": {
+          "name": "idx_emotive_claims_date_of_claim_id",
+          "columns": [
+            {
+              "expression": "date_of_claim",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_claim_year_outcome": {
+          "name": "idx_emotive_claims_claim_year_outcome",
+          "columns": [
+            {
+              "expression": "claim_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "outcome",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_outcome_resolved_at": {
+          "name": "idx_emotive_claims_outcome_resolved_at",
+          "columns": [
+            {
+              "expression": "outcome_resolved_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_employee_id_claim_year": {
+          "name": "idx_emotive_claims_employee_id_claim_year",
+          "columns": [
+            {
+              "expression": "employee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "claim_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_source_id": {
+          "name": "idx_emotive_claims_source_id",
+          "columns": [
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_customer_id": {
+          "name": "idx_emotive_claims_customer_id",
+          "columns": [
+            {
+              "expression": "customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_engine_type_id": {
+          "name": "idx_emotive_claims_engine_type_id",
+          "columns": [
+            {
+              "expression": "engine_type_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_manufacturer_id": {
+          "name": "idx_emotive_claims_manufacturer_id",
+          "columns": [
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_manufacturer_id_claim_year": {
+          "name": "idx_emotive_claims_manufacturer_id_claim_year",
+          "columns": [
+            {
+              "expression": "manufacturer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "claim_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_emotive_claims_search_fts": {
+          "name": "idx_emotive_claims_search_fts",
+          "columns": [
+            {
+              "expression": "to_tsvector('simple', coalesce(\"warranty_report\", '') || ' ' || \"mr_number\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "emotive_claims_engine_type_id_fkey": {
+          "name": "emotive_claims_engine_type_id_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "engine_types",
+          "columnsFrom": [
+            "engine_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claims_manufacturer_id_fkey": {
+          "name": "emotive_claims_manufacturer_id_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "engine_manufacturers",
+          "columnsFrom": [
+            "manufacturer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claims_employee_id_fkey": {
+          "name": "emotive_claims_employee_id_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claims_source_id_fkey": {
+          "name": "emotive_claims_source_id_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "claim_sources",
+          "columnsFrom": [
+            "source_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claims_customer_id_fkey": {
+          "name": "emotive_claims_customer_id_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "emotive_claims_created_by_fkey": {
+          "name": "emotive_claims_created_by_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "emotive_claims_updated_by_fkey": {
+          "name": "emotive_claims_updated_by_fkey",
+          "tableFrom": "emotive_claims",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "emotive_claims_sequence_number_unique": {
+          "name": "emotive_claims_sequence_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "sequence_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "emotive_claims_outcome_check": {
+          "name": "emotive_claims_outcome_check",
+          "value": "\"emotive_claims\".\"outcome\" IN ('pending', 'accepted', 'rejected', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.mr_registry": {
+      "name": "mr_registry",
+      "schema": "",
+      "columns": {
+        "mr_key": {
+          "name": "mr_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "claim_kind": {
+          "name": "claim_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emotive_claim_id": {
+          "name": "emotive_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domace_claim_id": {
+          "name": "domace_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "mr_registry_emotive_claim_id_key": {
+          "name": "mr_registry_emotive_claim_id_key",
+          "columns": [
+            {
+              "expression": "emotive_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"mr_registry\".\"emotive_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "mr_registry_domace_claim_id_key": {
+          "name": "mr_registry_domace_claim_id_key",
+          "columns": [
+            {
+              "expression": "domace_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"mr_registry\".\"domace_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "mr_registry_emotive_claim_id_fkey": {
+          "name": "mr_registry_emotive_claim_id_fkey",
+          "tableFrom": "mr_registry",
+          "tableTo": "emotive_claims",
+          "columnsFrom": [
+            "emotive_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mr_registry_domace_claim_id_fkey": {
+          "name": "mr_registry_domace_claim_id_fkey",
+          "tableFrom": "mr_registry",
+          "tableTo": "domace_claims",
+          "columnsFrom": [
+            "domace_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "mr_registry_claim_kind_check": {
+          "name": "mr_registry_claim_kind_check",
+          "value": "\"mr_registry\".\"claim_kind\" IN ('emotive', 'domace')"
+        },
+        "mr_registry_one_of_claim_check": {
+          "name": "mr_registry_one_of_claim_check",
+          "value": "\n        (\"mr_registry\".\"claim_kind\" = 'emotive' AND \"mr_registry\".\"emotive_claim_id\" IS NOT NULL\n         AND \"mr_registry\".\"domace_claim_id\" IS NULL)\n        OR\n        (\"mr_registry\".\"claim_kind\" = 'domace' AND \"mr_registry\".\"emotive_claim_id\" IS NULL\n         AND \"mr_registry\".\"domace_claim_id\" IS NOT NULL)\n      "
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.client_submissions": {
+      "name": "client_submissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted_by_user_id": {
+          "name": "submitted_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "linked_emotive_claim_id": {
+          "name": "linked_emotive_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejected_reason": {
+          "name": "rejected_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "handled_by_user_id": {
+          "name": "handled_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "handled_at": {
+          "name": "handled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_client_submissions_customer_id": {
+          "name": "idx_client_submissions_customer_id",
+          "columns": [
+            {
+              "expression": "customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_client_submissions_status": {
+          "name": "idx_client_submissions_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_client_submissions_created_at": {
+          "name": "idx_client_submissions_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "client_submissions_customer_id_fkey": {
+          "name": "client_submissions_customer_id_fkey",
+          "tableFrom": "client_submissions",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "client_submissions_submitted_by_user_id_fkey": {
+          "name": "client_submissions_submitted_by_user_id_fkey",
+          "tableFrom": "client_submissions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "submitted_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "client_submissions_linked_emotive_claim_id_fkey": {
+          "name": "client_submissions_linked_emotive_claim_id_fkey",
+          "tableFrom": "client_submissions",
+          "tableTo": "emotive_claims",
+          "columnsFrom": [
+            "linked_emotive_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "client_submissions_handled_by_user_id_fkey": {
+          "name": "client_submissions_handled_by_user_id_fkey",
+          "tableFrom": "client_submissions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "handled_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "client_submissions_status_check": {
+          "name": "client_submissions_status_check",
+          "value": "\"client_submissions\".\"status\" IN ('pending', 'converted', 'rejected')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.attachments": {
+      "name": "attachments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "claim_kind": {
+          "name": "claim_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emotive_claim_id": {
+          "name": "emotive_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domace_claim_id": {
+          "name": "domace_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_submission_id": {
+          "name": "client_submission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "storage_path": {
+          "name": "storage_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_size_bytes": {
+          "name": "file_size_bytes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_sha256": {
+          "name": "content_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "height": {
+          "name": "height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "thumbnail_path": {
+          "name": "thumbnail_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "caption": {
+          "name": "caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'internal'"
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'claim_attachment'"
+        },
+        "uploaded_by": {
+          "name": "uploaded_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_attachments_uploaded_at": {
+          "name": "idx_attachments_uploaded_at",
+          "columns": [
+            {
+              "expression": "uploaded_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_attachments_emotive_claim_id": {
+          "name": "idx_attachments_emotive_claim_id",
+          "columns": [
+            {
+              "expression": "emotive_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"attachments\".\"emotive_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_attachments_domace_claim_id": {
+          "name": "idx_attachments_domace_claim_id",
+          "columns": [
+            {
+              "expression": "domace_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"attachments\".\"domace_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_attachments_client_submission_id": {
+          "name": "idx_attachments_client_submission_id",
+          "columns": [
+            {
+              "expression": "client_submission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"attachments\".\"client_submission_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "attachments_emotive_claim_id_fkey": {
+          "name": "attachments_emotive_claim_id_fkey",
+          "tableFrom": "attachments",
+          "tableTo": "emotive_claims",
+          "columnsFrom": [
+            "emotive_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "attachments_domace_claim_id_fkey": {
+          "name": "attachments_domace_claim_id_fkey",
+          "tableFrom": "attachments",
+          "tableTo": "domace_claims",
+          "columnsFrom": [
+            "domace_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "attachments_client_submission_id_fkey": {
+          "name": "attachments_client_submission_id_fkey",
+          "tableFrom": "attachments",
+          "tableTo": "client_submissions",
+          "columnsFrom": [
+            "client_submission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "attachments_uploaded_by_fkey": {
+          "name": "attachments_uploaded_by_fkey",
+          "tableFrom": "attachments",
+          "tableTo": "users",
+          "columnsFrom": [
+            "uploaded_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "attachments_claim_kind_check": {
+          "name": "attachments_claim_kind_check",
+          "value": "\"attachments\".\"claim_kind\" IN ('emotive', 'domace')"
+        },
+        "attachments_one_of_claim_check": {
+          "name": "attachments_one_of_claim_check",
+          "value": "\n        (\"attachments\".\"claim_kind\" = 'emotive' AND \"attachments\".\"emotive_claim_id\" IS NOT NULL\n         AND \"attachments\".\"domace_claim_id\" IS NULL AND \"attachments\".\"client_submission_id\" IS NULL)\n        OR\n        (\"attachments\".\"claim_kind\" = 'domace' AND \"attachments\".\"emotive_claim_id\" IS NULL\n         AND \"attachments\".\"domace_claim_id\" IS NOT NULL AND \"attachments\".\"client_submission_id\" IS NULL)\n        OR\n        (\"attachments\".\"claim_kind\" IS NULL AND \"attachments\".\"client_submission_id\" IS NOT NULL\n         AND \"attachments\".\"emotive_claim_id\" IS NULL AND \"attachments\".\"domace_claim_id\" IS NULL)\n      "
+        },
+        "attachments_visibility_check": {
+          "name": "attachments_visibility_check",
+          "value": "\"attachments\".\"visibility\" IN ('internal', 'client_visible')"
+        },
+        "attachments_purpose_check": {
+          "name": "attachments_purpose_check",
+          "value": "\"attachments\".\"purpose\" IN ('claim_attachment', 'report_image')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.claim_observations": {
+      "name": "claim_observations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "claim_kind": {
+          "name": "claim_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emotive_claim_id": {
+          "name": "emotive_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domace_claim_id": {
+          "name": "domace_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "edited_at": {
+          "name": "edited_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_claim_observations_emotive_claim_id": {
+          "name": "idx_claim_observations_emotive_claim_id",
+          "columns": [
+            {
+              "expression": "emotive_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"claim_observations\".\"emotive_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_claim_observations_domace_claim_id": {
+          "name": "idx_claim_observations_domace_claim_id",
+          "columns": [
+            {
+              "expression": "domace_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"claim_observations\".\"domace_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "claim_observations_emotive_claim_id_fkey": {
+          "name": "claim_observations_emotive_claim_id_fkey",
+          "tableFrom": "claim_observations",
+          "tableTo": "emotive_claims",
+          "columnsFrom": [
+            "emotive_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "claim_observations_domace_claim_id_fkey": {
+          "name": "claim_observations_domace_claim_id_fkey",
+          "tableFrom": "claim_observations",
+          "tableTo": "domace_claims",
+          "columnsFrom": [
+            "domace_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "claim_observations_author_id_fkey": {
+          "name": "claim_observations_author_id_fkey",
+          "tableFrom": "claim_observations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "claim_observations_claim_kind_check": {
+          "name": "claim_observations_claim_kind_check",
+          "value": "\"claim_observations\".\"claim_kind\" IN ('emotive', 'domace')"
+        },
+        "claim_observations_one_of_claim_check": {
+          "name": "claim_observations_one_of_claim_check",
+          "value": "\n        (\"claim_observations\".\"claim_kind\" = 'emotive' AND \"claim_observations\".\"emotive_claim_id\" IS NOT NULL\n         AND \"claim_observations\".\"domace_claim_id\" IS NULL)\n        OR\n        (\"claim_observations\".\"claim_kind\" = 'domace' AND \"claim_observations\".\"emotive_claim_id\" IS NULL\n         AND \"claim_observations\".\"domace_claim_id\" IS NOT NULL)\n      "
+        },
+        "claim_observations_visibility_check": {
+          "name": "claim_observations_visibility_check",
+          "value": "\"claim_observations\".\"visibility\" IN ('internal', 'client_visible')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.claim_reports": {
+      "name": "claim_reports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "claim_kind": {
+          "name": "claim_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emotive_claim_id": {
+          "name": "emotive_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domace_claim_id": {
+          "name": "domace_claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content_json": {
+          "name": "content_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_html": {
+          "name": "content_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_claim_reports_emotive_claim_id": {
+          "name": "idx_claim_reports_emotive_claim_id",
+          "columns": [
+            {
+              "expression": "emotive_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"claim_reports\".\"emotive_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_claim_reports_domace_claim_id": {
+          "name": "idx_claim_reports_domace_claim_id",
+          "columns": [
+            {
+              "expression": "domace_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"claim_reports\".\"domace_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "claim_reports_emotive_claim_id_key": {
+          "name": "claim_reports_emotive_claim_id_key",
+          "columns": [
+            {
+              "expression": "emotive_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"claim_reports\".\"emotive_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "claim_reports_domace_claim_id_key": {
+          "name": "claim_reports_domace_claim_id_key",
+          "columns": [
+            {
+              "expression": "domace_claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"claim_reports\".\"domace_claim_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "claim_reports_emotive_claim_id_fkey": {
+          "name": "claim_reports_emotive_claim_id_fkey",
+          "tableFrom": "claim_reports",
+          "tableTo": "emotive_claims",
+          "columnsFrom": [
+            "emotive_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "claim_reports_domace_claim_id_fkey": {
+          "name": "claim_reports_domace_claim_id_fkey",
+          "tableFrom": "claim_reports",
+          "tableTo": "domace_claims",
+          "columnsFrom": [
+            "domace_claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "claim_reports_created_by_fkey": {
+          "name": "claim_reports_created_by_fkey",
+          "tableFrom": "claim_reports",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "claim_reports_updated_by_fkey": {
+          "name": "claim_reports_updated_by_fkey",
+          "tableFrom": "claim_reports",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "claim_reports_claim_kind_check": {
+          "name": "claim_reports_claim_kind_check",
+          "value": "\"claim_reports\".\"claim_kind\" IN ('emotive', 'domace')"
+        },
+        "claim_reports_one_of_claim_check": {
+          "name": "claim_reports_one_of_claim_check",
+          "value": "\n        (\"claim_reports\".\"claim_kind\" = 'emotive' AND \"claim_reports\".\"emotive_claim_id\" IS NOT NULL\n         AND \"claim_reports\".\"domace_claim_id\" IS NULL)\n        OR\n        (\"claim_reports\".\"claim_kind\" = 'domace' AND \"claim_reports\".\"emotive_claim_id\" IS NULL\n         AND \"claim_reports\".\"domace_claim_id\" IS NOT NULL)\n      "
+        },
+        "claim_reports_status_check": {
+          "name": "claim_reports_status_check",
+          "value": "\"claim_reports\".\"status\" IN ('draft')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.translation_cache": {
+      "name": "translation_cache",
+      "schema": "",
+      "columns": {
+        "source_hash": {
+          "name": "source_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_language": {
+          "name": "source_language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_language": {
+          "name": "target_language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_text": {
+          "name": "source_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "translated_text": {
+          "name": "translated_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tokens_used": {
+          "name": "tokens_used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_accessed_at": {
+          "name": "last_accessed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "access_count": {
+          "name": "access_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "idx_translation_cache_last_accessed_at": {
+          "name": "idx_translation_cache_last_accessed_at",
+          "columns": [
+            {
+              "expression": "last_accessed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "translation_cache_source_hash_source_language_target_language_pk": {
+          "name": "translation_cache_source_hash_source_language_target_language_pk",
+          "columns": [
+            "source_hash",
+            "source_language",
+            "target_language"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.app_settings": {
+      "name": "app_settings",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value_type": {
+          "name": "value_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_secret": {
+          "name": "is_secret",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "app_settings_updated_by_fkey": {
+          "name": "app_settings_updated_by_fkey",
+          "tableFrom": "app_settings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "app_settings_value_type_check": {
+          "name": "app_settings_value_type_check",
+          "value": "\"app_settings\".\"value_type\" IN ('string', 'number', 'boolean', 'json')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.employee_monthly_output": {
+      "name": "employee_monthly_output",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "engines_assembled": {
+          "name": "engines_assembled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "employee_monthly_output_employee_id_year_month_key": {
+          "name": "employee_monthly_output_employee_id_year_month_key",
+          "columns": [
+            {
+              "expression": "employee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_employee_monthly_output_employee_year_month": {
+          "name": "idx_employee_monthly_output_employee_year_month",
+          "columns": [
+            {
+              "expression": "employee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_employee_monthly_output_year_month": {
+          "name": "idx_employee_monthly_output_year_month",
+          "columns": [
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "employee_monthly_output_employee_id_fkey": {
+          "name": "employee_monthly_output_employee_id_fkey",
+          "tableFrom": "employee_monthly_output",
+          "tableTo": "employees",
+          "columnsFrom": [
+            "employee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "employee_monthly_output_created_by_fkey": {
+          "name": "employee_monthly_output_created_by_fkey",
+          "tableFrom": "employee_monthly_output",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "employee_monthly_output_updated_by_fkey": {
+          "name": "employee_monthly_output_updated_by_fkey",
+          "tableFrom": "employee_monthly_output",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "employee_monthly_output_month_check": {
+          "name": "employee_monthly_output_month_check",
+          "value": "\"employee_monthly_output\".\"month\" >= 1 AND \"employee_monthly_output\".\"month\" <= 12"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

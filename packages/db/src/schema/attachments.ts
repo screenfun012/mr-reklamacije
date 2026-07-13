@@ -19,18 +19,23 @@ import {
 
 import { users } from './access-control.js'
 import { domaceClaims, emotiveClaims } from './claims.js'
+import { clientSubmissions } from './client-submissions.js'
 
 /**
- * Polymorphic attachments: exactly one of emotive_claim_id / domace_claim_id is set.
- * claim_kind mirrors which FK is non-null; CASCADE deletes when parent claim is removed.
+ * Polymorphic attachments: exactly one of emotive_claim_id / domace_claim_id /
+ * client_submission_id is set. For claim attachments claim_kind mirrors which claim FK
+ * is non-null and CASCADE deletes when the parent claim is removed; a client-submission
+ * attachment sets only client_submission_id and leaves claim_kind NULL (on conversion the
+ * attachment is re-associated to the created claim and claim_kind is set — see docs/18).
  */
 export const attachments = pgTable(
   'attachments',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    claimKind: text('claim_kind').notNull().$type<ClaimKind>(),
+    claimKind: text('claim_kind').$type<ClaimKind>(),
     emotiveClaimId: uuid('emotive_claim_id'),
     domaceClaimId: uuid('domace_claim_id'),
+    clientSubmissionId: uuid('client_submission_id'),
     fileName: text('file_name').notNull(),
     storagePath: text('storage_path').notNull(),
     mimeType: text('mime_type').notNull(),
@@ -55,10 +60,13 @@ export const attachments = pgTable(
       'attachments_one_of_claim_check',
       sql`
         (${t.claimKind} = 'emotive' AND ${t.emotiveClaimId} IS NOT NULL
-         AND ${t.domaceClaimId} IS NULL)
+         AND ${t.domaceClaimId} IS NULL AND ${t.clientSubmissionId} IS NULL)
         OR
         (${t.claimKind} = 'domace' AND ${t.emotiveClaimId} IS NULL
-         AND ${t.domaceClaimId} IS NOT NULL)
+         AND ${t.domaceClaimId} IS NOT NULL AND ${t.clientSubmissionId} IS NULL)
+        OR
+        (${t.claimKind} IS NULL AND ${t.clientSubmissionId} IS NOT NULL
+         AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL)
       `,
     ),
     check('attachments_visibility_check', sql`${t.visibility} IN ('internal', 'client_visible')`),
@@ -74,6 +82,11 @@ export const attachments = pgTable(
       foreignColumns: [domaceClaims.id],
     }).onDelete('cascade'),
     foreignKey({
+      name: 'attachments_client_submission_id_fkey',
+      columns: [t.clientSubmissionId],
+      foreignColumns: [clientSubmissions.id],
+    }).onDelete('restrict'),
+    foreignKey({
       name: 'attachments_uploaded_by_fkey',
       columns: [t.uploadedBy],
       foreignColumns: [users.id],
@@ -85,6 +98,9 @@ export const attachments = pgTable(
     index('idx_attachments_domace_claim_id')
       .on(t.domaceClaimId)
       .where(sql`${t.domaceClaimId} IS NOT NULL`),
+    index('idx_attachments_client_submission_id')
+      .on(t.clientSubmissionId)
+      .where(sql`${t.clientSubmissionId} IS NOT NULL`),
   ],
 )
 
@@ -150,6 +166,10 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
   domaceClaim: one(domaceClaims, {
     fields: [attachments.domaceClaimId],
     references: [domaceClaims.id],
+  }),
+  clientSubmission: one(clientSubmissions, {
+    fields: [attachments.clientSubmissionId],
+    references: [clientSubmissions.id],
   }),
   uploader: one(users, {
     fields: [attachments.uploadedBy],
