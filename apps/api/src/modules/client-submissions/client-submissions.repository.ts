@@ -216,8 +216,13 @@ export class ClientSubmissionsRepository {
       .where(and(eq(clientSubmissions.id, id), isNull(clientSubmissions.deletedAt)))
   }
 
-  async markRejected(id: string, reason: string | null, handledByUserId: string): Promise<void> {
-    await this.db
+  async markRejected(
+    id: string,
+    reason: string | null,
+    handledByUserId: string,
+    executor: UpdateExecutor = this.db,
+  ): Promise<void> {
+    await executor
       .update(clientSubmissions)
       .set({
         status: ClientSubmissionStatus.Rejected,
@@ -226,5 +231,21 @@ export class ClientSubmissionsRepository {
         handledAt: new Date(),
       })
       .where(and(eq(clientSubmissions.id, id), isNull(clientSubmissions.deletedAt)))
+  }
+
+  /**
+   * Soft-deletes every live attachment uploaded against this submission so a storage GC sweep
+   * can reclaim the bytes. Rejected/abandoned submissions never re-point their files to a claim
+   * (convert() does that), so on reject they would otherwise live in object storage forever.
+   * Sets `deleted_at` only — the rows and storage bytes stay until the GC sweep runs.
+   */
+  async softDeleteAttachmentsForSubmission(
+    submissionId: string,
+    executor: UpdateExecutor = this.db,
+  ): Promise<void> {
+    await executor
+      .update(attachments)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(attachments.clientSubmissionId, submissionId), isNull(attachments.deletedAt)))
   }
 }

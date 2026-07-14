@@ -18,6 +18,7 @@ import {
   NotFoundError,
 } from '../../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../../core/http/actor-context.js'
+import type { EmailMessage, EmailPort } from '../../../core/ports/email-port.js'
 import { DbAppSettingsReader } from '../../../core/settings/app-settings.reader.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import { RecordingEmailPort } from '../../../test-helpers/recording-email-port.js'
@@ -28,6 +29,19 @@ import { ClientSubmissionsRepository } from '../client-submissions.repository.js
 import { ClientSubmissionsService } from '../client-submissions.service.js'
 
 const INTERNAL_BASE_URL = 'http://127.0.0.1:3002'
+
+/** Email port whose `send` blocks on an external gate — proves create() does not await it. */
+class GatedEmailPort implements EmailPort {
+  readonly enabled = true
+  readonly sent: EmailMessage[] = []
+
+  constructor(private readonly gate: Promise<void>) {}
+
+  async send(message: EmailMessage): Promise<void> {
+    await this.gate
+    this.sent.push(message)
+  }
+}
 
 // Submitter/handler for convert + reject (customer comes from the submission, not from
 // customer_users, so the shared TEST_USER_ID is safe here).
@@ -77,7 +91,7 @@ describe('ClientSubmissionsService integration', () => {
   let submissionCleanup: string[]
   let attachmentCleanup: string[]
 
-  function makeService(emailPort: RecordingEmailPort): ClientSubmissionsService {
+  function makeService(emailPort: EmailPort): ClientSubmissionsService {
     return new ClientSubmissionsService(
       ctx.db,
       repository,
@@ -218,11 +232,13 @@ describe('ClientSubmissionsService integration', () => {
         actorUserAgent: 'vitest-agent',
       })
 
-      expect(email.sent).toHaveLength(1)
+      expect(events.clientSubmissionEvents).toEqual([{ type: 'client_submission_changed', id }])
+
+      // The notification is now fire-and-settle (not awaited before the response), so it lands
+      // shortly after create() returns.
+      await vi.waitFor(() => expect(email.sent).toHaveLength(1))
       expect(email.sent[0]!.to).toBe(SUPPORT_EMAIL_BY_KIND[ClaimKind.Emotive])
       expect(email.sent[0]!.subject).toContain('Nova prijava')
-
-      expect(events.clientSubmissionEvents).toEqual([{ type: 'client_submission_changed', id }])
     })
 
     it('uses the configured notify_email setting when present', async () => {
@@ -237,6 +253,7 @@ describe('ClientSubmissionsService integration', () => {
 
       await service.create(actorFor(submitterId), { message: 'Test recipient override' })
 
+      await vi.waitFor(() => expect(email.sent).toHaveLength(1))
       expect(email.sent[0]!.to).toBe('ops@firma.rs')
     })
 
@@ -252,6 +269,28 @@ describe('ClientSubmissionsService integration', () => {
 
       expect(await repository.findById(id)).not.toBeNull()
       expect(events.clientSubmissionEvents).toEqual([{ type: 'client_submission_changed', id }])
+    })
+
+    it('returns before a slow notification email resolves (fire-and-settle)', async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+
+      let releaseEmail!: () => void
+      const gate = new Promise<void>((resolve) => {
+        releaseEmail = resolve
+      })
+      const gatedEmail = new GatedEmailPort(gate)
+      const gatedService = makeService(gatedEmail)
+
+      // If create() awaited the email this would deadlock — the gate is only released afterwards.
+      const { id } = await gatedService.create(actorFor(submitterId), { message: 'Slow email' })
+
+      expect(id).toBeTruthy()
+      expect(gatedEmail.sent).toHaveLength(0)
+
+      releaseEmail()
+      await vi.waitFor(() => expect(gatedEmail.sent).toHaveLength(1))
     })
 
     it('throws ForbiddenError (no email/event) when the user is linked to no customer', async () => {
@@ -294,6 +333,8 @@ describe('ClientSubmissionsService integration', () => {
         claimKind: ClaimKind.Emotive,
         clientSubmissionId: null,
       })
+      // Convert re-points the attachment to the claim; it must stay live (reject soft-deletes, not convert).
+      expect(attachment!.deletedAt).toBeNull()
 
       const submission = await repository.findById(submissionId)
       expect(submission).toMatchObject({
@@ -400,6 +441,23 @@ describe('ClientSubmissionsService integration', () => {
       expect(events.clientSubmissionEvents).toEqual([
         { type: 'client_submission_changed', id: submissionId },
       ])
+    })
+
+    it('soft-deletes the submission attachments so a storage sweep can reclaim them', async () => {
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      const submissionId = await createSubmission(customerId, 'Za odbijanje sa prilozima')
+      const attachmentId = await seedAttachmentOnSubmission(submissionId)
+
+      await service.reject(ACTOR, submissionId, 'Van garantnog roka')
+
+      const [attachment] = await ctx.db
+        .select()
+        .from(schema.attachments)
+        .where(eq(schema.attachments.id, attachmentId))
+      // Row and storage bytes remain (soft delete only); deleted_at is set for the GC sweep.
+      expect(attachment).toBeDefined()
+      expect(attachment!.deletedAt).not.toBeNull()
+      expect(attachment!.clientSubmissionId).toBe(submissionId)
     })
   })
 })

@@ -99,7 +99,16 @@ export class ClientSubmissionsService {
 
     this.events.publishClientSubmissionChanged(id)
 
-    await this.notifyNewSubmission(id, customer.name, input.message)
+    // Best-effort notification — fire-and-settle so a slow/timing-out Resend call never adds
+    // latency to the client's submit (the submission is already persisted, audited and emitted).
+    // `notifyNewSubmission` swallows its own errors; the `.catch` is a defensive guard against
+    // an un-awaited rejection ever becoming an unhandledRejection.
+    void this.notifyNewSubmission(id, customer.name, input.message).catch((error) => {
+      this.logger.error(
+        { err: error, submissionId: id },
+        'Unexpected error dispatching client submission notification',
+      )
+    })
 
     return { id }
   }
@@ -190,7 +199,12 @@ export class ClientSubmissionsService {
       throw new NotFoundError('Client submission', id)
     }
 
-    await this.repo.markRejected(id, reason, actor.actorUserId)
+    // Flip status AND soft-delete the submission's photos/videos in one transaction: a rejected
+    // submission never re-points its files to a claim, so a GC sweep can reclaim the storage.
+    await this.db.transaction(async (tx) => {
+      await this.repo.markRejected(id, reason, actor.actorUserId, tx)
+      await this.repo.softDeleteAttachmentsForSubmission(id, tx)
+    })
 
     await this.audit.log({
       entityType: ENTITY_TYPE,
