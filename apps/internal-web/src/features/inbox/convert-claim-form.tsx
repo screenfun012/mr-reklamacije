@@ -10,6 +10,7 @@ import { m } from '@mr/i18n'
 import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { InternalButton } from '~/components/internal-button'
@@ -336,10 +337,7 @@ export function ConvertClaimForm({
             disabled={isPending}
             onClick={handleSubmit}
           >
-            <span aria-hidden="true" className="font-normal">
-              ✓
-            </span>{' '}
-            {m.action_save()}
+            <Check className="size-4" aria-hidden="true" /> {m.action_save()}
           </InternalButton>
         </div>
       </form>
