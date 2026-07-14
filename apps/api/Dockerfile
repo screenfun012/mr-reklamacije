@@ -8,6 +8,15 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Install Chromium to a world-readable path (not root's ~/.cache/ms-playwright) so the
+# non-root `node` runtime user can launch it. Playwright reads the SAME env at runtime to
+# locate the browser, so it must be set before every `playwright install` AND persist to
+# the running process — an ENV here does both.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# Corepack caches the pinned pnpm here (not root's ~/.cache) so the non-root runtime user
+# can run the CMD (`pnpm --filter api start`) without re-downloading pnpm on boot.
+ENV COREPACK_HOME=/corepack
+
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # Pre-install the Chromium browser + OS deps in an early, cacheable layer (pinned to
@@ -39,6 +48,15 @@ RUN pnpm --filter api exec playwright install chromium --with-deps
 RUN pnpm exec turbo run build --filter=api
 
 ENV NODE_ENV=production
+
+# The api parses untrusted uploads, runs ExcelJS, and drives a headless Chromium over
+# claim data — so it must NOT run as root. Make the browser + corepack caches world-readable
+# (belt-and-suspenders over the default umask), then drop to the unprivileged `node` user
+# shipped by the base image. Build-time steps that need root (apt, playwright install-deps)
+# already ran above; runtime writes go to /tmp (Chromium profile) and S3/MinIO, not /app.
+RUN chmod -R a+rX /ms-playwright /corepack
+
+USER node
 
 EXPOSE 3000
 
