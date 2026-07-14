@@ -6,7 +6,11 @@ import type { MRSessionUser } from '../../core/auth/session-types.js'
 import type { Container } from '../../core/container.js'
 import { UnauthorizedError, ValidationError } from '../../core/errors/domain-errors.js'
 import { getActorContext } from '../../core/http/actor-context.js'
-import { buildAttachmentDownloadResponse } from '../../core/http/attachment-download.js'
+import {
+  buildAttachmentDownloadResponse,
+  parseAttachmentDownloadRequest,
+  serveCachedAttachmentDownload,
+} from '../../core/http/attachment-download.js'
 import { readUploadFiles } from '../../core/http/upload-files.js'
 import type { AttachmentsActor } from './attachments.types.js'
 import { AttachmentListQuerySchema } from './attachments.validators.js'
@@ -86,35 +90,12 @@ export function createAttachmentsController(container: Container): {
     download: async (c: Context) => {
       const user = requireUser(c)
       const { id } = AttachmentIdParamSchema.parse(c.req.param())
-      const disposition = c.req.query('disposition') === 'attachment' ? 'attachment' : 'inline'
-      const variant = c.req.query('variant') === 'thumbnail' ? 'thumbnail' : 'original'
+      const { disposition, variant } = parseAttachmentDownloadRequest(c)
       const meta = await container.attachmentsService.getDownloadMeta(id, toActor(user), variant)
 
-      // Uploaded attachments are immutable (content-addressed by sha256), so any inline
-      // view (images, video, documents) may be browser-cached and revalidated via ETag.
-      // The "attachment" (save-to-disk) disposition stays no-store.
-      const cacheable = disposition === 'inline'
-      const cacheControl = cacheable ? 'private, max-age=86400' : 'private, no-store'
-
-      if (cacheable && meta.etag !== null && c.req.header('if-none-match') === meta.etag) {
-        return new Response(null, {
-          status: 304,
-          headers: { ETag: meta.etag, 'Cache-Control': cacheControl },
-        })
-      }
-
-      const { stream, size } = await container.attachmentsService.openDownloadStream(
-        meta.storagePath,
-      )
-
-      return buildAttachmentDownloadResponse({
-        stream,
-        size,
-        mimeType: meta.mimeType,
-        fileName: meta.fileName,
+      return serveCachedAttachmentDownload(c, meta, {
         disposition,
-        cacheControl,
-        etag: cacheable ? meta.etag : null,
+        openStream: (storagePath) => container.attachmentsService.openDownloadStream(storagePath),
       })
     },
 

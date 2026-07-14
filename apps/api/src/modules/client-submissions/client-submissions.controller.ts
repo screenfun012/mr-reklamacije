@@ -5,7 +5,10 @@ import type { MRSessionUser } from '../../core/auth/session-types.js'
 import type { Container } from '../../core/container.js'
 import { UnauthorizedError, ValidationError } from '../../core/errors/domain-errors.js'
 import { getActorContext } from '../../core/http/actor-context.js'
-import { buildAttachmentDownloadResponse } from '../../core/http/attachment-download.js'
+import {
+  parseAttachmentDownloadRequest,
+  serveCachedAttachmentDownload,
+} from '../../core/http/attachment-download.js'
 import { readUploadFiles } from '../../core/http/upload-files.js'
 import {
   ClientSubmissionCreateInputSchema,
@@ -100,7 +103,7 @@ export function createClientSubmissionsController(container: Container) {
         throw new ValidationError('No files uploaded')
       }
 
-      const result = await container.attachmentsService.uploadToSubmission(
+      const result = await container.submissionAttachmentsService.uploadToSubmission(
         id,
         files,
         toActor(user),
@@ -113,7 +116,10 @@ export function createClientSubmissionsController(container: Container) {
     listAttachments: async (c: Context) => {
       const user = requireUser(c)
       const { id } = ClientSubmissionIdParamSchema.parse(c.req.param())
-      const result = await container.attachmentsService.listForSubmission(id, toActor(user))
+      const result = await container.submissionAttachmentsService.listForSubmission(
+        id,
+        toActor(user),
+      )
       return c.json(result)
     },
 
@@ -121,38 +127,19 @@ export function createClientSubmissionsController(container: Container) {
     downloadAttachment: async (c: Context) => {
       const user = requireUser(c)
       const { id, attachmentId } = SubmissionAttachmentParamSchema.parse(c.req.param())
-      const disposition = c.req.query('disposition') === 'attachment' ? 'attachment' : 'inline'
-      const variant = c.req.query('variant') === 'thumbnail' ? 'thumbnail' : 'original'
+      const { disposition, variant } = parseAttachmentDownloadRequest(c)
 
-      const meta = await container.attachmentsService.getSubmissionDownloadMeta(
+      const meta = await container.submissionAttachmentsService.getSubmissionDownloadMeta(
         id,
         attachmentId,
         toActor(user),
         variant,
       )
 
-      const cacheable = disposition === 'inline'
-      const cacheControl = cacheable ? 'private, max-age=86400' : 'private, no-store'
-
-      if (cacheable && meta.etag !== null && c.req.header('if-none-match') === meta.etag) {
-        return new Response(null, {
-          status: 304,
-          headers: { ETag: meta.etag, 'Cache-Control': cacheControl },
-        })
-      }
-
-      const { stream, size } = await container.attachmentsService.openDownloadStream(
-        meta.storagePath,
-      )
-
-      return buildAttachmentDownloadResponse({
-        stream,
-        size,
-        mimeType: meta.mimeType,
-        fileName: meta.fileName,
+      return serveCachedAttachmentDownload(c, meta, {
         disposition,
-        cacheControl,
-        etag: cacheable ? meta.etag : null,
+        openStream: (storagePath) =>
+          container.submissionAttachmentsService.openDownloadStream(storagePath),
       })
     },
   }

@@ -122,7 +122,7 @@ describe('Submission attachments', () => {
     it('owner uploads to own pending submission: row has client_submission_id + claim_kind NULL', async () => {
       const { ownerId, submissionId } = await seedOwnedSubmission()
 
-      const result = await container.attachmentsService.uploadToSubmission(
+      const result = await container.submissionAttachmentsService.uploadToSubmission(
         submissionId,
         [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         ownerActor(ownerId),
@@ -144,21 +144,21 @@ describe('Submission attachments', () => {
 
     it('owner lists and downloads their own submission attachments', async () => {
       const { ownerId, submissionId } = await seedOwnedSubmission()
-      const uploaded = await container.attachmentsService.uploadToSubmission(
+      const uploaded = await container.submissionAttachmentsService.uploadToSubmission(
         submissionId,
         [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         ownerActor(ownerId),
         auditContext,
       )
 
-      const list = await container.attachmentsService.listForSubmission(
+      const list = await container.submissionAttachmentsService.listForSubmission(
         submissionId,
         ownerActor(ownerId),
       )
       expect(list.items).toHaveLength(1)
       expect(list.items[0]?.id).toBe(uploaded.items[0]!.id)
 
-      const meta = await container.attachmentsService.getSubmissionDownloadMeta(
+      const meta = await container.submissionAttachmentsService.getSubmissionDownloadMeta(
         submissionId,
         uploaded.items[0]!.id,
         ownerActor(ownerId),
@@ -174,7 +174,7 @@ describe('Submission attachments', () => {
 
     it('SECURITY: a DIFFERENT client gets 404 on upload/list/download (no existence leak)', async () => {
       const { ownerId, submissionId } = await seedOwnedSubmission()
-      const uploaded = await container.attachmentsService.uploadToSubmission(
+      const uploaded = await container.submissionAttachmentsService.uploadToSubmission(
         submissionId,
         [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         ownerActor(ownerId),
@@ -183,7 +183,7 @@ describe('Submission attachments', () => {
       const attacker = ownerActor(await seedUser())
 
       await expect(
-        container.attachmentsService.uploadToSubmission(
+        container.submissionAttachmentsService.uploadToSubmission(
           submissionId,
           [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
           attacker,
@@ -192,11 +192,11 @@ describe('Submission attachments', () => {
       ).rejects.toBeInstanceOf(NotFoundError)
 
       await expect(
-        container.attachmentsService.listForSubmission(submissionId, attacker),
+        container.submissionAttachmentsService.listForSubmission(submissionId, attacker),
       ).rejects.toBeInstanceOf(NotFoundError)
 
       await expect(
-        container.attachmentsService.getSubmissionDownloadMeta(
+        container.submissionAttachmentsService.getSubmissionDownloadMeta(
           submissionId,
           uploaded.items[0]!.id,
           attacker,
@@ -207,17 +207,20 @@ describe('Submission attachments', () => {
 
     it('an operator with .manage can list and download any submission attachment', async () => {
       const { ownerId, submissionId } = await seedOwnedSubmission()
-      const uploaded = await container.attachmentsService.uploadToSubmission(
+      const uploaded = await container.submissionAttachmentsService.uploadToSubmission(
         submissionId,
         [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         ownerActor(ownerId),
         auditContext,
       )
 
-      const list = await container.attachmentsService.listForSubmission(submissionId, manageActor())
+      const list = await container.submissionAttachmentsService.listForSubmission(
+        submissionId,
+        manageActor(),
+      )
       expect(list.items).toHaveLength(1)
 
-      const meta = await container.attachmentsService.getSubmissionDownloadMeta(
+      const meta = await container.submissionAttachmentsService.getSubmissionDownloadMeta(
         submissionId,
         uploaded.items[0]!.id,
         manageActor(),
@@ -228,7 +231,7 @@ describe('Submission attachments', () => {
 
     it('a missing submission is 404 for an owner-permissioned client', async () => {
       await expect(
-        container.attachmentsService.listForSubmission(
+        container.submissionAttachmentsService.listForSubmission(
           crypto.randomUUID(),
           ownerActor(await seedUser()),
         ),
@@ -237,7 +240,7 @@ describe('Submission attachments', () => {
 
     it("an attachment cannot be fetched through another submission's route", async () => {
       const first = await seedOwnedSubmission()
-      const uploaded = await container.attachmentsService.uploadToSubmission(
+      const uploaded = await container.submissionAttachmentsService.uploadToSubmission(
         first.submissionId,
         [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         ownerActor(first.ownerId),
@@ -248,7 +251,7 @@ describe('Submission attachments', () => {
 
       // Owner has access to `otherSubmission`, but the attachment belongs to `first` → 404.
       await expect(
-        container.attachmentsService.getSubmissionDownloadMeta(
+        container.submissionAttachmentsService.getSubmissionDownloadMeta(
           otherSubmission,
           uploaded.items[0]!.id,
           ownerActor(first.ownerId),
@@ -267,7 +270,7 @@ describe('Submission attachments', () => {
       )
 
       await expect(
-        container.attachmentsService.uploadToSubmission(
+        container.submissionAttachmentsService.uploadToSubmission(
           submissionId,
           [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
           ownerActor(ownerId),
@@ -286,7 +289,7 @@ describe('Submission attachments', () => {
       )
 
       await expect(
-        container.attachmentsService.uploadToSubmission(
+        container.submissionAttachmentsService.uploadToSubmission(
           submissionId,
           [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
           ownerActor(ownerId),
@@ -299,7 +302,7 @@ describe('Submission attachments', () => {
       const { ownerId, submissionId } = await seedOwnedSubmission()
 
       await expect(
-        container.attachmentsService.uploadToSubmission(
+        container.submissionAttachmentsService.uploadToSubmission(
           submissionId,
           [{ fileName: 'notes.txt', data: Buffer.from('plain text') }],
           ownerActor(ownerId),
@@ -313,7 +316,7 @@ describe('Submission attachments', () => {
       const oversized = Buffer.alloc(26 * 1024 * 1024)
 
       await expect(
-        container.attachmentsService.uploadToSubmission(
+        container.submissionAttachmentsService.uploadToSubmission(
           submissionId,
           [{ fileName: 'huge.jpg', data: oversized }],
           ownerActor(ownerId),
@@ -391,7 +394,7 @@ describe('Submission attachments', () => {
 
     it('an operator with .manage lists attachments over HTTP', async () => {
       const { ownerId, submissionId } = await seedOwnedSubmission()
-      await container.attachmentsService.uploadToSubmission(
+      await container.submissionAttachmentsService.uploadToSubmission(
         submissionId,
         [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         ownerActor(ownerId),

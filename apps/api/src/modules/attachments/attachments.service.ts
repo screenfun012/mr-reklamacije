@@ -3,7 +3,6 @@ import {
   AttachmentVisibility,
   AuditAction,
   ClaimKind,
-  ClientSubmissionStatus,
   MAX_FILE_SIZE_MB,
   MAX_FILES_PER_CLAIM,
   MAX_REPORT_IMAGES_PER_CLAIM,
@@ -11,7 +10,6 @@ import {
   detectAttachmentMimeType,
   extensionForMimeType,
   isImageAttachmentMimeType,
-  type AllowedAttachmentMimeType,
 } from '@mr/shared'
 import { createHash, randomUUID } from 'node:crypto'
 
@@ -26,35 +24,37 @@ import {
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
-import type {
-  SubmissionAccessInfo,
-  SubmissionAccessPort,
-} from '../../core/ports/submission-access-port.js'
 import {
   buildSignedAttachmentUrl,
   verifySignedAttachmentToken,
 } from '../../infrastructure/storage/local-volume-storage.js'
 import {
   buildAttachmentStoragePath,
-  buildSubmissionAttachmentStoragePath,
   sanitizeUploadFileName,
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
 import {
+  resolveAttachmentDownloadMeta,
+  type AttachmentDownloadMeta,
+} from './attachment-download-meta.js'
+import {
   generateImageThumbnail,
-  optimizeAttachmentImage,
   optimizeReportImage,
-  readImageDimensions,
   shouldGenerateImageThumbnail,
-  type OptimizedReportImage,
 } from './attachment-image-processing.js'
+import {
+  alignFileNameExtension,
+  processUploadFile,
+  writeStoredFile,
+  MAX_FILE_SIZE_BYTES,
+  MAX_TOTAL_SIZE_BYTES,
+  type AttachmentUploadFileInput,
+} from './attachment-upload-pipeline.js'
 import { AttachmentsRepository } from './attachments.repository.js'
 import type {
   AttachmentsActor,
   AttachmentsAuditContext,
   AttachmentsViewScope,
-  SubmissionAttachmentItem,
-  SubmissionAttachmentUploadResult,
 } from './attachments.types.js'
 import type {
   AttachmentListItem,
@@ -63,26 +63,6 @@ import type {
   AttachmentSignedUrlResponse,
   AttachmentUploadResult,
 } from './attachments.validators.js'
-
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_PER_CLAIM_MB * 1024 * 1024
-
-/** Recompression can change the format (e.g. png → jpeg) — keep the display name honest. */
-function alignFileNameExtension(fileName: string, mimeType: AllowedAttachmentMimeType): string {
-  const extension = extensionForMimeType(mimeType)
-  if (fileName.toLowerCase().endsWith(`.${extension}`)) {
-    return fileName
-  }
-  const dotIndex = fileName.lastIndexOf('.')
-  const base = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName
-  return `${base}.${extension}`
-}
-
-export interface AttachmentUploadFileInput {
-  readonly fileName: string
-  readonly data: Buffer
-  readonly caption?: string | null
-}
 
 export interface AttachmentUploadInput {
   readonly claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace
@@ -139,7 +119,6 @@ export class AttachmentsService {
     private readonly events: EventBus,
     private readonly signingSecret: string,
     private readonly apiBaseUrl: string,
-    private readonly submissionAccess: SubmissionAccessPort,
   ) {}
 
   /**
@@ -158,69 +137,6 @@ export class AttachmentsService {
         ? await this.repo.findEmotiveClaimCustomerId(claimId)
         : null
     this.events.publishClaimUpdated({ kind: claimKind, id: claimId }, customerId)
-  }
-
-  /**
-   * The shared per-file processing stage (magic-byte MIME check → size limit → image
-   * recompression → content hash). Used by both claim and submission uploads so the one hardened
-   * pipeline runs everywhere; the caller owns target-specific concerns (dedup scope, storage path,
-   * total-size cap, row insert).
-   */
-  private async processUploadFile(file: AttachmentUploadFileInput): Promise<{
-    storedData: Buffer
-    storedMime: AllowedAttachmentMimeType
-    contentSha256: string
-    optimized: OptimizedReportImage | null
-  }> {
-    if (file.data.byteLength > MAX_FILE_SIZE_BYTES) {
-      throw new PayloadTooLargeError(`File exceeds ${MAX_FILE_SIZE_MB} MB limit`)
-    }
-
-    const detectedMime = detectAttachmentMimeType(new Uint8Array(file.data))
-    if (detectedMime === null) {
-      throw new UnsupportedMediaTypeError('Unsupported file type')
-    }
-
-    // Photos are recompressed before anything else (dedupe hash, storage, limits) so only the
-    // optimized bytes ever exist in the system.
-    const optimized = await optimizeAttachmentImage(file.data, detectedMime)
-    const storedData = optimized?.data ?? file.data
-    const storedMime = optimized?.mimeType ?? detectedMime
-    const contentSha256 = createHash('sha256').update(storedData).digest('hex')
-
-    return { storedData, storedMime, contentSha256, optimized }
-  }
-
-  /** Writes the (already optimized) bytes to storage and generates a thumbnail when applicable. */
-  private async writeStoredFile(params: {
-    storagePath: string
-    storedData: Buffer
-    storedMime: AllowedAttachmentMimeType
-    optimized: OptimizedReportImage | null
-  }): Promise<{ width: number | null; height: number | null; thumbnailPath: string | null }> {
-    await this.storage.upload({
-      path: params.storagePath,
-      data: params.storedData,
-      mimeType: params.storedMime,
-    })
-
-    const dimensions =
-      params.optimized !== null
-        ? { width: params.optimized.width, height: params.optimized.height }
-        : shouldGenerateImageThumbnail(params.storedMime)
-          ? await readImageDimensions(params.storedData)
-          : null
-
-    const thumbnailPath =
-      dimensions !== null && shouldGenerateImageThumbnail(params.storedMime)
-        ? await generateImageThumbnail(this.storage, params.storagePath, params.storedData)
-        : null
-
-    return {
-      width: dimensions?.width ?? null,
-      height: dimensions?.height ?? null,
-      thumbnailPath,
-    }
   }
 
   async list(query: AttachmentListQuery, actor: AttachmentsActor): Promise<AttachmentListResponse> {
@@ -257,29 +173,14 @@ export class AttachmentsService {
     id: string,
     actor: AttachmentsActor,
     variant: 'original' | 'thumbnail',
-  ): Promise<{
-    storagePath: string
-    mimeType: string
-    fileName: string
-    etag: string | null
-  }> {
+  ): Promise<AttachmentDownloadMeta> {
     await this.findById(id, actor)
     const row = await this.repo.findRawById(id)
     if (row === null) {
       throw new NotFoundError('Attachment', id)
     }
 
-    const thumbnailPath = variant === 'thumbnail' ? row.thumbnailPath : null
-    return {
-      storagePath: thumbnailPath ?? row.storagePath,
-      // Thumbnails are always generated as JPEG (see generateImageThumbnail).
-      mimeType: thumbnailPath !== null ? 'image/jpeg' : row.mimeType,
-      fileName: row.fileName,
-      etag:
-        row.contentSha256 === null
-          ? null
-          : `"${row.contentSha256}${thumbnailPath !== null ? '-thumb' : ''}"`,
-    }
+    return resolveAttachmentDownloadMeta(row, variant)
   }
 
   /** Streamed file body for a path previously resolved via getDownloadMeta/raw. */
@@ -332,8 +233,7 @@ export class AttachmentsService {
     let runningTotalBytes = stats.totalBytes
 
     for (const file of input.files) {
-      const { storedData, storedMime, contentSha256, optimized } =
-        await this.processUploadFile(file)
+      const { storedData, storedMime, contentSha256, optimized } = await processUploadFile(file)
 
       if (runningTotalBytes + storedData.byteLength > MAX_TOTAL_SIZE_BYTES) {
         throw new PayloadTooLargeError(
@@ -363,7 +263,7 @@ export class AttachmentsService {
         extension,
       })
 
-      const { width, height, thumbnailPath } = await this.writeStoredFile({
+      const { width, height, thumbnailPath } = await writeStoredFile(this.storage, {
         storagePath,
         storedData,
         storedMime,
@@ -571,174 +471,5 @@ export class AttachmentsService {
       attachment.claimId,
       isClientVisibleClaimAttachment(attachment),
     )
-  }
-
-  // --- Portal-submission attachments ---
-
-  /**
-   * Authorizes access to a submission's attachments. The actor must either hold
-   * `client_submissions.manage` (operator/admin) OR own the submission via
-   * `client_submissions.create` (`submittedByUserId === actor.id`). Returns **404** (never 403)
-   * when the submission is absent OR the actor is a client who does not own it — a client must
-   * never learn that another client's submission exists (docs/05: 404 not 403 for row-level access).
-   */
-  private async authorizeSubmissionAccess(
-    submissionId: string,
-    actor: AttachmentsActor,
-  ): Promise<SubmissionAccessInfo> {
-    const submission = await this.submissionAccess.findSubmissionAccess(submissionId)
-    if (submission === null) {
-      throw new NotFoundError('Client submission', submissionId)
-    }
-
-    if (!actor.permissions.includes('client_submissions.manage')) {
-      const ownsSubmission =
-        actor.permissions.includes('client_submissions.create') &&
-        submission.submittedByUserId === actor.id
-      if (!ownsSubmission) {
-        throw new NotFoundError('Client submission', submissionId)
-      }
-    }
-
-    return submission
-  }
-
-  /**
-   * A client uploads files to their OWN pending submission (operator/admin may upload to any).
-   * Reuses the same processing pipeline as claim uploads. Rejects once the submission has left the
-   * pending state (converted/rejected).
-   */
-  async uploadToSubmission(
-    submissionId: string,
-    files: readonly AttachmentUploadFileInput[],
-    actor: AttachmentsActor,
-    auditContext: AttachmentsAuditContext,
-  ): Promise<SubmissionAttachmentUploadResult> {
-    const submission = await this.authorizeSubmissionAccess(submissionId, actor)
-    if (submission.status !== ClientSubmissionStatus.Pending) {
-      throw new ConflictError('Submission is no longer open for attachments')
-    }
-
-    const stats = await this.repo.countActiveForSubmission(submissionId)
-    if (stats.count + files.length > MAX_FILES_PER_CLAIM) {
-      throw new ConflictError(`Submission attachment limit reached (${MAX_FILES_PER_CLAIM})`)
-    }
-
-    const items: SubmissionAttachmentItem[] = []
-    let skippedDuplicates = 0
-    let runningTotalBytes = stats.totalBytes
-
-    for (const file of files) {
-      const { storedData, storedMime, contentSha256, optimized } =
-        await this.processUploadFile(file)
-
-      if (runningTotalBytes + storedData.byteLength > MAX_TOTAL_SIZE_BYTES) {
-        throw new PayloadTooLargeError(
-          `Submission attachment total size exceeds ${MAX_TOTAL_SIZE_PER_CLAIM_MB} MB`,
-        )
-      }
-
-      const existing = await this.repo.findSubmissionAttachmentByContentHash(
-        submissionId,
-        contentSha256,
-      )
-      if (existing !== null) {
-        items.push(existing)
-        skippedDuplicates += 1
-        continue
-      }
-
-      const attachmentId = randomUUID()
-      const extension = extensionForMimeType(storedMime)
-      const storagePath = buildSubmissionAttachmentStoragePath({
-        submissionId,
-        attachmentId,
-        extension,
-      })
-
-      const { width, height, thumbnailPath } = await this.writeStoredFile({
-        storagePath,
-        storedData,
-        storedMime,
-        optimized,
-      })
-
-      const created = await this.repo.insertSubmissionAttachment({
-        submissionId,
-        fileName: alignFileNameExtension(sanitizeUploadFileName(file.fileName), storedMime),
-        storagePath,
-        mimeType: storedMime,
-        fileSizeBytes: storedData.byteLength,
-        contentSha256,
-        width,
-        height,
-        thumbnailPath,
-        caption: file.caption ?? null,
-        uploadedBy: actor.id,
-      })
-
-      runningTotalBytes += storedData.byteLength
-
-      await this.audit.log({
-        entityType: 'attachment',
-        entityId: created.id,
-        action: AuditAction.Create,
-        actorUserId: auditContext.actorUserId,
-        actorIp: auditContext.actorIp,
-        actorUserAgent: auditContext.actorUserAgent,
-        context: {
-          clientSubmissionId: submissionId,
-          fileName: created.fileName,
-        },
-      })
-
-      items.push(created)
-    }
-
-    if (items.length > 0) {
-      this.events.publishClientSubmissionChanged(submissionId)
-    }
-
-    return { items, skippedDuplicates }
-  }
-
-  /** Lists a submission's attachments — owner (client) or `.manage`; 404 otherwise. */
-  async listForSubmission(
-    submissionId: string,
-    actor: AttachmentsActor,
-  ): Promise<{ items: SubmissionAttachmentItem[] }> {
-    await this.authorizeSubmissionAccess(submissionId, actor)
-    const items = await this.repo.listBySubmission(submissionId)
-    return { items }
-  }
-
-  /**
-   * Access-checked download metadata for a submission attachment — owner (client) or `.manage`;
-   * 404 otherwise, and 404 when the attachment does not belong to the submission.
-   */
-  async getSubmissionDownloadMeta(
-    submissionId: string,
-    attachmentId: string,
-    actor: AttachmentsActor,
-    variant: 'original' | 'thumbnail',
-  ): Promise<{ storagePath: string; mimeType: string; fileName: string; etag: string | null }> {
-    await this.authorizeSubmissionAccess(submissionId, actor)
-
-    const row = await this.repo.findSubmissionAttachmentRaw(attachmentId, submissionId)
-    if (row === null) {
-      throw new NotFoundError('Attachment', attachmentId)
-    }
-
-    const thumbnailPath = variant === 'thumbnail' ? row.thumbnailPath : null
-    return {
-      storagePath: thumbnailPath ?? row.storagePath,
-      // Thumbnails are always generated as JPEG (see generateImageThumbnail).
-      mimeType: thumbnailPath !== null ? 'image/jpeg' : row.mimeType,
-      fileName: row.fileName,
-      etag:
-        row.contentSha256 === null
-          ? null
-          : `"${row.contentSha256}${thumbnailPath !== null ? '-thumb' : ''}"`,
-    }
   }
 }

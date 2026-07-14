@@ -40,7 +40,11 @@ import {
   ExternalPartiesRepository,
   ExternalPartiesService,
 } from '../modules/external-parties/index.js'
-import { AttachmentsRepository, AttachmentsService } from '../modules/attachments/index.js'
+import {
+  AttachmentsRepository,
+  AttachmentsService,
+  SubmissionAttachmentsService,
+} from '../modules/attachments/index.js'
 import { ReportImageReadAdapter } from '../modules/attachments/report-image-read.adapter.js'
 import {
   ClaimReportPdfRenderer,
@@ -105,6 +109,7 @@ export interface Container {
   mrRegistryService: MrRegistryService
   attachmentsRepository: AttachmentsRepository
   attachmentsService: AttachmentsService
+  submissionAttachmentsService: SubmissionAttachmentsService
   claimReportsRepository: ClaimReportsRepository
   claimReportPdfRenderer: ClaimReportPdfRenderer
   claimReportsService: ClaimReportsService
@@ -261,6 +266,12 @@ export function buildContainer(
     eventBus,
     env.ATTACHMENT_SIGNING_SECRET ?? env.BETTER_AUTH_SECRET,
     env.API_BASE_URL,
+  )
+  const submissionAttachmentsService = new SubmissionAttachmentsService(
+    attachmentsRepository,
+    storageService,
+    auditService,
+    eventBus,
     clientSubmissionsRepository,
   )
 
@@ -324,6 +335,7 @@ export function buildContainer(
     mrRegistryService,
     attachmentsRepository,
     attachmentsService,
+    submissionAttachmentsService,
     claimReportsRepository,
     claimReportPdfRenderer,
     claimReportsService,
