@@ -227,7 +227,7 @@ function LoginComponent(): React.ReactElement {
               </Link>
 
               <p className="mt-8 text-center font-mono text-[11px] tracking-[0.04em] text-mri-text2">
-                interno.mrengines.rs · {m.internal_login_staff_only()}
+                mrclaims.live · {m.internal_login_staff_only()}
               </p>
             </form>
           ) : null}

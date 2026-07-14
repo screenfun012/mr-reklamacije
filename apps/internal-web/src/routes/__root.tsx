@@ -31,8 +31,25 @@ export const Route = createRootRouteWithContext<InternalRouterContext>()({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: m.app_title_internal() },
+      { name: 'description', content: m.internal_login_subtitle() },
+      // Open Graph / Twitter — a representative preview card when the link is shared.
+      // og:image and og:url must be absolute (platforms fetch them server-side), so the
+      // production host is spelled out here rather than derived from a relative path.
+      { property: 'og:type', content: 'website' },
+      { property: 'og:title', content: m.app_title_internal() },
+      { property: 'og:description', content: m.internal_login_subtitle() },
+      { property: 'og:image', content: 'https://internal.mrclaims.live/internal/bg-workshop.jpg' },
+      { property: 'og:url', content: 'https://internal.mrclaims.live' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: m.app_title_internal() },
+      { name: 'twitter:description', content: m.internal_login_subtitle() },
+      { name: 'twitter:image', content: 'https://internal.mrclaims.live/internal/bg-workshop.jpg' },
     ],
-    links: [{ rel: 'stylesheet', href: globalsCss }],
+    links: [
+      { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+      { rel: 'apple-touch-icon', href: '/favicon.png' },
+      { rel: 'stylesheet', href: globalsCss },
+    ],
   }),
   shellComponent: RootDocument,
 })

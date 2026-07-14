@@ -64,8 +64,25 @@ export const Route = createRootRouteWithContext<PortalRouterContext>()({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: m.app_title_portal() },
+      { name: 'description', content: m.portal_login_subtitle() },
+      // Open Graph / Twitter — a representative preview card when a client shares the link.
+      // og:image/og:url must be absolute (platforms fetch them server-side); portal is the apex.
+      { property: 'og:type', content: 'website' },
+      { property: 'og:title', content: m.app_title_portal() },
+      { property: 'og:description', content: m.portal_login_subtitle() },
+      { property: 'og:image', content: 'https://mrclaims.live/portal/bg-workshop.jpg' },
+      { property: 'og:url', content: 'https://mrclaims.live' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: m.app_title_portal() },
+      { name: 'twitter:description', content: m.portal_login_subtitle() },
+      { name: 'twitter:image', content: 'https://mrclaims.live/portal/bg-workshop.jpg' },
     ],
-    links: [...FONT_PRELOADS, { rel: 'stylesheet', href: globalsCss }],
+    links: [
+      { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+      { rel: 'apple-touch-icon', href: '/favicon.png' },
+      ...FONT_PRELOADS,
+      { rel: 'stylesheet', href: globalsCss },
+    ],
   }),
   shellComponent: RootDocument,
 })

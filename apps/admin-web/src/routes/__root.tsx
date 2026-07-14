@@ -28,8 +28,22 @@ export const Route = createRootRouteWithContext<AdminRouterContext>()({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: m.app_title_admin() },
+      // Open Graph / Twitter — representative preview when the link is shared.
+      // og:image/og:url must be absolute (platforms fetch them server-side).
+      { property: 'og:type', content: 'website' },
+      { property: 'og:title', content: m.app_title_admin() },
+      { property: 'og:description', content: m.app_title_admin() },
+      { property: 'og:image', content: 'https://admin.mrclaims.live/background.png' },
+      { property: 'og:url', content: 'https://admin.mrclaims.live' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: m.app_title_admin() },
+      { name: 'twitter:image', content: 'https://admin.mrclaims.live/background.png' },
     ],
-    links: [{ rel: 'stylesheet', href: globalsCss }],
+    links: [
+      { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+      { rel: 'apple-touch-icon', href: '/favicon.png' },
+      { rel: 'stylesheet', href: globalsCss },
+    ],
   }),
   shellComponent: RootDocument,
 })

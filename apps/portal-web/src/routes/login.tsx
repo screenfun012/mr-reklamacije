@@ -233,7 +233,7 @@ function LoginComponent(): React.ReactElement {
           </PortalButton>
 
           <p className="mt-[34px] text-center font-mono text-[11px] tracking-[0.04em] text-mrp-text2">
-            mrengines.rs · {PORTAL_SUPPORT_EMAIL}
+            mrclaims.live · {PORTAL_SUPPORT_EMAIL}
           </p>
         </div>
       </div>
