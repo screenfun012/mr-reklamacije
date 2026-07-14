@@ -170,6 +170,7 @@
   "admin_external_parties_subtitle": "Manage external parties (used for fault attribution)",
   "admin_external_parties_title": "External parties",
   "admin_external_parties_update_success": "External party updated.",
+  "admin_login_subtitle": "Manage users, roles, catalogs and system settings.",
   "app_title_admin": "MR Reklamacije — Admin",
   "app_title_internal": "MR Reklamacije — Internal",
   "app_title_portal": "MR Reklamacije — Portal",
