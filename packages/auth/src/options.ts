@@ -97,6 +97,17 @@ export const sharedAuthOptions: BetterAuthOptions = {
     database: {
       generateId: 'uuid',
     },
+    // session.ipAddress (→ the Login audit row's actorIp) is resolved by
+    // Better-Auth from the FIRST configured header, taking its LEFTMOST value.
+    // Cloudflare sets a single, unforgeable `cf-connecting-ip`, so leftmost is
+    // safe. The library default (`x-forwarded-for`) would take a
+    // client-forgeable leftmost entry (CF appends the real IP to the RIGHT) —
+    // letting a client spoof the recorded login IP. `x-forwarded-for` is NOT a
+    // fallback here because Better-Auth reads it leftmost too; this mirrors the
+    // hardened `clientIpOf` used by every other audit / rate-limit path.
+    ipAddress: {
+      ipAddressHeaders: ['cf-connecting-ip'],
+    },
     defaultCookieAttributes: {
       httpOnly: true,
       path: '/',

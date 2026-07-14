@@ -175,16 +175,23 @@ All four public domains are proxied through Cloudflare (free plan).
 ### Real IP forwarding
 
 Railway sees Cloudflare IPs unless we read `CF-Connecting-IP` header.
-Better-Auth is configured to use this header for IP tracking and rate limiting:
+Better-Auth is configured to use **only** this header for IP tracking and rate
+limiting (`packages/auth/src/options.ts`):
 
 ```ts
 advanced: {
   ipAddress: {
-    ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for'],
-    disableIpTracking: false,
+    ipAddressHeaders: ['cf-connecting-ip'],
   }
 }
 ```
+
+`x-forwarded-for` is deliberately **not** listed: Better-Auth resolves the IP
+from the leftmost value of the first matching header, and the leftmost
+`x-forwarded-for` entry is client-forgeable (Cloudflare appends the real IP to
+the right). `cf-connecting-ip` is a single, CF-controlled value, so leftmost is
+safe. This mirrors the hardened `clientIpOf` (`apps/api/src/core/http/client-ip.ts`)
+used by every other audit / rate-limit path.
 
 ## Environments
 
