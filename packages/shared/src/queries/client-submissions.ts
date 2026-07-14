@@ -1,14 +1,14 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 
-import { fetchJson } from '../api/fetch-json.js'
+import { fetchJson, fetchParsed } from '../api/fetch-json.js'
 import { fetchNoContent } from '../api/fetch-no-content.js'
 import { ClientSubmissionStatus } from '../enums.js'
-import type {
-  ClientSubmissionAttachmentListResponse,
-  ClientSubmissionCreateInput,
-  ClientSubmissionDetail,
-  ClientSubmissionListResponse,
+import {
+  ClientSubmissionAttachmentListResponseSchema,
+  ClientSubmissionDetailSchema,
+  ClientSubmissionListResponseSchema,
 } from '../schemas/client-submission.schema.js'
+import type { ClientSubmissionCreateInput } from '../schemas/client-submission.schema.js'
 import type {
   EmotiveClaimCreateInput,
   EmotiveClaimDetail,
@@ -39,7 +39,10 @@ export function pendingClientSubmissionsListOptions(page: number) {
   return queryOptions({
     queryKey: clientSubmissionKeys.list(page),
     queryFn: () =>
-      fetchJson<ClientSubmissionListResponse>(`/api/client-submissions?${query.toString()}`),
+      fetchParsed(
+        `/api/client-submissions?${query.toString()}`,
+        ClientSubmissionListResponseSchema,
+      ),
     staleTime: CLIENT_SUBMISSIONS_STALE_MS,
     placeholderData: keepPreviousData,
   })
@@ -49,7 +52,7 @@ export function pendingClientSubmissionsListOptions(page: number) {
 export function clientSubmissionDetailOptions(id: string) {
   return queryOptions({
     queryKey: clientSubmissionKeys.detail(id),
-    queryFn: () => fetchJson<ClientSubmissionDetail>(`/api/client-submissions/${id}`),
+    queryFn: () => fetchParsed(`/api/client-submissions/${id}`, ClientSubmissionDetailSchema),
     staleTime: CLIENT_SUBMISSION_DETAIL_STALE_MS,
   })
 }
@@ -59,8 +62,9 @@ export function clientSubmissionAttachmentsOptions(id: string) {
   return queryOptions({
     queryKey: clientSubmissionKeys.attachments(id),
     queryFn: () =>
-      fetchJson<ClientSubmissionAttachmentListResponse>(
+      fetchParsed(
         `/api/client-submissions/${id}/attachments`,
+        ClientSubmissionAttachmentListResponseSchema,
       ),
     staleTime: CLIENT_SUBMISSION_DETAIL_STALE_MS,
   })

@@ -1,9 +1,10 @@
 /** @vitest-environment node */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 
 import { ApiError } from '../api-error.js'
-import { fetchJson } from '../fetch-json.js'
+import { fetchJson, fetchParsed } from '../fetch-json.js'
 
 describe('fetchJson', () => {
   beforeEach(() => {
@@ -75,5 +76,37 @@ describe('fetchJson', () => {
       message: 'Internal Server Error',
       status: 500,
     })
+  })
+})
+
+describe('fetchParsed', () => {
+  const schema = z.object({ id: z.string().uuid(), total: z.number().int() })
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:3000')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('returns the schema-validated body on a matching response', async () => {
+    const body = { id: '123e4567-e89b-12d3-a456-426614174000', total: 3 }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => body }))
+
+    await expect(fetchParsed('/api/thing', schema)).resolves.toEqual(body)
+  })
+
+  it('throws when the server response drifts from the schema', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ id: 'not-a-uuid', total: 'oops' }),
+      }),
+    )
+
+    await expect(fetchParsed('/api/thing', schema)).rejects.toBeInstanceOf(z.ZodError)
   })
 })
