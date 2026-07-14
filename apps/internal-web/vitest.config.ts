@@ -14,6 +14,10 @@ export default defineConfig({
     conditions: ['development', 'import', 'module', 'browser', 'default'],
   },
   test: {
+    // Heavy jsdom component tests (many userEvent interactions) occasionally
+    // exceed Vitest's 5s default on loaded CI runners — give them headroom so
+    // load spikes don't red the pipeline (a genuinely hung test still fails).
+    testTimeout: 15000,
     environment: 'jsdom',
     globals: false,
     setupFiles: ['./vitest.setup.ts'],

@@ -14,6 +14,8 @@ export default defineConfig({
     conditions: ['development', 'import', 'module', 'browser', 'default'],
   },
   test: {
+    // See internal-web/vitest.config.ts — CI-load headroom for heavy jsdom tests.
+    testTimeout: 15000,
     environment: 'jsdom',
     globals: false,
     setupFiles: ['./vitest.setup.ts'],
