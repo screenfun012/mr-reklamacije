@@ -11,7 +11,7 @@ export {
   createClientSubmission,
   pendingClientSubmissionsListOptions,
   rejectClientSubmission,
-  uploadClientSubmissionAttachment,
+  uploadClientSubmissionAttachments,
 } from './client-submissions.js'
 export { registerClient } from './registration.js'
 export { attachmentKeys } from './attachment-keys.js'

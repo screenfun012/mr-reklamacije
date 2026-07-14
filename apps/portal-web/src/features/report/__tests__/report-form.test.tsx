@@ -1,6 +1,7 @@
 import { setLocale } from '@mr/i18n'
 import * as shared from '@mr/shared'
 import { compressImage } from '@mr/ui'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -21,7 +22,7 @@ vi.mock('@mr/shared', async () => {
   return {
     ...actual,
     createClientSubmission: vi.fn(),
-    uploadClientSubmissionAttachment: vi.fn(),
+    uploadClientSubmissionAttachments: vi.fn(),
   }
 })
 
@@ -33,7 +34,7 @@ vi.mock('@mr/ui', async () => {
 vi.mock('~/lib/portal-toast', () => ({ showPortalToast: vi.fn() }))
 
 const createSubmission = vi.mocked(shared.createClientSubmission)
-const uploadAttachment = vi.mocked(shared.uploadClientSubmissionAttachment)
+const uploadAttachments = vi.mocked(shared.uploadClientSubmissionAttachments)
 const compressImageMock = vi.mocked(compressImage)
 const toastMock = vi.mocked(showPortalToast)
 
@@ -54,8 +55,15 @@ async function renderForm(): Promise<ReturnType<typeof createRouter>> {
     routeTree: rootRoute.addChildren([indexRoute, claimsRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
   await router.load()
-  render(<RouterProvider router={router as never} />)
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router as never} />
+    </QueryClientProvider>,
+  )
   return router
 }
 
@@ -108,29 +116,37 @@ describe('ReportForm', () => {
     })
   })
 
-  it('compresses each selected image, then uploads the compressed file', async () => {
+  it('compresses each selected image, then uploads them in one batch', async () => {
     const user = userEvent.setup()
     createSubmission.mockResolvedValue({ id: 'sub-1' })
-    uploadAttachment.mockResolvedValue()
-    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' })
-    const compressed = new File(['c'], 'photo.jpg', { type: 'image/jpeg' })
-    compressImageMock.mockResolvedValue(compressed)
+    uploadAttachments.mockResolvedValue()
+    const fileA = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+    const fileB = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
+    const compressedA = new File(['ca'], 'a.jpg', { type: 'image/jpeg' })
+    const compressedB = new File(['cb'], 'b.jpg', { type: 'image/jpeg' })
+    compressImageMock.mockImplementation((file: File) =>
+      Promise.resolve(file === fileA ? compressedA : compressedB),
+    )
     await renderForm()
 
     const fileInput = document.querySelector('input[type="file"]')
     if (!(fileInput instanceof HTMLInputElement)) {
       throw new Error('expected a file input in the attachment picker')
     }
-    fireEvent.change(fileInput, { target: { files: [file] } })
+    fireEvent.change(fileInput, { target: { files: [fileA, fileB] } })
 
-    expect(await screen.findByText('photo.jpg')).toBeInTheDocument()
+    expect(await screen.findByText('a.jpg')).toBeInTheDocument()
 
     await user.type(screen.getByPlaceholderText(/curi ulje/i), 'Curi ulje')
     await user.click(submitButton())
 
     await waitFor(() => {
-      expect(compressImageMock).toHaveBeenCalledWith(file)
-      expect(uploadAttachment).toHaveBeenCalledWith('sub-1', compressed)
+      expect(compressImageMock).toHaveBeenCalledTimes(2)
     })
+    expect(compressImageMock).toHaveBeenCalledWith(fileA)
+    expect(compressImageMock).toHaveBeenCalledWith(fileB)
+    // Batched: ONE upload request carrying both compressed files, not one per file.
+    expect(uploadAttachments).toHaveBeenCalledTimes(1)
+    expect(uploadAttachments).toHaveBeenCalledWith('sub-1', [compressedA, compressedB])
   })
 })

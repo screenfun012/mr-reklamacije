@@ -124,16 +124,23 @@ export async function createClientSubmission(
 }
 
 /**
- * Uploads one file to a submission the client owns. The API accepts the `file`
- * multipart field (see `readUploadFiles`); the browser sets the multipart
- * boundary, so no Content-Type header is passed here.
+ * Uploads all of a submission's files in ONE multipart request (each appended under
+ * the `files` field — see `readUploadFiles`). One round-trip instead of N; the
+ * per-submission size/count caps and the upload body limit still apply (a too-large
+ * batch 413s cleanly). The browser sets the multipart boundary, so no Content-Type
+ * header is passed. A no-op when `files` is empty.
  */
-export async function uploadClientSubmissionAttachment(
+export async function uploadClientSubmissionAttachments(
   submissionId: string,
-  file: File,
+  files: readonly File[],
 ): Promise<void> {
+  if (files.length === 0) {
+    return
+  }
   const formData = new FormData()
-  formData.append('file', file)
+  for (const file of files) {
+    formData.append('files', file)
+  }
   await fetchNoContent(`/api/client-submissions/${submissionId}/attachments`, {
     method: 'POST',
     body: formData,

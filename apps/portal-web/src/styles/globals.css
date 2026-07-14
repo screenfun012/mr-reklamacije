@@ -91,6 +91,7 @@
   --color-mrp-ok-bg: rgba(31, 169, 113, 0.13);
   --color-mrp-bad: #e05c52;
   --color-mrp-bad-bg: rgba(217, 45, 32, 0.13);
+  --color-mrp-bad-border: rgba(217, 45, 32, 0.36);
 }
 
 /* ---------- Animations (README §Interactions — durations matter) ---------- */

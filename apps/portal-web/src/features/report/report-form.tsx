@@ -4,10 +4,11 @@ import { m } from '@mr/i18n'
 import {
   createClientSubmission,
   formatFieldError,
-  uploadClientSubmissionAttachment,
+  uploadClientSubmissionAttachments,
 } from '@mr/shared'
 import { compressImage } from '@mr/ui'
 import { useForm } from '@tanstack/react-form'
+import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
@@ -20,14 +21,30 @@ import { AttachmentPicker } from './attachment-picker'
 /**
  * "Prijavi problem" form: a required reason (razlog → the claim's GREŠKA on
  * conversion) plus optional attachments. On submit it creates the submission,
- * then uploads each file to it, confirms with a toast, and returns to /claims.
- * No optimistic update — the server is the single source of truth.
+ * then uploads all files in one batch request, confirms with a toast, and returns
+ * to /claims. No optimistic update — the server is the single source of truth.
+ * A failed upload after a created submission surfaces as one mutation error.
  */
 export function ReportForm() {
   const navigate = useNavigate()
   const [files, setFiles] = useState<readonly File[]>([])
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [isPending, setIsPending] = useState(false)
+
+  const mutation = useMutation({
+    mutationFn: async (message: string): Promise<void> => {
+      const { id } = await createClientSubmission({ message })
+      // Downscale/recompress images in the browser first (an 8 MB phone photo →
+      // a few hundred KB); non-images pass through untouched. All in parallel,
+      // then uploaded in ONE multipart request instead of N.
+      const optimized = await Promise.all(files.map((file) => compressImage(file)))
+      await uploadClientSubmissionAttachments(id, optimized)
+    },
+    onSuccess: async () => {
+      showPortalToast(m.portal_submit_success())
+      await navigate({ to: '/claims' })
+    },
+  })
+
+  const isPending = mutation.isPending
 
   // Built here (not at module scope) so the validation message uses the live
   // locale; the root remounts on locale switch, giving useForm a fresh schema.
@@ -42,24 +59,8 @@ export function ReportForm() {
       onChange: reportSchema,
       onSubmit: reportSchema,
     },
-    onSubmit: async ({ value }) => {
-      setSubmitError(null)
-      setIsPending(true)
-      try {
-        const { id } = await createClientSubmission({ message: value.message.trim() })
-        for (const file of files) {
-          // Downscale/recompress images in the browser first (an 8 MB phone photo
-          // → a few hundred KB); non-images pass through untouched.
-          const optimized = await compressImage(file)
-          await uploadClientSubmissionAttachment(id, optimized)
-        }
-        showPortalToast(m.portal_submit_success())
-        await navigate({ to: '/claims' })
-      } catch (err) {
-        console.error('[report] submission failed:', err)
-        setSubmitError(m.portal_submit_error())
-        setIsPending(false)
-      }
+    onSubmit: ({ value }) => {
+      mutation.mutate(value.message.trim())
     },
   })
 
@@ -99,12 +100,12 @@ export function ReportForm() {
         <AttachmentPicker files={files} onChange={setFiles} disabled={isPending} />
       </div>
 
-      {submitError !== null && (
+      {mutation.isError && (
         <div
           role="alert"
-          className="mb-5 rounded-[10px] border border-[rgba(217,45,32,0.36)] bg-mrp-bad-bg p-3 text-sm text-mrp-bad"
+          className="mb-5 rounded-[10px] border border-mrp-bad-border bg-mrp-bad-bg p-3 text-sm text-mrp-bad"
         >
-          {submitError}
+          {m.portal_submit_error()}
         </div>
       )}
 
