@@ -51,6 +51,15 @@ export const ClientSubmissionListResponseSchema = z.object({
 
 export type ClientSubmissionListResponse = z.infer<typeof ClientSubmissionListResponseSchema>
 
+/** `GET /client-submissions/pending-count` → the pending count for the internal nav badge. */
+export const ClientSubmissionPendingCountResponseSchema = z.object({
+  total: z.number().int().nonnegative(),
+})
+
+export type ClientSubmissionPendingCountResponse = z.infer<
+  typeof ClientSubmissionPendingCountResponseSchema
+>
+
 /**
  * A submission attachment as returned by `GET /client-submissions/:id/attachments`.
  * Distinct from the claim-scoped `AttachmentListItem` — a submission attachment has no

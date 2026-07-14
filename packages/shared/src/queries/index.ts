@@ -9,6 +9,7 @@ export {
   clientSubmissionKeys,
   convertClientSubmission,
   createClientSubmission,
+  pendingClientSubmissionsCountOptions,
   pendingClientSubmissionsListOptions,
   rejectClientSubmission,
   uploadClientSubmissionAttachments,

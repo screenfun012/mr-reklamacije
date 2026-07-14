@@ -1,0 +1,1 @@
+CREATE INDEX "idx_client_submissions_pending_created_at" ON "client_submissions" USING btree ("created_at" DESC NULLS LAST) WHERE status = 'pending' AND deleted_at IS NULL;

@@ -57,6 +57,13 @@ export function createClientSubmissionsController(container: Container) {
       return c.json(result)
     },
 
+    /** Internal Inbox: cheap pending count for the nav badge → { total }. */
+    pendingCount: async (c: Context) => {
+      requireUser(c)
+      const total = await container.clientSubmissionsService.countPending()
+      return c.json({ total })
+    },
+
     /** Internal Inbox: one submission's detail (404 when missing). */
     findById: async (c: Context) => {
       requireUser(c)

@@ -58,6 +58,12 @@ export const clientSubmissions = pgTable(
     index('idx_client_submissions_customer_id').on(t.customerId),
     index('idx_client_submissions_status').on(t.status),
     index('idx_client_submissions_created_at').on(t.createdAt.desc()),
+    // Serves the pending Inbox read (`listPending` / `countPending`): the partial predicate
+    // matches `status = 'pending' AND deleted_at IS NULL` and the descending key matches the
+    // `ORDER BY created_at DESC` sort — an index-only scan for the nav-badge count.
+    index('idx_client_submissions_pending_created_at')
+      .on(t.createdAt.desc())
+      .where(sql`status = 'pending' AND deleted_at IS NULL`),
   ],
 )
 

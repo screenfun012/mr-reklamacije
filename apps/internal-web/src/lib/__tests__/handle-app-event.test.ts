@@ -158,7 +158,7 @@ describe('handleAppEvent', () => {
     })
   })
 
-  it('invalidates the Inbox list (list + badge) on a client-submission event', () => {
+  it('invalidates the Inbox list and the nav-badge count on a client-submission event', () => {
     const queryClient = new QueryClient()
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -168,5 +168,8 @@ describe('handleAppEvent', () => {
     })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['client-submissions', 'list'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['client-submissions', 'pending-count'],
+    })
   })
 })

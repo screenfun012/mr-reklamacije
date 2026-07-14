@@ -91,10 +91,11 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
     return
   }
 
-  // A client submission was created/converted/rejected by another user — refresh the
-  // Inbox pending list (every page) and, through the same prefix, the nav badge count.
+  // A client submission was created/converted/rejected by another user — refresh the Inbox
+  // pending list (every page) and the standalone nav-badge count query.
   if (event.type === ClientSubmissionEventType.Changed) {
     void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.lists() })
+    void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.pendingCount() })
     return
   }
 
