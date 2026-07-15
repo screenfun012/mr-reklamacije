@@ -1,4 +1,7 @@
+import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
+import { Eye, EyeOff } from 'lucide-react'
+import { useState } from 'react'
 import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
 
 /** Mono micro-label above a form input. */
@@ -31,16 +34,34 @@ export function PortalLabel({
   )
 }
 
-/** 48px design input: --inbg background, red focus ring (see .mrp-input in globals). */
+const PORTAL_INPUT_CLASSES =
+  'mrp-input h-12 w-full rounded-[9px] border border-mrp-border2 bg-mrp-inbg px-4 font-sans text-[15.5px] text-mrp-text outline-none transition-[border-color,box-shadow] duration-200'
+
+/** 48px design input: --inbg background, red focus ring (.mrp-input); password fields get a reveal toggle. */
 export function PortalInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  const [revealed, setRevealed] = useState(false)
+
+  if (props.type !== 'password') {
+    return <input {...props} className={cn(PORTAL_INPUT_CLASSES, className)} />
+  }
+
   return (
-    <input
-      {...props}
-      className={cn(
-        'mrp-input h-12 w-full rounded-[9px] border border-mrp-border2 bg-mrp-inbg px-4 font-sans text-[15.5px] text-mrp-text outline-none transition-[border-color,box-shadow] duration-200',
-        className,
-      )}
-    />
+    <div className="relative">
+      <input
+        {...props}
+        type={revealed ? 'text' : 'password'}
+        className={cn(PORTAL_INPUT_CLASSES, 'pr-12', className)}
+      />
+      <button
+        type="button"
+        className="absolute inset-y-0 right-0 flex items-center pr-4 text-mrp-text2 transition-colors hover:text-mrp-text disabled:opacity-50"
+        aria-label={revealed ? m.action_hide_password() : m.action_show_password()}
+        disabled={props.disabled}
+        onClick={() => setRevealed((current) => !current)}
+      >
+        {revealed ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+      </button>
+    </div>
   )
 }
 

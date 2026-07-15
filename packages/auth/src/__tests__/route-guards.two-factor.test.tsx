@@ -157,7 +157,7 @@ describe('TwoFactorEnrollFlow', () => {
 
     render(<TwoFactorEnrollFlow authClient={client} />)
 
-    fireEvent.input(screen.getByLabelText(/password/i), { target: { value: 'super-secret-12' } })
+    fireEvent.input(screen.getByLabelText(/^password$/i), { target: { value: 'super-secret-12' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => {

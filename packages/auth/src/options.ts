@@ -87,6 +87,16 @@ export const sharedAuthOptions: BetterAuthOptions = {
     requireEmailVerification: false,
     autoSignIn: false,
   },
+  // Disable Better-Auth's built-in IP+path limiter on the sign-in path (its
+  // hardcoded 3-req/10s-per-IP rule collateral-blocks accounts behind a shared
+  // IP). Per-account lockout (hooks/login-lockout.ts) is the real brute-force
+  // control; gross per-IP throttling stays at the Cloudflare edge + a loose
+  // app-level backstop (apps/api rate-limit.ts).
+  rateLimit: {
+    customRules: {
+      '/sign-in/email': false,
+    },
+  },
   plugins: [
     twoFactor({
       twoFactorTable: 'two_factor_secrets',

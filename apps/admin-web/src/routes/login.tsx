@@ -11,7 +11,7 @@ import {
   TwoFactorVerifyForm,
 } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input } from '@mr/ui'
+import { Button, Card, CardContent, CardHeader, Heading, Input, PasswordInput } from '@mr/ui'
 
 import { authClient } from '~/lib/auth-client'
 
@@ -61,24 +61,36 @@ function LoginComponent(): React.ReactElement {
       setAuthError(null)
       setIsPending(true)
 
+      let retryAfterSec: string | null = null
+
       try {
-        const result = await authClient.signIn.email({
-          email: value.email,
-          password: value.password,
-        })
+        const result = await authClient.signIn.email(
+          {
+            email: value.email,
+            password: value.password,
+          },
+          {
+            onError: ({ response }) => {
+              retryAfterSec = response.headers.get('X-Retry-After')
+            },
+          },
+        )
 
         if (result.error) {
+          const lockMinutes = Math.max(1, Math.ceil(Number(retryAfterSec ?? '900') / 60))
           setAuthError(
             loginAuthErrorMessage(
               result.error.code,
               {
                 invalid: m.auth_login_error_invalid(),
                 rateLimited: m.auth_login_error_rate_limited(),
+                accountLocked: m.auth_login_error_account_locked({ minutes: lockMinutes }),
                 pending: m.auth_login_error_pending(),
                 rejected: m.auth_login_error_rejected(),
                 generic: m.auth_login_error_generic(),
               },
               result.error.message,
+              result.error.status,
             ),
           )
           return
@@ -179,9 +191,8 @@ function LoginComponent(): React.ReactElement {
                     <label htmlFor="password" className="text-sm font-medium">
                       {m.auth_login_password()}
                     </label>
-                    <Input
+                    <PasswordInput
                       id="password"
-                      type="password"
                       autoComplete="current-password"
                       value={field.state.value}
                       onChange={(e) => {

@@ -6,9 +6,11 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { customSession } from 'better-auth/plugins'
 
 import { createForcePendingOnSignupHook } from './hooks/force-pending-on-signup.js'
+import { createLoginLockoutHooks } from './hooks/login-lockout.js'
 import { createOnUserRegisteredHook } from './hooks/on-user-registered.js'
 import { createSessionCreateAfterHook } from './hooks/session-create-after.js'
 import { createSessionCreateBeforeHook } from './hooks/session-create-before.js'
+import { createLoginAttemptStore } from './login-attempt-store.js'
 import { sharedAuthOptions } from './options.js'
 import { createPermissionResolver } from './permissions.js'
 import { createCachedPermissionResolver } from './server/permission-cache.js'
@@ -60,6 +62,11 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
   const { plugins: sharedPlugins = [], ...sharedWithoutPlugins } = sharedAuthOptions
   const resolver = createPermissionResolver(db)
 
+  // Per-account (email-keyed) login lockout — brute-force protection that does
+  // NOT collateral-block accounts sharing an IP. In-memory (single instance).
+  const loginAttempts = createLoginAttemptStore()
+  const loginLockout = createLoginLockoutHooks(loginAttempts)
+
   const cachedByRoles = createCachedPermissionResolver({
     resolveForRoles: async (roleCodes) =>
       resolver.getEffectiveForRoleCodes(roleCodes).then((p) => p.map(String)),
@@ -95,6 +102,10 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
         },
       },
     },
+    hooks: {
+      before: loginLockout.before,
+      after: loginLockout.after,
+    },
     ...sharedWithoutPlugins,
     plugins: [
       ...sharedPlugins,
@@ -109,7 +120,17 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
         const permissions = await cachedByRoles.resolveForRoles(roleCodes)
 
         return {
-          session,
+          // The raw session token is intentionally omitted — it belongs only in
+          // the httpOnly cookie, never in this JS-readable JSON body.
+          session: {
+            id: session.id,
+            userId: session.userId,
+            expiresAt: session.expiresAt,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            ipAddress: session.ipAddress,
+            userAgent: session.userAgent,
+          },
           user: {
             ...user,
             roles: roleCodes,

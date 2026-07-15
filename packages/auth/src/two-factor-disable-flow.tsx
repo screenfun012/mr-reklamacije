@@ -3,11 +3,11 @@ import {
   Button,
   Card,
   CardContent,
-  Input,
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
+  PasswordInput,
   REGEXP_ONLY_DIGITS,
 } from '@mr/ui'
 import { useState } from 'react'
@@ -98,9 +98,8 @@ export function TwoFactorDisableFlow(props: {
               <label htmlFor="twof-disable-pw" className="text-sm font-medium">
                 {m.auth_login_password()}
               </label>
-              <Input
+              <PasswordInput
                 id="twof-disable-pw"
-                type="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => {

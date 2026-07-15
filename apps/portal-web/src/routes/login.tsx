@@ -54,11 +54,20 @@ function LoginComponent(): React.ReactElement {
       setAuthError(null)
       setIsPending(true)
 
+      let retryAfterSec: string | null = null
+
       try {
-        const result = await authClient.signIn.email({
-          email: value.email,
-          password: value.password,
-        })
+        const result = await authClient.signIn.email(
+          {
+            email: value.email,
+            password: value.password,
+          },
+          {
+            onError: ({ response }) => {
+              retryAfterSec = response.headers.get('X-Retry-After')
+            },
+          },
+        )
 
         if (result.error) {
           // An unapproved account gets the dedicated pending screen (design),
@@ -67,17 +76,20 @@ function LoginComponent(): React.ReactElement {
             await navigate({ to: '/pending' })
             return
           }
+          const lockMinutes = Math.max(1, Math.ceil(Number(retryAfterSec ?? '900') / 60))
           setAuthError(
             loginAuthErrorMessage(
               result.error.code,
               {
                 invalid: m.auth_login_error_invalid(),
                 rateLimited: m.auth_login_error_rate_limited(),
+                accountLocked: m.auth_login_error_account_locked({ minutes: lockMinutes }),
                 pending: m.auth_login_error_pending(),
                 rejected: m.auth_login_error_rejected(),
                 generic: m.auth_login_error_generic(),
               },
               result.error.message,
+              result.error.status,
             ),
           )
           return

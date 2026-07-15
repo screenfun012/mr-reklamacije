@@ -70,9 +70,16 @@ export const generalRateLimiter = createRateLimiter({
 
 const isDevelopment = process.env['NODE_ENV'] === 'development'
 
-/** Production: 5 attempts / 15 min (docs/05). Dev: relaxed so local login retries do not lock you out. */
+/**
+ * Loose per-IP volumetric backstop for login (30 / 15 min). The real
+ * brute-force control is the per-ACCOUNT lockout in @mr/auth
+ * (hooks/login-lockout.ts, keyed by email) — this IP layer only catches gross
+ * spray/DoS and must stay loose enough NOT to collateral-block multiple accounts
+ * behind one shared (e.g. office / Cloudflare) IP. Gross per-IP abuse is also
+ * throttled at the Cloudflare edge. Dev: relaxed so local retries never lock.
+ */
 export const loginRateLimiter = createRateLimiter(
-  isDevelopment ? { windowMs: 60_000, max: 100 } : { windowMs: 15 * 60_000, max: 5 },
+  isDevelopment ? { windowMs: 60_000, max: 100 } : { windowMs: 15 * 60_000, max: 30 },
 )
 
 export const claimReportExportRateLimiter = createRateLimiter({

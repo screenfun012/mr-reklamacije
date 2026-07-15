@@ -45,6 +45,7 @@ export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dia
 export { Button, type ButtonProps } from './primitives/button.js'
 export { buttonVariants, type ButtonVariantProps } from './primitives/button-variants.js'
 export { Input, type InputProps } from './primitives/input.js'
+export { PasswordInput, type PasswordInputProps } from './primitives/password-input.js'
 export {
   Select,
   SelectGroup,
