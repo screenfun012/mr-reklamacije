@@ -37,12 +37,14 @@ describe('UserListItemSchema', () => {
       createdAt: '2026-06-25T10:00:00.000Z',
       roles: ['operator'],
       requestedCompany: null,
+      isActive: true,
     })
 
     expect(parsed.name).toBe('Pera Perić')
     expect(parsed.createdAt).toBe('2026-06-25T10:00:00.000Z')
     expect(parsed.roles).toEqual(['operator'])
     expect(parsed.requestedCompany).toBeNull()
+    expect(parsed.isActive).toBe(true)
   })
 })
 

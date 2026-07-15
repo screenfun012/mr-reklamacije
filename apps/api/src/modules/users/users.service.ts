@@ -27,6 +27,7 @@ import type {
   UserListResponse,
   UserPasswordResetInput,
   UserRolesReplaceInput,
+  UserSetActiveInput,
   UsersListQuery,
 } from './users.validators.js'
 
@@ -279,5 +280,47 @@ export class UsersService {
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
+  }
+
+  async setActive(
+    id: string,
+    input: UserSetActiveInput,
+    actor: HttpActorContext,
+  ): Promise<UserListItem> {
+    const target = await this.repo.findAccountStatusById(id)
+    if (target === null) {
+      throw new NotFoundError('User', id)
+    }
+
+    if (isProtectedSuperAdminEmail(target.email, this.protectedSuperAdminEmail)) {
+      throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
+    }
+
+    if (id === actor.actorUserId) {
+      throw new ForbiddenError('Ne možete deaktivirati sopstveni nalog.')
+    }
+
+    const updated = await this.repo.setActive(id, input.isActive)
+
+    // Deactivation is the actual off-boarding step: it logs the user out
+    // everywhere on their next request. The is-active login hook then blocks
+    // any re-login until they are reactivated.
+    if (!input.isActive) {
+      await this.userSessions.revokeAllForUser(id)
+    }
+
+    await this.audit.log({
+      entityType: 'user',
+      entityId: id,
+      action: input.isActive ? AuditAction.Restore : AuditAction.Update,
+      actorUserId: actor.actorUserId,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
+      changes: { field: 'isActive', after: input.isActive },
+    })
+
+    this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
+
+    return updated
   }
 }

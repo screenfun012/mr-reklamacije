@@ -8,6 +8,7 @@ import {
   patchUserRoles,
   resendClientActivation,
   resetUserPassword,
+  setUserActive,
   usersListOptions,
   usersListQueryKey,
   type AccountApprovalRoleCode,
@@ -58,6 +59,8 @@ function UsersTable({
   onEditRoles,
   onResetPassword,
   onResendActivation,
+  onDeactivate,
+  onReactivate,
   showActions,
   showRoleEdit,
   pending,
@@ -65,6 +68,7 @@ function UsersTable({
   rolesEditDisabled,
   passwordResetDisabled,
   resendActivationDisabled,
+  setActiveDisabled,
   emptyMessage,
 }: {
   items: readonly UserListItem[]
@@ -74,6 +78,8 @@ function UsersTable({
   onEditRoles: (user: UserListItem) => void
   onResetPassword: (user: UserListItem) => void
   onResendActivation: (user: UserListItem) => void
+  onDeactivate: (user: UserListItem) => void
+  onReactivate: (user: UserListItem) => void
   showActions: boolean
   showRoleEdit: boolean
   pending: boolean
@@ -81,6 +87,7 @@ function UsersTable({
   rolesEditDisabled: boolean
   passwordResetDisabled: boolean
   resendActivationDisabled: boolean
+  setActiveDisabled: boolean
   emptyMessage?: string
 }): ReactElement {
   if (items.length === 0) {
@@ -133,7 +140,14 @@ function UsersTable({
                   <td className="px-4 py-3 font-medium">{user.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                   <td className="px-4 py-3">
-                    <UserAccountStatusBadge status={user.accountStatus} />
+                    <div className="flex items-center gap-2">
+                      <UserAccountStatusBadge status={user.accountStatus} />
+                      {!user.isActive ? (
+                        <span className="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                          {m.users_status_inactive()}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <UserRolesBadges roles={user.roles} />
@@ -196,6 +210,27 @@ function UsersTable({
                               {m.users_roles_edit_button()}
                             </Button>
                           )}
+                          {user.isActive ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={setActiveDisabled}
+                              onClick={() => onDeactivate(user)}
+                            >
+                              {m.users_deactivate_button()}
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={setActiveDisabled}
+                              onClick={() => onReactivate(user)}
+                            >
+                              {m.users_reactivate_button()}
+                            </Button>
+                          )}
                         </div>
                       ) : null}
                     </td>
@@ -219,6 +254,7 @@ export function UsersPageContent(): ReactElement {
   const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
   const [passwordResetTarget, setPasswordResetTarget] = useState<UserListItem | null>(null)
   const [rejectTarget, setRejectTarget] = useState<UserListItem | null>(null)
+  const [deactivateTarget, setDeactivateTarget] = useState<UserListItem | null>(null)
   const [allSearch, setAllSearch] = useState('')
 
   const pendingUsers = users.filter((user) => user.accountStatus === UserAccountStatus.Pending)
@@ -355,8 +391,40 @@ export function UsersPageContent(): ReactElement {
     },
   })
 
+  const setActiveMutation = useMutation({
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      setUserActive(userId, { isActive }),
+    onError: (_error, variables) => {
+      toast.error(variables.isActive ? m.users_reactivate_error() : m.users_deactivate_error())
+    },
+    onSuccess: (_data, variables) => {
+      setDeactivateTarget(null)
+      toast.success(
+        variables.isActive ? m.users_reactivate_success() : m.users_deactivate_success(),
+      )
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: usersListQueryKey() })
+    },
+  })
+
   const handleResendActivation = (user: UserListItem): void => {
     resendActivationMutation.mutate({ userId: user.id })
+  }
+
+  const handleDeactivateClick = (user: UserListItem): void => {
+    setDeactivateTarget(user)
+  }
+
+  const handleDeactivateConfirm = (): void => {
+    if (deactivateTarget === null) {
+      return
+    }
+    setActiveMutation.mutate({ userId: deactivateTarget.id, isActive: false })
+  }
+
+  const handleReactivate = (user: UserListItem): void => {
+    setActiveMutation.mutate({ userId: user.id, isActive: true })
   }
 
   const handleApproveClick = (user: UserListItem): void => {
@@ -464,6 +532,24 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handleRejectConfirm}
       />
 
+      <ConfirmDialog
+        open={deactivateTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeactivateTarget(null)
+          }
+        }}
+        title={m.users_deactivate_confirm_title()}
+        description={
+          deactivateTarget !== null
+            ? m.users_deactivate_confirm_description({ name: deactivateTarget.name })
+            : null
+        }
+        confirmLabel={m.users_deactivate_button()}
+        pending={setActiveMutation.isPending}
+        onConfirm={handleDeactivateConfirm}
+      />
+
       <section aria-labelledby="users-pending-heading">
         <Heading level="h2" id="users-pending-heading" className="mb-4 text-lg">
           {m.users_pending_section_title()}
@@ -476,6 +562,8 @@ export function UsersPageContent(): ReactElement {
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
           onResendActivation={handleResendActivation}
+          onDeactivate={handleDeactivateClick}
+          onReactivate={handleReactivate}
           showActions
           showRoleEdit={false}
           pending
@@ -483,6 +571,7 @@ export function UsersPageContent(): ReactElement {
           rolesEditDisabled={rolesMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
           resendActivationDisabled={resendActivationMutation.isPending}
+          setActiveDisabled={setActiveMutation.isPending}
         />
       </section>
 
@@ -508,6 +597,8 @@ export function UsersPageContent(): ReactElement {
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
           onResendActivation={handleResendActivation}
+          onDeactivate={handleDeactivateClick}
+          onReactivate={handleReactivate}
           showActions={false}
           showRoleEdit
           pending={false}
@@ -515,6 +606,7 @@ export function UsersPageContent(): ReactElement {
           rolesEditDisabled={rolesMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
           resendActivationDisabled={resendActivationMutation.isPending}
+          setActiveDisabled={setActiveMutation.isPending}
           emptyMessage={allQuery === '' ? m.users_all_empty() : m.users_search_no_matches()}
         />
       </section>

@@ -6,6 +6,7 @@ export {
   UserListResponseSchema,
   UserPasswordResetInputSchema,
   UserRolesReplaceInputSchema,
+  UserSetActiveInputSchema,
   UsersListQuerySchema,
   type UserAccountStatusPatchInput,
   type UserAccountStatusResult,
@@ -14,5 +15,6 @@ export {
   type UserListResponse,
   type UserPasswordResetInput,
   type UserRolesReplaceInput,
+  type UserSetActiveInput,
   type UsersListQuery,
 } from '@mr/shared'

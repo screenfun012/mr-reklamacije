@@ -32,6 +32,8 @@ export const UserListItemSchema = z.object({
   roles: z.array(z.string()),
   /** Free-text company a client typed at portal registration; null for staff. */
   requestedCompany: z.string().nullable(),
+  /** false = deactivated: kept in the list but blocked from signing in. */
+  isActive: z.boolean(),
 })
 
 export type UserListItem = z.infer<typeof UserListItemSchema>
@@ -144,6 +146,12 @@ export const UserPasswordResetInputSchema = z.object({
 })
 
 export type UserPasswordResetInput = z.infer<typeof UserPasswordResetInputSchema>
+
+export const UserSetActiveInputSchema = z.object({
+  isActive: z.boolean(),
+})
+
+export type UserSetActiveInput = z.infer<typeof UserSetActiveInputSchema>
 
 export const UserRolesReplaceInputSchema = z.object({
   roleCodes: z

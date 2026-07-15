@@ -37,6 +37,7 @@ interface UserRow {
   accountStatus: UserListItem['accountStatus']
   createdAt: Date
   requestedCompany: string | null
+  isActive: boolean
 }
 
 function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
@@ -48,6 +49,7 @@ function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
     createdAt: row.createdAt.toISOString(),
     roles: [...roleCodes],
     requestedCompany: row.requestedCompany,
+    isActive: row.isActive,
   }
 }
 
@@ -58,6 +60,7 @@ const userListColumns = {
   accountStatus: users.accountStatus,
   createdAt: users.createdAt,
   requestedCompany: users.requestedCompany,
+  isActive: users.isActive,
 } as const
 
 export class UsersRepository {
@@ -140,6 +143,22 @@ export class UsersRepository {
     const [updated] = await this.db
       .update(users)
       .set({ accountStatus })
+      .where(and(eq(users.id, id), isNull(users.deletedAt)))
+      .returning(userListColumns)
+
+    if (updated === undefined) {
+      throw new NotFoundError('User', id)
+    }
+
+    const roleCodesByUserId = await this.loadRoleCodesByUserIds([updated.id])
+
+    return mapUserRow(updated, roleCodesByUserId.get(updated.id) ?? [])
+  }
+
+  async setActive(id: string, isActive: boolean): Promise<UserListItem> {
+    const [updated] = await this.db
+      .update(users)
+      .set({ isActive })
       .where(and(eq(users.id, id), isNull(users.deletedAt)))
       .returning(userListColumns)
 

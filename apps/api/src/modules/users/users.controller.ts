@@ -8,6 +8,7 @@ import {
   UserIdParamSchema,
   UserPasswordResetInputSchema,
   UserRolesReplaceInputSchema,
+  UserSetActiveInputSchema,
   UsersListQuerySchema,
 } from './users.validators.js'
 
@@ -62,6 +63,20 @@ export function createUsersController(container: Container) {
       await container.usersService.resetPassword(id, input, getActorContext(c, user))
 
       return c.body(null, 204)
+    },
+
+    setActive: async (c: Context) => {
+      const user = c.get('user')
+      if (user === null) {
+        throw new UnauthorizedError()
+      }
+
+      const { id } = UserIdParamSchema.parse({ id: c.req.param('id') })
+      const body: unknown = await c.req.json()
+      const input = UserSetActiveInputSchema.parse(body)
+      const updated = await container.usersService.setActive(id, input, getActorContext(c, user))
+
+      return c.json(updated)
     },
 
     resendActivation: async (c: Context) => {

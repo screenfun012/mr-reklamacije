@@ -113,6 +113,7 @@ export {
   patchUserRoles,
   resendClientActivation,
   resetUserPassword,
+  setUserActive,
   usersListOptions,
   usersListQueryKey,
 } from './users.js'

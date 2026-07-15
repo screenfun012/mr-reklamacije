@@ -20,6 +20,7 @@ export function registerUsersRoutes(
     controller.updateAccountStatus,
   )
   routes.put('/:id/roles', requirePermission('roles.assign'), controller.replaceRoles)
+  routes.patch('/:id/active', requirePermission('users.deactivate'), controller.setActive)
   routes.post(
     '/:id/reset-password',
     requirePermission('users.reset_password'),

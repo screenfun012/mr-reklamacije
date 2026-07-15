@@ -12,6 +12,7 @@ import type {
   UserListItem,
   UserPasswordResetInput,
   UserRolesReplaceInput,
+  UserSetActiveInput,
 } from '../schemas/user.schema.js'
 
 const USERS_LIST_STALE_MS = 30_000
@@ -86,6 +87,18 @@ export async function resetUserPassword(
 ): Promise<void> {
   return fetchNoContent(`/api/users/${userId}/reset-password`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+/** Deactivate (isActive:false, revokes the target's sessions) or reactivate a user. */
+export async function setUserActive(
+  userId: string,
+  input: UserSetActiveInput,
+): Promise<UserListItem> {
+  return fetchJson<UserListItem>(`/api/users/${userId}/active`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })

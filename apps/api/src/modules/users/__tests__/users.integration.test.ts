@@ -96,6 +96,13 @@ const RESET_PW_OLD_PASSWORD = 'previous-secure-pass-000'
 const RESET_PW_SHORT_PASSWORD = 'too-short'
 const RESET_PW_PERMISSIONS = ['users.reset_password'] as const
 
+const SET_ACTIVE_TARGET_ID = '88888888-8888-4888-8888-888888888881'
+const SET_ACTIVE_ACTOR_ID = '88888888-8888-4888-8888-888888888882'
+const SET_ACTIVE_REACTIVATE_ID = '88888888-8888-4888-8888-888888888883'
+const SET_ACTIVE_TARGET_TOKEN = 'set-active-target-session-token'
+const SET_ACTIVE_REACTIVATE_TOKEN = 'set-active-reactivate-session-token'
+const SET_ACTIVE_PERMISSIONS = ['users.deactivate'] as const
+
 async function insertTestSession(
   db: TestDbContext['db'],
   userId: string,
@@ -170,6 +177,18 @@ async function resetPassword(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ newPassword }),
+  })
+}
+
+async function setActive(
+  app: ReturnType<typeof createUsersTestApp>,
+  userId: string,
+  isActive: boolean,
+): Promise<Response> {
+  return app.request(`/api/users/${userId}/active`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isActive }),
   })
 }
 
@@ -315,6 +334,12 @@ describe.sequential('Users module', () => {
       RESET_PW_ACTOR_ID,
       'reset-actor@mrengines.rs',
       'Reset Actor',
+    )
+    await seedApprovedUserWithId(
+      ctx.db,
+      SET_ACTIVE_ACTOR_ID,
+      'set-active-actor@mrengines.rs',
+      'Set Active Actor',
     )
   })
 
@@ -1203,6 +1228,130 @@ describe.sequential('Users module', () => {
       expect(await getAccountStatus(ctx.db, PENDING_CLIENT_NO_PERM_ID)).toBe(
         UserAccountStatus.Pending,
       )
+    })
+  })
+
+  describe('when setting a user active flag (deactivate/reactivate)', () => {
+    it('deactivates a user: flips is_active, revokes their sessions, audits and emits', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        SET_ACTIVE_TARGET_ID,
+        'set-active-target@mrengines.rs',
+        'Set Active Target',
+      )
+      await insertTestSession(ctx.db, SET_ACTIVE_TARGET_ID, SET_ACTIVE_TARGET_TOKEN)
+      expect(await countSessionsForUser(ctx.db, SET_ACTIVE_TARGET_ID)).toBe(1)
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...SET_ACTIVE_PERMISSIONS], SET_ACTIVE_ACTOR_ID),
+      )
+
+      const response = await setActive(app, SET_ACTIVE_TARGET_ID, false)
+      expect(response.status).toBe(200)
+
+      const updated = (await response.json()) as { isActive: boolean }
+      expect(updated.isActive).toBe(false)
+
+      const [row] = await ctx.db
+        .select({ isActive: schema.users.isActive })
+        .from(schema.users)
+        .where(eq(schema.users.id, SET_ACTIVE_TARGET_ID))
+        .limit(1)
+      expect(row?.isActive).toBe(false)
+
+      // Deactivation is the off-boarding step — the target is logged out everywhere.
+      expect(await countSessionsForUser(ctx.db, SET_ACTIVE_TARGET_ID)).toBe(0)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, SET_ACTIVE_TARGET_ID))
+      const deactivateAudit = auditRows.find(
+        (r) =>
+          r.action === AuditAction.Update &&
+          r.changes !== null &&
+          typeof r.changes === 'object' &&
+          (r.changes as { field?: string }).field === 'isActive',
+      )
+      expect(deactivateAudit).toBeDefined()
+      expect(deactivateAudit?.entityType).toBe('user')
+
+      expect(eventBus.resourceEvents.map((event) => event.resource)).toContain(
+        ResourceChangedKey.Users,
+      )
+    })
+
+    it('reactivates a user: flips is_active true (Restore) without revoking sessions', async () => {
+      await seedApprovedUserWithId(
+        ctx.db,
+        SET_ACTIVE_REACTIVATE_ID,
+        'set-active-reactivate@mrengines.rs',
+        'Set Active Reactivate',
+      )
+      await ctx.db
+        .update(schema.users)
+        .set({ isActive: false })
+        .where(eq(schema.users.id, SET_ACTIVE_REACTIVATE_ID))
+      await insertTestSession(ctx.db, SET_ACTIVE_REACTIVATE_ID, SET_ACTIVE_REACTIVATE_TOKEN)
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...SET_ACTIVE_PERMISSIONS], SET_ACTIVE_ACTOR_ID),
+      )
+
+      const response = await setActive(app, SET_ACTIVE_REACTIVATE_ID, true)
+      expect(response.status).toBe(200)
+
+      const [row] = await ctx.db
+        .select({ isActive: schema.users.isActive })
+        .from(schema.users)
+        .where(eq(schema.users.id, SET_ACTIVE_REACTIVATE_ID))
+        .limit(1)
+      expect(row?.isActive).toBe(true)
+
+      // Reactivation must not log the user out.
+      expect(await countSessionsForUser(ctx.db, SET_ACTIVE_REACTIVATE_ID)).toBe(1)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, SET_ACTIVE_REACTIVATE_ID))
+      const restoreAudit = auditRows.find((r) => r.action === AuditAction.Restore)
+      expect(restoreAudit).toBeDefined()
+    })
+
+    it('returns 403 and does not deactivate the protected super-admin', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...SET_ACTIVE_PERMISSIONS], SET_ACTIVE_ACTOR_ID),
+      )
+
+      const response = await setActive(app, PROTECTED_SUPER_ADMIN_ID, false)
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+
+      const [row] = await ctx.db
+        .select({ isActive: schema.users.isActive })
+        .from(schema.users)
+        .where(eq(schema.users.id, PROTECTED_SUPER_ADMIN_ID))
+        .limit(1)
+      expect(row?.isActive).toBe(true)
+    })
+
+    it('returns 403 when an actor tries to deactivate their own account', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...SET_ACTIVE_PERMISSIONS], SET_ACTIVE_ACTOR_ID),
+      )
+
+      const response = await setActive(app, SET_ACTIVE_ACTOR_ID, false)
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
     })
   })
 })
