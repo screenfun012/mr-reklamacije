@@ -14,6 +14,8 @@ vi.mock('@tanstack/react-router', () => ({
   redirect: (opts: unknown) => redirectMock(opts),
 }))
 
+import { INTERNAL_APP_ROLES } from '@mr/shared'
+
 import type { MRAuthClientForRouteRoles } from '../auth-client-types.js'
 import { LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE } from '../auth-client-types.js'
 import { requireRoles } from '../protected-routes.js'
@@ -89,6 +91,24 @@ describe('requireRoles', () => {
       }),
     ).resolves.toBeUndefined()
 
+    expect(redirectMock).not.toHaveBeenCalled()
+  })
+
+  // Regression: a viewer approved into internal-web must be able to enter the app
+  // (was signed out on every login because the dashboard/statistics guards omitted 'viewer').
+  it('admits a viewer to the internal app routes', async () => {
+    const authClient = createAuthStub({})
+
+    await expect(
+      requireRoles(
+        authClient,
+        INTERNAL_APP_ROLES,
+      )({
+        context: { authSession: { user: { roles: ['viewer'] } } },
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(authClient.signOut).not.toHaveBeenCalled()
     expect(redirectMock).not.toHaveBeenCalled()
   })
 

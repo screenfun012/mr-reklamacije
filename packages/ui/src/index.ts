@@ -131,6 +131,7 @@ export {
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './primitives/tabs.js'
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './primitives/tooltip.js'
 export { MrEnginesLogo, type MrEnginesLogoProps } from './components/mr-engines-logo.js'
+export { RouteError } from './components/route-error.js'
 export { RouteNotFound } from './components/route-not-found.js'
 export { ClaimKindBadge, type ClaimKindBadgeProps } from './components/claim-kind-badge.js'
 export { OutcomeBadge, type OutcomeBadgeProps } from './components/outcome-badge.js'

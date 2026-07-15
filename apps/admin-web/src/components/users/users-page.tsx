@@ -58,6 +58,7 @@ function UsersTable({
   rolesEditDisabled,
   passwordResetDisabled,
   resendActivationDisabled,
+  emptyMessage,
 }: {
   items: readonly UserListItem[]
   currentUserId: string | undefined
@@ -73,6 +74,7 @@ function UsersTable({
   rolesEditDisabled: boolean
   passwordResetDisabled: boolean
   resendActivationDisabled: boolean
+  emptyMessage?: string
 }): ReactElement {
   if (items.length === 0) {
     return (
@@ -81,7 +83,7 @@ function UsersTable({
         role="status"
       >
         <p className="text-sm text-muted-foreground">
-          {pending ? m.users_pending_empty() : m.users_all_empty()}
+          {emptyMessage ?? (pending ? m.users_pending_empty() : m.users_all_empty())}
         </p>
       </div>
     )
@@ -209,9 +211,22 @@ export function UsersPageContent(): ReactElement {
   const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
   const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
   const [passwordResetTarget, setPasswordResetTarget] = useState<UserListItem | null>(null)
+  const [allSearch, setAllSearch] = useState('')
 
   const pendingUsers = users.filter((user) => user.accountStatus === UserAccountStatus.Pending)
   const otherUsers = users.filter((user) => user.accountStatus !== UserAccountStatus.Pending)
+
+  // The "all users" table grows unbounded (public registration, no user delete),
+  // so it gets a client-side name/email filter over the already-loaded list.
+  const allQuery = allSearch.trim().toLowerCase()
+  const filteredOtherUsers =
+    allQuery === ''
+      ? otherUsers
+      : otherUsers.filter(
+          (user) =>
+            user.name.toLowerCase().includes(allQuery) ||
+            user.email.toLowerCase().includes(allQuery),
+        )
 
   const statusMutation = useMutation({
     mutationFn: ({
@@ -434,11 +449,21 @@ export function UsersPageContent(): ReactElement {
       </section>
 
       <section aria-labelledby="users-all-heading">
-        <Heading level="h2" id="users-all-heading" className="mb-4 text-lg">
-          {m.users_all_section_title()}
-        </Heading>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <Heading level="h2" id="users-all-heading" className="text-lg">
+            {m.users_all_section_title()}
+          </Heading>
+          <input
+            type="search"
+            value={allSearch}
+            onChange={(event) => setAllSearch(event.target.value)}
+            placeholder={m.users_search_placeholder()}
+            aria-label={m.users_search_placeholder()}
+            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:w-72"
+          />
+        </div>
         <UsersTable
-          items={otherUsers}
+          items={filteredOtherUsers}
           currentUserId={currentUserId}
           onApprove={handleApproveClick}
           onReject={handleReject}
@@ -452,6 +477,7 @@ export function UsersPageContent(): ReactElement {
           rolesEditDisabled={rolesMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
           resendActivationDisabled={resendActivationMutation.isPending}
+          emptyMessage={allQuery === '' ? m.users_all_empty() : m.users_search_no_matches()}
         />
       </section>
     </div>

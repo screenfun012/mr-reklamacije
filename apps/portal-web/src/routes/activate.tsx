@@ -6,6 +6,7 @@ import { useForm } from '@tanstack/react-form'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { LangThemeControls } from '~/components/lang-theme-controls'
 import { PortalLogo } from '~/components/masked-icon'
 import { PortalButton } from '~/components/portal-button'
 import { PortalFieldError, PortalInput, PortalLabel } from '~/components/portal-field'
@@ -71,6 +72,10 @@ function ActivateComponent(): React.ReactElement {
         className="absolute inset-0 size-full object-cover opacity-50"
       />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,9,11,0.85),rgba(9,9,11,0.96))]" />
+
+      <div className="absolute right-8 top-7 z-[3]">
+        <LangThemeControls />
+      </div>
 
       <div className="mrp-pop-in relative w-full max-w-[460px] rounded-[18px] border border-mrp-border bg-mrp-surface px-8 pb-10 pt-11 shadow-[var(--mrp-shadow)] sm:px-[42px]">
         <PortalLogo className="mb-[30px] h-10 w-[150px]" />

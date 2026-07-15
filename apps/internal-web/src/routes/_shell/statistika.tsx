@@ -3,6 +3,7 @@ import { Suspense, useCallback } from 'react'
 
 import {
   engineManufacturersReferenceOptions,
+  INTERNAL_APP_ROLES,
   STATISTICS_VIEW_PERMISSIONS,
   StatisticsSearchSchema,
   statisticsSummaryOptions,
@@ -16,7 +17,7 @@ import { StatistikaExportSection } from '~/features/statistika/statistika-export
 import { internalRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/_shell/statistika')({
-  beforeLoad: internalRequireRoles(['operator', 'admin']),
+  beforeLoad: internalRequireRoles(INTERNAL_APP_ROLES),
   validateSearch: (search) => StatisticsSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: ({ context: { queryClient, authSession }, deps: search }) => {

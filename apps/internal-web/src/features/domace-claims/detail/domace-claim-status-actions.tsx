@@ -42,7 +42,7 @@ export function DomaceClaimStatusActions({
   layout = 'section',
 }: DomaceClaimStatusActionsProps): React.ReactElement | null {
   const mutation = useChangeDomaceClaimOutcome(claimId)
-  const [confirmingReject, setConfirmingReject] = useState(false)
+  const [confirmingOutcome, setConfirmingOutcome] = useState<ClaimOutcomeType | null>(null)
 
   const isLocked = currentOutcome !== ClaimOutcome.Pending
 
@@ -59,18 +59,23 @@ export function DomaceClaimStatusActions({
       : []
 
   const isPending = mutation.isPending
+  const isAcceptConfirm = confirmingOutcome === ClaimOutcome.Accepted
 
+  // Accept and reject both irreversibly lock the claim, so both confirm first;
+  // reopen (admin unlock) is safe and fires immediately.
   const handleTarget = (outcome: ClaimOutcomeType): void => {
-    if (outcome === ClaimOutcome.Rejected) {
-      setConfirmingReject(true)
+    if (outcome === ClaimOutcome.Accepted || outcome === ClaimOutcome.Rejected) {
+      setConfirmingOutcome(outcome)
       return
     }
     mutation.mutate(outcome)
   }
 
-  const confirmReject = (): void => {
-    setConfirmingReject(false)
-    mutation.mutate(ClaimOutcome.Rejected)
+  const confirmOutcome = (): void => {
+    if (!confirmingOutcome) return
+    const outcome = confirmingOutcome
+    setConfirmingOutcome(null)
+    mutation.mutate(outcome)
   }
 
   return (
@@ -98,26 +103,30 @@ export function DomaceClaimStatusActions({
         </div>
       ) : null}
 
-      {confirmingReject ? (
+      {confirmingOutcome ? (
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-mri-text">
-            {m.emotive_claims_detail_status_reject_confirm()}
+            {isAcceptConfirm
+              ? m.emotive_claims_detail_status_accept_confirm()
+              : m.emotive_claims_detail_status_reject_confirm()}
           </span>
           <InternalButton
             type="button"
-            variant="red"
+            variant={isAcceptConfirm ? 'green' : 'red'}
             className="h-9 w-auto px-4 text-[11.5px]"
             disabled={isPending}
-            onClick={confirmReject}
+            onClick={confirmOutcome}
           >
-            {m.emotive_claims_detail_status_reject_confirm_yes()}
+            {isAcceptConfirm
+              ? m.emotive_claims_detail_status_accept_confirm_yes()
+              : m.emotive_claims_detail_status_reject_confirm_yes()}
           </InternalButton>
           <InternalButton
             type="button"
             variant="outline"
             className="h-9 w-auto px-4 text-[11.5px]"
             disabled={isPending}
-            onClick={() => setConfirmingReject(false)}
+            onClick={() => setConfirmingOutcome(null)}
           >
             {m.emotive_claims_detail_status_cancel()}
           </InternalButton>

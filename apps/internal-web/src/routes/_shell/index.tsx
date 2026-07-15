@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
-import { dashboardSummaryOptions } from '@mr/shared'
+import { dashboardSummaryOptions, INTERNAL_APP_ROLES } from '@mr/shared'
 import { m } from '@mr/i18n'
 
 import { InternalButton } from '~/components/internal-button'
@@ -12,7 +12,7 @@ import { DashboardContent } from '~/features/dashboard/dashboard-content'
 import { internalRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/_shell/')({
-  beforeLoad: internalRequireRoles(['operator', 'admin']),
+  beforeLoad: internalRequireRoles(INTERNAL_APP_ROLES),
   loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(dashboardSummaryOptions()),
   component: HomeComponent,
   pendingComponent: DashboardSkeleton,

@@ -1,7 +1,7 @@
 import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { MessageSquarePlus } from 'lucide-react'
+import { LogOut, MessageSquarePlus } from 'lucide-react'
 
 import { authClient } from '~/lib/auth-client'
 import { companyInitials } from '~/lib/portal-format'
@@ -45,6 +45,14 @@ export function PortalHeader({
           </Link>
           <LangThemeControls compact />
           <span className="mx-1 hidden h-[26px] w-px bg-mrp-border sm:block" />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            aria-label={m.portal_signout()}
+            className="grid size-9 flex-none place-items-center rounded-[9px] border border-mrp-border2 bg-mrp-raised text-mrp-text2 transition-colors hover:border-mrp-red hover:text-mrp-redh sm:hidden"
+          >
+            <LogOut className="size-4" />
+          </button>
           <span className="grid size-9 flex-none place-items-center rounded-full bg-mrp-red text-[13px] font-bold text-white">
             {companyInitials(company)}
           </span>

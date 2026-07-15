@@ -118,6 +118,11 @@ export function TimelineCard({ claim }: { claim: ClientClaimDetail }) {
             {m.portal_status_outcome()}
           </div>
           <div className="mt-[3px] font-mono text-[11px] text-mrp-text2">{tl.sub3}</div>
+          {!inProgress && claim.dateOfFinish ? (
+            <div className="mt-[2px] font-mono text-[11px] text-mrp-text2">
+              {formatPortalDate(claim.dateOfFinish)}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

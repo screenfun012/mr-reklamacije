@@ -85,6 +85,33 @@ describe('EmotiveClaimStatusActions', () => {
     expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
   })
 
+  // Accepting also locks the claim irreversibly for operators, so it must confirm too.
+  it('requires a two-step confirmation before accepting', () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    renderWithClient(
+      <EmotiveClaimStatusActions
+        claimId={CLAIM_ID}
+        currentOutcome="pending"
+        canChangeOutcome
+        canReopen={false}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    expect(screen.getByText('Potvrditi prihvatanje?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Potvrdi prihvatanje' })).toBeInTheDocument()
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Otkaži' }))
+
+    expect(screen.queryByText('Potvrditi prihvatanje?')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Prihvati' })).toBeInTheDocument()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it('requires a two-step confirmation before rejecting', () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)

@@ -2,6 +2,7 @@ import { m } from '@mr/i18n'
 import { PORTAL_SUPPORT_EMAIL } from '@mr/shared'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
+import { LangThemeControls } from '~/components/lang-theme-controls'
 import { MaskedIcon, PortalLogo } from '~/components/masked-icon'
 import { PortalButton } from '~/components/portal-button'
 
@@ -24,6 +25,10 @@ function PendingComponent(): React.ReactElement {
         className="absolute inset-0 size-full object-cover opacity-50"
       />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,9,11,0.85),rgba(9,9,11,0.96))]" />
+
+      <div className="absolute right-8 top-7 z-[3]">
+        <LangThemeControls />
+      </div>
 
       <div className="mrp-pop-in relative w-full max-w-[520px] overflow-hidden rounded-[18px] border border-mrp-border bg-mrp-surface px-8 pb-10 pt-11 shadow-[var(--mrp-shadow)] sm:px-[46px]">
         <span

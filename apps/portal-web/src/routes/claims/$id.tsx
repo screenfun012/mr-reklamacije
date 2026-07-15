@@ -92,6 +92,20 @@ function BasicsCard({ claim }: { claim: ClientClaimDetail }) {
   )
 }
 
+function ReportedProblemCard({ claim }: { claim: ClientClaimDetail }) {
+  // The client's own reported problem — unreachable elsewhere once the submission is converted.
+  if (!claim.warrantyReport) return null
+  return (
+    <div
+      className="mrp-fade-up rounded-[15px] border border-mrp-border bg-mrp-surface p-7"
+      style={{ animationDelay: '0.21s' }}
+    >
+      <h2 className="mb-4 text-[17px] font-extrabold">{m.portal_detail_problem()}</h2>
+      <p className="whitespace-pre-line text-[15px] leading-[1.65]">{claim.warrantyReport}</p>
+    </div>
+  )
+}
+
 function InspectionCard({ claim }: { claim: ClientClaimDetail }) {
   const report = claim.inspectionReport
   return (
@@ -165,6 +179,7 @@ function ClaimDetailComponent() {
         <div className="grid grid-cols-1 items-start gap-[26px] lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-[26px]">
             <BasicsCard claim={claim} />
+            <ReportedProblemCard claim={claim} />
             <InspectionCard claim={claim} />
             <PhotosCard claimId={claim.id} />
           </div>
