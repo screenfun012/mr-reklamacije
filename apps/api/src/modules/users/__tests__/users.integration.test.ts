@@ -399,13 +399,16 @@ describe.sequential('Users module', () => {
   })
 
   describe('when updating account status', () => {
-    it('approves a pending user with default operator role, writes audit log, and emits SSE', async () => {
+    it('approves a pending user with an explicit operator role, writes audit log, and emits SSE', async () => {
       const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
 
       const response = await app.request(`/api/users/${PENDING_USER_ID}/account-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: UserAccountStatus.Approved }),
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCode: SYSTEM_ROLE_OPERATOR,
+        }),
       })
 
       expect(response.status).toBe(200)
@@ -542,7 +545,10 @@ describe.sequential('Users module', () => {
       const response = await app.request(`/api/users/${APPROVED_USER_ID}/account-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: UserAccountStatus.Approved }),
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCode: SYSTEM_ROLE_OPERATOR,
+        }),
       })
 
       expect(response.status).toBe(400)
@@ -566,7 +572,10 @@ describe.sequential('Users module', () => {
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: UserAccountStatus.Approved }),
+          body: JSON.stringify({
+            status: UserAccountStatus.Approved,
+            roleCode: SYSTEM_ROLE_OPERATOR,
+          }),
         },
       )
 
@@ -792,7 +801,10 @@ describe.sequential('Users module', () => {
       const response = await app.request(`/api/users/${SESSION_REVOKE_PENDING_ID}/account-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: UserAccountStatus.Approved }),
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCode: SYSTEM_ROLE_OPERATOR,
+        }),
       })
 
       expect(response.status).toBe(200)

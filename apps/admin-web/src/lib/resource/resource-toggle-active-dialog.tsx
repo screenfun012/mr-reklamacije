@@ -1,14 +1,4 @@
-import { m } from '@mr/i18n'
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  toast,
-} from '@mr/ui'
+import { ConfirmDialog, toast } from '@mr/ui'
 
 import type { ResourceDefinition } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
@@ -68,31 +58,15 @@ export function ResourceToggleActiveDialog<
     : (definition.lifecycle?.reactivateConfirmLabel() ?? definition.editActionLabel())
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={setActiveMutation.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            {m.action_cancel()}
-          </Button>
-          <Button
-            type="button"
-            variant={isDeactivating ? 'destructive' : 'default'}
-            disabled={setActiveMutation.isPending}
-            onClick={handleConfirm}
-          >
-            {confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      confirmLabel={confirmLabel}
+      variant={isDeactivating ? 'destructive' : 'default'}
+      pending={setActiveMutation.isPending}
+      onConfirm={handleConfirm}
+    />
   )
 }

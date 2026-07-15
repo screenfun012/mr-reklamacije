@@ -1,14 +1,4 @@
-import { m } from '@mr/i18n'
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  toast,
-} from '@mr/ui'
+import { ConfirmDialog, toast } from '@mr/ui'
 
 import type { ResourceDefinition } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
@@ -55,31 +45,14 @@ export function ResourceHardDeleteDialog<
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{lifecycle.hardDeleteTitle()}</DialogTitle>
-          <DialogDescription>{lifecycle.hardDeleteDescription(item)}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={hardDeleteMutation.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            {m.action_cancel()}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={hardDeleteMutation.isPending}
-            onClick={handleConfirm}
-          >
-            {lifecycle.hardDeleteConfirmLabel()}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={lifecycle.hardDeleteTitle()}
+      description={lifecycle.hardDeleteDescription(item)}
+      confirmLabel={lifecycle.hardDeleteConfirmLabel()}
+      pending={hardDeleteMutation.isPending}
+      onConfirm={handleConfirm}
+    />
   )
 }

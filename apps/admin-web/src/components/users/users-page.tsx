@@ -15,7 +15,14 @@ import {
   type UserListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, dataTableRowHoverOnlyClassName, Heading, Skeleton, toast } from '@mr/ui'
+import {
+  Button,
+  ConfirmDialog,
+  dataTableRowHoverOnlyClassName,
+  Heading,
+  Skeleton,
+  toast,
+} from '@mr/ui'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState, type ReactElement } from 'react'
 
@@ -211,6 +218,7 @@ export function UsersPageContent(): ReactElement {
   const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
   const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
   const [passwordResetTarget, setPasswordResetTarget] = useState<UserListItem | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<UserListItem | null>(null)
   const [allSearch, setAllSearch] = useState('')
 
   const pendingUsers = users.filter((user) => user.accountStatus === UserAccountStatus.Pending)
@@ -274,6 +282,8 @@ export function UsersPageContent(): ReactElement {
     onSuccess: (_data, variables) => {
       if (variables.status === UserAccountStatus.Approved) {
         setApproveTarget(null)
+      } else {
+        setRejectTarget(null)
       }
       toast.success(
         variables.status === UserAccountStatus.Approved
@@ -370,8 +380,15 @@ export function UsersPageContent(): ReactElement {
     })
   }
 
-  const handleReject = (user: UserListItem): void => {
-    statusMutation.mutate({ userId: user.id, status: UserAccountStatus.Rejected })
+  const handleRejectClick = (user: UserListItem): void => {
+    setRejectTarget(user)
+  }
+
+  const handleRejectConfirm = (): void => {
+    if (rejectTarget === null) {
+      return
+    }
+    statusMutation.mutate({ userId: rejectTarget.id, status: UserAccountStatus.Rejected })
   }
 
   const handleRolesEditConfirm = (
@@ -426,6 +443,27 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handlePasswordResetConfirm}
       />
 
+      <ConfirmDialog
+        open={rejectTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectTarget(null)
+          }
+        }}
+        title={m.users_reject_confirm_title()}
+        description={
+          rejectTarget !== null
+            ? m.users_reject_confirm_description({
+                name: rejectTarget.name,
+                email: rejectTarget.email,
+              })
+            : null
+        }
+        confirmLabel={m.users_reject_button()}
+        pending={statusMutation.isPending}
+        onConfirm={handleRejectConfirm}
+      />
+
       <section aria-labelledby="users-pending-heading">
         <Heading level="h2" id="users-pending-heading" className="mb-4 text-lg">
           {m.users_pending_section_title()}
@@ -434,7 +472,7 @@ export function UsersPageContent(): ReactElement {
           items={pendingUsers}
           currentUserId={currentUserId}
           onApprove={handleApproveClick}
-          onReject={handleReject}
+          onReject={handleRejectClick}
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
           onResendActivation={handleResendActivation}
@@ -466,7 +504,7 @@ export function UsersPageContent(): ReactElement {
           items={filteredOtherUsers}
           currentUserId={currentUserId}
           onApprove={handleApproveClick}
-          onReject={handleReject}
+          onReject={handleRejectClick}
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
           onResendActivation={handleResendActivation}

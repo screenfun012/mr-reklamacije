@@ -21,10 +21,10 @@ describe('buildAccountStatusPatchBody', () => {
     expect(() => UserAccountStatusPatchInputSchema.parse(body)).not.toThrow()
   })
 
-  it('defaults the role to operator and still omits customerIds', () => {
+  it('falls back to least-privilege viewer (never operator) when no role is given', () => {
     const body = buildAccountStatusPatchBody({ status: UserAccountStatus.Approved })
 
-    expect(body).toEqual({ status: UserAccountStatus.Approved, roleCode: 'operator' })
+    expect(body).toEqual({ status: UserAccountStatus.Approved, roleCode: 'viewer' })
     expect(() => UserAccountStatusPatchInputSchema.parse(body)).not.toThrow()
   })
 

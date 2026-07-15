@@ -1,5 +1,4 @@
 import {
-  DEFAULT_APPROVE_REGISTRATION_ROLE,
   EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
   SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_OPERATOR,
@@ -24,16 +23,41 @@ import {
   SelectValue,
 } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 
 const APPROVE_ROLE_OPTIONS = [
-  { value: SYSTEM_ROLE_OPERATOR, label: () => m.users_role_operator() },
-  { value: SYSTEM_ROLE_VIEWER, label: () => m.users_role_viewer() },
-  { value: SYSTEM_ROLE_CLIENT, label: () => m.users_role_client() },
+  {
+    value: SYSTEM_ROLE_OPERATOR,
+    label: () => m.users_role_operator(),
+    description: () => m.users_role_operator_description(),
+  },
+  {
+    value: SYSTEM_ROLE_VIEWER,
+    label: () => m.users_role_viewer(),
+    description: () => m.users_role_viewer_description(),
+  },
+  {
+    value: SYSTEM_ROLE_CLIENT,
+    label: () => m.users_role_client(),
+    description: () => m.users_role_client_description(),
+  },
 ] as const satisfies ReadonlyArray<{
   value: AccountApprovalRoleCode
   label: () => string
+  description: () => string
 }>
+
+/**
+ * Safe default role when the approve dialog opens: a registrant who named a
+ * company is a client (forces the customer link); everyone else defaults to
+ * least-privilege viewer — never the most-privileged operator.
+ */
+function initialApproveRole(user: UserListItem | null): AccountApprovalRoleCode {
+  if (user !== null && user.requestedCompany !== null && user.requestedCompany !== '') {
+    return SYSTEM_ROLE_CLIENT
+  }
+  return SYSTEM_ROLE_VIEWER
+}
 
 interface UserApproveDialogProps {
   user: UserListItem | null
@@ -50,10 +74,17 @@ export function UserApproveDialog({
   onOpenChange,
   onConfirm,
 }: UserApproveDialogProps): ReactElement {
-  const [roleCode, setRoleCode] = useState<AccountApprovalRoleCode>(
-    DEFAULT_APPROVE_REGISTRATION_ROLE,
-  )
+  const [roleCode, setRoleCode] = useState<AccountApprovalRoleCode>(() => initialApproveRole(user))
   const [customerId, setCustomerId] = useState<string | null>(null)
+
+  // Sync the safe default whenever the dialog opens for a given user
+  // (mirror of the roles-edit dialog's [user, open] sync).
+  useEffect(() => {
+    if (user !== null && open) {
+      setRoleCode(initialApproveRole(user))
+      setCustomerId(null)
+    }
+  }, [user, open])
 
   const isClient = roleCode === SYSTEM_ROLE_CLIENT
 
@@ -63,7 +94,7 @@ export function UserApproveDialog({
   })
 
   const resetState = (): void => {
-    setRoleCode(DEFAULT_APPROVE_REGISTRATION_ROLE)
+    setRoleCode(initialApproveRole(user))
     setCustomerId(null)
   }
 
@@ -136,6 +167,9 @@ export function UserApproveDialog({
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-sm text-muted-foreground">
+              {APPROVE_ROLE_OPTIONS.find((option) => option.value === roleCode)?.description()}
+            </p>
           </div>
 
           {isClient ? (

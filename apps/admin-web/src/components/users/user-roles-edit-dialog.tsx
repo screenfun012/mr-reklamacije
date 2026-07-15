@@ -19,11 +19,20 @@ import {
 import { useEffect, useState, type ReactElement } from 'react'
 
 const EDITABLE_ROLE_OPTIONS = [
-  { value: SYSTEM_ROLE_OPERATOR, label: () => m.users_role_operator() },
-  { value: SYSTEM_ROLE_VIEWER, label: () => m.users_role_viewer() },
+  {
+    value: SYSTEM_ROLE_OPERATOR,
+    label: () => m.users_role_operator(),
+    description: () => m.users_role_operator_description(),
+  },
+  {
+    value: SYSTEM_ROLE_VIEWER,
+    label: () => m.users_role_viewer(),
+    description: () => m.users_role_viewer_description(),
+  },
 ] as const satisfies ReadonlyArray<{
   value: ApproveRegistrationRoleCode
   label: () => string
+  description: () => string
 }>
 
 function initialSelectedRoles(roles: readonly string[]): ApproveRegistrationRoleCode[] {
@@ -110,17 +119,22 @@ export function UserRolesEditDialog({
               <label
                 key={option.value}
                 htmlFor={inputId}
-                className="flex cursor-pointer items-center gap-3 rounded-md border border-border px-3 py-2 hover:bg-muted/40"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 hover:bg-muted/40"
               >
                 <input
                   id={inputId}
                   type="checkbox"
-                  className="size-4 rounded border-border"
+                  className="mt-0.5 size-4 rounded border-border"
                   checked={selectedRoles.includes(option.value)}
                   disabled={pending}
                   onChange={() => toggleRole(option.value)}
                 />
-                <span className="text-sm">{option.label()}</span>
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium">{option.label()}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {option.description()}
+                  </span>
+                </span>
               </label>
             )
           })}

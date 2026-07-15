@@ -1,10 +1,7 @@
 import { z } from 'zod'
 
-import {
-  ACCOUNT_APPROVAL_ROLE_CODES,
-  DEFAULT_APPROVE_REGISTRATION_ROLE,
-} from '../constants/approve-registration-roles.js'
-import { SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_CODES } from '../constants/roles.js'
+import { ACCOUNT_APPROVAL_ROLE_CODES } from '../constants/approve-registration-roles.js'
+import { SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_CODES, SYSTEM_ROLE_VIEWER } from '../constants/roles.js'
 import { UserAccountStatus } from '../enums.js'
 
 import { ReferenceListQuerySchema, ReferenceListResponseSchema } from './reference-data.schema.js'
@@ -79,8 +76,15 @@ export const UserAccountStatusPatchInputSchema = z
       return
     }
 
-    const roleCode = value.roleCode ?? DEFAULT_APPROVE_REGISTRATION_ROLE
-    if (roleCode === SYSTEM_ROLE_CLIENT) {
+    if (value.roleCode === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'roleCode is required when approving',
+        path: ['roleCode'],
+      })
+      return
+    }
+    if (value.roleCode === SYSTEM_ROLE_CLIENT) {
       if (value.customerIds === undefined || value.customerIds.length === 0) {
         ctx.addIssue({
           code: 'custom',
@@ -98,7 +102,9 @@ export const UserAccountStatusPatchInputSchema = z
   })
   .transform((value) => {
     if (value.status === UserAccountStatus.Approved) {
-      const roleCode = value.roleCode ?? DEFAULT_APPROVE_REGISTRATION_ROLE
+      // superRefine rejects an approval without a roleCode, so it is always present
+      // here; the fallback is unreachable and least-privilege (never operator).
+      const roleCode = value.roleCode ?? SYSTEM_ROLE_VIEWER
       const customerIds =
         roleCode === SYSTEM_ROLE_CLIENT ? [...new Set(value.customerIds ?? [])] : []
 

@@ -2,11 +2,8 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
 import { fetchNoContent } from '../api/fetch-no-content.js'
-import {
-  type AccountApprovalRoleCode,
-  DEFAULT_APPROVE_REGISTRATION_ROLE,
-} from '../constants/approve-registration-roles.js'
-import { SYSTEM_ROLE_CLIENT } from '../constants/roles.js'
+import { type AccountApprovalRoleCode } from '../constants/approve-registration-roles.js'
+import { SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_VIEWER } from '../constants/roles.js'
 import { UserAccountStatus } from '../enums.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
 import type {
@@ -45,7 +42,7 @@ export function buildAccountStatusPatchBody(decision: {
     return { status: decision.status }
   }
 
-  const roleCode = decision.roleCode ?? DEFAULT_APPROVE_REGISTRATION_ROLE
+  const roleCode = decision.roleCode ?? SYSTEM_ROLE_VIEWER
   if (roleCode === SYSTEM_ROLE_CLIENT) {
     return { status: decision.status, roleCode, customerIds: [...(decision.customerIds ?? [])] }
   }

@@ -1,14 +1,6 @@
 import { m } from '@mr/i18n'
 import type { ClaimListItem } from '@mr/shared'
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@mr/ui'
+import { ConfirmDialog } from '@mr/ui'
 
 interface ClaimDeleteDialogProps {
   open: boolean
@@ -29,28 +21,14 @@ export function ClaimDeleteDialog({
   const label = claim?.mrNumber ?? claim?.claimNumber ?? '—'
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{m.claims_delete_confirm_title()}</DialogTitle>
-          <DialogDescription>
-            {claim !== null ? m.claims_delete_confirm_message({ mrNumber: label }) : null}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={deleting}
-            onClick={() => onOpenChange(false)}
-          >
-            {m.action_cancel()}
-          </Button>
-          <Button type="button" variant="destructive" loading={deleting} onClick={onConfirm}>
-            {m.action_delete()}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={m.claims_delete_confirm_title()}
+      description={claim !== null ? m.claims_delete_confirm_message({ mrNumber: label }) : null}
+      confirmLabel={m.action_delete()}
+      pending={deleting}
+      onConfirm={onConfirm}
+    />
   )
 }

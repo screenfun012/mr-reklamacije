@@ -48,21 +48,18 @@ describe('UserListItemSchema', () => {
 
 describe('UserAccountStatusPatchInputSchema', () => {
   it('accepts approved and rejected transitions', () => {
-    expect(UserAccountStatusPatchInputSchema.parse({ status: 'approved' }).status).toBe(
-      UserAccountStatus.Approved,
-    )
+    expect(
+      UserAccountStatusPatchInputSchema.parse({ status: 'approved', roleCode: 'viewer' }).status,
+    ).toBe(UserAccountStatus.Approved)
     expect(UserAccountStatusPatchInputSchema.parse({ status: 'rejected' }).status).toBe(
       UserAccountStatus.Rejected,
     )
   })
 
-  it('defaults roleCode to operator when approving without roleCode', () => {
-    const parsed = UserAccountStatusPatchInputSchema.parse({ status: 'approved' })
-
-    expect(parsed.status).toBe(UserAccountStatus.Approved)
-    if (parsed.status === UserAccountStatus.Approved) {
-      expect(parsed.roleCode).toBe('operator')
-    }
+  it('rejects approving without a roleCode (no silent operator default)', () => {
+    expect(() => UserAccountStatusPatchInputSchema.parse({ status: 'approved' })).toThrow(
+      /roleCode is required when approving/,
+    )
   })
 
   it('accepts viewer role on approval with empty customerIds', () => {

@@ -236,18 +236,20 @@ Permission gate.
 
 ### `<ConfirmDialog />`
 
-For destructive actions.
+For destructive actions. Controlled (`open`/`onOpenChange`); the confirm button
+shows a spinner while `pending`. Cancel defaults to the shared `action_cancel` label.
 
 ```tsx
 <ConfirmDialog
+  open={open}
+  onOpenChange={setOpen}
   title="Obriši reklamaciju"
   description="Reklamacija će biti prebačena u kantu. Možeš je vratiti kasnije."
   confirmLabel="Obriši"
   variant="destructive"
+  pending={isPending}
   onConfirm={() => deleteClaim(id)}
->
-  <Button variant="ghost" size="sm">Obriši</Button>
-</ConfirmDialog>
+/>
 ```
 
 ### `<StatCard />`
