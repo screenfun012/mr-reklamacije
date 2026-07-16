@@ -63,4 +63,46 @@ describe('ListSelect', () => {
     expect(option.className).toContain('mr-list-item-interactive')
     expect(option.tagName).toBe('BUTTON')
   })
+
+  it('selects an option via keyboard (Enter)', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+
+    render(
+      <ListSelect
+        value="all"
+        options={OPTIONS}
+        placeholder="Sve"
+        aria-label="Status"
+        onValueChange={onValueChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Status' }))
+    screen.getByRole('option', { name: 'Aktivno' }).focus()
+    await user.keyboard('{Enter}')
+
+    expect(onValueChange).toHaveBeenCalledWith('active')
+  })
+
+  it('selects an option via keyboard (Space)', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+
+    render(
+      <ListSelect
+        value="all"
+        options={OPTIONS}
+        placeholder="Sve"
+        aria-label="Status"
+        onValueChange={onValueChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Status' }))
+    screen.getByRole('option', { name: 'Aktivno' }).focus()
+    await user.keyboard('[Space]')
+
+    expect(onValueChange).toHaveBeenCalledWith('active')
+  })
 })

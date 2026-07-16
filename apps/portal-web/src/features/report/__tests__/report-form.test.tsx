@@ -149,4 +149,28 @@ describe('ReportForm', () => {
     expect(uploadAttachments).toHaveBeenCalledTimes(1)
     expect(uploadAttachments).toHaveBeenCalledWith('sub-1', [compressedA, compressedB])
   })
+
+  it('reuses the created submission on retry after an upload failure (no duplicate)', async () => {
+    const user = userEvent.setup()
+    createSubmission.mockResolvedValue({ id: 'sub-1' })
+    compressImageMock.mockImplementation((file: File) => Promise.resolve(file))
+    // First attempt: create succeeds, upload fails. Retry: upload succeeds.
+    uploadAttachments.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(undefined)
+    await renderForm()
+
+    await user.type(screen.getByPlaceholderText(/curi ulje/i), 'Motor se pregreva')
+    await user.click(submitButton())
+
+    // The error surfaces and the button re-enables — the retry window.
+    await screen.findByRole('alert')
+    await waitFor(() => expect((submitButton() as HTMLButtonElement).disabled).toBe(false))
+
+    // The impatient client clicks again.
+    await user.click(submitButton())
+    await waitFor(() => expect(uploadAttachments).toHaveBeenCalledTimes(2))
+
+    // The submission was created exactly ONCE; the retry reused the same id.
+    expect(createSubmission).toHaveBeenCalledTimes(1)
+    expect(uploadAttachments).toHaveBeenNthCalledWith(2, 'sub-1', expect.anything())
+  })
 })

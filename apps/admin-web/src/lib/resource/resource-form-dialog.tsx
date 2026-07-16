@@ -201,6 +201,8 @@ export function ResourceFormDialog<
                 <Input
                   id={fieldId}
                   value={value}
+                  type={field.type === 'number' ? 'number' : undefined}
+                  step={field.type === 'number' ? 1 : undefined}
                   inputMode={field.type === 'number' ? 'numeric' : undefined}
                   disabled={isPending}
                   onChange={(event) => setFieldValue(field.key, event.target.value)}

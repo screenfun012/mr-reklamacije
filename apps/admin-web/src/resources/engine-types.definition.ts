@@ -17,8 +17,10 @@ function parseOptionalInt(value: string): number | undefined {
   if (trimmed === '') {
     return undefined
   }
-  const parsed = Number.parseInt(trimmed, 10)
-  return Number.isNaN(parsed) ? undefined : parsed
+  // Strict full-string parse: a separated value like "1.998" / "1,998" / "1 998" is
+  // REJECTED (undefined), not silently truncated to 1 the way Number.parseInt would.
+  const parsed = Number(trimmed)
+  return Number.isInteger(parsed) ? parsed : undefined
 }
 
 function parseOptionalNullableInt(value: string): number | null | undefined {
@@ -26,8 +28,10 @@ function parseOptionalNullableInt(value: string): number | null | undefined {
   if (trimmed === '') {
     return null
   }
-  const parsed = Number.parseInt(trimmed, 10)
-  return Number.isNaN(parsed) ? undefined : parsed
+  // Strict full-string parse: a separated value like "1.998" / "1,998" / "1 998" is
+  // REJECTED (undefined), not silently truncated to 1 the way Number.parseInt would.
+  const parsed = Number(trimmed)
+  return Number.isInteger(parsed) ? parsed : undefined
 }
 
 function parseOptionalString(value: string): string | undefined {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { m } from '@mr/i18n'
 import {
@@ -28,15 +28,23 @@ import { AttachmentPicker } from './attachment-picker'
 export function ReportForm() {
   const navigate = useNavigate()
   const [files, setFiles] = useState<readonly File[]>([])
+  // Idempotency across retries: once the submission is created, a failed upload must
+  // NOT re-create it on the next click — reuse the id and resume at the upload (which
+  // already dedups files by content hash). The form unmounts on success (navigate to
+  // /claims), so this resets naturally for the next submission.
+  const createdIdRef = useRef<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: async (message: string): Promise<void> => {
-      const { id } = await createClientSubmission({ message })
+      if (createdIdRef.current === null) {
+        const { id } = await createClientSubmission({ message })
+        createdIdRef.current = id
+      }
       // Downscale/recompress images in the browser first (an 8 MB phone photo →
       // a few hundred KB); non-images pass through untouched. All in parallel,
       // then uploaded in ONE multipart request instead of N.
       const optimized = await Promise.all(files.map((file) => compressImage(file)))
-      await uploadClientSubmissionAttachments(id, optimized)
+      await uploadClientSubmissionAttachments(createdIdRef.current, optimized)
     },
     onSuccess: async () => {
       showPortalToast(m.portal_submit_success())

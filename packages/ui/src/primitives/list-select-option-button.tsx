@@ -34,6 +34,14 @@ export function ListSelectOptionButton({
         event.preventDefault()
         onSelect()
       }}
+      // Pointer events don't fire on keyboard activation, and this <button> has no
+      // onClick, so Enter/Space would otherwise be dead. Restores WCAG 2.1.1.
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect()
+        }
+      }}
     >
       <Check
         className={cn('size-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')}
