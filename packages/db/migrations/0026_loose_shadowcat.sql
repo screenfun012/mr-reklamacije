@@ -1,0 +1,2 @@
+CREATE INDEX "idx_domace_claims_created_at" ON "domace_claims" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "idx_emotive_claims_created_at" ON "emotive_claims" USING btree ("created_at" DESC NULLS LAST);

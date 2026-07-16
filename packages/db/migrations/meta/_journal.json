@@ -183,6 +183,13 @@
       "when": 1784208280978,
       "tag": "0025_kind_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1784210403063,
+      "tag": "0026_loose_shadowcat",
+      "breakpoints": true
     }
   ]
 }

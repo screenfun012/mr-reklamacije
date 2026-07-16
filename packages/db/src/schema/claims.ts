@@ -111,6 +111,8 @@ export const emotiveClaims = pgTable(
     index('idx_emotive_claims_engine_type_id').on(t.engineTypeId),
     index('idx_emotive_claims_manufacturer_id').on(t.manufacturerId),
     index('idx_emotive_claims_manufacturer_id_claim_year').on(t.manufacturerId, t.claimYear),
+    // Dashboard fetchRecent orders by created_at DESC; fetchChart range-filters it.
+    index('idx_emotive_claims_created_at').on(t.createdAt.desc()),
     // TODO (Phase 1 optimization): Upgrade GIN full-text search to
     // Serbian stemmer. Requires installing Serbian dictionary
     // (e.g., snowball extension with Serbian rules) in Docker image
@@ -269,6 +271,8 @@ export const domaceClaims = pgTable(
     index('idx_domace_claims_engine_type_id').on(t.engineTypeId),
     index('idx_domace_claims_manufacturer_id').on(t.manufacturerId),
     index('idx_domace_claims_manufacturer_id_claim_year').on(t.manufacturerId, t.claimYear),
+    // Dashboard fetchRecent orders by created_at DESC; fetchChart range-filters it.
+    index('idx_domace_claims_created_at').on(t.createdAt.desc()),
     // Same `simple` FTS config as emotive_claims; Serbian stemmer TODO applies here too.
     // NOTE: expression must stay TEXTUALLY identical to the search predicates
     // in domace-claims.repository.ts and claims.repository.ts (index matching).
