@@ -12,7 +12,12 @@ import {
 import { and, eq, isNull } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
-import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
@@ -158,7 +163,13 @@ export class ClientSubmissionsService {
         .set({ emotiveClaimId: newClaimId, claimKind: ClaimKind.Emotive, clientSubmissionId: null })
         .where(and(eq(attachments.clientSubmissionId, id), isNull(attachments.deletedAt)))
 
-      await this.repo.markConverted(id, newClaimId, actor.actorUserId, tx)
+      // Compare-and-swap on status=pending: a concurrent convert (double-click / retry)
+      // that already flipped the submission matches 0 rows → reject the loser and roll
+      // back this claim + attachment re-point instead of creating a duplicate.
+      const converted = await this.repo.markConverted(id, newClaimId, actor.actorUserId, tx)
+      if (converted === 0) {
+        throw new ConflictError('Submission was already handled')
+      }
 
       return newClaimId
     })

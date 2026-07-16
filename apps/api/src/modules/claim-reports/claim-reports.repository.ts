@@ -1,5 +1,5 @@
 import { ClaimKind, type ClaimReportQuery, type ClaimReportResponse } from '@mr/shared'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { claimReports } from './claim-reports.schema.js'
@@ -45,61 +45,41 @@ export class ClaimReportsRepository {
 
   async upsert(input: ClaimReportUpsertInput): Promise<ClaimReportRow> {
     const now = new Date()
-    const existing = await this.findByClaim({
-      claimKind: input.claimKind,
-      claimId: input.claimId,
-    })
+    const isEmotive = input.claimKind === ClaimKind.Emotive
+    const targetColumn = isEmotive ? claimReports.emotiveClaimId : claimReports.domaceClaimId
 
-    if (existing === null) {
-      const values =
-        input.claimKind === ClaimKind.Emotive
-          ? {
-              claimKind: input.claimKind,
-              emotiveClaimId: input.claimId,
-              domaceClaimId: null,
-              contentJson: input.contentJson,
-              contentHtml: input.contentHtml,
-              createdBy: input.updatedBy,
-              updatedBy: input.updatedBy,
-              createdAt: now,
-              updatedAt: now,
-            }
-          : {
-              claimKind: input.claimKind,
-              emotiveClaimId: null,
-              domaceClaimId: input.claimId,
-              contentJson: input.contentJson,
-              contentHtml: input.contentHtml,
-              createdBy: input.updatedBy,
-              updatedBy: input.updatedBy,
-              createdAt: now,
-              updatedAt: now,
-            }
-
-      const inserted = await this.db.insert(claimReports).values(values).returning()
-      const row = inserted[0]
-      if (row === undefined) {
-        throw new Error('Failed to insert claim report')
-      }
-
-      return mapRow(row, input.claimId)
-    }
-
-    const claimColumn = mapClaimIdColumn(input.claimKind)
-    const updated = await this.db
-      .update(claimReports)
-      .set({
+    // Single race-safe statement: INSERT, and on the per-kind partial unique index
+    // (one report per claim) fall through to UPDATE. Replaces the old SELECT-then-INSERT
+    // whose 23505 on a concurrent first save escaped as a 500. createdBy/createdAt stay
+    // OUT of `set` so the original creator + creation time survive an update.
+    const upserted = await this.db
+      .insert(claimReports)
+      .values({
+        claimKind: input.claimKind,
+        emotiveClaimId: isEmotive ? input.claimId : null,
+        domaceClaimId: isEmotive ? null : input.claimId,
         contentJson: input.contentJson,
         contentHtml: input.contentHtml,
+        createdBy: input.updatedBy,
         updatedBy: input.updatedBy,
+        createdAt: now,
         updatedAt: now,
       })
-      .where(and(eq(claimReports.claimKind, input.claimKind), eq(claimColumn, input.claimId)))
+      .onConflictDoUpdate({
+        target: targetColumn,
+        targetWhere: sql`${targetColumn} IS NOT NULL`,
+        set: {
+          contentJson: input.contentJson,
+          contentHtml: input.contentHtml,
+          updatedBy: input.updatedBy,
+          updatedAt: now,
+        },
+      })
       .returning()
 
-    const row = updated[0]
+    const row = upserted[0]
     if (row === undefined) {
-      throw new Error('Failed to update claim report')
+      throw new Error('Failed to upsert claim report')
     }
 
     return mapRow(row, input.claimId)

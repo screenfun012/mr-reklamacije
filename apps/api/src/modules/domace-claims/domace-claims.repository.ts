@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimKind } from '@mr/shared'
+import { ClaimKind, ClaimOutcome } from '@mr/shared'
 import { and, desc, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -9,7 +9,7 @@ import {
   outcomeResolvedAtForTransition,
 } from '../../core/claims/outcome-resolved-at.js'
 import type { ApiDatabase } from '../../core/database.js'
-import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
+import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { MrRegistryService } from '../../core/mr-registry/index.js'
 import { domaceClaimYearFromDate } from './claim-year.js'
 import { domaceClaimFaults, domaceClaims } from './domace-claims.schema.js'
@@ -28,6 +28,11 @@ import type {
 const { departments, employees, engineManufacturers, engineTypes, externalParties } = schema
 
 const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
+
+// Thrown when a mutation's compare-and-swap WHERE matches 0 rows — the claim's
+// state (deleted_at / outcome) changed between the service before-read and the
+// write, so the asserted precondition is stale. Maps to HTTP 409.
+const CONCURRENT_EDIT_MESSAGE = 'Claim was modified concurrently; reload and retry'
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -500,7 +505,23 @@ export class DomaceClaimsRepository {
     }
 
     await this.db.transaction(async (tx) => {
-      await tx.update(domaceClaims).set(patch).where(eq(domaceClaims.id, id))
+      // Compare-and-swap: the write only lands if the claim is still in the state the
+      // service asserted on `before` (not deleted, same outcome). 0 rows → the claim
+      // changed concurrently → ConflictError rolls the whole tx back.
+      const [row] = await tx
+        .update(domaceClaims)
+        .set(patch)
+        .where(
+          and(
+            eq(domaceClaims.id, id),
+            isNull(domaceClaims.deletedAt),
+            eq(domaceClaims.outcome, before.outcome),
+          ),
+        )
+        .returning({ id: domaceClaims.id })
+      if (row === undefined) {
+        throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+      }
 
       if (input.faults !== undefined) {
         await this.faultsRepo.replaceForClaim(tx, id, input.faults)
@@ -533,10 +554,22 @@ export class DomaceClaimsRepository {
   ): Promise<DomaceClaimDetail> {
     // Row-level gate already enforced by the service before-read; no field from the
     // prior row is needed here, so no re-read.
-    await this.db
+    // Compare-and-swap: amount is editable only while accepted; if the claim was
+    // reopened or deleted after the service before-read, match 0 rows → 409.
+    const [row] = await this.db
       .update(domaceClaims)
       .set({ totalAmount, updatedBy: actorId })
-      .where(eq(domaceClaims.id, id))
+      .where(
+        and(
+          eq(domaceClaims.id, id),
+          isNull(domaceClaims.deletedAt),
+          eq(domaceClaims.outcome, ClaimOutcome.Accepted),
+        ),
+      )
+      .returning({ id: domaceClaims.id })
+    if (row === undefined) {
+      throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+    }
 
     const updated = await this.findById(id, scope)
     if (updated === null) {
@@ -548,10 +581,14 @@ export class DomaceClaimsRepository {
 
   async softDelete(id: string, actorId: string, before: DomaceClaimDetail): Promise<void> {
     await this.db.transaction(async (tx) => {
-      await tx
+      const [row] = await tx
         .update(domaceClaims)
         .set({ deletedAt: new Date(), updatedBy: actorId })
-        .where(eq(domaceClaims.id, id))
+        .where(and(eq(domaceClaims.id, id), isNull(domaceClaims.deletedAt)))
+        .returning({ id: domaceClaims.id })
+      if (row === undefined) {
+        throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+      }
 
       await this.mrRegistry.releaseMr(before.mrNumber, tx)
     })
@@ -564,10 +601,14 @@ export class DomaceClaimsRepository {
     scope: DomaceClaimsListScope,
   ): Promise<DomaceClaimDetail> {
     await this.db.transaction(async (tx) => {
-      await tx
+      const [row] = await tx
         .update(domaceClaims)
         .set({ deletedAt: null, updatedBy: actorId })
-        .where(eq(domaceClaims.id, id))
+        .where(and(eq(domaceClaims.id, id), isNotNull(domaceClaims.deletedAt)))
+        .returning({ id: domaceClaims.id })
+      if (row === undefined) {
+        throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+      }
 
       await this.mrRegistry.claimMr(before.mrNumber, ClaimKind.Domace, id, tx)
     })
@@ -600,7 +641,20 @@ export class DomaceClaimsRepository {
       patch.outcomeResolvedAt = resolvedAtPatch
     }
 
-    await this.db.update(domaceClaims).set(patch).where(eq(domaceClaims.id, id))
+    const [row] = await this.db
+      .update(domaceClaims)
+      .set(patch)
+      .where(
+        and(
+          eq(domaceClaims.id, id),
+          isNull(domaceClaims.deletedAt),
+          eq(domaceClaims.outcome, before.outcome),
+        ),
+      )
+      .returning({ id: domaceClaims.id })
+    if (row === undefined) {
+      throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+    }
 
     const updated = await this.findById(id, scope)
     if (updated === null) {

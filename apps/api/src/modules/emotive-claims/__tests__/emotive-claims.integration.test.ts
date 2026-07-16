@@ -263,6 +263,76 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('compare-and-swap guard (TOCTOU)', () => {
+    it('refuses to update a claim soft-deleted after the before-read → ConflictError, row unchanged', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          warrantyReport: 'Originalni nalaz',
+          mrNumber: `CAS-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const before = await container.emotiveClaimsRepository.findById(created.id, { type: 'all' })
+      expect(before).not.toBeNull()
+
+      // A concurrent delete commits between the service before-read and the repo UPDATE.
+      await container.emotiveClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+
+      await expect(
+        container.emotiveClaimsRepository.update(
+          created.id,
+          { warrantyReport: 'RACED' },
+          TEST_USER_ID,
+          before!,
+          { type: 'all' },
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+
+      const [raw] = await ctx.db
+        .select()
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+      expect(raw?.warrantyReport).toBe('Originalni nalaz')
+    })
+
+    it('refuses to update a claim whose outcome changed after the before-read → ConflictError', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          warrantyReport: 'Originalni nalaz',
+          mrNumber: `CAS2-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const before = await container.emotiveClaimsRepository.findById(created.id, { type: 'all' })
+
+      // A concurrent outcome change (pending → accepted) lands first.
+      await container.emotiveClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Accepted },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.emotiveClaimsRepository.update(
+          created.id,
+          { warrantyReport: 'RACED' },
+          TEST_USER_ID,
+          before!,
+          { type: 'all' },
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+
+      const [raw] = await ctx.db
+        .select()
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+      expect(raw?.warrantyReport).toBe('Originalni nalaz')
+    })
+  })
+
   describe('when creating', () => {
     it('assigns sequence_number from database and claim_year from date_of_claim', async () => {
       const input = await buildCreateInput({

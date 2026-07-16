@@ -218,13 +218,19 @@ export class ClientSubmissionsRepository {
     return row === undefined ? null : mapDetail(row)
   }
 
+  /**
+   * Flips a submission pending → converted. The `status = pending` predicate makes this
+   * a compare-and-swap: a concurrent convert (double-click / retry) that already flipped
+   * the row matches 0 rows, so the caller can reject the loser instead of creating a
+   * duplicate claim + overwriting the link. Returns the affected-row count.
+   */
   async markConverted(
     id: string,
     linkedEmotiveClaimId: string,
     handledByUserId: string,
     executor: UpdateExecutor = this.db,
-  ): Promise<void> {
-    await executor
+  ): Promise<number> {
+    const rows = await executor
       .update(clientSubmissions)
       .set({
         status: ClientSubmissionStatus.Converted,
@@ -232,7 +238,15 @@ export class ClientSubmissionsRepository {
         handledByUserId,
         handledAt: new Date(),
       })
-      .where(and(eq(clientSubmissions.id, id), isNull(clientSubmissions.deletedAt)))
+      .where(
+        and(
+          eq(clientSubmissions.id, id),
+          eq(clientSubmissions.status, ClientSubmissionStatus.Pending),
+          isNull(clientSubmissions.deletedAt),
+        ),
+      )
+      .returning({ id: clientSubmissions.id })
+    return rows.length
   }
 
   async markRejected(

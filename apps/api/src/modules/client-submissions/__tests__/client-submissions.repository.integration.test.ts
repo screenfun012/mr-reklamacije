@@ -156,6 +156,31 @@ describe('ClientSubmissionsRepository', () => {
     expect(detail!.handledAt).not.toBeNull()
   })
 
+  it('markConverted is a no-op on an already-converted submission (double-convert guard)', async () => {
+    const customerId = await seedCustomer(ctx, 'Partner dupli convert')
+    const claimA = await seedEmotiveClaim(ctx, 'DUPA')
+    const claimB = await seedEmotiveClaim(ctx, 'DUPB')
+    const { id } = await repository.create({
+      customerId,
+      submittedByUserId: TEST_USER_ID,
+      message: 'Dupli convert',
+    })
+
+    const first = await repository.markConverted(id, claimA, TEST_USER_ID)
+    expect(first).toBe(1)
+
+    // The racer / retry: the submission is already converted, so the guard matches 0 rows
+    // and the link is NOT overwritten to claimB.
+    const second = await repository.markConverted(id, claimB, TEST_USER_ID)
+    expect(second).toBe(0)
+
+    const detail = await repository.findById(id)
+    expect(detail).toMatchObject({
+      status: ClientSubmissionStatus.Converted,
+      linkedEmotiveClaimId: claimA,
+    })
+  })
+
   it('markRejected sets status and reason', async () => {
     const customerId = await seedCustomer(ctx, 'Partner za odbijanje')
     const { id } = await repository.create({

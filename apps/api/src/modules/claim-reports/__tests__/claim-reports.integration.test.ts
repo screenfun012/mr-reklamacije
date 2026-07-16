@@ -146,6 +146,34 @@ describe('ClaimReportsService integration', () => {
     expect(auditRows.some((row) => row.action === AuditAction.Create)).toBe(true)
   })
 
+  it('handles concurrent first-time upserts without a 23505 and keeps a single row', async () => {
+    const claimId = await createDomaceClaim(container)
+    const actor = {
+      id: TEST_USER_ID,
+      permissions: ['claim_reports.view', 'claim_reports.update', 'domace_claims.view'],
+    }
+    const query = { claimKind: ClaimKind.Domace, claimId }
+
+    // Two saves for a claim with no report yet (e.g. blur-save + unmount-flush double fire).
+    const results = await Promise.allSettled([
+      container.claimReportsService.upsert(query, SAMPLE_BODY, actor, auditContext),
+      container.claimReportsService.upsert(
+        query,
+        { ...SAMPLE_BODY, contentHtml: '<p>B</p>' },
+        actor,
+        auditContext,
+      ),
+    ])
+
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true)
+
+    const rows = await ctx.db
+      .select()
+      .from(schema.claimReports)
+      .where(eq(schema.claimReports.domaceClaimId, claimId))
+    expect(rows).toHaveLength(1)
+  })
+
   it('updates existing report on second upsert and writes audit update', async () => {
     const claimId = await createDomaceClaim(container)
     const actor = {

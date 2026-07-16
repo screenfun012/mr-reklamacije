@@ -206,6 +206,59 @@ describe('DomaceClaimsService integration', () => {
     })
   })
 
+  describe('compare-and-swap guard (TOCTOU)', () => {
+    it('refuses to update a claim soft-deleted after the before-read → ConflictError, row unchanged', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const before = await container.domaceClaimsRepository.findById(created.id, { type: 'all' })
+      expect(before).not.toBeNull()
+
+      // A concurrent delete commits between the service before-read and the repo UPDATE.
+      await container.domaceClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+
+      await expect(
+        container.domaceClaimsRepository.update(
+          created.id,
+          { warrantyReport: 'RACED' },
+          TEST_USER_ID,
+          before!,
+          { type: 'all' },
+        ),
+      ).rejects.toBeInstanceOf(ConflictError)
+
+      const [raw] = await ctx.db
+        .select()
+        .from(schema.domaceClaims)
+        .where(eq(schema.domaceClaims.id, created.id))
+      expect(raw?.warrantyReport).toBe('Originalni nalaz')
+    })
+
+    it('refuses updateAmount on a claim reopened (accepted → pending) after the before-read → ConflictError', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ outcome: ClaimOutcome.Accepted }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      // Amount was editable (accepted); a concurrent reopen to pending lands first.
+      await container.domaceClaimsService.changeOutcome(
+        created.id,
+        { outcome: ClaimOutcome.Pending },
+        ADMIN_ACTOR,
+        auditContext,
+      )
+
+      await expect(
+        container.domaceClaimsRepository.updateAmount(created.id, 1234, TEST_USER_ID, {
+          type: 'all',
+        }),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+  })
+
   describe('when creating', () => {
     it('assigns sequence_number and claim_year from date_of_claim', async () => {
       const created = await container.domaceClaimsService.create(

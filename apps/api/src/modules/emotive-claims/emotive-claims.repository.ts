@@ -8,7 +8,7 @@ import {
   initialOutcomeResolvedAt,
   outcomeResolvedAtForTransition,
 } from '../../core/claims/outcome-resolved-at.js'
-import { InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
+import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { MrRegistryService } from '../../core/mr-registry/index.js'
 import { claimYearFromDate } from './claim-year.js'
 import {
@@ -34,6 +34,11 @@ const { customers, departments, employees, engineManufacturers, engineTypes, ext
   schema
 
 const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
+
+// Thrown when a mutation's compare-and-swap WHERE matches 0 rows — the claim's
+// state (deleted_at / outcome) changed between the service before-read and the
+// write, so the asserted precondition is stale. Maps to HTTP 409.
+const CONCURRENT_EDIT_MESSAGE = 'Claim was modified concurrently; reload and retry'
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -598,7 +603,23 @@ export class EmotiveClaimsRepository {
     }
 
     await this.db.transaction(async (tx) => {
-      await tx.update(emotiveClaims).set(patch).where(eq(emotiveClaims.id, id))
+      // Compare-and-swap: the write only lands if the claim is still in the state the
+      // service asserted on `before` (not deleted, same outcome). 0 rows → the claim
+      // changed concurrently → ConflictError rolls the whole tx back.
+      const [row] = await tx
+        .update(emotiveClaims)
+        .set(patch)
+        .where(
+          and(
+            eq(emotiveClaims.id, id),
+            isNull(emotiveClaims.deletedAt),
+            eq(emotiveClaims.outcome, before.outcome),
+          ),
+        )
+        .returning({ id: emotiveClaims.id })
+      if (row === undefined) {
+        throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+      }
 
       if (input.faults !== undefined) {
         await this.faultsRepo.replaceForClaim(tx, id, input.faults)
@@ -625,10 +646,14 @@ export class EmotiveClaimsRepository {
 
   async softDelete(id: string, actorId: string, before: EmotiveClaimDetail): Promise<void> {
     await this.db.transaction(async (tx) => {
-      await tx
+      const [row] = await tx
         .update(emotiveClaims)
         .set({ deletedAt: new Date(), updatedBy: actorId })
-        .where(eq(emotiveClaims.id, id))
+        .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
+        .returning({ id: emotiveClaims.id })
+      if (row === undefined) {
+        throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+      }
 
       await this.mrRegistry.releaseMr(before.mrNumber, tx)
     })
@@ -641,10 +666,14 @@ export class EmotiveClaimsRepository {
     scope: EmotiveClaimsListScope,
   ): Promise<EmotiveClaimDetail> {
     await this.db.transaction(async (tx) => {
-      await tx
+      const [row] = await tx
         .update(emotiveClaims)
         .set({ deletedAt: null, updatedBy: actorId })
-        .where(eq(emotiveClaims.id, id))
+        .where(and(eq(emotiveClaims.id, id), isNotNull(emotiveClaims.deletedAt)))
+        .returning({ id: emotiveClaims.id })
+      if (row === undefined) {
+        throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+      }
 
       await this.mrRegistry.claimMr(before.mrNumber, ClaimKind.Emotive, id, tx)
     })
@@ -677,7 +706,20 @@ export class EmotiveClaimsRepository {
       patch.outcomeResolvedAt = resolvedAtPatch
     }
 
-    await this.db.update(emotiveClaims).set(patch).where(eq(emotiveClaims.id, id))
+    const [row] = await this.db
+      .update(emotiveClaims)
+      .set(patch)
+      .where(
+        and(
+          eq(emotiveClaims.id, id),
+          isNull(emotiveClaims.deletedAt),
+          eq(emotiveClaims.outcome, before.outcome),
+        ),
+      )
+      .returning({ id: emotiveClaims.id })
+    if (row === undefined) {
+      throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
+    }
 
     const updated = await this.findById(id, scope)
     if (updated === null) {
