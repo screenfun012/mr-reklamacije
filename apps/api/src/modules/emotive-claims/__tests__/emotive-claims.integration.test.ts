@@ -10,12 +10,13 @@ import {
   type AppEvent,
 } from '@mr/shared'
 import { and, eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ConflictError,
   ForbiddenError,
   MrKeyConflictError,
+  NotFoundError,
   ValidationError,
 } from '../../../core/errors/domain-errors.js'
 import {
@@ -76,6 +77,19 @@ const ADMIN_ACTOR: EmotiveClaimsActor = {
 const RESTORE_ACTOR: EmotiveClaimsActor = {
   id: TEST_USER_ID,
   permissions: [...FULL_OPERATOR.permissions, 'emotive_claims.restore'],
+}
+
+// Operator scoped to its OWN customer (view_own_customer, NOT the global view) —
+// used to prove the row-level gate blocks WRITES, not just reads.
+const OWN_CUSTOMER_OPERATOR: EmotiveClaimsActor = {
+  id: TEST_USER_ID,
+  permissions: [
+    'emotive_claims.view_own_customer',
+    'emotive_claims.update',
+    'emotive_claims.change_outcome',
+    'emotive_claims.restore',
+    'emotive_claims.delete',
+  ],
 }
 
 const auditContext = {
@@ -155,6 +169,99 @@ describe('EmotiveClaimsService integration', () => {
       ...overrides,
     }
   }
+
+  describe('read efficiency', () => {
+    it('loads the aggregate detail exactly twice on update (service before-read + repo after-read)', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `EFF-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const findByIdSpy = vi.spyOn(container.emotiveClaimsRepository, 'findById')
+      await container.emotiveClaimsService.update(
+        created.id,
+        { warrantyReport: 'Ažurirani nalaz' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      // 3 reads (service before + repo existing + repo after) collapses to 2
+      // (service before + repo after); the redundant repo re-read is gone.
+      expect(findByIdSpy).toHaveBeenCalledTimes(2)
+      findByIdSpy.mockRestore()
+    })
+  })
+
+  describe('row-level write gate for own_customer actors', () => {
+    // Links the acting user to SELMAN but creates the claim under VITOBELLO — a
+    // customer the user is NOT linked to (i.e. "another company's claim").
+    async function createForeignClaim(): Promise<string> {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+
+      const customerVitobello = await getCustomerIdByName(ctx.db, 'VITOBELLO')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          customerId: customerVitobello,
+          mrNumber: `GATE-${crypto.randomUUID().slice(0, 8)}/26`,
+          warrantyReport: 'Originalni nalaz',
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('rejects update of another customer’s claim with 404 and leaves the row unchanged', async () => {
+      const id = await createForeignClaim()
+
+      await expect(
+        container.emotiveClaimsService.update(
+          id,
+          { warrantyReport: 'PROBOJ' },
+          OWN_CUSTOMER_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const after = await container.emotiveClaimsService.findById(id, FULL_OPERATOR)
+      expect(after.warrantyReport).toBe('Originalni nalaz')
+    })
+
+    it('rejects change-outcome of another customer’s claim with 404 and leaves the outcome unchanged', async () => {
+      const id = await createForeignClaim()
+
+      await expect(
+        container.emotiveClaimsService.changeOutcome(
+          id,
+          { outcome: ClaimOutcome.Accepted },
+          OWN_CUSTOMER_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const after = await container.emotiveClaimsService.findById(id, FULL_OPERATOR)
+      expect(after.outcome).toBe(ClaimOutcome.Pending)
+    })
+
+    it('rejects restore of another customer’s deleted claim with 404 and leaves it deleted', async () => {
+      const id = await createForeignClaim()
+      await container.emotiveClaimsService.softDelete(id, FULL_OPERATOR, auditContext)
+
+      await expect(
+        container.emotiveClaimsService.restore(id, OWN_CUSTOMER_OPERATOR, auditContext),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const activeList = await container.emotiveClaimsService.list(listQuery(), FULL_OPERATOR)
+      expect(activeList.items.some((item) => item.id === id)).toBe(false)
+    })
+  })
 
   describe('when creating', () => {
     it('assigns sequence_number from database and claim_year from date_of_claim', async () => {

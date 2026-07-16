@@ -299,14 +299,12 @@ export class DomaceClaimsRepository {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined
     const offset = (query.page - 1) * query.pageSize
 
-    const [countRow] = await this.db
+    const countQuery = this.db
       .select({ total: sql<number>`count(*)::int` })
       .from(domaceClaims)
       .where(whereClause)
 
-    const total = countRow?.total ?? 0
-
-    const rows = await this.db
+    const pageQuery = this.db
       .select({
         id: domaceClaims.id,
         sequenceNumber: domaceClaims.sequenceNumber,
@@ -336,6 +334,10 @@ export class DomaceClaimsRepository {
       .orderBy(desc(domaceClaims.dateOfClaim), desc(domaceClaims.id))
       .limit(query.pageSize)
       .offset(offset)
+
+    // Count + page run concurrently — same scan cost, half the latency.
+    const [countRows, rows] = await Promise.all([countQuery, pageQuery])
+    const total = countRows[0]?.total ?? 0
 
     return {
       items: rows.map(mapListItem),
@@ -449,13 +451,12 @@ export class DomaceClaimsRepository {
     id: string,
     input: DomaceClaimUpdateInput,
     actorId: string,
+    before: DomaceClaimDetail,
     scope: DomaceClaimsListScope,
   ): Promise<DomaceClaimDetail> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
+    // The scoped row-level gate (and the NotFound-on-missing check) already ran in
+    // the service before-read; `before` is that same aggregate, passed down to avoid
+    // a redundant heavy re-read here.
     const patch: Partial<typeof domaceClaims.$inferInsert> = {
       updatedBy: actorId,
     }
@@ -510,7 +511,7 @@ export class DomaceClaimsRepository {
           tx,
           ClaimKind.Domace,
           id,
-          existing.mrNumber,
+          before.mrNumber,
           input.mrNumber,
         )
       }
@@ -530,11 +531,8 @@ export class DomaceClaimsRepository {
     actorId: string,
     scope: DomaceClaimsListScope,
   ): Promise<DomaceClaimDetail> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
+    // Row-level gate already enforced by the service before-read; no field from the
+    // prior row is needed here, so no re-read.
     await this.db
       .update(domaceClaims)
       .set({ totalAmount, updatedBy: actorId })
@@ -548,39 +546,30 @@ export class DomaceClaimsRepository {
     return updated
   }
 
-  async softDelete(id: string, actorId: string, scope: DomaceClaimsListScope): Promise<void> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
+  async softDelete(id: string, actorId: string, before: DomaceClaimDetail): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx
         .update(domaceClaims)
         .set({ deletedAt: new Date(), updatedBy: actorId })
         .where(eq(domaceClaims.id, id))
 
-      await this.mrRegistry.releaseMr(existing.mrNumber, tx)
+      await this.mrRegistry.releaseMr(before.mrNumber, tx)
     })
   }
 
   async restore(
     id: string,
     actorId: string,
+    before: DomaceClaimDetail,
     scope: DomaceClaimsListScope,
   ): Promise<DomaceClaimDetail> {
-    const existing = await this.findDeletedById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
     await this.db.transaction(async (tx) => {
       await tx
         .update(domaceClaims)
         .set({ deletedAt: null, updatedBy: actorId })
         .where(eq(domaceClaims.id, id))
 
-      await this.mrRegistry.claimMr(existing.mrNumber, ClaimKind.Domace, id, tx)
+      await this.mrRegistry.claimMr(before.mrNumber, ClaimKind.Domace, id, tx)
     })
 
     const restored = await this.findById(id, scope)
@@ -595,14 +584,10 @@ export class DomaceClaimsRepository {
     id: string,
     input: DomaceClaimChangeOutcomeInput,
     actorId: string,
+    before: DomaceClaimDetail,
     scope: DomaceClaimsListScope,
   ): Promise<DomaceClaimDetail> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
-    const resolvedAtPatch = outcomeResolvedAtForTransition(existing.outcome, input.outcome)
+    const resolvedAtPatch = outcomeResolvedAtForTransition(before.outcome, input.outcome)
     const patch: {
       outcome: typeof input.outcome
       updatedBy: string

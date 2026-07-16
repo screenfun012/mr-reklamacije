@@ -8,7 +8,7 @@ import {
   normalizeName,
 } from '@mr/shared'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
 import {
@@ -61,6 +61,19 @@ const RESTORE_ACTOR: DomaceClaimsActor = {
   permissions: [...FULL_OPERATOR.permissions, 'domace_claims.restore'],
 }
 
+// Operator scoped to its OWN customer (view_own_customer, NOT the global view) —
+// used to prove the row-level gate blocks WRITES, not just reads.
+const OWN_CUSTOMER_OPERATOR: DomaceClaimsActor = {
+  id: TEST_USER_ID,
+  permissions: [
+    'domace_claims.view_own_customer',
+    'domace_claims.update',
+    'domace_claims.change_outcome',
+    'domace_claims.restore',
+    'domace_claims.delete',
+  ],
+}
+
 const auditContext = {
   actorUserId: TEST_USER_ID,
   actorIp: null,
@@ -110,6 +123,88 @@ describe('DomaceClaimsService integration', () => {
       .where(eq(schema.engineManufacturers.id, id))
     return id
   }
+
+  describe('read efficiency', () => {
+    it('loads the aggregate detail exactly twice on update (service before-read + repo after-read)', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const findByIdSpy = vi.spyOn(container.domaceClaimsRepository, 'findById')
+      await container.domaceClaimsService.update(
+        created.id,
+        { warrantyReport: 'Ažurirani nalaz' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      // 3 reads (service before + repo existing + repo after) collapses to 2
+      // (service before + repo after); the redundant repo re-read is gone.
+      expect(findByIdSpy).toHaveBeenCalledTimes(2)
+      findByIdSpy.mockRestore()
+    })
+  })
+
+  describe('row-level write gate for own_customer actors', () => {
+    // DOMACE has no customer linkage, so an own_customer actor is denied every row.
+    it('rejects update with 404 and leaves the row unchanged', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.domaceClaimsService.update(
+          created.id,
+          { warrantyReport: 'PROBOJ' },
+          OWN_CUSTOMER_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const after = await container.domaceClaimsService.findById(created.id, FULL_OPERATOR)
+      expect(after.warrantyReport).toBe('Originalni nalaz')
+    })
+
+    it('rejects change-outcome with 404 and leaves the outcome unchanged', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.domaceClaimsService.changeOutcome(
+          created.id,
+          { outcome: ClaimOutcome.Accepted },
+          OWN_CUSTOMER_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const after = await container.domaceClaimsService.findById(created.id, FULL_OPERATOR)
+      expect(after.outcome).toBe(ClaimOutcome.Pending)
+    })
+
+    it('rejects restore with 404 and leaves it deleted', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await container.domaceClaimsService.softDelete(created.id, FULL_OPERATOR, auditContext)
+
+      await expect(
+        container.domaceClaimsService.restore(created.id, OWN_CUSTOMER_OPERATOR, auditContext),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const activeList = await container.domaceClaimsService.list(listQuery(), FULL_OPERATOR)
+      expect(activeList.items.some((item) => item.id === created.id)).toBe(false)
+    })
+  })
 
   describe('when creating', () => {
     it('assigns sequence_number and claim_year from date_of_claim', async () => {

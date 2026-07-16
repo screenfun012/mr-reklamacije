@@ -142,7 +142,7 @@ export class EmotiveClaimsService {
 
     await this.validateUpdateReferences(input)
 
-    const updated = await this.repo.update(id, input, auditContext.actorUserId, scope)
+    const updated = await this.repo.update(id, input, auditContext.actorUserId, before, scope)
 
     await this.audit.log({
       entityType: 'emotive_claim',
@@ -178,7 +178,7 @@ export class EmotiveClaimsService {
       'Deleting a completed claim requires reopen permission',
     )
 
-    await this.repo.softDelete(id, auditContext.actorUserId, scope)
+    await this.repo.softDelete(id, auditContext.actorUserId, before)
 
     await this.audit.log({
       entityType: 'emotive_claim',
@@ -208,7 +208,7 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    const restored = await this.repo.restore(id, auditContext.actorUserId, scope)
+    const restored = await this.repo.restore(id, auditContext.actorUserId, before, scope)
 
     await this.audit.log({
       entityType: 'emotive_claim',
@@ -242,7 +242,13 @@ export class EmotiveClaimsService {
       permissions: actor.permissions,
     })
 
-    const updated = await this.repo.changeOutcome(id, input, auditContext.actorUserId, scope)
+    const updated = await this.repo.changeOutcome(
+      id,
+      input,
+      auditContext.actorUserId,
+      before,
+      scope,
+    )
 
     await this.audit.log({
       entityType: 'emotive_claim',

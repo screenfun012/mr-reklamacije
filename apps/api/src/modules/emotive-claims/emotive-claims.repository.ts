@@ -383,14 +383,12 @@ export class EmotiveClaimsRepository {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined
     const offset = (query.page - 1) * query.pageSize
 
-    const [countRow] = await this.db
+    const countQuery = this.db
       .select({ total: sql<number>`count(*)::int` })
       .from(emotiveClaims)
       .where(whereClause)
 
-    const total = countRow?.total ?? 0
-
-    const rows = await this.db
+    const pageQuery = this.db
       .select({
         id: emotiveClaims.id,
         sequenceNumber: emotiveClaims.sequenceNumber,
@@ -422,6 +420,10 @@ export class EmotiveClaimsRepository {
       .orderBy(desc(emotiveClaims.dateOfClaim), desc(emotiveClaims.id))
       .limit(query.pageSize)
       .offset(offset)
+
+    // Count + page run concurrently — same scan cost, half the latency.
+    const [countRows, rows] = await Promise.all([countQuery, pageQuery])
+    const total = countRows[0]?.total ?? 0
 
     return {
       items: rows.map(mapListItem),
@@ -544,13 +546,12 @@ export class EmotiveClaimsRepository {
     id: string,
     input: EmotiveClaimUpdateInput,
     actorId: string,
+    before: EmotiveClaimDetail,
     scope: EmotiveClaimsListScope,
   ): Promise<EmotiveClaimDetail> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Emotive claim', id)
-    }
-
+    // The scoped row-level gate (and the NotFound-on-missing check) already ran in
+    // the service before-read; `before` is that same aggregate, passed down to avoid
+    // a redundant heavy re-read here.
     const patch: Partial<typeof emotiveClaims.$inferInsert> = {
       updatedBy: actorId,
     }
@@ -608,7 +609,7 @@ export class EmotiveClaimsRepository {
           tx,
           ClaimKind.Emotive,
           id,
-          existing.mrNumber,
+          before.mrNumber,
           input.mrNumber,
         )
       }
@@ -622,39 +623,30 @@ export class EmotiveClaimsRepository {
     return updated
   }
 
-  async softDelete(id: string, actorId: string, scope: EmotiveClaimsListScope): Promise<void> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Emotive claim', id)
-    }
-
+  async softDelete(id: string, actorId: string, before: EmotiveClaimDetail): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx
         .update(emotiveClaims)
         .set({ deletedAt: new Date(), updatedBy: actorId })
         .where(eq(emotiveClaims.id, id))
 
-      await this.mrRegistry.releaseMr(existing.mrNumber, tx)
+      await this.mrRegistry.releaseMr(before.mrNumber, tx)
     })
   }
 
   async restore(
     id: string,
     actorId: string,
+    before: EmotiveClaimDetail,
     scope: EmotiveClaimsListScope,
   ): Promise<EmotiveClaimDetail> {
-    const existing = await this.findDeletedById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Emotive claim', id)
-    }
-
     await this.db.transaction(async (tx) => {
       await tx
         .update(emotiveClaims)
         .set({ deletedAt: null, updatedBy: actorId })
         .where(eq(emotiveClaims.id, id))
 
-      await this.mrRegistry.claimMr(existing.mrNumber, ClaimKind.Emotive, id, tx)
+      await this.mrRegistry.claimMr(before.mrNumber, ClaimKind.Emotive, id, tx)
     })
 
     const restored = await this.findById(id, scope)
@@ -669,14 +661,10 @@ export class EmotiveClaimsRepository {
     id: string,
     input: EmotiveClaimChangeOutcomeInput,
     actorId: string,
+    before: EmotiveClaimDetail,
     scope: EmotiveClaimsListScope,
   ): Promise<EmotiveClaimDetail> {
-    const existing = await this.findById(id, scope)
-    if (existing === null) {
-      throw new NotFoundError('Emotive claim', id)
-    }
-
-    const resolvedAtPatch = outcomeResolvedAtForTransition(existing.outcome, input.outcome)
+    const resolvedAtPatch = outcomeResolvedAtForTransition(before.outcome, input.outcome)
     const patch: {
       outcome: typeof input.outcome
       updatedBy: string
