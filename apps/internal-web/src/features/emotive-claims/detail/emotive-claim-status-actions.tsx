@@ -1,6 +1,6 @@
 import { m } from '@mr/i18n'
 import { ClaimOutcome, OUTCOME_REGISTRY, type ClaimOutcome as ClaimOutcomeType } from '@mr/shared'
-import { Lock } from 'lucide-react'
+import { Check, Lock } from 'lucide-react'
 import { useState } from 'react'
 
 import { InternalButton, type InternalButtonVariant } from '~/components/internal-button'
@@ -153,9 +153,7 @@ export function EmotiveClaimStatusActions({
               onClick={() => handleTarget(definition.key)}
             >
               {definition.key === ClaimOutcome.Accepted ? (
-                <span aria-hidden="true" className="font-normal">
-                  ✓
-                </span>
+                <Check className="size-3.5" aria-hidden />
               ) : null}
               {ACTION_LABEL[definition.key]()}
             </InternalButton>
