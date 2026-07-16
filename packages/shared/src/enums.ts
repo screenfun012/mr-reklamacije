@@ -30,16 +30,6 @@ export const UserAccountStatus = {
 
 export type UserAccountStatus = (typeof UserAccountStatus)[keyof typeof UserAccountStatus]
 
-export const ClientRegistrationStatus = {
-  Pending: 'pending',
-  Approved: 'approved',
-  Rejected: 'rejected',
-  NeedsInfo: 'needs_info',
-} as const
-
-export type ClientRegistrationStatus =
-  (typeof ClientRegistrationStatus)[keyof typeof ClientRegistrationStatus]
-
 export const ClaimOutcome = {
   Pending: 'pending',
   Accepted: 'accepted',

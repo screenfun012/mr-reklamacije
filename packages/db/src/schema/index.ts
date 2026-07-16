@@ -6,7 +6,6 @@
  *   - employees.ts (Phase B.3): departments, employees
  *   - audit.ts (Phase B.3): audit_log
  *   - catalogs.ts (Phase C.1): engine_manufacturers, engine_types, external_parties, claim_sources
- *   - client-registrations.ts (Phase C.1): client_registration_requests
  *   - claims.ts (Phase C.2)
  *   - mr-registry.ts: mr_registry (global MR unique registry)
  *   - client-submissions.ts (docs/18): client_submissions (portal inbox → claim)
@@ -23,7 +22,6 @@ export * from './customers.js'
 export * from './employees.js'
 export * from './audit.js'
 export * from './catalogs.js'
-export * from './client-registrations.js'
 export * from './client-activation-tokens.js'
 export * from './claims.js'
 export * from './mr-registry.js'

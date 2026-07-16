@@ -13,7 +13,6 @@ import {
   auditLog,
   claimObservations,
   claimSources,
-  clientRegistrationRequests,
   customerUsers,
   customers,
   departments,
@@ -59,7 +58,6 @@ beforeAll(async () => {
       emotive_claim_faults,
       emotive_claims,
       domace_claims,
-      client_registration_requests,
       claim_sources,
       external_parties,
       engine_manufacturers,
@@ -275,22 +273,6 @@ describe('schema Phase C (integration)', () => {
 
     expect(source?.id).toBeDefined()
     expect(source?.defaultCustomerId).toBe(customer!.id)
-  })
-
-  it('inserts client_registration_request (pending, password_hash)', async () => {
-    const [row] = await db
-      .insert(clientRegistrationRequests)
-      .values({
-        email: 'registrant@example.com',
-        name: 'Registrant',
-        passwordHash: 'test_hash',
-        status: 'pending',
-      })
-      .returning()
-
-    expect(row?.id).toBeDefined()
-    expect(row?.status).toBe('pending')
-    expect(row?.passwordHash).toBe('test_hash')
   })
 
   it('inserts emotive_claim with FKs', async () => {
