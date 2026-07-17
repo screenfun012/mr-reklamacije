@@ -25,7 +25,7 @@ try {
   // no .env file — fine
 }
 
-import { schema } from '@mr/db'
+import { backfillMrRegistry, schema } from '@mr/db'
 import {
   ClaimOutcome,
   CustomerKind,
@@ -604,6 +604,12 @@ async function main(): Promise<void> {
         engineTypeByCode,
         ...buildContextIndexes(data),
       })
+
+      // Direct inserts bypass MrRegistryService.claimMr — register every
+      // imported MR number so duplicate protection covers imported claims
+      // (2026-07-17 incident: registry held 3 of 127 numbers).
+      const registered = await backfillMrRegistry(tx)
+      note(`\nMR registry: ${registered} numbers registered`)
     })
   } finally {
     await pool.end()

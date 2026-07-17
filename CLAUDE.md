@@ -80,8 +80,11 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 
 ```bash
 # Full gate (what we run before every commit — all must exit 0)
-pnpm format:check && pnpm build && pnpm typecheck && pnpm lint \
-  && pnpm --filter api depcruise && pnpm test && pnpm test:integration
+# ⚠️ ALWAYS --force the cacheable tasks before a PUSH: turbo's local cache
+# masked 3 CI failures on 2026-07-17 (stale api build/lint + shared test hits
+# while their inputs had errors). CI runs cache-less and caught them one by one.
+pnpm format:check && pnpm exec turbo run build typecheck lint test --force \
+  && pnpm --filter api depcruise && pnpm test:integration
 # (CONTRIBUTING's pre-commit order: format:write, typecheck, test, test:integration, lint, depcruise, format:check)
 
 # Dev (NIKOLA runs these — not you)
@@ -184,6 +187,8 @@ Empty DB needs these extensions first (the app's integration setup installs them
 ---
 
 ## 9. Current state / recent work (this collaboration)
+
+- **MR-registry hole incident (2026-07-17, FIXED):** Nikola created a duplicate `7167/25` with no warning and no 409 — prod `mr_registry` held **3 of 127** numbers because `import-legacy` inserts claims directly and never wrote the registry (migration 0010's backfill predates the last legacy import). Fix: (1) approved one-off prod backfill (INSERT…SELECT with `ON CONFLICT (mr_key) DO NOTHING`, 124 rows, verified 0 missing + live warning works); (2) new `backfillMrRegistry(db)` in `packages/db/src/maintenance/` (uses `sqlNormalizeMrKey` — NOTE: pass `sql.raw('col')`, the string overload binds a LITERAL) now runs at the end of every `import-legacy` apply, with integration tests. Deleted claims correctly stay unregistered (release-on-delete is design).
 
 - **Grupa D — business-value features (2026-07-17, commits `59b3719`, `22455d5`, `af1c97d`, full gate green, NOT yet pushed):** (D1) MR-number duplicate pre-flight — `@mr/shared` mr-registry query factory + debounced warning under the MR field in BOTH create forms with a link to the owning claim; `ApiError` now carries envelope `details` (was dropped in `parseApiErrorBody`) so the MR-key 409 also links to the conflicting claim. Warning is `checkMrDuplicate` opt-in because detail-edit reuses the same field components (own MR would false-positive). (D2–D4) Statistics: three new `/summary` sections honoring all existing filters — `domaceAmounts` (SUM of DOMACE total_amount + count, new KPI cell, EUR), `byCustomer` (EMOTIVE per-partner with outcome counts, "Po partneru" rank chart), `byFaults` (first read of fault tables: per employee/department/external party, "Kvarovi" 3-card section). Integration tests isolate via a per-test manufacturer filter (container writes COMMIT through the pool — rows persist across tests AND runs; year buckets alone are not safe). (D5) EMOTIVE outcome-change → signal-only bilingual email to approved portal users of the claim's customer (fire-and-settle, EmailPort-gated, admin toggle `app_settings emotive_claims.notify_client_on_outcome='false'`, new repo lookup `getOutcomeNotificationRecipients`; DOMACE excluded — no customer FK). Remaining D candidates NOT built: fault-analytics deep-dive beyond ranks, `employee_monthly_output` writer (Excel PROCENAT — needs its own design), byCustomer for DOMACE (needs firms design, docs/16).
 
