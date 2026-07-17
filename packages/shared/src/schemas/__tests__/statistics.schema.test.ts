@@ -17,6 +17,9 @@ const emptyBreakdowns = {
   bySource: { items: [] },
   byEmployee: { items: [] },
   byEngineType: { items: [] },
+  domaceAmounts: { totalAmount: 0, claimCount: 0 },
+  byCustomer: { items: [] },
+  byFaults: { byEmployee: [], byDepartment: [], byExternalParty: [] },
 }
 
 describe('StatisticsSummarySchema', () => {
@@ -90,6 +93,32 @@ describe('StatisticsSummarySchema', () => {
           },
         ],
       },
+      domaceAmounts: { totalAmount: '3999.75', claimCount: 2 },
+      byCustomer: {
+        items: [
+          {
+            customerId: '00000000-0000-4000-8000-000000000030',
+            code: '00000000-0000-4000-8000-000000000030',
+            name: 'Auto Stanić',
+            total: 4,
+            pending: 1,
+            accepted: 2,
+            rejected: 1,
+          },
+        ],
+      },
+      byFaults: {
+        byEmployee: [
+          {
+            id: '00000000-0000-4000-8000-000000000020',
+            code: '00000000-0000-4000-8000-000000000020',
+            name: 'Marko Marković',
+            total: 2,
+          },
+        ],
+        byDepartment: [],
+        byExternalParty: [],
+      },
     })
 
     expect(parsed.trends.byMonth).toHaveLength(1)
@@ -99,6 +128,9 @@ describe('StatisticsSummarySchema', () => {
     expect(parsed.bySource.items[0]?.code).toBe('SELMAN')
     expect(parsed.byEmployee.items[0]?.name).toBe('Marko Marković')
     expect(parsed.byEngineType.items[0]?.code).toBe(STATISTICS_UNKNOWN_CODE)
+    expect(parsed.domaceAmounts).toEqual({ totalAmount: 3999.75, claimCount: 2 })
+    expect(parsed.byCustomer.items[0]?.name).toBe('Auto Stanić')
+    expect(parsed.byFaults.byEmployee[0]?.total).toBe(2)
   })
 
   it('parses catalog OSTALO separately from UI others roll-up code', () => {

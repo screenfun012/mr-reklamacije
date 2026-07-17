@@ -2,11 +2,17 @@ import {
   ClaimKind,
   ClaimOutcome,
   computeAcceptanceRatePercent,
+  FaultType,
   roundStatisticsDays,
+  STATISTICS_UNKNOWN_CODE,
   STATISTICS_UNKNOWN_MANUFACTURER_CODE,
   type StatisticsAcceptanceRateMonth,
+  type StatisticsByFaults,
+  type StatisticsCustomerRow,
+  type StatisticsDomaceAmounts,
   type StatisticsEmployeeRow,
   type StatisticsEngineTypeRow,
+  type StatisticsFaultPartyRow,
   type StatisticsManufacturerRow,
   type StatisticsOutcomeDistribution,
   type StatisticsProcessingTime,
@@ -86,6 +92,31 @@ interface EngineTypeRow extends Record<string, unknown> {
   engine_type_id: string | null
   code: string | null
   name: string | null
+  total: number | string
+}
+
+interface DomaceAmountsRow extends Record<string, unknown> {
+  total_amount: number | string | null
+  claim_count: number | string
+}
+
+interface CustomerRow extends Record<string, unknown> {
+  customer_id: string | null
+  name: string | null
+  total: number | string
+  pending: number | string
+  accepted: number | string
+  rejected: number | string
+}
+
+interface FaultAttributionRow extends Record<string, unknown> {
+  fault_type: string
+  employee_id: string | null
+  department_id: string | null
+  external_party_id: string | null
+  employee_name: string | null
+  department_name: string | null
+  external_party_name: string | null
   total: number | string
 }
 
@@ -570,5 +601,152 @@ export class StatisticsRepository {
           : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
       total: toInt(row.total),
     }))
+  }
+
+  async fetchDomaceAmounts(ctx: StatisticsQueryContext): Promise<StatisticsDomaceAmounts> {
+    if (!ctx.effectiveScope.includeDomace) {
+      return { totalAmount: 0, claimCount: 0 }
+    }
+
+    const result = await this.db.execute<DomaceAmountsRow>(sql`
+      SELECT
+        COALESCE(SUM(dc.total_amount), 0)::float AS total_amount,
+        COUNT(dc.total_amount)::int AS claim_count
+      FROM domace_claims dc
+      WHERE ${buildActiveClaimWhere('dc', ctx)}
+    `)
+
+    const row = result.rows[0]
+    if (!row) {
+      return { totalAmount: 0, claimCount: 0 }
+    }
+
+    return {
+      totalAmount: toFloat(row.total_amount) ?? 0,
+      claimCount: toInt(row.claim_count),
+    }
+  }
+
+  async fetchByCustomer(ctx: StatisticsQueryContext): Promise<StatisticsCustomerRow[]> {
+    // Emotive-only by design: domace claims carry a free-text customer_name,
+    // not a customers FK — the per-partner breakdown mirrors the Excel
+    // "REKLAMACIJE PO FIRMAMA" sheet, which is EMOTIVE partners.
+    if (!ctx.effectiveScope.includeEmotive) {
+      return []
+    }
+
+    const result = await this.db.execute<CustomerRow>(sql`
+      SELECT
+        ec.customer_id,
+        MAX(cu.name) AS name,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending})::int AS pending,
+        COUNT(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Accepted})::int AS accepted,
+        COUNT(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Rejected})::int AS rejected
+      FROM emotive_claims ec
+      LEFT JOIN customers cu
+        ON cu.id = ec.customer_id
+        AND cu.deleted_at IS NULL
+      WHERE ${buildActiveClaimWhere('ec', ctx)}
+      GROUP BY ec.customer_id
+      HAVING COUNT(*) > 0
+      ORDER BY total DESC, MAX(cu.name) ASC NULLS LAST
+    `)
+
+    return result.rows.map((row) => ({
+      customerId: row.customer_id,
+      code: row.customer_id === null ? STATISTICS_UNKNOWN_CODE : row.customer_id,
+      name: row.customer_id === null ? 'Nepoznato' : (row.name ?? 'Nepoznato'),
+      total: toInt(row.total),
+      pending: toInt(row.pending),
+      accepted: toInt(row.accepted),
+      rejected: toInt(row.rejected),
+    }))
+  }
+
+  async fetchFaultAttribution(ctx: StatisticsQueryContext): Promise<StatisticsByFaults> {
+    const branches: SQL[] = []
+
+    if (ctx.effectiveScope.includeEmotive) {
+      branches.push(sql`
+        SELECT f.fault_type, f.employee_id, f.department_id, f.external_party_id
+        FROM emotive_claim_faults f
+        JOIN emotive_claims ec ON ec.id = f.claim_id
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
+      `)
+    }
+
+    if (ctx.effectiveScope.includeDomace) {
+      branches.push(sql`
+        SELECT f.fault_type, f.employee_id, f.department_id, f.external_party_id
+        FROM domace_claim_faults f
+        JOIN domace_claims dc ON dc.id = f.claim_id
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return { byEmployee: [], byDepartment: [], byExternalParty: [] }
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<FaultAttributionRow>(sql`
+      SELECT
+        f.fault_type,
+        f.employee_id,
+        f.department_id,
+        f.external_party_id,
+        MAX(e.full_name) AS employee_name,
+        MAX(d.name_sr) AS department_name,
+        MAX(ep.name) AS external_party_name,
+        COUNT(*)::int AS total
+      FROM (${unionSql}) AS f
+      LEFT JOIN employees e
+        ON e.id = f.employee_id
+        AND e.deleted_at IS NULL
+      LEFT JOIN departments d
+        ON d.id = f.department_id
+        AND d.deleted_at IS NULL
+      LEFT JOIN external_parties ep
+        ON ep.id = f.external_party_id
+        AND ep.deleted_at IS NULL
+      GROUP BY f.fault_type, f.employee_id, f.department_id, f.external_party_id
+      ORDER BY
+        total DESC,
+        COALESCE(MAX(e.full_name), MAX(d.name_sr), MAX(ep.name)) ASC NULLS LAST
+    `)
+
+    const byEmployee: StatisticsFaultPartyRow[] = []
+    const byDepartment: StatisticsFaultPartyRow[] = []
+    const byExternalParty: StatisticsFaultPartyRow[] = []
+
+    for (const row of result.rows) {
+      const total = toInt(row.total)
+      if (row.fault_type === FaultType.Employee && row.employee_id !== null) {
+        byEmployee.push({
+          id: row.employee_id,
+          code: row.employee_id,
+          name: row.employee_name ?? 'Nepoznato',
+          total,
+        })
+      } else if (row.fault_type === FaultType.Department && row.department_id !== null) {
+        byDepartment.push({
+          id: row.department_id,
+          code: row.department_id,
+          name: row.department_name ?? 'Nepoznato',
+          total,
+        })
+      } else if (row.fault_type === FaultType.External && row.external_party_id !== null) {
+        byExternalParty.push({
+          id: row.external_party_id,
+          code: row.external_party_id,
+          name: row.external_party_name ?? 'Nepoznato',
+          total,
+        })
+      }
+    }
+
+    return { byEmployee, byDepartment, byExternalParty }
   }
 }

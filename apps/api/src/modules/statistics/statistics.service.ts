@@ -99,6 +99,9 @@ export class StatisticsService {
       sourceItems,
       employeeItems,
       engineTypeItems,
+      domaceAmounts,
+      customerItems,
+      byFaults,
     ] = await Promise.all([
       this.repo.fetchTrendsByMonth(queryContext),
       this.repo.fetchTrendsByYear(queryContext),
@@ -109,6 +112,9 @@ export class StatisticsService {
       this.repo.fetchBySource(queryContext),
       this.repo.fetchByEmployee(queryContext),
       this.repo.fetchByEngineType(queryContext),
+      this.repo.fetchDomaceAmounts(queryContext),
+      this.repo.fetchByCustomer(queryContext),
+      this.repo.fetchFaultAttribution(queryContext),
     ])
 
     return {
@@ -134,6 +140,11 @@ export class StatisticsService {
       byEngineType: {
         items: engineTypeItems,
       },
+      domaceAmounts,
+      byCustomer: {
+        items: customerItems,
+      },
+      byFaults,
     }
   }
 }

@@ -141,6 +141,48 @@ export const StatisticsByEngineTypeSchema = z.object({
 
 export type StatisticsByEngineType = z.infer<typeof StatisticsByEngineTypeSchema>
 
+export const StatisticsDomaceAmountsSchema = z.object({
+  totalAmount: z.coerce.number().nonnegative(),
+  claimCount: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsDomaceAmounts = z.infer<typeof StatisticsDomaceAmountsSchema>
+
+export const StatisticsCustomerRowSchema = z.object({
+  customerId: z.string().uuid().nullable(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+  pending: z.coerce.number().int().nonnegative(),
+  accepted: z.coerce.number().int().nonnegative(),
+  rejected: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsCustomerRow = z.infer<typeof StatisticsCustomerRowSchema>
+
+export const StatisticsByCustomerSchema = z.object({
+  items: z.array(StatisticsCustomerRowSchema),
+})
+
+export type StatisticsByCustomer = z.infer<typeof StatisticsByCustomerSchema>
+
+export const StatisticsFaultPartyRowSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsFaultPartyRow = z.infer<typeof StatisticsFaultPartyRowSchema>
+
+export const StatisticsByFaultsSchema = z.object({
+  byEmployee: z.array(StatisticsFaultPartyRowSchema),
+  byDepartment: z.array(StatisticsFaultPartyRowSchema),
+  byExternalParty: z.array(StatisticsFaultPartyRowSchema),
+})
+
+export type StatisticsByFaults = z.infer<typeof StatisticsByFaultsSchema>
+
 export const StatisticsTrendsSchema = z.object({
   byMonth: z.array(StatisticsTrendMonthSchema),
   byYear: z.array(StatisticsTrendYearSchema),
@@ -156,6 +198,9 @@ export const StatisticsSummarySchema = z.object({
   bySource: StatisticsBySourceSchema,
   byEmployee: StatisticsByEmployeeSchema,
   byEngineType: StatisticsByEngineTypeSchema,
+  domaceAmounts: StatisticsDomaceAmountsSchema,
+  byCustomer: StatisticsByCustomerSchema,
+  byFaults: StatisticsByFaultsSchema,
 })
 
 export type StatisticsSummary = z.infer<typeof StatisticsSummarySchema>

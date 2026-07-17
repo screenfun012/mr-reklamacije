@@ -25,6 +25,8 @@ export function StatisticsAnalyticsCharts({
         bySource={summary.bySource}
         byEmployee={summary.byEmployee}
         byEngineType={summary.byEngineType}
+        byCustomer={summary.byCustomer}
+        byFaults={summary.byFaults}
       />
     </div>
   )

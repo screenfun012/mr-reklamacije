@@ -1,7 +1,9 @@
 import {
   collapseRankRowsForDisplay,
+  type StatisticsByCustomer,
   type StatisticsByEmployee,
   type StatisticsByEngineType,
+  type StatisticsByFaults,
   type StatisticsBySource,
   type StatisticsRankDisplayRow,
   type StatisticsRankRow,
@@ -18,6 +20,8 @@ export interface StatisticsBreakdownChartsProps {
   bySource: StatisticsBySource
   byEmployee: StatisticsByEmployee
   byEngineType: StatisticsByEngineType
+  byCustomer: StatisticsByCustomer
+  byFaults: StatisticsByFaults
 }
 
 interface BreakdownChartRow extends StatisticsRankDisplayRow<StatisticsRankRow> {
@@ -163,17 +167,44 @@ export function StatisticsBreakdownCharts({
   bySource,
   byEmployee,
   byEngineType,
+  byCustomer,
+  byFaults,
 }: StatisticsBreakdownChartsProps): React.ReactElement | null {
   const showSource = bySource.items.length > 0
   const showEmployee = byEmployee.items.length > 0
   const showEngineType = byEngineType.items.length > 0
+  const showCustomer = byCustomer.items.length > 0
+  const showFaults =
+    byFaults.byEmployee.length > 0 ||
+    byFaults.byDepartment.length > 0 ||
+    byFaults.byExternalParty.length > 0
 
-  if (!showSource && !showEmployee && !showEngineType) {
+  if (!showSource && !showEmployee && !showEngineType && !showCustomer && !showFaults) {
     return null
   }
 
   return (
     <section className="flex flex-col gap-4">
+      {showCustomer ? (
+        <>
+          <div>
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
+              {m.statistika_analytics_customer_section_title()}
+            </h3>
+            <p className="mt-1.5 text-sm text-mri-text2">
+              {m.statistika_analytics_customer_section_description()}
+            </p>
+          </div>
+          <BreakdownRankCard
+            prefix="customer"
+            title={m.statistika_analytics_customer_section_title()}
+            items={byCustomer.items}
+            gradient={STATISTICS_MONO_GRADIENTS.green}
+            rollupOthers
+          />
+        </>
+      ) : null}
+
       {showSource ? (
         <>
           <div>
@@ -231,6 +262,42 @@ export function StatisticsBreakdownCharts({
             gradient={STATISTICS_MONO_GRADIENTS.gray}
             rollupOthers
           />
+        </>
+      ) : null}
+
+      {showFaults ? (
+        <>
+          <div>
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
+              {m.statistika_analytics_faults_section_title()}
+            </h3>
+            <p className="mt-1.5 text-sm text-mri-text2">
+              {m.statistika_analytics_faults_section_description()}
+            </p>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-3">
+            <BreakdownRankCard
+              prefix="fault-employee"
+              title={m.statistika_analytics_faults_by_employee()}
+              items={byFaults.byEmployee}
+              gradient={STATISTICS_MONO_GRADIENTS.red}
+              rollupOthers
+            />
+            <BreakdownRankCard
+              prefix="fault-department"
+              title={m.statistika_analytics_faults_by_department()}
+              items={byFaults.byDepartment}
+              gradient={STATISTICS_MONO_GRADIENTS.blue}
+              rollupOthers
+            />
+            <BreakdownRankCard
+              prefix="fault-external"
+              title={m.statistika_analytics_faults_by_external()}
+              items={byFaults.byExternalParty}
+              gradient={STATISTICS_MONO_GRADIENTS.gray}
+              rollupOthers
+            />
+          </div>
         </>
       ) : null}
     </section>

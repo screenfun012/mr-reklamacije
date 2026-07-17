@@ -1,4 +1,4 @@
-import type { StatisticsSummary } from '@mr/shared'
+import { formatEuroAmount, type StatisticsSummary } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
 
@@ -41,6 +41,16 @@ export function StatisticsKpiRow({ summary }: { summary: StatisticsSummary }): R
     {
       label: m.dashboard_chart_domace(),
       value: String(domaceTotal),
+      border: 'border-mri-border',
+      dot: 'bg-mri-domace',
+      valueClass: 'text-mri-text',
+    },
+    {
+      label: m.statistika_kpi_domace_amount(),
+      value:
+        summary.domaceAmounts.claimCount > 0
+          ? formatEuroAmount(summary.domaceAmounts.totalAmount)
+          : '—',
       border: 'border-mri-border',
       dot: 'bg-mri-domace',
       valueClass: 'text-mri-text',

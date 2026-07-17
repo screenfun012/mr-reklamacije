@@ -2,8 +2,11 @@ import { schema } from '@mr/db'
 import {
   ClaimKind,
   ClaimOutcome,
+  ExternalPartyKind,
+  FaultType,
   normalizeName,
   STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+  type EmotiveClaimCreateInput,
 } from '@mr/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -13,6 +16,7 @@ import { ForbiddenError } from '../../../core/errors/domain-errors.js'
 import {
   ensureTestUser,
   getClaimSourceIdByCode,
+  getDepartmentIdByCode,
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
@@ -726,6 +730,218 @@ describe('Statistics module integration', () => {
 
       expect(summary.trends.byMonth.every((row) => row.total === 0)).toBe(true)
       expect(summary.bySource.items).toEqual([])
+    })
+  })
+
+  describe('when loading business-value sections', () => {
+    // Container writes COMMIT through the pool (only ctx.db rolls back), so
+    // claims persist across tests AND runs. Exact totals are still safe here:
+    // every test creates its own manufacturer and filters the summary by
+    // manufacturerId — all three new sections honor buildActiveClaimWhere.
+    const runId = Date.now()
+
+    async function createIsolatedManufacturer(tag: string): Promise<string> {
+      return createEngineManufacturer(`STATBV-${tag}-${runId}`, `Stat BV ${tag} ${runId}`)
+    }
+
+    async function createDomaceBvClaim(
+      manufacturerId: string,
+      mrNumber: string,
+      totalAmount: number | null,
+      faults: EmotiveClaimCreateInput['faults'] = [],
+    ): Promise<string> {
+      const claim = await container.domaceClaimsService.create(
+        {
+          mrNumber,
+          customerName: 'Stats Domace',
+          dateOfClaim: daysAgo(15),
+          outcome: ClaimOutcome.Accepted,
+          manufacturerId,
+          faults,
+          ...(totalAmount !== null ? { totalAmount } : {}),
+        },
+        {
+          id: TEST_USER_ID,
+          permissions: ['domace_claims.view', 'domace_claims.create', 'emotive_claims.view'],
+        },
+        auditContext,
+      )
+      return claim.id
+    }
+
+    async function createEmotiveBvClaim(
+      manufacturerId: string,
+      mrNumber: string,
+      options: {
+        customerId?: string
+        outcome?: (typeof ClaimOutcome)[keyof typeof ClaimOutcome]
+        faults?: EmotiveClaimCreateInput['faults']
+      } = {},
+    ): Promise<string> {
+      const engineType = await createTestEngineType(
+        container,
+        `STATBV-ET-${runId}-${mrNumber}`,
+        manufacturerId,
+      )
+      const claim = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: daysAgo(10),
+          mrNumber,
+          outcome: options.outcome ?? ClaimOutcome.Accepted,
+          warrantyReport: 'Statistics business-value test',
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          manufacturerId,
+          faults: options.faults ?? [],
+          ...(options.customerId !== undefined ? { customerId: options.customerId } : {}),
+        },
+        {
+          id: TEST_USER_ID,
+          permissions: ['emotive_claims.view', 'emotive_claims.create', 'domace_claims.view'],
+        },
+        auditContext,
+      )
+      return claim.id
+    }
+
+    it('sums domace total_amount for the filtered period', async () => {
+      const manufacturerId = await createIsolatedManufacturer('AMT')
+      await createDomaceBvClaim(manufacturerId, `STAT-AMT-1/${runId}`, 1500.5)
+      await createDomaceBvClaim(manufacturerId, `STAT-AMT-2/${runId}`, 2499.25)
+      await createDomaceBvClaim(manufacturerId, `STAT-AMT-NONE/${runId}`, null)
+      await createEmotiveBvClaim(manufacturerId, `STAT-AMT-EMO/${runId}`)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.domaceAmounts).toEqual({ totalAmount: 3999.75, claimCount: 2 })
+    })
+
+    it('returns zero domace amounts outside the domace scope', async () => {
+      const manufacturerId = await createIsolatedManufacturer('AMTSC')
+      await createDomaceBvClaim(manufacturerId, `STAT-AMT-SCOPE/${runId}`, 1000)
+
+      const summary = await container.statisticsService.getSummary(EMOTIVE_ONLY, {
+        manufacturerId,
+      })
+
+      expect(summary.domaceAmounts).toEqual({ totalAmount: 0, claimCount: 0 })
+    })
+
+    it('groups emotive claims by customer with outcome counts', async () => {
+      const manufacturerId = await createIsolatedManufacturer('CUST')
+      const customerName = `Stat Partner ${runId}`
+      const customer = await container.customersRepository.create({ name: customerName })
+      await createEmotiveBvClaim(manufacturerId, `STAT-CUST-1/${runId}`, {
+        customerId: customer.id,
+        outcome: ClaimOutcome.Accepted,
+      })
+      await createEmotiveBvClaim(manufacturerId, `STAT-CUST-2/${runId}`, {
+        customerId: customer.id,
+        outcome: ClaimOutcome.Rejected,
+      })
+      await createEmotiveBvClaim(manufacturerId, `STAT-CUST-NULL/${runId}`, {
+        outcome: ClaimOutcome.Pending,
+      })
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.byCustomer.items).toEqual([
+        {
+          customerId: customer.id,
+          code: customer.id,
+          name: customerName,
+          total: 2,
+          pending: 0,
+          accepted: 1,
+          rejected: 1,
+        },
+        {
+          customerId: null,
+          code: 'UNKNOWN',
+          name: 'Nepoznato',
+          total: 1,
+          pending: 1,
+          accepted: 0,
+          rejected: 0,
+        },
+      ])
+    })
+
+    it('returns empty byCustomer for domace-only statistics scope', async () => {
+      const manufacturerId = await createIsolatedManufacturer('CUSTSC')
+      await createEmotiveBvClaim(manufacturerId, `STAT-CUST-SCOPE/${runId}`)
+
+      const summary = await container.statisticsService.getSummary(DOMACE_ONLY, {
+        manufacturerId,
+      })
+
+      expect(summary.byCustomer.items).toEqual([])
+    })
+
+    it('attributes faults to employees, departments and external parties across kinds', async () => {
+      const manufacturerId = await createIsolatedManufacturer('FAULT')
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+      const departmentId = await getDepartmentIdByCode(ctx.db, 'BLOKOVI')
+      const externalParty = await container.externalPartiesRepository.create({
+        name: `Stat Dobavljač ${runId}`,
+        kind: ExternalPartyKind.Supplier,
+      })
+
+      await createEmotiveBvClaim(manufacturerId, `STAT-FAULT-EMO/${runId}`, {
+        faults: [
+          { faultType: FaultType.Employee, employeeId },
+          { faultType: FaultType.Department, departmentId },
+        ],
+      })
+      await createDomaceBvClaim(manufacturerId, `STAT-FAULT-DOM/${runId}`, null, [
+        { faultType: FaultType.External, externalPartyId: externalParty.id },
+        { faultType: FaultType.Employee, employeeId },
+      ])
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.byFaults.byEmployee).toEqual([
+        { id: employeeId, code: employeeId, name: 'Dejan Milovanović', total: 2 },
+      ])
+      expect(summary.byFaults.byDepartment).toEqual([
+        { id: departmentId, code: departmentId, name: 'Blokovi', total: 1 },
+      ])
+      expect(summary.byFaults.byExternalParty).toEqual([
+        {
+          id: externalParty.id,
+          code: externalParty.id,
+          name: `Stat Dobavljač ${runId}`,
+          total: 1,
+        },
+      ])
+    })
+
+    it('scopes fault attribution to the permitted claim kinds', async () => {
+      const manufacturerId = await createIsolatedManufacturer('FAULTSC')
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+      await createEmotiveBvClaim(manufacturerId, `STAT-FAULT-SCOPE/${runId}`, {
+        faults: [{ faultType: FaultType.Employee, employeeId }],
+      })
+
+      const summary = await container.statisticsService.getSummary(DOMACE_ONLY, {
+        manufacturerId,
+      })
+
+      expect(summary.byFaults.byEmployee).toEqual([])
+      expect(summary.byFaults.byDepartment).toEqual([])
+      expect(summary.byFaults.byExternalParty).toEqual([])
     })
   })
 })
