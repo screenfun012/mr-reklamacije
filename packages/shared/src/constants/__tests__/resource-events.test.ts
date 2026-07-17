@@ -17,9 +17,17 @@ describe('ResourceChangedKey', () => {
     ])
   })
 
-  it('maps engineManufacturers to engine-manufacturers query prefix', () => {
+  it('maps engineManufacturers to its own prefix AND engine-types (denormalized manufacturer name)', () => {
     expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.EngineManufacturers)).toEqual([
       ['engine-manufacturers'],
+      ['engine-types'],
+    ])
+  })
+
+  it('maps departments to its own prefix AND employees (denormalized department name)', () => {
+    expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.Departments)).toEqual([
+      ['departments'],
+      ['employees'],
     ])
   })
 

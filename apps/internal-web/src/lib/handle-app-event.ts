@@ -1,9 +1,9 @@
 import {
   ClaimEventType,
   ClaimKind,
-  clientSubmissionKeys,
   ClientSubmissionEventType,
   invalidateInternalClaimQueries,
+  invalidateInternalSubmissionQueries,
   queryKeyPrefixesForResourceChanged,
   ResourceChangedKey,
   ResourceEventType,
@@ -92,10 +92,9 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
   }
 
   // A client submission was created/converted/rejected by another user — refresh the Inbox
-  // pending list (every page) and the standalone nav-badge count query.
+  // list (every page), the nav-badge count and the changed submission's detail.
   if (event.type === ClientSubmissionEventType.Changed) {
-    void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.lists() })
-    void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.pendingCount() })
+    invalidateInternalSubmissionQueries(queryClient, event.payload.id)
     return
   }
 

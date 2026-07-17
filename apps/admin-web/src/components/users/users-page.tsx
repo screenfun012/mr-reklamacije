@@ -327,8 +327,13 @@ export function UsersPageContent(): ReactElement {
           : m.users_reject_success(),
       )
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({ queryKey: usersListQueryKey() })
+      // Approving a user as a client links ≥1 customer (raising its usageCount),
+      // so refresh the customers catalog list too.
+      if (variables.customerIds && variables.customerIds.length > 0) {
+        void queryClient.invalidateQueries({ queryKey: ['customers'] })
+      }
     },
   })
 

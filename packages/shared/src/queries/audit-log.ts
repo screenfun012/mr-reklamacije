@@ -42,6 +42,13 @@ function serializeAuditLogParams(filters: AuditLogFilters, cursor: string | unde
   return params.toString()
 }
 
+/**
+ * The audit-log is an append-only review feed, refreshed by its 15s staleTime
+ * plus refetchOnWindowFocus (switch away and back, or reopen, to pull the latest
+ * rows). It is deliberately NOT SSE-invalidated: busting an infinite list on
+ * every audited action (every claim edit, catalog CRUD, approval, convert…)
+ * would refetch every loaded page for marginal freshness on a history view.
+ */
 export function auditLogListOptions(filters: AuditLogFilters) {
   return infiniteQueryOptions({
     queryKey: auditLogListQueryKey(filters),

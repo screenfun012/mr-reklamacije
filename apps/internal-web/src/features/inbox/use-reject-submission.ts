@@ -1,4 +1,4 @@
-import { clientSubmissionKeys, rejectClientSubmission } from '@mr/shared'
+import { invalidateInternalSubmissionQueries, rejectClientSubmission } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -18,8 +18,7 @@ export function useRejectSubmission(submissionId: string) {
       rejectClientSubmission(submissionId, reason),
     onSuccess: async () => {
       showInternalToast(m.internal_inbox_reject_success())
-      await queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.detail(submissionId) })
+      invalidateInternalSubmissionQueries(queryClient, submissionId)
       await navigate({ to: '/pristiglo', search: { page: 1 } })
     },
   })

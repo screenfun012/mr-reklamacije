@@ -34,4 +34,13 @@ describe('invalidateInternalClaimQueries', () => {
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ['attachments', 'list', 'domace', 'claim-7'] })
   })
+
+  it('invalidates the mr-registry lookup so the create-form duplicate warning sees a new/removed MR', () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id: 'claim-1' })
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['mr-registry'] })
+  })
 })

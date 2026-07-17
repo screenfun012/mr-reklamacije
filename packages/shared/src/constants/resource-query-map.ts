@@ -12,10 +12,14 @@ export function queryKeyPrefixesForResourceChanged(
       return [['customers']] as const
     case ResourceChangedKey.EngineTypes:
       return [['engine-types']] as const
+    // engine-types denormalize manufacturerName, so a manufacturer rename must
+    // also refresh the engine-types list + its labelled dropdowns.
     case ResourceChangedKey.EngineManufacturers:
-      return [['engine-manufacturers']] as const
+      return [['engine-manufacturers'], ['engine-types']] as const
+    // employees denormalize departmentName, so a department rename must also
+    // refresh the employees list + its labelled dropdowns.
     case ResourceChangedKey.Departments:
-      return [['departments']] as const
+      return [['departments'], ['employees']] as const
     case ResourceChangedKey.Employees:
       return [['employees']] as const
     case ResourceChangedKey.ExternalParties:

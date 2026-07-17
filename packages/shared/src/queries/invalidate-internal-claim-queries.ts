@@ -8,6 +8,7 @@ import { invalidateDashboardSummary } from './dashboard.js'
 import { domaceClaimKeys } from './domace-claim-keys.js'
 import { emotiveClaimKeys } from './emotive-claim-keys.js'
 import { invalidateStatisticsSummary } from './invalidate-statistics-summary.js'
+import { mrRegistryKeys } from './mr-registry.js'
 
 /**
  * Invalidate the internal claim views a claim mutation affects — the SINGLE
@@ -32,6 +33,9 @@ export function invalidateInternalClaimQueries(
     void queryClient.invalidateQueries({ queryKey: domaceClaimKeys.detail(payload.id) })
   }
   void queryClient.invalidateQueries({ queryKey: attachmentKeys.list(payload.kind, payload.id) })
+  // Create registers a new MR, delete releases it, an edit can change it — so the
+  // create-form duplicate pre-check lookup must be re-fetched after any of them.
+  void queryClient.invalidateQueries({ queryKey: mrRegistryKeys.all })
   void invalidateStatisticsSummary(queryClient)
   void invalidateDashboardSummary(queryClient)
 }
