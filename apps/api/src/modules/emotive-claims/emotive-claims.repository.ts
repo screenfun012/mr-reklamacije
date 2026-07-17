@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimKind } from '@mr/shared'
+import { ClaimKind, UserAccountStatus, type UserLanguage } from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -16,6 +16,7 @@ import {
   customerUsers,
   emotiveClaimFaults,
   emotiveClaims,
+  users,
 } from './emotive-claims.schema.js'
 import type { EmotiveClaimsListScope } from './emotive-claims.types.js'
 import type {
@@ -39,6 +40,12 @@ const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
 // state (deleted_at / outcome) changed between the service before-read and the
 // write, so the asserted precondition is stale. Maps to HTTP 409.
 const CONCURRENT_EDIT_MESSAGE = 'Claim was modified concurrently; reload and retry'
+
+export interface OutcomeNotificationRecipient {
+  email: string
+  name: string
+  preferredLanguage: UserLanguage
+}
 
 function formatDate(value: Date | string): string {
   if (typeof value === 'string') {
@@ -146,6 +153,28 @@ export class EmotiveClaimsRepository {
       .where(eq(customerUsers.userId, userId))
 
     return rows.map((row) => row.customerId)
+  }
+
+  /** Live, approved portal accounts linked to a customer — the outcome-change email audience. */
+  async getOutcomeNotificationRecipients(
+    customerId: string,
+  ): Promise<OutcomeNotificationRecipient[]> {
+    return this.db
+      .select({
+        email: users.email,
+        name: users.name,
+        preferredLanguage: users.preferredLanguage,
+      })
+      .from(customerUsers)
+      .innerJoin(users, eq(users.id, customerUsers.userId))
+      .where(
+        and(
+          eq(customerUsers.customerId, customerId),
+          isNull(users.deletedAt),
+          eq(users.isActive, true),
+          eq(users.accountStatus, UserAccountStatus.Approved),
+        ),
+      )
   }
 
   async isEngineTypeActive(engineTypeId: string): Promise<boolean> {

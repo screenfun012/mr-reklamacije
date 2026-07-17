@@ -213,6 +213,10 @@ export function buildContainer(
     emotiveClaimsRepository,
     auditService,
     eventBus,
+    emailPort,
+    new DbAppSettingsReader(db),
+    portalBaseUrl,
+    logger,
   )
 
   const clientSubmissionsRepository = new ClientSubmissionsRepository(db)

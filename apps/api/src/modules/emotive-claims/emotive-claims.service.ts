@@ -4,6 +4,7 @@ import {
   type ClaimEventPayload,
   type EmotiveClaimFaultInput,
 } from '@mr/shared'
+import type { Logger } from '@mr/logger'
 
 import type { ApiClaimTxExecutor } from '../../core/database.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -16,7 +17,13 @@ import { isInternalNotesOnlyUpdate } from '../../core/claims/is-internal-notes-o
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { EmailPort } from '../../core/ports/email-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
+import {
+  outcomeChangedEmailSubject,
+  renderOutcomeChangedEmailHtml,
+} from './emotive-claims.email.js'
 import type { EmotiveClaimsRepository } from './emotive-claims.repository.js'
 import type { EmotiveClaimsActor, EmotiveClaimsListScope } from './emotive-claims.types.js'
 import type {
@@ -46,11 +53,19 @@ function emotiveEventPayload(id: string): ClaimEventPayload {
 
 const EMOTIVE_REOPEN_PERMISSION = 'emotive_claims.reopen'
 
+// Admin hook (docs/13): setting the value to the string 'false' turns the
+// client outcome-change email off; anything else (including unset) leaves it on.
+const NOTIFY_CLIENT_SETTING_KEY = 'emotive_claims.notify_client_on_outcome'
+
 export class EmotiveClaimsService {
   constructor(
     private readonly repo: EmotiveClaimsRepository,
     private readonly audit: AuditPort,
     private readonly events: EventBus,
+    private readonly emailPort: EmailPort,
+    private readonly appSettings: AppSettingsReader,
+    private readonly portalBaseUrl: string,
+    private readonly logger: Logger,
   ) {}
 
   async create(
@@ -264,7 +279,50 @@ export class EmotiveClaimsService {
 
     this.events.publishClaimUpdated(emotiveEventPayload(id), updated.customerId)
 
+    // Best-effort notification — fire-and-settle so a slow Resend call never
+    // adds latency to the outcome change (already persisted, audited, emitted).
+    void this.notifyClientOutcomeChanged(updated).catch((error) => {
+      this.logger.error(
+        { err: error, claimId: id },
+        'Unexpected error dispatching outcome-change notification',
+      )
+    })
+
     return updated
+  }
+
+  /** Never throws — a failed client email must not break the outcome change. */
+  private async notifyClientOutcomeChanged(claim: EmotiveClaimDetail): Promise<void> {
+    if (!this.emailPort.enabled || claim.customerId === null) {
+      return
+    }
+
+    const toggle = await this.appSettings.getString(NOTIFY_CLIENT_SETTING_KEY)
+    if (toggle === 'false') {
+      return
+    }
+
+    const recipients = await this.repo.getOutcomeNotificationRecipients(claim.customerId)
+
+    for (const recipient of recipients) {
+      try {
+        await this.emailPort.send({
+          to: recipient.email,
+          subject: outcomeChangedEmailSubject(claim.mrNumber, recipient.preferredLanguage),
+          html: renderOutcomeChangedEmailHtml({
+            name: recipient.name,
+            mrNumber: claim.mrNumber,
+            url: this.portalBaseUrl,
+            locale: recipient.preferredLanguage,
+          }),
+        })
+      } catch (error) {
+        this.logger.error(
+          { err: error, claimId: claim.id, to: recipient.email },
+          'Failed to send outcome-change email',
+        )
+      }
+    }
   }
 
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
