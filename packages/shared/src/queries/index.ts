@@ -26,7 +26,7 @@ export { claimReportOptions, upsertClaimReport } from './claim-reports.js'
 export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'
-export { dashboardSummaryOptions } from './dashboard.js'
+export { dashboardSummaryOptions, invalidateDashboardSummary } from './dashboard.js'
 export {
   statisticsKeys,
   statisticsSummaryOptions,

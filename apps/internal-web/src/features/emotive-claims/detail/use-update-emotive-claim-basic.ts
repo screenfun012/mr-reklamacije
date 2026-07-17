@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
 import {
+  ClaimKind,
   emotiveClaimKeys,
   fetchJson,
-  invalidateStatisticsSummary,
+  invalidateInternalClaimQueries,
   type EmotiveClaimDetail,
 } from '@mr/shared'
 
@@ -48,10 +49,8 @@ export function useUpdateEmotiveClaimBasic(
     onSuccess: (updated) => {
       queryClient.setQueryData(detailKey, updated)
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: detailKey })
-      await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
-      await invalidateStatisticsSummary(queryClient)
+    onSettled: () => {
+      invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id })
     },
   })
 }

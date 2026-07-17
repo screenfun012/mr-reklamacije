@@ -158,6 +158,18 @@ describe('handleAppEvent', () => {
     })
   })
 
+  it('invalidates the dashboard summary on a claim event so the overview counts refresh', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    handleAppEvent(queryClient, {
+      type: ClaimEventType.Created,
+      payload: { kind: ClaimKind.Emotive, id: 'claim-9' },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard', 'summary'] })
+  })
+
   it('invalidates the Inbox list and the nav-badge count on a client-submission event', () => {
     const queryClient = new QueryClient()
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')

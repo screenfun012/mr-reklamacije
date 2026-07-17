@@ -1,10 +1,9 @@
 import {
   CLAIM_DETAIL_DEFAULT_SEARCH,
-  claimKeys,
+  ClaimKind,
   clientSubmissionKeys,
   convertClientSubmission,
-  emotiveClaimKeys,
-  invalidateStatisticsSummary,
+  invalidateInternalClaimQueries,
   type EmotiveClaimCreateInput,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -31,9 +30,7 @@ export function useConvertSubmission(submissionId: string) {
       showInternalToast(m.internal_inbox_convert_success({ mrNumber: created.mrNumber }))
       await queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.lists() })
       await queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.detail(submissionId) })
-      await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
-      await invalidateStatisticsSummary(queryClient)
+      invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id: created.id })
       await navigate({
         to: '/reklamacije/emotive/$id',
         params: { id: created.id },

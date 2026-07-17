@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
 import {
-  claimKeys,
+  ClaimKind,
   domaceClaimKeys,
   fetchJson,
-  invalidateStatisticsSummary,
+  invalidateInternalClaimQueries,
   type ClaimOutcome,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -51,11 +51,8 @@ export function useChangeDomaceClaimOutcome(
         showInternalToast(m.internal_toast_outcome_rejected())
       }
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: detailKey })
-      await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
-      await invalidateStatisticsSummary(queryClient)
+    onSettled: () => {
+      invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Domace, id })
     },
   })
 }

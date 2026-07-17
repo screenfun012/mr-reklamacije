@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
 import {
-  claimKeys,
+  ClaimKind,
   emotiveClaimKeys,
   fetchJson,
-  invalidateStatisticsSummary,
+  invalidateInternalClaimQueries,
   type ClaimOutcome,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -59,11 +59,8 @@ export function useChangeEmotiveClaimOutcome(
         showInternalToast(m.internal_toast_outcome_rejected())
       }
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: detailKey })
-      await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
-      await invalidateStatisticsSummary(queryClient)
+    onSettled: () => {
+      invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id })
     },
   })
 }

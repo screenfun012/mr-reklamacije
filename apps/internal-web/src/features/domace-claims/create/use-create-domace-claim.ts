@@ -2,10 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import {
   ApiError,
-  claimKeys,
-  domaceClaimKeys,
+  ClaimKind,
   fetchJson,
-  invalidateStatisticsSummary,
+  invalidateInternalClaimQueries,
   type DomaceClaimCreateInput,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -26,11 +25,9 @@ export function useCreateDomaceClaim() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(serializeDomaceCreateBody(input)),
       }),
-    onSuccess: async (created) => {
+    onSuccess: (created) => {
       showInternalToast(m.internal_toast_claim_saved({ mrNumber: created.mrNumber ?? '—' }))
-      await queryClient.invalidateQueries({ queryKey: domaceClaimKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
-      await invalidateStatisticsSummary(queryClient)
+      invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Domace, id: created.id })
     },
   })
 }

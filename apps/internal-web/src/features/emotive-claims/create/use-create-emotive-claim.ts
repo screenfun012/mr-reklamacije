@@ -3,10 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 
 import {
   ApiError,
-  claimKeys,
-  emotiveClaimKeys,
+  ClaimKind,
   fetchJson,
-  invalidateStatisticsSummary,
+  invalidateInternalClaimQueries,
   type EmotiveClaimCreateInput,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -30,9 +29,7 @@ export function useCreateEmotiveClaim() {
       }),
     onSuccess: async (created) => {
       showInternalToast(m.internal_toast_claim_saved({ mrNumber: created.mrNumber }))
-      await queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
-      await invalidateStatisticsSummary(queryClient)
+      invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id: created.id })
       await navigate({ to: '/reklamacije', search: { page: 1, pageSize: 10 } })
     },
   })
