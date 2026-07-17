@@ -59,6 +59,29 @@ describe('fetchJson', () => {
     })
   })
 
+  it('carries envelope details on the thrown ApiError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        statusText: 'Conflict',
+        json: async () => ({
+          error: {
+            code: 'CONFLICT',
+            message: 'MR broj je već dodeljen drugoj reklamaciji',
+            details: { kind: 'emotive', claimId: 'abc' },
+          },
+        }),
+      }),
+    )
+
+    await expect(fetchJson('/api/emotive-claims')).rejects.toMatchObject({
+      status: 409,
+      details: { kind: 'emotive', claimId: 'abc' },
+    })
+  })
+
   it('falls back to status text when error body is not JSON', async () => {
     vi.stubGlobal(
       'fetch',

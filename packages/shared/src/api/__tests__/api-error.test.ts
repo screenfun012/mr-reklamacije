@@ -10,6 +10,13 @@ describe('ApiError', () => {
     expect(error.code).toBe('FORBIDDEN')
     expect(error.name).toBe('ApiError')
   })
+
+  it('stores optional details', () => {
+    const details = { kind: 'emotive', claimId: 'abc' }
+    const error = new ApiError('Conflict', 409, 'CONFLICT', details)
+    expect(error.details).toEqual(details)
+    expect(new ApiError('Forbidden', 403).details).toBeUndefined()
+  })
 })
 
 describe('parseApiErrorBody', () => {
@@ -34,6 +41,22 @@ describe('parseApiErrorBody', () => {
     expect(parseApiErrorBody({ error: { code: 'VALIDATION' } })).toEqual({
       message: 'Request failed',
       code: 'VALIDATION',
+    })
+  })
+
+  it('passes details through when present', () => {
+    expect(
+      parseApiErrorBody({
+        error: {
+          code: 'CONFLICT',
+          message: 'MR broj je već dodeljen drugoj reklamaciji',
+          details: { kind: 'domace', claimId: 'xyz' },
+        },
+      }),
+    ).toEqual({
+      message: 'MR broj je već dodeljen drugoj reklamaciji',
+      code: 'CONFLICT',
+      details: { kind: 'domace', claimId: 'xyz' },
     })
   })
 })

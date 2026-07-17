@@ -9,12 +9,15 @@ import {
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
+  mrConflictFromError,
+  type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { InternalButton } from '~/components/internal-button'
 import { InternalCard } from '~/components/internal-card'
 import { InternalNote } from '~/components/internal-note'
 
+import { MrConflictLink } from '../../claims/mr-conflict-link.js'
 import { StepFaultsFields } from '../../emotive-claims/create/step-faults-fields.js'
 import { DomaceBasicFields } from './domace-basic-fields.js'
 import {
@@ -30,6 +33,7 @@ import { createDomaceClaimErrorMessage, useCreateDomaceClaim } from './use-creat
 export function DomaceClaimCreateForm(): React.ReactElement {
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitConflict, setSubmitConflict] = useState<MrRegistryExistingClaim | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [createdClaimId, setCreatedClaimId] = useState<string | null>(null)
 
@@ -49,6 +53,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
     defaultValues: DOMACE_CLAIM_FORM_DEFAULTS,
     onSubmit: async ({ value }) => {
       setSubmitError(null)
+      setSubmitConflict(null)
       setShowSuccess(false)
       setCreatedClaimId(null)
       if (!validate(value)) {
@@ -63,6 +68,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
         setShowSuccess(true)
       } catch (error) {
         setSubmitError(createDomaceClaimErrorMessage(error))
+        setSubmitConflict(mrConflictFromError(error))
       }
     },
   })
@@ -107,6 +113,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
             manufacturers={manufacturers}
             stepErrors={stepErrors}
             disabled={isPending}
+            checkMrDuplicate
           />
         </section>
 
@@ -145,6 +152,12 @@ export function DomaceClaimCreateForm(): React.ReactElement {
         {submitError ? (
           <InternalNote tone="error" role="alert">
             {submitError}
+            {submitConflict ? (
+              <>
+                {' '}
+                <MrConflictLink existing={submitConflict} />
+              </>
+            ) : null}
           </InternalNote>
         ) : null}
 

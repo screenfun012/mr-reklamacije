@@ -15,6 +15,7 @@ import {
 import { InternalFieldGroup } from '~/components/internal-field-group'
 
 import { EmployeeSelectField } from '../../claims/employee-select-field.js'
+import { MrDuplicateWarning } from '../../claims/mr-duplicate-warning.js'
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
 import type { EmotiveClaimFormValues } from './emotive-claim-create-schemas.js'
@@ -56,6 +57,8 @@ interface StepBasicFieldsProps {
   orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
   disabled: boolean
+  /** Create-only: detail edit reuses these fields, where the claim's own MR would false-positive. */
+  checkMrDuplicate?: boolean
 }
 
 export function StepBasicFields({
@@ -66,6 +69,7 @@ export function StepBasicFields({
   orphanEngineType,
   stepErrors,
   disabled,
+  checkMrDuplicate = false,
 }: StepBasicFieldsProps): React.ReactElement {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -86,6 +90,7 @@ export function StepBasicFields({
               onBlur={field.handleBlur}
               disabled={disabled}
             />
+            {checkMrDuplicate ? <MrDuplicateWarning mrNumber={field.state.value} /> : null}
           </InternalFieldGroup>
         )}
       />

@@ -76,6 +76,13 @@ export {
   claimsSortFromSearch,
   type ClaimsSearch,
 } from './claims-search.js'
+export {
+  mrConflictFromError,
+  mrRegistryKeys,
+  mrRegistryLookupOptions,
+  MrRegistryExistingClaimSchema,
+  type MrRegistryExistingClaim,
+} from './mr-registry.js'
 export { emotiveClaimKeys } from './emotive-claim-keys.js'
 export {
   emotiveClaimDetailOptions,

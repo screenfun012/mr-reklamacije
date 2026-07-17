@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod'
 
-import { ApiError, parseApiErrorBody } from './api-error.js'
+import { ApiError, parseApiErrorBody, type ParsedApiError } from './api-error.js'
 import { resolveFetchUrl } from './resolve-fetch-url.js'
 
 function isBrowser(): boolean {
@@ -46,7 +46,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
     return (await response.json()) as T
   }
 
-  let parsed: { message: string; code?: string } = {
+  let parsed: ParsedApiError = {
     message: response.statusText || 'Request failed',
   }
 
@@ -57,7 +57,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
     // Non-JSON error bodies fall back to status text.
   }
 
-  throw new ApiError(parsed.message, response.status, parsed.code)
+  throw new ApiError(parsed.message, response.status, parsed.code, parsed.details)
 }
 
 /**

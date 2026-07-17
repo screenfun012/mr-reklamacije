@@ -9,6 +9,8 @@ import {
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
+  mrConflictFromError,
+  type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { InternalButton } from '~/components/internal-button'
@@ -16,6 +18,7 @@ import { InternalCard } from '~/components/internal-card'
 import { InternalNote } from '~/components/internal-note'
 import { WizardStepper } from '~/components/wizard-stepper'
 
+import { MrConflictLink } from '../../claims/mr-conflict-link.js'
 import {
   EMOTIVE_CLAIM_FORM_DEFAULTS,
   emotiveClaimStepBasicSchema,
@@ -42,6 +45,7 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
   const [currentStep, setCurrentStep] = useState<WizardStep>('basic')
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitConflict, setSubmitConflict] = useState<MrRegistryExistingClaim | null>(null)
 
   const { data: customers } = useSuspenseQuery(
     customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
@@ -61,11 +65,13 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
     defaultValues: EMOTIVE_CLAIM_FORM_DEFAULTS,
     onSubmit: async ({ value }) => {
       setSubmitError(null)
+      setSubmitConflict(null)
       try {
         const input = formValuesToCreateInput(value)
         await createMutation.mutateAsync(input)
       } catch (error) {
         setSubmitError(createEmotiveClaimErrorMessage(error))
+        setSubmitConflict(mrConflictFromError(error))
       }
     },
   })
@@ -147,6 +153,7 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
               manufacturers={manufacturers}
               stepErrors={stepErrors}
               disabled={isPending}
+              checkMrDuplicate
             />
           ) : null}
 
@@ -177,6 +184,12 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
           {submitError ? (
             <InternalNote tone="error" role="alert">
               {submitError}
+              {submitConflict ? (
+                <>
+                  {' '}
+                  <MrConflictLink existing={submitConflict} />
+                </>
+              ) : null}
             </InternalNote>
           ) : null}
 
