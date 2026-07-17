@@ -25,4 +25,13 @@ describe('invalidateInternalClaimQueries', () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ['emotive-claims', 'detail', 'claim-1'] })
     expect(spy).toHaveBeenCalledWith({ queryKey: ['statistics'] })
   })
+
+  it('invalidates the claim attachment list so a colleague upload/delete refreshes the Photos tab', () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Domace, id: 'claim-7' })
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['attachments', 'list', 'domace', 'claim-7'] })
+  })
 })

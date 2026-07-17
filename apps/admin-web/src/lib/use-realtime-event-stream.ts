@@ -1,4 +1,4 @@
-import { ResourceEventType } from '@mr/shared'
+import { ClaimEventType, ResourceEventType } from '@mr/shared'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
@@ -8,6 +8,16 @@ import { handleAppEvent, parseAppEventFromSseData } from './handle-app-event'
 const SSE_URL = '/api/events/me'
 const INITIAL_BACKOFF_MS = 1_000
 const MAX_BACKOFF_MS = 30_000
+
+// Named SSE events the admin app reacts to: catalog sync + claim lifecycle (so
+// the home dashboard's global claim counts live-update when an operator creates,
+// resolves or deletes a claim in internal-web).
+const HANDLED_EVENT_TYPES = [
+  ResourceEventType.Changed,
+  ClaimEventType.Created,
+  ClaimEventType.Updated,
+  ClaimEventType.Deleted,
+] as const
 
 /** Keeps SSE open while authenticated; invalidates TanStack Query caches on server push. */
 export function useRealtimeEventStream(): void {
@@ -37,7 +47,7 @@ export function useRealtimeEventStream(): void {
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS)
     }
 
-    const onResourceChanged = (message: MessageEvent<string>): void => {
+    const onAppEvent = (message: MessageEvent<string>): void => {
       const event = parseAppEventFromSseData(message.data)
       if (event !== null) {
         handleAppEvent(queryClientRef.current, event)
@@ -56,7 +66,9 @@ export function useRealtimeEventStream(): void {
         backoffMs = INITIAL_BACKOFF_MS
       })
 
-      es.addEventListener(ResourceEventType.Changed, onResourceChanged)
+      for (const type of HANDLED_EVENT_TYPES) {
+        es.addEventListener(type, onAppEvent)
+      }
 
       es.onerror = () => {
         es?.close()
