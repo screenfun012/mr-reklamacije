@@ -1,11 +1,14 @@
+import { useEffect } from 'react'
+
 import { m } from '@mr/i18n'
 import {
   attachmentsListOptions,
   ClaimKind,
+  clientClaimKeys,
   clientEmotiveClaimDetailOptions,
   SUPPORT_EMAIL_BY_KIND,
 } from '@mr/shared'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
@@ -47,6 +50,18 @@ const detailRoute = getRouteApi('/claims/$id')
 function ClaimDetailComponent() {
   const { id } = detailRoute.useParams()
   const { data: claim } = useSuspenseQuery(clientEmotiveClaimDetailOptions(id))
+  const queryClient = useQueryClient()
+
+  // Drop the cached detail on leaving so re-entry within the 30s staleTime
+  // refetches fresh `sectionFreshness` (the server records the view on GET,
+  // so a stale cached response would keep showing cleared "Novo" markers as
+  // still-new until a full reload wiped the in-memory cache).
+  useEffect(
+    () => () => {
+      queryClient.removeQueries({ queryKey: clientClaimKeys.detail(id) })
+    },
+    [queryClient, id],
+  )
 
   const chip = statusChipConfig(claim)
   const claimLabel = formatPortalClaimId(claim.mrNumber, claim.claimNumber)
