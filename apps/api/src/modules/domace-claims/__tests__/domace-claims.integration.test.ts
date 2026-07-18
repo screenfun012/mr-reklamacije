@@ -13,7 +13,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Container } from '../../../core/container.js'
 import {
   ConflictError,
-  ForbiddenError,
   MrKeyConflictError,
   NotFoundError,
   ValidationError,
@@ -703,7 +702,7 @@ describe('DomaceClaimsService integration', () => {
     })
   })
 
-  describe('claim locking (completed claims)', () => {
+  describe('editing freedom (completed claims, no outcome lock)', () => {
     async function createCompleted(outcome = ClaimOutcome.Accepted): Promise<string> {
       const created = await container.domaceClaimsService.create(
         baseCreateInput(),
@@ -719,16 +718,17 @@ describe('DomaceClaimsService integration', () => {
       return created.id
     }
 
-    it('rejects field edits on a completed claim with ConflictError', async () => {
+    it('lets an operator edit a field on a completed claim without reopening', async () => {
       const id = await createCompleted()
-      await expect(
-        container.domaceClaimsService.update(
-          id,
-          { customerName: 'Promena' },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
+
+      const updated = await container.domaceClaimsService.update(
+        id,
+        { customerName: 'Promena' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.customerName).toBe('Promena')
     })
 
     it('allows internalNotes update on a completed claim', async () => {
@@ -744,31 +744,33 @@ describe('DomaceClaimsService integration', () => {
       expect(updated.internalNotes).toBe('Nalaz posle prihvatanja')
     })
 
-    it('blocks a direct accepted → rejected transition with ConflictError', async () => {
+    it('lets an operator re-decide accepted → rejected directly without reopening', async () => {
       const id = await createCompleted(ClaimOutcome.Accepted)
-      await expect(
-        container.domaceClaimsService.changeOutcome(
-          id,
-          { outcome: ClaimOutcome.Rejected },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
+
+      const updated = await container.domaceClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Rejected },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.outcome).toBe(ClaimOutcome.Rejected)
     })
 
-    it('forbids reopen for an operator without the reopen permission', async () => {
+    it('lets an operator without reopen permission move a completed claim back to pending', async () => {
       const id = await createCompleted()
-      await expect(
-        container.domaceClaimsService.changeOutcome(
-          id,
-          { outcome: ClaimOutcome.Pending },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ForbiddenError)
+
+      const updated = await container.domaceClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Pending },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.outcome).toBe(ClaimOutcome.Pending)
     })
 
-    it('lets an admin reopen a completed claim and audits the transition', async () => {
+    it('lets an admin reopen a completed claim', async () => {
       const id = await createCompleted()
       const reopened = await container.domaceClaimsService.changeOutcome(
         id,
@@ -779,11 +781,11 @@ describe('DomaceClaimsService integration', () => {
       expect(reopened.outcome).toBe(ClaimOutcome.Pending)
     })
 
-    it('forbids an operator from deleting a completed claim', async () => {
+    it('lets an operator delete a completed claim without reopen permission', async () => {
       const id = await createCompleted()
       await expect(
         container.domaceClaimsService.softDelete(id, FULL_OPERATOR, auditContext),
-      ).rejects.toBeInstanceOf(ForbiddenError)
+      ).resolves.toBeUndefined()
     })
 
     it('lets an admin delete a completed claim', async () => {

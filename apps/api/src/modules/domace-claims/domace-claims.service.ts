@@ -5,13 +5,7 @@ import {
   type DomaceClaimFaultInput,
 } from '@mr/shared'
 
-import {
-  assertAcceptedClaimAmountEditable,
-  assertClaimEditable,
-  assertCompletedActionAllowed,
-  assertOutcomeTransitionAllowed,
-} from '../../core/claims/claim-lock.js'
-import { isInternalNotesOnlyUpdate } from '../../core/claims/is-internal-notes-only-update.js'
+import { assertAcceptedClaimAmountEditable } from '../../core/claims/claim-lock.js'
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -44,8 +38,6 @@ function resolveListScope(actor: DomaceClaimsActor): DomaceClaimsListScope {
 function domaceEventPayload(id: string): ClaimEventPayload {
   return { kind: ClaimKind.Domace, id }
 }
-
-const DOMACE_REOPEN_PERMISSION = 'domace_claims.reopen'
 
 export class DomaceClaimsService {
   constructor(
@@ -107,10 +99,6 @@ export class DomaceClaimsService {
     const before = await this.repo.findById(id, scope)
     if (before === null) {
       throw new NotFoundError('Domace claim', id)
-    }
-
-    if (!isInternalNotesOnlyUpdate(input)) {
-      assertClaimEditable(before)
     }
 
     await this.validateUpdateReferences(input)
@@ -179,14 +167,6 @@ export class DomaceClaimsService {
       throw new NotFoundError('Domace claim', id)
     }
 
-    // A completed (locked) claim is frozen for drastic actions; only the
-    // unlock-key holder (admin, via domace_claims.reopen) may delete it.
-    assertCompletedActionAllowed(
-      before,
-      { reopenPermission: DOMACE_REOPEN_PERMISSION, permissions: actor.permissions },
-      'Deleting a completed claim requires reopen permission',
-    )
-
     await this.repo.softDelete(id, auditContext.actorUserId, before)
 
     await this.audit.log({
@@ -246,11 +226,6 @@ export class DomaceClaimsService {
       throw new NotFoundError('Domace claim', id)
     }
 
-    const isReopen = assertOutcomeTransitionAllowed(before.outcome, input.outcome, {
-      reopenPermission: DOMACE_REOPEN_PERMISSION,
-      permissions: actor.permissions,
-    })
-
     const updated = await this.repo.changeOutcome(
       id,
       input,
@@ -266,9 +241,7 @@ export class DomaceClaimsService {
       actorUserId: auditContext.actorUserId,
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
-      changes: isReopen
-        ? { before, after: updated, outcome: input.outcome, transition: 'reopen' }
-        : { before, after: updated, outcome: input.outcome },
+      changes: { before, after: updated, outcome: input.outcome },
     })
 
     this.events.publishClaimUpdated(domaceEventPayload(id))
