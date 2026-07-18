@@ -60,17 +60,9 @@ const OWN_CUSTOMER_VIEWER: EmotiveClaimsActor = {
   permissions: ['emotive_claims.view_own_customer'],
 }
 
-// Admin carries the unlock key (emotive_claims.reopen) on top of operator rights.
 const ADMIN_ACTOR: EmotiveClaimsActor = {
   id: TEST_USER_ID,
-  permissions: [
-    'emotive_claims.view',
-    'emotive_claims.create',
-    'emotive_claims.update',
-    'emotive_claims.delete',
-    'emotive_claims.change_outcome',
-    'emotive_claims.reopen',
-  ],
+  permissions: [...FULL_OPERATOR.permissions],
 }
 
 const RESTORE_ACTOR: EmotiveClaimsActor = {

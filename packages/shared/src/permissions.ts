@@ -20,7 +20,6 @@ export const PERMISSIONS = [
   'emotive_claims.delete',
   'emotive_claims.restore',
   'emotive_claims.change_outcome',
-  'emotive_claims.reopen',
   'emotive_claims.unarchive',
 
   // domace_claims
@@ -31,7 +30,6 @@ export const PERMISSIONS = [
   'domace_claims.delete',
   'domace_claims.restore',
   'domace_claims.change_outcome',
-  'domace_claims.reopen',
   'domace_claims.unarchive',
 
   // observations

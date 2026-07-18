@@ -52,7 +52,7 @@ const OWN_CUSTOMER_VIEWER: DomaceClaimsActor = {
 
 const ADMIN_ACTOR: DomaceClaimsActor = {
   id: TEST_USER_ID,
-  permissions: [...FULL_OPERATOR.permissions, 'domace_claims.reopen'],
+  permissions: [...FULL_OPERATOR.permissions],
 }
 
 const RESTORE_ACTOR: DomaceClaimsActor = {
