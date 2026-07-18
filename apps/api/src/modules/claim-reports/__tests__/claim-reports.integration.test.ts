@@ -17,7 +17,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Container } from '../../../core/container.js'
 import { buildContainer } from '../../../core/container.js'
 import { ForbiddenError } from '../../../core/errors/domain-errors.js'
-import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
+import {
+  ensureTestUser,
+  getCustomerIdByName,
+  TEST_USER_ID,
+} from '../../../test-helpers/fixtures.js'
 import {
   buildTestContainer,
   createClaimReportsTestApp,
@@ -684,5 +689,108 @@ describe('ClaimReports export integration', () => {
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
     const buffer = Buffer.from(await response.arrayBuffer())
     expect(buffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
+  })
+
+  describe('emotive client-visibility gate (Primljeno claims)', () => {
+    async function linkUserToCustomer(userId: string, customerId: string): Promise<void> {
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId, userId, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+    }
+
+    async function createEmotiveClaimForCustomer(customerId: string): Promise<string> {
+      const engineType = await createTestEngineType(
+        container,
+        `RPT-EMO-${crypto.randomUUID().slice(0, 8)}`,
+      )
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-04-17'),
+          mrNumber: `RPT-${crypto.randomUUID().slice(0, 8)}/26`,
+          outcome: ClaimOutcome.Pending,
+          faults: [],
+          customerId,
+        },
+        { id: TEST_USER_ID, permissions: ['emotive_claims.view', 'emotive_claims.create'] },
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('returns 404 for client pdf export of a Primljeno (private) emotive claim', async () => {
+      const clientUserId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+      await ensureTestUser(ctx.db, clientUserId)
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(clientUserId, customerId)
+      const claimId = await createEmotiveClaimForCustomer(customerId)
+
+      await container.claimReportsService.upsert(
+        { claimKind: ClaimKind.Emotive, claimId },
+        SAMPLE_BODY,
+        {
+          id: TEST_USER_ID,
+          permissions: ['claim_reports.view', 'claim_reports.update', 'emotive_claims.view'],
+        },
+        auditContext,
+      )
+
+      const app = createClaimReportsTestApp(
+        container,
+        testUser(['export.own_claims', 'emotive_claims.view_own_customer'], clientUserId),
+      )
+
+      const response = await app.request(
+        `/api/claim-reports/export/client/pdf?claimKind=${ClaimKind.Emotive}&claimId=${claimId}`,
+      )
+
+      expect(response.status).toBe(404)
+    })
+
+    it('exports client pdf for an emotive claim once it is client-visible', async () => {
+      const clientUserId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+      await ensureTestUser(ctx.db, clientUserId)
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(clientUserId, customerId)
+      const claimId = await createEmotiveClaimForCustomer(customerId)
+
+      await container.claimReportsService.upsert(
+        { claimKind: ClaimKind.Emotive, claimId },
+        SAMPLE_BODY,
+        {
+          id: TEST_USER_ID,
+          permissions: ['claim_reports.view', 'claim_reports.update', 'emotive_claims.view'],
+        },
+        auditContext,
+      )
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const app = createClaimReportsTestApp(
+        container,
+        testUser(['export.own_claims', 'emotive_claims.view_own_customer'], clientUserId),
+      )
+
+      const response = await app.request(
+        `/api/claim-reports/export/client/pdf?claimKind=${ClaimKind.Emotive}&claimId=${claimId}`,
+      )
+
+      if (response.status === 503) {
+        const body = (await response.json()) as { error: { code: string } }
+        expect(body.error.code).toBe(ERROR_CODE.ServiceUnavailable)
+        return
+      }
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Content-Type')).toBe('application/pdf')
+      const buffer = Buffer.from(await response.arrayBuffer())
+      expect(buffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
+    })
   })
 })

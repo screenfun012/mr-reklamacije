@@ -7,8 +7,17 @@ import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { ForbiddenError, UnsupportedMediaTypeError } from '../../../core/errors/domain-errors.js'
-import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import {
+  ForbiddenError,
+  NotFoundError,
+  UnsupportedMediaTypeError,
+} from '../../../core/errors/domain-errors.js'
+import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
+import {
+  ensureTestUser,
+  getCustomerIdByName,
+  TEST_USER_ID,
+} from '../../../test-helpers/fixtures.js'
 import {
   buildTestContainer,
   createAttachmentsTestApp,
@@ -310,6 +319,80 @@ describe('AttachmentsService integration', () => {
       actor,
     )
     expect(list.items).toHaveLength(0)
+  })
+
+  describe('emotive client-visibility gate (Primljeno claims)', () => {
+    const CLIENT_ACTOR = {
+      id: TEST_USER_ID,
+      permissions: ['emotive_claims.view_own_customer', 'attachments.view_client_visible'],
+    }
+
+    async function linkUserToCustomer(customerId: string): Promise<void> {
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+    }
+
+    async function createEmotiveClaimForCustomer(customerId: string): Promise<string> {
+      const engineType = await createTestEngineType(
+        container,
+        `ATT-EMO-${crypto.randomUUID().slice(0, 8)}`,
+      )
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-04-17'),
+          mrNumber: `ATT-${crypto.randomUUID().slice(0, 8)}/26`,
+          outcome: ClaimOutcome.Pending,
+          faults: [],
+          customerId,
+        },
+        { id: TEST_USER_ID, permissions: ['emotive_claims.view', 'emotive_claims.create'] },
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('404s a client listing attachments on a Primljeno (private) claim', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const claimId = await createEmotiveClaimForCustomer(customerId)
+
+      await expect(
+        container.attachmentsService.list({ claimKind: ClaimKind.Emotive, claimId }, CLIENT_ACTOR),
+      ).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    it('lists attachments for a client once the claim is client-visible', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const claimId = await createEmotiveClaimForCustomer(customerId)
+
+      await container.attachmentsService.upload(
+        {
+          claimKind: ClaimKind.Emotive,
+          claimId,
+          visibility: AttachmentVisibility.ClientVisible,
+          files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
+        },
+        { id: TEST_USER_ID, permissions: ['attachments.upload', 'emotive_claims.view'] },
+        auditContext,
+      )
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const list = await container.attachmentsService.list(
+        { claimKind: ClaimKind.Emotive, claimId },
+        CLIENT_ACTOR,
+      )
+      expect(list.items).toHaveLength(1)
+    })
   })
 })
 

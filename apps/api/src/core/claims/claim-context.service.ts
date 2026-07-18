@@ -47,6 +47,17 @@ export class ClaimContextService implements ClaimContextPort {
         throw new NotFoundError('Emotive claim', claimId)
       }
 
+      // A claim with neither timestamp set is "Primljeno" (received) — the
+      // client's list still shows it as a masked card, but the client must not
+      // be able to open its attachments/report. Existence-hiding: 404, not 403.
+      if (
+        scope.type === 'own_customer' &&
+        claim.clientVisibleAt === null &&
+        claim.publishedAt === null
+      ) {
+        throw new NotFoundError('Emotive claim', claimId)
+      }
+
       return { outcome: claim.outcome, claimYear: claim.claimYear }
     }
 

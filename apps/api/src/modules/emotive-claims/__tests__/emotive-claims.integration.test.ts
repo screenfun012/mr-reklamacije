@@ -254,6 +254,89 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('client detail-access gate for Primljeno (private) claims', () => {
+    async function linkUserToCustomer(customerId: string): Promise<void> {
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+    }
+
+    async function createClaimForCustomer(customerId: string): Promise<string> {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          customerId,
+          mrNumber: `PRIML-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      return created.id
+    }
+
+    it('404s a client on a claim with no clientVisibleAt/publishedAt (Primljeno)', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createClaimForCustomer(customerId)
+
+      await expect(
+        container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER),
+      ).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    it('returns the claim to a client once client_visible_at is set', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createClaimForCustomer(customerId)
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, id))
+
+      const found = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      expect(found.id).toBe(id)
+    })
+
+    it('returns the claim to a client once published_at is set', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createClaimForCustomer(customerId)
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ publishedAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, id))
+
+      const found = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      expect(found.id).toBe(id)
+    })
+
+    it('always returns a Primljeno claim to a full-view operator', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const id = await createClaimForCustomer(customerId)
+
+      const found = await container.emotiveClaimsService.findById(id, FULL_OPERATOR)
+      expect(found.id).toBe(id)
+      expect(found.clientVisibleAt).toBeNull()
+      expect(found.publishedAt).toBeNull()
+    })
+
+    it('keeps the Primljeno claim in the client LIST (list is not filtered)', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createClaimForCustomer(customerId)
+
+      const list = await container.emotiveClaimsService.list(
+        listQuery({ customerId }),
+        OWN_CUSTOMER_VIEWER,
+      )
+      expect(list.items.some((item) => item.id === id)).toBe(true)
+    })
+  })
+
   describe('compare-and-swap guard (TOCTOU)', () => {
     it('refuses to update a claim soft-deleted after the before-read → ConflictError, row unchanged', async () => {
       const created = await container.emotiveClaimsService.create(

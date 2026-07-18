@@ -22,7 +22,14 @@ export interface EmotiveClaimLookup {
   findById(
     id: string,
     scope: EmotiveClaimLookupScope,
-  ): Promise<{ outcome: ClaimOutcome; claimYear: number } | null>
+  ): Promise<{
+    outcome: ClaimOutcome
+    claimYear: number
+    // Client-visibility lifecycle (Phase 2, EMOTIVE only) — lets loadClaimContext
+    // 404 a "Primljeno" (private) claim for own_customer scope. See docs/claims.
+    clientVisibleAt: string | null
+    publishedAt: string | null
+  } | null>
 }
 
 export interface DomaceClaimLookup {

@@ -128,6 +128,17 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
+    // A claim with neither timestamp set is "Primljeno" (received) — it still
+    // shows as a card in the client's list, but the client must not be able to
+    // open its detail. Existence-hiding (security rule): 404, not 403.
+    if (
+      scope.type === 'own_customer' &&
+      claim.clientVisibleAt === null &&
+      claim.publishedAt === null
+    ) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
     return claim
   }
 
