@@ -31,8 +31,10 @@ and APIs must always leave room for it:
 - **Record oversight** — review and edit any entry across modules.
 - **Catalog management** — CRUD for companies/customers, employees, departments,
   engine types, sources, and similar reference data.
-- **Unlocking records** — e.g. reopening completed (locked) claims; any privileged
-  state override lives behind an admin permission.
+- **Privileged state overrides** — e.g. unarchiving a claim back to `pending`;
+  any such override lives behind an admin permission. (Claims themselves carry
+  no edit-lock — they're always editable, audit-tracked; there's nothing to
+  unlock.)
 
 ## Consequence for every future feature (design rule)
 
