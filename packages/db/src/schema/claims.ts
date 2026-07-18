@@ -52,6 +52,8 @@ export const emotiveClaims = pgTable(
     // Short worker-written English summary shown to the client on the portal
     // (distinct from internal_notes and the rich claim_reports document).
     inspectionReport: text('inspection_report'),
+    clientVisibleAt: timestamp('client_visible_at', { withTimezone: true, mode: 'date' }),
+    publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
