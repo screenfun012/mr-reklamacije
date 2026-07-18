@@ -141,5 +141,12 @@ export function createEmotiveClaimsController(container: Container) {
       const updated = await container.emotiveClaimsService.publish(id, getActorContext(c, user))
       return c.json(serializeClaimDetail(updated, user))
     },
+
+    markSeen: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = EmotiveClaimIdParamSchema.parse(c.req.param())
+      await container.emotiveClaimsService.markClientSeen(id, toActor(user))
+      return c.body(null, 204)
+    },
   }
 }

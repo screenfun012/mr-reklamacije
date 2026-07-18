@@ -606,9 +606,9 @@ export class EmotiveClaimsRepository {
             .select({
               ...commonFields,
               // Phase 3.1: per-section NEW/UPDATE marker for THIS viewer, computed
-              // against their own emotive_claim_client_views row. This SELECT runs
-              // before the service's recordClientView (Phase 3), so `viewedAt` here
-              // is the PRE-open value — the marker shows on this visit, clears next.
+              // against their own emotive_claim_client_views row. findById is a pure
+              // read (Task 1) — `viewedAt` here only ever advances via the explicit
+              // markClientSeen call, never as a side effect of this SELECT.
               sectionFreshness: sql<SectionFreshness>`jsonb_build_object(
                 'photos',     ${openable} AND ${emotiveClaims.sectionUpdatedAt}->>'photos'     IS NOT NULL AND (${emotiveClaimClientViews.viewedAt} IS NULL OR (${emotiveClaims.sectionUpdatedAt}->>'photos')::timestamptz     > ${emotiveClaimClientViews.viewedAt}),
                 'inspection', ${openable} AND ${emotiveClaims.sectionUpdatedAt}->>'inspection' IS NOT NULL AND (${emotiveClaimClientViews.viewedAt} IS NULL OR (${emotiveClaims.sectionUpdatedAt}->>'inspection')::timestamptz > ${emotiveClaimClientViews.viewedAt}),
@@ -938,9 +938,10 @@ export class EmotiveClaimsRepository {
   }
 
   /**
-   * Phase 3 freshness: stamps/advances the client's per-claim `viewed_at` on
-   * detail open. Upsert on the composite PK so a re-open never duplicate-key
-   * crashes — it just advances the timestamp.
+   * Phase 3 freshness: stamps/advances the client's per-claim `viewed_at`.
+   * Called only from the service's explicit `markClientSeen` (Task 1) — never
+   * as a side effect of a read. Upsert on the composite PK so calling it again
+   * never duplicate-key crashes — it just advances the timestamp.
    */
   async recordClientView(userId: string, claimId: string): Promise<void> {
     const now = new Date()

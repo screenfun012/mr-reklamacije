@@ -140,10 +140,35 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    // Phase 3 freshness: opening the detail is what clears the client's NEW/UPDATE
-    // badge on the list. Best-effort — a write failure here must not break the read
-    // (already-persisted, already-visible claim). Never recorded for `type === 'all'`:
-    // an operator previewing the claim must not clear the client's own badge.
+    return claim
+  }
+
+  /**
+   * Explicit "mark seen" — the client portal calls this once it has actually
+   * rendered the detail, decoupling the write from the GET (which must stay a
+   * pure read; see `findById`). Mirrors findById's load + Primljeno gate so a
+   * claim the client can't open can't be marked seen either. No-op for
+   * full-view (`all`) scope — an operator/viewer opening the claim must never
+   * clear the client's own badge. No `auditContext`/audit-log entry: this is
+   * view-tracking, not an audited state change (same as the recordClientView
+   * call this replaces, which was never audit-logged either).
+   */
+  async markClientSeen(id: string, actor: EmotiveClaimsActor): Promise<void> {
+    const scope = resolveListScope(actor)
+    const claim = await this.repo.findById(id, scope)
+
+    if (claim === null) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
+    if (
+      scope.type === 'own_customer' &&
+      claim.clientVisibleAt === null &&
+      claim.publishedAt === null
+    ) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
     if (scope.type === 'own_customer') {
       try {
         await this.repo.recordClientView(scope.userId, id)
@@ -154,8 +179,6 @@ export class EmotiveClaimsService {
         )
       }
     }
-
-    return claim
   }
 
   async update(

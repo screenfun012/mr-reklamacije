@@ -337,7 +337,7 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
-  describe('client view tracking (Task 4 — detail open records a view and clears freshness)', () => {
+  describe('client view tracking (Task 1 — detail GET is read-only; markClientSeen records the view)', () => {
     async function linkUserToCustomer(customerId: string, userId = TEST_USER_ID): Promise<void> {
       await ctx.db
         .insert(schema.customerUsers)
@@ -348,8 +348,7 @@ describe('EmotiveClaimsService integration', () => {
     }
 
     // Openable: both client-visibility gates (clientVisibleAt + publishedAt) are set,
-    // so a client actor's findById passes the Phase-2 Primljeno gate and reaches the
-    // view-recording hook under test.
+    // so a client actor's findById/markClientSeen passes the Phase-2 Primljeno gate.
     async function createOpenableClaim(customerId: string, mrPrefix: string): Promise<string> {
       const created = await container.emotiveClaimsService.create(
         await buildCreateInput({
@@ -379,13 +378,24 @@ describe('EmotiveClaimsService integration', () => {
       return row?.viewedAt ?? null
     }
 
-    it('creates a view row with viewedAt ≈ now when a client opens an openable claim', async () => {
+    it('findById does NOT create a view row for a client (pure read)', async () => {
       const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
       await linkUserToCustomer(customerId)
       const id = await createOpenableClaim(customerId, 'VIEW1')
 
-      const before = Date.now()
       await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+
+      const viewedAt = await getView(id, TEST_USER_ID)
+      expect(viewedAt).toBeNull()
+    })
+
+    it('markClientSeen upserts a view row with viewedAt ≈ now for own_customer', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'VIEW2')
+
+      const before = Date.now()
+      await container.emotiveClaimsService.markClientSeen(id, OWN_CUSTOMER_VIEWER)
       const after = Date.now()
 
       const viewedAt = await getView(id, TEST_USER_ID)
@@ -394,37 +404,68 @@ describe('EmotiveClaimsService integration', () => {
       expect(viewedAt!.getTime()).toBeLessThanOrEqual(after + 1000)
     })
 
-    it('advances viewedAt on a second open (upsert — no duplicate-key crash)', async () => {
+    it('markClientSeen advances viewedAt on a second call (upsert — no duplicate-key crash)', async () => {
       const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
       await linkUserToCustomer(customerId)
-      const id = await createOpenableClaim(customerId, 'VIEW2')
+      const id = await createOpenableClaim(customerId, 'VIEW3')
 
-      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      await container.emotiveClaimsService.markClientSeen(id, OWN_CUSTOMER_VIEWER)
       const firstViewedAt = await getView(id, TEST_USER_ID)
       expect(firstViewedAt).not.toBeNull()
 
       await new Promise((resolve) => setTimeout(resolve, 5))
-      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      await container.emotiveClaimsService.markClientSeen(id, OWN_CUSTOMER_VIEWER)
       const secondViewedAt = await getView(id, TEST_USER_ID)
 
       expect(secondViewedAt).not.toBeNull()
       expect(secondViewedAt!.getTime()).toBeGreaterThanOrEqual(firstViewedAt!.getTime())
     })
 
-    it('does NOT create a view row for a full-view internal actor', async () => {
+    it('markClientSeen does NOT create a view row for a full-view internal actor (no-op)', async () => {
       const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
-      const id = await createOpenableClaim(customerId, 'VIEW3')
+      const id = await createOpenableClaim(customerId, 'VIEW4')
 
-      await container.emotiveClaimsService.findById(id, FULL_OPERATOR)
+      await container.emotiveClaimsService.markClientSeen(id, FULL_OPERATOR)
 
       const viewedAt = await getView(id, TEST_USER_ID)
       expect(viewedAt).toBeNull()
     })
 
-    it('end-to-end: opening the detail clears the freshness badge on the unified client list', async () => {
+    it('markClientSeen 404s on a Primljeno claim (both gates null)', async () => {
       const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
       await linkUserToCustomer(customerId)
-      const id = await createOpenableClaim(customerId, 'VIEW4')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          customerId,
+          mrNumber: `VIEW5-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await expect(
+        container.emotiveClaimsService.markClientSeen(created.id, OWN_CUSTOMER_VIEWER),
+      ).rejects.toBeInstanceOf(NotFoundError)
+
+      const viewedAt = await getView(created.id, TEST_USER_ID)
+      expect(viewedAt).toBeNull()
+    })
+
+    it('markClientSeen 404s on another company’s claim (no cross-company leak)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerSelman)
+      const customerVitobello = await getCustomerIdByName(ctx.db, 'VITOBELLO')
+      const id = await createOpenableClaim(customerVitobello, 'VIEW6')
+
+      await expect(
+        container.emotiveClaimsService.markClientSeen(id, OWN_CUSTOMER_VIEWER),
+      ).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    it('end-to-end: findById shows freshness and does NOT clear it; markClientSeen then clears it', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'VIEW7')
       await ctx.db
         .update(schema.emotiveClaims)
         .set({ clientContentUpdatedAt: new Date() })
@@ -440,7 +481,16 @@ describe('EmotiveClaimsService integration', () => {
       const beforeItem = before.items.find((item) => item.id === id)
       expect(beforeItem?.kind === 'emotive' ? beforeItem.freshness : null).toBe('update')
 
+      // Reading the detail (possibly multiple times) must NOT clear the badge.
       await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+
+      const afterRead = await container.claimsService.list(unifiedListQuery, clientActor)
+      const afterReadItem = afterRead.items.find((item) => item.id === id)
+      expect(afterReadItem?.kind === 'emotive' ? afterReadItem.freshness : null).toBe('update')
+
+      // Only the explicit mark-seen call clears it.
+      await container.emotiveClaimsService.markClientSeen(id, OWN_CUSTOMER_VIEWER)
 
       const after = await container.claimsService.list(unifiedListQuery, clientActor)
       const afterItem = after.items.find((item) => item.id === id)
@@ -639,7 +689,7 @@ describe('EmotiveClaimsService integration', () => {
       expect(foundB!.sectionFreshness.details).toBe(true)
     })
 
-    it('reads the pre-open viewedAt via the service (first open still shows fresh, second clears it)', async () => {
+    it('findById never clears the marker on its own; only markClientSeen advances viewedAt', async () => {
       const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
       await linkUserToCustomer(customerId)
       const id = await createOpenableClaim(customerId, 'SF7')
@@ -648,8 +698,16 @@ describe('EmotiveClaimsService integration', () => {
       const firstOpen = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
       expect(firstOpen.sectionFreshness.inspection).toBe(true)
 
+      // A second pure read must NOT clear it (this is the whole point of Task 1 —
+      // the detail GET is idempotent/read-only).
       const secondOpen = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
-      expect(secondOpen.sectionFreshness.inspection).toBe(false)
+      expect(secondOpen.sectionFreshness.inspection).toBe(true)
+
+      // Only the explicit mark-seen call advances viewedAt past the section bump.
+      await container.emotiveClaimsService.markClientSeen(id, OWN_CUSTOMER_VIEWER)
+
+      const thirdOpen = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      expect(thirdOpen.sectionFreshness.inspection).toBe(false)
     })
   })
 

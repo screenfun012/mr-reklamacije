@@ -692,4 +692,88 @@ describe('EmotiveClaims HTTP', () => {
       expect(auditCountAfter).toBe(auditCountBefore)
     })
   })
+
+  describe('POST /api/emotive-claims/:id/mark-seen', () => {
+    it('returns 401 without auth', async () => {
+      const created = await createClaimViaHttp()
+      const app = createEmotiveClaimsTestApp(container, null)
+      const res = await app.request(`/api/emotive-claims/${created.id}/mark-seen`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(401)
+    })
+
+    it('returns 403 for an actor lacking the view permission', async () => {
+      const created = await createClaimViaHttp()
+      const app = createEmotiveClaimsTestApp(container, testUser(['emotive_claims.create']))
+      const res = await app.request(`/api/emotive-claims/${created.id}/mark-seen`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('returns 204 for a client on an openable owned claim and records the view', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const created = await createClaimViaHttp({
+        customerId: customerSelman,
+        mrNumber: 'HTTP-MARKSEEN-OK/26',
+      })
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      const app = createEmotiveClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, [SYSTEM_ROLE_CLIENT]),
+      )
+      const res = await app.request(`/api/emotive-claims/${created.id}/mark-seen`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(204)
+
+      const [view] = await ctx.db
+        .select({ viewedAt: schema.emotiveClaimClientViews.viewedAt })
+        .from(schema.emotiveClaimClientViews)
+        .where(
+          and(
+            eq(schema.emotiveClaimClientViews.emotiveClaimId, created.id),
+            eq(schema.emotiveClaimClientViews.userId, TEST_USER_ID),
+          ),
+        )
+      expect(view?.viewedAt).toBeTruthy()
+    })
+
+    it('returns 404 for an inaccessible claim (another company’s, no cross-company leak)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const customerVitobello = await getCustomerIdByName(ctx.db, 'VITOBELLO')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const other = await createClaimViaHttp({
+        customerId: customerVitobello,
+        mrNumber: 'HTTP-MARKSEEN-OTHER-CO/26',
+      })
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, other.id))
+
+      const app = createEmotiveClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, [SYSTEM_ROLE_CLIENT]),
+      )
+      const res = await app.request(`/api/emotive-claims/${other.id}/mark-seen`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(404)
+    })
+  })
 })
