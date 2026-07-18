@@ -21,18 +21,55 @@ export const clientClaimPhaseValues = [
 ] as const
 
 /**
- * THE single source of truth for the portal's live claim status. The portal
- * mirrors the internal outcome directly (Nikola, 2026-07-04): every pending
- * claim reads "in progress" — the same story the internal app tells — and a
- * resolved outcome is the Outcome phase. Because status is now a pure function
- * of `outcome` (which is already in the client whitelist), the server and the
- * portal both call THIS — there is no separate `progressPhase` wire field and
- * no second client-side derivation to drift out of sync. `Received` survives
- * only as the always-completed first step of the detail timeline and as an
- * activity-feed event type — never as a live status.
+ * THE single source of truth for the portal's live claim status.
+ *
+ * SUPERSEDED (2026-07-04 note below kept for history): status is no longer a
+ * pure function of `outcome` alone. Phase 2 "client visibility" (EMOTIVE only)
+ * gives a claim a private→published lifecycle — `clientVisibleAt`/`publishedAt`
+ * now gate what the portal is told: while `publishedAt` is null the real
+ * outcome must never leave the server, so phase is derived from the
+ * visibility timestamps first, and only falls back to mirroring `outcome`
+ * once the claim is published.
+ *
+ * - `publishedAt === null` (private): `clientVisibleAt === null` → Received
+ *   (Primljeno); otherwise → InProgress (U obradi) — the real outcome is
+ *   masked regardless of what it actually is.
+ * - `publishedAt !== null` (published): mirrors the internal outcome exactly
+ *   as before — `Pending` → InProgress, any resolved outcome → Outcome.
+ *
+ * Old note (2026-07-04): "The portal mirrors the internal outcome directly —
+ * every pending claim reads 'in progress' ... Because status is a pure
+ * function of `outcome` ... there is no separate `progressPhase` wire field."
+ * That pure-function claim is now superseded by the visibility gate above;
+ * the "no redundant wire field" property still holds — `clientPhase` is
+ * computed once here, server-side, and shipped on the wire instead.
  */
-export function deriveClientClaimPhase(outcome: ClaimOutcome): ClientClaimPhase {
+export function deriveClientClaimPhase(
+  outcome: ClaimOutcome,
+  visibility: { clientVisibleAt: string | null; publishedAt: string | null },
+): ClientClaimPhase {
+  if (visibility.publishedAt === null) {
+    return visibility.clientVisibleAt === null
+      ? ClientClaimPhase.Received
+      : ClientClaimPhase.InProgress
+  }
   return outcome === ClaimOutcome.Pending ? ClientClaimPhase.InProgress : ClientClaimPhase.Outcome
+}
+
+/**
+ * Phase 2 "client visibility" is EMOTIVE-only (DOMACE has no portal and no
+ * `clientVisibleAt`/`publishedAt` columns — see the design doc's global
+ * constraint). A DOMACE item is therefore treated as always-published so its
+ * behavior through `toClientClaimListItem`/`toClientClaimDetail` is unchanged.
+ */
+function visibilityOf(item: ClaimListItem): {
+  clientVisibleAt: string | null
+  publishedAt: string | null
+} {
+  if (item.kind !== ClaimKind.Emotive) {
+    return { clientVisibleAt: item.createdAt, publishedAt: item.createdAt }
+  }
+  return { clientVisibleAt: item.clientVisibleAt, publishedAt: item.publishedAt }
 }
 
 /**
@@ -60,6 +97,7 @@ export const ClientClaimListItemSchema = z.object({
   claimYear: z.coerce.number().int(),
   customerName: z.string().nullable(),
   createdAt: z.string(),
+  clientPhase: z.enum(clientClaimPhaseValues),
 })
 
 export type ClientClaimListItem = z.infer<typeof ClientClaimListItemSchema>
@@ -87,6 +125,9 @@ export type ClientClaimListResponse = z.infer<typeof ClientClaimListResponseSche
 
 /** Whitelist a full claim list item down to the client-safe shape. */
 export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem {
+  const visibility = visibilityOf(item)
+  const published = visibility.publishedAt !== null
+
   return {
     kind: item.kind,
     id: item.id,
@@ -97,11 +138,12 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
     manufacturerName: item.manufacturerName,
     engineCode: item.engineCode,
     dateOfClaim: item.dateOfClaim ?? null,
-    dateOfFinish: item.dateOfFinish,
-    outcome: item.outcome,
+    dateOfFinish: published ? item.dateOfFinish : null,
+    outcome: published ? item.outcome : ClaimOutcome.Pending,
     claimYear: item.claimYear,
     customerName: item.customerName,
     createdAt: item.createdAt,
+    clientPhase: deriveClientClaimPhase(item.outcome, visibility),
   }
 }
 

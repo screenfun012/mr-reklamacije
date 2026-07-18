@@ -103,6 +103,8 @@ function mapListItem(row: {
   customerId: string | null
   customerName: string | null
   createdAt: Date
+  clientVisibleAt: Date | null
+  publishedAt: Date | null
 }): EmotiveClaimListItem {
   return {
     kind: ClaimKind.Emotive,
@@ -126,6 +128,8 @@ function mapListItem(row: {
     customerId: row.customerId,
     customerName: row.customerName,
     createdAt: formatTimestamp(row.createdAt),
+    clientVisibleAt: row.clientVisibleAt === null ? null : formatTimestamp(row.clientVisibleAt),
+    publishedAt: row.publishedAt === null ? null : formatTimestamp(row.publishedAt),
   }
 }
 
@@ -444,6 +448,8 @@ export class EmotiveClaimsRepository {
         customerId: emotiveClaims.customerId,
         customerName: customers.name,
         createdAt: emotiveClaims.createdAt,
+        clientVisibleAt: emotiveClaims.clientVisibleAt,
+        publishedAt: emotiveClaims.publishedAt,
       })
       .from(emotiveClaims)
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
@@ -511,6 +517,8 @@ export class EmotiveClaimsRepository {
         customerId: emotiveClaims.customerId,
         customerName: customers.name,
         createdAt: emotiveClaims.createdAt,
+        clientVisibleAt: emotiveClaims.clientVisibleAt,
+        publishedAt: emotiveClaims.publishedAt,
         internalNotes: emotiveClaims.internalNotes,
         inspectionReport: emotiveClaims.inspectionReport,
         updatedBy: emotiveClaims.updatedBy,

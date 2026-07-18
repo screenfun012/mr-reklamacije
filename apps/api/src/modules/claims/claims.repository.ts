@@ -121,6 +121,12 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     customerId: row.customer_id,
     customerName: row.customer_name,
     createdAt: formatTimestamp(row.created_at),
+    // ponytail: the unified list's raw UNION SQL doesn't select client_visible_at
+    // /published_at yet (out of this task's scope — only the dedicated
+    // emotive-claims repository carries them so far). Wire this branch too if
+    // the unified /api/claims endpoint needs real client-visibility masking.
+    clientVisibleAt: null,
+    publishedAt: null,
   }
   return item
 }

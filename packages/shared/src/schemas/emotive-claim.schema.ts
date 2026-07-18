@@ -114,6 +114,15 @@ export const EmotiveClaimListItemSchema = z.object({
   customerId: z.string().uuid().nullable(),
   customerName: z.string().nullable(),
   createdAt: z.string(),
+  /**
+   * Client-visibility lifecycle timestamps (Phase 2, EMOTIVE only) — INTERNAL,
+   * full-view fields. They exist so the client projection (`toClientClaimListItem`
+   * / `toClientClaimDetail` in `client-claim.schema.ts`) can derive `clientPhase`
+   * and mask `outcome`/`dateOfFinish` while `publishedAt` is null. They must
+   * NEVER be copied onto a client-facing wire shape.
+   */
+  clientVisibleAt: z.string().nullable(),
+  publishedAt: z.string().nullable(),
 })
 
 export type EmotiveClaimListItem = z.infer<typeof EmotiveClaimListItemSchema>
