@@ -37,6 +37,7 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `emotive_claims.restore` | Restore a soft-deleted EMOTIVE claim |
 | `emotive_claims.change_outcome` | Change the outcome (pending/accepted/rejected/archived) |
 | `emotive_claims.unarchive` | Move a claim out of `archived` into `pending` (admin/senior only) |
+| `emotive_claims.publish` | Publish a claim to the client portal — Gate B, reveals the real (masked) outcome (operator, admin) |
 
 ### Module: `domace_claims` — DOMACE claims
 
@@ -211,6 +212,7 @@ emotive_claims.view
 emotive_claims.create
 emotive_claims.update
 emotive_claims.change_outcome
+emotive_claims.publish
 domace_claims.view
 domace_claims.create
 domace_claims.update
