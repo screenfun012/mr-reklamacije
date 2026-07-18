@@ -3,14 +3,11 @@ import { mkdir, rm } from 'node:fs/promises'
 import { schema } from '@mr/db'
 import { AttachmentVisibility, AuditAction, ClaimKind, ClaimOutcome, ERROR_CODE } from '@mr/shared'
 import { eq } from 'drizzle-orm'
+import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import {
-  ConflictError,
-  ForbiddenError,
-  UnsupportedMediaTypeError,
-} from '../../../core/errors/domain-errors.js'
+import { ForbiddenError, UnsupportedMediaTypeError } from '../../../core/errors/domain-errors.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import {
   buildTestContainer,
@@ -39,6 +36,14 @@ const MINIMAL_JPEG = Buffer.from([
   0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
   0x00, 0x01, 0x00, 0x00, 0xff, 0xd9,
 ])
+
+async function createTestJpeg(width: number, height: number): Promise<Buffer> {
+  return sharp({
+    create: { width, height, channels: 3, background: { r: 180, g: 120, b: 60 } },
+  })
+    .jpeg({ quality: 90 })
+    .toBuffer()
+}
 
 async function createDomaceClaim(container: Container): Promise<string> {
   const created = await container.domaceClaimsService.create(
@@ -195,17 +200,22 @@ describe('AttachmentsService integration', () => {
     ).rejects.toBeInstanceOf(ForbiddenError)
   })
 
-  it('blocks upload when the parent claim is locked', async () => {
-    const claimId = await createDomaceClaim(container)
-    await container.domaceClaimsService.changeOutcome(
-      claimId,
-      { outcome: ClaimOutcome.Accepted },
-      { id: TEST_USER_ID, permissions: ['domace_claims.view', 'domace_claims.change_outcome'] },
-      auditContext,
-    )
+  describe('editing freedom (completed claims, no outcome lock)', () => {
+    async function createAcceptedDomaceClaim(): Promise<string> {
+      const claimId = await createDomaceClaim(container)
+      await container.domaceClaimsService.changeOutcome(
+        claimId,
+        { outcome: ClaimOutcome.Accepted },
+        { id: TEST_USER_ID, permissions: ['domace_claims.view', 'domace_claims.change_outcome'] },
+        auditContext,
+      )
+      return claimId
+    }
 
-    await expect(
-      container.attachmentsService.upload(
+    it('lets an operator upload an attachment on a completed claim', async () => {
+      const claimId = await createAcceptedDomaceClaim()
+
+      const result = await container.attachmentsService.upload(
         {
           claimKind: ClaimKind.Domace,
           claimId,
@@ -214,8 +224,57 @@ describe('AttachmentsService integration', () => {
         },
         { id: TEST_USER_ID, permissions: ['attachments.upload', 'domace_claims.view'] },
         auditContext,
-      ),
-    ).rejects.toBeInstanceOf(ConflictError)
+      )
+
+      expect(result.items).toHaveLength(1)
+    })
+
+    it('lets an operator upload a report image on a completed claim', async () => {
+      const claimId = await createAcceptedDomaceClaim()
+      const reportImage = await createTestJpeg(640, 480)
+
+      const result = await container.attachmentsService.uploadReportImage(
+        {
+          claimKind: ClaimKind.Domace,
+          claimId,
+          file: { fileName: 'engine.jpg', data: reportImage },
+        },
+        { id: TEST_USER_ID, permissions: ['claim_reports.update', 'domace_claims.view'] },
+        auditContext,
+      )
+
+      expect(result.id).toBeDefined()
+    })
+
+    it('lets an operator delete an attachment on a completed claim', async () => {
+      const claimId = await createAcceptedDomaceClaim()
+      const actor = {
+        id: TEST_USER_ID,
+        permissions: [
+          'attachments.upload',
+          'attachments.view_internal',
+          'attachments.delete_own',
+          'domace_claims.view',
+        ],
+      }
+
+      const uploaded = await container.attachmentsService.upload(
+        {
+          claimKind: ClaimKind.Domace,
+          claimId,
+          visibility: AttachmentVisibility.Internal,
+          files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
+        },
+        actor,
+        auditContext,
+      )
+      const attachmentId = uploaded.items[0]?.id
+      expect(attachmentId).toBeDefined()
+
+      await expect(
+        container.attachmentsService.delete(attachmentId!, actor, auditContext),
+      ).resolves.toBeUndefined()
+    })
   })
 
   it('soft-deletes an attachment and hides it from list', async () => {

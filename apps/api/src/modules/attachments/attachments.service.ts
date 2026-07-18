@@ -13,7 +13,6 @@ import {
 } from '@mr/shared'
 import { createHash, randomUUID } from 'node:crypto'
 
-import { assertClaimEditable } from '../../core/claims/claim-lock.js'
 import {
   ConflictError,
   ForbiddenError,
@@ -221,7 +220,6 @@ export class AttachmentsService {
     }
 
     const claim = await this.claimContext.loadClaimContext(input.claimKind, input.claimId, actor)
-    assertClaimEditable(claim)
 
     const stats = await this.repo.countActiveForClaim(input.claimKind, input.claimId)
     if (stats.count + input.files.length > MAX_FILES_PER_CLAIM) {
@@ -329,7 +327,6 @@ export class AttachmentsService {
     }
 
     const claim = await this.claimContext.loadClaimContext(input.claimKind, input.claimId, actor)
-    assertClaimEditable(claim)
 
     const reportImageCount = await this.repo.countActiveReportImagesForClaim(
       input.claimKind,
@@ -436,12 +433,7 @@ export class AttachmentsService {
       throw new NotFoundError('Attachment', id)
     }
 
-    const claim = await this.claimContext.loadClaimContext(
-      attachment.claimKind,
-      attachment.claimId,
-      actor,
-    )
-    assertClaimEditable(claim)
+    await this.claimContext.loadClaimContext(attachment.claimKind, attachment.claimId, actor)
 
     const canDeleteAny = actor.permissions.includes('attachments.delete_any')
     const canDeleteOwn =
