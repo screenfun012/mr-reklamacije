@@ -10,7 +10,8 @@ const OUTCOME_TONES: Record<ClaimOutcomeType, InternalPillTone> = {
   [ClaimOutcome.Archived]: 'archived',
 }
 
-const OUTCOME_LABELS: Record<ClaimOutcomeType, () => string> = {
+/** Exported for reuse wherever an outcome needs its display label without the pill chrome. */
+export const OUTCOME_LABELS: Record<ClaimOutcomeType, () => string> = {
   [ClaimOutcome.Pending]: m.outcome_pending,
   [ClaimOutcome.Accepted]: m.outcome_accepted,
   [ClaimOutcome.Rejected]: m.outcome_rejected,

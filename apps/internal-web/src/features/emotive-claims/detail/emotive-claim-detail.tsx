@@ -41,6 +41,7 @@ export function EmotiveClaimDetailView({
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('emotive_claims.change_outcome') === true
+  const canPublish = permissions?.includes('emotive_claims.publish') === true
   const canEditBasic = permissions?.includes('emotive_claims.update') === true
   const canEditFaults = canEditBasic
   const canEditFindings = permissions?.includes('emotive_claims.update') === true
@@ -67,6 +68,7 @@ export function EmotiveClaimDetailView({
         canEditBasic={canEditBasic}
         editingBasic={editingBasic}
         canChangeOutcome={canChangeOutcome}
+        canPublish={canPublish}
         onEditBasic={handleEditBasic}
       />
 

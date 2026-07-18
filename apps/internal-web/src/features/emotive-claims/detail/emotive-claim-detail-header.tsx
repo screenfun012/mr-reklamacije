@@ -20,6 +20,8 @@ export interface EmotiveClaimDetailHeaderProps {
   canEditBasic: boolean
   editingBasic: boolean
   canChangeOutcome: boolean
+  /** Holder of emotive_claims.publish (operator + admin). */
+  canPublish: boolean
   onEditBasic: () => void
 }
 
@@ -28,6 +30,7 @@ export function EmotiveClaimDetailHeader({
   canEditBasic,
   editingBasic,
   canChangeOutcome,
+  canPublish,
   onEditBasic,
 }: EmotiveClaimDetailHeaderProps): React.ReactElement {
   const metaLine = formatClaimDetailMetaLine([
@@ -37,7 +40,6 @@ export function EmotiveClaimDetailHeader({
   ])
 
   const showEdit = canEditBasic && !editingBasic
-  const showActionBar = showEdit || canChangeOutcome
 
   return (
     <header className="flex flex-col gap-3 border-b border-mri-border pb-6">
@@ -51,29 +53,23 @@ export function EmotiveClaimDetailHeader({
 
       <p className="text-sm text-mri-text2">{metaLine || EMPTY}</p>
 
-      {showActionBar ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-mri-border pt-3">
-          {showEdit ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={onEditBasic}
-            >
-              <Pencil className="size-4" />
-              {m.emotive_claims_detail_basic_edit()}
-            </Button>
-          ) : null}
-          {canChangeOutcome ? (
-            <EmotiveClaimStatusActions
-              claimId={claim.id}
-              canChangeOutcome={canChangeOutcome}
-              layout="inline"
-            />
-          ) : null}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-mri-border pt-3">
+        {showEdit ? (
+          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onEditBasic}>
+            <Pencil className="size-4" />
+            {m.emotive_claims_detail_basic_edit()}
+          </Button>
+        ) : null}
+        <EmotiveClaimStatusActions
+          claimId={claim.id}
+          outcome={claim.outcome}
+          clientVisibleAt={claim.clientVisibleAt}
+          publishedAt={claim.publishedAt}
+          canChangeOutcome={canChangeOutcome}
+          canPublish={canPublish}
+          layout="inline"
+        />
+      </div>
     </header>
   )
 }
