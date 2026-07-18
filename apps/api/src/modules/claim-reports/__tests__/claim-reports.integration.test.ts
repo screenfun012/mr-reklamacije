@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
 import { buildContainer } from '../../../core/container.js'
-import { ConflictError, ForbiddenError } from '../../../core/errors/domain-errors.js'
+import { ForbiddenError } from '../../../core/errors/domain-errors.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import {
   buildTestContainer,
@@ -241,7 +241,7 @@ describe('ClaimReportsService integration', () => {
     ).rejects.toBeInstanceOf(ForbiddenError)
   })
 
-  it('blocks upsert when the parent claim is locked', async () => {
+  it('allows a report upsert on an accepted (completed) claim', async () => {
     const claimId = await createDomaceClaim(container)
     await container.domaceClaimsService.changeOutcome(
       claimId,
@@ -250,17 +250,25 @@ describe('ClaimReportsService integration', () => {
       auditContext,
     )
 
-    await expect(
-      container.claimReportsService.upsert(
-        { claimKind: ClaimKind.Domace, claimId },
-        SAMPLE_BODY,
-        {
-          id: TEST_USER_ID,
-          permissions: ['claim_reports.view', 'claim_reports.update', 'domace_claims.view'],
-        },
-        auditContext,
-      ),
-    ).rejects.toBeInstanceOf(ConflictError)
+    const saved = await container.claimReportsService.upsert(
+      { claimKind: ClaimKind.Domace, claimId },
+      SAMPLE_BODY,
+      {
+        id: TEST_USER_ID,
+        permissions: ['claim_reports.view', 'claim_reports.update', 'domace_claims.view'],
+      },
+      auditContext,
+    )
+
+    expect(saved.persisted).toBe(true)
+    expect(saved.contentHtml).toBe(SAMPLE_BODY.contentHtml)
+
+    const rows = await ctx.db
+      .select()
+      .from(schema.claimReports)
+      .where(eq(schema.claimReports.domaceClaimId, claimId))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.contentHtml).toBe(SAMPLE_BODY.contentHtml)
   })
 })
 

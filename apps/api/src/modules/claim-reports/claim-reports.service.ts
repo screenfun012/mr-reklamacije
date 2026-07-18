@@ -7,7 +7,6 @@ import {
   type ClaimReportUpsertBody,
 } from '@mr/shared'
 
-import { assertClaimEditable } from '../../core/claims/claim-lock.js'
 import {
   ForbiddenError,
   NotFoundError,
@@ -99,8 +98,7 @@ export class ClaimReportsService {
       throw new ForbiddenError()
     }
 
-    const claim = await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
-    assertClaimEditable(claim)
+    await this.claimContext.loadClaimContext(query.claimKind, query.claimId, actor)
 
     const sanitizedHtml = sanitizeClaimReportHtml(body.contentHtml)
 
