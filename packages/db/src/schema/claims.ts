@@ -54,6 +54,10 @@ export const emotiveClaims = pgTable(
     inspectionReport: text('inspection_report'),
     clientVisibleAt: timestamp('client_visible_at', { withTimezone: true, mode: 'date' }),
     publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
+    clientContentUpdatedAt: timestamp('client_content_updated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
