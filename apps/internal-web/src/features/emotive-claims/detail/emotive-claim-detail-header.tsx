@@ -1,9 +1,7 @@
 import {
   ClaimKind,
-  ClaimOutcome,
   formatClaimDetailMetaLine,
   formatListDate,
-  type ClaimOutcome as ClaimOutcomeType,
   type EmotiveClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -22,7 +20,6 @@ export interface EmotiveClaimDetailHeaderProps {
   canEditBasic: boolean
   editingBasic: boolean
   canChangeOutcome: boolean
-  canReopen: boolean
   onEditBasic: () => void
 }
 
@@ -31,7 +28,6 @@ export function EmotiveClaimDetailHeader({
   canEditBasic,
   editingBasic,
   canChangeOutcome,
-  canReopen,
   onEditBasic,
 }: EmotiveClaimDetailHeaderProps): React.ReactElement {
   const metaLine = formatClaimDetailMetaLine([
@@ -41,9 +37,7 @@ export function EmotiveClaimDetailHeader({
   ])
 
   const showEdit = canEditBasic && !editingBasic
-  const isLocked = claim.outcome !== ClaimOutcome.Pending
-  const showStatusActions = canChangeOutcome || (canReopen && isLocked)
-  const showActionBar = showEdit || showStatusActions
+  const showActionBar = showEdit || canChangeOutcome
 
   return (
     <header className="flex flex-col gap-3 border-b border-mri-border pb-6">
@@ -71,12 +65,10 @@ export function EmotiveClaimDetailHeader({
               {m.emotive_claims_detail_basic_edit()}
             </Button>
           ) : null}
-          {showStatusActions ? (
+          {canChangeOutcome ? (
             <EmotiveClaimStatusActions
               claimId={claim.id}
-              currentOutcome={claim.outcome as ClaimOutcomeType}
               canChangeOutcome={canChangeOutcome}
-              canReopen={canReopen}
               layout="inline"
             />
           ) : null}

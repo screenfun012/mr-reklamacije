@@ -44,7 +44,6 @@ export function DomaceClaimDetailView({
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('domace_claims.change_outcome') === true
-  const canReopen = permissions?.includes('domace_claims.reopen') === true
   const canEditBasic =
     claim.outcome === ClaimOutcome.Pending && permissions?.includes('domace_claims.update') === true
   const canEditFaults = canEditBasic
@@ -76,7 +75,6 @@ export function DomaceClaimDetailView({
         canEditData={canEditData}
         editingData={editingData}
         canChangeOutcome={canChangeOutcome}
-        canReopen={canReopen}
         onEditData={handleEditData}
       />
 

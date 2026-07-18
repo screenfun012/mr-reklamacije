@@ -1,6 +1,6 @@
 import { setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -15,6 +15,17 @@ function renderWithClient(node: ReactElement): ReturnType<typeof render> {
   return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
 }
 
+function stubFetchOk(): ReturnType<typeof vi.fn> {
+  const fetchSpy = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ id: CLAIM_ID, outcome: 'accepted' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
+  vi.stubGlobal('fetch', fetchSpy)
+  return fetchSpy
+}
+
 describe('EmotiveClaimStatusActions', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -25,116 +36,61 @@ describe('EmotiveClaimStatusActions', () => {
   })
 
   it('renders nothing without the change_outcome permission', () => {
-    renderWithClient(
-      <EmotiveClaimStatusActions
-        claimId={CLAIM_ID}
-        currentOutcome="pending"
-        canChangeOutcome={false}
-        canReopen={false}
-      />,
-    )
+    renderWithClient(<EmotiveClaimStatusActions claimId={CLAIM_ID} canChangeOutcome={false} />)
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('offers the other flow outcomes (registry-driven, archived excluded) for a pending claim', () => {
-    renderWithClient(
-      <EmotiveClaimStatusActions
-        claimId={CLAIM_ID}
-        currentOutcome="pending"
-        canChangeOutcome
-        canReopen={false}
-      />,
-    )
+  it('offers accept and reject to a change_outcome holder', () => {
+    renderWithClient(<EmotiveClaimStatusActions claimId={CLAIM_ID} canChangeOutcome />)
 
     expect(screen.getByRole('button', { name: 'Prihvati' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Odbij' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Vrati u obradu' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Arhivirano' })).not.toBeInTheDocument()
-    expect(screen.queryByTestId('emotive-claim-lock-indicator')).not.toBeInTheDocument()
   })
 
-  it('shows the lock indicator and no reopen button for an operator on a completed claim', () => {
-    renderWithClient(
-      <EmotiveClaimStatusActions
-        claimId={CLAIM_ID}
-        currentOutcome="accepted"
-        canChangeOutcome
-        canReopen={false}
-      />,
-    )
+  // Accepting/rejecting now happens at any time (no more edit-lock/reopen), so
+  // both must confirm before the mutation fires.
+  it('gates accept behind a confirm dialog; the mutation runs only after confirming', async () => {
+    const fetchSpy = stubFetchOk()
 
-    expect(screen.getByTestId('emotive-claim-lock-indicator')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Vrati u obradu' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Prihvati' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-  })
-
-  it('shows the reopen button for an admin on a completed claim', () => {
-    renderWithClient(
-      <EmotiveClaimStatusActions
-        claimId={CLAIM_ID}
-        currentOutcome="rejected"
-        canChangeOutcome
-        canReopen
-      />,
-    )
-
-    expect(screen.getByTestId('emotive-claim-lock-indicator')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Vrati u obradu' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-  })
-
-  // Accepting also locks the claim irreversibly for operators, so it must confirm too.
-  it('requires a two-step confirmation before accepting', () => {
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
-
-    renderWithClient(
-      <EmotiveClaimStatusActions
-        claimId={CLAIM_ID}
-        currentOutcome="pending"
-        canChangeOutcome
-        canReopen={false}
-      />,
-    )
+    renderWithClient(<EmotiveClaimStatusActions claimId={CLAIM_ID} canChangeOutcome />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Prihvati' }))
 
-    expect(screen.getByText('Potvrditi prihvatanje?')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Potvrdi prihvatanje' })).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Označiti reklamaciju kao PRIHVAĆENO?')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Otkaži' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Otkaži' }))
 
-    expect(screen.queryByText('Potvrditi prihvatanje?')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Prihvati' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prihvati' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Prihvati' }))
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
   })
 
-  it('requires a two-step confirmation before rejecting', () => {
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
+  it('gates reject behind a confirm dialog; the mutation runs only after confirming', async () => {
+    const fetchSpy = stubFetchOk()
 
-    renderWithClient(
-      <EmotiveClaimStatusActions
-        claimId={CLAIM_ID}
-        currentOutcome="pending"
-        canChangeOutcome
-        canReopen={false}
-      />,
-    )
+    renderWithClient(<EmotiveClaimStatusActions claimId={CLAIM_ID} canChangeOutcome />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Odbij' }))
 
-    expect(screen.getByText('Potvrditi odbijanje?')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Potvrdi odbijanje' })).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Označiti reklamaciju kao ODBIJENO?')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Otkaži' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Otkaži' }))
 
-    expect(screen.queryByText('Potvrditi odbijanje?')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Prihvati' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Odbij' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Odbij' }))
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
   })
 })

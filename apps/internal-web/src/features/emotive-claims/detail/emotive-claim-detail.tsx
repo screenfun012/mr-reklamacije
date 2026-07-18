@@ -42,7 +42,6 @@ export function EmotiveClaimDetailView({
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('emotive_claims.change_outcome') === true
-  const canReopen = permissions?.includes('emotive_claims.reopen') === true
   const canEditBasic =
     claim.outcome === ClaimOutcome.Pending &&
     permissions?.includes('emotive_claims.update') === true
@@ -71,7 +70,6 @@ export function EmotiveClaimDetailView({
         canEditBasic={canEditBasic}
         editingBasic={editingBasic}
         canChangeOutcome={canChangeOutcome}
-        canReopen={canReopen}
         onEditBasic={handleEditBasic}
       />
 

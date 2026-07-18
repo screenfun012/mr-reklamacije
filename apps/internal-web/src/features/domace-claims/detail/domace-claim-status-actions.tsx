@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
-import { ClaimOutcome, OUTCOME_REGISTRY, type ClaimOutcome as ClaimOutcomeType } from '@mr/shared'
-import { Check, Lock } from 'lucide-react'
+import { ClaimOutcome } from '@mr/shared'
+import { ConfirmDialog } from '@mr/ui'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { InternalButton, type InternalButtonVariant } from '~/components/internal-button'
@@ -9,72 +10,49 @@ import { useChangeDomaceClaimOutcome } from './use-change-domace-claim-outcome.j
 
 export interface DomaceClaimStatusActionsProps {
   claimId: string
-  currentOutcome: ClaimOutcomeType
   canChangeOutcome: boolean
-  canReopen: boolean
   layout?: 'section' | 'inline'
 }
 
-const COMPLETION_OUTCOMES: readonly ClaimOutcomeType[] = [
-  ClaimOutcome.Accepted,
-  ClaimOutcome.Rejected,
-]
+/** The only two outcomes an operator can move a claim to from this panel. */
+const COMPLETION_OUTCOMES = [ClaimOutcome.Accepted, ClaimOutcome.Rejected] as const
+type CompletionOutcome = (typeof COMPLETION_OUTCOMES)[number]
 
-const ACTION_LABEL: Record<ClaimOutcomeType, () => string> = {
+const ACTION_LABEL: Record<CompletionOutcome, () => string> = {
   [ClaimOutcome.Accepted]: () => m.emotive_claims_detail_status_action_accept(),
   [ClaimOutcome.Rejected]: () => m.emotive_claims_detail_status_action_reject(),
-  [ClaimOutcome.Pending]: () => m.emotive_claims_detail_status_action_reopen(),
-  [ClaimOutcome.Archived]: () => m.outcome_archived(),
 }
 
-const ACTION_VARIANT: Record<ClaimOutcomeType, InternalButtonVariant> = {
+const ACTION_VARIANT: Record<CompletionOutcome, InternalButtonVariant> = {
   [ClaimOutcome.Accepted]: 'green',
   [ClaimOutcome.Rejected]: 'outline-red',
-  [ClaimOutcome.Pending]: 'outline',
-  [ClaimOutcome.Archived]: 'outline',
+}
+
+const CONFIRM_TITLE: Record<CompletionOutcome, () => string> = {
+  [ClaimOutcome.Accepted]: () => m.internal_claim_outcome_confirm_accepted(),
+  [ClaimOutcome.Rejected]: () => m.internal_claim_outcome_confirm_rejected(),
 }
 
 export function DomaceClaimStatusActions({
   claimId,
-  currentOutcome,
   canChangeOutcome,
-  canReopen,
   layout = 'section',
 }: DomaceClaimStatusActionsProps): React.ReactElement | null {
   const mutation = useChangeDomaceClaimOutcome(claimId)
-  const [confirmingOutcome, setConfirmingOutcome] = useState<ClaimOutcomeType | null>(null)
+  const [pendingOutcome, setPendingOutcome] = useState<CompletionOutcome | null>(null)
 
-  const isLocked = currentOutcome !== ClaimOutcome.Pending
-
-  if (!canChangeOutcome && !(canReopen && isLocked)) {
+  if (!canChangeOutcome) {
     return null
   }
 
-  const targets = isLocked
-    ? canReopen
-      ? OUTCOME_REGISTRY.filter((definition) => definition.key === ClaimOutcome.Pending)
-      : []
-    : canChangeOutcome
-      ? OUTCOME_REGISTRY.filter((definition) => COMPLETION_OUTCOMES.includes(definition.key))
-      : []
-
   const isPending = mutation.isPending
-  const isAcceptConfirm = confirmingOutcome === ClaimOutcome.Accepted
 
-  // Accept and reject both irreversibly lock the claim, so both confirm first;
-  // reopen (admin unlock) is safe and fires immediately.
-  const handleTarget = (outcome: ClaimOutcomeType): void => {
-    if (outcome === ClaimOutcome.Accepted || outcome === ClaimOutcome.Rejected) {
-      setConfirmingOutcome(outcome)
-      return
-    }
-    mutation.mutate(outcome)
-  }
-
+  // Outcome changes now happen freely at any time (no more edit-lock/reopen),
+  // so a confirm dialog is the only guard against an accidental click.
   const confirmOutcome = (): void => {
-    if (!confirmingOutcome) return
-    const outcome = confirmingOutcome
-    setConfirmingOutcome(null)
+    if (pendingOutcome === null) return
+    const outcome = pendingOutcome
+    setPendingOutcome(null)
     mutation.mutate(outcome)
   }
 
@@ -92,70 +70,39 @@ export function DomaceClaimStatusActions({
         </h2>
       ) : null}
 
-      {isLocked ? (
-        <div
-          className="flex items-center gap-2 text-sm text-mri-text2"
-          role="status"
-          data-testid="domace-claim-lock-indicator"
-        >
-          <Lock className="h-4 w-4" aria-hidden="true" />
-          <span>{m.emotive_claims_detail_status_locked()}</span>
-        </div>
-      ) : null}
-
-      {confirmingOutcome ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-mri-text">
-            {isAcceptConfirm
-              ? m.emotive_claims_detail_status_accept_confirm()
-              : m.emotive_claims_detail_status_reject_confirm()}
-          </span>
+      <div className="flex flex-wrap gap-3">
+        {COMPLETION_OUTCOMES.map((outcome) => (
           <InternalButton
+            key={outcome}
             type="button"
-            variant={isAcceptConfirm ? 'green' : 'red'}
-            className="h-9 w-auto px-4 text-[11.5px]"
+            variant={ACTION_VARIANT[outcome]}
+            className="h-10 w-auto px-5 text-xs"
             disabled={isPending}
-            onClick={confirmOutcome}
+            onClick={() => setPendingOutcome(outcome)}
           >
-            {isAcceptConfirm
-              ? m.emotive_claims_detail_status_accept_confirm_yes()
-              : m.emotive_claims_detail_status_reject_confirm_yes()}
+            {outcome === ClaimOutcome.Accepted ? <Check className="size-3.5" aria-hidden /> : null}
+            {ACTION_LABEL[outcome]()}
           </InternalButton>
-          <InternalButton
-            type="button"
-            variant="outline"
-            className="h-9 w-auto px-4 text-[11.5px]"
-            disabled={isPending}
-            onClick={() => setConfirmingOutcome(null)}
-          >
-            {m.emotive_claims_detail_status_cancel()}
-          </InternalButton>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          {targets.map((definition) => (
-            <InternalButton
-              key={definition.key}
-              type="button"
-              variant={ACTION_VARIANT[definition.key]}
-              className="h-10 w-auto px-5 text-xs"
-              disabled={isPending}
-              onClick={() => handleTarget(definition.key)}
-            >
-              {definition.key === ClaimOutcome.Accepted ? (
-                <Check className="size-3.5" aria-hidden />
-              ) : null}
-              {ACTION_LABEL[definition.key]()}
-            </InternalButton>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
 
       {mutation.isError ? (
         <p className="text-sm text-mri-bad" role="alert">
           {m.emotive_claims_detail_status_error()}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingOutcome !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingOutcome(null)
+        }}
+        title={pendingOutcome !== null ? CONFIRM_TITLE[pendingOutcome]() : null}
+        confirmLabel={pendingOutcome !== null ? ACTION_LABEL[pendingOutcome]() : null}
+        variant={pendingOutcome === ClaimOutcome.Rejected ? 'destructive' : 'default'}
+        pending={isPending}
+        onConfirm={confirmOutcome}
+      />
     </div>
   )
 }
