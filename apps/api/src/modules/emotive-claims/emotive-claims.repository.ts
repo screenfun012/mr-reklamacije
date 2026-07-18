@@ -165,6 +165,9 @@ function mapListItem(row: {
     createdAt: formatTimestamp(row.createdAt),
     clientVisibleAt: row.clientVisibleAt === null ? null : formatTimestamp(row.clientVisibleAt),
     publishedAt: row.publishedAt === null ? null : formatTimestamp(row.publishedAt),
+    // This module serves internal/full-view actors only (no per-client-user
+    // viewer) — freshness is a unified-list, client-portal-only signal.
+    freshness: null,
   }
 }
 

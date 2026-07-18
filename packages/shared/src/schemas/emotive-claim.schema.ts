@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { ClaimKind, ClaimOutcome } from '../enums.js'
+import { claimFreshnessValues, ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 
 const claimOutcomeValues = [
@@ -123,6 +123,12 @@ export const EmotiveClaimListItemSchema = z.object({
    */
   clientVisibleAt: z.string().nullable(),
   publishedAt: z.string().nullable(),
+  /**
+   * Per-client-user NEW/UPDATE signal (Phase 3), computed server-side per
+   * viewer against `emotive_claim_client_views`. `null` for internal/full-view
+   * reads (there is no single "viewer") and whenever there's nothing to flag.
+   */
+  freshness: z.enum(claimFreshnessValues).nullable(),
 })
 
 export type EmotiveClaimListItem = z.infer<typeof EmotiveClaimListItemSchema>

@@ -52,6 +52,21 @@ export const ClientClaimPhase = {
 
 export type ClientClaimPhase = (typeof ClientClaimPhase)[keyof typeof ClientClaimPhase]
 
+/**
+ * Per-client-user freshness signal on the portal claim list (Phase 3): whether
+ * a claim's client-visible content changed since this user last viewed it.
+ * `New` = never viewed and unpublished; `Update` = changed after publish or
+ * after a prior view. `null` (not part of this union) means "nothing to flag".
+ */
+export const ClaimFreshness = {
+  New: 'new',
+  Update: 'update',
+} as const
+
+export type ClaimFreshness = (typeof ClaimFreshness)[keyof typeof ClaimFreshness]
+
+export const claimFreshnessValues = [ClaimFreshness.New, ClaimFreshness.Update] as const
+
 export const FaultType = {
   Employee: 'employee',
   Department: 'department',

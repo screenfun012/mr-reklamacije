@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { ClaimKind, ClaimOutcome, ClientClaimPhase } from '../enums.js'
+import { claimFreshnessValues, ClaimKind, ClaimOutcome, ClientClaimPhase } from '../enums.js'
 import type { ClaimListItem } from './claim-list.schema.js'
 import type { DomaceClaimDetail } from './domace-claim.schema.js'
 import type { EmotiveClaimDetail } from './emotive-claim.schema.js'
@@ -98,6 +98,7 @@ export const ClientClaimListItemSchema = z.object({
   customerName: z.string().nullable(),
   createdAt: z.string(),
   clientPhase: z.enum(clientClaimPhaseValues),
+  freshness: z.enum(claimFreshnessValues).nullable(),
 })
 
 export type ClientClaimListItem = z.infer<typeof ClientClaimListItemSchema>
@@ -144,6 +145,10 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
     customerName: item.customerName,
     createdAt: item.createdAt,
     clientPhase: deriveClientClaimPhase(item.outcome, visibility),
+    // DOMACE never reaches a client (no portal, no per-user view tracking) —
+    // narrow on kind so it keeps TS total instead of reading a field that
+    // doesn't exist on DomaceClaimListItem.
+    freshness: item.kind === ClaimKind.Emotive ? item.freshness : null,
   }
 }
 

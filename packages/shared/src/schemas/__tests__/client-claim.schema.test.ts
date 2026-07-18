@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ClaimKind, ClaimOutcome, ClientClaimPhase } from '../../enums.js'
+import { ClaimFreshness, ClaimKind, ClaimOutcome, ClientClaimPhase } from '../../enums.js'
 import type { EmotiveClaimDetail } from '../emotive-claim.schema.js'
 import {
   ClientClaimDetailSchema,
@@ -34,6 +34,7 @@ const fullDetail: EmotiveClaimDetail = {
   createdAt: '2026-04-17T10:00:00.000Z',
   clientVisibleAt: null,
   publishedAt: null,
+  freshness: null,
   engineTypeManufacturer: 'Bosch',
   sourceCode: 'SELMAN',
   sourceName: 'Selman partner',
@@ -164,6 +165,16 @@ describe('toClientClaimListItem', () => {
     for (const key of LEAKY_KEYS) {
       expect(key in item).toBe(false)
     }
+  })
+
+  it('carries an emotive item’s freshness through to the client wire', () => {
+    const item = toClientClaimListItem({ ...fullDetail, freshness: ClaimFreshness.Update })
+    expect(item.freshness).toBe(ClaimFreshness.Update)
+  })
+
+  it('keeps freshness null when there is nothing to flag', () => {
+    const item = toClientClaimListItem({ ...fullDetail, freshness: null })
+    expect(item.freshness).toBeNull()
   })
 })
 

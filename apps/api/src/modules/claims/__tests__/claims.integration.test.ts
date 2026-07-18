@@ -656,4 +656,200 @@ describe('ClaimsService integration', () => {
       expect(internalResult.items.some((item) => item.id === created.id)).toBe(true)
     })
   })
+
+  describe('freshness (per-client-user NEW/UPDATE signal on the client list)', () => {
+    async function createFreshnessClaim(customerId: string, token: string): Promise<string> {
+      const engineType = await createTestEngineType(container, `ENG-${token}-${Date.now()}`)
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `${token}-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: `freshness-${token}`,
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          customerId,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      return created.id
+    }
+
+    function clientApp(userId: string): ReturnType<typeof createClaimsTestApp> {
+      return createClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'], userId, [
+          SYSTEM_ROLE_CLIENT,
+        ]),
+      )
+    }
+
+    async function freshnessOf(
+      app: ReturnType<typeof createClaimsTestApp>,
+      customerId: string,
+      claimId: string,
+    ): Promise<string | null> {
+      const res = await app.request(`/api/claims?page=1&pageSize=50&customerId=${customerId}`)
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        items: Array<{ id: string; freshness: string | null }>
+      }
+      const item = body.items.find((entry) => entry.id === claimId)
+      if (item === undefined) {
+        throw new Error(`claim ${claimId} not found in client list`)
+      }
+      return item.freshness
+    }
+
+    it('is "new" while unpublished and "update" once published, for an openable unviewed claim', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const claimId = await createFreshnessClaim(customerSelman, 'FRESH-NEW')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: null,
+          clientContentUpdatedAt: new Date('2026-06-18'),
+        })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const app = clientApp(TEST_USER_ID)
+      expect(await freshnessOf(app, customerSelman, claimId)).toBe('new')
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ publishedAt: new Date('2026-06-19') })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      expect(await freshnessOf(app, customerSelman, claimId)).toBe('update')
+    })
+
+    it('is null once the viewer has viewed the claim after its last content change', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const claimId = await createFreshnessClaim(customerSelman, 'FRESH-VIEWED')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: new Date('2026-06-17'),
+          clientContentUpdatedAt: new Date('2026-06-18'),
+        })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const app = clientApp(TEST_USER_ID)
+      expect(await freshnessOf(app, customerSelman, claimId)).toBe('update')
+
+      await ctx.db.insert(schema.emotiveClaimClientViews).values({
+        userId: TEST_USER_ID,
+        emotiveClaimId: claimId,
+        viewedAt: new Date('2026-06-19'),
+      })
+
+      expect(await freshnessOf(app, customerSelman, claimId)).toBeNull()
+    })
+
+    it('is null when the claim has never had client-visible content changes (clientContentUpdatedAt IS NULL)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const claimId = await createFreshnessClaim(customerSelman, 'FRESH-NOCONTENT')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: new Date('2026-06-17'),
+          clientContentUpdatedAt: null,
+        })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const app = clientApp(TEST_USER_ID)
+      expect(await freshnessOf(app, customerSelman, claimId)).toBeNull()
+    })
+
+    it('is null for a Primljeno claim (clientVisibleAt and publishedAt both null), even if clientContentUpdatedAt is set', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const claimId = await createFreshnessClaim(customerSelman, 'FRESH-PRIMLJENO')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientContentUpdatedAt: new Date('2026-06-18') })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const app = clientApp(TEST_USER_ID)
+      expect(await freshnessOf(app, customerSelman, claimId)).toBeNull()
+    })
+
+    it('is null for a full-view internal actor, regardless of visibility/content state', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const claimId = await createFreshnessClaim(customerSelman, 'FRESH-INTERNAL')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: null,
+          clientContentUpdatedAt: new Date('2026-06-18'),
+        })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      const result = await container.claimsService.list(
+        listQuery({ customerId: customerSelman }),
+        FULL_OPERATOR,
+      )
+      const item = result.items.find((entry) => entry.id === claimId)
+      expect(item?.kind === 'emotive' ? item.freshness : null).toBeNull()
+    })
+
+    it('isolates freshness per client user — user A viewing does not change user B', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+      const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+      await ensureTestUser(ctx.db, userA)
+      await ensureTestUser(ctx.db, userB)
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values([
+          { customerId: customerSelman, userId: userA, assignedBy: TEST_USER_ID },
+          { customerId: customerSelman, userId: userB, assignedBy: TEST_USER_ID },
+        ])
+        .onConflictDoNothing()
+
+      const claimId = await createFreshnessClaim(customerSelman, 'FRESH-ISOLATE')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: new Date('2026-06-17'),
+          clientContentUpdatedAt: new Date('2026-06-18'),
+        })
+        .where(eq(schema.emotiveClaims.id, claimId))
+
+      await ctx.db.insert(schema.emotiveClaimClientViews).values({
+        userId: userA,
+        emotiveClaimId: claimId,
+        viewedAt: new Date('2026-06-19'),
+      })
+
+      expect(await freshnessOf(clientApp(userA), customerSelman, claimId)).toBeNull()
+      expect(await freshnessOf(clientApp(userB), customerSelman, claimId)).toBe('update')
+    })
+  })
 })

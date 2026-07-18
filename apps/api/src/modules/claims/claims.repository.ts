@@ -1,5 +1,6 @@
 import { schema } from '@mr/db'
 import {
+  ClaimFreshness,
   ClaimKind,
   ClaimOutcome,
   type ClaimListItem,
@@ -54,6 +55,7 @@ interface UnifiedListRow {
   created_at: Date
   client_visible_at: Date | string | null
   published_at: Date | string | null
+  freshness: string | null
 }
 
 function formatDate(value: Date | string): string {
@@ -129,6 +131,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     createdAt: formatTimestamp(row.created_at),
     clientVisibleAt,
     publishedAt,
+    freshness: row.freshness as EmotiveClaimListItem['freshness'],
   }
   return item
 }
@@ -184,13 +187,14 @@ export class ClaimsRepository {
     const branches: SQL[] = []
 
     if (scope.includeEmotive && (query.kind === undefined || query.kind === ClaimKind.Emotive)) {
+      const viewerUserId = scope.emotiveCustomerScope === 'own_customer' ? scope.userId : null
       if (scope.emotiveCustomerScope === 'own_customer') {
         const customerIds = await this.getUserCustomerIds(scope.userId)
         if (customerIds.length > 0) {
-          branches.push(this.buildEmotiveBranch(query, customerIds))
+          branches.push(this.buildEmotiveBranch(query, customerIds, viewerUserId))
         }
       } else {
-        branches.push(this.buildEmotiveBranch(query, null))
+        branches.push(this.buildEmotiveBranch(query, null, viewerUserId))
       }
     }
 
@@ -201,7 +205,11 @@ export class ClaimsRepository {
     return branches
   }
 
-  private buildEmotiveBranch(query: ClaimListQuery, customerIds: string[] | null): SQL {
+  private buildEmotiveBranch(
+    query: ClaimListQuery,
+    customerIds: string[] | null,
+    viewerUserId: string | null,
+  ): SQL {
     const conditions: SQL[] = []
 
     if (!query.includeDeleted) {
@@ -259,6 +267,25 @@ export class ClaimsRepository {
 
     const whereClause = conditions.length > 0 ? sql.join(conditions, sql` AND `) : sql`TRUE`
 
+    // Per-client-user NEW/UPDATE signal (Phase 3): only computed when there is
+    // a single viewer (own-customer client scope) — a full-view/internal read
+    // has no one "viewer", so it stays NULL and skips the join entirely.
+    const freshnessColumn =
+      viewerUserId === null
+        ? sql`NULL::text AS freshness`
+        : sql`
+      CASE
+        WHEN ec.client_visible_at IS NULL AND ec.published_at IS NULL THEN NULL
+        WHEN ec.client_content_updated_at IS NULL THEN NULL
+        WHEN v.viewed_at IS NOT NULL AND ec.client_content_updated_at <= v.viewed_at THEN NULL
+        WHEN ec.published_at IS NULL THEN ${ClaimFreshness.New}
+        ELSE ${ClaimFreshness.Update}
+      END AS freshness`
+    const viewerJoin =
+      viewerUserId === null
+        ? sql``
+        : sql`LEFT JOIN emotive_claim_client_views v ON v.emotive_claim_id = ec.id AND v.user_id = ${viewerUserId}`
+
     return sql`
       SELECT
         ${ClaimKind.Emotive}::text AS kind,
@@ -284,12 +311,14 @@ export class ClaimsRepository {
         NULL::numeric AS total_amount,
         ec.created_at,
         ec.client_visible_at,
-        ec.published_at
+        ec.published_at,
+        ${freshnessColumn}
       FROM emotive_claims ec
       INNER JOIN engine_types et ON et.id = ec.engine_type_id
       LEFT JOIN engine_manufacturers em ON em.id = ec.manufacturer_id
       LEFT JOIN customers c ON c.id = ec.customer_id
       LEFT JOIN employees emp ON emp.id = ec.employee_id
+      ${viewerJoin}
       WHERE ${whereClause}
     `
   }
@@ -355,7 +384,8 @@ export class ClaimsRepository {
         dc.total_amount,
         dc.created_at,
         NULL::timestamptz AS client_visible_at,
-        NULL::timestamptz AS published_at
+        NULL::timestamptz AS published_at,
+        NULL::text AS freshness
       FROM domace_claims dc
       LEFT JOIN engine_types et ON et.id = dc.engine_type_id
       LEFT JOIN engine_manufacturers em ON em.id = dc.manufacturer_id
