@@ -6,9 +6,10 @@ import {
   ClaimKind,
   clientClaimKeys,
   clientEmotiveClaimDetailOptions,
+  fetchNoContent,
   SUPPORT_EMAIL_BY_KIND,
 } from '@mr/shared'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
@@ -52,16 +53,30 @@ function ClaimDetailComponent() {
   const { data: claim } = useSuspenseQuery(clientEmotiveClaimDetailOptions(id))
   const queryClient = useQueryClient()
 
-  // Drop the cached detail on leaving so re-entry within the 30s staleTime
-  // refetches fresh `sectionFreshness` (the server records the view on GET,
-  // so a stale cached response would keep showing cleared "Novo" markers as
-  // still-new until a full reload wiped the in-memory cache).
-  useEffect(
-    () => () => {
-      queryClient.removeQueries({ queryKey: clientClaimKeys.detail(id) })
+  const { mutate: markSeen } = useMutation({
+    mutationFn: (claimId: string) =>
+      fetchNoContent(`/api/emotive-claims/${claimId}/mark-seen`, { method: 'POST' }),
+    onSuccess: () => {
+      // Clears the dashboard's NEW/UPDATE badge for this claim. The current
+      // detail(id) is deliberately NOT invalidated — the "Novo" section
+      // markers the client is looking at right now must keep showing for
+      // this visit; they clear on the NEXT open via `staleTime: 0`.
+      void queryClient.invalidateQueries({ queryKey: clientClaimKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: clientClaimKeys.summary() })
     },
-    [queryClient, id],
-  )
+    onError: (error) => {
+      // Best-effort: a failed mark-seen just leaves the badge until the next
+      // successful open — it must never break the page.
+      console.error('[claim-detail] mark-seen failed:', error)
+    },
+  })
+
+  // Records that the client actually opened this claim (not just hover-
+  // prefetched it — the route loader never calls this, only mount does).
+  // Fires once per opened id.
+  useEffect(() => {
+    markSeen(id)
+  }, [id, markSeen])
 
   const chip = statusChipConfig(claim)
   const claimLabel = formatPortalClaimId(claim.mrNumber, claim.claimNumber)
