@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { claimFreshnessValues, ClaimKind, ClaimOutcome, ClientClaimPhase } from '../enums.js'
 import type { ClaimListItem } from './claim-list.schema.js'
 import type { DomaceClaimDetail } from './domace-claim.schema.js'
-import type { EmotiveClaimDetail } from './emotive-claim.schema.js'
+import { SectionFreshnessSchema, type EmotiveClaimDetail } from './emotive-claim.schema.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -111,6 +111,7 @@ export const ClientClaimDetailSchema = ClientClaimListItemSchema.extend({
   // 2026-07-03 so the client knows who works on their engine. Name only; no
   // employee id, email or any other employee data.
   employeeName: z.string().nullable(),
+  sectionFreshness: SectionFreshnessSchema,
 })
 
 export type ClientClaimDetail = z.infer<typeof ClientClaimDetailSchema>
@@ -152,6 +153,15 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
   }
 }
 
+// DOMACE has no portal and no per-client-user view tracking (mirrors the
+// `freshness` narrowing above) — a DOMACE detail always reports all-false.
+const NO_SECTION_FRESHNESS = {
+  photos: false,
+  inspection: false,
+  details: false,
+  outcome: false,
+} as const
+
 /** Whitelist a full claim detail down to the client-safe shape (no faults/notes/employee ids). */
 export function toClientClaimDetail(
   detail: EmotiveClaimDetail | DomaceClaimDetail,
@@ -161,5 +171,7 @@ export function toClientClaimDetail(
     engineTypeManufacturer: detail.engineTypeManufacturer,
     inspectionReport: detail.inspectionReport,
     employeeName: detail.employeeName,
+    sectionFreshness:
+      detail.kind === ClaimKind.Emotive ? detail.sectionFreshness : NO_SECTION_FRESHNESS,
   }
 }

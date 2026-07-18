@@ -448,6 +448,211 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('sectionFreshness (Task 3 — per-section NEW/UPDATE markers on the client detail)', () => {
+    async function linkUserToCustomer(customerId: string, userId = TEST_USER_ID): Promise<void> {
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId, userId, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+    }
+
+    // Openable: both client-visibility gates (clientVisibleAt + publishedAt) are set —
+    // sectionFreshness is only ever non-false once a claim has left "Primljeno".
+    async function createOpenableClaim(customerId: string, mrPrefix: string): Promise<string> {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          customerId,
+          mrNumber: `${mrPrefix}-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date(), publishedAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, created.id))
+      return created.id
+    }
+
+    async function setSectionUpdatedAt(
+      id: string,
+      sections: Record<string, string>,
+    ): Promise<void> {
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ sectionUpdatedAt: sections })
+        .where(eq(schema.emotiveClaims.id, id))
+    }
+
+    async function seedView(claimId: string, userId: string, viewedAt: Date): Promise<void> {
+      await ctx.db
+        .insert(schema.emotiveClaimClientViews)
+        .values({ userId, emotiveClaimId: claimId, viewedAt })
+        .onConflictDoUpdate({
+          target: [
+            schema.emotiveClaimClientViews.userId,
+            schema.emotiveClaimClientViews.emotiveClaimId,
+          ],
+          set: { viewedAt },
+        })
+    }
+
+    it('flags a section true when its section_updated_at is set and never viewed', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'SF1')
+      await setSectionUpdatedAt(id, { photos: new Date().toISOString() })
+
+      const found = await container.emotiveClaimsRepository.findById(id, {
+        type: 'own_customer',
+        userId: TEST_USER_ID,
+      })
+
+      expect(found).not.toBeNull()
+      expect(found!.sectionFreshness).toEqual({
+        photos: true,
+        inspection: false,
+        details: false,
+        outcome: false,
+      })
+    })
+
+    it('clears a section once viewedAt is at/after that section’s timestamp', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'SF2')
+      const sectionTs = new Date('2026-04-17T10:00:00.000Z')
+      await setSectionUpdatedAt(id, { photos: sectionTs.toISOString() })
+      await seedView(id, TEST_USER_ID, new Date('2026-04-17T10:00:01.000Z'))
+
+      const found = await container.emotiveClaimsRepository.findById(id, {
+        type: 'own_customer',
+        userId: TEST_USER_ID,
+      })
+
+      expect(found).not.toBeNull()
+      expect(found!.sectionFreshness).toEqual({
+        photos: false,
+        inspection: false,
+        details: false,
+        outcome: false,
+      })
+    })
+
+    it('reports all-false for a Primljeno claim (both visibility gates null)', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          customerId,
+          mrNumber: `SF3-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await setSectionUpdatedAt(created.id, { photos: new Date().toISOString() })
+
+      const found = await container.emotiveClaimsRepository.findById(created.id, {
+        type: 'own_customer',
+        userId: TEST_USER_ID,
+      })
+
+      expect(found).not.toBeNull()
+      expect(found!.sectionFreshness).toEqual({
+        photos: false,
+        inspection: false,
+        details: false,
+        outcome: false,
+      })
+    })
+
+    it('reports all-false for a full-view (internal) actor, regardless of section state', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const id = await createOpenableClaim(customerId, 'SF4')
+      await setSectionUpdatedAt(id, {
+        photos: new Date().toISOString(),
+        outcome: new Date().toISOString(),
+      })
+
+      const found = await container.emotiveClaimsRepository.findById(id, { type: 'all' })
+
+      expect(found).not.toBeNull()
+      expect(found!.sectionFreshness).toEqual({
+        photos: false,
+        inspection: false,
+        details: false,
+        outcome: false,
+      })
+    })
+
+    it('mixes freshness per section — one seen, one not', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'SF5')
+      const oldTs = new Date('2026-04-01T00:00:00.000Z')
+      const newTs = new Date('2026-04-10T00:00:00.000Z')
+      await setSectionUpdatedAt(id, {
+        photos: oldTs.toISOString(),
+        inspection: newTs.toISOString(),
+      })
+      await seedView(id, TEST_USER_ID, new Date('2026-04-05T00:00:00.000Z'))
+
+      const found = await container.emotiveClaimsRepository.findById(id, {
+        type: 'own_customer',
+        userId: TEST_USER_ID,
+      })
+
+      expect(found).not.toBeNull()
+      expect(found!.sectionFreshness).toEqual({
+        photos: false, // viewed after photos was bumped
+        inspection: true, // bumped after the view
+        details: false,
+        outcome: false,
+      })
+    })
+
+    it('isolates freshness per user — user A viewing does not clear it for user B', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const userA = TEST_USER_ID
+      const userB = '00000000-0000-4000-8000-000000000099'
+      await ensureTestUser(ctx.db, userB)
+      await linkUserToCustomer(customerId, userA)
+      await linkUserToCustomer(customerId, userB)
+      const id = await createOpenableClaim(customerId, 'SF6')
+      await setSectionUpdatedAt(id, { details: new Date().toISOString() })
+      await seedView(id, userA, new Date())
+
+      const foundA = await container.emotiveClaimsRepository.findById(id, {
+        type: 'own_customer',
+        userId: userA,
+      })
+      const foundB = await container.emotiveClaimsRepository.findById(id, {
+        type: 'own_customer',
+        userId: userB,
+      })
+
+      expect(foundA).not.toBeNull()
+      expect(foundB).not.toBeNull()
+      expect(foundA!.sectionFreshness.details).toBe(false)
+      expect(foundB!.sectionFreshness.details).toBe(true)
+    })
+
+    it('reads the pre-open viewedAt via the service (first open still shows fresh, second clears it)', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'SF7')
+      await setSectionUpdatedAt(id, { inspection: new Date().toISOString() })
+
+      const firstOpen = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      expect(firstOpen.sectionFreshness.inspection).toBe(true)
+
+      const secondOpen = await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      expect(secondOpen.sectionFreshness.inspection).toBe(false)
+    })
+  })
+
   describe('Gate A — first client-visible inspection report advances the claim to "u obradi"', () => {
     it('sets client_visible_at when an operator fills a non-empty inspection report on a Primljeno claim', async () => {
       const created = await container.emotiveClaimsService.create(

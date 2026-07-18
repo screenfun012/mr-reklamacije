@@ -35,6 +35,7 @@ const fullDetail: EmotiveClaimDetail = {
   clientVisibleAt: null,
   publishedAt: null,
   freshness: null,
+  sectionFreshness: { photos: false, inspection: false, details: false, outcome: false },
   engineTypeManufacturer: 'Bosch',
   sourceCode: 'SELMAN',
   sourceName: 'Selman partner',
@@ -219,5 +220,11 @@ describe('toClientClaimDetail', () => {
     for (const key of LEAKY_KEYS) {
       expect(key in revealed).toBe(false)
     }
+  })
+
+  it('passes an emotive claim’s sectionFreshness through unchanged', () => {
+    const sectionFreshness = { photos: true, inspection: false, details: true, outcome: false }
+    const detail = toClientClaimDetail({ ...fullDetail, sectionFreshness })
+    expect(detail.sectionFreshness).toEqual(sectionFreshness)
   })
 })

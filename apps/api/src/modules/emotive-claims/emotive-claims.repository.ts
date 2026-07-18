@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimKind, UserAccountStatus, type UserLanguage } from '@mr/shared'
+import { ClaimKind, UserAccountStatus, type SectionFreshness, type UserLanguage } from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -564,47 +564,90 @@ export class EmotiveClaimsRepository {
     const deletedCondition =
       mode === 'active' ? isNull(emotiveClaims.deletedAt) : isNotNull(emotiveClaims.deletedAt)
 
-    const [row] = await this.db
-      .select({
-        id: emotiveClaims.id,
-        sequenceNumber: emotiveClaims.sequenceNumber,
-        claimNumber: emotiveClaims.claimNumber,
-        warrantyReport: emotiveClaims.warrantyReport,
-        engineTypeId: emotiveClaims.engineTypeId,
-        engineTypeCode: engineTypes.code,
-        engineTypeManufacturer: engineTypeMfg.name,
-        manufacturerId: emotiveClaims.manufacturerId,
-        manufacturerName: engineManufacturers.name,
-        engineCode: emotiveClaims.engineCode,
-        dateOfClaim: emotiveClaims.dateOfClaim,
-        mrNumber: emotiveClaims.mrNumber,
-        dateOfFinish: emotiveClaims.dateOfFinish,
-        employeeId: emotiveClaims.employeeId,
-        employeeName: employees.fullName,
-        sourceId: emotiveClaims.sourceId,
-        sourceCode: claimSources.code,
-        sourceName: claimSources.name,
-        outcome: emotiveClaims.outcome,
-        claimYear: emotiveClaims.claimYear,
-        customerId: emotiveClaims.customerId,
-        customerName: customers.name,
-        createdAt: emotiveClaims.createdAt,
-        clientVisibleAt: emotiveClaims.clientVisibleAt,
-        publishedAt: emotiveClaims.publishedAt,
-        internalNotes: emotiveClaims.internalNotes,
-        inspectionReport: emotiveClaims.inspectionReport,
-        updatedBy: emotiveClaims.updatedBy,
-        updatedAt: emotiveClaims.updatedAt,
-      })
-      .from(emotiveClaims)
-      .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
-      .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
-      .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
-      .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
-      .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
-      .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
-      .where(and(eq(emotiveClaims.id, id), deletedCondition))
-      .limit(1)
+    const commonFields = {
+      id: emotiveClaims.id,
+      sequenceNumber: emotiveClaims.sequenceNumber,
+      claimNumber: emotiveClaims.claimNumber,
+      warrantyReport: emotiveClaims.warrantyReport,
+      engineTypeId: emotiveClaims.engineTypeId,
+      engineTypeCode: engineTypes.code,
+      engineTypeManufacturer: engineTypeMfg.name,
+      manufacturerId: emotiveClaims.manufacturerId,
+      manufacturerName: engineManufacturers.name,
+      engineCode: emotiveClaims.engineCode,
+      dateOfClaim: emotiveClaims.dateOfClaim,
+      mrNumber: emotiveClaims.mrNumber,
+      dateOfFinish: emotiveClaims.dateOfFinish,
+      employeeId: emotiveClaims.employeeId,
+      employeeName: employees.fullName,
+      sourceId: emotiveClaims.sourceId,
+      sourceCode: claimSources.code,
+      sourceName: claimSources.name,
+      outcome: emotiveClaims.outcome,
+      claimYear: emotiveClaims.claimYear,
+      customerId: emotiveClaims.customerId,
+      customerName: customers.name,
+      createdAt: emotiveClaims.createdAt,
+      clientVisibleAt: emotiveClaims.clientVisibleAt,
+      publishedAt: emotiveClaims.publishedAt,
+      internalNotes: emotiveClaims.internalNotes,
+      inspectionReport: emotiveClaims.inspectionReport,
+      updatedBy: emotiveClaims.updatedBy,
+      updatedAt: emotiveClaims.updatedAt,
+    }
+
+    // Openable gate: mirrors the service's Primljeno check — a client-facing
+    // section can only be "fresh" once the claim has left the private state.
+    const openable = sql`(${emotiveClaims.clientVisibleAt} IS NOT NULL OR ${emotiveClaims.publishedAt} IS NOT NULL)`
+
+    const [row] =
+      scope.type === 'own_customer'
+        ? await this.db
+            .select({
+              ...commonFields,
+              // Phase 3.1: per-section NEW/UPDATE marker for THIS viewer, computed
+              // against their own emotive_claim_client_views row. This SELECT runs
+              // before the service's recordClientView (Phase 3), so `viewedAt` here
+              // is the PRE-open value — the marker shows on this visit, clears next.
+              sectionFreshness: sql<SectionFreshness>`jsonb_build_object(
+                'photos',     ${openable} AND ${emotiveClaims.sectionUpdatedAt}->>'photos'     IS NOT NULL AND (${emotiveClaimClientViews.viewedAt} IS NULL OR (${emotiveClaims.sectionUpdatedAt}->>'photos')::timestamptz     > ${emotiveClaimClientViews.viewedAt}),
+                'inspection', ${openable} AND ${emotiveClaims.sectionUpdatedAt}->>'inspection' IS NOT NULL AND (${emotiveClaimClientViews.viewedAt} IS NULL OR (${emotiveClaims.sectionUpdatedAt}->>'inspection')::timestamptz > ${emotiveClaimClientViews.viewedAt}),
+                'details',    ${openable} AND ${emotiveClaims.sectionUpdatedAt}->>'details'    IS NOT NULL AND (${emotiveClaimClientViews.viewedAt} IS NULL OR (${emotiveClaims.sectionUpdatedAt}->>'details')::timestamptz    > ${emotiveClaimClientViews.viewedAt}),
+                'outcome',    ${openable} AND ${emotiveClaims.sectionUpdatedAt}->>'outcome'    IS NOT NULL AND (${emotiveClaimClientViews.viewedAt} IS NULL OR (${emotiveClaims.sectionUpdatedAt}->>'outcome')::timestamptz    > ${emotiveClaimClientViews.viewedAt})
+              )`,
+            })
+            .from(emotiveClaims)
+            .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
+            .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+            .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
+            .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
+            .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+            .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
+            .leftJoin(
+              emotiveClaimClientViews,
+              and(
+                eq(emotiveClaimClientViews.emotiveClaimId, emotiveClaims.id),
+                eq(emotiveClaimClientViews.userId, scope.userId),
+              ),
+            )
+            .where(and(eq(emotiveClaims.id, id), deletedCondition))
+            .limit(1)
+        : await this.db
+            .select({
+              ...commonFields,
+              // Full-view/internal reads have no single "viewer" — no join, no
+              // markers; always the all-false literal.
+              sectionFreshness: sql<SectionFreshness>`jsonb_build_object('photos', false, 'inspection', false, 'details', false, 'outcome', false)`,
+            })
+            .from(emotiveClaims)
+            .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
+            .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
+            .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
+            .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
+            .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
+            .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
+            .where(and(eq(emotiveClaims.id, id), deletedCondition))
+            .limit(1)
 
     if (row === undefined) {
       return null
@@ -640,6 +683,7 @@ export class EmotiveClaimsRepository {
       engineTypeManufacturer,
       sourceCode,
       sourceName,
+      sectionFreshness,
       ...listFields
     } = row
 
@@ -653,6 +697,7 @@ export class EmotiveClaimsRepository {
       updatedBy,
       updatedAt: formatTimestamp(updatedAt),
       faults: faults.map(mapFaultRow),
+      sectionFreshness,
     }
   }
 

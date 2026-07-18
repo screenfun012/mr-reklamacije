@@ -133,6 +133,23 @@ export const EmotiveClaimListItemSchema = z.object({
 
 export type EmotiveClaimListItem = z.infer<typeof EmotiveClaimListItemSchema>
 
+/**
+ * Phase 3.1 per-section NEW/UPDATE markers (detail-only — the list stays on
+ * the single `freshness` badge above). Computed server-side per viewer against
+ * `emotive_claim_client_views.viewed_at` vs. each key in `section_updated_at`;
+ * all-false for internal/full-view reads (there is no single "viewer") and for
+ * a still-private (Primljeno) claim. Raw timestamps never leave the server —
+ * only these booleans.
+ */
+export const SectionFreshnessSchema = z.object({
+  photos: z.boolean(),
+  inspection: z.boolean(),
+  details: z.boolean(),
+  outcome: z.boolean(),
+})
+
+export type SectionFreshness = z.infer<typeof SectionFreshnessSchema>
+
 export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
   sourceCode: z.string().nullable(),
@@ -142,6 +159,7 @@ export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
   updatedBy: z.string().uuid().nullable(),
   updatedAt: z.string(),
   faults: z.array(EmotiveClaimFaultItemSchema),
+  sectionFreshness: SectionFreshnessSchema,
 })
 
 export type EmotiveClaimDetail = z.infer<typeof EmotiveClaimDetailSchema>
