@@ -26,8 +26,22 @@ function timelineState(claim: ClientClaimDetail): TimelineState {
   const outcomeColor = claim.outcome === ClaimOutcome.Rejected ? PHASE_COLOR.bad : PHASE_COLOR.ok
   const track = 'var(--mrp-border2)'
 
-  // The first node ("Received") is always complete; a claim is In progress from
-  // the moment it is pending, then Outcome. (Received is never a live phase.)
+  // The first node ("Received") is now the LIVE current stage while the server
+  // has not yet made the claim client-visible; it advances to In progress once
+  // visible, then to Outcome once published.
+  if (phase === ClientClaimPhase.Received) {
+    return {
+      fillWidth: '0%',
+      fillColor: PHASE_COLOR.info,
+      node1: PHASE_COLOR.info,
+      node2: track,
+      node3: track,
+      label2Color: 'var(--mrp-text2)',
+      label3Color: 'var(--mrp-text2)',
+      sub2: '—',
+      sub3: '—',
+    }
+  }
   if (phase === ClientClaimPhase.InProgress) {
     return {
       fillWidth: '50%',

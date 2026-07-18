@@ -1,5 +1,6 @@
 import { m } from '@mr/i18n'
-import type { ClientClaimListItem } from '@mr/shared'
+import { ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
+import { cn } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
 
 import { StatusChip } from '~/components/status-chip'
@@ -7,6 +8,7 @@ import { formatPortalClaimId, formatPortalDate } from '~/lib/portal-format'
 
 import {
   claimServiceType,
+  portalPhase,
   serviceTypeLabel,
   statusChipConfig,
   triBarConfig,
@@ -19,18 +21,22 @@ function engineLine(claim: ClientClaimListItem): string {
   return parts.join(' · ')
 }
 
+const CARD_CLASSES =
+  'mrp-fade-up group relative block overflow-hidden rounded-[14px] border border-mrp-border bg-mrp-surface px-5 pb-[18px] pt-5 transition-[transform,box-shadow,border-color] duration-[220ms]'
+const CARD_CLICKABLE_CLASSES =
+  'hover:-translate-y-1 hover:border-[rgba(237,28,36,0.55)] hover:shadow-[var(--mrp-shadow)]'
+
 /** Dashboard claim card: mono id + chip, service tag, engine, 3-segment progress. */
 export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index: number }) {
   const chip = statusChipConfig(claim)
   const bar = triBarConfig(claim, 'var(--mrp-border)')
+  // A Received claim's detail route 404s server-side (not yet client-visible)
+  // — the card must not offer a link into it.
+  const clickable = portalPhase(claim) !== ClientClaimPhase.Received
+  const style = { animationDelay: `${(0.1 + index * 0.07).toFixed(2)}s` }
 
-  return (
-    <Link
-      to="/claims/$id"
-      params={{ id: claim.id }}
-      className="mrp-fade-up group relative block overflow-hidden rounded-[14px] border border-mrp-border bg-mrp-surface px-5 pb-[18px] pt-5 transition-[transform,box-shadow,border-color] duration-[220ms] hover:-translate-y-1 hover:border-[rgba(237,28,36,0.55)] hover:shadow-[var(--mrp-shadow)]"
-      style={{ animationDelay: `${(0.1 + index * 0.07).toFixed(2)}s` }}
-    >
+  const content = (
+    <>
       <div className="mb-2.5 flex items-start justify-between gap-3">
         <div className="font-mono text-[19px] font-bold tracking-[0.01em]">
           {formatPortalClaimId(claim.mrNumber, claim.claimNumber)}
@@ -65,8 +71,31 @@ export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index:
 
       <div className="flex items-center justify-between">
         <span className="font-mono text-[11px] text-mrp-text2">{claim.claimNumber ?? '—'}</span>
-        <span className="text-[13.5px] font-bold text-mrp-redh">{m.portal_claims_details()} →</span>
+        {clickable && (
+          <span className="text-[13.5px] font-bold text-mrp-redh">
+            {m.portal_claims_details()} →
+          </span>
+        )}
       </div>
+    </>
+  )
+
+  if (!clickable) {
+    return (
+      <div className={CARD_CLASSES} style={style}>
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      to="/claims/$id"
+      params={{ id: claim.id }}
+      className={cn(CARD_CLASSES, CARD_CLICKABLE_CLASSES)}
+      style={style}
+    >
+      {content}
     </Link>
   )
 }
