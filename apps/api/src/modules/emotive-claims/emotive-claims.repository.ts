@@ -58,6 +58,11 @@ function formatTimestamp(value: Date): string {
   return value.toISOString()
 }
 
+// Gate A: a non-blank inspection report is what makes an EMOTIVE claim client-visible.
+// The Zod validator already trims; this stays defensive against undefined/null callers.
+const hasInspectionReport = (v: string | null | undefined): boolean =>
+  typeof v === 'string' && v.trim().length > 0
+
 function mapFaultRow(row: {
   id: string
   faultType: string
@@ -346,6 +351,7 @@ export class EmotiveClaimsRepository {
         claimNumber: input.claimNumber ?? null,
         internalNotes: input.internalNotes ?? null,
         inspectionReport: input.inspectionReport ?? null,
+        clientVisibleAt: hasInspectionReport(input.inspectionReport) ? new Date() : null,
         createdBy: actorId,
         updatedBy: actorId,
       })
@@ -594,7 +600,9 @@ export class EmotiveClaimsRepository {
     // The scoped row-level gate (and the NotFound-on-missing check) already ran in
     // the service before-read; `before` is that same aggregate, passed down to avoid
     // a redundant heavy re-read here.
-    const patch: Partial<typeof emotiveClaims.$inferInsert> = {
+    const patch: Omit<Partial<typeof emotiveClaims.$inferInsert>, 'clientVisibleAt'> & {
+      clientVisibleAt?: SQL
+    } = {
       updatedBy: actorId,
     }
 
@@ -637,6 +645,12 @@ export class EmotiveClaimsRepository {
     }
     if (input.inspectionReport !== undefined) {
       patch.inspectionReport = input.inspectionReport
+    }
+    // Gate A: the first time a non-blank client-visible report is saved, stamp
+    // client_visible_at. COALESCE keeps it monotonic — never overwritten once set,
+    // so a later clear of the report can't hide the claim again.
+    if (hasInspectionReport(input.inspectionReport)) {
+      patch.clientVisibleAt = sql`COALESCE(${emotiveClaims.clientVisibleAt}, now())`
     }
 
     await this.db.transaction(async (tx) => {

@@ -337,6 +337,93 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('Gate A — first client-visible inspection report advances the claim to "u obradi"', () => {
+    it('sets client_visible_at when an operator fills a non-empty inspection report on a Primljeno claim', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `GATEA-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.clientVisibleAt).toBeNull()
+
+      const updated = await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Pregled izvrsen, motor u ispravnom stanju' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.clientVisibleAt).not.toBeNull()
+    })
+
+    it('is monotonic: clearing the report afterward leaves client_visible_at unchanged', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `GATEA2-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const filled = await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Prvobitni nalaz' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const firstStamp = filled.clientVisibleAt
+      expect(firstStamp).not.toBeNull()
+
+      const cleared = await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: null },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(cleared.inspectionReport).toBeNull()
+      expect(cleared.clientVisibleAt).toEqual(firstStamp)
+    })
+
+    it('leaves client_visible_at null when updating unrelated fields without an inspection report', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `GATEA3-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const updated = await container.emotiveClaimsService.update(
+        created.id,
+        { engineCode: 'ENG-CODE-1' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.clientVisibleAt).toBeNull()
+    })
+
+    it('starts client-visible when created with a non-empty inspection report', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          mrNumber: `GATEA4-${crypto.randomUUID().slice(0, 8)}/26`,
+          inspectionReport: 'Nalaz popunjen odmah pri kreiranju',
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.clientVisibleAt).not.toBeNull()
+    })
+
+    it('stays Primljeno (client_visible_at null) when created without an inspection report', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `GATEA5-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.clientVisibleAt).toBeNull()
+    })
+  })
+
   describe('compare-and-swap guard (TOCTOU)', () => {
     it('refuses to update a claim soft-deleted after the before-read → ConflictError, row unchanged', async () => {
       const created = await container.emotiveClaimsService.create(
