@@ -10,13 +10,15 @@ import {
 } from '@mr/shared'
 import { useQuery } from '@tanstack/react-query'
 
+import { SectionNewBadge } from '~/components/section-new-badge'
+
 /**
  * "Photos from the workshop" — client-visible attachments only (the server
  * enforces both the own-customer scope and the `client_visible` filter).
  * Plain query (not Suspense) so a photo fetch never blocks or breaks the
  * detail page; the whole card is hidden when there are no photos.
  */
-export function PhotosCard({ claimId }: { claimId: string }) {
+export function PhotosCard({ claimId, isFresh }: { claimId: string; isFresh: boolean }) {
   const { data } = useQuery(attachmentsListOptions(ClaimKind.Emotive, claimId))
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
@@ -47,7 +49,10 @@ export function PhotosCard({ claimId }: { claimId: string }) {
         className="mrp-fade-up rounded-[15px] border border-mrp-border bg-mrp-surface p-7"
         style={{ animationDelay: '0.3s' }}
       >
-        <h2 className="mb-[18px] text-[17px] font-extrabold">{m.portal_detail_photos()}</h2>
+        <div className="mb-[18px] flex items-center gap-2.5">
+          <h2 className="text-[17px] font-extrabold">{m.portal_detail_photos()}</h2>
+          {isFresh && <SectionNewBadge />}
+        </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {photos.map((photo) => (
             <button

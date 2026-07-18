@@ -115,4 +115,14 @@ describe('ClaimCard', () => {
     expect(screen.queryByText('Novo')).not.toBeInTheDocument()
     expect(screen.queryByText('Ažurirano')).not.toBeInTheDocument()
   })
+
+  it('pulses the freshness chip, guarded by prefers-reduced-motion', async () => {
+    await renderCard(baseClaim({ freshness: ClaimFreshness.New }))
+
+    const chip = screen.getByText('Novo')
+    expect(chip.className).toContain('animate-pulse')
+    // Reduced-motion users get NO animation — Tailwind's motion-reduce variant
+    // overrides animate-pulse back to `animation: none`.
+    expect(chip.className).toContain('motion-reduce:animate-none')
+  })
 })

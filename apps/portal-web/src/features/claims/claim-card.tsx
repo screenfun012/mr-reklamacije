@@ -43,7 +43,7 @@ export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index:
         </div>
         <div className="flex flex-none items-center gap-1.5">
           {claim.freshness !== null && (
-            <span className="inline-flex flex-none items-center whitespace-nowrap rounded-full bg-mrp-info-bg px-[9px] py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-mrp-info">
+            <span className="inline-flex flex-none animate-pulse items-center whitespace-nowrap rounded-full bg-mrp-info-bg px-[9px] py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-mrp-info motion-reduce:animate-none">
               {claim.freshness === ClaimFreshness.New
                 ? m.portal_freshness_new()
                 : m.portal_freshness_update()}

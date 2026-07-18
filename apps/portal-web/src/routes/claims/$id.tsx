@@ -3,17 +3,19 @@ import {
   attachmentsListOptions,
   ClaimKind,
   clientEmotiveClaimDetailOptions,
-  stripClientVisibleMarker,
   SUPPORT_EMAIL_BY_KIND,
-  type ClientClaimDetail,
 } from '@mr/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { MaskedIcon } from '~/components/masked-icon'
 import { PortalHeader } from '~/components/portal-header'
 import { StatusChip } from '~/components/status-chip'
+import {
+  BasicsCard,
+  InspectionCard,
+  ReportedProblemCard,
+} from '~/features/claims/claim-detail-cards'
 import {
   claimServiceType,
   serviceTypeLabel,
@@ -41,94 +43,6 @@ export const Route = createFileRoute('/claims/$id')({
 })
 
 const detailRoute = getRouteApi('/claims/$id')
-
-function BasicsCell({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-}) {
-  return (
-    <div>
-      <div className="mb-[5px] font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-mrp-text2">
-        {label}
-      </div>
-      <div
-        className={
-          mono ? 'break-all font-mono text-[14px] font-semibold' : 'text-[15px] font-semibold'
-        }
-      >
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function BasicsCard({ claim }: { claim: ClientClaimDetail }) {
-  return (
-    <div
-      className="mrp-fade-up rounded-[15px] border border-mrp-border bg-mrp-surface p-7"
-      style={{ animationDelay: '0.18s' }}
-    >
-      <h2 className="mb-[22px] text-[17px] font-extrabold">{m.portal_detail_basics()}</h2>
-      <div className="grid grid-cols-1 gap-x-7 gap-y-5 sm:grid-cols-2">
-        <BasicsCell label={m.portal_detail_field_ref()} value={claim.claimNumber ?? '—'} mono />
-        <BasicsCell label={m.portal_detail_field_customer()} value={claim.customerName ?? '—'} />
-        <BasicsCell label={m.portal_detail_field_engine()} value={claim.engineTypeCode ?? '—'} />
-        <BasicsCell
-          label={m.portal_detail_field_manufacturer()}
-          value={claim.manufacturerName ?? claim.engineTypeManufacturer ?? '—'}
-        />
-        <BasicsCell label={m.portal_detail_field_serial()} value={claim.engineCode ?? '—'} mono />
-        <BasicsCell
-          label={m.portal_detail_field_service()}
-          value={serviceTypeLabel(claimServiceType())}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ReportedProblemCard({ claim }: { claim: ClientClaimDetail }) {
-  // The client's own reported problem — unreachable elsewhere once the submission is converted.
-  if (!claim.warrantyReport) return null
-  return (
-    <div
-      className="mrp-fade-up rounded-[15px] border border-mrp-border bg-mrp-surface p-7"
-      style={{ animationDelay: '0.21s' }}
-    >
-      <h2 className="mb-4 text-[17px] font-extrabold">{m.portal_detail_problem()}</h2>
-      <p className="whitespace-pre-line text-[15px] leading-[1.65]">{claim.warrantyReport}</p>
-    </div>
-  )
-}
-
-function InspectionCard({ claim }: { claim: ClientClaimDetail }) {
-  const report = claim.inspectionReport
-  return (
-    <div
-      className="mrp-fade-up rounded-[15px] border border-mrp-border bg-mrp-surface p-7"
-      style={{ animationDelay: '0.24s' }}
-    >
-      <div className="mb-4 flex items-center gap-[11px]">
-        <MaskedIcon name="cog" className="size-[17px] text-mrp-red" />
-        <h2 className="text-[17px] font-extrabold">{m.portal_detail_inspection()}</h2>
-      </div>
-      {report !== null && report !== '' ? (
-        <p className="whitespace-pre-line text-[15px] leading-[1.65]">
-          {stripClientVisibleMarker(report)}
-        </p>
-      ) : (
-        <p className="text-[14.5px] italic leading-[1.6] text-mrp-text2">
-          {m.portal_detail_inspection_pending()}
-        </p>
-      )}
-    </div>
-  )
-}
 
 function ClaimDetailComponent() {
   const { id } = detailRoute.useParams()
@@ -181,7 +95,7 @@ function ClaimDetailComponent() {
             <BasicsCard claim={claim} />
             <ReportedProblemCard claim={claim} />
             <InspectionCard claim={claim} />
-            <PhotosCard claimId={claim.id} />
+            <PhotosCard claimId={claim.id} isFresh={claim.sectionFreshness.photos} />
           </div>
 
           <div className="flex flex-col gap-[26px]">

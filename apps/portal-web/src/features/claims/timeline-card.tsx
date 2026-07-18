@@ -2,6 +2,7 @@ import { m } from '@mr/i18n'
 import { ClaimOutcome, ClientClaimPhase, type ClientClaimDetail } from '@mr/shared'
 
 import { MaskedIcon } from '~/components/masked-icon'
+import { SectionNewBadge } from '~/components/section-new-badge'
 import { formatPortalDate } from '~/lib/portal-format'
 
 import { PHASE_COLOR, portalPhase } from './claim-status-presentation'
@@ -83,6 +84,11 @@ export function TimelineCard({ claim }: { claim: ClientClaimDetail }) {
       className="mrp-fade-up mb-[26px] rounded-[15px] border border-mrp-border bg-mrp-surface px-6 pb-[26px] pt-[30px] sm:px-[34px]"
       style={{ animationDelay: '0.12s' }}
     >
+      {claim.sectionFreshness.outcome && (
+        <div className="mb-3 flex justify-end">
+          <SectionNewBadge />
+        </div>
+      )}
       <div className="relative mx-2.5 mb-5 mt-2 h-[5px] rounded-[3px] bg-mrp-border">
         <div
           className="mrp-grow-w absolute inset-y-0 left-0 max-w-full rounded-[3px]"
