@@ -1,6 +1,7 @@
 import {
   AuditAction,
   ClaimKind,
+  ClaimOutcome,
   type ClaimEventPayload,
   type EmotiveClaimFaultInput,
 } from '@mr/shared'
@@ -312,11 +313,28 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
+    // Best-effort notification — fire-and-settle (see changeOutcome). The guard inside
+    // notifyClientOutcomeChanged only sends when the outcome is decided, so publishing a
+    // still-pending claim stays silent.
+    void this.notifyClientOutcomeChanged(updated).catch((error) => {
+      this.logger.error(
+        { err: error, claimId: id },
+        'Unexpected error dispatching outcome-change notification',
+      )
+    })
+
     return updated
   }
 
   /** Never throws — a failed client email must not break the outcome change. */
   private async notifyClientOutcomeChanged(claim: EmotiveClaimDetail): Promise<void> {
+    // Gate B: the client portal masks the outcome until `published_at` is set, so an
+    // email must never fire while the claim is still private (or still pending) — that
+    // would leak or misstate what the client can't yet see.
+    if (claim.publishedAt === null || claim.outcome === ClaimOutcome.Pending) {
+      return
+    }
+
     if (!this.emailPort.enabled || claim.customerId === null) {
       return
     }
