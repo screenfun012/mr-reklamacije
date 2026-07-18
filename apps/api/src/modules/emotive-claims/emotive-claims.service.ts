@@ -140,6 +140,21 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
+    // Phase 3 freshness: opening the detail is what clears the client's NEW/UPDATE
+    // badge on the list. Best-effort — a write failure here must not break the read
+    // (already-persisted, already-visible claim). Never recorded for `type === 'all'`:
+    // an operator previewing the claim must not clear the client's own badge.
+    if (scope.type === 'own_customer') {
+      try {
+        await this.repo.recordClientView(scope.userId, id)
+      } catch (error) {
+        this.logger.error(
+          { err: error, claimId: id, userId: scope.userId },
+          'Failed to record client claim view',
+        )
+      }
+    }
+
     return claim
   }
 

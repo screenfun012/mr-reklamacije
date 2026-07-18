@@ -337,6 +337,117 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('client view tracking (Task 4 — detail open records a view and clears freshness)', () => {
+    async function linkUserToCustomer(customerId: string, userId = TEST_USER_ID): Promise<void> {
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId, userId, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing({
+          target: [schema.customerUsers.customerId, schema.customerUsers.userId],
+        })
+    }
+
+    // Openable: both client-visibility gates (clientVisibleAt + publishedAt) are set,
+    // so a client actor's findById passes the Phase-2 Primljeno gate and reaches the
+    // view-recording hook under test.
+    async function createOpenableClaim(customerId: string, mrPrefix: string): Promise<string> {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          customerId,
+          mrNumber: `${mrPrefix}-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date(), publishedAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, created.id))
+      return created.id
+    }
+
+    async function getView(claimId: string, userId: string): Promise<Date | null> {
+      const [row] = await ctx.db
+        .select({ viewedAt: schema.emotiveClaimClientViews.viewedAt })
+        .from(schema.emotiveClaimClientViews)
+        .where(
+          and(
+            eq(schema.emotiveClaimClientViews.emotiveClaimId, claimId),
+            eq(schema.emotiveClaimClientViews.userId, userId),
+          ),
+        )
+      return row?.viewedAt ?? null
+    }
+
+    it('creates a view row with viewedAt ≈ now when a client opens an openable claim', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'VIEW1')
+
+      const before = Date.now()
+      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      const after = Date.now()
+
+      const viewedAt = await getView(id, TEST_USER_ID)
+      expect(viewedAt).not.toBeNull()
+      expect(viewedAt!.getTime()).toBeGreaterThanOrEqual(before - 1000)
+      expect(viewedAt!.getTime()).toBeLessThanOrEqual(after + 1000)
+    })
+
+    it('advances viewedAt on a second open (upsert — no duplicate-key crash)', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'VIEW2')
+
+      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      const firstViewedAt = await getView(id, TEST_USER_ID)
+      expect(firstViewedAt).not.toBeNull()
+
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+      const secondViewedAt = await getView(id, TEST_USER_ID)
+
+      expect(secondViewedAt).not.toBeNull()
+      expect(secondViewedAt!.getTime()).toBeGreaterThanOrEqual(firstViewedAt!.getTime())
+    })
+
+    it('does NOT create a view row for a full-view internal actor', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      const id = await createOpenableClaim(customerId, 'VIEW3')
+
+      await container.emotiveClaimsService.findById(id, FULL_OPERATOR)
+
+      const viewedAt = await getView(id, TEST_USER_ID)
+      expect(viewedAt).toBeNull()
+    })
+
+    it('end-to-end: opening the detail clears the freshness badge on the unified client list', async () => {
+      const customerId = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await linkUserToCustomer(customerId)
+      const id = await createOpenableClaim(customerId, 'VIEW4')
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientContentUpdatedAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, id))
+
+      const clientActor = {
+        id: TEST_USER_ID,
+        permissions: ['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'],
+      }
+      const unifiedListQuery = { page: 1, pageSize: 50 as const, includeDeleted: false, customerId }
+
+      const before = await container.claimsService.list(unifiedListQuery, clientActor)
+      const beforeItem = before.items.find((item) => item.id === id)
+      expect(beforeItem?.kind === 'emotive' ? beforeItem.freshness : null).toBe('update')
+
+      await container.emotiveClaimsService.findById(id, OWN_CUSTOMER_VIEWER)
+
+      const after = await container.claimsService.list(unifiedListQuery, clientActor)
+      const afterItem = after.items.find((item) => item.id === id)
+      expect(afterItem?.kind === 'emotive' ? afterItem.freshness : null).toBeNull()
+    })
+  })
+
   describe('Gate A — first client-visible inspection report advances the claim to "u obradi"', () => {
     it('sets client_visible_at when an operator fills a non-empty inspection report on a Primljeno claim', async () => {
       const created = await container.emotiveClaimsService.create(

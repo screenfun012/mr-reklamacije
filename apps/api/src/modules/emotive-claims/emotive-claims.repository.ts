@@ -14,6 +14,7 @@ import { claimYearFromDate } from './claim-year.js'
 import {
   claimSources,
   customerUsers,
+  emotiveClaimClientViews,
   emotiveClaimFaults,
   emotiveClaims,
   users,
@@ -840,6 +841,22 @@ export class EmotiveClaimsRepository {
     if (row === undefined) {
       throw new NotFoundError('Emotive claim', id)
     }
+  }
+
+  /**
+   * Phase 3 freshness: stamps/advances the client's per-claim `viewed_at` on
+   * detail open. Upsert on the composite PK so a re-open never duplicate-key
+   * crashes — it just advances the timestamp.
+   */
+  async recordClientView(userId: string, claimId: string): Promise<void> {
+    const now = new Date()
+    await this.db
+      .insert(emotiveClaimClientViews)
+      .values({ userId, emotiveClaimId: claimId, viewedAt: now })
+      .onConflictDoUpdate({
+        target: [emotiveClaimClientViews.userId, emotiveClaimClientViews.emotiveClaimId],
+        set: { viewedAt: now },
+      })
   }
 
   private async canAccessClaim(
