@@ -52,6 +52,8 @@ interface UnifiedListRow {
   claim_year: number | string
   total_amount: string | number | null
   created_at: Date
+  client_visible_at: Date | string | null
+  published_at: Date | string | null
 }
 
 function formatDate(value: Date | string): string {
@@ -99,6 +101,10 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     return item
   }
 
+  const clientVisibleAt =
+    row.client_visible_at === null ? null : formatTimestamp(row.client_visible_at)
+  const publishedAt = row.published_at === null ? null : formatTimestamp(row.published_at)
+
   const item: EmotiveClaimListItem = {
     kind: ClaimKind.Emotive,
     id: row.id,
@@ -121,12 +127,8 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     customerId: row.customer_id,
     customerName: row.customer_name,
     createdAt: formatTimestamp(row.created_at),
-    // ponytail: the unified list's raw UNION SQL doesn't select client_visible_at
-    // /published_at yet (out of this task's scope — only the dedicated
-    // emotive-claims repository carries them so far). Wire this branch too if
-    // the unified /api/claims endpoint needs real client-visibility masking.
-    clientVisibleAt: null,
-    publishedAt: null,
+    clientVisibleAt,
+    publishedAt,
   }
   return item
 }
@@ -280,7 +282,9 @@ export class ClaimsRepository {
         ec.outcome,
         ec.claim_year,
         NULL::numeric AS total_amount,
-        ec.created_at
+        ec.created_at,
+        ec.client_visible_at,
+        ec.published_at
       FROM emotive_claims ec
       INNER JOIN engine_types et ON et.id = ec.engine_type_id
       LEFT JOIN engine_manufacturers em ON em.id = ec.manufacturer_id
@@ -349,7 +353,9 @@ export class ClaimsRepository {
         dc.outcome,
         dc.claim_year,
         dc.total_amount,
-        dc.created_at
+        dc.created_at,
+        NULL::timestamptz AS client_visible_at,
+        NULL::timestamptz AS published_at
       FROM domace_claims dc
       LEFT JOIN engine_types et ON et.id = dc.engine_type_id
       LEFT JOIN engine_manufacturers em ON em.id = dc.manufacturer_id

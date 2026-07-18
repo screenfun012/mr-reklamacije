@@ -439,6 +439,107 @@ describe('ClaimsService integration', () => {
       }
     })
 
+    it('carries real emotive visibility timestamps so a published claim reveals its outcome', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const engineType = await createTestEngineType(container, `ENG-VIS-${Date.now()}`)
+      const published = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `VIS-PUBLISHED-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'unified-visibility-published',
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          customerId: customerSelman,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const visibleNotPublished = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `VIS-INPROGRESS-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'unified-visibility-in-progress',
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          customerId: customerSelman,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const brandNew = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `VIS-RECEIVED-${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'unified-visibility-received',
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          customerId: customerSelman,
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      // Published claim: outcome resolved + client_visible_at/published_at both set.
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          outcome: ClaimOutcome.Accepted,
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: new Date('2026-06-17'),
+        })
+        .where(eq(schema.emotiveClaims.id, published.id))
+
+      // Visible-but-not-published: real outcome is resolved but must stay masked.
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({
+          outcome: ClaimOutcome.Accepted,
+          clientVisibleAt: new Date('2026-06-16'),
+          publishedAt: null,
+        })
+        .where(eq(schema.emotiveClaims.id, visibleNotPublished.id))
+
+      // brandNew stays with both timestamps null (as created).
+
+      const app = createClaimsTestApp(
+        container,
+        testUser(
+          ['emotive_claims.view_own_customer', 'domace_claims.view_own_customer'],
+          TEST_USER_ID,
+          [SYSTEM_ROLE_CLIENT],
+        ),
+      )
+      const res = await app.request(`/api/claims?page=1&pageSize=50&customerId=${customerSelman}`)
+      expect(res.status).toBe(200)
+
+      const body = (await res.json()) as {
+        items: Array<{ id: string; outcome: string; clientPhase: string }>
+      }
+
+      const publishedItem = body.items.find((item) => item.id === published.id)
+      expect(publishedItem?.outcome).toBe(ClaimOutcome.Accepted)
+      expect(publishedItem?.clientPhase).toBe('outcome')
+
+      const visibleNotPublishedItem = body.items.find((item) => item.id === visibleNotPublished.id)
+      expect(visibleNotPublishedItem?.outcome).toBe(ClaimOutcome.Pending)
+      expect(visibleNotPublishedItem?.clientPhase).toBe('in_progress')
+
+      const brandNewItem = body.items.find((item) => item.id === brandNew.id)
+      expect(brandNewItem?.outcome).toBe(ClaimOutcome.Pending)
+      expect(brandNewItem?.clientPhase).toBe('received')
+    })
+
     it('scopes a client to their OWN customer — never leaks another customer’s claims (no customerId filter)', async () => {
       const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
       const customerVitobello = await getCustomerIdByName(ctx.db, 'VITOBELLO')
