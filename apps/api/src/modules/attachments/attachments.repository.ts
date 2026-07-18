@@ -94,6 +94,18 @@ export class AttachmentsRepository {
     return rows[0]?.customerId ?? null
   }
 
+  /**
+   * Phase 3 freshness: stamps now() when a client-visible attachment is added to or
+   * removed from an EMOTIVE claim (a photo, or anything explicitly marked
+   * client_visible) — called from the attachments service's single publish choke point.
+   */
+  async bumpEmotiveClientContentUpdatedAt(claimId: string): Promise<void> {
+    await this.db
+      .update(emotiveClaims)
+      .set({ clientContentUpdatedAt: new Date() })
+      .where(eq(emotiveClaims.id, claimId))
+  }
+
   async listByClaim(
     query: AttachmentListQuery,
     scope: AttachmentsViewScope,

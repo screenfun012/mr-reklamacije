@@ -1481,6 +1481,109 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('client_content_updated_at (Phase 3 freshness bump)', () => {
+    async function getClientContentUpdatedAt(id: string): Promise<Date | null> {
+      const [row] = await ctx.db
+        .select({ clientContentUpdatedAt: schema.emotiveClaims.clientContentUpdatedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, id))
+      return row?.clientContentUpdatedAt ?? null
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-07-18T09:00:00Z'))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('bumps client_content_updated_at when a whitelisted field (inspectionReport) is updated', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`FRESH1-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `FRESH1-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const beforeStamp = await getClientContentUpdatedAt(created.id)
+
+      vi.setSystemTime(new Date('2026-07-18T09:05:00Z'))
+      await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Pregled izvrsen, sve u redu' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const afterStamp = await getClientContentUpdatedAt(created.id)
+      expect(afterStamp).not.toBeNull()
+      expect(afterStamp).toEqual(new Date('2026-07-18T09:05:00Z'))
+      expect(beforeStamp === null || afterStamp!.getTime() > beforeStamp.getTime()).toBe(true)
+    })
+
+    it('does NOT bump client_content_updated_at when only internalNotes changes', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`FRESH2-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `FRESH2-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const beforeStamp = await getClientContentUpdatedAt(created.id)
+
+      vi.setSystemTime(new Date('2026-07-18T09:05:00Z'))
+      await container.emotiveClaimsService.update(
+        created.id,
+        { internalNotes: 'Interna napomena, klijent je ne vidi' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const afterStamp = await getClientContentUpdatedAt(created.id)
+      expect(afterStamp).toEqual(beforeStamp)
+    })
+
+    it('bumps client_content_updated_at on publish (Gate B)', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`FRESH3-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `FRESH3-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const beforeStamp = await getClientContentUpdatedAt(created.id)
+
+      vi.setSystemTime(new Date('2026-07-18T09:05:00Z'))
+      await container.emotiveClaimsService.publish(created.id, auditContext)
+
+      const afterStamp = await getClientContentUpdatedAt(created.id)
+      expect(afterStamp).not.toBeNull()
+      expect(afterStamp).toEqual(new Date('2026-07-18T09:05:00Z'))
+      expect(beforeStamp === null || afterStamp!.getTime() > beforeStamp.getTime()).toBe(true)
+    })
+
+    it('sets client_content_updated_at on create when a whitelisted field is filled', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`FRESH4-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `FRESH4-${crypto.randomUUID().slice(0, 8)}/26`,
+          inspectionReport: 'Nalaz popunjen odmah pri kreiranju',
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const stamp = await getClientContentUpdatedAt(created.id)
+      expect(stamp).not.toBeNull()
+      expect(stamp).toEqual(new Date('2026-07-18T09:00:00Z'))
+    })
+  })
+
   describe('editing freedom (completed claims, no outcome lock)', () => {
     async function createCompletedClaim(): Promise<string> {
       const created = await container.emotiveClaimsService.create(

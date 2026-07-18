@@ -131,10 +131,18 @@ export class AttachmentsService {
     claimId: string,
     clientVisible: boolean,
   ): Promise<void> {
-    const customerId =
-      clientVisible && claimKind === ClaimKind.Emotive
-        ? await this.repo.findEmotiveClaimCustomerId(claimId)
-        : null
+    const isEmotiveClientVisible = clientVisible && claimKind === ClaimKind.Emotive
+
+    const customerId = isEmotiveClientVisible
+      ? await this.repo.findEmotiveClaimCustomerId(claimId)
+      : null
+
+    if (isEmotiveClientVisible) {
+      // Phase 3 freshness: an add/remove of a client-visible attachment is itself
+      // client-visible content changing.
+      await this.repo.bumpEmotiveClientContentUpdatedAt(claimId)
+    }
+
     this.events.publishClaimUpdated({ kind: claimKind, id: claimId }, customerId)
   }
 

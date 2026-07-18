@@ -63,6 +63,36 @@ function formatTimestamp(value: Date): string {
 const hasInspectionReport = (v: string | null | undefined): boolean =>
   typeof v === 'string' && v.trim().length > 0
 
+// Phase 3 freshness: exactly the fields the client wire (`ClientClaimDetailSchema`)
+// exposes for an EMOTIVE claim. Touching ANY of them bumps `client_content_updated_at`
+// to now() on create/update/publish — internalNotes/faults/sourceId/claimNumber/amounts
+// never do. Shared by create and update so the whitelist lives in exactly one place.
+interface ClientVisibleFieldsInput {
+  warrantyReport?: unknown
+  inspectionReport?: unknown
+  dateOfClaim?: unknown
+  dateOfFinish?: unknown
+  engineCode?: unknown
+  engineTypeId?: unknown
+  manufacturerId?: unknown
+  employeeId?: unknown
+  mrNumber?: unknown
+}
+
+function touchesClientVisibleFields(input: ClientVisibleFieldsInput): boolean {
+  return [
+    input.warrantyReport,
+    input.inspectionReport,
+    input.dateOfClaim,
+    input.dateOfFinish,
+    input.engineCode,
+    input.engineTypeId,
+    input.manufacturerId,
+    input.employeeId,
+    input.mrNumber,
+  ].some((value) => value !== undefined)
+}
+
 function mapFaultRow(row: {
   id: string
   faultType: string
@@ -352,6 +382,7 @@ export class EmotiveClaimsRepository {
         internalNotes: input.internalNotes ?? null,
         inspectionReport: input.inspectionReport ?? null,
         clientVisibleAt: hasInspectionReport(input.inspectionReport) ? new Date() : null,
+        clientContentUpdatedAt: touchesClientVisibleFields(input) ? new Date() : null,
         createdBy: actorId,
         updatedBy: actorId,
       })
@@ -653,6 +684,13 @@ export class EmotiveClaimsRepository {
       patch.clientVisibleAt = sql`COALESCE(${emotiveClaims.clientVisibleAt}, now())`
     }
 
+    // Phase 3 freshness: not monotonic — overwritten to now() on every qualifying
+    // change (unlike clientVisibleAt above). Internal-only edits (internalNotes,
+    // faults, sourceId, claimNumber, amounts) never touch it.
+    if (touchesClientVisibleFields(input)) {
+      patch.clientContentUpdatedAt = new Date()
+    }
+
     await this.db.transaction(async (tx) => {
       // Compare-and-swap: the write only lands if the claim is still in the state the
       // service asserted on `before` (not deleted, same outcome). 0 rows → the claim
@@ -790,6 +828,8 @@ export class EmotiveClaimsRepository {
       .update(emotiveClaims)
       .set({
         publishedAt: sql`COALESCE(${emotiveClaims.publishedAt}, now())`,
+        // Phase 3 freshness: the reveal is itself a client-visible change.
+        clientContentUpdatedAt: new Date(),
         updatedBy: actorId,
       })
       .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
