@@ -288,6 +288,14 @@ describe('EmotiveClaims HTTP', () => {
         faults: [{ faultType: 'employee', employeeId: dejanId, notes: 'TAJNA KRIVICA' }],
       })
 
+      // Whitelist/masking is a separate concern from the Primljeno access gate
+      // (0c6f552) — make the claim client-visible (but not yet published) so
+      // the client can open it; outcome stays masked to pending below.
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, created.id))
+
       const app = createEmotiveClaimsTestApp(
         container,
         testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, [SYSTEM_ROLE_CLIENT]),
@@ -352,6 +360,13 @@ describe('EmotiveClaims HTTP', () => {
         warrantyReport: 'partner-detail-wl',
         faults: [{ faultType: 'employee', employeeId: dejanId, notes: 'TAJNA KRIVICA' }],
       })
+
+      // Make the claim client-visible so the access gate (0c6f552) lets the
+      // scoped viewer open it — unrelated to the whitelist behavior asserted here.
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, created.id))
 
       // NON-client role — the old role-keyed gate would have leaked full detail.
       const app = createEmotiveClaimsTestApp(
