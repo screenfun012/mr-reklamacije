@@ -14,7 +14,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ConflictError,
-  ForbiddenError,
   MrKeyConflictError,
   NotFoundError,
   ValidationError,
@@ -1260,7 +1259,7 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
-  describe('claim locking (completed claims)', () => {
+  describe('editing freedom (completed claims, no outcome lock)', () => {
     async function createCompletedClaim(): Promise<string> {
       const created = await container.emotiveClaimsService.create(
         await buildCreateInput({ mrNumber: `LOCK-${Date.now()}/26` }),
@@ -1276,17 +1275,17 @@ describe('EmotiveClaimsService integration', () => {
       return created.id
     }
 
-    it('rejects field/fault edits on a completed claim with ConflictError', async () => {
+    it('lets an operator edit a field on a completed claim without reopening', async () => {
       const id = await createCompletedClaim()
 
-      await expect(
-        container.emotiveClaimsService.update(
-          id,
-          { warrantyReport: 'pokusaj izmene' },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
+      const updated = await container.emotiveClaimsService.update(
+        id,
+        { warrantyReport: 'pokusaj izmene' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.warrantyReport).toBe('pokusaj izmene')
     })
 
     it('allows internalNotes update on a completed claim', async () => {
@@ -1302,47 +1301,49 @@ describe('EmotiveClaimsService integration', () => {
       expect(updated.internalNotes).toBe('Nalaz posle prihvatanja')
     })
 
-    it('rejects a faults-only replace on a completed claim with ConflictError', async () => {
+    it('lets an operator replace faults on a completed claim without reopening', async () => {
       const id = await createCompletedClaim()
       const departmentId = await getDepartmentIdByCode(ctx.db, 'GLAVE')
 
-      await expect(
-        container.emotiveClaimsService.update(
-          id,
-          { faults: [{ faultType: FaultType.Department, departmentId }] },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
+      const updated = await container.emotiveClaimsService.update(
+        id,
+        { faults: [{ faultType: FaultType.Department, departmentId }] },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.faults).toEqual([
+        expect.objectContaining({ faultType: FaultType.Department, departmentId }),
+      ])
     })
 
-    it('blocks a direct accepted → rejected transition with ConflictError', async () => {
+    it('lets an operator re-decide accepted → rejected directly without reopening', async () => {
       const id = await createCompletedClaim()
 
-      await expect(
-        container.emotiveClaimsService.changeOutcome(
-          id,
-          { outcome: ClaimOutcome.Rejected },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
+      const updated = await container.emotiveClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Rejected },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.outcome).toBe(ClaimOutcome.Rejected)
     })
 
-    it('forbids reopen for an operator without the reopen permission', async () => {
+    it('lets an operator without reopen permission move a completed claim back to pending', async () => {
       const id = await createCompletedClaim()
 
-      await expect(
-        container.emotiveClaimsService.changeOutcome(
-          id,
-          { outcome: ClaimOutcome.Pending },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ForbiddenError)
+      const updated = await container.emotiveClaimsService.changeOutcome(
+        id,
+        { outcome: ClaimOutcome.Pending },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.outcome).toBe(ClaimOutcome.Pending)
     })
 
-    it('lets an admin reopen a completed claim and audits the transition', async () => {
+    it('audits an outcome change on a completed claim without a reopen transition tag', async () => {
       const id = await createCompletedClaim()
 
       const reopened = await container.emotiveClaimsService.changeOutcome(
@@ -1359,12 +1360,14 @@ describe('EmotiveClaimsService integration', () => {
         .from(schema.auditLog)
         .where(eq(schema.auditLog.entityId, id))
 
-      const reopenAudited = auditRows.some(
+      const pendingAudited = auditRows.some(
         (row) =>
           row.action === AuditAction.Update &&
-          (row.changes as { transition?: string } | null)?.transition === 'reopen',
+          (row.changes as { outcome?: string; transition?: string } | null)?.outcome ===
+            ClaimOutcome.Pending &&
+          (row.changes as { transition?: string } | null)?.transition === undefined,
       )
-      expect(reopenAudited).toBe(true)
+      expect(pendingAudited).toBe(true)
     })
 
     it('allows editing again once an admin has reopened the claim', async () => {
@@ -1385,12 +1388,12 @@ describe('EmotiveClaimsService integration', () => {
       expect(updated.warrantyReport).toBe('izmena posle otkljucavanja')
     })
 
-    it('forbids an operator from deleting a completed claim', async () => {
+    it('lets an operator delete a completed claim without reopen permission', async () => {
       const id = await createCompletedClaim()
 
       await expect(
         container.emotiveClaimsService.softDelete(id, FULL_OPERATOR, auditContext),
-      ).rejects.toBeInstanceOf(ForbiddenError)
+      ).resolves.toBeUndefined()
     })
 
     it('lets an admin delete a completed claim', async () => {

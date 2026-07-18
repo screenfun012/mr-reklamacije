@@ -8,12 +8,6 @@ import type { Logger } from '@mr/logger'
 
 import type { ApiClaimTxExecutor } from '../../core/database.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
-import {
-  assertClaimEditable,
-  assertCompletedActionAllowed,
-  assertOutcomeTransitionAllowed,
-} from '../../core/claims/claim-lock.js'
-import { isInternalNotesOnlyUpdate } from '../../core/claims/is-internal-notes-only-update.js'
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
@@ -50,8 +44,6 @@ function resolveListScope(actor: EmotiveClaimsActor): EmotiveClaimsListScope {
 function emotiveEventPayload(id: string): ClaimEventPayload {
   return { kind: ClaimKind.Emotive, id }
 }
-
-const EMOTIVE_REOPEN_PERMISSION = 'emotive_claims.reopen'
 
 // Admin hook (docs/13): setting the value to the string 'false' turns the
 // client outcome-change email off; anything else (including unset) leaves it on.
@@ -151,10 +143,6 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    if (!isInternalNotesOnlyUpdate(input)) {
-      assertClaimEditable(before)
-    }
-
     await this.validateUpdateReferences(input)
 
     const updated = await this.repo.update(id, input, auditContext.actorUserId, before, scope)
@@ -184,14 +172,6 @@ export class EmotiveClaimsService {
     if (before === null) {
       throw new NotFoundError('Emotive claim', id)
     }
-
-    // A completed (locked) claim is frozen for drastic actions; only the
-    // unlock-key holder (admin, via emotive_claims.reopen) may delete it.
-    assertCompletedActionAllowed(
-      before,
-      { reopenPermission: EMOTIVE_REOPEN_PERMISSION, permissions: actor.permissions },
-      'Deleting a completed claim requires reopen permission',
-    )
 
     await this.repo.softDelete(id, auditContext.actorUserId, before)
 
@@ -252,11 +232,6 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    const isReopen = assertOutcomeTransitionAllowed(before.outcome, input.outcome, {
-      reopenPermission: EMOTIVE_REOPEN_PERMISSION,
-      permissions: actor.permissions,
-    })
-
     const updated = await this.repo.changeOutcome(
       id,
       input,
@@ -272,9 +247,7 @@ export class EmotiveClaimsService {
       actorUserId: auditContext.actorUserId,
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
-      changes: isReopen
-        ? { before, after: updated, outcome: input.outcome, transition: 'reopen' }
-        : { before, after: updated, outcome: input.outcome },
+      changes: { before, after: updated, outcome: input.outcome },
     })
 
     this.events.publishClaimUpdated(emotiveEventPayload(id), updated.customerId)
