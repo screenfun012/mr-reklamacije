@@ -1,0 +1,1 @@
+ALTER TABLE "emotive_claims" ADD COLUMN "section_updated_at" jsonb;
