@@ -60,7 +60,7 @@ function ClaimDetailComponent() {
       // Clears the dashboard's NEW/UPDATE badge for this claim. The current
       // detail(id) is deliberately NOT invalidated — the "Novo" section
       // markers the client is looking at right now must keep showing for
-      // this visit; they clear on the NEXT open via `staleTime: 0`.
+      // this visit; they clear on the NEXT open via the unmount cache-drop below.
       void queryClient.invalidateQueries({ queryKey: clientClaimKeys.lists() })
       void queryClient.invalidateQueries({ queryKey: clientClaimKeys.summary() })
     },
