@@ -78,6 +78,18 @@ function ClaimDetailComponent() {
     markSeen(id)
   }, [id, markSeen])
 
+  // Drop the cached detail on leaving so re-entry refetches fresh
+  // `sectionFreshness` against the view just recorded by mark-seen. With a
+  // normal staleTime this is the ONLY way re-entry sees fresh markers — and
+  // because the data stays fresh for the rest of THIS visit, mounting never
+  // triggers a background refetch that could race the mark-seen POST above.
+  useEffect(
+    () => () => {
+      queryClient.removeQueries({ queryKey: clientClaimKeys.detail(id) })
+    },
+    [queryClient, id],
+  )
+
   const chip = statusChipConfig(claim)
   const claimLabel = formatPortalClaimId(claim.mrNumber, claim.claimNumber)
   const technicianName = claim.employeeName

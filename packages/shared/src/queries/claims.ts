@@ -106,16 +106,19 @@ export function clientPortalSummaryOptions() {
  * Hits `/api/emotive-claims/:id`, typed as the whitelisted `ClientClaimDetail`.
  * The server strips to client-safe fields + enforces the own-customer scope
  * (returns 404 for another customer's claim). The GET is a pure read (view
- * recording moved to `POST /:id/mark-seen`), so `staleTime: 0` — re-entering
- * the claim always refetches fresh `sectionFreshness` after mark-seen clears
- * it server-side. `refetchOnWindowFocus: false` keeps the "Novo" markers from
- * vanishing mid-visit just because the tab regained focus.
+ * recording moved to `POST /:id/mark-seen`). Normal `staleTime` — the route
+ * component drops this query from the cache on unmount instead, so re-
+ * entering the claim always refetches fresh `sectionFreshness` WITHOUT a
+ * background refetch racing the mount-time mark-seen POST (which would be
+ * the case at `staleTime: 0`). `refetchOnWindowFocus: false` keeps the
+ * "Novo" markers from vanishing mid-visit just because the tab regained
+ * focus.
  */
 export function clientEmotiveClaimDetailOptions(id: string) {
   return queryOptions({
     queryKey: clientClaimKeys.detail(id),
     queryFn: async () => fetchJson<ClientClaimDetail>(`/api/emotive-claims/${id}`),
-    staleTime: 0,
+    staleTime: CLAIMS_LIST_STALE_MS,
     refetchOnWindowFocus: false,
   })
 }

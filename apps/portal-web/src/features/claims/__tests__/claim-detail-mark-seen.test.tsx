@@ -81,8 +81,8 @@ function fixturePhoto(claimId: string): AttachmentListItem {
   }
 }
 
-/** Fakes just the two endpoints this route can hit once the detail query's
- * `staleTime: 0` makes it refetch on every mount. */
+/** Fakes just the two endpoints this route hits: the loader's detail GET and
+ * the mount-time mark-seen POST. */
 function stubFetch(): ReturnType<typeof vi.fn> {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
@@ -201,5 +201,19 @@ describe('claim detail mark-seen on open', () => {
 
     const markSeenCalls = fetchMock.mock.calls.filter(([input]) => String(input) === MARK_SEEN_URL)
     expect(markSeenCalls).toHaveLength(0)
+  })
+
+  it('drops the client claim-detail query from the cache when the detail view unmounts', async () => {
+    stubFetch()
+    const queryClient = buildQueryClient()
+
+    const { unmount } = await renderDetail(queryClient)
+
+    expect(await screen.findByText('MR-7167')).toBeInTheDocument()
+    expect(queryClient.getQueryData(clientClaimKeys.detail(CLAIM_ID))).toBeDefined()
+
+    unmount()
+
+    expect(queryClient.getQueryData(clientClaimKeys.detail(CLAIM_ID))).toBeUndefined()
   })
 })
