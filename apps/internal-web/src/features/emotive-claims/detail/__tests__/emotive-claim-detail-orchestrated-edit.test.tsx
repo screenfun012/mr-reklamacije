@@ -2,10 +2,14 @@ import {
   ClaimDetailTab,
   ClaimKind,
   ClaimOutcome,
-  domaceClaimDetailOptions,
+  CustomerKind,
+  customersReferenceOptions,
+  emotiveClaimDetailOptions,
+  employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
-  type DomaceClaimDetail,
+  type CustomerListItem,
+  type EmotiveClaimDetail,
   type EngineManufacturerListItem,
   type EngineTypeListItem,
 } from '@mr/shared'
@@ -15,11 +19,24 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { DomaceClaimDetailView } from '../domace-claim-detail.js'
+import { EmotiveClaimDetailView } from '../emotive-claim-detail.js'
 
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
+const CUSTOMER_ID = '55555555-5555-4555-8555-555555555555'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
+
+const CUSTOMERS: CustomerListItem[] = [
+  {
+    id: CUSTOMER_ID,
+    name: 'Auto Stanić',
+    kind: CustomerKind.EmotivePartner,
+    country: 'RS',
+    city: 'Beograd',
+    isActive: true,
+    usageCount: 0,
+  },
+]
 
 const ENGINE_TYPES: EngineTypeListItem[] = [
   {
@@ -52,7 +69,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
       useRouteContext: () => ({
         authSession: {
           user: {
-            permissions: ['domace_claims.update', 'domace_claims.change_outcome'],
+            permissions: ['emotive_claims.update', 'emotive_claims.change_outcome'],
           },
         },
       }),
@@ -60,13 +77,12 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetail {
+function makeClaim(overrides: Partial<EmotiveClaimDetail> = {}): EmotiveClaimDetail {
   return {
-    kind: ClaimKind.Domace,
+    kind: ClaimKind.Emotive,
     id: CLAIM_ID,
     sequenceNumber: 1,
     claimNumber: 'CLM-1',
-    customerName: 'Auto Stanić',
     warrantyReport: 'Report text',
     engineTypeId: ENGINE_TYPE_ID,
     engineTypeCode: 'OM651',
@@ -79,23 +95,34 @@ function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetai
     dateOfFinish: null,
     employeeId: null,
     employeeName: null,
+    sourceId: null,
+    sourceCode: null,
+    sourceName: null,
     outcome: ClaimOutcome.Accepted,
     claimYear: 2026,
-    totalAmount: 1000,
-    createdAt: '2026-05-01T10:00:00.000Z',
+    customerId: CUSTOMER_ID,
+    customerName: 'Auto Stanić',
     internalNotes: 'Initial note',
     updatedBy: null,
     updatedAt: '2026-05-02T10:00:00.000Z',
+    createdAt: '2026-05-01T10:00:00.000Z',
     faults: [],
     ...overrides,
-  }
+  } as unknown as EmotiveClaimDetail
 }
 
-function renderDetail(claim: DomaceClaimDetail): void {
+function renderDetail(
+  claim: EmotiveClaimDetail,
+  tab: ClaimDetailTab = ClaimDetailTab.Pregled,
+): void {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
-  client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, claim)
+  client.setQueryData(emotiveClaimDetailOptions(CLAIM_ID).queryKey, claim)
+  client.setQueryData(
+    customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }).queryKey,
+    CUSTOMERS,
+  )
   client.setQueryData(
     engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
     ENGINE_TYPES,
@@ -104,16 +131,17 @@ function renderDetail(claim: DomaceClaimDetail): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <DomaceClaimDetailView id={CLAIM_ID} tab={ClaimDetailTab.Pregled} onTabChange={vi.fn()} />
+      <EmotiveClaimDetailView id={CLAIM_ID} tab={tab} onTabChange={vi.fn()} />
     </QueryClientProvider>
   )
   render(node)
 }
 
-describe('DomaceClaimDetailView orchestrated edit', () => {
+describe('EmotiveClaimDetailView orchestrated edit', () => {
   beforeEach(() => {
     setLocale('sr')
   })
@@ -125,13 +153,9 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
   it('shows overview, findings and inspection-report saves on accepted claims', async () => {
     renderDetail(makeClaim())
 
-    expect(
-      screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
-    ).not.toBeInTheDocument()
-
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
-    // Overview + findings + the new client-visible inspection report each save separately.
+    // Basic overview + findings + inspection report each save separately.
     await waitFor(() => {
       expect(
         screen.getAllByRole('button', { name: m.emotive_claims_detail_basic_save() }),
@@ -139,37 +163,8 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
     })
   })
 
-  it('enters overview edit from the header for accepted claims', () => {
-    renderDetail(makeClaim())
-
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
-
-    expect(screen.getByLabelText(m.domace_claims_detail_field_repair_cost())).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
-    ).not.toBeInTheDocument()
-  })
-
   it('shows the faults edit control on the Kvarovi tab for an accepted claim', () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    })
-    client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, makeClaim())
-    client.setQueryData(
-      engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
-      ENGINE_TYPES,
-    )
-    client.setQueryData(
-      engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
-      MANUFACTURERS,
-    )
-
-    const node: ReactElement = (
-      <QueryClientProvider client={client}>
-        <DomaceClaimDetailView id={CLAIM_ID} tab={ClaimDetailTab.Kvarovi} onTabChange={vi.fn()} />
-      </QueryClientProvider>
-    )
-    render(node)
+    renderDetail(makeClaim(), ClaimDetailTab.Kvarovi)
 
     expect(
       screen.getByRole('button', { name: m.emotive_claims_detail_faults_edit() }),

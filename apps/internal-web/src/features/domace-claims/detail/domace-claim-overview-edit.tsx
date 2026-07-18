@@ -41,21 +41,16 @@ export function DomaceClaimOverviewEdit({
   claim,
   onDone,
 }: DomaceClaimOverviewEditProps): React.ReactElement {
-  const isPending = claim.outcome === ClaimOutcome.Pending
-  const isAccepted = claim.outcome === ClaimOutcome.Accepted
-
-  if (isPending) {
-    return <PendingOverviewEdit claim={claim} onDone={onDone} />
-  }
-
-  if (isAccepted) {
+  // Repair amount is only meaningful once a claim has been accepted; every
+  // other outcome (including pending) gets the full basic-fields edit.
+  if (claim.outcome === ClaimOutcome.Accepted) {
     return <AcceptedOverviewEdit claim={claim} onDone={onDone} />
   }
 
-  return <DomaceClaimBasicReadOnly claim={claim} hideMr />
+  return <FullOverviewEdit claim={claim} onDone={onDone} />
 }
 
-function PendingOverviewEdit({
+function FullOverviewEdit({
   claim,
   onDone,
 }: {

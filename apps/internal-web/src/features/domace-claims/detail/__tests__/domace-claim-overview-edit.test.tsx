@@ -193,4 +193,40 @@ describe('DomaceClaimOverviewEdit', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(fetchSpy).not.toHaveBeenCalled()
   })
+
+  it('renders full basic edit (not read-only) for a rejected claim', () => {
+    renderOverviewEdit(makeClaim({ outcome: ClaimOutcome.Rejected }))
+
+    expect(screen.getByLabelText(m.domace_claims_create_field_customer_name())).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: m.emotive_claims_detail_basic_save() }),
+    ).toHaveLength(1)
+    expect(
+      screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('saves rejected basic fields via PATCH and calls onDone', async () => {
+    const onDone = vi.fn()
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...makeClaim({ outcome: ClaimOutcome.Rejected }),
+        customerName: 'Novi Kupac',
+      }),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    renderOverviewEdit(makeClaim({ outcome: ClaimOutcome.Rejected }), onDone)
+    fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_customer_name()), {
+      target: { value: 'Novi Kupac' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(String(url)).toBe(`/api/domace-claims/${CLAIM_ID}`)
+    expect(init.method).toBe('PATCH')
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+  })
 })

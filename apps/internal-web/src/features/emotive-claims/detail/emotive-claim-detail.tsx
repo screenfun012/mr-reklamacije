@@ -1,6 +1,5 @@
 import {
   ClaimDetailTab,
-  ClaimOutcome,
   emotiveClaimDetailOptions,
   formatListDateTime,
   type ClaimDetailTabValue,
@@ -42,9 +41,7 @@ export function EmotiveClaimDetailView({
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('emotive_claims.change_outcome') === true
-  const canEditBasic =
-    claim.outcome === ClaimOutcome.Pending &&
-    permissions?.includes('emotive_claims.update') === true
+  const canEditBasic = permissions?.includes('emotive_claims.update') === true
   const canEditFaults = canEditBasic
   const canEditFindings = permissions?.includes('emotive_claims.update') === true
 
@@ -113,11 +110,11 @@ export function EmotiveClaimDetailView({
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Prilozi}>
-          <EmotiveClaimAttachmentsTab claimId={claim.id} outcome={claim.outcome} />
+          <EmotiveClaimAttachmentsTab claimId={claim.id} />
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>
-          <EmotiveClaimReportTab claimId={claim.id} outcome={claim.outcome} />
+          <EmotiveClaimReportTab claimId={claim.id} />
         </TabsContent>
       </Tabs>
     </div>

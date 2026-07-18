@@ -44,8 +44,7 @@ export function DomaceClaimDetailView({
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('domace_claims.change_outcome') === true
-  const canEditBasic =
-    claim.outcome === ClaimOutcome.Pending && permissions?.includes('domace_claims.update') === true
+  const canEditBasic = permissions?.includes('domace_claims.update') === true
   const canEditFaults = canEditBasic
   const canEditAmount =
     claim.outcome === ClaimOutcome.Accepted &&
@@ -123,11 +122,11 @@ export function DomaceClaimDetailView({
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Prilozi}>
-          <DomaceClaimAttachmentsTab claimId={claim.id} outcome={claim.outcome} />
+          <DomaceClaimAttachmentsTab claimId={claim.id} />
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>
-          <DomaceClaimReportTab claimId={claim.id} outcome={claim.outcome} />
+          <DomaceClaimReportTab claimId={claim.id} />
         </TabsContent>
       </Tabs>
     </div>

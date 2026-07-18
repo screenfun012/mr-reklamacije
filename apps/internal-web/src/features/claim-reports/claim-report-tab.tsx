@@ -14,7 +14,6 @@ export interface ClaimReportTabProps {
   canView: boolean
   canEdit: boolean
   canExport: boolean
-  claimLocked: boolean
 }
 
 interface ClaimReportTabHeaderProps {
@@ -35,7 +34,6 @@ export function ClaimReportTab({
   canView,
   canEdit,
   canExport,
-  claimLocked,
 }: ClaimReportTabProps): React.ReactElement {
   const [sheetOpen, setSheetOpen] = useState(false)
   const { exportPdf, exportDocx, isExportingPdf, isExportingDocx } = useClaimReportExport(
@@ -56,7 +54,6 @@ export function ClaimReportTab({
   }
 
   const isEmpty = data === undefined || isClaimReportEmpty(data.contentHtml)
-  const showEditButton = canEdit && !claimLocked
   const showExportButtons = canExport && !isEmpty && !isLoading && !isError && data !== undefined
 
   const exportButtons = showExportButtons ? (
@@ -82,10 +79,6 @@ export function ClaimReportTab({
 
   return (
     <div className="flex flex-col gap-4">
-      {claimLocked ? (
-        <p className="text-sm text-mri-text2">{m.claim_report_locked_hint()}</p>
-      ) : null}
-
       {isLoading ? (
         <div className="flex flex-col gap-3">
           <div className="flex justify-end border-b border-mri-border py-2">
@@ -100,7 +93,7 @@ export function ClaimReportTab({
       ) : isEmpty ? (
         <ClaimReportTabHeader>
           <p className="mr-auto text-sm text-mri-text2">{m.claim_report_empty()}</p>
-          {showEditButton ? (
+          {canEdit ? (
             <Button type="button" onClick={() => setSheetOpen(true)}>
               {m.claim_report_create()}
             </Button>
@@ -108,10 +101,10 @@ export function ClaimReportTab({
         </ClaimReportTabHeader>
       ) : (
         <div className="flex min-h-0 flex-col gap-3">
-          {showEditButton || showExportButtons ? (
+          {canEdit || showExportButtons ? (
             <ClaimReportTabHeader>
               {exportButtons}
-              {showEditButton ? (
+              {canEdit ? (
                 <Button type="button" onClick={() => setSheetOpen(true)}>
                   {m.claim_report_edit()}
                 </Button>
@@ -127,7 +120,7 @@ export function ClaimReportTab({
         onOpenChange={setSheetOpen}
         claimKind={claimKind}
         claimId={claimId}
-        canEdit={canEdit && !claimLocked}
+        canEdit={canEdit}
       />
     </div>
   )

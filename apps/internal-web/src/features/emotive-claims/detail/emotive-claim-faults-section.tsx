@@ -26,7 +26,7 @@ const EMPTY = '—'
 
 interface EmotiveClaimFaultsSectionProps {
   claim: EmotiveClaimDetail
-  /** Pending status + `emotive_claims.update` permission. */
+  /** `emotive_claims.update` permission. */
   canEdit: boolean
 }
 
