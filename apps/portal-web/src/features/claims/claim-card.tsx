@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
+import { ClaimFreshness, ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
 
@@ -41,7 +41,16 @@ export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index:
         <div className="font-mono text-[19px] font-bold tracking-[0.01em]">
           {formatPortalClaimId(claim.mrNumber, claim.claimNumber)}
         </div>
-        <StatusChip config={chip} />
+        <div className="flex flex-none items-center gap-1.5">
+          {claim.freshness !== null && (
+            <span className="inline-flex flex-none items-center whitespace-nowrap rounded-full bg-mrp-info-bg px-[9px] py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-mrp-info">
+              {claim.freshness === ClaimFreshness.New
+                ? m.portal_freshness_new()
+                : m.portal_freshness_update()}
+            </span>
+          )}
+          <StatusChip config={chip} />
+        </div>
       </div>
 
       <span className="mb-3 inline-block rounded-[5px] border border-mrp-border2 px-[9px] py-[3px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-mrp-text2">

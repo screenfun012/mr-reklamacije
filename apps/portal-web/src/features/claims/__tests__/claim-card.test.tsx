@@ -1,5 +1,11 @@
 import { setLocale } from '@mr/i18n'
-import { ClaimKind, ClaimOutcome, ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
+import {
+  ClaimFreshness,
+  ClaimKind,
+  ClaimOutcome,
+  ClientClaimPhase,
+  type ClientClaimListItem,
+} from '@mr/shared'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -29,6 +35,7 @@ function baseClaim(overrides: Partial<ClientClaimListItem> = {}): ClientClaimLis
     customerName: 'Partner d.o.o.',
     createdAt: '2026-06-01T00:00:00.000Z',
     clientPhase: ClientClaimPhase.InProgress,
+    freshness: null,
     ...overrides,
   }
 }
@@ -88,5 +95,24 @@ describe('ClaimCard', () => {
 
     expect(screen.getByText('Odbijena')).toBeInTheDocument()
     expect(screen.getByRole('link')).toBeInTheDocument()
+  })
+
+  it('renders the Novo chip for a claim with New freshness', async () => {
+    await renderCard(baseClaim({ freshness: ClaimFreshness.New }))
+
+    expect(screen.getByText('Novo')).toBeInTheDocument()
+  })
+
+  it('renders the Ažurirano chip for a claim with Update freshness', async () => {
+    await renderCard(baseClaim({ freshness: ClaimFreshness.Update }))
+
+    expect(screen.getByText('Ažurirano')).toBeInTheDocument()
+  })
+
+  it('renders no freshness chip when freshness is null', async () => {
+    await renderCard(baseClaim({ freshness: null }))
+
+    expect(screen.queryByText('Novo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ažurirano')).not.toBeInTheDocument()
   })
 })
