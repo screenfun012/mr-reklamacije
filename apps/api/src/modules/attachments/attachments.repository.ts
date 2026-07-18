@@ -98,11 +98,16 @@ export class AttachmentsRepository {
    * Phase 3 freshness: stamps now() when a client-visible attachment is added to or
    * removed from an EMOTIVE claim (a photo, or anything explicitly marked
    * client_visible) — called from the attachments service's single publish choke point.
+   * Phase 3.1: the same change also stamps the 'photos' section key, parameterized
+   * (no sql.raw) even though the key is a fixed literal, not user input.
    */
   async bumpEmotiveClientContentUpdatedAt(claimId: string): Promise<void> {
     await this.db
       .update(emotiveClaims)
-      .set({ clientContentUpdatedAt: new Date() })
+      .set({
+        clientContentUpdatedAt: new Date(),
+        sectionUpdatedAt: sql`jsonb_set(COALESCE(${emotiveClaims.sectionUpdatedAt}, '{}'::jsonb), ${'{photos}'}::text[], to_jsonb(now()))`,
+      })
       .where(eq(emotiveClaims.id, claimId))
   }
 

@@ -80,10 +80,11 @@ interface ClientVisibleFieldsInput {
   mrNumber?: unknown
 }
 
-function touchesClientVisibleFields(input: ClientVisibleFieldsInput): boolean {
+// Phase 3.1 section markers: 'details' covers everything client-visible except the
+// inspection report, which gets its own 'inspection' key (see bumpSectionsSql below).
+function touchesDetailsFields(input: ClientVisibleFieldsInput): boolean {
   return [
     input.warrantyReport,
-    input.inspectionReport,
     input.dateOfClaim,
     input.dateOfFinish,
     input.engineCode,
@@ -92,6 +93,10 @@ function touchesClientVisibleFields(input: ClientVisibleFieldsInput): boolean {
     input.employeeId,
     input.mrNumber,
   ].some((value) => value !== undefined)
+}
+
+function touchesClientVisibleFields(input: ClientVisibleFieldsInput): boolean {
+  return input.inspectionReport !== undefined || touchesDetailsFields(input)
 }
 
 function mapFaultRow(row: {
@@ -178,6 +183,20 @@ export class EmotiveClaimsRepository {
     private readonly faultsRepo: FaultsRepository,
     private readonly mrRegistry: MrRegistryService,
   ) {}
+
+  /**
+   * Phase 3.1 section markers: builds a jsonb_set chain that stamps now() at each given
+   * section key, starting from the existing column (or '{}' if null). Keys always come
+   * from the fixed allowlist above — never user input — but are still bound as SQL
+   * parameters (no sql.raw) rather than inlined into the query text.
+   */
+  private bumpSectionsSql(keys: readonly string[]) {
+    let expr = sql`COALESCE(${emotiveClaims.sectionUpdatedAt}, '{}'::jsonb)`
+    for (const key of keys) {
+      expr = sql`jsonb_set(${expr}, ${`{${key}}`}::text[], to_jsonb(now()))`
+    }
+    return expr
+  }
 
   async getSourceDefaultCustomerId(sourceId: string): Promise<string | null> {
     const [row] = await this.db
@@ -366,6 +385,17 @@ export class EmotiveClaimsRepository {
   ): Promise<string> {
     const claimYear = claimYearFromDate(input.dateOfClaim)
 
+    // Phase 3.1 section markers: mirror clientContentUpdatedAt's field-presence logic,
+    // split per section, so the freshest-changed-section signal starts correct on create.
+    const initialSections: Record<string, string> = {}
+    const nowIso = new Date().toISOString()
+    if (input.inspectionReport !== undefined) {
+      initialSections['inspection'] = nowIso
+    }
+    if (touchesDetailsFields(input)) {
+      initialSections['details'] = nowIso
+    }
+
     const [created] = await tx
       .insert(emotiveClaims)
       .values({
@@ -387,6 +417,7 @@ export class EmotiveClaimsRepository {
         inspectionReport: input.inspectionReport ?? null,
         clientVisibleAt: hasInspectionReport(input.inspectionReport) ? new Date() : null,
         clientContentUpdatedAt: touchesClientVisibleFields(input) ? new Date() : null,
+        sectionUpdatedAt: Object.keys(initialSections).length > 0 ? initialSections : null,
         createdBy: actorId,
         updatedBy: actorId,
       })
@@ -635,8 +666,12 @@ export class EmotiveClaimsRepository {
     // The scoped row-level gate (and the NotFound-on-missing check) already ran in
     // the service before-read; `before` is that same aggregate, passed down to avoid
     // a redundant heavy re-read here.
-    const patch: Omit<Partial<typeof emotiveClaims.$inferInsert>, 'clientVisibleAt'> & {
+    const patch: Omit<
+      Partial<typeof emotiveClaims.$inferInsert>,
+      'clientVisibleAt' | 'sectionUpdatedAt'
+    > & {
       clientVisibleAt?: SQL
+      sectionUpdatedAt?: SQL
     } = {
       updatedBy: actorId,
     }
@@ -693,6 +728,18 @@ export class EmotiveClaimsRepository {
     // faults, sourceId, claimNumber, amounts) never touch it.
     if (touchesClientVisibleFields(input)) {
       patch.clientContentUpdatedAt = new Date()
+    }
+
+    // Phase 3.1 section markers: same whitelist, split per changed section.
+    const sectionKeys: string[] = []
+    if (input.inspectionReport !== undefined) {
+      sectionKeys.push('inspection')
+    }
+    if (touchesDetailsFields(input)) {
+      sectionKeys.push('details')
+    }
+    if (sectionKeys.length > 0) {
+      patch.sectionUpdatedAt = this.bumpSectionsSql(sectionKeys)
     }
 
     await this.db.transaction(async (tx) => {
@@ -834,6 +881,8 @@ export class EmotiveClaimsRepository {
         publishedAt: sql`COALESCE(${emotiveClaims.publishedAt}, now())`,
         // Phase 3 freshness: the reveal is itself a client-visible change.
         clientContentUpdatedAt: new Date(),
+        // Phase 3.1: publish is Gate B — it belongs to the 'outcome' section.
+        sectionUpdatedAt: this.bumpSectionsSql(['outcome']),
         updatedBy: actorId,
       })
       .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))

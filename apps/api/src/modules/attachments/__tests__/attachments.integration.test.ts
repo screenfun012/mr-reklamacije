@@ -509,6 +509,103 @@ describe('AttachmentsService integration', () => {
       expect(after).toEqual(new Date('2026-07-18T09:10:00Z'))
     })
   })
+
+  describe('section_updated_at.photos bump on client-visible attachment changes (Phase 3.1)', () => {
+    const uploader = {
+      id: TEST_USER_ID,
+      permissions: ['attachments.upload', 'emotive_claims.view'],
+    }
+    const deleter = {
+      id: TEST_USER_ID,
+      permissions: ['attachments.view_internal', 'attachments.delete_any', 'emotive_claims.view'],
+    }
+
+    async function createEmotiveClaim(): Promise<string> {
+      const engineType = await createTestEngineType(
+        container,
+        `SECFRESH-EMO-${crypto.randomUUID().slice(0, 8)}`,
+      )
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-04-17'),
+          mrNumber: `SECFRESH-${crypto.randomUUID().slice(0, 8)}/26`,
+          outcome: ClaimOutcome.Pending,
+          faults: [],
+        },
+        { id: TEST_USER_ID, permissions: ['emotive_claims.view', 'emotive_claims.create'] },
+        auditContext,
+      )
+      return created.id
+    }
+
+    async function getSectionUpdatedAt(claimId: string): Promise<Record<string, string> | null> {
+      const [row] = await ctx.db
+        .select({ sectionUpdatedAt: schema.emotiveClaims.sectionUpdatedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, claimId))
+      return row?.sectionUpdatedAt ?? null
+    }
+
+    it('sets section_updated_at.photos when a client-visible photo is uploaded', async () => {
+      const claimId = await createEmotiveClaim()
+
+      await container.attachmentsService.upload(
+        {
+          claimKind: ClaimKind.Emotive,
+          claimId,
+          // Photos are client-visible regardless of the visibility flag (2026-07-04 rule).
+          visibility: AttachmentVisibility.Internal,
+          files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
+        },
+        uploader,
+        auditContext,
+      )
+
+      const sections = await getSectionUpdatedAt(claimId)
+      expect(sections?.['photos']).toBeDefined()
+    })
+
+    it('does NOT set section_updated_at.photos when an internal (non-image) document is uploaded', async () => {
+      const claimId = await createEmotiveClaim()
+
+      await container.attachmentsService.upload(
+        {
+          claimKind: ClaimKind.Emotive,
+          claimId,
+          visibility: AttachmentVisibility.Internal,
+          files: [{ fileName: 'report.pdf', data: Buffer.from('%PDF-1.4\n% internal doc') }],
+        },
+        uploader,
+        auditContext,
+      )
+
+      const sections = await getSectionUpdatedAt(claimId)
+      expect(sections?.['photos']).toBeUndefined()
+    })
+
+    it('sets section_updated_at.photos when a client-visible photo is deleted', async () => {
+      const claimId = await createEmotiveClaim()
+
+      const uploaded = await container.attachmentsService.upload(
+        {
+          claimKind: ClaimKind.Emotive,
+          claimId,
+          visibility: AttachmentVisibility.Internal,
+          files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
+        },
+        uploader,
+        auditContext,
+      )
+      const attachmentId = uploaded.items[0]?.id
+      expect(attachmentId).toBeDefined()
+
+      await container.attachmentsService.delete(attachmentId!, deleter, auditContext)
+
+      const sections = await getSectionUpdatedAt(claimId)
+      expect(sections?.['photos']).toBeDefined()
+    })
+  })
 })
 
 describe('Attachments HTTP integration', () => {

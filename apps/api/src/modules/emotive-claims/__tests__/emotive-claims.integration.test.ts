@@ -1695,6 +1695,149 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('section_updated_at (Phase 3.1 per-section markers)', () => {
+    async function getSectionUpdatedAt(id: string): Promise<Record<string, string> | null> {
+      const [row] = await ctx.db
+        .select({ sectionUpdatedAt: schema.emotiveClaims.sectionUpdatedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, id))
+      return row?.sectionUpdatedAt ?? null
+    }
+
+    it('sets section_updated_at.inspection when inspectionReport is updated, without re-bumping details', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SEC1-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SEC1-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      // Required create fields (engineTypeId/dateOfClaim/mrNumber) are 'details' triggers,
+      // so 'details' is already stamped at creation — same as clientContentUpdatedAt.
+      const afterCreate = await getSectionUpdatedAt(created.id)
+      expect(afterCreate?.['inspection']).toBeUndefined()
+      expect(afterCreate?.['details']).toBeDefined()
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Pregled izvrsen, sve u redu' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const sections = await getSectionUpdatedAt(created.id)
+      expect(sections?.['inspection']).toBeDefined()
+      // Scoping guarantee: an inspection-only update never re-bumps the details key.
+      expect(sections?.['details']).toBe(afterCreate?.['details'])
+    })
+
+    it('bumps section_updated_at.details when a details field (engineCode) is updated, leaves inspection absent', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SEC2-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SEC2-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const afterCreate = await getSectionUpdatedAt(created.id)
+      const detailsAtCreate = afterCreate?.['details']
+      expect(detailsAtCreate).toBeDefined()
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { engineCode: 'ENG-CODE-123' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const sections = await getSectionUpdatedAt(created.id)
+      expect(sections?.['details']).toBeDefined()
+      // Actually re-stamped to a later time, not just left over from creation.
+      expect(new Date(sections!['details']!).getTime()).toBeGreaterThanOrEqual(
+        new Date(detailsAtCreate!).getTime(),
+      )
+      expect(sections?.['inspection']).toBeUndefined()
+    })
+
+    it('sets BOTH inspection and details when inspectionReport and engineCode are updated together', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SEC3-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SEC3-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Pregled izvrsen', engineCode: 'ENG-CODE-456' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const sections = await getSectionUpdatedAt(created.id)
+      expect(sections?.['inspection']).toBeDefined()
+      expect(sections?.['details']).toBeDefined()
+    })
+
+    it('leaves section_updated_at unchanged (leak-prevention) when only internalNotes changes', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SEC4-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SEC4-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const beforeUpdate = await getSectionUpdatedAt(created.id)
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { internalNotes: 'Interna napomena, klijent je ne vidi' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      // internalNotes routes to NO section key — the internal-only edit leaves every
+      // existing key exactly as it was (no re-bump), same guarantee client_content_updated_at has.
+      expect(await getSectionUpdatedAt(created.id)).toEqual(beforeUpdate)
+    })
+
+    it('sets section_updated_at.outcome on publish (Gate B)', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SEC5-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SEC5-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      await container.emotiveClaimsService.publish(created.id, auditContext)
+
+      const sections = await getSectionUpdatedAt(created.id)
+      expect(sections?.['outcome']).toBeDefined()
+    })
+
+    it('sets section_updated_at.inspection on create when inspectionReport is filled', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SEC6-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SEC6-${crypto.randomUUID().slice(0, 8)}/26`,
+          inspectionReport: 'Nalaz popunjen odmah pri kreiranju',
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const sections = await getSectionUpdatedAt(created.id)
+      expect(sections?.['inspection']).toBeDefined()
+    })
+  })
+
   describe('editing freedom (completed claims, no outcome lock)', () => {
     async function createCompletedClaim(): Promise<string> {
       const created = await container.emotiveClaimsService.create(
@@ -1799,7 +1942,7 @@ describe('EmotiveClaimsService integration', () => {
       const pendingAudited = auditRows.some(
         (row) =>
           row.action === AuditAction.Update &&
-          (row.changes as { outcome?: string; transition?: string } | null)?.outcome ===
+          (row.changes as { outcome?: string; transition?: string } | null)?.['outcome'] ===
             ClaimOutcome.Pending &&
           (row.changes as { transition?: string } | null)?.transition === undefined,
       )
