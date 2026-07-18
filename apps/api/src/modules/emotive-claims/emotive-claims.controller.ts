@@ -134,5 +134,12 @@ export function createEmotiveClaimsController(container: Container) {
       )
       return c.json(serializeClaimDetail(updated, user))
     },
+
+    publish: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = EmotiveClaimIdParamSchema.parse(c.req.param())
+      const updated = await container.emotiveClaimsService.publish(id, getActorContext(c, user))
+      return c.json(serializeClaimDetail(updated, user))
+    },
   }
 }

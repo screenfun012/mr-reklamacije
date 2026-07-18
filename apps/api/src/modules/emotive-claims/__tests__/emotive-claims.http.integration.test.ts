@@ -576,4 +576,120 @@ describe('EmotiveClaims HTTP', () => {
       expect(auditRows.length).toBeGreaterThanOrEqual(1)
     })
   })
+
+  describe('POST /api/emotive-claims/:id/publish', () => {
+    it('returns 401 without auth', async () => {
+      const created = await createClaimViaHttp()
+      const app = createEmotiveClaimsTestApp(container, null)
+      const res = await app.request(`/api/emotive-claims/${created.id}/publish`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(401)
+    })
+
+    it('returns 403 without publish permission', async () => {
+      const created = await createClaimViaHttp()
+      const app = createEmotiveClaimsTestApp(container, testUser(['emotive_claims.view']))
+      const res = await app.request(`/api/emotive-claims/${created.id}/publish`, {
+        method: 'POST',
+      })
+      expect(res.status).toBe(403)
+    })
+
+    it('publishes with 200, writes audit log, and reveals the real outcome to the client (was masked before)', async () => {
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const created = await createClaimViaHttp({
+        customerId: customerSelman,
+        mrNumber: 'HTTP-PUBLISH/26',
+        outcome: ClaimOutcome.Accepted,
+      })
+
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ clientVisibleAt: new Date() })
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      const clientApp = createEmotiveClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer'], TEST_USER_ID, [SYSTEM_ROLE_CLIENT]),
+      )
+      const beforeRes = await clientApp.request(`/api/emotive-claims/${created.id}`)
+      expect(beforeRes.status).toBe(200)
+      const beforeBody = (await beforeRes.json()) as { outcome: string }
+      // Masked while unpublished — the client sees pending regardless of the real outcome.
+      expect(beforeBody.outcome).toBe(ClaimOutcome.Pending)
+
+      const operatorApp = createEmotiveClaimsTestApp(
+        container,
+        testUser([...FULL_OPERATOR_PERMS, 'emotive_claims.publish']),
+      )
+      const publishRes = await operatorApp.request(`/api/emotive-claims/${created.id}/publish`, {
+        method: 'POST',
+      })
+      expect(publishRes.status).toBe(200)
+      const publishBody = (await publishRes.json()) as {
+        publishedAt: string | null
+        outcome: string
+      }
+      expect(publishBody.publishedAt).not.toBeNull()
+      expect(publishBody.outcome).toBe(ClaimOutcome.Accepted)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(
+          and(
+            eq(schema.auditLog.entityId, created.id),
+            eq(schema.auditLog.action, AuditAction.Update),
+          ),
+        )
+      expect(
+        auditRows.some(
+          (row) => (row.changes as { transition?: string } | null)?.transition === 'publish',
+        ),
+      ).toBe(true)
+
+      const afterRes = await clientApp.request(`/api/emotive-claims/${created.id}`)
+      expect(afterRes.status).toBe(200)
+      const afterBody = (await afterRes.json()) as { outcome: string }
+      // Published — the real outcome is now revealed.
+      expect(afterBody.outcome).toBe(ClaimOutcome.Accepted)
+    })
+
+    it('is idempotent: republishing returns 200 with the same published_at and no duplicate audit row', async () => {
+      const created = await createClaimViaHttp({ mrNumber: 'HTTP-PUBLISH-IDEMPOTENT/26' })
+      const app = createEmotiveClaimsTestApp(
+        container,
+        testUser([...FULL_OPERATOR_PERMS, 'emotive_claims.publish']),
+      )
+
+      const firstRes = await app.request(`/api/emotive-claims/${created.id}/publish`, {
+        method: 'POST',
+      })
+      expect(firstRes.status).toBe(200)
+      const firstBody = (await firstRes.json()) as { publishedAt: string | null }
+      expect(firstBody.publishedAt).not.toBeNull()
+
+      const auditCountBefore = (
+        await ctx.db.select().from(schema.auditLog).where(eq(schema.auditLog.entityId, created.id))
+      ).length
+
+      const secondRes = await app.request(`/api/emotive-claims/${created.id}/publish`, {
+        method: 'POST',
+      })
+      expect(secondRes.status).toBe(200)
+      const secondBody = (await secondRes.json()) as { publishedAt: string | null }
+      expect(secondBody.publishedAt).toBe(firstBody.publishedAt)
+
+      const auditCountAfter = (
+        await ctx.db.select().from(schema.auditLog).where(eq(schema.auditLog.entityId, created.id))
+      ).length
+      expect(auditCountAfter).toBe(auditCountBefore)
+    })
+  })
 })

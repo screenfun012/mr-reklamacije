@@ -275,6 +275,46 @@ export class EmotiveClaimsService {
     return updated
   }
 
+  /**
+   * Gate B: the operator's explicit "Objavi/Publish" action — stamps `published_at`
+   * so the client wire-masking (`toClientClaimDetail`/`toClientClaimListItem`) starts
+   * showing the real outcome instead of the masked "pending" placeholder. Always
+   * full-scope (`{ type: 'all' }`) — this is an operator action, not a scoped read.
+   */
+  async publish(id: string, auditContext: HttpActorContext): Promise<EmotiveClaimDetail> {
+    const before = await this.repo.findById(id, { type: 'all' })
+    if (before === null) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
+    // Idempotent: already published — no duplicate audit row or SSE event, still a
+    // normal 200 with the unchanged claim.
+    if (before.publishedAt !== null) {
+      return before
+    }
+
+    await this.repo.publish(id, auditContext.actorUserId)
+
+    await this.audit.log({
+      entityType: 'emotive_claim',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { transition: 'publish' },
+    })
+
+    this.events.publishClaimUpdated(emotiveEventPayload(id), before.customerId)
+
+    const updated = await this.repo.findById(id, { type: 'all' })
+    if (updated === null) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+
+    return updated
+  }
+
   /** Never throws — a failed client email must not break the outcome change. */
   private async notifyClientOutcomeChanged(claim: EmotiveClaimDetail): Promise<void> {
     if (!this.emailPort.enabled || claim.customerId === null) {

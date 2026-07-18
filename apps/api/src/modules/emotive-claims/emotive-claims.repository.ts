@@ -780,6 +780,25 @@ export class EmotiveClaimsRepository {
     return updated
   }
 
+  /**
+   * Gate B: the operator's explicit "Objavi/Publish" action. COALESCE keeps the
+   * stamp monotonic — once set, a repeat call is a no-op at the DB level (the
+   * service layer decides idempotency for audit/SSE using the before-read).
+   */
+  async publish(id: string, actorId: string): Promise<void> {
+    const [row] = await this.db
+      .update(emotiveClaims)
+      .set({
+        publishedAt: sql`COALESCE(${emotiveClaims.publishedAt}, now())`,
+        updatedBy: actorId,
+      })
+      .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
+      .returning({ id: emotiveClaims.id })
+    if (row === undefined) {
+      throw new NotFoundError('Emotive claim', id)
+    }
+  }
+
   private async canAccessClaim(
     customerId: string | null,
     scope: EmotiveClaimsListScope,

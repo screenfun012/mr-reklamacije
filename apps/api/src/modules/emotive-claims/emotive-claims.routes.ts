@@ -29,6 +29,7 @@ export function registerEmotiveClaimsRoutes(
     requirePermission('emotive_claims.change_outcome'),
     controller.changeOutcome,
   )
+  routes.post('/:id/publish', requirePermission('emotive_claims.publish'), controller.publish)
 
   app.route('/api/emotive-claims', routes)
 }

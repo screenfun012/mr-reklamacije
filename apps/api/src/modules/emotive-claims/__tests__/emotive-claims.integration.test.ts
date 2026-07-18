@@ -1421,6 +1421,66 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('publish (Gate B — explicit client-visibility reveal)', () => {
+    it('stamps published_at, audits the transition as changes.transition === "publish", and publishes claim_updated', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          mrNumber: `PUBLISH-${Date.now()}/26`,
+          outcome: ClaimOutcome.Accepted,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.publishedAt).toBeNull()
+      receivedEvents.length = 0
+
+      const published = await container.emotiveClaimsService.publish(created.id, auditContext)
+
+      expect(published.publishedAt).not.toBeNull()
+      expect(published.outcome).toBe(ClaimOutcome.Accepted)
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, created.id))
+      const publishRow = auditRows.find(
+        (row) => (row.changes as { transition?: string } | null)?.transition === 'publish',
+      )
+      expect(publishRow).toBeDefined()
+      expect(publishRow?.action).toBe(AuditAction.Update)
+
+      expect(receivedEvents).toContainEqual({
+        type: ClaimEventType.Updated,
+        payload: { kind: ClaimKind.Emotive, id: created.id },
+      })
+    })
+
+    it('is idempotent: publishing an already-published claim leaves published_at unchanged and emits no second audit/SSE', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `PUBLISH-IDEMPOTENT-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const first = await container.emotiveClaimsService.publish(created.id, auditContext)
+      expect(first.publishedAt).not.toBeNull()
+
+      const auditCountAfterFirst = (
+        await ctx.db.select().from(schema.auditLog).where(eq(schema.auditLog.entityId, created.id))
+      ).length
+      const eventCountAfterFirst = receivedEvents.length
+
+      const second = await container.emotiveClaimsService.publish(created.id, auditContext)
+      expect(second.publishedAt).toEqual(first.publishedAt)
+
+      const auditCountAfterSecond = (
+        await ctx.db.select().from(schema.auditLog).where(eq(schema.auditLog.entityId, created.id))
+      ).length
+      expect(auditCountAfterSecond).toBe(auditCountAfterFirst)
+      expect(receivedEvents.length).toBe(eventCountAfterFirst)
+    })
+  })
+
   describe('editing freedom (completed claims, no outcome lock)', () => {
     async function createCompletedClaim(): Promise<string> {
       const created = await container.emotiveClaimsService.create(

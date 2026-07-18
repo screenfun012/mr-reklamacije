@@ -21,6 +21,7 @@ export const PERMISSIONS = [
   'emotive_claims.restore',
   'emotive_claims.change_outcome',
   'emotive_claims.unarchive',
+  'emotive_claims.publish',
 
   // domace_claims
   'domace_claims.view',
@@ -150,6 +151,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.update',
   'emotive_claims.delete',
   'emotive_claims.change_outcome',
+  'emotive_claims.publish',
   'domace_claims.view',
   'domace_claims.create',
   'domace_claims.update',
