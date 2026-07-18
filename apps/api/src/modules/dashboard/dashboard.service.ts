@@ -75,8 +75,14 @@ function deriveActivityEvent(row: ClientClaimAuditRow): ClientPortalActivityItem
 
   if (
     before.outcome === ClaimOutcome.Pending &&
-    (after.outcome === ClaimOutcome.Accepted || after.outcome === ClaimOutcome.Rejected)
+    (after.outcome === ClaimOutcome.Accepted || after.outcome === ClaimOutcome.Rejected) &&
+    row.publishedAt !== null
   ) {
+    // Phase 2 visibility gate: this outcome-change row re-derives on every
+    // request, so once the claim is published (publishedAt flips non-null)
+    // the SAME row naturally starts producing an Outcome event — no need to
+    // special-case the publish audit row itself (its `changes` has no
+    // before/after, so it already falls through to null below).
     return { ...base, event: ClientClaimPhase.Outcome, outcome: after.outcome }
   }
 

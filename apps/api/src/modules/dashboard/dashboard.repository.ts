@@ -84,6 +84,8 @@ export interface ClientClaimAuditRow {
   action: string
   changes: unknown
   occurredAt: Date
+  // Phase 2 visibility gate: null while the claim is still private.
+  publishedAt: Date | null
 }
 
 interface ClientClaimAuditDbRow extends Record<string, unknown> {
@@ -94,6 +96,7 @@ interface ClientClaimAuditDbRow extends Record<string, unknown> {
   changes: unknown
   // Raw execute() returns timestamptz as either Date or pg text form.
   occurred_at: Date | string
+  published_at: Date | string | null
 }
 
 /** `null` = unrestricted (internal full-view actor); a list = own-customer scope. */
@@ -121,17 +124,25 @@ export class DashboardRepository {
 
   /**
    * Portal phase counts across all of the scope's EMOTIVE claims (clients have
-   * no domace claims). Mirrors `deriveClientClaimPhase` (2026-07-04): every
-   * pending claim counts as "in progress" — the portal mirrors the internal
-   * outcome directly; "received" is the running total of everything the
-   * workshop has taken in. Archived claims are invisible to clients everywhere.
+   * no domace claims). Mirrors `deriveClientClaimPhase` (Phase 2 visibility
+   * gate, 2026-07-18): a decided outcome only counts as "resolved" once
+   * `published_at` is set — a claim decided internally but still private
+   * falls back into "in progress", same as a pending claim. "received" stays
+   * the running total of everything the workshop has taken in (that doesn't
+   * leak the outcome). Archived claims are invisible to clients everywhere.
    */
   async getClientStats(customerIds: string[] | null): Promise<ClientPortalStats> {
     const result = await this.db.execute<ClientStatsRow>(sql`
       SELECT
         count(*)::int AS received,
-        count(*) FILTER (WHERE ec.outcome = ${ClaimOutcome.Pending})::int AS in_progress,
-        count(*) FILTER (WHERE ec.outcome IN (${ClaimOutcome.Accepted}, ${ClaimOutcome.Rejected}))::int AS resolved,
+        count(*) FILTER (
+          WHERE ec.outcome = ${ClaimOutcome.Pending}
+            OR (ec.outcome IN (${ClaimOutcome.Accepted}, ${ClaimOutcome.Rejected}) AND ec.published_at IS NULL)
+        )::int AS in_progress,
+        count(*) FILTER (
+          WHERE ec.published_at IS NOT NULL
+            AND ec.outcome IN (${ClaimOutcome.Accepted}, ${ClaimOutcome.Rejected})
+        )::int AS resolved,
         count(*)::int AS total
       FROM emotive_claims ec
       WHERE ${activeEmotiveWhere('ec')} AND ${clientCustomerFilter(customerIds)}
@@ -162,7 +173,8 @@ export class DashboardRepository {
         ec.claim_number,
         al.action,
         al.changes,
-        al.created_at AS occurred_at
+        al.created_at AS occurred_at,
+        ec.published_at AS published_at
       FROM audit_log al
       INNER JOIN emotive_claims ec ON ec.id = al.entity_id
       WHERE al.entity_type = 'emotive_claim'
@@ -180,6 +192,12 @@ export class DashboardRepository {
       action: row.action,
       changes: row.changes,
       occurredAt: row.occurred_at instanceof Date ? row.occurred_at : new Date(row.occurred_at),
+      publishedAt:
+        row.published_at === null
+          ? null
+          : row.published_at instanceof Date
+            ? row.published_at
+            : new Date(row.published_at),
     }))
   }
 

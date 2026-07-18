@@ -333,6 +333,8 @@ describe('DashboardService integration', () => {
         },
         auditContext,
       )
+      // Gate B: a decided claim only counts/shows as resolved once published.
+      await container.emotiveClaimsService.publish(resolvedId, auditContext)
       // Another customer's claim must be invisible in stats AND activity.
       await createEmotiveForCustomer(otherMr, otherCustomer, 'with_employee')
 
@@ -361,6 +363,58 @@ describe('DashboardService integration', () => {
       for (const forbidden of ['before', 'after', 'actorIp', 'actorUserAgent', 'changes']) {
         expect(serialized).not.toContain(`"${forbidden}"`)
       }
+    })
+
+    it('honors claim visibility (Gate B): a decided-but-unpublished claim reads in-progress, not resolved, until published', async () => {
+      const clientUserId = '55555555-5555-4555-8555-555555555554'
+      await ensureTestUser(ctx.db, clientUserId)
+      const myCustomer = await createLinkedCustomer(clientUserId)
+
+      const pendingId = await createEmotiveForCustomer(uniqueMr('CS-PENDING'), myCustomer)
+      const decidedId = await createEmotiveForCustomer(
+        uniqueMr('CS-PRIVATE'),
+        myCustomer,
+        'with_employee',
+      )
+      await container.emotiveClaimsService.changeOutcome(
+        decidedId,
+        { outcome: ClaimOutcome.Accepted },
+        {
+          id: TEST_USER_ID,
+          permissions: ['emotive_claims.view', 'emotive_claims.change_outcome'],
+        },
+        auditContext,
+      )
+
+      const beforePublish = await container.dashboardService.getClientSummary({
+        id: clientUserId,
+        permissions: [...CLIENT_PERMS],
+      })
+      // Guard: the still-pending claim is unaffected by visibility gating.
+      expect(beforePublish.stats).toEqual({ received: 2, inProgress: 2, resolved: 0, total: 2 })
+      expect(
+        beforePublish.activity.some(
+          (item) => item.claimId === decidedId && item.event === ClientClaimPhase.Outcome,
+        ),
+      ).toBe(false)
+
+      await container.emotiveClaimsService.publish(decidedId, auditContext)
+
+      const afterPublish = await container.dashboardService.getClientSummary({
+        id: clientUserId,
+        permissions: [...CLIENT_PERMS],
+      })
+      expect(afterPublish.stats).toEqual({ received: 2, inProgress: 1, resolved: 1, total: 2 })
+      const outcomeEvent = afterPublish.activity.find(
+        (item) => item.claimId === decidedId && item.event === ClientClaimPhase.Outcome,
+      )
+      expect(outcomeEvent?.outcome).toBe(ClaimOutcome.Accepted)
+      // Guard: the still-pending claim still never emits an Outcome event.
+      expect(
+        afterPublish.activity.some(
+          (item) => item.claimId === pendingId && item.event === ClientClaimPhase.Outcome,
+        ),
+      ).toBe(false)
     })
 
     it('derives an in-progress event when a handler is assigned to a pending claim', async () => {
