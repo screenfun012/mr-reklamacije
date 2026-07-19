@@ -206,31 +206,30 @@ merges, and races with in-flight mutations; invalidation keeps one fetch path.
 
 ### Event bus architecture
 
-In-process `EventEmitter`-based pub/sub. One instance per API process.
+Two layers behind the `EventBus` port (`apps/api/src/core/ports/event-bus-port.ts`):
 
-```ts
-// event-bus.ts
-class EventBus {
-  private emitter = new EventEmitter()
+- **`InProcessEventBus`** — the fan-out engine, unchanged from before. A single-process
+  `EventEmitter` hub: role channels (`role:operator` / `role:viewer` / `role:admin`) for
+  internal list-refresh signals, a `customer:<id>` channel so portal clients only see
+  their own claims' events, and a `user:<id>` channel for direct notifications
+  (`permissions_changed`, `session_invalidated`).
+- **`PostgresEventBus`** — the transport, used in production. It *composes* an
+  `InProcessEventBus` and adds propagation across replicas over Postgres
+  `LISTEN`/`NOTIFY` on one channel (`mr_events`): publishing does a fire-and-forget
+  `pg_notify`; a dedicated standalone `pg.Client` per replica `LISTEN`s, Zod-validates
+  each inbound message, and replays the matching method onto its wrapped
+  `InProcessEventBus` so local subscribers (SSE connections on that replica) fire exactly
+  as before. A guarded reconnect loop (backoff, capped) re-`LISTEN`s after a dropped
+  connection. Delivery stays best-effort/at-most-once — the signal-only contract above
+  (payload = kind + id, never row data) is unchanged; a signal lost during a reconnect
+  gap is equivalent to a briefly disconnected client.
 
-  publishToUser(userId: string, event: AppEvent) {
-    this.emitter.emit(`user:${userId}`, event)
-  }
-
-  publishToRole(roleCode: string, event: AppEvent) {
-    this.emitter.emit(`role:${roleCode}`, event)
-  }
-
-  publishToAllAdmins(event: AppEvent) {
-    this.publishToRole('admin', event)
-  }
-
-  subscribeUser(userId: string, listener: (event: AppEvent) => void): () => void {
-    this.emitter.on(`user:${userId}`, listener)
-    return () => this.emitter.off(`user:${userId}`, listener)
-  }
-}
-```
+Wiring: `createContainer` (the prod entrypoint) constructs a `PostgresEventBus`;
+`buildContainer`'s default parameter stays `new InProcessEventBus()`, so tests and local
+tooling never touch Postgres for events. `numReplicas` currently stays at 1 — this change
+makes SSE itself replica-safe, but the in-memory rate limiter and the permission LRU
+cache (see "Caching strategy" above) still fragment per process, so running >1 replica is
+still deferred.
 
 ### SSE controller
 
