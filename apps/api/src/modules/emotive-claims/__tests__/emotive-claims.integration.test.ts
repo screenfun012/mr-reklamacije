@@ -1921,6 +1921,31 @@ describe('EmotiveClaimsService integration', () => {
       expect(afterStamp).toEqual(beforeStamp)
     })
 
+    it('does NOT bump client_content_updated_at when a client-visible field is cleared', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`FRESHCLR-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `FRESHCLR-${crypto.randomUUID().slice(0, 8)}/26`,
+          warrantyReport: 'Originalni nalaz',
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const beforeStamp = await getClientContentUpdatedAt(created.id)
+
+      vi.setSystemTime(new Date('2026-07-18T09:05:00Z'))
+      // Clearing a whitelisted field is a removal, not new content → no badge bump.
+      await container.emotiveClaimsService.update(
+        created.id,
+        { warrantyReport: '' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const afterStamp = await getClientContentUpdatedAt(created.id)
+      expect(afterStamp).toEqual(beforeStamp)
+    })
+
     it('bumps client_content_updated_at on publish (Gate B)', async () => {
       const created = await container.emotiveClaimsService.create(
         await buildCreateInput({
@@ -2067,6 +2092,63 @@ describe('EmotiveClaimsService integration', () => {
       // internalNotes routes to NO section key — the internal-only edit leaves every
       // existing key exactly as it was (no re-bump), same guarantee client_content_updated_at has.
       expect(await getSectionUpdatedAt(created.id)).toEqual(beforeUpdate)
+    })
+
+    it('does NOT re-stamp section_updated_at.details when a details field (warrantyReport) is cleared', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SECCLR-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SECCLR-${crypto.randomUUID().slice(0, 8)}/26`,
+          warrantyReport: 'Originalni nalaz',
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const beforeUpdate = await getSectionUpdatedAt(created.id)
+      expect(beforeUpdate?.['details']).toBeDefined()
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { warrantyReport: '' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      // Clearing routes to no section key — details stays exactly as create stamped it.
+      const sections = await getSectionUpdatedAt(created.id)
+      expect(sections?.['details']).toBe(beforeUpdate?.['details'])
+    })
+
+    it('blank inspectionReport edit sets no inspection marker and does not stamp client_visible_at; a non-blank edit does both', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          engineTypeId: await createEngineType(`SECINS-${crypto.randomUUID().slice(0, 8)}`),
+          mrNumber: `SECINS-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.clientVisibleAt).toBeNull()
+
+      // Blank report: no 'inspection' marker, and Gate A does not fire.
+      const blank = await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: '   ' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(blank.clientVisibleAt).toBeNull()
+      expect((await getSectionUpdatedAt(created.id))?.['inspection']).toBeUndefined()
+
+      // Non-blank report: marker set AND Gate A stamps client_visible_at (COALESCE unchanged).
+      const filled = await container.emotiveClaimsService.update(
+        created.id,
+        { inspectionReport: 'Pregled izvrsen, sve u redu' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(filled.clientVisibleAt).not.toBeNull()
+      expect((await getSectionUpdatedAt(created.id))?.['inspection']).toBeDefined()
     })
 
     it('sets section_updated_at.outcome on publish (Gate B)', async () => {

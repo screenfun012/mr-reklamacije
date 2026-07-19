@@ -125,11 +125,17 @@ export class AttachmentsService {
    * The owning customer's portal is only signalled when the change is actually
    * client-visible (a photo) — uploading/deleting an INTERNAL document never
    * wakes portal clients into a needless refetch.
+   *
+   * `bumpFreshness` is true only when content was ADDED (upload). A removal
+   * (delete) still fires the SSE so a client currently viewing the claim sees the
+   * item disappear, but never bumps the NEW/UPDATE badge or the 'photos' marker —
+   * a removal is not new content to look at.
    */
   private async publishClaimAttachmentsChanged(
     claimKind: typeof ClaimKind.Emotive | typeof ClaimKind.Domace,
     claimId: string,
     clientVisible: boolean,
+    bumpFreshness: boolean,
   ): Promise<void> {
     const isEmotiveClientVisible = clientVisible && claimKind === ClaimKind.Emotive
 
@@ -137,9 +143,8 @@ export class AttachmentsService {
       ? await this.repo.findEmotiveClaimCustomerId(claimId)
       : null
 
-    if (isEmotiveClientVisible) {
-      // Phase 3 freshness: an add/remove of a client-visible attachment is itself
-      // client-visible content changing.
+    if (isEmotiveClientVisible && bumpFreshness) {
+      // Phase 3 freshness: only an ADD of client-visible content bumps the badge.
       await this.repo.bumpEmotiveClientContentUpdatedAt(claimId)
     }
 
@@ -319,6 +324,7 @@ export class AttachmentsService {
         input.claimKind,
         input.claimId,
         items.some(isClientVisibleClaimAttachment),
+        true,
       )
     }
 
@@ -470,6 +476,7 @@ export class AttachmentsService {
       attachment.claimKind,
       attachment.claimId,
       isClientVisibleClaimAttachment(attachment),
+      false,
     )
   }
 }

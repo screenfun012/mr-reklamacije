@@ -60,14 +60,21 @@ function formatTimestamp(value: Date): string {
 }
 
 // Gate A: a non-blank inspection report is what makes an EMOTIVE claim client-visible.
-// The Zod validator already trims; this stays defensive against undefined/null callers.
-const hasInspectionReport = (v: string | null | undefined): boolean =>
-  typeof v === 'string' && v.trim().length > 0
+// The Zod validator already trims; this stays defensive against undefined/null/non-string callers.
+const hasInspectionReport = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0
+
+// Freshness fires only when a client-visible field is set to a value the client can
+// actually look at — a non-null, non-blank value. Clearing a field (empty/blank string
+// or null) is a removal: SSE still fires, but the NEW/UPDATE badge and 'Novo' markers do
+// not. Non-string non-null values (dates, FK ids) are meaningful.
+const isMeaningfulValue = (v: unknown): boolean =>
+  v !== undefined && v !== null && !(typeof v === 'string' && v.trim() === '')
 
 // Phase 3 freshness: exactly the fields the client wire (`ClientClaimDetailSchema`)
-// exposes for an EMOTIVE claim. Touching ANY of them bumps `client_content_updated_at`
-// to now() on create/update/publish — internalNotes/faults/sourceId/claimNumber/amounts
-// never do. Shared by create and update so the whitelist lives in exactly one place.
+// exposes for an EMOTIVE claim. Setting ANY of them to a meaningful value bumps
+// `client_content_updated_at` to now() on create/update/publish —
+// internalNotes/faults/sourceId/claimNumber/amounts never do, and clearing one never
+// does. Shared by create and update so the whitelist lives in exactly one place.
 interface ClientVisibleFieldsInput {
   warrantyReport?: unknown
   inspectionReport?: unknown
@@ -92,11 +99,11 @@ function touchesDetailsFields(input: ClientVisibleFieldsInput): boolean {
     input.manufacturerId,
     input.employeeId,
     input.mrNumber,
-  ].some((value) => value !== undefined)
+  ].some(isMeaningfulValue)
 }
 
 function touchesClientVisibleFields(input: ClientVisibleFieldsInput): boolean {
-  return input.inspectionReport !== undefined || touchesDetailsFields(input)
+  return hasInspectionReport(input.inspectionReport) || touchesDetailsFields(input)
 }
 
 function mapFaultRow(row: {
@@ -385,11 +392,11 @@ export class EmotiveClaimsRepository {
   ): Promise<string> {
     const claimYear = claimYearFromDate(input.dateOfClaim)
 
-    // Phase 3.1 section markers: mirror clientContentUpdatedAt's field-presence logic,
+    // Phase 3.1 section markers: mirror clientContentUpdatedAt's meaningful-value logic,
     // split per section, so the freshest-changed-section signal starts correct on create.
     const initialSections: Record<string, string> = {}
     const nowIso = new Date().toISOString()
-    if (input.inspectionReport !== undefined) {
+    if (hasInspectionReport(input.inspectionReport)) {
       initialSections['inspection'] = nowIso
     }
     if (touchesDetailsFields(input)) {
@@ -775,9 +782,9 @@ export class EmotiveClaimsRepository {
       patch.clientContentUpdatedAt = new Date()
     }
 
-    // Phase 3.1 section markers: same whitelist, split per changed section.
+    // Phase 3.1 section markers: same meaningful-value whitelist, split per changed section.
     const sectionKeys: string[] = []
-    if (input.inspectionReport !== undefined) {
+    if (hasInspectionReport(input.inspectionReport)) {
       sectionKeys.push('inspection')
     }
     if (touchesDetailsFields(input)) {

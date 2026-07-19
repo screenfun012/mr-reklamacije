@@ -18,6 +18,7 @@ import {
   getCustomerIdByName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
+import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import {
   buildTestContainer,
   createAttachmentsTestApp,
@@ -486,7 +487,12 @@ describe('AttachmentsService integration', () => {
       expect(after).toEqual(before)
     })
 
-    it('bumps client_content_updated_at when a client-visible photo is deleted', async () => {
+    it('does NOT bump client_content_updated_at when a client-visible photo is deleted, but still fires the SSE', async () => {
+      // A removal is not new content to look at → no NEW/UPDATE badge. But the realtime
+      // signal must still fire so a client currently viewing the claim sees it disappear.
+      const eventBus = new RecordingEventBus()
+      const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
+
       const claimId = await createEmotiveClaim()
 
       const uploaded = await container.attachmentsService.upload(
@@ -501,12 +507,18 @@ describe('AttachmentsService integration', () => {
       )
       const attachmentId = uploaded.items[0]?.id
       expect(attachmentId).toBeDefined()
+      const beforeDelete = await getClientContentUpdatedAt(claimId)
 
       vi.setSystemTime(new Date('2026-07-18T09:10:00Z'))
-      await container.attachmentsService.delete(attachmentId!, deleter, auditContext)
+      await scopedContainer.attachmentsService.delete(attachmentId!, deleter, auditContext)
 
-      const after = await getClientContentUpdatedAt(claimId)
-      expect(after).toEqual(new Date('2026-07-18T09:10:00Z'))
+      expect(await getClientContentUpdatedAt(claimId)).toEqual(beforeDelete)
+      expect(eventBus.events).toContainEqual(
+        expect.objectContaining({
+          type: 'updated',
+          payload: { kind: ClaimKind.Emotive, id: claimId },
+        }),
+      )
     })
   })
 
@@ -584,7 +596,7 @@ describe('AttachmentsService integration', () => {
       expect(sections?.['photos']).toBeUndefined()
     })
 
-    it('sets section_updated_at.photos when a client-visible photo is deleted', async () => {
+    it('does NOT re-stamp section_updated_at.photos when a client-visible photo is deleted', async () => {
       const claimId = await createEmotiveClaim()
 
       const uploaded = await container.attachmentsService.upload(
@@ -600,10 +612,14 @@ describe('AttachmentsService integration', () => {
       const attachmentId = uploaded.items[0]?.id
       expect(attachmentId).toBeDefined()
 
+      // The upload stamped 'photos'; deleting must leave it exactly as-is (no re-bump).
+      const beforeDelete = await getSectionUpdatedAt(claimId)
+      expect(beforeDelete?.['photos']).toBeDefined()
+
       await container.attachmentsService.delete(attachmentId!, deleter, auditContext)
 
       const sections = await getSectionUpdatedAt(claimId)
-      expect(sections?.['photos']).toBeDefined()
+      expect(sections?.['photos']).toBe(beforeDelete?.['photos'])
     })
   })
 })
