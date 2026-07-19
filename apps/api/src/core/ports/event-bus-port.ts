@@ -2,14 +2,17 @@ import type { AppEvent, ClaimEventPayload, ResourceChangedKey } from '@mr/shared
 
 /**
  * In-process claim notifications + SSE subscriptions (docs/05-auth-realtime.md).
- * Production uses InProcessEventBus; tests may inject RecordingEventBus.
+ * Production uses PostgresEventBus, transporting over Postgres LISTEN/NOTIFY so
+ * events propagate across replicas; tests inject InProcessEventBus/NoOpEventBus/
+ * RecordingEventBus directly (no Postgres transport).
  *
  * Claim events fan out to internal role channels AND — when `customerId` is
  * provided — to that customer's channel, so portal clients get the same
  * invalidate-only signal for their own claims (never anyone else's).
  *
- * Multi-instance deployments need a distributed pub/sub layer (e.g. Redis) — out of
- * scope for Phase 1.1d (single API process).
+ * `dispose?()` is optional: it ends the LISTEN connection on shutdown for
+ * transports that hold one (PostgresEventBus); in-memory implementations have
+ * nothing to release and deliberately don't implement it.
  */
 export interface EventBus {
   publishClaimCreated(payload: ClaimEventPayload, customerId?: string | null): void
@@ -35,4 +38,7 @@ export interface EventBus {
     listener: (event: AppEvent) => void,
     customerIds?: readonly string[],
   ): () => void
+
+  /** Ends the transport's LISTEN connection on shutdown. Optional — see above. */
+  dispose?(): Promise<void>
 }

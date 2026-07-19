@@ -52,7 +52,7 @@ import {
   ClaimReportsService,
 } from '../modules/claim-reports/index.js'
 import { ExcelRepository, ExcelService } from '../modules/excel/index.js'
-import { InProcessEventBus } from '../modules/events/index.js'
+import { InProcessEventBus, PostgresEventBus } from '../modules/events/index.js'
 import { createBetterAuthUserPassword } from '../infrastructure/auth/better-auth-user-password.js'
 import { createBetterAuthUserSessions } from '../infrastructure/auth/better-auth-user-sessions.js'
 import { createStorageService } from '../infrastructure/storage/create-storage-service.js'
@@ -120,7 +120,9 @@ export interface Container {
 
 export function createContainer(env: Env, logger: Logger): Container {
   const { db, pool } = createDb(env)
-  return buildContainer(env, logger, db, pool)
+  const eventBus = new PostgresEventBus(pool, env.DATABASE_URL, logger)
+  void eventBus.start()
+  return buildContainer(env, logger, db, pool, eventBus)
 }
 
 export function buildContainer(

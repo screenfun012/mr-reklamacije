@@ -14,11 +14,11 @@ const logger = createLogger('api')
 const container = createContainer(env, logger)
 
 if (env.API_REPLICA_COUNT > 1) {
-  // The in-process event bus cannot propagate SSE across instances — a claim
-  // mutated on one replica never reaches a client connected to another.
+  // SSE now propagates across replicas via Postgres LISTEN/NOTIFY (PostgresEventBus),
+  // but the in-memory rate limiter is still per-process — flag the remaining blocker.
   logger.warn(
     { replicaCount: env.API_REPLICA_COUNT },
-    'Multiple API replicas with an in-process event bus: realtime (SSE) will NOT propagate across instances. Swap InProcessEventBus for a distributed bus (Postgres LISTEN/NOTIFY or Redis) before scaling.',
+    'Multiple API replicas: SSE now propagates via Postgres LISTEN/NOTIFY, but the in-memory rate limiter (core/middleware/rate-limit.ts) still fragments per process — the effective per-IP/user limit multiplies by replica count. Move it to a shared store before scaling.',
   )
 }
 
@@ -93,6 +93,7 @@ function shutdown(signal: string): void {
       .catch(() => {
         // Browser already gone — nothing to release.
       })
+      .then(() => container.eventBus.dispose?.())
       .then(() => container.pool.end())
       .finally(() => {
         logger.info('DB pool closed')
