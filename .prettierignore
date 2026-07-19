@@ -26,3 +26,6 @@ apps/internal-web/src/lib/tiptap-utils.ts
 
 # Design handoff reference artifacts (prototype HTML/JS — never reformat)
 design_handoff_internal_app/**
+
+# SDD subagent scratch (gitignored; briefs/reports/ledger — not repo content)
+.superpowers/
