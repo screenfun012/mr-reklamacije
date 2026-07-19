@@ -162,7 +162,7 @@ export class PostgresEventBus implements EventBus {
       client.on('notification', (msg) => this.onNotify(msg))
       try {
         await client.connect()
-        await client.query('LISTEN mr_events')
+        await client.query(`LISTEN ${CHANNEL}`)
         this.client = client
         this.backoffMs = INITIAL_BACKOFF_MS
         this.startResolve?.()
@@ -195,7 +195,12 @@ export class PostgresEventBus implements EventBus {
       this.logger.warn({ issues: result.error.issues }, 'invalid NOTIFY payload')
       return
     }
-    this.replay(result.data)
+    try {
+      this.replay(result.data)
+    } catch (err) {
+      this.logger.warn({ err }, 'replay of NOTIFY payload failed')
+      return
+    }
   }
 
   private replay(message: NotifyMessage): void {
