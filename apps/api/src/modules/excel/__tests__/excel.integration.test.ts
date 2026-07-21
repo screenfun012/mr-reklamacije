@@ -66,6 +66,7 @@ describe('Excel export integration', () => {
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),
         sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
         faults: [],
+        findings: [],
       },
       {
         id: TEST_USER_ID,
@@ -84,6 +85,7 @@ describe('Excel export integration', () => {
         outcome: ClaimOutcome.Accepted,
         totalAmount: 120000,
         faults: [],
+        findings: [],
       },
       {
         id: TEST_USER_ID,

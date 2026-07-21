@@ -228,6 +228,7 @@ export class DomaceClaimsRepository {
           totalAmount: input.totalAmount ?? null,
           claimNumber: input.claimNumber ?? null,
           internalNotes: input.internalNotes ?? null,
+          findings: input.findings,
           inspectionReport: input.inspectionReport ?? null,
           createdBy: actorId,
           updatedBy: actorId,
@@ -398,6 +399,7 @@ export class DomaceClaimsRepository {
         totalAmount: domaceClaims.totalAmount,
         createdAt: domaceClaims.createdAt,
         internalNotes: domaceClaims.internalNotes,
+        findings: domaceClaims.findings,
         inspectionReport: domaceClaims.inspectionReport,
         updatedBy: domaceClaims.updatedBy,
         updatedAt: domaceClaims.updatedAt,
@@ -434,6 +436,7 @@ export class DomaceClaimsRepository {
 
     const {
       internalNotes,
+      findings,
       inspectionReport,
       updatedBy,
       updatedAt,
@@ -445,6 +448,7 @@ export class DomaceClaimsRepository {
       ...mapListItem(listFields),
       engineTypeManufacturer,
       internalNotes,
+      findings,
       inspectionReport,
       updatedBy,
       updatedAt: formatTimestamp(updatedAt),
@@ -499,6 +503,9 @@ export class DomaceClaimsRepository {
     }
     if (input.internalNotes !== undefined) {
       patch.internalNotes = input.internalNotes
+    }
+    if (input.findings !== undefined) {
+      patch.findings = input.findings
     }
     if (input.inspectionReport !== undefined) {
       patch.inspectionReport = input.inspectionReport

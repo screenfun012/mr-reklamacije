@@ -88,6 +88,7 @@ function baseCreateInput(overrides: Partial<DomaceClaimCreateInput> = {}): Domac
     customerName: 'Auto Stanić',
     outcome: ClaimOutcome.Pending,
     faults: [],
+    findings: [],
     ...overrides,
   }
 }
@@ -325,6 +326,7 @@ describe('DomaceClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           outcome: ClaimOutcome.Pending,
           faults: [],
+          findings: [],
         },
         {
           id: TEST_USER_ID,
@@ -1005,6 +1007,45 @@ describe('DomaceClaimsService integration', () => {
       await expect(
         container.domaceClaimsService.findById(created.id, OWN_CUSTOMER_VIEWER),
       ).rejects.toBeInstanceOf(NotFoundError)
+    })
+  })
+
+  describe('findings', () => {
+    it('round-trips findings on create and replaces the whole list on update', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({
+          findings: [
+            { text: 'Ogrebotina na glavi motora', type: 'mehanika' },
+            { text: 'Curenje ulja oko zaptivača', type: '' },
+          ],
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.findings).toEqual([
+        { text: 'Ogrebotina na glavi motora', type: 'mehanika' },
+        { text: 'Curenje ulja oko zaptivača', type: '' },
+      ])
+
+      const updated = await container.domaceClaimsService.update(
+        created.id,
+        { findings: [{ text: 'Prepravljen nalaz', type: 'elektrika' }] },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.findings).toEqual([{ text: 'Prepravljen nalaz', type: 'elektrika' }])
+    })
+
+    it('creates a claim with an empty findings list when none are given', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.findings).toEqual([])
     })
   })
 })

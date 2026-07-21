@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
-import { emotiveClaimKeys, fetchJson, type EmotiveClaimDetail } from '@mr/shared'
+import { emotiveClaimKeys, fetchJson, type EmotiveClaimDetail, type Finding } from '@mr/shared'
 
 export interface ClaimFindingsEdit {
-  internalNotes: string | null
+  findings: Finding[]
 }
 
 export function useUpdateEmotiveClaimFindings(
@@ -30,7 +30,7 @@ export function useUpdateEmotiveClaimFindings(
       if (previous !== undefined) {
         queryClient.setQueryData<EmotiveClaimDetail>(detailKey, {
           ...previous,
-          internalNotes: input.internalNotes,
+          findings: input.findings,
         })
       }
       return { previous }

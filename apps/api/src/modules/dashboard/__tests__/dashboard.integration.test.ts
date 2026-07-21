@@ -76,6 +76,7 @@ describe('DashboardService integration', () => {
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),
         sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
         faults: [],
+        findings: [],
       },
       {
         id: TEST_USER_ID,
@@ -98,6 +99,7 @@ describe('DashboardService integration', () => {
         dateOfClaim: dateOfClaim ?? undefined,
         outcome,
         faults: [],
+        findings: [],
       },
       {
         id: TEST_USER_ID,
@@ -288,6 +290,7 @@ describe('DashboardService integration', () => {
           customerId,
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           faults: [],
+          findings: [],
           ...(employee === 'with_employee'
             ? {
                 employeeId: await getEmployeeIdByNormalizedName(

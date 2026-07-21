@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { claimFreshnessValues, ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
+import { FindingSchema } from './finding.schema.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -36,6 +37,7 @@ export const EmotiveClaimCreateInputSchema = z.object({
   internalNotes: z.string().trim().max(8000).optional(),
   inspectionReport: z.string().trim().max(8000).optional(),
   faults: z.array(EmotiveClaimFaultInputSchema).default([]),
+  findings: z.array(FindingSchema).default([]),
 })
 
 export type EmotiveClaimCreateInput = z.infer<typeof EmotiveClaimCreateInputSchema>
@@ -56,6 +58,7 @@ export const EmotiveClaimUpdateInputSchema = z
     internalNotes: z.string().trim().max(8000).nullable().optional(),
     inspectionReport: z.string().trim().max(8000).nullable().optional(),
     faults: z.array(EmotiveClaimFaultInputSchema).optional(),
+    findings: z.array(FindingSchema).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field must be provided',
@@ -159,6 +162,7 @@ export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
   updatedBy: z.string().uuid().nullable(),
   updatedAt: z.string(),
   faults: z.array(EmotiveClaimFaultItemSchema),
+  findings: z.array(FindingSchema).nullable(),
   sectionFreshness: SectionFreshnessSchema,
 })
 

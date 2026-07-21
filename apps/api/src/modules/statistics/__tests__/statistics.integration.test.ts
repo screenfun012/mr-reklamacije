@@ -113,6 +113,7 @@ describe('Statistics module integration', () => {
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),
         sourceId: await getClaimSourceIdByCode(ctx.db, sourceCode),
         faults: [],
+        findings: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
       },
       {
@@ -141,6 +142,7 @@ describe('Statistics module integration', () => {
         outcome,
         totalAmount: 100000,
         faults: [],
+        findings: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
         ...(engineTypeId !== undefined ? { engineTypeId: engineTypeId ?? undefined } : {}),
         ...(employeeId !== undefined ? { employeeId } : {}),
@@ -758,6 +760,7 @@ describe('Statistics module integration', () => {
           outcome: ClaimOutcome.Accepted,
           manufacturerId,
           faults,
+          findings: [],
           ...(totalAmount !== null ? { totalAmount } : {}),
         },
         {
@@ -793,6 +796,7 @@ describe('Statistics module integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           manufacturerId,
           faults: options.faults ?? [],
+          findings: [],
           ...(options.customerId !== undefined ? { customerId: options.customerId } : {}),
         },
         {

@@ -157,6 +157,7 @@ describe('EmotiveClaimsService integration', () => {
       warrantyReport,
       outcome: ClaimOutcome.Pending,
       faults: [],
+      findings: [],
       ...overrides,
     }
   }
@@ -2425,6 +2426,73 @@ describe('EmotiveClaimsService integration', () => {
       )
 
       expect(second.sequenceNumber).toBeGreaterThan(first.sequenceNumber)
+    })
+  })
+
+  describe('findings', () => {
+    it('round-trips findings on create and replaces the whole list on update', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          mrNumber: `FIND-${crypto.randomUUID().slice(0, 8)}/26`,
+          findings: [
+            { text: 'Ogrebotina na glavi motora', type: 'mehanika' },
+            { text: 'Curenje ulja oko zaptivača', type: '' },
+          ],
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.findings).toEqual([
+        { text: 'Ogrebotina na glavi motora', type: 'mehanika' },
+        { text: 'Curenje ulja oko zaptivača', type: '' },
+      ])
+
+      const updated = await container.emotiveClaimsService.update(
+        created.id,
+        { findings: [{ text: 'Prepravljen nalaz', type: 'elektrika' }] },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.findings).toEqual([{ text: 'Prepravljen nalaz', type: 'elektrika' }])
+    })
+
+    it('creates a claim with an empty findings list when none are given', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `FIND0-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.findings).toEqual([])
+    })
+
+    // Findings are internal-only (like internalNotes) — they must never reach the
+    // client wire, so editing them must not raise the portal NEW/UPDATE badge.
+    it('does NOT bump client_content_updated_at when only findings change', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `FINDFRESH-${crypto.randomUUID().slice(0, 8)}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const [before] = await ctx.db
+        .select({ stamp: schema.emotiveClaims.clientContentUpdatedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+
+      await container.emotiveClaimsService.update(
+        created.id,
+        { findings: [{ text: 'Interni nalaz koji klijent ne vidi', type: '' }] },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const [after] = await ctx.db
+        .select({ stamp: schema.emotiveClaims.clientContentUpdatedAt })
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.id, created.id))
+      expect(after?.stamp).toEqual(before?.stamp)
     })
   })
 })

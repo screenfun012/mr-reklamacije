@@ -59,6 +59,7 @@ describe('MrRegistry HTTP', () => {
         sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
         outcome: ClaimOutcome.Pending,
         faults: [],
+        findings: [],
       },
       {
         id: TEST_USER_ID,

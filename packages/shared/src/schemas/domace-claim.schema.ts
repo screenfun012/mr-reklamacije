@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
+import { FindingSchema } from './finding.schema.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -41,6 +42,7 @@ export const DomaceClaimCreateInputSchema = z
     internalNotes: z.string().trim().max(8000).optional(),
     inspectionReport: z.string().trim().max(8000).optional(),
     faults: z.array(DomaceClaimFaultInputSchema).default([]),
+    findings: z.array(FindingSchema).default([]),
   })
   .refine((value) => Boolean(value.mrNumber) || Boolean(value.customerName), {
     message: 'At least one of mrNumber or customerName must be provided',
@@ -64,6 +66,7 @@ export const DomaceClaimUpdateInputSchema = z
     internalNotes: z.string().trim().max(8000).nullable().optional(),
     inspectionReport: z.string().trim().max(8000).nullable().optional(),
     faults: z.array(DomaceClaimFaultInputSchema).optional(),
+    findings: z.array(FindingSchema).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field must be provided',
@@ -137,6 +140,7 @@ export const DomaceClaimDetailSchema = DomaceClaimListItemSchema.extend({
   updatedBy: z.string().uuid().nullable(),
   updatedAt: z.string(),
   faults: z.array(DomaceClaimFaultItemSchema),
+  findings: z.array(FindingSchema).nullable(),
 })
 
 export type DomaceClaimDetail = z.infer<typeof DomaceClaimDetailSchema>

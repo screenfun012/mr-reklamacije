@@ -1,4 +1,4 @@
-import type { ClaimOutcome, FaultType } from '@mr/shared'
+import type { ClaimOutcome, FaultType, Finding } from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
 import {
   bigserial,
@@ -50,6 +50,9 @@ export const emotiveClaims = pgTable(
     claimYear: integer('claim_year').notNull(),
     customerId: uuid('customer_id'),
     internalNotes: text('internal_notes'),
+    // Multi-row inspection findings (text + free-form type tag); supersedes the
+    // single internal_notes textarea (existing notes backfilled in migration 0031).
+    findings: jsonb('findings').$type<Finding[]>(),
     // Short worker-written English summary shown to the client on the portal
     // (distinct from internal_notes and the rich claim_reports document).
     inspectionReport: text('inspection_report'),
@@ -229,6 +232,9 @@ export const domaceClaims = pgTable(
     claimYear: integer('claim_year').notNull(),
     totalAmount: decimal('total_amount', { precision: 14, scale: 2, mode: 'number' }),
     internalNotes: text('internal_notes'),
+    // Multi-row inspection findings (text + free-form type tag); supersedes the
+    // single internal_notes textarea (existing notes backfilled in migration 0031).
+    findings: jsonb('findings').$type<Finding[]>(),
     // Short worker-written English summary shown to the client on the portal
     // (distinct from internal_notes and the rich claim_reports document).
     inspectionReport: text('inspection_report'),

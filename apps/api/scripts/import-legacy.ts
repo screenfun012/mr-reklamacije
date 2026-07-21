@@ -155,19 +155,15 @@ function manufacturerCodeFor(engineType: string): string | null {
   return null
 }
 
-/** summarySr + report FINDINGS merged into one internal-notes text. */
-function buildInternalNotes(
-  claim: LegacyClaim,
-  sections: LegacyData['reportSections'],
-): string | null {
+/** summarySr + report FINDINGS, one entry per legacy section. */
+function buildFindingTexts(claim: LegacyClaim, sections: LegacyData['reportSections']): string[] {
   const parts: string[] = []
   if (claim.summarySr !== null && claim.summarySr.trim() !== '') parts.push(claim.summarySr.trim())
   for (const s of sections) {
     const text = (s.textSr ?? s.textEn ?? '').trim()
     if (text !== '') parts.push(text)
   }
-  if (parts.length === 0) return null
-  return parts.join('\n\n')
+  return parts
 }
 
 async function loadLegacyData(): Promise<LegacyData> {
@@ -443,6 +439,8 @@ async function importClaims(db: Db, data: LegacyData, ctx: ImportContext): Promi
       )
     }
 
+    const findingTexts = buildFindingTexts(claim, ctx.sectionsByClaimId.get(claim.id) ?? [])
+
     const shared = {
       claimNumber: claim.customerNumber?.trim() || null,
       warrantyReport: claim.reason?.trim() || null,
@@ -456,7 +454,11 @@ async function importClaims(db: Db, data: LegacyData, ctx: ImportContext): Promi
       outcome,
       outcomeResolvedAt: outcome === ClaimOutcome.Pending ? null : toDate(claim.updatedAt),
       claimYear: dateOfClaim.getUTCFullYear(),
-      internalNotes: buildInternalNotes(claim, ctx.sectionsByClaimId.get(claim.id) ?? []),
+      // Written to BOTH columns: findings is what the app reads and edits now,
+      // internal_notes stays populated so nothing still reading the legacy column
+      // (and any future re-import diff) sees a regression.
+      findings: findingTexts.map((text) => ({ text, type: '' })),
+      internalNotes: findingTexts.length > 0 ? findingTexts.join('\n\n') : null,
       inspectionReport: claim.summaryEn?.trim() || null,
       createdBy: ctx.importUserId,
       createdAt: toDate(claim.createdAt) ?? dateOfClaim,

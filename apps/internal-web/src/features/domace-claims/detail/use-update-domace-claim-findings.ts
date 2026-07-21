@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
-import { domaceClaimKeys, fetchJson, type DomaceClaimDetail } from '@mr/shared'
+import { domaceClaimKeys, fetchJson, type DomaceClaimDetail, type Finding } from '@mr/shared'
 
 export interface ClaimFindingsEdit {
-  internalNotes: string | null
+  findings: Finding[]
 }
 
 export function useUpdateDomaceClaimFindings(
@@ -30,7 +30,7 @@ export function useUpdateDomaceClaimFindings(
       if (previous !== undefined) {
         queryClient.setQueryData<DomaceClaimDetail>(detailKey, {
           ...previous,
-          internalNotes: input.internalNotes,
+          findings: input.findings,
         })
       }
       return { previous }

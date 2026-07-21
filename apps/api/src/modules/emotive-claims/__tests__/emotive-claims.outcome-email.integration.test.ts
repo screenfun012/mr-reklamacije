@@ -77,6 +77,7 @@ describe('EMOTIVE outcome-change client email', () => {
         outcome: ClaimOutcome.Pending,
         warrantyReport: 'Outcome email test',
         faults: [],
+        findings: [],
         ...(customerId !== undefined ? { customerId } : {}),
       },
       ACTOR,

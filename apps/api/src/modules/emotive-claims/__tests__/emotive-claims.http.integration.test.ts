@@ -95,6 +95,7 @@ describe('EmotiveClaims HTTP', () => {
       warrantyReport,
       outcome: ClaimOutcome.Pending,
       faults: [],
+      findings: [],
       ...overrides,
     }
   }

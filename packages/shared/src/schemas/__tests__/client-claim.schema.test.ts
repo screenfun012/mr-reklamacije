@@ -41,6 +41,7 @@ const fullDetail: EmotiveClaimDetail = {
   sourceName: 'Selman partner',
   internalNotes: 'TAJNA INTERNA BELESKA',
   inspectionReport: 'Cylinder head inspected, within tolerance.',
+  findings: null,
   updatedBy: '77777777-7777-4777-8777-777777777777',
   updatedAt: '2026-04-18T10:00:00.000Z',
   faults: [

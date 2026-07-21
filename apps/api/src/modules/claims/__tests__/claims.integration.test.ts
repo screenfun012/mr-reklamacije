@@ -90,6 +90,7 @@ describe('ClaimsService integration', () => {
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),
         sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
         faults: [],
+        findings: [],
       },
       FULL_OPERATOR,
       auditContext,
@@ -113,6 +114,7 @@ describe('ClaimsService integration', () => {
         dateOfFinish: options.dateOfFinish === null ? undefined : options.dateOfFinish,
         outcome: ClaimOutcome.Pending,
         faults: [],
+        findings: [],
       },
       FULL_OPERATOR,
       auditContext,
@@ -152,8 +154,16 @@ describe('ClaimsService integration', () => {
       )
 
       expect(result.items.every((item) => item.kind === ClaimKind.Domace)).toBe(true)
-      expect(result.items.some((item) => item.customerName === 'Samo domaća')).toBe(true)
       expect(result.items.some((item) => item.mrNumber === 'ONLY-EM/26')).toBe(false)
+
+      // Presence is asserted on a narrowed query: every suite writes to the shared
+      // test DB in parallel, so page 1 of a kind-only list is not a stable place
+      // to look for one specific row.
+      const scoped = await container.claimsService.list(
+        listQuery({ kind: ClaimKind.Domace, search: 'ONLY-DO' }),
+        FULL_OPERATOR,
+      )
+      expect(scoped.items.some((item) => item.customerName === 'Samo domaća')).toBe(true)
     })
 
     it('filters by kind=emotive', async () => {
@@ -166,7 +176,14 @@ describe('ClaimsService integration', () => {
       )
 
       expect(result.items.every((item) => item.kind === ClaimKind.Emotive)).toBe(true)
-      expect(result.items.some((item) => item.mrNumber === 'ONLY-EM-2/26')).toBe(true)
+
+      // Same shared-DB reason as the kind=domace case above — narrow before
+      // asserting that this specific claim came back under the filter.
+      const scoped = await container.claimsService.list(
+        listQuery({ kind: ClaimKind.Emotive, search: 'ONLY-EM-2' }),
+        FULL_OPERATOR,
+      )
+      expect(scoped.items.some((item) => item.mrNumber === 'ONLY-EM-2/26')).toBe(true)
     })
 
     it('searches mr_number across both kinds', async () => {
@@ -232,6 +249,7 @@ describe('ClaimsService integration', () => {
           ),
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -478,6 +496,7 @@ describe('ClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           customerId: customerSelman,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -526,6 +545,7 @@ describe('ClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           customerId: customerSelman,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -540,6 +560,7 @@ describe('ClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           customerId: customerSelman,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -554,6 +575,7 @@ describe('ClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           customerId: customerSelman,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -631,6 +653,7 @@ describe('ClaimsService integration', () => {
           sourceId: selmanSource,
           customerId: customerSelman,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -645,6 +668,7 @@ describe('ClaimsService integration', () => {
           sourceId: selmanSource,
           customerId: customerVitobello,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -695,6 +719,7 @@ describe('ClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           customerId: customer.id,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,
@@ -739,6 +764,7 @@ describe('ClaimsService integration', () => {
           sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
           customerId,
           faults: [],
+          findings: [],
         },
         FULL_OPERATOR,
         auditContext,

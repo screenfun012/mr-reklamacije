@@ -16,10 +16,10 @@ export function DomaceClaimFindingsSection({
 
   return (
     <ClaimFindingsSection
-      internalNotes={claim.internalNotes}
+      findings={claim.findings ?? []}
       canEdit={canEdit}
       isSaving={mutation.isPending}
-      onSave={(internalNotes) => mutation.mutateAsync({ internalNotes })}
+      onSave={(findings) => mutation.mutateAsync({ findings })}
     />
   )
 }

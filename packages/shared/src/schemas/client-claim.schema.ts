@@ -79,7 +79,8 @@ function visibilityOf(item: ClaimListItem): {
  * NOT leak to clients unless someone consciously adds it here.
  *
  * Excluded on purpose: employeeId/employeeName (handler), faults (krivica /
- * fault attribution), internalNotes, sourceId/sourceCode, updatedBy/updatedAt,
+ * fault attribution), findings and the legacy internalNotes they replaced (both
+ * an internal document), sourceId/sourceCode, updatedBy/updatedAt,
  * totalAmount (pricing), and all internal UUIDs.
  */
 export const ClientClaimListItemSchema = z.object({

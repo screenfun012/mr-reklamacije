@@ -421,6 +421,7 @@ export class EmotiveClaimsRepository {
         customerId,
         claimNumber: input.claimNumber ?? null,
         internalNotes: input.internalNotes ?? null,
+        findings: input.findings,
         inspectionReport: input.inspectionReport ?? null,
         clientVisibleAt: hasInspectionReport(input.inspectionReport) ? new Date() : null,
         clientContentUpdatedAt: touchesClientVisibleFields(input) ? new Date() : null,
@@ -598,6 +599,7 @@ export class EmotiveClaimsRepository {
       clientVisibleAt: emotiveClaims.clientVisibleAt,
       publishedAt: emotiveClaims.publishedAt,
       internalNotes: emotiveClaims.internalNotes,
+      findings: emotiveClaims.findings,
       inspectionReport: emotiveClaims.inspectionReport,
       updatedBy: emotiveClaims.updatedBy,
       updatedAt: emotiveClaims.updatedAt,
@@ -684,6 +686,7 @@ export class EmotiveClaimsRepository {
 
     const {
       internalNotes,
+      findings,
       inspectionReport,
       updatedBy,
       updatedAt,
@@ -700,6 +703,7 @@ export class EmotiveClaimsRepository {
       sourceCode,
       sourceName,
       internalNotes,
+      findings,
       inspectionReport,
       updatedBy,
       updatedAt: formatTimestamp(updatedAt),
@@ -764,6 +768,9 @@ export class EmotiveClaimsRepository {
     }
     if (input.internalNotes !== undefined) {
       patch.internalNotes = input.internalNotes
+    }
+    if (input.findings !== undefined) {
+      patch.findings = input.findings
     }
     if (input.inspectionReport !== undefined) {
       patch.inspectionReport = input.inspectionReport
