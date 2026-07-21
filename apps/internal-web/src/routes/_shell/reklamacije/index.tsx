@@ -10,12 +10,13 @@ import { m } from '@mr/i18n'
 import { Button, Heading } from '@mr/ui'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 import { internalButtonClasses } from '~/components/internal-button'
 import { internalRequireRoles } from '~/lib/auth-guard'
 import { ClaimsListContent } from '~/features/claims/claims-list-content'
 import { ClaimsTableSkeleton } from '~/features/claims/claims-table'
+import { pageSizeToRestore, readRememberedPageSize } from '~/features/claims/remembered-page-size'
 
 export const Route = createFileRoute('/_shell/reklamacije/')({
   // Internal app is for employees + viewers; a client session (possible in dev
@@ -55,6 +56,24 @@ function ReklamacijeComponent() {
     },
     [navigate],
   )
+
+  // Restore the user's personal page-size preference on a fresh landing (once),
+  // unless the URL explicitly set one. Runs client-side only (localStorage).
+  const restoredPageSize = useRef(false)
+  useEffect(() => {
+    if (restoredPageSize.current) {
+      return
+    }
+    restoredPageSize.current = true
+    const urlHasPageSize = new URLSearchParams(window.location.search).has('pageSize')
+    const target = pageSizeToRestore(urlHasPageSize, readRememberedPageSize(), search.pageSize)
+    if (target !== null) {
+      void navigate({
+        search: (prev) => ({ ...prev, page: 1, pageSize: target }),
+        replace: true,
+      })
+    }
+  }, [navigate, search.pageSize])
 
   return (
     <div className="flex flex-col gap-6">

@@ -12,6 +12,7 @@ import { useCallback } from 'react'
 
 import { ClaimsFilters } from './claims-filters'
 import { ClaimsTable } from './claims-table'
+import { writeRememberedPageSize } from './remembered-page-size'
 
 export interface ClaimsListContentProps {
   search: ClaimsSearch
@@ -41,6 +42,7 @@ export function ClaimsListContent({ search, onSearchChange }: ClaimsListContentP
 
   const handlePageSizeChange = useCallback(
     (nextPageSize: ListPageSize) => {
+      writeRememberedPageSize(nextPageSize)
       onSearchChange({ ...search, page: 1, pageSize: nextPageSize })
     },
     [onSearchChange, search],
