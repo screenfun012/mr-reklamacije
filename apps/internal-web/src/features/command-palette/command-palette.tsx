@@ -15,10 +15,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { filterVisibleNavItems } from '~/config/navigation'
 import { claimDetailTarget } from './claim-target'
 import { commandPaletteNavItems } from './command-registry'
+import { isSearchPending, SEARCH_MIN_CHARS } from './search-state'
 import { useDebouncedValue } from './use-debounced-value'
 
 const rootRoute = getRouteApi('__root__')
-const SEARCH_MIN_CHARS = 2
 const MAX_CLAIM_RESULTS = 6
 
 /** ⌘K palette: jump to a screen, or straight to a claim via unified FTS search. */
@@ -40,7 +40,8 @@ export function CommandPalette(): React.ReactElement {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const debouncedQuery = useDebouncedValue(query.trim(), 300)
+  const trimmedQuery = query.trim()
+  const debouncedQuery = useDebouncedValue(trimmedQuery, 300)
   const searchEnabled = debouncedQuery.length >= SEARCH_MIN_CHARS
 
   const claimsQuery = useQuery({
@@ -48,14 +49,16 @@ export function CommandPalette(): React.ReactElement {
     enabled: open && searchEnabled,
   })
 
+  const searchPending = isSearchPending(trimmedQuery, debouncedQuery, claimsQuery.isFetching)
+
   const navItems = useMemo(() => {
     const visible = filterVisibleNavItems(commandPaletteNavItems, userPermissions)
-    const normalized = query.trim().toLowerCase()
+    const normalized = trimmedQuery.toLowerCase()
     if (normalized.length === 0) {
       return visible
     }
     return visible.filter((item) => item.label().toLowerCase().includes(normalized))
-  }, [userPermissions, query])
+  }, [userPermissions, trimmedQuery])
 
   const claimResults = (claimsQuery.data?.items ?? []).slice(0, MAX_CLAIM_RESULTS)
 
@@ -82,7 +85,7 @@ export function CommandPalette(): React.ReactElement {
         onValueChange={setQuery}
       />
       <CommandList>
-        <CommandEmpty>{m.command_palette_empty()}</CommandEmpty>
+        {searchPending ? null : <CommandEmpty>{m.command_palette_empty()}</CommandEmpty>}
 
         {navItems.length > 0 ? (
           <CommandGroup heading={m.command_palette_group_navigation()}>
