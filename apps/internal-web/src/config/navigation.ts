@@ -43,3 +43,27 @@ export const internalNavItems: NavItem[] = [
     icon: BarChart3,
   },
 ]
+
+function hasAnyPermission(
+  userPermissions: readonly string[],
+  required: readonly string[],
+): boolean {
+  const permissionSet = new Set(userPermissions)
+  return required.some((permission) => permissionSet.has(permission))
+}
+
+/** Filters nav items to those the user's permissions allow (ungated items always show). */
+export function filterVisibleNavItems(
+  items: readonly NavItem[],
+  userPermissions: readonly string[],
+): NavItem[] {
+  return items.filter((item) => {
+    if (item.permissions !== undefined) {
+      return hasAnyPermission(userPermissions, item.permissions)
+    }
+    if (item.permission !== undefined) {
+      return userPermissions.includes(item.permission)
+    }
+    return true
+  })
+}

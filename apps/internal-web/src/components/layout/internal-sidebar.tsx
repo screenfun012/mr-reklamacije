@@ -3,7 +3,7 @@ import { cn } from '@mr/ui'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { LogOut, Shield } from 'lucide-react'
 
-import { internalNavItems } from '~/config/navigation'
+import { filterVisibleNavItems, internalNavItems } from '~/config/navigation'
 import { InboxNavBadge } from '~/features/inbox/inbox-nav-badge'
 
 const rootRoute = getRouteApi('__root__')
@@ -13,14 +13,6 @@ const ROLE_LABELS: Record<string, () => string> = {
   operator: m.users_role_operator,
   viewer: m.users_role_viewer,
   client: m.users_role_client,
-}
-
-function hasAnyPermission(
-  userPermissions: readonly string[],
-  required: readonly string[],
-): boolean {
-  const permissionSet = new Set(userPermissions)
-  return required.some((permission) => permissionSet.has(permission))
 }
 
 function getInitials(name: string, email: string): string {
@@ -58,15 +50,7 @@ export function InternalSidebar({
   const userRoles = authSession?.user?.roles ?? []
   const roleLabel = userRoles.map((role) => ROLE_LABELS[role]).find((label) => label !== undefined)
 
-  const visibleItems = internalNavItems.filter((item) => {
-    if (item.permissions !== undefined) {
-      return hasAnyPermission(userPermissions, item.permissions)
-    }
-    if (item.permission !== undefined) {
-      return userPermissions.includes(item.permission)
-    }
-    return true
-  })
+  const visibleItems = filterVisibleNavItems(internalNavItems, userPermissions)
 
   return (
     <>
