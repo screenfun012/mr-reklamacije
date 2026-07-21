@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 import { InternalShell } from '~/components/layout/internal-shell'
+import { CommandPalette } from '~/features/command-palette/command-palette'
 
 export const Route = createFileRoute('/_shell')({
   component: ShellLayout,
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/_shell')({
 function ShellLayout(): React.ReactElement {
   return (
     <InternalShell>
+      <CommandPalette />
       <Outlet />
     </InternalShell>
   )
