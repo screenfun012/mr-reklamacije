@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { KindPill } from '~/components/kind-pill'
 import { OutcomePill } from '~/components/outcome-pill'
+import { EmotiveClaimStageBadge } from '~/features/emotive-claims/emotive-claim-stage-badge'
 
 import { ClaimDeleteDialog } from './claim-delete-dialog'
 import {
@@ -143,6 +144,20 @@ function createClaimsTableColumns(
       id: 'outcome',
       header: () => m.emotive_claims_col_outcome(),
       cell: ({ row }) => <OutcomePill outcome={row.original.outcome} />,
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
+      id: 'visibility',
+      header: () => m.claims_col_visibility(),
+      cell: ({ row }) =>
+        row.original.kind === ClaimKind.Emotive ? (
+          <EmotiveClaimStageBadge
+            clientVisibleAt={row.original.clientVisibleAt}
+            publishedAt={row.original.publishedAt}
+          />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({

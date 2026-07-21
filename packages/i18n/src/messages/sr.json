@@ -315,6 +315,7 @@
   "claim_report_sheet_description": "Formalni izveštaj vezan za reklamaciju.",
   "claim_report_sheet_title": "Izveštaj reklamacije",
   "claims_col_kind": "Vrsta",
+  "claims_col_visibility": "Vidljivost",
   "claims_create_mr_conflict_link": "Pogledaj postojeću reklamaciju",
   "claims_create_mr_conflict_warning": "Ovaj broj je već dodeljen drugoj reklamaciji.",
   "claims_delete_confirm_title": "Obriši reklamaciju",

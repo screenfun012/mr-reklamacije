@@ -315,6 +315,7 @@
   "claim_report_sheet_description": "Formal report bound to this claim.",
   "claim_report_sheet_title": "Claim report",
   "claims_col_kind": "Type",
+  "claims_col_visibility": "Visibility",
   "claims_create_mr_conflict_link": "View the existing claim",
   "claims_create_mr_conflict_warning": "This number is already assigned to another claim.",
   "claims_delete_confirm_title": "Delete claim",

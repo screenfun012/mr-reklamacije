@@ -5,9 +5,9 @@ import { Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { InternalButton, type InternalButtonVariant } from '~/components/internal-button'
-import { InternalPill, type InternalPillTone } from '~/components/internal-pill'
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
 
+import { EmotiveClaimStageBadge } from '../emotive-claim-stage-badge'
 import { useChangeEmotiveClaimOutcome } from './use-change-emotive-claim-outcome'
 import { usePublishEmotiveClaim } from './use-publish-emotive-claim'
 
@@ -42,32 +42,6 @@ const CONFIRM_TITLE: Record<CompletionOutcome, () => string> = {
   [ClaimOutcome.Rejected]: () => m.internal_claim_outcome_confirm_rejected(),
 }
 
-/**
- * Operator-facing client-visibility stage, derived from the two lifecycle
- * timestamps. Distinct from the portal's `clientPhase` (which mirrors the
- * outcome once published) — this always reflects internal progress, so the
- * portal helper is never imported here.
- */
-type ClaimStage = 'received' | 'in_progress' | 'published'
-
-function deriveClaimStage(clientVisibleAt: string | null, publishedAt: string | null): ClaimStage {
-  if (publishedAt !== null) return 'published'
-  if (clientVisibleAt !== null) return 'in_progress'
-  return 'received'
-}
-
-const STAGE_TONE: Record<ClaimStage, InternalPillTone> = {
-  received: 'neutral',
-  in_progress: 'info',
-  published: 'ok',
-}
-
-const STAGE_LABEL: Record<ClaimStage, () => string> = {
-  received: () => m.emotive_claims_stage_received(),
-  in_progress: () => m.emotive_claims_stage_in_progress(),
-  published: () => m.emotive_claims_stage_published(),
-}
-
 export function EmotiveClaimStatusActions({
   claimId,
   outcome,
@@ -83,7 +57,6 @@ export function EmotiveClaimStatusActions({
   const [confirmingPublish, setConfirmingPublish] = useState(false)
 
   const isPending = outcomeMutation.isPending
-  const stage = deriveClaimStage(clientVisibleAt, publishedAt)
   const showPublishAction = canPublish && publishedAt === null
 
   // Outcome changes now happen freely at any time (no more edit-lock/reopen),
@@ -126,7 +99,7 @@ export function EmotiveClaimStatusActions({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <InternalPill tone={STAGE_TONE[stage]}>{STAGE_LABEL[stage]()}</InternalPill>
+        <EmotiveClaimStageBadge clientVisibleAt={clientVisibleAt} publishedAt={publishedAt} />
         {publishedAt === null ? (
           <span className="text-[11px] text-mri-text2">
             {m.emotive_claims_stage_not_published_cue()}
