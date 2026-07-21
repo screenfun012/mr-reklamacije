@@ -16,6 +16,15 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => undefined
 }
 
+// cmdk relies on ResizeObserver, absent in jsdom.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+}
+
 afterEach(() => {
   cleanup()
 })

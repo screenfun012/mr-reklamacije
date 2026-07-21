@@ -101,6 +101,17 @@ export {
   DialogDescription,
 } from './primitives/dialog.js'
 export {
+  Command,
+  CommandDialog,
+  type CommandDialogProps,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandSeparator,
+} from './primitives/command.js'
+export {
   Sheet,
   SheetPortal,
   SheetOverlay,
