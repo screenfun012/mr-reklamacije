@@ -53,6 +53,8 @@ export const engineTypes = pgTable(
   (t) => [
     uniqueIndex('engine_types_code_key').on(t.code),
     index('idx_engine_types_manufacturer_id').on(t.manufacturerId),
+    // Textually identical to the engine-type semi-join in claims.repository.ts.
+    index('idx_engine_types_code_fts').using('gin', sql`to_tsvector('simple', ${t.code})`),
     foreignKey({
       name: 'engine_types_manufacturer_id_fkey',
       columns: [t.manufacturerId],

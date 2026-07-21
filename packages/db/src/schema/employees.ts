@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   date,
@@ -65,6 +65,8 @@ export const employees = pgTable(
       foreignColumns: [users.id],
     }).onDelete('set null'),
     index('idx_employees_department_id').on(t.departmentId),
+    // Textually identical to the employee semi-join in claims.repository.ts.
+    index('idx_employees_full_name_fts').using('gin', sql`to_tsvector('simple', ${t.fullName})`),
   ],
 )
 

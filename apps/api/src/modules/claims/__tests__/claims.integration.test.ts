@@ -205,6 +205,75 @@ describe('ClaimsService integration', () => {
       expect(domace.items.some((item) => item.mrNumber === domaceMr)).toBe(true)
     })
 
+    it('searches by the assigned employee full name', async () => {
+      const id = await createEmotive(`EMPSRCH${Date.now()}/26`)
+
+      const result = await container.claimsService.list(
+        listQuery({ search: 'Milovanović' }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.some((item) => item.id === id)).toBe(true)
+    })
+
+    it('searches by engine type code', async () => {
+      const code = `ENGSRCH${Date.now()}`
+      const engineType = await createTestEngineType(container, code)
+      const created = await container.emotiveClaimsService.create(
+        {
+          engineTypeId: engineType.id,
+          dateOfClaim: new Date('2026-06-15'),
+          mrNumber: `ENGC${Date.now()}/26`,
+          outcome: ClaimOutcome.Pending,
+          warrantyReport: 'x',
+          employeeId: await getEmployeeIdByNormalizedName(
+            ctx.db,
+            normalizeName('Dejan Milovanović'),
+          ),
+          sourceId: await getClaimSourceIdByCode(ctx.db, 'SELMAN'),
+          faults: [],
+        },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const result = await container.claimsService.list(listQuery({ search: code }), FULL_OPERATOR)
+
+      expect(result.items.some((item) => item.id === created.id)).toBe(true)
+    })
+
+    it('searches an emotive claim by its claim number', async () => {
+      const id = await createEmotive(`ECLM${Date.now()}/26`)
+      const claimNo = `ECLMNO${Date.now()}`
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ claimNumber: claimNo })
+        .where(eq(schema.emotiveClaims.id, id))
+
+      const result = await container.claimsService.list(
+        listQuery({ search: claimNo }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.some((item) => item.id === id)).toBe(true)
+    })
+
+    it('searches a domace claim by its claim number', async () => {
+      const id = await createDomace(`DCLM${Date.now()}/26`, 'Kupac za nalog')
+      const claimNo = `DCLMNO${Date.now()}`
+      await ctx.db
+        .update(schema.domaceClaims)
+        .set({ claimNumber: claimNo })
+        .where(eq(schema.domaceClaims.id, id))
+
+      const result = await container.claimsService.list(
+        listQuery({ search: claimNo }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.some((item) => item.id === id)).toBe(true)
+    })
+
     it('paginates with a single total across both sources', async () => {
       const token = `PAGETOK${Date.now()}`
       await createEmotive(`${token}-EM/26`)

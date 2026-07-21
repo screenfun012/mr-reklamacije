@@ -241,15 +241,16 @@ export class ClaimsRepository {
     }
 
     if (query.search !== undefined) {
-      // Local columns via the idx_emotive_claims_search_fts GIN expression
-      // (must match textually); customer name via an indexed semi-join —
-      // a cross-table tsvector could never use an index.
+      // Local columns (warranty + mr + claim number) via the
+      // idx_emotive_claims_search_fts GIN expression (must match textually);
+      // cross-table columns (customer / engine type / employee) via indexed
+      // semi-joins — a cross-table tsvector could never use an index.
+      const searchQuery = searchPrefixTsQuery(query.search)
       conditions.push(
-        sql`(to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || ec.mr_number) @@ ${searchPrefixTsQuery(query.search)}
-          OR ec.customer_id IN (
-            SELECT id FROM customers
-            WHERE to_tsvector('simple', name) @@ ${searchPrefixTsQuery(query.search)}
-          ))`,
+        sql`(to_tsvector('simple', coalesce(ec.warranty_report, '') || ' ' || ec.mr_number || ' ' || coalesce(ec.claim_number, '')) @@ ${searchQuery}
+          OR ec.customer_id IN (SELECT id FROM customers WHERE to_tsvector('simple', name) @@ ${searchQuery})
+          OR ec.engine_type_id IN (SELECT id FROM engine_types WHERE to_tsvector('simple', code) @@ ${searchQuery})
+          OR ec.employee_id IN (SELECT id FROM employees WHERE to_tsvector('simple', full_name) @@ ${searchQuery}))`,
       )
     }
 
@@ -347,8 +348,14 @@ export class ClaimsRepository {
     }
 
     if (query.search !== undefined) {
+      // Local columns (warranty + mr + customer + claim number) via the
+      // idx_domace_claims_search_fts GIN expression (textually identical);
+      // engine type / employee via indexed semi-joins.
+      const searchQuery = searchPrefixTsQuery(query.search)
       conditions.push(
-        sql`to_tsvector('simple', coalesce(dc.warranty_report, '') || ' ' || coalesce(dc.mr_number, '') || ' ' || coalesce(dc.customer_name, '')) @@ ${searchPrefixTsQuery(query.search)}`,
+        sql`(to_tsvector('simple', coalesce(dc.warranty_report, '') || ' ' || coalesce(dc.mr_number, '') || ' ' || coalesce(dc.customer_name, '') || ' ' || coalesce(dc.claim_number, '')) @@ ${searchQuery}
+          OR dc.engine_type_id IN (SELECT id FROM engine_types WHERE to_tsvector('simple', code) @@ ${searchQuery})
+          OR dc.employee_id IN (SELECT id FROM employees WHERE to_tsvector('simple', full_name) @@ ${searchQuery}))`,
       )
     }
 

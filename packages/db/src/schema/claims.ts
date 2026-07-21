@@ -131,7 +131,7 @@ export const emotiveClaims = pgTable(
     // Postgres only uses an expression index when the expressions match.
     index('idx_emotive_claims_search_fts').using(
       'gin',
-      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || ${t.mrNumber})`,
+      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || ${t.mrNumber} || ' ' || coalesce(${t.claimNumber}, ''))`,
     ),
   ],
 )
@@ -286,7 +286,7 @@ export const domaceClaims = pgTable(
     // in domace-claims.repository.ts and claims.repository.ts (index matching).
     index('idx_domace_claims_search_fts').using(
       'gin',
-      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || coalesce(${t.mrNumber}, '') || ' ' || coalesce(${t.customerName}, ''))`,
+      sql`to_tsvector('simple', coalesce(${t.warrantyReport}, '') || ' ' || coalesce(${t.mrNumber}, '') || ' ' || coalesce(${t.customerName}, '') || ' ' || coalesce(${t.claimNumber}, ''))`,
     ),
   ],
 )
