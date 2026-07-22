@@ -424,6 +424,58 @@ describe.sequential('Users module', () => {
   })
 
   describe('when updating account status', () => {
+    it('clears requested_company on approval and keeps the typed value in the audit', async () => {
+      // The applicant's typed company is only a hint for the approver; approval
+      // resolves it into a real firm, so the text is cleared (docs/16 §5.2). The
+      // audit row is then the ONLY record of what they typed — nothing re-enters it.
+      const REQUESTED_COMPANY_USER_ID = '77777777-7777-4777-8777-777777777771'
+      await seedPendingUser(
+        ctx.db,
+        REQUESTED_COMPANY_USER_ID,
+        'requested-company@mrengines.rs',
+        'Requested Company Applicant',
+      )
+      await ctx.db
+        .update(schema.users)
+        .set({ requestedCompany: 'Auto Servis Petrović' })
+        .where(eq(schema.users.id, REQUESTED_COMPANY_USER_ID))
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+      const response = await app.request(`/api/users/${REQUESTED_COMPANY_USER_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCode: SYSTEM_ROLE_OPERATOR,
+        }),
+      })
+      expect(response.status).toBe(200)
+
+      const [row] = await ctx.db
+        .select({ requestedCompany: schema.users.requestedCompany })
+        .from(schema.users)
+        .where(eq(schema.users.id, REQUESTED_COMPANY_USER_ID))
+      expect(row?.requestedCompany).toBeNull()
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, REQUESTED_COMPANY_USER_ID))
+      const approveAudit = auditRows.find(
+        (auditRow) =>
+          auditRow.changes !== null &&
+          typeof auditRow.changes === 'object' &&
+          'before' in auditRow.changes &&
+          (auditRow.changes as { before?: { requestedCompany?: string | null } }).before
+            ?.requestedCompany === 'Auto Servis Petrović',
+      )
+      expect(approveAudit).toBeDefined()
+      expect(
+        (approveAudit?.changes as { after?: { requestedCompany?: string | null } }).after
+          ?.requestedCompany,
+      ).toBeNull()
+    })
+
     it('approves a pending user with an explicit operator role, writes audit log, and emits SSE', async () => {
       const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
 

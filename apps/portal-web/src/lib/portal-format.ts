@@ -73,3 +73,23 @@ export function companyInitials(company: string): string {
   const second = words[1]?.charAt(0) ?? words[0]?.charAt(1) ?? ''
   return (first + second).toUpperCase()
 }
+
+/**
+ * Header company label: the linked firm, or the account's own name when the
+ * account has no firm yet. Several firms collapse to "first +N" (docs/16 §5.3) —
+ * the norm is one firm per account, but the day a second one is linked this
+ * already reads correctly without a code change.
+ *
+ * Returns the LABEL only: avatar initials must be taken from the firm name
+ * itself, or "AS Tajka +1" would initial as "A+".
+ */
+export function formatCompanyLabel(firmNames: readonly string[], fallback: string): string {
+  // `?? fallback` would not catch a blank name — `''` is not nullish — and a
+  // blank header reads as a bug rather than as a missing firm.
+  const named = firmNames.filter((name) => name.trim() !== '')
+  const primary = named[0]
+  if (primary === undefined) {
+    return fallback
+  }
+  return named.length > 1 ? `${primary} +${named.length - 1}` : primary
+}

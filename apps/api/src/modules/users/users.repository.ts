@@ -233,7 +233,12 @@ export class UsersRepository {
 
       const [updated] = await tx
         .update(users)
-        .set({ accountStatus: UserAccountStatus.Approved })
+        // `requested_company` is the free text the applicant typed at registration.
+        // Approval resolves it into a real firm (customer_users), so the hint has
+        // done its job — keeping it would leave dead text no screen ever shows
+        // again (docs/16 §5.2). Cleared inside this transaction, so a rejected
+        // role or an invalid firm rolls the clear back together with the approval.
+        .set({ accountStatus: UserAccountStatus.Approved, requestedCompany: null })
         .where(eq(users.id, id))
         .returning(userListColumns)
 

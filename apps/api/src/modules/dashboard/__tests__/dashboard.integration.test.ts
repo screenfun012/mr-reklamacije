@@ -252,21 +252,30 @@ describe('DashboardService integration', () => {
       'domace_claims.view_own_customer',
     ] as const
 
+    /** id → name, so a test can assert firmNames without re-reading the row. */
+    const linkedCustomerNames = new Map<string, string>()
+
     function uniqueMr(prefix: string): string {
       return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}/26`
     }
 
-    async function createLinkedCustomer(userId: string): Promise<string> {
+    async function createLinkedCustomer(userId: string, namePrefix = ''): Promise<string> {
       const [customer] = await ctx.db
         .insert(schema.customers)
         .values({
           kind: 'emotive_partner',
-          name: `DASH-CLIENT-${userId.slice(0, 8)}-${Date.now()}`,
+          // Keep generated names free of the audit-leak guard's needles
+          // (`before`/`after`/`changes`/`actorIp`) — one test stringifies the
+          // whole response and asserts none of them appear.
+          // Any ordering discriminator must lead: everything after it varies by
+          // milliseconds, so a trailing marker would not decide the order at all.
+          name: `${namePrefix}DASH-CLIENT-${userId.slice(0, 8)}-${Date.now()}`,
         })
-        .returning({ id: schema.customers.id })
+        .returning({ id: schema.customers.id, name: schema.customers.name })
       if (customer === undefined) {
         throw new Error('failed to insert test customer')
       }
+      linkedCustomerNames.set(customer.id, customer.name)
       await ctx.db
         .insert(schema.customerUsers)
         .values({ customerId: customer.id, userId, assignedBy: TEST_USER_ID })
@@ -462,6 +471,64 @@ describe('DashboardService integration', () => {
 
       expect(summary.stats).toEqual({ received: 0, inProgress: 0, resolved: 0, total: 0 })
       expect(summary.activity).toEqual([])
+      expect(summary.firmNames).toEqual([])
+    })
+
+    it('returns the linked firm name for a client with no claims at all', async () => {
+      // The §5.1 bug: the portal used to take the company from the first claim,
+      // so a brand-new client saw their own personal name in the header.
+      const userId = '88888888-8888-4888-8888-888888888886'
+      await ensureTestUser(ctx.db, userId)
+      const customerId = await createLinkedCustomer(userId)
+
+      const summary = await container.dashboardService.getClientSummary({
+        id: userId,
+        permissions: [...CLIENT_PERMS],
+      })
+
+      expect(summary.firmNames).toEqual([linkedCustomerNames.get(customerId)])
+      expect(summary.stats).toEqual({ received: 0, inProgress: 0, resolved: 0, total: 0 })
+    })
+
+    it('returns every linked firm name, ordered by name', async () => {
+      // The norm is one firm per account, but the header's "first +N" must already
+      // be correct the day a second link appears — no code change (docs/16 §5.3).
+      const userId = '88888888-8888-4888-8888-888888888885'
+      await ensureTestUser(ctx.db, userId)
+      const firstId = await createLinkedCustomer(userId, 'B-')
+      const secondId = await createLinkedCustomer(userId, 'A-')
+
+      const summary = await container.dashboardService.getClientSummary({
+        id: userId,
+        permissions: [...CLIENT_PERMS],
+      })
+
+      // Named so the intended order is unambiguous and collation-independent:
+      // the "-A" firm must come first even though it was linked second.
+      const firstName = linkedCustomerNames.get(firstId)
+      const secondName = linkedCustomerNames.get(secondId)
+      expect(firstName?.startsWith('B-')).toBe(true)
+      expect(secondName?.startsWith('A-')).toBe(true)
+      // "A-…" must come back first even though it was linked second.
+      expect(summary.firmNames).toEqual([secondName, firstName])
+    })
+
+    it('never hands an internal full-view actor anyone else’s firm names', async () => {
+      // A full-view actor reaches the same handler and gets UNSCOPED stats; the
+      // firm names must still be their OWN links (normally none). This endpoint's
+      // twin already leaked global data to clients once — guard both directions.
+      const internalUserId = '88888888-8888-4888-8888-888888888884'
+      const clientUserId = '88888888-8888-4888-8888-888888888883'
+      await ensureTestUser(ctx.db, internalUserId)
+      await ensureTestUser(ctx.db, clientUserId)
+      await createLinkedCustomer(clientUserId)
+
+      const summary = await container.dashboardService.getClientSummary({
+        id: internalUserId,
+        permissions: ['emotive_claims.view', 'domace_claims.view'],
+      })
+
+      expect(summary.firmNames).toEqual([])
     })
 
     it('gates the routes: client passes /client-summary but NOT the internal /summary', async () => {

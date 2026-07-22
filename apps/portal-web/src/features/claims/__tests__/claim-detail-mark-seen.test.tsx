@@ -170,7 +170,11 @@ describe('claim detail mark-seen on open', () => {
       page: 1,
       pageSize: 10,
     })
-    queryClient.setQueryData(clientClaimKeys.summary(), { phases: {}, activity: [] })
+    queryClient.setQueryData(clientClaimKeys.summary(), {
+      stats: { received: 0, inProgress: 0, resolved: 0, total: 0 },
+      activity: [],
+      firmNames: [],
+    })
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
     await renderDetail(queryClient)

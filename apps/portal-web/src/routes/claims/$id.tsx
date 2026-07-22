@@ -6,6 +6,7 @@ import {
   ClaimKind,
   clientClaimKeys,
   clientEmotiveClaimDetailOptions,
+  clientPortalSummaryOptions,
   fetchNoContent,
   SUPPORT_EMAIL_BY_KIND,
 } from '@mr/shared'
@@ -38,8 +39,10 @@ export const Route = createFileRoute('/claims/$id')({
   },
   loader: async ({ context: { queryClient }, params }) => {
     await queryClient.ensureQueryData(clientEmotiveClaimDetailOptions(params.id))
-    // Prefetch (never throws) so photos are cached before first paint.
+    // Prefetch (never throws) so photos are cached before first paint, and so a
+    // deep-linked detail paints the firm in the header instead of swapping it in.
     await queryClient.prefetchQuery(attachmentsListOptions(ClaimKind.Emotive, params.id))
+    await queryClient.prefetchQuery(clientPortalSummaryOptions())
   },
   component: ClaimDetailComponent,
   pendingComponent: DashboardSkeleton,
@@ -104,7 +107,7 @@ function ClaimDetailComponent() {
           WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,0.9), transparent 45%)',
         }}
       />
-      <PortalHeader company={claim.customerName ?? ''} maxWidthClass="max-w-[1120px]" />
+      <PortalHeader maxWidthClass="max-w-[1120px]" />
 
       <div className="relative mx-auto max-w-[1120px] px-5 pb-[72px] pt-8 sm:px-8">
         <Link

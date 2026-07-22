@@ -5,7 +5,7 @@ import { eq, sql, type SQL } from 'drizzle-orm'
 import type { ApiDatabase } from '../../core/database.js'
 import type { DashboardScope } from './dashboard.types.js'
 
-const { customerUsers } = schema
+const { customerUsers, customers } = schema
 
 const OVERDUE_DAYS_THRESHOLD = 7
 const LIST_LIMIT = 20
@@ -113,13 +113,25 @@ function clientCustomerFilter(customerIds: string[] | null): SQL {
 export class DashboardRepository {
   constructor(private readonly db: ApiDatabase) {}
 
-  async getUserCustomerIds(userId: string): Promise<string[]> {
-    const rows = await this.db
-      .select({ customerId: customerUsers.customerId })
-      .from(customerUsers)
-      .where(eq(customerUsers.userId, userId))
-
-    return rows.map((row) => row.customerId)
+  /**
+   * The firms this user is linked to — ids AND names from one indexed read, so the
+   * client summary can label the header without a second scope computation.
+   *
+   * Deliberately does NOT filter soft-deleted firms: the id set is what scopes a
+   * client's claims and their SSE channels, and narrowing it here would silently
+   * change access. A soft-deleted firm's name still belongs in the header — the
+   * link is real, and the alternative is a blank company.
+   */
+  async getUserFirms(userId: string): Promise<{ id: string; name: string }[]> {
+    return (
+      this.db
+        .select({ id: customerUsers.customerId, name: customers.name })
+        .from(customerUsers)
+        .innerJoin(customers, eq(customers.id, customerUsers.customerId))
+        .where(eq(customerUsers.userId, userId))
+        // Stable order so the header's "first + N" never reshuffles between reads.
+        .orderBy(customers.name)
+    )
   }
 
   /**

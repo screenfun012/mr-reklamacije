@@ -157,7 +157,7 @@ Baza to VEĆ podržava (veza je više-na-više; scoping već čita SVE firme nal
 
 | Faza | Sadržaj | Napomena |
 | --- | --- | --- |
-| **F-A** | Header firme (§5.1) + brisanje `requested_company` po odobrenju | malo, odmah korisno; bez migracije |
+| **F-A** | Header firme (§5.1) + brisanje `requested_company` po odobrenju | ✅ **URAĐENO 2026-07-22** — bez migracije |
 | **F-B** | „+ Nova firma" u dijalogu odobrenja (§5.2) | bez migracije |
 | **M-0** | Šifarnik `machining_part_types` + admin CRUD + seed | **migracija — eksplicitno odobrenje** |
 | **M-1** | Tabele `machining_claims` + faults + API modul + dozvole | **migracija — eksplicitno odobrenje** |
@@ -165,3 +165,11 @@ Baza to VEĆ podržava (veza je više-na-više; scoping već čita SVE firme nal
 | **M-3** | Portal (whitelist + ožičavanje) + statistika/Excel | portal se „pali" |
 
 Redosled: F-A → F-B odmah po odobrenju; M-faze kad Nikola kaže „kreni sa mašinskom".
+
+**Otvoreno posle F-A (2026-07-22):** portal je i dalje **samo EMOTIVE**. Domaća reklamacija
+nema vlasnika — samo tekstualno `customer_name` — pa `DomaceClaimsRepository.list` vraća
+prazno svakom `own_customer` akteru. Zato privatno lice ili domaća firma danas **ne mogu da
+koriste portal**, bez obzira što šifarnik već poznaje vrstu `domestic_individual` i što bi
+zaglavlje firme radilo za njih bez izmene. Da to prorada treba prava veza (`customer_id` na
+`domace_claims` + povezivanje postojećih redova + proširenje portala) — Nikola je 2026-07-22
+odlučio da se radi drugom prilikom.

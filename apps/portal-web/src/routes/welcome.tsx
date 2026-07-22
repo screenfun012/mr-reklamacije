@@ -1,11 +1,10 @@
 import { m } from '@mr/i18n'
-import { clientClaimsListOptions } from '@mr/shared'
-import { useQuery } from '@tanstack/react-query'
+import { clientClaimsListOptions, clientPortalSummaryOptions } from '@mr/shared'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { MaskedIcon } from '~/components/masked-icon'
-import { authClient } from '~/lib/auth-client'
 import { portalRequireRoles } from '~/lib/auth-guard'
+import { usePortalCompany } from '~/lib/use-portal-company'
 import { markWelcomeSeen } from '~/lib/welcome-flag'
 
 export const Route = createFileRoute('/welcome')({
@@ -14,6 +13,7 @@ export const Route = createFileRoute('/welcome')({
     // Prefetch (never throw) — the greeting falls back to the account name and
     // this warms the dashboard cache for the very next navigation.
     await context.queryClient.prefetchQuery(clientClaimsListOptions())
+    await context.queryClient.prefetchQuery(clientPortalSummaryOptions())
   },
   component: WelcomeComponent,
 })
@@ -43,10 +43,7 @@ function GlassCard({
 
 function WelcomeComponent() {
   const navigate = useNavigate()
-  const { data: session } = authClient.useSession()
-  const { data: claims } = useQuery(clientClaimsListOptions())
-
-  const company = claims?.items[0]?.customerName ?? session?.user.name ?? ''
+  const { primary: company } = usePortalCompany()
 
   const handleEnter = (): void => {
     markWelcomeSeen()

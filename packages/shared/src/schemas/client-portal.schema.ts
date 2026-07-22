@@ -36,6 +36,13 @@ export type ClientPortalStats = z.infer<typeof ClientPortalStatsSchema>
 export const ClientPortalSummarySchema = z.object({
   stats: ClientPortalStatsSchema,
   activity: z.array(ClientPortalActivityItemSchema),
+  /**
+   * Names of the firms the CALLING user is linked to (`customer_users`), so the
+   * portal header stops guessing the company from the first claim — a client
+   * with no claims yet would otherwise see their own personal name (docs/16 §5.1).
+   * A list because one account may hold several links; the norm is one (§5.3).
+   */
+  firmNames: z.array(z.string()),
 })
 
 export type ClientPortalSummary = z.infer<typeof ClientPortalSummarySchema>

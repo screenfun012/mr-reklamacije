@@ -13,11 +13,11 @@ import { z } from 'zod'
 
 import { MaskedIcon } from '~/components/masked-icon'
 import { PortalHeader } from '~/components/portal-header'
+import { usePortalCompany } from '~/lib/use-portal-company'
 import { PortalPagination } from '~/components/portal-pagination'
 import { ClaimCard } from '~/features/claims/claim-card'
 import { ActivityCard, DashboardStats, SupportCard } from '~/features/claims/dashboard-cards'
 import { DashboardSkeleton } from '~/features/claims/dashboard-skeleton'
-import { authClient } from '~/lib/auth-client'
 import { useLocale } from '@mr/ui'
 import { formatPortalDateEyebrow } from '~/lib/portal-format'
 
@@ -68,14 +68,13 @@ function DashboardComponent() {
   const navigate = useNavigate()
   const { locale } = useLocale()
   const { page } = dashboardRoute.useLoaderDeps()
-  const { data: session } = authClient.useSession()
+  const { primary } = usePortalCompany()
   const { data: list } = useSuspenseQuery(clientClaimsListOptions(page))
   const { data: summary } = useSuspenseQuery(clientPortalSummaryOptions())
   const [filter, setFilter] = useState<ServiceFilter>('all')
   // One stable timestamp per mount for the eyebrow + relative feed times.
   const [now] = useState(() => new Date())
 
-  const company = list.items[0]?.customerName ?? session?.user.name ?? ''
   // All claims are engine remanufacture until machining claims exist in the
   // internal app — the machining tab is prepared UI with an honest empty state.
   const claims = filter === 'machining' ? [] : list.items
@@ -84,7 +83,7 @@ function DashboardComponent() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-mrp-bg">
       <DashboardBackdrop />
-      <PortalHeader company={company} />
+      <PortalHeader />
 
       <div className="relative mx-auto max-w-[1280px] px-5 pb-[72px] pt-10 sm:px-8">
         <div className="mb-[34px] flex flex-wrap items-end justify-between gap-8">
@@ -93,7 +92,7 @@ function DashboardComponent() {
               {formatPortalDateEyebrow(now, locale)}
             </div>
             <h1 className="mb-2 text-[30px] font-extrabold tracking-[-0.02em] sm:text-[38px]">
-              {m.portal_dashboard_greeting({ company })}
+              {m.portal_dashboard_greeting({ company: primary })}
             </h1>
             <p className="text-[15px] text-mrp-text2">
               {m.portal_dashboard_summary({

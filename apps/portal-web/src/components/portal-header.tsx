@@ -5,19 +5,19 @@ import { LogOut, MessageSquarePlus } from 'lucide-react'
 
 import { authClient } from '~/lib/auth-client'
 import { companyInitials } from '~/lib/portal-format'
+import { usePortalCompany } from '~/lib/use-portal-company'
 
 import { LangThemeControls } from './lang-theme-controls'
 import { PortalLogo } from './masked-icon'
 
-/** Sticky blurred app header (dashboard + claim detail). */
-export function PortalHeader({
-  company,
-  maxWidthClass = 'max-w-[1280px]',
-}: {
-  company: string
-  maxWidthClass?: string
-}) {
+/**
+ * Sticky blurred app header (dashboard + claim detail). Reads the company itself
+ * so every screen shows the same, correct firm — callers used to pass it in, and
+ * each derived it differently.
+ */
+export function PortalHeader({ maxWidthClass = 'max-w-[1280px]' }: { maxWidthClass?: string }) {
   const navigate = useNavigate()
+  const { primary, label } = usePortalCompany()
 
   const handleSignOut = (): void => {
     void (async () => {
@@ -54,10 +54,10 @@ export function PortalHeader({
             <LogOut className="size-4" />
           </button>
           <span className="grid size-9 flex-none place-items-center rounded-full bg-mrp-red text-[13px] font-bold text-white">
-            {companyInitials(company)}
+            {companyInitials(primary)}
           </span>
           <div className="hidden leading-[1.15] sm:block">
-            <div className="text-[13.5px] font-bold">{company}</div>
+            <div className="text-[13.5px] font-bold">{label}</div>
             <button
               type="button"
               onClick={handleSignOut}

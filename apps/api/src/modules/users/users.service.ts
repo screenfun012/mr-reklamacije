@@ -114,10 +114,19 @@ export class UsersService {
     const auditChanges =
       input.status === UserAccountStatus.Approved
         ? {
-            before: { accountStatus: before.accountStatus, roles: sortedRoles(before.roles) },
+            before: {
+              accountStatus: before.accountStatus,
+              roles: sortedRoles(before.roles),
+              // Kept for the trail: the value's purpose is consumed at approval
+              // (the approver read it and picked the real firm), so this is a
+              // record of what was typed, not a backup it could be restored from —
+              // the audit row is written after the approval commits, not with it.
+              requestedCompany: before.requestedCompany,
+            },
             after: {
               accountStatus: updated.accountStatus,
               roles: sortedRoles(updated.roles),
+              requestedCompany: updated.requestedCompany,
               ...(input.roleCode === SYSTEM_ROLE_CLIENT
                 ? { linkedCustomerIds: [...input.customerIds].sort() }
                 : {}),

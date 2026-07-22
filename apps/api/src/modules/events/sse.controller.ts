@@ -6,7 +6,7 @@ import type { Container } from '../../core/container.js'
 const SSE_HEARTBEAT_MS = 20_000
 // Cap connection lifetime so a deactivated / revoked session and stale customer
 // links are re-validated on the next (automatic EventSource) reconnect — the
-// auth middleware and getUserCustomerIds both run fresh on the new request.
+// auth middleware and getUserFirms both run fresh on the new request.
 const SSE_MAX_LIFETIME_MS = 30 * 60_000
 
 export function createSseController(container: Container) {
@@ -17,7 +17,8 @@ export function createSseController(container: Container) {
       return streamSSE(c, async (stream) => {
         // Portal clients listen on their customers' channels — the only claim
         // signals they ever receive are for their own firm's claims.
-        const customerIds = await container.dashboardRepository.getUserCustomerIds(user.id)
+        const firms = await container.dashboardRepository.getUserFirms(user.id)
+        const customerIds = firms.map((firm) => firm.id)
 
         const unsubscribe = container.eventBus.subscribeUser(
           user.id,

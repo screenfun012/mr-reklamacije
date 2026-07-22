@@ -1,24 +1,22 @@
 import { m } from '@mr/i18n'
-import { clientClaimsListOptions } from '@mr/shared'
-import { useQuery } from '@tanstack/react-query'
+import { clientPortalSummaryOptions } from '@mr/shared'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { PortalHeader } from '~/components/portal-header'
 import { ReportForm } from '~/features/report/report-form'
-import { authClient } from '~/lib/auth-client'
 import { portalRequireRoles } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/report')({
   beforeLoad: portalRequireRoles(['client']),
+  // Prefetch (never throws) so a deep link paints the firm straight away instead
+  // of showing the account name and swapping it out.
+  loader: async ({ context }) => {
+    await context.queryClient.prefetchQuery(clientPortalSummaryOptions())
+  },
   component: ReportComponent,
 })
 
 function ReportComponent() {
-  const { data: session } = authClient.useSession()
-  // Cached from the dashboard; falls back to the account name (no extra fetch cost).
-  const { data: claims } = useQuery(clientClaimsListOptions())
-  const company = claims?.items[0]?.customerName ?? session?.user.name ?? ''
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-mrp-bg">
       <div
@@ -28,7 +26,7 @@ function ReportComponent() {
           WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,0.9), transparent 45%)',
         }}
       />
-      <PortalHeader company={company} maxWidthClass="max-w-[760px]" />
+      <PortalHeader maxWidthClass="max-w-[760px]" />
 
       <div className="relative mx-auto max-w-[760px] px-5 pb-[72px] pt-8 sm:px-8">
         <Link
