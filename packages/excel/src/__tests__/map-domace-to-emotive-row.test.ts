@@ -17,7 +17,6 @@ const sampleDomace: DomaceExportRow = {
   employeeName: 'MARKO ZIVANOVIC',
   outcome: 'accepted',
   totalAmount: 285165,
-  notes: 'NAPOMENA',
   claimYear: 2025,
   faults: [],
 }

@@ -249,7 +249,6 @@ export class ExcelRepository {
         employeeName: employees.fullName,
         outcome: domaceClaims.outcome,
         totalAmount: domaceClaims.totalAmount,
-        internalNotes: domaceClaims.internalNotes,
         claimYear: domaceClaims.claimYear,
       })
       .from(domaceClaims)
@@ -304,7 +303,6 @@ export class ExcelRepository {
       employeeName: row.employeeName,
       outcome: row.outcome as DomaceExportDbRow['outcome'],
       totalAmount: row.totalAmount,
-      internalNotes: row.internalNotes,
       claimYear: row.claimYear,
       faults: faultsByClaimId.get(row.id) ?? [],
     }))

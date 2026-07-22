@@ -32,7 +32,6 @@ const DOMACE_HEADERS = [
   'REKLAMACIJA',
   'UKUPNO',
   'ZAPOSLENI',
-  'NAPOMENA',
 ] as const
 
 const EMOTIVE_DATA_SHEET_NAME = 'EMOTIVE REKLAMACIJE'
@@ -70,7 +69,6 @@ function domaceRowValues(row: DomaceExportRow): (string | number | null)[] {
     formatDomaceOutcome(row.outcome),
     row.totalAmount,
     row.employeeName,
-    row.notes,
   ]
 }
 

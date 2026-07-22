@@ -37,7 +37,6 @@ export interface DomaceExportDbRow {
   employeeName: string | null
   outcome: 'pending' | 'accepted' | 'rejected' | 'archived'
   totalAmount: number | null
-  internalNotes: string | null
   claimYear: number
   faults: ClaimFaultItem[]
 }

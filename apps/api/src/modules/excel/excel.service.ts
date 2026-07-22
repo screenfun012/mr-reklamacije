@@ -144,7 +144,6 @@ export class ExcelService {
             employeeName: formatEmployeeNameForExport(row.employeeName),
             outcome: row.outcome,
             totalAmount: row.totalAmount,
-            notes: row.internalNotes,
             claimYear: row.claimYear,
             faults: mapFaults(row.faults),
           }),

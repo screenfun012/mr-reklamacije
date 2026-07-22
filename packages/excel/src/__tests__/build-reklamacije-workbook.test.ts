@@ -44,7 +44,6 @@ const sampleDomace: DomaceExportRow = {
   employeeName: 'MARKO ZIVANOVIC',
   outcome: 'accepted',
   totalAmount: 285165,
-  notes: 'ZA PONOVNO SKLAPANJE MOTORA NEMA PRIJAVE',
   claimYear: 2025,
   faults: [],
 }
@@ -124,7 +123,13 @@ describe('buildReklamacijeWorkbook', () => {
     expect(rowValues(employeeStats!, 2)[2]).toBe(1)
 
     const domace = workbook.getWorksheet('DOMACE REKLAMACIJE ')
-    expect(rowValues(domace!, 1)[0]).toBe('R.B.')
+    const domaceHeaders = rowValues(domace!, 1)
+    expect(domaceHeaders[0]).toBe('R.B.')
+    // The sheet ends at ZAPOSLENI: the old NAPOMENA column carried the single
+    // free-text note that multi-row findings replaced, and findings deliberately
+    // stay out of the export — the reason lives in OPIS PROBLEMA.
+    expect(domaceHeaders.at(-1)).toBe('ZAPOSLENI')
+    expect(domaceHeaders).not.toContain('NAPOMENA')
 
     const yearSheet = workbook.getWorksheet('2025')
     expect(yearSheet!.rowCount).toBe(3)
