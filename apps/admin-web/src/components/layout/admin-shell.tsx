@@ -1,4 +1,5 @@
 import { useSidebarState } from '@mr/ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
@@ -24,6 +25,7 @@ export interface AdminShellProps {
  */
 export function AdminShell({ children }: AdminShellProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: session } = authClient.useSession()
   useRealtimeEventStream()
   const { collapsed, mobileOpen, onToggle, onCloseMobile } = useSidebarState(
@@ -33,6 +35,9 @@ export function AdminShell({ children }: AdminShellProps) {
   const handleLogout = (): void => {
     void (async () => {
       await authClient.signOut()
+      // Client-side navigation keeps the cache alive — the next admin to sign
+      // in on the same machine would briefly see the previous one's data.
+      queryClient.clear()
       await navigate({ to: '/login' })
     })()
   }

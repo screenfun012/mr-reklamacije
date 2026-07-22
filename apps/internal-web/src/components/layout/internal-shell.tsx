@@ -1,4 +1,5 @@
 import { useSidebarState } from '@mr/ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
@@ -26,6 +27,7 @@ export interface InternalShellProps {
 export function InternalShell({ children }: InternalShellProps) {
   useRealtimeEventStream()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { userEmail, userName } = useInternalAuthUser()
   const { collapsed, mobileOpen, onToggle, onCloseMobile } = useSidebarState(
     'mrr:internal:sidebar-collapsed',
@@ -34,6 +36,10 @@ export function InternalShell({ children }: InternalShellProps) {
   const handleLogout = (): void => {
     void (async () => {
       await authClient.signOut()
+      // Client-side navigation keeps the cache alive — on a shared workshop
+      // computer the next person to sign in would briefly see the previous
+      // user's claims and dashboard until each query refetched.
+      queryClient.clear()
       await navigate({ to: '/login' })
     })()
   }

@@ -1,5 +1,6 @@
 import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { LogOut, MessageSquarePlus } from 'lucide-react'
 
@@ -17,11 +18,16 @@ import { PortalLogo } from './masked-icon'
  */
 export function PortalHeader({ maxWidthClass = 'max-w-[1280px]' }: { maxWidthClass?: string }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { primary, label } = usePortalCompany()
 
   const handleSignOut = (): void => {
     void (async () => {
       await authClient.signOut()
+      // Signing out is a client-side navigation, so the cache would otherwise
+      // outlive the session: on a shared computer the next person to sign in
+      // sees the previous one's firm and claims until every query refetches.
+      queryClient.clear()
       await navigate({ to: '/login' })
     })()
   }
