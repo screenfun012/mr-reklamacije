@@ -1,4 +1,4 @@
-import { ClaimKind, toClientClaimListItem } from '@mr/shared'
+import { ClaimKind, toClientClaimListItem, type Permission } from '@mr/shared'
 import type { Context } from 'hono'
 
 import type { Container } from '../../core/container.js'
@@ -30,9 +30,19 @@ function toActor(user: MRSessionUser): ClaimsActor {
  * whitelisted, an operator/viewer/admin (full view) is not, and a hypothetical
  * mixed-scope role gets each kind's correct breadth — no role-name coupling.
  */
+/**
+ * Which permission grants the FULL row for a kind — this decides, per row of the
+ * unified list, whether the caller gets internal fields or the client whitelist.
+ * Keyed, not branched: a third kind falling into an `else` would have handed
+ * machining rows to anyone holding `domace_claims.view`.
+ */
+const FULL_VIEW_PERMISSION_BY_KIND: Record<ClaimKind, Permission> = {
+  [ClaimKind.Emotive]: 'emotive_claims.view',
+  [ClaimKind.Domace]: 'domace_claims.view',
+}
+
 function hasFullViewForKind(user: MRSessionUser, kind: ClaimKind): boolean {
-  const permission = kind === ClaimKind.Emotive ? 'emotive_claims.view' : 'domace_claims.view'
-  return user.permissions.includes(permission)
+  return user.permissions.includes(FULL_VIEW_PERMISSION_BY_KIND[kind])
 }
 
 export function createClaimsController(container: Container) {

@@ -17,15 +17,25 @@ import type { NotificationsRepository } from './notifications.repository.js'
 import type { NotificationInsert } from './notifications.types.js'
 import type { NotificationListQuery, NotificationListResponse } from './notifications.validators.js'
 
+/** Keyed so a new claim family cannot inherit DOMACE's entity type by accident. */
+const ENTITY_TYPE_BY_KIND: Record<ClaimKind, NotificationEntityType> = {
+  [ClaimKind.Emotive]: NotificationEntityType.EmotiveClaim,
+  [ClaimKind.Domace]: NotificationEntityType.DomaceClaim,
+}
+
 function claimEntityType(kind: ClaimKind): NotificationEntityType {
-  return kind === ClaimKind.Emotive
-    ? NotificationEntityType.EmotiveClaim
-    : NotificationEntityType.DomaceClaim
+  return ENTITY_TYPE_BY_KIND[kind]
 }
 
 /** Who may see a claim of this kind at all — the natural audience for its events. */
+/** Who hears about a claim of this kind — wrong audience is a leak, not a nuisance. */
+const VIEW_PERMISSION_BY_KIND: Record<ClaimKind, Permission> = {
+  [ClaimKind.Emotive]: 'emotive_claims.view',
+  [ClaimKind.Domace]: 'domace_claims.view',
+}
+
 function claimViewPermission(kind: ClaimKind): Permission {
-  return kind === ClaimKind.Emotive ? 'emotive_claims.view' : 'domace_claims.view'
+  return VIEW_PERMISSION_BY_KIND[kind]
 }
 
 export class NotificationsService implements NotificationsPort {

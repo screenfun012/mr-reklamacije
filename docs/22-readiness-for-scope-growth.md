@@ -84,12 +84,16 @@ correctly for fault types, MIME types and SSE messages.
 notifications to the wrong audience, detail links that 404. Typecheck stays green. All 561
 integration tests stay green. A person finds it, in production.
 
-**Action (S, ~20 lines):** replace the ternaries with `Record<ClaimKind, …>` maps and build
-the registry from a `Record` literal so a missing kind fails the build.
-(`KIND_BADGE_CLASSES` in `kind-colors.ts` already does this correctly — copy that shape.)
+**✅ DONE 2026-07-22.** All three branch points are now `Record<ClaimKind, …>` maps, and
+`CLAIM_KIND_BY_KEY` is a record literal instead of `Object.fromEntries(...) as Record<…>`
+(`CLAIM_KIND_REGISTRY` is now derived from it, for display order).
 
-**This is the one item where waiting converts a 20-line edit into a production permission
-bug.**
+Verified by simulating the machining day: adding `Machining: 'machining'` to `ClaimKind`
+now **stops the build**, naming every site that must be wired — `kind-registry`,
+`claim-detail-path`, `kind-colors`, `support-contact`, `statistics-search`. Before the
+change, the first two compiled silently and machining would have inherited DOMACE's
+permission gate and EMOTIVE's detail route. A completeness test backs the compiler up for
+anyone who reaches for a cast to make the build pass.
 
 ### 1.3 Backups have never been restored, and the two halves drift
 
