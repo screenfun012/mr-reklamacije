@@ -68,7 +68,9 @@ describe('CommandPalette', () => {
 
     await user.keyboard('{Meta>}k{/Meta}')
 
-    expect(await screen.findByPlaceholderText('Pretraži ili skoči…')).toBeInTheDocument()
+    expect(
+      await screen.findByPlaceholderText('Pretraži komande ili reklamacije…'),
+    ).toBeInTheDocument()
     // permitted (has emotive_claims.create)
     expect(screen.getByText('Nova EMOTIVE reklamacija')).toBeInTheDocument()
     // requires client_submissions.manage — hidden

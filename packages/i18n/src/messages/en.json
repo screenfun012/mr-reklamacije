@@ -343,7 +343,7 @@
   "command_palette_empty": "No results.",
   "command_palette_group_claims": "Claims",
   "command_palette_group_navigation": "Navigation",
-  "command_palette_placeholder": "Search or jump to…",
+  "command_palette_placeholder": "Search commands or claims…",
   "common_confirm": "Confirm",
   "common_loading": "Loading…",
   "dashboard_card_accepted": "Accepted",
@@ -960,5 +960,9 @@
   "users_status_inactive": "Inactive",
   "users_status_pending": "Pending",
   "users_status_rejected": "Rejected",
-  "users_status_update_error": "Failed to update user status."
+  "users_status_update_error": "Failed to update user status.",
+  "command_palette_group_actions": "Actions",
+  "command_palette_hint_move": "navigate",
+  "command_palette_hint_open": "open",
+  "command_palette_hint_close": "close"
 }

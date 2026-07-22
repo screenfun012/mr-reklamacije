@@ -343,7 +343,7 @@
   "command_palette_empty": "Nema rezultata.",
   "command_palette_group_claims": "Reklamacije",
   "command_palette_group_navigation": "Navigacija",
-  "command_palette_placeholder": "Pretraži ili skoči…",
+  "command_palette_placeholder": "Pretraži komande ili reklamacije…",
   "common_confirm": "Potvrdi",
   "common_loading": "Učitavanje…",
   "dashboard_card_accepted": "Prihvaćeno",
@@ -960,5 +960,9 @@
   "users_status_inactive": "Neaktivan",
   "users_status_pending": "Na čekanju",
   "users_status_rejected": "Odbijen",
-  "users_status_update_error": "Greška pri ažuriranju statusa korisnika."
+  "users_status_update_error": "Greška pri ažuriranju statusa korisnika.",
+  "command_palette_group_actions": "Akcije",
+  "command_palette_hint_move": "kretanje",
+  "command_palette_hint_open": "otvori",
+  "command_palette_hint_close": "zatvori"
 }

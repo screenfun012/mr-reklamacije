@@ -20,24 +20,59 @@ const Command = React.forwardRef<
 ))
 Command.displayName = 'Command'
 
+const DEFAULT_COMMAND_CHROME =
+  '[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3'
+
 interface CommandDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   children: React.ReactNode
   title: string
   description?: string
+  /** Backdrop styling. */
+  overlayClassName?: string
+  /** Panel styling — position, size and surface. */
+  contentClassName?: string
+  /**
+   * Replaces the default shadcn chrome on the inner `Command` root. Pass this
+   * when the app skins the palette itself; omit it to keep the neutral look.
+   */
+  commandClassName?: string
+  /** Drops the dialog's default centering/surface so the panel can be positioned freely. */
+  unstyled?: boolean
 }
 
-function CommandDialog({ open, onOpenChange, children, title, description }: CommandDialogProps) {
+function CommandDialog({
+  open,
+  onOpenChange,
+  children,
+  title,
+  description,
+  overlayClassName,
+  contentClassName,
+  commandClassName,
+  unstyled = false,
+}: CommandDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent wide hideClose className="overflow-hidden sm:max-w-[560px]">
+      <DialogContent
+        wide
+        hideClose
+        unstyled={unstyled}
+        overlayClassName={overlayClassName}
+        className={cn(
+          'overflow-hidden',
+          !unstyled && 'sm:max-w-[560px]',
+          unstyled && 'flex flex-col gap-0 p-0',
+          contentClassName,
+        )}
+      >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         {description !== undefined ? (
           <DialogDescription className="sr-only">{description}</DialogDescription>
         ) : null}
         <Command
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3"
+          className={cn(commandClassName === undefined ? DEFAULT_COMMAND_CHROME : commandClassName)}
           shouldFilter={false}
         >
           {children}
@@ -49,10 +84,15 @@ function CommandDialog({ open, onOpenChange, children, title, description }: Com
 
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
+    /** Styles the row around the icon and the input. */
+    wrapperClassName?: string
+    /** Replaces the default search icon (e.g. a differently sized/coloured one). */
+    icon?: React.ReactNode
+  }
+>(({ className, wrapperClassName, icon, ...props }, ref) => (
+  <div className={cn('flex items-center border-b px-3', wrapperClassName)} cmdk-input-wrapper="">
+    {icon ?? <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />}
     <CommandPrimitive.Input
       ref={ref}
       className={cn(

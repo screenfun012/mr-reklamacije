@@ -109,6 +109,160 @@
   --mri-logoc: #ed1c24;
 }
 
+/* ---------- Glass (overlay/floating layers ONLY) ----------
+ * One recipe, used by the ⌘K palette and the notification panel. Glass is
+ * deliberately the ONLY exception to the solid `--mri-` surfaces: it is reserved
+ * for floating layers and must never be applied to cards, forms or tables.
+ *
+ * `--mrg-*` are glass-local text/edge tokens: on a translucent dark panel the
+ * regular `--mri-text2` grey is unreadable, so the panel carries its own scale.
+ * The fallback branches below restore solid `--mri-` surfaces where the browser
+ * cannot blur or the user asked for less transparency — without them, glass
+ * degrades into an unreadable transparent box.
+ */
+
+.mri-glass {
+  --mrg-text: #ffffff;
+  --mrg-text2: rgba(255, 255, 255, 0.55);
+  --mrg-icon: rgba(255, 255, 255, 0.6);
+  --mrg-sep: rgba(255, 255, 255, 0.1);
+  --mrg-hover: rgba(255, 255, 255, 0.06);
+  --mrg-sel: rgba(255, 255, 255, 0.12);
+  --mrg-sel-border: rgba(255, 255, 255, 0.14);
+  --mrg-sel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --mrg-kbd-border: rgba(255, 255, 255, 0.22);
+  --mrg-kbd-bg: rgba(255, 255, 255, 0.08);
+  --mrg-footer-bg: rgba(255, 255, 255, 0.03);
+  --mrg-skeleton: rgba(255, 255, 255, 0.1);
+  --mrg-emotive-bg: rgba(46, 144, 250, 0.22);
+  --mrg-emotive-border: rgba(46, 144, 250, 0.35);
+  --mrg-emotive-text: #7db9ff;
+  --mrg-domace-bg: rgba(167, 139, 250, 0.22);
+  --mrg-domace-border: rgba(167, 139, 250, 0.35);
+  --mrg-domace-text: #c8b6ff;
+  --mrg-ok: #3fd598;
+  --mrg-bad: #ff6b71;
+
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.02)
+  );
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+:root:not(.dark) .mri-glass {
+  --mrg-text: var(--mri-text);
+  --mrg-text2: var(--mri-text2);
+  --mrg-icon: var(--mri-text2);
+  --mrg-sep: rgba(20, 20, 25, 0.08);
+  --mrg-hover: rgba(20, 20, 25, 0.05);
+  --mrg-sel: rgba(20, 20, 25, 0.07);
+  --mrg-sel-border: rgba(20, 20, 25, 0.12);
+  --mrg-sel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --mrg-kbd-border: rgba(20, 20, 25, 0.2);
+  --mrg-kbd-bg: rgba(20, 20, 25, 0.05);
+  --mrg-footer-bg: rgba(20, 20, 25, 0.03);
+  --mrg-skeleton: rgba(20, 20, 25, 0.08);
+  --mrg-emotive-bg: rgba(46, 144, 250, 0.13);
+  --mrg-emotive-border: transparent;
+  --mrg-emotive-text: #1570d4;
+  --mrg-domace-bg: rgba(167, 139, 250, 0.13);
+  --mrg-domace-border: transparent;
+  --mrg-domace-text: #7c5de6;
+  --mrg-ok: #1fa971;
+  --mrg-bad: #e05c52;
+
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.72),
+    rgba(255, 255, 255, 0.55) 40%,
+    rgba(255, 255, 255, 0.45)
+  );
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  border: 1px solid rgba(20, 20, 25, 0.14);
+  box-shadow:
+    0 24px 60px rgba(20, 20, 25, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Dim + blur behind a glass panel. */
+.mri-glass-overlay {
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(7px) saturate(1.3);
+  -webkit-backdrop-filter: blur(7px) saturate(1.3);
+}
+
+:root:not(.dark) .mri-glass-overlay {
+  background: rgba(20, 20, 25, 0.25);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .mri-glass,
+  :root:not(.dark) .mri-glass {
+    --mrg-text: var(--mri-text);
+    --mrg-text2: var(--mri-text2);
+    --mrg-icon: var(--mri-text2);
+    --mrg-sep: var(--mri-border);
+    --mrg-hover: var(--mri-rowhv);
+    --mrg-sel: var(--mri-inbg);
+    --mrg-sel-border: var(--mri-border2);
+    --mrg-sel-inset: none;
+    --mrg-kbd-border: var(--mri-border2);
+    --mrg-kbd-bg: var(--mri-inbg);
+    --mrg-footer-bg: var(--mri-inbg);
+    --mrg-skeleton: var(--mri-inbg);
+
+    background: var(--mri-raised);
+    border: 1px solid var(--mri-border);
+    box-shadow: var(--mri-shadow);
+  }
+
+  .mri-glass-overlay,
+  :root:not(.dark) .mri-glass-overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .mri-glass,
+  :root:not(.dark) .mri-glass {
+    --mrg-text: var(--mri-text);
+    --mrg-text2: var(--mri-text2);
+    --mrg-icon: var(--mri-text2);
+    --mrg-sep: var(--mri-border);
+    --mrg-hover: var(--mri-rowhv);
+    --mrg-sel: var(--mri-inbg);
+    --mrg-sel-border: var(--mri-border2);
+    --mrg-sel-inset: none;
+    --mrg-kbd-border: var(--mri-border2);
+    --mrg-kbd-bg: var(--mri-inbg);
+    --mrg-footer-bg: var(--mri-inbg);
+    --mrg-skeleton: var(--mri-inbg);
+
+    background: var(--mri-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--mri-border);
+    box-shadow: var(--mri-shadow);
+  }
+
+  .mri-glass-overlay,
+  :root:not(.dark) .mri-glass-overlay {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 /* ---------- Animations (README §Interactions — durations matter) ---------- */
 
 @keyframes mriFadeUp {
@@ -193,7 +347,25 @@
   }
 }
 
+/* Glass panels open with their own curve — shorter and shallower than
+ * .mri-pop-in, which is tuned for page-level cards. */
+@keyframes mriGlassIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @layer utilities {
+  .mri-glass-in {
+    animation: mriGlassIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   .mri-fade-up {
     animation: mriFadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -268,6 +440,7 @@ select.mri-input option {
 
 /* Accessibility: honor reduced-motion — no looping/entry animations. */
 @media (prefers-reduced-motion: reduce) {
+  .mri-glass-in,
   .mri-fade-up,
   .mri-fade-in,
   .mri-pop-in,

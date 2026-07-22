@@ -1,29 +1,46 @@
 import { describe, expect, it } from 'vitest'
 
 import { filterVisibleNavItems } from '~/config/navigation'
-import { commandPaletteNavItems } from '../command-registry'
+import { commandPaletteActionItems, commandPaletteNavItems } from '../command-registry'
 
 describe('commandPaletteNavItems', () => {
-  it('includes the create-claim and security commands', () => {
+  it('lists the sidebar screens plus security, and no create commands', () => {
     const keys = commandPaletteNavItems.map((item) => item.key)
-    expect(keys).toContain('nova-emotive')
-    expect(keys).toContain('nova-domace')
+    expect(keys).toContain('pocetna')
     expect(keys).toContain('bezbednost')
+    expect(keys).not.toContain('nova-emotive')
+  })
+
+  it('keeps the sidebar order, because the palette numbers the rows', () => {
+    expect(commandPaletteNavItems.slice(0, 4).map((item) => item.key)).toEqual([
+      'pocetna',
+      'pristiglo',
+      'reklamacije',
+      'statistika',
+    ])
+  })
+})
+
+describe('commandPaletteActionItems', () => {
+  it('holds the create commands', () => {
+    expect(commandPaletteActionItems.map((item) => item.key)).toEqual([
+      'nova-emotive',
+      'nova-domace',
+    ])
   })
 })
 
 describe('filterVisibleNavItems', () => {
   it('hides a command whose single permission the user lacks', () => {
-    const visible = filterVisibleNavItems(commandPaletteNavItems, [])
-    const keys = visible.map((item) => item.key)
-    expect(keys).not.toContain('nova-emotive')
+    expect(filterVisibleNavItems(commandPaletteActionItems, []).map((item) => item.key)).toEqual([])
     // ungated commands still show
-    expect(keys).toContain('pocetna')
-    expect(keys).toContain('bezbednost')
+    const navKeys = filterVisibleNavItems(commandPaletteNavItems, []).map((item) => item.key)
+    expect(navKeys).toContain('pocetna')
+    expect(navKeys).toContain('bezbednost')
   })
 
   it('shows a command when the user has the required permission', () => {
-    const visible = filterVisibleNavItems(commandPaletteNavItems, ['emotive_claims.create'])
+    const visible = filterVisibleNavItems(commandPaletteActionItems, ['emotive_claims.create'])
     expect(visible.map((item) => item.key)).toContain('nova-emotive')
   })
 })

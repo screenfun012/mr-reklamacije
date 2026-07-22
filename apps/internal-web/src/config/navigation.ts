@@ -52,11 +52,14 @@ function hasAnyPermission(
   return required.some((permission) => permissionSet.has(permission))
 }
 
-/** Filters nav items to those the user's permissions allow (ungated items always show). */
-export function filterVisibleNavItems(
-  items: readonly NavItem[],
-  userPermissions: readonly string[],
-): NavItem[] {
+/**
+ * Filters nav items to those the user's permissions allow (ungated items always
+ * show). Generic over the item shape so the sidebar, the palette's navigation
+ * list and its action list all gate through this one function.
+ */
+export function filterVisibleNavItems<
+  T extends { permission?: string; permissions?: readonly string[] },
+>(items: readonly T[], userPermissions: readonly string[]): T[] {
   return items.filter((item) => {
     if (item.permissions !== undefined) {
       return hasAnyPermission(userPermissions, item.permissions)

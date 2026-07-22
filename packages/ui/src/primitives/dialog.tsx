@@ -43,6 +43,13 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideClose?: boolean
     wide?: boolean
+    /** Styles the backdrop (e.g. a lighter tint with blur instead of the default scrim). */
+    overlayClassName?: string | undefined
+    /**
+     * Drops the default centering, surface and radius so the caller can position
+     * and skin the panel itself. Focus trap, portal and z-index stay.
+     */
+    unstyled?: boolean
   }
 >(
   (
@@ -51,6 +58,8 @@ const DialogContent = React.forwardRef<
       children,
       hideClose = false,
       wide = false,
+      overlayClassName,
+      unstyled = false,
       onPointerDownOutside,
       onInteractOutside,
       ...props
@@ -58,7 +67,7 @@ const DialogContent = React.forwardRef<
     ref,
   ) => (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
         onPointerDownOutside={(event) => {
@@ -74,9 +83,13 @@ const DialogContent = React.forwardRef<
           onInteractOutside?.(event)
         }}
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 origin-center -translate-x-1/2 -translate-y-1/2 border bg-background shadow-lg duration-200 sm:rounded-lg',
-          wide ? 'flex flex-col gap-0 p-0' : 'grid w-[calc(100%-2rem)] max-w-lg gap-4 p-6',
-          'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+          'fixed z-50',
+          !unstyled &&
+            'left-1/2 top-1/2 origin-center -translate-x-1/2 -translate-y-1/2 border bg-background shadow-lg duration-200 sm:rounded-lg',
+          !unstyled &&
+            (wide ? 'flex flex-col gap-0 p-0' : 'grid w-[calc(100%-2rem)] max-w-lg gap-4 p-6'),
+          !unstyled &&
+            'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
           className,
         )}
         {...props}
