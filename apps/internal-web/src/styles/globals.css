@@ -119,6 +119,12 @@
  * The fallback branches below restore solid `--mri-` surfaces where the browser
  * cannot blur or the user asked for less transparency — without them, glass
  * degrades into an unreadable transparent box.
+ *
+ * NEVER hand-write `-webkit-backdrop-filter` next to `backdrop-filter` here: the
+ * CSS build treats the pair as one property and keeps only the LAST declaration,
+ * which left Chrome with a prefix it ignores — the panel shipped fully
+ * transparent, with no blur at all. Declare the standard property only; the
+ * build adds the prefixed copy itself.
  */
 
 .mri-glass {
@@ -150,7 +156,6 @@
     rgba(255, 255, 255, 0.02)
   );
   backdrop-filter: blur(28px) saturate(1.6);
-  -webkit-backdrop-filter: blur(28px) saturate(1.6);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
     0 32px 80px rgba(0, 0, 0, 0.5),
@@ -187,7 +192,6 @@
     rgba(255, 255, 255, 0.45)
   );
   backdrop-filter: blur(28px) saturate(1.4);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
   border: 1px solid rgba(20, 20, 25, 0.14);
   box-shadow:
     0 24px 60px rgba(20, 20, 25, 0.18),
@@ -198,7 +202,6 @@
 .mri-glass-overlay {
   background: rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(7px) saturate(1.3);
-  -webkit-backdrop-filter: blur(7px) saturate(1.3);
 }
 
 :root:not(.dark) .mri-glass-overlay {
@@ -250,7 +253,6 @@
 
     background: var(--mri-raised);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     border: 1px solid var(--mri-border);
     box-shadow: var(--mri-shadow);
   }
@@ -259,7 +261,6 @@
   :root:not(.dark) .mri-glass-overlay {
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 
