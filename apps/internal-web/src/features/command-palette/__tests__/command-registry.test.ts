@@ -12,10 +12,11 @@ describe('commandPaletteNavItems', () => {
   })
 
   it('keeps the sidebar order, because the palette numbers the rows', () => {
-    expect(commandPaletteNavItems.slice(0, 4).map((item) => item.key)).toEqual([
+    expect(commandPaletteNavItems.slice(0, 5).map((item) => item.key)).toEqual([
       'pocetna',
       'pristiglo',
       'reklamacije',
+      'masinska-obrada',
       'statistika',
     ])
   })

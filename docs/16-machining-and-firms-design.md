@@ -159,12 +159,20 @@ Baza to VEĆ podržava (veza je više-na-više; scoping već čita SVE firme nal
 | --- | --- | --- |
 | **F-A** | Header firme (§5.1) + brisanje `requested_company` po odobrenju | ✅ **URAĐENO 2026-07-22** — bez migracije |
 | **F-B** | „+ Nova firma" u dijalogu odobrenja (§5.2) | bez migracije |
+| **M-P** | Mesto u internoj aplikaciji (meni + ekran „u pripremi"), bez baze i API-ja | ✅ **URAĐENO 2026-07-22** |
 | **M-0** | Šifarnik `machining_part_types` + admin CRUD + seed | **migracija — eksplicitno odobrenje** |
 | **M-1** | Tabele `machining_claims` + faults + API modul + dozvole | **migracija — eksplicitno odobrenje** |
 | **M-2** | Interna: lista (filter), forma, detalj + veza deo↔motor | najveća faza |
 | **M-3** | Portal (whitelist + ožičavanje) + statistika/Excel | portal se „pali" |
 
 Redosled: F-A → F-B odmah po odobrenju; M-faze kad Nikola kaže „kreni sa mašinskom".
+
+**Odluka 2026-07-22:** M-faze se NE grade još — Nikola ih razrađuje sa kolegom i očekuje
+dodatne zahteve, pa bi gradnja sada značila pogađanje. Umesto toga je isporučena faza **M-P**:
+stavka „Mašinska obrada" u meniju interne aplikacije (isti gejt kao Reklamacije, dakle svi koji
+rade reklamacije je vide) + ruta `/masinska-obrada` sa poštenim ekranom „u pripremi". Bez
+tabele, bez API-ja, bez dozvole — mesto je rezervisano da tim zna da posao dolazi i da se
+kasnije sadržaj kalemi tu, umesto da se lepi sa strane.
 
 **Otvoreno posle F-A (2026-07-22):** portal je i dalje **samo EMOTIVE**. Domaća reklamacija
 nema vlasnika — samo tekstualno `customer_name` — pa `DomaceClaimsRepository.list` vraća

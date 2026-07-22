@@ -1,5 +1,5 @@
 import { CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
-import { BarChart3, Briefcase, Inbox, LayoutDashboard } from 'lucide-react'
+import { BarChart3, Briefcase, Cog, Inbox, LayoutDashboard } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 import { m } from '@mr/i18n'
@@ -34,6 +34,17 @@ export const internalNavItems: NavItem[] = [
     label: m.nav_reklamacije,
     to: '/reklamacije',
     icon: Briefcase,
+    permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
+  },
+  {
+    // Placeholder screen: the work exists in the shop but has nowhere to be
+    // recorded yet, so the place is reserved next to Reklamacije rather than
+    // bolted on later. Same gate as claims — whoever handles claims will handle
+    // machining; no permission of its own until there is a backend to guard.
+    key: 'masinska-obrada',
+    label: m.nav_masinska_obrada,
+    to: '/masinska-obrada',
+    icon: Cog,
     permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
