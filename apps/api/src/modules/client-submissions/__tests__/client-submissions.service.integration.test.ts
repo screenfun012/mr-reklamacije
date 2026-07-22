@@ -5,6 +5,10 @@ import {
   ClientSubmissionStatus,
   CustomerKind,
   EmotiveClaimCreateInputSchema,
+  NotificationEntityType,
+  NotificationType,
+  SYSTEM_ROLE_OPERATOR,
+  UserAccountStatus,
   SUPPORT_EMAIL_BY_KIND,
   type EmotiveClaimCreateInput,
 } from '@mr/shared'
@@ -162,6 +166,31 @@ describe('ClientSubmissionsService integration', () => {
       .values({ customerId, userId, assignedBy: TEST_USER_ID })
   }
 
+  /** An approved operator who handles the Inbox — i.e. someone the team notification targets. */
+  async function seedInboxOperator(): Promise<string> {
+    const id = crypto.randomUUID()
+    await ctx.db.insert(schema.users).values({
+      id,
+      email: `cs-op-${id}@mrengines.rs`,
+      name: 'Inbox operator',
+      isActive: true,
+      accountStatus: UserAccountStatus.Approved,
+    })
+    const [role] = await ctx.db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, SYSTEM_ROLE_OPERATOR))
+      .limit(1)
+    if (role === undefined) {
+      throw new Error('operator role missing — system seeds must run in integration setup')
+    }
+    await ctx.db
+      .insert(schema.userRoles)
+      .values({ userId: id, roleId: role.id, assignedBy: id })
+      .onConflictDoNothing()
+    return id
+  }
+
   async function seedEngineType(): Promise<string> {
     const [engineType] = await ctx.db
       .insert(schema.engineTypes)
@@ -208,6 +237,41 @@ describe('ClientSubmissionsService integration', () => {
   }
 
   describe('create', () => {
+    it('notifies the Inbox team when a client reports a problem from the portal', async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+      const operatorId = await seedInboxOperator()
+
+      const { id } = await service.create(actorFor(submitterId), {
+        message: 'Motor lupa nakon ugradnje',
+      })
+
+      const forOperator = await ctx.db
+        .select({
+          type: schema.notifications.type,
+          entityType: schema.notifications.entityType,
+          entityId: schema.notifications.entityId,
+        })
+        .from(schema.notifications)
+        .where(eq(schema.notifications.userId, operatorId))
+
+      expect(forOperator).toEqual([
+        {
+          type: NotificationType.NewSubmission,
+          entityType: NotificationEntityType.ClientSubmission,
+          entityId: id,
+        },
+      ])
+
+      // The client who reported it is never notified of their own report.
+      const forSubmitter = await ctx.db
+        .select({ id: schema.notifications.id })
+        .from(schema.notifications)
+        .where(eq(schema.notifications.userId, submitterId))
+      expect(forSubmitter).toHaveLength(0)
+    })
+
     it('resolves the linked customer, writes audit, sends email and emits an event', async () => {
       const submitterId = await seedUser()
       const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
