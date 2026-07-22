@@ -26,6 +26,28 @@ describe('request logger', () => {
     expect(message).toBe('request')
   })
 
+  it('raises a slow request to warn so it can be found without an APM', async () => {
+    const infoMock = vi.fn()
+    const warnMock = vi.fn()
+    const logger = { info: infoMock, warn: warnMock } as unknown as Logger
+
+    const app = new Hono()
+    app.use('*', createRequestLogger(logger))
+    app.get('/api/statistika', async (c) => {
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+      return c.json({ ok: true })
+    })
+
+    await app.request('/api/statistika')
+
+    expect(infoMock).not.toHaveBeenCalled()
+    expect(warnMock).toHaveBeenCalledTimes(1)
+    const [payload, message] = warnMock.mock.calls[0] as [Record<string, unknown>, string]
+    expect(payload['path']).toBe('/api/statistika')
+    expect(payload['durationMs']).toBeGreaterThanOrEqual(1000)
+    expect(message).toBe('slow request')
+  })
+
   it('skips health probes — they would flood the log', async () => {
     const infoMock = vi.fn()
     const logger = { info: infoMock } as unknown as Logger

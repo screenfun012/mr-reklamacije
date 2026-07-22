@@ -50,11 +50,17 @@ Made worse by the health check: `apps/api/src/routes/health.ts` returns a static
 that hang forever, a green Railway healthcheck, no restart, and no alert. The only
 detection channel is a phone call.
 
-**Action (S):** give the pool `connectionTimeoutMillis` and `statement_timeout`. Do **not**
-raise `max` (that moves the bottleneck into Postgres) and do **not** add a DB ping to
-`/health` (a flapping healthcheck restarts a container that is merely busy).
+**✅ DONE 2026-07-22.** `createPool` gained an OPT-IN `PoolTimeouts` argument and the API
+runtime (`apps/api/src/infrastructure/db.ts`) passes connection 5 s / statement 30 s /
+idle-in-transaction 60 s. Opt-in matters: `migrate-deploy.ts` and the one-off scripts share
+that factory, and a statement timeout there would abort a long index build and fail the
+deploy. `max` was NOT raised (that moves the bottleneck into Postgres) and `/health` still
+does not touch the DB (a flapping healthcheck restarts a container that is merely busy).
+Integration tests assert the settings actually reach Postgres (`SHOW statement_timeout`,
+plus a `pg_sleep` that must be cancelled) and that the DEFAULT pool stays unlimited so
+migrations are never cut off. Slow requests (≥ 1 s) now log at `warn` instead of `info`.
 
-docs/20 §4 called explicit pool options "a deliberate future choice". The choice is due.
+docs/20 §4 called explicit pool options "a deliberate future choice". The choice was made.
 
 ### 1.2 Three places assume there are exactly two kinds of claim
 
