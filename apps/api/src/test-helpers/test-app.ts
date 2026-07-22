@@ -31,6 +31,7 @@ import { registerDashboardRoutes } from '../modules/dashboard/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
 import { registerEngineManufacturersRoutes } from '../modules/engine-manufacturers/index.js'
 import type { EventBus } from '../modules/events/index.js'
+import { registerNotificationsRoutes } from '../modules/notifications/index.js'
 import { registerExternalPartiesRoutes } from '../modules/external-parties/index.js'
 import { TEST_USER_ID } from './fixtures.js'
 
@@ -302,6 +303,24 @@ export function createAuditLogTestApp(
   })
 
   registerAuditLogRoutes(app, container)
+
+  return app
+}
+
+export function createNotificationsTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerNotificationsRoutes(app, container)
 
   return app
 }

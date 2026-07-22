@@ -3,6 +3,7 @@ import {
   ClientSubmissionEventType,
   type ClientSubmissionEventPayload,
 } from './client-submission-events.js'
+import { NotificationEventType, type NotificationEventPayload } from './notification-events.js'
 import { ResourceEventType, type ResourceChangedPayload } from './resource-events.js'
 
 /** Server → client SSE payload for claim lifecycle (docs/05-auth-realtime.md). */
@@ -23,8 +24,18 @@ export type ClientSubmissionAppEvent = {
   payload: ClientSubmissionEventPayload
 }
 
+/** Server → client SSE payload when a notification lands in someone's inbox. */
+export type NotificationAppEvent = {
+  type: typeof NotificationEventType.Created
+  payload: NotificationEventPayload
+}
+
 /**
  * Union of all SSE events the API may push. Extended in later phases
  * (permissions_changed, session_invalidated, …).
  */
-export type AppEvent = ClaimAppEvent | ResourceChangedAppEvent | ClientSubmissionAppEvent
+export type AppEvent =
+  | ClaimAppEvent
+  | ResourceChangedAppEvent
+  | ClientSubmissionAppEvent
+  | NotificationAppEvent

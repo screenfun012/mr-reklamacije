@@ -39,6 +39,7 @@ import { registerClaimReportsRoutes } from './modules/claim-reports/index.js'
 import { registerExcelRoutes } from './modules/excel/index.js'
 import { registerStatisticsRoutes } from './modules/statistics/index.js'
 import { registerMrRegistryRoutes } from './modules/mr-registry/index.js'
+import { registerNotificationsRoutes } from './modules/notifications/index.js'
 
 export type { MRSessionUser }
 
@@ -154,6 +155,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerAttachmentsRoutes(app, container)
   registerClaimReportsRoutes(app, container)
   registerExcelRoutes(app, container)
+  registerNotificationsRoutes(app, container)
   registerEventsRoutes(app, container)
 
   return app

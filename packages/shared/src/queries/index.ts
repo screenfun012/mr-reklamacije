@@ -9,7 +9,6 @@ export {
   clientSubmissionKeys,
   convertClientSubmission,
   createClientSubmission,
-  pendingClientSubmissionsCountOptions,
   pendingClientSubmissionsListOptions,
   rejectClientSubmission,
   uploadClientSubmissionAttachments,
@@ -126,3 +125,10 @@ export {
   usersListQueryKey,
 } from './users.js'
 export { completeActivation } from './activation.js'
+export {
+  markAllNotificationsRead,
+  markNotificationRead,
+  notificationKeys,
+  notificationsListOptions,
+  snoozeNotification,
+} from './notifications.js'

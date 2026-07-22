@@ -26,6 +26,11 @@ export class NoOpEventBus implements EventBus {
     void _submissionId
   }
 
+  publishNotificationCreated(_userId: string, _notificationId: string): void {
+    void _userId
+    void _notificationId
+  }
+
   subscribeUser(
     _userId: string,
     _roleCodes: readonly string[],

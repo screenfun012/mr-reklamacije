@@ -22,6 +22,7 @@ import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { NotificationsPort } from '../../core/ports/notifications-port.js'
 import type { EmotiveClaimsConversionPort } from '../../core/ports/emotive-claims-conversion-port.js'
 import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
 import {
@@ -54,6 +55,7 @@ export class ClientSubmissionsService {
     private readonly logger: Logger,
     /** Internal-web origin used to build the "/pristiglo" link in the notification email. */
     private readonly internalBaseUrl: string,
+    private readonly notifications: NotificationsPort,
   ) {}
 
   /** Pending submissions for the internal Inbox, newest first ({ items, total, page, pageSize }). */
@@ -108,6 +110,9 @@ export class ClientSubmissionsService {
     })
 
     this.events.publishClientSubmissionChanged(id)
+
+    // In-app inbox fan-out (best-effort inside the port) — distinct from the email below.
+    await this.notifications.notifyNewSubmission(actor.actorUserId, id, customer.name)
 
     // Best-effort notification — fire-and-settle so a slow/timing-out Resend call never adds
     // latency to the client's submit (the submission is already persisted, audited and emitted).

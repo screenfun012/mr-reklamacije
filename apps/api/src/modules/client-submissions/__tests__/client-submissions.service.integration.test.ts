@@ -102,6 +102,7 @@ describe('ClientSubmissionsService integration', () => {
       new DbAppSettingsReader(ctx.db),
       container.logger,
       INTERNAL_BASE_URL,
+      container.notificationsService,
     )
   }
 

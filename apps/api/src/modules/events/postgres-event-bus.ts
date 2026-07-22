@@ -21,6 +21,7 @@ const NotifyKind = {
   ClaimDeleted: 'claimDeleted',
   ResourceChanged: 'resourceChanged',
   ClientSubmissionChanged: 'clientSubmissionChanged',
+  NotificationCreated: 'notificationCreated',
 } as const
 
 const claimEventPayloadSchema = z.object({
@@ -51,6 +52,13 @@ const NotifyMessageSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal(NotifyKind.ClientSubmissionChanged),
     submissionId: z.string(),
+  }),
+  // `userId` travels so the RECEIVING replica knows whose user channel to fan out on —
+  // same routing role `customerId` plays for claim events. Still signal-only.
+  z.object({
+    kind: z.literal(NotifyKind.NotificationCreated),
+    userId: z.string(),
+    notificationId: z.string(),
   }),
 ])
 
@@ -99,6 +107,10 @@ export class PostgresEventBus implements EventBus {
 
   publishClientSubmissionChanged(submissionId: string): void {
     void this.notify({ kind: NotifyKind.ClientSubmissionChanged, submissionId })
+  }
+
+  publishNotificationCreated(userId: string, notificationId: string): void {
+    void this.notify({ kind: NotifyKind.NotificationCreated, userId, notificationId })
   }
 
   subscribeUser(
@@ -219,6 +231,9 @@ export class PostgresEventBus implements EventBus {
         return
       case NotifyKind.ClientSubmissionChanged:
         this.local.publishClientSubmissionChanged(message.submissionId)
+        return
+      case NotifyKind.NotificationCreated:
+        this.local.publishNotificationCreated(message.userId, message.notificationId)
         return
       default: {
         const _exhaustive: never = message

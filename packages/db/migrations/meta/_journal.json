@@ -225,6 +225,13 @@
       "when": 1784673850944,
       "tag": "0031_talented_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784684295001,
+      "tag": "0032_motionless_solo",
+      "breakpoints": true
     }
   ]
 }

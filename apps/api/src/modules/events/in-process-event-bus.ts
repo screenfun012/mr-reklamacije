@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events'
 import {
   ClaimEventType,
   ClientSubmissionEventType,
+  NotificationEventType,
   ResourceChangedKey,
   ResourceEventType,
   SYSTEM_ROLE_ADMIN,
@@ -85,6 +86,15 @@ export class InProcessEventBus implements EventBus {
     for (const role of RESOURCE_SYNC_ROLE_CHANNELS) {
       this.publishToRole(role, event)
     }
+  }
+
+  publishNotificationCreated(userId: string, notificationId: string): void {
+    // A notification has exactly one recipient, so it rides the user channel — never a
+    // role broadcast (that would leak someone else's inbox activity).
+    this.publishToUser(userId, {
+      type: NotificationEventType.Created,
+      payload: { id: notificationId },
+    })
   }
 
   publishToUser(userId: string, event: AppEvent): void {

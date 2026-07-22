@@ -7,7 +7,6 @@ import {
   ClientSubmissionAttachmentListResponseSchema,
   ClientSubmissionDetailSchema,
   ClientSubmissionListResponseSchema,
-  ClientSubmissionPendingCountResponseSchema,
 } from '../schemas/client-submission.schema.js'
 import type { ClientSubmissionCreateInput } from '../schemas/client-submission.schema.js'
 import type {
@@ -24,7 +23,6 @@ export const clientSubmissionKeys = {
   all: ['client-submissions'] as const,
   lists: () => [...clientSubmissionKeys.all, 'list'] as const,
   list: (page: number) => [...clientSubmissionKeys.lists(), { page }] as const,
-  pendingCount: () => [...clientSubmissionKeys.all, 'pending-count'] as const,
   details: () => [...clientSubmissionKeys.all, 'detail'] as const,
   detail: (id: string) => [...clientSubmissionKeys.details(), id] as const,
   attachments: (id: string) => [...clientSubmissionKeys.all, 'attachments', id] as const,
@@ -47,22 +45,6 @@ export function pendingClientSubmissionsListOptions(page: number) {
       ),
     staleTime: CLIENT_SUBMISSIONS_STALE_MS,
     placeholderData: keepPreviousData,
-  })
-}
-
-/**
- * Internal nav badge: just the pending count (one integer). Cheaper than reading page 1 of the
- * list — no customers JOIN, no per-row attachment subquery — and served as an index-only scan.
- */
-export function pendingClientSubmissionsCountOptions() {
-  return queryOptions({
-    queryKey: clientSubmissionKeys.pendingCount(),
-    queryFn: () =>
-      fetchParsed(
-        '/api/client-submissions/pending-count',
-        ClientSubmissionPendingCountResponseSchema,
-      ),
-    staleTime: CLIENT_SUBMISSIONS_STALE_MS,
   })
 }
 

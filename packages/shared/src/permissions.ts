@@ -54,6 +54,9 @@ export const PERMISSIONS = [
   'client_submissions.create',
   'client_submissions.manage',
 
+  // notifications (in-app inbox)
+  'notifications.view_own',
+
   // claim_reports
   'claim_reports.view',
   'claim_reports.update',
@@ -167,6 +170,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'attachments.delete_own',
   'attachments.change_visibility',
   'client_submissions.manage',
+  'notifications.view_own',
   'claim_reports.view',
   'claim_reports.update',
   'customers.view',

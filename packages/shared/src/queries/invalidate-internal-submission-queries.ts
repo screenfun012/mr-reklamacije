@@ -14,7 +14,6 @@ export function invalidateInternalSubmissionQueries(
   submissionId?: string,
 ): void {
   void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.lists() })
-  void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.pendingCount() })
   if (submissionId !== undefined) {
     void queryClient.invalidateQueries({ queryKey: clientSubmissionKeys.detail(submissionId) })
   }

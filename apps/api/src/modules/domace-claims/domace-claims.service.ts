@@ -11,6 +11,10 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../../core/error
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type {
+  ClaimNotificationContext,
+  NotificationsPort,
+} from '../../core/ports/notifications-port.js'
 import type { DomaceClaimsRepository } from './domace-claims.repository.js'
 import type { DomaceClaimsActor, DomaceClaimsListScope } from './domace-claims.types.js'
 import type {
@@ -39,11 +43,23 @@ function domaceEventPayload(id: string): ClaimEventPayload {
   return { kind: ClaimKind.Domace, id }
 }
 
+function notificationContext(claim: DomaceClaimDetail): ClaimNotificationContext {
+  return {
+    kind: ClaimKind.Domace,
+    id: claim.id,
+    mrNumber: claim.mrNumber,
+    customerName: claim.customerName,
+    employeeId: claim.employeeId,
+    outcome: claim.outcome,
+  }
+}
+
 export class DomaceClaimsService {
   constructor(
     private readonly repo: DomaceClaimsRepository,
     private readonly audit: AuditPort,
     private readonly events: EventBus,
+    private readonly notifications: NotificationsPort,
   ) {}
 
   async create(
@@ -66,6 +82,11 @@ export class DomaceClaimsService {
     })
 
     this.events.publishClaimCreated(domaceEventPayload(created.id))
+
+    await this.notifications.notifyClaimCreated(
+      auditContext.actorUserId,
+      notificationContext(created),
+    )
 
     return created
   }
@@ -116,6 +137,14 @@ export class DomaceClaimsService {
     })
 
     this.events.publishClaimUpdated(domaceEventPayload(id))
+
+    // Only a NEW assignee is news; re-saving the same technician is not.
+    if (updated.employeeId !== null && updated.employeeId !== before.employeeId) {
+      await this.notifications.notifyClaimAssigned(
+        auditContext.actorUserId,
+        notificationContext(updated),
+      )
+    }
 
     return updated
   }
@@ -245,6 +274,11 @@ export class DomaceClaimsService {
     })
 
     this.events.publishClaimUpdated(domaceEventPayload(id))
+
+    await this.notifications.notifyOutcomeChanged(
+      auditContext.actorUserId,
+      notificationContext(updated),
+    )
 
     return updated
   }

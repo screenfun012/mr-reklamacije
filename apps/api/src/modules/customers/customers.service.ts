@@ -1,9 +1,10 @@
-import { AuditAction, ResourceChangedKey } from '@mr/shared'
+import { AuditAction, NotificationCatalog, ResourceChangedKey } from '@mr/shared'
 
 import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { NotificationsPort } from '../../core/ports/notifications-port.js'
 import type { CustomersRepository } from './customers.repository.js'
 import type {
   CustomerCreateInput,
@@ -18,6 +19,7 @@ export class CustomersService {
     private readonly repo: CustomersRepository,
     private readonly audit: AuditPort,
     private readonly eventBus: EventBus,
+    private readonly notifications: NotificationsPort,
   ) {}
 
   async list(query: CustomersListQuery): Promise<ReferenceListResponse<CustomerListItem>> {
@@ -38,6 +40,14 @@ export class CustomersService {
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.Customers)
+
+    // Create only: a new catalog entry unblocks claim entry, an edit/delete does not.
+    await this.notifications.notifyCatalogAdded(
+      actor.actorUserId,
+      NotificationCatalog.Customers,
+      created.id,
+      created.name,
+    )
 
     return created
   }

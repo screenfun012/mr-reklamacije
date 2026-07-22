@@ -11,6 +11,7 @@ import type { AuditPort } from './ports/audit-port.js'
 import type { EventBus } from './ports/event-bus-port.js'
 import { ClaimContextService } from './claims/claim-context.service.js'
 import { AuditLogRepository, AuditLogService, AuditService } from '../modules/audit/index.js'
+import { NotificationsRepository, NotificationsService } from '../modules/notifications/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
@@ -73,6 +74,8 @@ export interface Container {
   auditService: AuditPort
   auditLogRepository: AuditLogRepository
   auditLogService: AuditLogService
+  notificationsRepository: NotificationsRepository
+  notificationsService: NotificationsService
   employeesRepository: EmployeesRepository
   employeesService: EmployeesService
   engineTypesRepository: EngineTypesRepository
@@ -144,17 +147,26 @@ export function buildContainer(
   const auditLogRepository = new AuditLogRepository(db)
   const auditLogService = new AuditLogService(auditLogRepository)
 
+  const notificationsRepository = new NotificationsRepository(db)
+  const notificationsService = new NotificationsService(notificationsRepository, eventBus, logger)
+
   const employeesRepository = new EmployeesRepository(db)
   const employeesService = new EmployeesService(employeesRepository, auditService, eventBus)
 
   const engineTypesRepository = new EngineTypesRepository(db)
-  const engineTypesService = new EngineTypesService(engineTypesRepository, auditService, eventBus)
+  const engineTypesService = new EngineTypesService(
+    engineTypesRepository,
+    auditService,
+    eventBus,
+    notificationsService,
+  )
 
   const engineManufacturersRepository = new EngineManufacturersRepository(db)
   const engineManufacturersService = new EngineManufacturersService(
     engineManufacturersRepository,
     auditService,
     eventBus,
+    notificationsService,
   )
 
   const externalPartiesRepository = new ExternalPartiesRepository(db)
@@ -165,7 +177,12 @@ export function buildContainer(
   )
 
   const customersRepository = new CustomersRepository(db)
-  const customersService = new CustomersService(customersRepository, auditService, eventBus)
+  const customersService = new CustomersService(
+    customersRepository,
+    auditService,
+    eventBus,
+    notificationsService,
+  )
 
   const usersRepository = new UsersRepository(db)
   const userSessions = createBetterAuthUserSessions(auth)
@@ -219,6 +236,7 @@ export function buildContainer(
     new DbAppSettingsReader(db),
     portalBaseUrl,
     logger,
+    notificationsService,
   )
 
   const clientSubmissionsRepository = new ClientSubmissionsRepository(db)
@@ -234,6 +252,7 @@ export function buildContainer(
     new DbAppSettingsReader(db),
     logger,
     internalBaseUrl,
+    notificationsService,
   )
 
   const domaceFaultsRepository = new FaultsRepository(schema.domaceClaimFaults)
@@ -246,6 +265,7 @@ export function buildContainer(
     domaceClaimsRepository,
     auditService,
     eventBus,
+    notificationsService,
   )
 
   const claimsRepository = new ClaimsRepository(db)
@@ -305,6 +325,8 @@ export function buildContainer(
     auditService,
     auditLogRepository,
     auditLogService,
+    notificationsRepository,
+    notificationsService,
     employeesRepository,
     employeesService,
     engineTypesRepository,

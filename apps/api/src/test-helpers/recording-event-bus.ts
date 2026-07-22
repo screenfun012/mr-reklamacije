@@ -11,10 +11,13 @@ export type RecordedResourceEvent = { type: 'resource_changed'; resource: Resour
 
 export type RecordedClientSubmissionEvent = { type: 'client_submission_changed'; id: string }
 
+export type RecordedNotificationEvent = { type: 'notification_created'; userId: string; id: string }
+
 export class RecordingEventBus implements EventBus {
   readonly events: RecordedClaimEvent[] = []
   readonly resourceEvents: RecordedResourceEvent[] = []
   readonly clientSubmissionEvents: RecordedClientSubmissionEvent[] = []
+  readonly notificationEvents: RecordedNotificationEvent[] = []
 
   publishClaimCreated(payload: ClaimEventPayload, customerId: string | null = null): void {
     this.events.push({ type: 'created', payload, customerId })
@@ -34,6 +37,10 @@ export class RecordingEventBus implements EventBus {
 
   publishClientSubmissionChanged(submissionId: string): void {
     this.clientSubmissionEvents.push({ type: 'client_submission_changed', id: submissionId })
+  }
+
+  publishNotificationCreated(userId: string, notificationId: string): void {
+    this.notificationEvents.push({ type: 'notification_created', userId, id: notificationId })
   }
 
   subscribeUser(

@@ -1,5 +1,6 @@
 import {
   ClaimEventType,
+  NotificationEventType,
   ClaimKind,
   ClientSubmissionEventType,
   ResourceChangedKey,
@@ -170,7 +171,7 @@ describe('handleAppEvent', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard', 'summary'] })
   })
 
-  it('invalidates the Inbox list and the nav-badge count on a client-submission event', () => {
+  it('invalidates the Inbox list and the changed submission on a client-submission event', () => {
     const queryClient = new QueryClient()
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -181,7 +182,27 @@ describe('handleAppEvent', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['client-submissions', 'list'] })
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ['client-submissions', 'pending-count'],
+      queryKey: ['client-submissions', 'detail', 'sub-1'],
     })
+  })
+
+  it('invalidates the notification inbox on a notification event', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    handleAppEvent(queryClient, {
+      type: NotificationEventType.Created,
+      payload: { id: 'notif-1' },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'list'] })
+  })
+
+  it('parses a notification event off the wire', () => {
+    expect(
+      parseAppEventFromSseData(
+        JSON.stringify({ type: NotificationEventType.Created, payload: { id: 'notif-1' } }),
+      ),
+    ).toEqual({ type: NotificationEventType.Created, payload: { id: 'notif-1' } })
   })
 })

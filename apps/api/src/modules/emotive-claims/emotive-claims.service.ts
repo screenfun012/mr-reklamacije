@@ -14,6 +14,10 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../../core/error
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type {
+  ClaimNotificationContext,
+  NotificationsPort,
+} from '../../core/ports/notifications-port.js'
 import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
 import {
   outcomeChangedEmailSubject,
@@ -46,6 +50,17 @@ function emotiveEventPayload(id: string): ClaimEventPayload {
   return { kind: ClaimKind.Emotive, id }
 }
 
+function notificationContext(claim: EmotiveClaimDetail): ClaimNotificationContext {
+  return {
+    kind: ClaimKind.Emotive,
+    id: claim.id,
+    mrNumber: claim.mrNumber,
+    customerName: claim.customerName,
+    employeeId: claim.employeeId,
+    outcome: claim.outcome,
+  }
+}
+
 // Admin hook (docs/13): setting the value to the string 'false' turns the
 // client outcome-change email off; anything else (including unset) leaves it on.
 const NOTIFY_CLIENT_SETTING_KEY = 'emotive_claims.notify_client_on_outcome'
@@ -59,6 +74,7 @@ export class EmotiveClaimsService {
     private readonly appSettings: AppSettingsReader,
     private readonly portalBaseUrl: string,
     private readonly logger: Logger,
+    private readonly notifications: NotificationsPort,
   ) {}
 
   async create(
@@ -87,6 +103,11 @@ export class EmotiveClaimsService {
     })
 
     this.events.publishClaimCreated(emotiveEventPayload(created.id), created.customerId)
+
+    await this.notifications.notifyClaimCreated(
+      auditContext.actorUserId,
+      notificationContext(created),
+    )
 
     return created
   }
@@ -209,6 +230,14 @@ export class EmotiveClaimsService {
 
     this.events.publishClaimUpdated(emotiveEventPayload(id), updated.customerId)
 
+    // Only a NEW assignee is news; re-saving the same technician is not.
+    if (updated.employeeId !== null && updated.employeeId !== before.employeeId) {
+      await this.notifications.notifyClaimAssigned(
+        auditContext.actorUserId,
+        notificationContext(updated),
+      )
+    }
+
     return updated
   }
 
@@ -301,6 +330,11 @@ export class EmotiveClaimsService {
     })
 
     this.events.publishClaimUpdated(emotiveEventPayload(id), updated.customerId)
+
+    await this.notifications.notifyOutcomeChanged(
+      auditContext.actorUserId,
+      notificationContext(updated),
+    )
 
     // Best-effort notification — fire-and-settle so a slow Resend call never
     // adds latency to the outcome change (already persisted, audited, emitted).

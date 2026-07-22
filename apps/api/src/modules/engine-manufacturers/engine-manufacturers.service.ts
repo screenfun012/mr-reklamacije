@@ -1,9 +1,10 @@
-import { AuditAction, ResourceChangedKey } from '@mr/shared'
+import { AuditAction, NotificationCatalog, ResourceChangedKey } from '@mr/shared'
 
 import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { NotificationsPort } from '../../core/ports/notifications-port.js'
 import type { EngineManufacturersRepository } from './engine-manufacturers.repository.js'
 import type {
   EngineManufacturerCreateInput,
@@ -18,6 +19,7 @@ export class EngineManufacturersService {
     private readonly repo: EngineManufacturersRepository,
     private readonly audit: AuditPort,
     private readonly eventBus: EventBus,
+    private readonly notifications: NotificationsPort,
   ) {}
 
   async list(
@@ -43,6 +45,14 @@ export class EngineManufacturersService {
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.EngineManufacturers)
+
+    // Create only: a new catalog entry unblocks claim entry, an edit/delete does not.
+    await this.notifications.notifyCatalogAdded(
+      actor.actorUserId,
+      NotificationCatalog.EngineManufacturers,
+      created.id,
+      created.name,
+    )
 
     return created
   }

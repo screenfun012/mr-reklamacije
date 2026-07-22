@@ -28,6 +28,12 @@ export interface EventBus {
   publishClientSubmissionChanged(submissionId: string): void
 
   /**
+   * Signal-only notification that a row landed in one user's inbox; delivered on that
+   * user's own channel. Carries the id only — a notification's text never travels here.
+   */
+  publishNotificationCreated(userId: string, notificationId: string): void
+
+  /**
    * Registers an SSE listener for direct user events, role-scoped broadcasts
    * and — for portal clients — the channels of their linked customers.
    * Returns unsubscribe; must be called on disconnect to avoid leaks.

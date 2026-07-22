@@ -4,12 +4,15 @@ import {
   ClientSubmissionEventType,
   invalidateInternalClaimQueries,
   invalidateInternalSubmissionQueries,
+  NotificationEventType,
+  notificationKeys,
   queryKeyPrefixesForResourceChanged,
   ResourceChangedKey,
   ResourceEventType,
   type AppEvent,
   type ClaimAppEvent,
   type ClientSubmissionAppEvent,
+  type NotificationAppEvent,
   type ResourceChangedAppEvent,
 } from '@mr/shared'
 import type { QueryClient } from '@tanstack/react-query'
@@ -60,6 +63,15 @@ function isClientSubmissionAppEvent(value: unknown): value is ClientSubmissionAp
   )
 }
 
+function isNotificationAppEvent(value: unknown): value is NotificationAppEvent {
+  return (
+    isRecord(value) &&
+    value['type'] === NotificationEventType.Created &&
+    isRecord(value['payload']) &&
+    typeof value['payload']['id'] === 'string'
+  )
+}
+
 /**
  * Parses SSE `data` JSON into a typed AppEvent. Returns null for unknown or malformed payloads.
  */
@@ -74,7 +86,8 @@ export function parseAppEventFromSseData(data: string): AppEvent | null {
   if (
     isResourceChangedAppEvent(parsed) ||
     isClaimAppEvent(parsed) ||
-    isClientSubmissionAppEvent(parsed)
+    isClientSubmissionAppEvent(parsed) ||
+    isNotificationAppEvent(parsed)
   ) {
     return parsed
   }
@@ -95,6 +108,13 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
   // list (every page), the nav-badge count and the changed submission's detail.
   if (event.type === ClientSubmissionEventType.Changed) {
     invalidateInternalSubmissionQueries(queryClient, event.payload.id)
+    return
+  }
+
+  // Something landed in this user's inbox — refresh the bell count and the list.
+  // The event carries only an id; the text is never on the wire.
+  if (event.type === NotificationEventType.Created) {
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.lists() })
     return
   }
 

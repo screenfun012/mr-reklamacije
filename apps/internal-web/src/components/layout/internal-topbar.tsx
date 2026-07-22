@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 
 import { InternalLogo } from '~/components/masked-icon'
 import { LocaleThemeControls } from './locale-theme-controls'
+import { NotificationBell } from '~/features/notifications/notification-bell'
 
 function sectionLabel(pathname: string): string {
   if (pathname.startsWith('/reklamacije')) {
@@ -54,7 +55,8 @@ export function InternalTopbar({ onToggleSidebar }: InternalTopbarProps) {
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mri-text2">
           {sectionLabel(pathname)}
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1.5">
+          <NotificationBell />
           <LocaleThemeControls />
         </div>
       </div>

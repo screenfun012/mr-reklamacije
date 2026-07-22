@@ -9,6 +9,7 @@
  *   - claims.ts (Phase C.2)
  *   - mr-registry.ts: mr_registry (global MR unique registry)
  *   - client-submissions.ts (docs/18): client_submissions (portal inbox → claim)
+ *   - notifications.ts: notifications (in-app inbox, one row per recipient)
  *   - attachments.ts (Phase C.3): attachments, claim_observations
  *   - claim-reports.ts (Phase 3.0): claim_reports
  *   - translation-cache.ts (Phase C.3): translation_cache
@@ -27,6 +28,7 @@ export * from './claims.js'
 export * from './emotive-claim-client-views.js'
 export * from './mr-registry.js'
 export * from './client-submissions.js'
+export * from './notifications.js'
 export * from './attachments.js'
 export * from './claim-reports.js'
 export * from './translation-cache.js'

@@ -4,7 +4,6 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { LogOut, Shield } from 'lucide-react'
 
 import { filterVisibleNavItems, internalNavItems } from '~/config/navigation'
-import { InboxNavBadge } from '~/features/inbox/inbox-nav-badge'
 
 const rootRoute = getRouteApi('__root__')
 
@@ -106,9 +105,6 @@ export function InternalSidebar({
                   >
                     {item.label()}
                   </span>
-                  {item.key === 'pristiglo' ? (
-                    <InboxNavBadge className={cn(collapsed && 'lg:hidden')} />
-                  ) : null}
                 </>
               )}
             </Link>

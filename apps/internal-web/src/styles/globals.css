@@ -362,7 +362,39 @@
   }
 }
 
+/* Popup slides in from the right edge, macOS style — no fade, the card is
+ * fully opaque the moment it starts moving. */
+@keyframes mriPopupIn {
+  from {
+    transform: translateX(calc(100% + 24px));
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes mriGlassPulse {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.4;
+  }
+}
+
 @layer utilities {
+  /* Skeleton block on a glass panel — the app's normal skeleton tint is invisible there. */
+  .mri-glass-skeleton {
+    background: var(--mrg-skeleton);
+    animation: mriGlassPulse 1.4s ease-in-out infinite alternate;
+  }
+
+  .mri-popup-in {
+    animation: mriPopupIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   .mri-glass-in {
     animation: mriGlassIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -441,6 +473,8 @@ select.mri-input option {
 
 /* Accessibility: honor reduced-motion — no looping/entry animations. */
 @media (prefers-reduced-motion: reduce) {
+  .mri-glass-skeleton,
+  .mri-popup-in,
   .mri-glass-in,
   .mri-fade-up,
   .mri-fade-in,
