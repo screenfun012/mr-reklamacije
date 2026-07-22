@@ -77,6 +77,21 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('Pristiglo')).not.toBeInTheDocument()
   })
 
+  it('opens clean after being closed with a query typed', async () => {
+    const user = userEvent.setup()
+    await renderPalette([])
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    const input = await screen.findByPlaceholderText('Pretraži komande ili reklamacije…')
+    await user.type(input, 'kia')
+    expect(input).toHaveValue('kia')
+
+    await user.keyboard('{Escape}')
+    await user.keyboard('{Meta>}k{/Meta}')
+
+    expect(await screen.findByPlaceholderText('Pretraži komande ili reklamacije…')).toHaveValue('')
+  })
+
   it('navigates when a navigation command is selected', async () => {
     const user = userEvent.setup()
     await renderPalette([])

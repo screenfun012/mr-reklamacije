@@ -96,9 +96,17 @@ export function CommandPalette(): React.ReactElement {
 
   const claimResults = (claimsQuery.data?.items ?? []).slice(0, MAX_CLAIM_RESULTS)
 
+  /** Esc, outside-click and every selection route through here, so the next ⌘K
+   *  always opens on a clean palette instead of the last thing that was typed. */
+  function handleOpenChange(nextOpen: boolean): void {
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      setQuery('')
+    }
+  }
+
   function close(): void {
-    setOpen(false)
-    setQuery('')
+    handleOpenChange(false)
   }
 
   function goTo(to: string): void {
@@ -114,7 +122,7 @@ export function CommandPalette(): React.ReactElement {
   return (
     <CommandDialog
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       title={m.command_palette_placeholder()}
       unstyled
       overlayClassName="mri-glass-overlay"
