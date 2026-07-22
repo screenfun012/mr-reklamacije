@@ -19,14 +19,14 @@ Domain terms kept verbatim (never translate/rename): **EMOTIVE, DOMACE, UKUPNO, 
 
 ### Architecture — 3 isolated SPAs + 1 API
 
-| Service        | Tech           | Role                                                                     | Domain / port              |
-| -------------- | -------------- | ------------------------------------------------------------------------ | -------------------------- |
-| `api`          | Hono + Node    | REST, auth, business logic, SSE — **the only thing that touches the DB** | api.mrengines.rs / `:3000` |
-| `admin-web`    | TanStack Start | **Central control plane** (users, roles, šifarnici, audit, settings)     | admin.\* / `:3001`         |
-| `internal-web` | TanStack Start | Employees + viewers (claim processing)                                   | interno.\* / `:3002`       |
-| `portal-web`   | TanStack Start | Clients (read-only, their own claims)                                    | reklamacije.\* / `:3003`   |
+| Service        | Tech           | Role                                                                     | Domain / port                    |
+| -------------- | -------------- | ------------------------------------------------------------------------ | -------------------------------- |
+| `api`          | Hono + Node    | REST, auth, business logic, SSE — **the only thing that touches the DB** | no public domain / `:3000`       |
+| `admin-web`    | TanStack Start | **Central control plane** (users, roles, šifarnici, audit, settings)     | admin.mrclaims.live / `:3001`    |
+| `internal-web` | TanStack Start | Employees + viewers (claim processing)                                   | internal.mrclaims.live / `:3002` |
+| `portal-web`   | TanStack Start | Clients (read-only, their own claims)                                    | mrclaims.live (apex) / `:3003`   |
 
-- Frontends **proxy `/api/*`** to the API over Railway's private network → browser calls are same-origin; never hits `api.mrengines.rs` directly. No browser CORS.
+- Frontends **proxy `/api/*`** to the API over Railway's private network → browser calls are same-origin; the api has no public domain at all. No browser CORS.
 - **Physical isolation:** admin JS never ships to clients. **Host-only cookies per subdomain** — auth on internal ≠ auth on admin (intentional). Never import UI between apps; shared UI lives in `@mr/ui`.
 - Stack: TanStack Start (React 19, Vite, SSR) · Hono · PostgreSQL + Drizzle · Better-Auth + custom RBAC · Paraglide (sr/en) · shadcn/ui + Tailwind v4 · ExcelJS · OpenAI · Vitest + Playwright · Railway + Cloudflare.
 

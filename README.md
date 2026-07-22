@@ -24,10 +24,11 @@ with complete statistics, Excel import/export, file attachments, and multi-langu
 Three physically isolated SPAs + single API:
 
 ```
-admin.mrengines.rs          → admin-web service (admin panel only)
-interno.mrengines.rs        → internal-web service (employees + viewers)
-reklamacije.mrengines.rs    → portal-web service (clients)
-api.mrengines.rs            → api service (Hono, behind private network)
+admin.mrclaims.live     → admin-web service (admin panel only)
+internal.mrclaims.live  → internal-web service (employees + viewers)
+mrclaims.live           → portal-web service (clients, apex — no subdomain)
+(no public domain)      → api service (Hono, private network only; the web
+                          apps proxy /api/* to it)
 ```
 
 See `docs/01-architecture.md` for full details.

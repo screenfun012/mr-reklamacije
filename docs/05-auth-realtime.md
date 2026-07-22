@@ -33,7 +33,7 @@ Implemented via `beforeSignIn` hook in Better-Auth that sets `session.expiresIn`
 ### Internal users (admin, operator, viewer)
 
 **Only admin can create internal users.** No self-signup endpoint is exposed
-on `interno.mrengines.rs` or `admin.mrengines.rs`.
+on `internal.mrclaims.live` or `admin.mrclaims.live`.
 
 Flow:
 1. Admin in admin panel → "Users" → "New user"
@@ -49,7 +49,7 @@ Flow:
 **Self-registration allowed on portal,** admin must approve.
 
 Flow:
-1. Client visits `reklamacije.mrengines.rs` → "Register"
+1. Client visits `mrclaims.live` → "Register"
 2. Form: name, email, phone, company name, preferred language, message to admin, password
 3. POST to `/api/auth/register-client` — writes to `client_registration_requests` with `status='pending'`
 4. Email to admin: "New registration request"

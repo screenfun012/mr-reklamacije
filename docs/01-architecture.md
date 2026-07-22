@@ -36,10 +36,10 @@
 
 | Service | Tech | Purpose | Domain |
 |---|---|---|---|
-| `api` | Hono + Node.js | REST API, auth, business logic, SSE | `api.mrengines.rs` |
-| `admin-web` | TanStack Start | Admin toolbox | `admin.mrengines.rs` |
-| `internal-web` | TanStack Start | Employees + viewers | `interno.mrengines.rs` |
-| `portal-web` | TanStack Start | Client read-only portal | `reklamacije.mrengines.rs` |
+| `api` | Hono + Node.js | REST API, auth, business logic, SSE | none — private network only |
+| `admin-web` | TanStack Start | Admin toolbox | `admin.mrclaims.live` |
+| `internal-web` | TanStack Start | Employees + viewers | `internal.mrclaims.live` |
+| `portal-web` | TanStack Start | Client read-only portal | `mrclaims.live` |
 | `postgres` | Railway managed | Single PostgreSQL instance | private only |
 
 ## Private networking
@@ -95,7 +95,7 @@ async function forwardToApi({ request, params }) {
 
 Better-Auth supports `crossSubDomainCookies` but their own documentation
 warns against it when subdomains have different trust levels. Using a shared
-`.mrengines.rs` cookie would mean: XSS on the client portal (most exposed
+`.mrclaims.live` cookie would mean: XSS on the client portal (most exposed
 surface) could exfiltrate an admin session. This is unacceptable.
 
 **Decision:** every subdomain has its own host-only cookie. A user who is
@@ -146,7 +146,7 @@ All four public domains are proxied through Cloudflare (free plan).
 
 ### Per-subdomain rules
 
-#### `admin.mrengines.rs` (strictest)
+#### `admin.mrclaims.live` (strictest)
 
 - **IP allow list:** only IPs from [office + Nikola's home] (admin-configurable)
 - **Geo-blocking:** only Serbia (RS) allowed as fallback if IP list is temporarily disabled
@@ -154,20 +154,20 @@ All four public domains are proxied through Cloudflare (free plan).
 - **Rate limit on `/api/auth/*`:** 5 req/min per IP
 - **Challenge:** Managed Challenge for any request from outside known IPs
 
-#### `interno.mrengines.rs`
+#### `internal.mrclaims.live`
 
 - **Geo-blocking:** Serbia + any EU country (in case someone travels)
 - **Rate limit:** 60 req/min per IP
 - **Rate limit on `/api/auth/*`:** 10 req/min per IP
 
-#### `reklamacije.mrengines.rs` (most permissive)
+#### `mrclaims.live` (most permissive)
 
 - **No geo-blocking** (international clients)
 - **Rate limit:** 120 req/min per IP
 - **Rate limit on `/api/auth/*`:** 10 req/min per IP
 - **Rate limit on `/api/auth/register`:** 3 req/hour per IP (prevent spam registration)
 
-#### `api.mrengines.rs`
+#### `api` (no public domain)
 
 - Not reachable directly from browser in normal operation (proxied through frontends)
 - Publicly exposed only for mobile apps or future integrations; rate limits match corresponding subdomain

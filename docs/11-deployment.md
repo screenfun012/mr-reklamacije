@@ -88,7 +88,7 @@ Auto-destroyed on merge/close.
 
 ### DNS provider
 
-Cloudflare manages DNS for `mrengines.rs` (domain registration can be anywhere).
+Cloudflare manages DNS for `mrclaims.live` (domain registration can be anywhere).
 
 ### Records
 
@@ -96,9 +96,9 @@ For **production**:
 
 | Subdomain | Type | Target | Proxy |
 |---|---|---|---|
-| `admin.mrengines.rs` | CNAME | admin-web.railway.app | ☁️ Proxied |
-| `interno.mrengines.rs` | CNAME | internal-web.railway.app | ☁️ Proxied |
-| `reklamacije.mrengines.rs` | CNAME | portal-web.railway.app | ☁️ Proxied |
+| `admin.mrclaims.live` | CNAME | admin-web.railway.app | ☁️ Proxied |
+| `internal.mrclaims.live` | CNAME | internal-web.railway.app | ☁️ Proxied |
+| `mrclaims.live` (apex — the client portal has NO subdomain) | CNAME | portal-web.railway.app | ☁️ Proxied |
 
 No public record for the api — the web apps reach it over Railway's private network (`API_INTERNAL_URL`), and the browser only ever calls same-origin `/api/...`.
 
@@ -108,9 +108,11 @@ For **staging**:
 
 | Subdomain | Type | Target | Proxy |
 |---|---|---|---|
-| `admin-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
-| `interno-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
-| `reklamacije-staging.mrengines.rs` | CNAME | ... | ☁️ Proxied |
+| `admin-staging.mrclaims.live` | CNAME | ... | ☁️ Proxied |
+| `internal-staging.mrclaims.live` | CNAME | ... | ☁️ Proxied |
+| `staging.mrclaims.live` | CNAME | ... | ☁️ Proxied |
+
+(No staging environment exists yet — this is the shape it would take.)
 
 ### TLS
 
@@ -133,17 +135,17 @@ LOG_LEVEL=info
 TZ=Europe/Belgrade
 PORT=3000
 HOST=::                        # Railway private networking is IPv6 — 0.0.0.0 would be unreachable for the web apps
-API_BASE_URL=https://interno.mrengines.rs   # only used to build browser-facing signed attachment URLs → must be a public origin (the proxy carries /api/* to the api)
-PUBLIC_ORIGINS=https://admin.mrengines.rs,https://interno.mrengines.rs,https://reklamacije.mrengines.rs
-SELF_SIGNUP_ORIGINS=https://interno.mrengines.rs    # employee self-signup (internal only)
-CLIENT_SIGNUP_ORIGINS=https://reklamacije.mrengines.rs
+API_BASE_URL=https://internal.mrclaims.live   # only used to build browser-facing signed attachment URLs → must be a public origin (the proxy carries /api/* to the api)
+PUBLIC_ORIGINS=https://admin.mrclaims.live,https://internal.mrclaims.live,https://mrclaims.live
+SELF_SIGNUP_ORIGINS=https://internal.mrclaims.live    # employee self-signup (internal only)
+CLIENT_SIGNUP_ORIGINS=https://mrclaims.live
 
 # Database
 DATABASE_URL=${{postgres.DATABASE_URL}}
 
 # Auth
 BETTER_AUTH_SECRET=<random ≥32 chars>
-BETTER_AUTH_URL=https://interno.mrengines.rs   # public https origin so auth cookies get the Secure flag
+BETTER_AUTH_URL=https://internal.mrclaims.live   # public https origin so auth cookies get the Secure flag
 ATTACHMENT_SIGNING_SECRET=<random ≥32 chars, separate from BETTER_AUTH_SECRET>
 PROTECTED_SUPER_ADMIN_EMAIL=screenfun99@gmail.com
 
@@ -306,9 +308,9 @@ All must pass. No merge allowed with failing checks (enforced via GitHub branch 
 
 After each production deploy, GitHub Action runs smoke tests:
 - `GET /api/health` returns 200
-- `GET https://admin.mrengines.rs/login` returns 200
-- `GET https://interno.mrengines.rs/login` returns 200
-- `GET https://reklamacije.mrengines.rs/login` returns 200
+- `GET https://admin.mrclaims.live/login` returns 200
+- `GET https://internal.mrclaims.live/login` returns 200
+- `GET https://mrclaims.live/login` returns 200
 
 If any fail, alert sent to Nikola via email.
 
@@ -333,7 +335,7 @@ Initial setup: auto-promote enabled. Once we have real client traffic, switch to
 ### Uptime monitoring (external)
 
 **UptimeRobot** (free tier):
-- 5-min checks on `https://interno.mrengines.rs/api/health` — exercises web app + proxy + api end-to-end (the api has no public domain of its own)
+- 5-min checks on `https://internal.mrclaims.live/api/health` — exercises web app + proxy + api end-to-end (the api has no public domain of its own)
 - 5-min checks on each frontend `/login` page
 - Email alerts to Nikola
 

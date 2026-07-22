@@ -137,7 +137,9 @@ hitting Node for each request.
 GET /api/attachments/:id/signed-url
 ```
 
-Returns: `{ url: "https://api.mrengines.rs/attachments/raw/abc?sig=...&exp=..." }`
+Returns: `{ url: "https://internal.mrclaims.live/api/attachments/raw/abc?sig=...&exp=..." }`
+(the api has no public domain — signed URLs are browser-facing, so they carry the
+public internal-web origin and reach the api through its `/api/*` proxy)
 
 The `/attachments/raw/:filename` route verifies signature via HMAC-SHA256 and
 streams the file.
