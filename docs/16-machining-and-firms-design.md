@@ -146,6 +146,13 @@ Baza to VEĆ podržava (veza je više-na-više; scoping već čita SVE firme nal
 
 ## 6. Otvorena pitanja (Nikola potvrđuje pre/tokom gradnje)
 
+> ⚠️ `docs/22-readiness-for-scope-growth.md` §2 proširuje ovu listu odlukama koje se
+> MORAJU doneti pre prve migracije za mašinsku obradu — pre svega: da li mašinska obrada
+> ide **unutar** liste reklamacija (kako ovaj dokument pretpostavlja, §4) ili **pored** nje
+> (kako je isporučena faza M-P, commit `130d448`). Kod i ovaj dokument se trenutno ne
+> slažu; razlika je ~1.500 naspram ~5.500 linija.
+
+
 1. Deo vezan za vraćeni motor: **novi radni nalog** (Nikolina procena) ili nasleđuje? → dizajn
    podržava oba (veza je eksplicitna kolona), ali potvrditi za formu.
 2. Da li mašinska obrada za inostrane partnere ide na portal odmah (čim ima `customer_id`)

@@ -10,6 +10,12 @@
 
 ---
 
+> **Companion:** `docs/22-readiness-for-scope-growth.md` (2026-07-22) covers what this
+> document does not — growth in **scope** (new modules: machining, forms, warranties)
+> rather than growth in **rows**. Two findings there are concurrency-bound and will
+> therefore never trip a row-based trigger from this file: the 10-connection pool with
+> no timeouts, and a health check that never touches the database.
+
 ## TL;DR
 
 - **You do not need to scale today.** A single API instance + single Postgres handles
