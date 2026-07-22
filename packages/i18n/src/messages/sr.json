@@ -995,5 +995,11 @@
   "notifications_snooze_15m": "15 min",
   "notifications_snooze_1h": "1 sat",
   "notifications_snooze_3h": "3 sata",
-  "notifications_snooze_tomorrow": "Sutra ujutru"
+  "notifications_snooze_tomorrow": "Sutra ujutru",
+  "users_approve_dialog_new_customer": "+ Nova firma",
+  "users_approve_dialog_new_customer_cancel": "Odustani od nove firme",
+  "users_approve_dialog_new_customer_name": "Naziv nove firme",
+  "users_approve_dialog_new_customer_save": "Napravi i izaberi",
+  "users_approve_dialog_new_customer_error": "Firma nije napravljena. Pokušajte ponovo.",
+  "users_approve_dialog_new_customer_hint": "Napravljena firma odmah se pojavljuje i u šifarniku firmi."
 }

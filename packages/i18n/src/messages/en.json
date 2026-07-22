@@ -995,5 +995,11 @@
   "notifications_snooze_15m": "15 min",
   "notifications_snooze_1h": "1 hour",
   "notifications_snooze_3h": "3 hours",
-  "notifications_snooze_tomorrow": "Tomorrow morning"
+  "notifications_snooze_tomorrow": "Tomorrow morning",
+  "users_approve_dialog_new_customer": "+ New firm",
+  "users_approve_dialog_new_customer_cancel": "Cancel new firm",
+  "users_approve_dialog_new_customer_name": "New firm name",
+  "users_approve_dialog_new_customer_save": "Create and select",
+  "users_approve_dialog_new_customer_error": "Could not create the firm. Please try again.",
+  "users_approve_dialog_new_customer_hint": "A firm created here appears in the firms catalogue straight away."
 }

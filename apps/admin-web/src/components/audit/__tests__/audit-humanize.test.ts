@@ -1,8 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { setLocale } from '@mr/i18n'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { humanizeAuditChanges } from '../audit-humanize'
 
 describe('humanizeAuditChanges', () => {
+  // These assertions are on Serbian labels, so the locale must be stated rather
+  // than inherited — it used to fall out of the node test environment, which is
+  // not a guarantee (internal-web and portal-web set it in every test).
+  beforeEach(() => {
+    setLocale('sr')
+  })
+
   it('returns empty for null changes', () => {
     expect(humanizeAuditChanges(null)).toEqual({ kind: 'empty' })
   })

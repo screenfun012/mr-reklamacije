@@ -16,6 +16,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -23,7 +24,17 @@ import {
   SelectValue,
 } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
+
+import { customersResourceDefinition } from '~/resources/customers.definition'
+import { createResourceCrudHooks, resourceSaveErrorMessage } from '~/lib/resource/use-resource-crud'
+
+// The SAME create path the Firme tab uses — one endpoint, one audit entry, one
+// `ResourceChanged(Customers)` signal. A second write path here would be exactly
+// the kind of parallel road that drifts (docs/16 §5.2).
+const { useCreateResource: useCreateCustomer } = createResourceCrudHooks(
+  customersResourceDefinition,
+)
 
 const APPROVE_ROLE_OPTIONS = [
   {
@@ -76,6 +87,15 @@ export function UserApproveDialog({
 }: UserApproveDialogProps): ReactElement {
   const [roleCode, setRoleCode] = useState<AccountApprovalRoleCode>(() => initialApproveRole(user))
   const [customerId, setCustomerId] = useState<string | null>(null)
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  const createCustomer = useCreateCustomer()
+  // This dialog instance is reused for every approval (the parent renders it
+  // unconditionally), so a create that resolves late must be able to tell
+  // whether it still belongs to the user on screen.
+  const targetUserIdRef = useRef<string | null>(user?.id ?? null)
+  targetUserIdRef.current = user?.id ?? null
 
   // Sync the safe default whenever the dialog opens for a given user
   // (mirror of the roles-edit dialog's [user, open] sync).
@@ -83,6 +103,11 @@ export function UserApproveDialog({
     if (user !== null && open) {
       setRoleCode(initialApproveRole(user))
       setCustomerId(null)
+      setCreatingCustomer(false)
+      // The company the applicant typed is the obvious starting name — it is
+      // exactly what the approver would retype otherwise.
+      setNewCustomerName(user.requestedCompany ?? '')
+      setCreateError(null)
     }
   }, [user, open])
 
@@ -96,9 +121,52 @@ export function UserApproveDialog({
   const resetState = (): void => {
     setRoleCode(initialApproveRole(user))
     setCustomerId(null)
+    setCreatingCustomer(false)
+    setNewCustomerName(user?.requestedCompany ?? '')
+    setCreateError(null)
+  }
+
+  const handleCreateCustomer = (): void => {
+    const name = newCustomerName.trim()
+    if (name === '' || createCustomer.isPending) {
+      return
+    }
+    // Whose approval this create belongs to. If the dialog has moved on by the
+    // time the server answers, the result must NOT be written into the new
+    // target — that would silently link one client to another's firm.
+    const startedForUserId = user?.id ?? null
+    setCreateError(null)
+    createCustomer.mutate(
+      { name },
+      {
+        onSuccess: (created) => {
+          if (startedForUserId === null || startedForUserId !== targetUserIdRef.current) {
+            return
+          }
+          // Select it immediately: the approver opened this to link THIS firm.
+          setCustomerId(created.id)
+          setCreatingCustomer(false)
+        },
+        onError: (error) => {
+          if (startedForUserId === null || startedForUserId !== targetUserIdRef.current) {
+            return
+          }
+          // Surfaces the API's own message, e.g. the duplicate-name conflict.
+          setCreateError(
+            resourceSaveErrorMessage(error, m.users_approve_dialog_new_customer_error()),
+          )
+        },
+      },
+    )
   }
 
   const handleOpenChange = (nextOpen: boolean): void => {
+    // A create in flight owns this dialog: closing here would let its callback
+    // land on whoever is approved next. Esc and outside-click come through here
+    // too, so this is the single place that can hold the door.
+    if (!nextOpen && createCustomer.isPending) {
+      return
+    }
     if (!nextOpen) {
       resetState()
     }
@@ -193,11 +261,81 @@ export function UserApproveDialog({
                   ))}
                 </SelectContent>
               </Select>
-              {!customersQuery.isPending && customers.length === 0 ? (
+              {!customersQuery.isPending && customers.length === 0 && !creatingCustomer ? (
                 <p className="text-sm text-muted-foreground">
                   {m.users_approve_dialog_customer_empty()}
                 </p>
               ) : null}
+
+              {creatingCustomer ? (
+                <div className="space-y-2 rounded-md border border-border p-3">
+                  <p id="approve-new-customer-label" className="text-sm font-medium">
+                    {m.users_approve_dialog_new_customer_name()}
+                  </p>
+                  <Input
+                    id="approve-new-customer"
+                    aria-labelledby="approve-new-customer-label"
+                    value={newCustomerName}
+                    maxLength={200}
+                    disabled={createCustomer.isPending}
+                    onChange={(event) => {
+                      setNewCustomerName(event.target.value)
+                      // Otherwise the 409 keeps naming the firm the admin just
+                      // renamed away from, and it hides the hint while typing.
+                      setCreateError(null)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        handleCreateCustomer()
+                      }
+                    }}
+                  />
+                  {createError !== null ? (
+                    <p className="text-sm text-mr-error" role="alert">
+                      {createError}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {m.users_approve_dialog_new_customer_hint()}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={newCustomerName.trim() === '' || createCustomer.isPending}
+                      onClick={handleCreateCustomer}
+                    >
+                      {m.users_approve_dialog_new_customer_save()}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={createCustomer.isPending}
+                      onClick={() => {
+                        setCreatingCustomer(false)
+                        setCreateError(null)
+                      }}
+                    >
+                      {m.users_approve_dialog_new_customer_cancel()}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCreatingCustomer(true)
+                    setCreateError(null)
+                  }}
+                >
+                  {m.users_approve_dialog_new_customer()}
+                </Button>
+              )}
             </div>
           ) : null}
         </div>
