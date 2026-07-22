@@ -202,38 +202,6 @@ describe('ClientSubmissions HTTP', () => {
     })
   })
 
-  describe('GET /api/client-submissions/pending-count', () => {
-    it('returns the pending count for an operator, matching the list total', async () => {
-      const customerId = await seedCustomer()
-      await seedSubmission(customerId, `count one ${suffix()}`)
-      await seedSubmission(customerId, `count two ${suffix()}`)
-
-      const app = createClientSubmissionsTestApp(container, testUser([...MANAGE_PERMS]))
-
-      const countRes = await app.request('/api/client-submissions/pending-count')
-      expect(countRes.status).toBe(200)
-      const countBody = (await countRes.json()) as { total: number }
-      expect(countBody.total).toBeGreaterThanOrEqual(2)
-
-      // The count endpoint must agree with the list's `total` (same predicate, no rows fetched).
-      const listRes = await app.request('/api/client-submissions?status=pending&page=1&pageSize=1')
-      const listBody = (await listRes.json()) as { total: number }
-      expect(countBody.total).toBe(listBody.total)
-    })
-
-    it('returns 403 for a client (requires client_submissions.manage)', async () => {
-      const clientId = await seedUser()
-      const app = createClientSubmissionsTestApp(
-        container,
-        testUser([...CLIENT_PERMS], clientId, ['client']),
-      )
-      const res = await app.request('/api/client-submissions/pending-count')
-      expect(res.status).toBe(403)
-      const body = (await res.json()) as { error: { code: string } }
-      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
-    })
-  })
-
   describe('GET /api/client-submissions/:id', () => {
     it('returns the detail for an operator', async () => {
       const customerId = await seedCustomer()

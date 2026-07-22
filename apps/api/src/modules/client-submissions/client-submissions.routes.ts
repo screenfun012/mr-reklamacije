@@ -22,14 +22,8 @@ export function registerClientSubmissionsRoutes(
     controller.create,
   )
 
-  // Internal Inbox — operator/admin only. `/pending-count` is registered before `/:id` so the
-  // static nav-badge route never falls into the id param matcher.
+  // Internal Inbox — operator/admin only.
   routes.get('/', requirePermission('client_submissions.manage'), controller.list)
-  routes.get(
-    '/pending-count',
-    requirePermission('client_submissions.manage'),
-    controller.pendingCount,
-  )
   routes.get('/:id', requirePermission('client_submissions.manage'), controller.findById)
   routes.post('/:id/convert', requirePermission('client_submissions.manage'), controller.convert)
   routes.post('/:id/reject', requirePermission('client_submissions.manage'), controller.reject)

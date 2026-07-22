@@ -182,25 +182,6 @@ export class ClientSubmissionsRepository {
     }
   }
 
-  /**
-   * Count of pending submissions — powers the internal nav badge. Just an integer, no JOIN
-   * and no per-row attachment subquery: served as an index-only scan by the partial index
-   * `idx_client_submissions_pending_created_at` (same predicate as `listPending`).
-   */
-  async countPending(): Promise<number> {
-    const [row] = await this.db
-      .select({ total: sql<number>`count(*)::int`.mapWith(Number) })
-      .from(clientSubmissions)
-      .where(
-        and(
-          eq(clientSubmissions.status, ClientSubmissionStatus.Pending),
-          isNull(clientSubmissions.deletedAt),
-        ),
-      )
-
-    return row?.total ?? 0
-  }
-
   async findById(id: string): Promise<ClientSubmissionDetail | null> {
     const [row] = await this.db
       .select({

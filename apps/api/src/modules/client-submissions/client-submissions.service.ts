@@ -69,11 +69,6 @@ export class ClientSubmissionsService {
     return { items, total, page: params.page, pageSize: params.pageSize }
   }
 
-  /** Pending-submission count for the internal nav badge (cheap; index-only scan). */
-  async countPending(): Promise<number> {
-    return this.repo.countPending()
-  }
-
   /** Full detail for one submission; throws NotFoundError (→ 404) when it does not exist. */
   async getById(id: string): Promise<ClientSubmissionDetail> {
     const submission = await this.repo.findById(id)
