@@ -132,3 +132,4 @@ export {
   notificationsListOptions,
   snoozeNotification,
 } from './notifications.js'
+export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'

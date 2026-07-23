@@ -228,6 +228,25 @@ Triggers Nikola can observe without reading a metric.
 
 ---
 
+## 3a. Presence (shipped 2026-07-23) — a single-replica component, on purpose
+
+"Who else is viewing this claim" is live on the internal claim-detail screens: a
+15 s heartbeat (`POST /api/presence/heartbeat`) returns the other viewers, and a
+warning strip appears when someone else is on the same claim. It complements the
+existing hard concurrency guard (a losing save 409s and does not overwrite) — this
+is the *soft* heads-up before you waste the edit.
+
+⚠️ **The presence store is in-memory in ONE process** (`ClaimPresenceStore`, held
+in the container). It is deliberately not persisted — presence is worthless once
+stale. But it means presence is **single-replica**: with `numReplicas > 1`, each
+replica would see only its own connected viewers, and two people on different
+replicas would not see each other. This is the same class of state as the
+rate-limiter and permission cache (docs/20 §3.4) — a "before you scale" item.
+**When multi-replica is ever turned on, presence must broadcast enter/leave over
+the existing Postgres LISTEN/NOTIFY channel.** Do not chase "presence misses
+people" as a bug before checking the replica count — the caveat is also written at
+the top of `presence.store.ts`.
+
 ## 4. Not for this app
 
 | Thing | Why not |

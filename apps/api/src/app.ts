@@ -16,6 +16,7 @@ import {
 } from './core/middleware/rate-limit.js'
 import { createSignupOriginGuard } from './core/middleware/signup-origin-guard.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
+import { registerPresenceRoutes } from './modules/presence/index.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerAuditLogRoutes } from './modules/audit/index.js'
 import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
@@ -147,6 +148,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
   registerClientSubmissionsRoutes(app, container)
+  registerPresenceRoutes(app, container)
   registerDomaceClaimsRoutes(app, container)
   registerMrRegistryRoutes(app, container)
   registerClaimsRoutes(app, container)

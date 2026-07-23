@@ -1,4 +1,5 @@
 import {
+  ClaimKind,
   ClaimDetailTab,
   ClaimOutcome,
   domaceClaimDetailOptions,
@@ -15,6 +16,7 @@ import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tab
 
 import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
+import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
 import { DomaceClaimFindingsSection } from './domace-claim-findings-section.js'
 import { DomaceClaimInspectionReportSection } from './domace-claim-inspection-report-section.js'
@@ -76,6 +78,8 @@ export function DomaceClaimDetailView({
         canChangeOutcome={canChangeOutcome}
         onEditData={handleEditData}
       />
+
+      <ClaimPresenceBar kind={ClaimKind.Domace} id={claim.id} />
 
       <Tabs value={tab} onValueChange={handleTabChange}>
         <InternalTabsList aria-label={m.domace_claims_detail_title()}>

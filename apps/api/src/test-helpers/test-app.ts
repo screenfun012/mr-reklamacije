@@ -26,6 +26,7 @@ import { registerDepartmentsRoutes } from '../modules/departments/index.js'
 import { registerDomaceClaimsRoutes } from '../modules/domace-claims/index.js'
 import { registerEmployeesRoutes } from '../modules/employees/index.js'
 import { registerEmotiveClaimsRoutes } from '../modules/emotive-claims/index.js'
+import { registerPresenceRoutes } from '../modules/presence/index.js'
 import { registerClaimsRoutes } from '../modules/claims/index.js'
 import { registerDashboardRoutes } from '../modules/dashboard/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
@@ -333,4 +334,22 @@ export function buildTestContainer(
   emailPort?: EmailPort,
 ): Container {
   return buildContainer(createTestEnv(databaseUrl), fakeLogger(), db, pool, eventBus, emailPort)
+}
+
+export function createPresenceTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerPresenceRoutes(app, container)
+
+  return app
 }

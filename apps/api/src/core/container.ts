@@ -12,6 +12,7 @@ import type { EventBus } from './ports/event-bus-port.js'
 import { ClaimContextService } from './claims/claim-context.service.js'
 import { AuditLogRepository, AuditLogService, AuditService } from '../modules/audit/index.js'
 import { NotificationsRepository, NotificationsService } from '../modules/notifications/index.js'
+import { ClaimPresenceStore, PresenceService } from '../modules/presence/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
@@ -76,6 +77,7 @@ export interface Container {
   auditLogService: AuditLogService
   notificationsRepository: NotificationsRepository
   notificationsService: NotificationsService
+  presenceService: PresenceService
   employeesRepository: EmployeesRepository
   employeesService: EmployeesService
   engineTypesRepository: EngineTypesRepository
@@ -149,6 +151,8 @@ export function buildContainer(
 
   const notificationsRepository = new NotificationsRepository(db)
   const notificationsService = new NotificationsService(notificationsRepository, eventBus, logger)
+  // In-memory, single-replica presence (see presence.store.ts + docs/22 §4).
+  const presenceService = new PresenceService(new ClaimPresenceStore())
 
   const employeesRepository = new EmployeesRepository(db)
   const employeesService = new EmployeesService(employeesRepository, auditService, eventBus)
@@ -327,6 +331,7 @@ export function buildContainer(
     auditLogService,
     notificationsRepository,
     notificationsService,
+    presenceService,
     employeesRepository,
     employeesService,
     engineTypesRepository,

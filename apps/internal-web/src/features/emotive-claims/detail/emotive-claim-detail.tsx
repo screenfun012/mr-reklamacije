@@ -1,5 +1,6 @@
 import {
   ClaimDetailTab,
+  ClaimKind,
   emotiveClaimDetailOptions,
   formatListDateTime,
   type ClaimDetailTabValue,
@@ -12,6 +13,7 @@ import { useState } from 'react'
 
 import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
+import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
 import { EmotiveClaimFindingsSection } from './emotive-claim-findings-section.js'
@@ -71,6 +73,8 @@ export function EmotiveClaimDetailView({
         canPublish={canPublish}
         onEditBasic={handleEditBasic}
       />
+
+      <ClaimPresenceBar kind={ClaimKind.Emotive} id={claim.id} />
 
       <Tabs value={tab} onValueChange={handleTabChange}>
         <InternalTabsList aria-label={m.emotive_claims_detail_title()}>
