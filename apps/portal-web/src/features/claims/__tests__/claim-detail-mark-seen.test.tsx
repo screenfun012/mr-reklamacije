@@ -25,6 +25,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // ClaimDetailComponent's own effect.
 vi.mock('~/components/portal-header', () => ({ PortalHeader: () => null }))
 
+// Imported statically ON PURPOSE. This route pulls in the whole detail screen
+// (timeline, photo grid, PDF viewer), and transforming that tree costs seconds.
+// Behind `await import(...)` inside a test, the FIRST test to render paid that
+// cost out of its own `testTimeout` and blew it on any machine slower than a
+// dev laptop — CI failed here while the same file passed locally. A static
+// import moves the cost into collection, which is not bounded by testTimeout.
+// `vi.mock` above is hoisted above imports, so the stub still applies.
+import { Route } from '~/routes/claims/$id'
+
 const CLAIM_ID = 'c1111111-1111-1111-1111-111111111111'
 const DETAIL_URL = `/api/emotive-claims/${CLAIM_ID}`
 const MARK_SEEN_URL = `/api/emotive-claims/${CLAIM_ID}/mark-seen`
@@ -111,9 +120,6 @@ function buildQueryClient(): QueryClient {
 }
 
 async function renderDetail(queryClient: QueryClient): Promise<ReturnType<typeof render>> {
-  // Dynamic import AFTER the mocks above are registered, and after any
-  // system-under-test module reset between tests.
-  const { Route } = await import('~/routes/claims/$id')
   const component = Route.options.component as () => React.JSX.Element
 
   const rootRoute = createRootRoute()
@@ -197,7 +203,6 @@ describe('claim detail mark-seen on open', () => {
     const fetchMock = stubFetch()
     const queryClient = buildQueryClient()
 
-    const { Route } = await import('~/routes/claims/$id')
     await Route.options.loader?.({
       context: { queryClient },
       params: { id: CLAIM_ID },
