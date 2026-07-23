@@ -53,7 +53,11 @@ function emotiveRowValues(row: EmotiveExportRow): (string | number | null)[] {
     row.claimNumber,
     row.employeeName,
     formatGreska(row.faults),
-    row.sourceName,
+    // REMARKS carries the customer the claim is for — the partner firm for an
+    // EMOTIVE claim, the client (possibly a private individual) for a DOMACE row
+    // folded into the UKUPNO / year sheets. This column has no separate customer
+    // header, so it is where the firm shows.
+    row.customerName,
     row.claimYear,
   ]
 }

@@ -18,7 +18,6 @@ export interface EmotiveExportDbRow {
   employeeName: string | null
   customerName: string | null
   outcome: 'pending' | 'accepted' | 'rejected' | 'archived'
-  sourceName: string | null
   claimYear: number
   faults: ClaimFaultItem[]
 }

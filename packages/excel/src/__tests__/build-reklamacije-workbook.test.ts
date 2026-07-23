@@ -26,7 +26,6 @@ const sampleEmotive: EmotiveExportRow = {
       externalPartyName: null,
     },
   ],
-  sourceName: 'APPROVED GREEN',
   claimYear: 2025,
 }
 
@@ -112,6 +111,16 @@ describe('buildReklamacijeWorkbook', () => {
     const emotiveData = workbook.getWorksheet('EMOTIVE REKLAMACIJE')
     expect(emotiveData!.rowCount).toBe(2)
     expect(rowValues(emotiveData!, 2)[4]).toBe('1759/23')
+    // REMARKS (column 10, index 9) is the customer the claim is for — the firm
+    // for an emotive claim. It used to carry the (usually empty) claim source.
+    expect(rowValues(emotiveData!, 2)[9]).toBe('MR ENGINES')
+
+    // On UKUPNO, a domace row shows its client in the same REMARKS column. Rows
+    // are sorted, so find the domace one by its MR number rather than assuming order.
+    const ukupnoDomace = [2, 3]
+      .map((n) => rowValues(ukupno!, n))
+      .find((values) => values[4] === '100262/25')
+    expect(ukupnoDomace?.[9]).toBe('JERKO')
 
     const firmStats = workbook.getWorksheet('REKLAMACIJE PO FIRMAMA')
     expect(rowValues(firmStats!, 4)[0]).toBe('MR ENGINES')

@@ -11,7 +11,6 @@ import type {
 } from './excel.types.js'
 
 const {
-  claimSources,
   customerUsers,
   customers,
   departments,
@@ -152,14 +151,12 @@ export class ExcelRepository {
         employeeName: employees.fullName,
         customerName: customers.name,
         outcome: emotiveClaims.outcome,
-        sourceName: claimSources.name,
         claimYear: emotiveClaims.claimYear,
       })
       .from(emotiveClaims)
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
-      .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
       .where(whereClause)
       .orderBy(asc(emotiveClaims.sequenceNumber))
 
@@ -208,7 +205,6 @@ export class ExcelRepository {
       employeeName: row.employeeName,
       customerName: row.customerName,
       outcome: row.outcome as EmotiveExportDbRow['outcome'],
-      sourceName: row.sourceName,
       claimYear: row.claimYear,
       faults: faultsByClaimId.get(row.id) ?? [],
     }))

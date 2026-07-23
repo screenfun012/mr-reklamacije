@@ -112,7 +112,6 @@ export class ExcelService {
         customerName: row.customerName,
         outcome: row.outcome,
         faults: mapFaults(row.faults),
-        sourceName: row.sourceName,
         claimYear: row.claimYear,
       }),
     )

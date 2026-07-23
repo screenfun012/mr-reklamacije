@@ -18,7 +18,6 @@ const baseRow: Omit<EmotiveExportRow, 'customerName' | 'outcome' | 'employeeName
   claimNumber: null,
   employeeId: 'emp-1',
   faults: [],
-  sourceName: 'SELMAN',
 }
 
 describe('computeCustomerYearStats', () => {

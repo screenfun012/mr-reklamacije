@@ -34,7 +34,6 @@ const sampleEmotive: EmotiveExportRow = {
   customerName: 'MR ENGINES',
   outcome: 'accepted',
   faults: [],
-  sourceName: 'APPROVED GREEN',
   claimYear: 2025,
 }
 
@@ -45,7 +44,8 @@ describe('mapDomaceToEmotiveRow', () => {
     expect(mapped.warrantyReport).toBe('AKSIJALNO ZARIBAO')
     expect(mapped.mrNumber).toBe('100262/25')
     expect(mapped.claimNumber).toBe('173/24')
-    expect(mapped.sourceName).toBe('JERKO')
+    // The client flows into customerName, which the UKUPNO REMARKS column reads.
+    expect(mapped.customerName).toBe('JERKO')
     expect(mapped.claimYear).toBe(2025)
   })
 })

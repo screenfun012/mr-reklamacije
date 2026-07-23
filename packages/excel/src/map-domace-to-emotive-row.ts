@@ -17,7 +17,6 @@ export function mapDomaceToEmotiveRow(row: DomaceExportRow): EmotiveExportRow {
     customerName: row.customerName,
     outcome: row.outcome,
     faults: row.faults,
-    sourceName: row.customerName,
     claimYear: row.claimYear,
   }
 }

@@ -20,7 +20,6 @@ export interface EmotiveExportRow {
   customerName: string | null
   outcome: EmotiveClaimOutcome
   faults: readonly ExportFaultRow[]
-  sourceName: string | null
   claimYear: number
 }
 
