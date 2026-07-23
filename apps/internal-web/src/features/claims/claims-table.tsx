@@ -20,13 +20,15 @@ import {
 } from '@tanstack/react-table'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { RowSelectionState } from '@tanstack/react-table'
 
 import { KindPill } from '~/components/kind-pill'
 import { OutcomePill } from '~/components/outcome-pill'
 import { EmotiveClaimStageBadge } from '~/features/emotive-claims/emotive-claim-stage-badge'
 
 import { ClaimDeleteDialog } from './claim-delete-dialog'
+import { ClaimsSelectionCheckbox } from './claims-selection-checkbox'
 import {
   claimsTableSortingFromSearch,
   createNextSortSearch,
@@ -122,6 +124,25 @@ function createClaimsTableColumns(
   deleteConfig: ClaimsTableDeleteConfig,
 ) {
   return [
+    columnHelper.display({
+      id: 'select',
+      header: ({ table }) => (
+        <ClaimsSelectionCheckbox
+          checked={table.getIsAllPageRowsSelected()}
+          indeterminate={table.getIsSomePageRowsSelected()}
+          onChange={(value) => table.toggleAllPageRowsSelected(value)}
+          ariaLabel={m.claims_select_all_page()}
+        />
+      ),
+      cell: ({ row }) => (
+        <ClaimsSelectionCheckbox
+          checked={row.getIsSelected()}
+          onChange={(value) => row.toggleSelected(value)}
+          ariaLabel={m.claims_select_row()}
+        />
+      ),
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
     columnHelper.display({
       id: 'kind',
       header: () => m.claims_col_kind(),
@@ -278,6 +299,8 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
     )
   }
 
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
   const table = useReactTable({
     data: [...items],
     columns,
@@ -287,8 +310,19 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
     manualPagination: true,
     manualFiltering: true,
     enableSortingRemoval: false,
-    state: { sorting },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    state: { sorting, rowSelection },
   })
+
+  const selectedCount = Object.keys(rowSelection).length
+
+  // Selection is per page: the rows change under it on a page/filter change, and
+  // keeping ticks for rows no longer on screen ("5 selected", none visible) only
+  // confuses. Clear whenever the query behind the table changes.
+  useEffect(() => {
+    setRowSelection({})
+  }, [search])
 
   if (items.length === 0) {
     return (
@@ -309,9 +343,24 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
           <h2 className="text-[15px] font-extrabold text-mri-text">
             {m.emotive_claims_list_title()}
           </h2>
-          <span className="font-mono text-[11px] text-mri-text2">
-            {m.emotive_claims_count({ count: total })}
-          </span>
+          {selectedCount > 0 ? (
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[11px] font-semibold text-mri-text">
+                {m.claims_selected_count({ count: selectedCount })}
+              </span>
+              <button
+                type="button"
+                onClick={() => table.resetRowSelection()}
+                className="font-mono text-[11px] text-mri-text2 transition-colors hover:text-mri-redh"
+              >
+                {m.claims_selection_clear()}
+              </button>
+            </div>
+          ) : (
+            <span className="font-mono text-[11px] text-mri-text2">
+              {m.emotive_claims_count({ count: total })}
+            </span>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] text-sm">

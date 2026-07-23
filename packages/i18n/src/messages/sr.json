@@ -1010,5 +1010,9 @@
   "machining_placeholder_note": "Kad bude spremno, ovo mesto ostaje isto — samo dobija sadržaj.",
   "claim_presence_one": "{name} takođe gleda ovu reklamaciju — sačuvajte pažljivo.",
   "claim_presence_many": "Još {count} gleda ovu reklamaciju — sačuvajte pažljivo.",
-  "claim_presence_aria": "Ostali koji trenutno gledaju ovu reklamaciju"
+  "claim_presence_aria": "Ostali koji trenutno gledaju ovu reklamaciju",
+  "claims_select_row": "Označi reklamaciju",
+  "claims_select_all_page": "Označi sve na strani",
+  "claims_selected_count": "{count} označeno",
+  "claims_selection_clear": "Poništi izbor"
 }

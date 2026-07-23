@@ -243,4 +243,40 @@ describe('ClaimsTable', () => {
 
     expect(screen.queryByRole('button', { name: 'Obriši' })).not.toBeInTheDocument()
   })
+
+  it('selects a single row and shows the count, then clears it', async () => {
+    const user = userEvent.setup()
+    await renderWithRouter(
+      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+    )
+
+    await user.click(screen.getAllByRole('checkbox', { name: 'Označi reklamaciju' })[0]!)
+    expect(screen.getByText('1 označeno')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Poništi izbor' }))
+    expect(screen.queryByText('1 označeno')).not.toBeInTheDocument()
+  })
+
+  it('the header checkbox selects every row on the page', async () => {
+    const user = userEvent.setup()
+    await renderWithRouter(
+      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+    )
+
+    await user.click(screen.getByRole('checkbox', { name: 'Označi sve na strani' }))
+    expect(screen.getByText('2 označeno')).toBeInTheDocument()
+  })
+
+  it('clicking the checkbox does not navigate to the claim', async () => {
+    const user = userEvent.setup()
+    await renderWithRouter(
+      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+    )
+
+    const box = screen.getAllByRole('checkbox', { name: 'Označi reklamaciju' })[0]!
+    await user.click(box)
+    // Selecting is not opening — the count appears, we did not leave the list.
+    expect(screen.getByText('1 označeno')).toBeInTheDocument()
+    expect(box).toBeChecked()
+  })
 })

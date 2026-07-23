@@ -1010,5 +1010,9 @@
   "machining_placeholder_note": "When it is ready this place stays the same — it just gains content.",
   "claim_presence_one": "{name} is also viewing this claim — save with care.",
   "claim_presence_many": "{count} others are viewing this claim — save with care.",
-  "claim_presence_aria": "Others currently viewing this claim"
+  "claim_presence_aria": "Others currently viewing this claim",
+  "claims_select_row": "Select claim",
+  "claims_select_all_page": "Select all on page",
+  "claims_selected_count": "{count} selected",
+  "claims_selection_clear": "Clear selection"
 }
