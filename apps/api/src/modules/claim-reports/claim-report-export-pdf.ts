@@ -14,17 +14,35 @@ const PDF_UNAVAILABLE_MESSAGE =
 const MAX_CONCURRENT_RENDERS = 2
 
 /**
+ * How long a browser with nothing to render is allowed to sit around.
+ *
+ * Keeping it alive forever traded a one-off ~1–3 s launch for ~600 MB of RSS
+ * held until the next deploy — and memory is the dominant line on the hosting
+ * bill. Exports are occasional, so an idle browser is pure cost: let it go and
+ * pay the launch again on the next one.
+ */
+const IDLE_SHUTDOWN_MS = 10 * 60_000
+
+/**
  * Renders claim-report HTML to PDF on a SHARED Chromium instance, capped at
  * MAX_CONCURRENT_RENDERS at a time. Construct once (DI container) and dispose
  * on shutdown. If the browser process dies, the next render relaunches it.
+ * A browser left idle for IDLE_SHUTDOWN_MS closes itself.
  */
 export class ClaimReportPdfRenderer {
   private browserPromise: Promise<Browser> | null = null
   private readonly slots = new Semaphore(MAX_CONCURRENT_RENDERS)
+  private activeRenders = 0
+  private idleTimer: NodeJS.Timeout | null = null
 
   async render(bodyHtml: string): Promise<Buffer> {
     const fontFaceCss = await getClaimReportExportFontFaceCss()
     const htmlDocument = wrapClaimReportExportHtml(bodyHtml, fontFaceCss)
+
+    // Counted BEFORE queueing for a slot: a render waiting behind another one
+    // must still hold the browser open.
+    this.activeRenders += 1
+    this.clearIdleTimer()
 
     await this.slots.acquire()
     try {
@@ -43,11 +61,41 @@ export class ClaimReportPdfRenderer {
       }
     } finally {
       this.slots.release()
+      this.activeRenders -= 1
+      this.scheduleIdleShutdown()
     }
   }
 
   async dispose(): Promise<void> {
+    this.clearIdleTimer()
     await this.resetBrowser()
+  }
+
+  private clearIdleTimer(): void {
+    if (this.idleTimer !== null) {
+      clearTimeout(this.idleTimer)
+      this.idleTimer = null
+    }
+  }
+
+  private scheduleIdleShutdown(): void {
+    if (this.activeRenders > 0) {
+      return
+    }
+
+    this.clearIdleTimer()
+    const timer = setTimeout(() => {
+      this.idleTimer = null
+      if (this.activeRenders > 0) {
+        return
+      }
+      // Fire-and-forget: a browser that refuses to close is already gone as far
+      // as the next render is concerned (resetBrowser swallows and relaunches).
+      void this.resetBrowser()
+    }, IDLE_SHUTDOWN_MS)
+    // Never hold the process open just to close a browser later.
+    timer.unref()
+    this.idleTimer = timer
   }
 
   private async renderWithSharedBrowser(htmlDocument: string): Promise<Buffer> {
