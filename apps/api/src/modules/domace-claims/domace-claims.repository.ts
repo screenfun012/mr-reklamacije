@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimKind, ClaimOutcome } from '@mr/shared'
+import { ClaimKind, computeDomaceTotal } from '@mr/shared'
 import { and, desc, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -225,8 +225,13 @@ export class DomaceClaimsRepository {
           outcome: input.outcome,
           outcomeResolvedAt: initialOutcomeResolvedAt(input.outcome),
           claimYear,
-          totalAmount: input.totalAmount ?? null,
+          originalInvoiceAmount: input.originalInvoiceAmount ?? null,
+          partsAmount: input.partsAmount ?? null,
+          laborAmount: input.laborAmount ?? null,
+          // UKUPNO (M) = parts + labor, computed — never a manual input.
+          totalAmount: computeDomaceTotal(input.partsAmount, input.laborAmount),
           claimNumber: input.claimNumber ?? null,
+          invoiceNumber: input.invoiceNumber ?? null,
           internalNotes: input.internalNotes ?? null,
           findings: input.findings,
           inspectionReport: input.inspectionReport ?? null,
@@ -397,6 +402,10 @@ export class DomaceClaimsRepository {
         outcome: domaceClaims.outcome,
         claimYear: domaceClaims.claimYear,
         totalAmount: domaceClaims.totalAmount,
+        invoiceNumber: domaceClaims.invoiceNumber,
+        originalInvoiceAmount: domaceClaims.originalInvoiceAmount,
+        partsAmount: domaceClaims.partsAmount,
+        laborAmount: domaceClaims.laborAmount,
         createdAt: domaceClaims.createdAt,
         internalNotes: domaceClaims.internalNotes,
         findings: domaceClaims.findings,
@@ -441,12 +450,20 @@ export class DomaceClaimsRepository {
       updatedBy,
       updatedAt,
       engineTypeManufacturer,
+      invoiceNumber,
+      originalInvoiceAmount,
+      partsAmount,
+      laborAmount,
       ...listFields
     } = row
 
     return {
       ...mapListItem(listFields),
       engineTypeManufacturer,
+      invoiceNumber,
+      originalInvoiceAmount,
+      partsAmount,
+      laborAmount,
       internalNotes,
       findings,
       inspectionReport,
@@ -498,8 +515,27 @@ export class DomaceClaimsRepository {
     if (input.claimNumber !== undefined) {
       patch.claimNumber = input.claimNumber
     }
+    if (input.invoiceNumber !== undefined) {
+      patch.invoiceNumber = input.invoiceNumber
+    }
     if (input.dateOfFinish !== undefined) {
       patch.dateOfFinish = input.dateOfFinish
+    }
+    if (input.originalInvoiceAmount !== undefined) {
+      patch.originalInvoiceAmount = input.originalInvoiceAmount
+    }
+    if (input.partsAmount !== undefined) {
+      patch.partsAmount = input.partsAmount
+    }
+    if (input.laborAmount !== undefined) {
+      patch.laborAmount = input.laborAmount
+    }
+    // Recompute UKUPNO when either component changes, merging the untouched half
+    // with `before` so a single-field edit still yields the correct sum.
+    if (input.partsAmount !== undefined || input.laborAmount !== undefined) {
+      const parts = input.partsAmount !== undefined ? input.partsAmount : before.partsAmount
+      const labor = input.laborAmount !== undefined ? input.laborAmount : before.laborAmount
+      patch.totalAmount = computeDomaceTotal(parts, labor)
     }
     if (input.internalNotes !== undefined) {
       patch.internalNotes = input.internalNotes
@@ -544,39 +580,6 @@ export class DomaceClaimsRepository {
         )
       }
     })
-
-    const updated = await this.findById(id, scope)
-    if (updated === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
-    return updated
-  }
-
-  async updateAmount(
-    id: string,
-    totalAmount: number | null,
-    actorId: string,
-    scope: DomaceClaimsListScope,
-  ): Promise<DomaceClaimDetail> {
-    // Row-level gate already enforced by the service before-read; no field from the
-    // prior row is needed here, so no re-read.
-    // Compare-and-swap: amount is editable only while accepted; if the claim was
-    // reopened or deleted after the service before-read, match 0 rows → 409.
-    const [row] = await this.db
-      .update(domaceClaims)
-      .set({ totalAmount, updatedBy: actorId })
-      .where(
-        and(
-          eq(domaceClaims.id, id),
-          isNull(domaceClaims.deletedAt),
-          eq(domaceClaims.outcome, ClaimOutcome.Accepted),
-        ),
-      )
-      .returning({ id: domaceClaims.id })
-    if (row === undefined) {
-      throw new ConflictError(CONCURRENT_EDIT_MESSAGE)
-    }
 
     const updated = await this.findById(id, scope)
     if (updated === null) {

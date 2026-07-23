@@ -83,7 +83,7 @@ describe('Excel export integration', () => {
         customerName: 'Excel Domace',
         dateOfClaim: new Date('2025-02-10T12:00:00.000Z'),
         outcome: ClaimOutcome.Accepted,
-        totalAmount: 120000,
+        partsAmount: 120000,
         faults: [],
         findings: [],
       },

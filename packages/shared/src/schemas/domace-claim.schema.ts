@@ -37,8 +37,13 @@ export const DomaceClaimCreateInputSchema = z
     warrantyReport: z.string().trim().max(8000).optional(),
     employeeId: z.string().uuid().optional(),
     claimNumber: z.string().trim().max(50).optional(),
+    invoiceNumber: z.string().trim().max(50).optional(),
     dateOfFinish: z.coerce.date().optional(),
-    totalAmount: z.number().nonnegative().optional(),
+    // Money breakdown (docs/23) — editable in any outcome state. total_amount
+    // (UKUPNO) is NOT an input; it is computed = parts + labor on write.
+    originalInvoiceAmount: z.number().nonnegative().optional(),
+    partsAmount: z.number().nonnegative().optional(),
+    laborAmount: z.number().nonnegative().optional(),
     internalNotes: z.string().trim().max(8000).optional(),
     inspectionReport: z.string().trim().max(8000).optional(),
     faults: z.array(DomaceClaimFaultInputSchema).default([]),
@@ -62,7 +67,11 @@ export const DomaceClaimUpdateInputSchema = z
     warrantyReport: z.string().trim().max(8000).nullable().optional(),
     employeeId: z.string().uuid().nullable().optional(),
     claimNumber: z.string().trim().max(50).nullable().optional(),
+    invoiceNumber: z.string().trim().max(50).nullable().optional(),
     dateOfFinish: z.coerce.date().nullable().optional(),
+    originalInvoiceAmount: z.number().nonnegative().nullable().optional(),
+    partsAmount: z.number().nonnegative().nullable().optional(),
+    laborAmount: z.number().nonnegative().nullable().optional(),
     internalNotes: z.string().trim().max(8000).nullable().optional(),
     inspectionReport: z.string().trim().max(8000).nullable().optional(),
     faults: z.array(DomaceClaimFaultInputSchema).optional(),
@@ -73,13 +82,6 @@ export const DomaceClaimUpdateInputSchema = z
   })
 
 export type DomaceClaimUpdateInput = z.infer<typeof DomaceClaimUpdateInputSchema>
-
-/** Repair cost in EUR — only via PATCH /domace-claims/:id/amount on accepted claims. */
-export const DomaceClaimAmountInputSchema = z.object({
-  totalAmount: z.number().nonnegative().nullable(),
-})
-
-export type DomaceClaimAmountInput = z.infer<typeof DomaceClaimAmountInputSchema>
 
 export const DomaceClaimChangeOutcomeInputSchema = z.object({
   outcome: z.enum(claimOutcomeValues),
@@ -135,6 +137,10 @@ export type DomaceClaimListItem = z.infer<typeof DomaceClaimListItemSchema>
 
 export const DomaceClaimDetailSchema = DomaceClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
+  invoiceNumber: z.string().nullable(),
+  originalInvoiceAmount: z.coerce.number().nullable(),
+  partsAmount: z.coerce.number().nullable(),
+  laborAmount: z.coerce.number().nullable(),
   internalNotes: z.string().nullable(),
   inspectionReport: z.string().nullable(),
   updatedBy: z.string().uuid().nullable(),

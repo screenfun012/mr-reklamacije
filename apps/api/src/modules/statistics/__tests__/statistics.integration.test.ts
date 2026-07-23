@@ -140,7 +140,7 @@ describe('Statistics module integration', () => {
         customerName: 'Stats Domace',
         dateOfClaim,
         outcome,
-        totalAmount: 100000,
+        partsAmount: 100000,
         faults: [],
         findings: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
@@ -761,7 +761,8 @@ describe('Statistics module integration', () => {
           manufacturerId,
           faults,
           findings: [],
-          ...(totalAmount !== null ? { totalAmount } : {}),
+          // total_amount (UKUPNO) is computed = parts + labor; drive it via parts.
+          ...(totalAmount !== null ? { partsAmount: totalAmount } : {}),
         },
         {
           id: TEST_USER_ID,

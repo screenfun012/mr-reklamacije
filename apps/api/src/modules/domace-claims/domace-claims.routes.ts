@@ -22,7 +22,6 @@ export function registerDomaceClaimsRoutes(
   routes.get('/:id', viewClaimPermissions, controller.findById)
   routes.post('/', requirePermission('domace_claims.create'), controller.create)
   routes.patch('/:id', requirePermission('domace_claims.update'), controller.update)
-  routes.patch('/:id/amount', requirePermission('domace_claims.update'), controller.updateAmount)
   routes.delete('/:id', requirePermission('domace_claims.delete'), controller.softDelete)
   routes.post('/:id/restore', requirePermission('domace_claims.restore'), controller.restore)
   routes.post(

@@ -235,28 +235,6 @@ describe('DomaceClaimsService integration', () => {
         .where(eq(schema.domaceClaims.id, created.id))
       expect(raw?.warrantyReport).toBe('Originalni nalaz')
     })
-
-    it('refuses updateAmount on a claim reopened (accepted → pending) after the before-read → ConflictError', async () => {
-      const created = await container.domaceClaimsService.create(
-        baseCreateInput({ outcome: ClaimOutcome.Accepted }),
-        FULL_OPERATOR,
-        auditContext,
-      )
-
-      // Amount was editable (accepted); a concurrent reopen to pending lands first.
-      await container.domaceClaimsService.changeOutcome(
-        created.id,
-        { outcome: ClaimOutcome.Pending },
-        ADMIN_ACTOR,
-        auditContext,
-      )
-
-      await expect(
-        container.domaceClaimsRepository.updateAmount(created.id, 1234, TEST_USER_ID, {
-          type: 'all',
-        }),
-      ).rejects.toBeInstanceOf(ConflictError)
-    })
   })
 
   describe('when creating', () => {
@@ -346,13 +324,15 @@ describe('DomaceClaimsService integration', () => {
       } satisfies Partial<MrKeyConflictError>)
     })
 
-    it('retains total_amount for financial tracking', async () => {
+    it('computes total_amount from parts + labor on create', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ totalAmount: 84500.5 }),
+        baseCreateInput({ partsAmount: 60000, laborAmount: 24500.5 }),
         FULL_OPERATOR,
         auditContext,
       )
 
+      expect(created.partsAmount).toBe(60000)
+      expect(created.laborAmount).toBe(24500.5)
       expect(created.totalAmount).toBe(84500.5)
     })
 
@@ -809,88 +789,65 @@ describe('DomaceClaimsService integration', () => {
     })
   })
 
-  describe('when updating repair amount', () => {
-    async function createAccepted(): Promise<string> {
+  describe('when recording money (docs/23)', () => {
+    it('records the amounts and invoice number on a PENDING claim (no accepted-only gate)', async () => {
       const created = await container.domaceClaimsService.create(
         baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
-      await container.domaceClaimsService.changeOutcome(
+      expect(created.outcome).toBe(ClaimOutcome.Pending)
+
+      const updated = await container.domaceClaimsService.update(
         created.id,
-        { outcome: ClaimOutcome.Accepted },
+        {
+          originalInvoiceAmount: 100000,
+          partsAmount: 60000,
+          laborAmount: 24500.5,
+          invoiceNumber: 'R-2026-17',
+        },
         FULL_OPERATOR,
         auditContext,
       )
-      return created.id
-    }
 
-    it('sets total_amount on an accepted claim', async () => {
-      const id = await createAccepted()
-      const updated = await container.domaceClaimsService.updateAmount(
-        id,
-        { totalAmount: 1234.56 },
-        FULL_OPERATOR,
-        auditContext,
-      )
-      expect(updated.totalAmount).toBe(1234.56)
+      expect(updated.originalInvoiceAmount).toBe(100000)
+      expect(updated.partsAmount).toBe(60000)
+      expect(updated.laborAmount).toBe(24500.5)
+      expect(updated.invoiceNumber).toBe('R-2026-17')
+      // UKUPNO = parts + labor, computed.
+      expect(updated.totalAmount).toBe(84500.5)
     })
 
-    it('rejects amount updates on a pending claim', async () => {
+    it('recomputes total_amount when only one component changes', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        baseCreateInput({ partsAmount: 60000, laborAmount: 20000 }),
         FULL_OPERATOR,
         auditContext,
       )
-      await expect(
-        container.domaceClaimsService.updateAmount(
-          created.id,
-          { totalAmount: 500 },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
-    })
+      expect(created.totalAmount).toBe(80000)
 
-    it('rejects amount updates on a rejected claim', async () => {
-      const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
-        FULL_OPERATOR,
-        auditContext,
-      )
-      await container.domaceClaimsService.changeOutcome(
+      const updated = await container.domaceClaimsService.update(
         created.id,
-        { outcome: ClaimOutcome.Rejected },
+        { laborAmount: 25000 },
         FULL_OPERATOR,
         auditContext,
       )
-      await expect(
-        container.domaceClaimsService.updateAmount(
-          created.id,
-          { totalAmount: 500 },
-          FULL_OPERATOR,
-          auditContext,
-        ),
-      ).rejects.toBeInstanceOf(ConflictError)
+      // parts (untouched) merged with the new labor.
+      expect(updated.partsAmount).toBe(60000)
+      expect(updated.laborAmount).toBe(25000)
+      expect(updated.totalAmount).toBe(85000)
     })
 
-    it('keeps total_amount in the database after reopen', async () => {
-      const id = await createAccepted()
-      await container.domaceClaimsService.updateAmount(
-        id,
-        { totalAmount: 2500 },
+    it('leaves total_amount null while both components are empty', async () => {
+      const created = await container.domaceClaimsService.create(
+        baseCreateInput({ originalInvoiceAmount: 50000 }),
         FULL_OPERATOR,
         auditContext,
       )
-      await container.domaceClaimsService.changeOutcome(
-        id,
-        { outcome: ClaimOutcome.Pending },
-        ADMIN_ACTOR,
-        auditContext,
-      )
-      const detail = await container.domaceClaimsService.findById(id, FULL_OPERATOR)
-      expect(detail.outcome).toBe(ClaimOutcome.Pending)
-      expect(detail.totalAmount).toBe(2500)
+      expect(created.originalInvoiceAmount).toBe(50000)
+      expect(created.partsAmount).toBeNull()
+      expect(created.laborAmount).toBeNull()
+      expect(created.totalAmount).toBeNull()
     })
   })
 

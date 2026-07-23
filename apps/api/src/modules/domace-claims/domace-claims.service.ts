@@ -5,7 +5,6 @@ import {
   type DomaceClaimFaultInput,
 } from '@mr/shared'
 
-import { assertAcceptedClaimAmountEditable } from '../../core/claims/claim-lock.js'
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -18,7 +17,6 @@ import type {
 import type { DomaceClaimsRepository } from './domace-claims.repository.js'
 import type { DomaceClaimsActor, DomaceClaimsListScope } from './domace-claims.types.js'
 import type {
-  DomaceClaimAmountInput,
   DomaceClaimChangeOutcomeInput,
   DomaceClaimCreateInput,
   DomaceClaimDetail,
@@ -145,42 +143,6 @@ export class DomaceClaimsService {
         notificationContext(updated),
       )
     }
-
-    return updated
-  }
-
-  async updateAmount(
-    id: string,
-    input: DomaceClaimAmountInput,
-    actor: DomaceClaimsActor,
-    auditContext: HttpActorContext,
-  ): Promise<DomaceClaimDetail> {
-    const scope = resolveListScope(actor)
-    const before = await this.repo.findById(id, scope)
-    if (before === null) {
-      throw new NotFoundError('Domace claim', id)
-    }
-
-    assertAcceptedClaimAmountEditable(before)
-
-    const updated = await this.repo.updateAmount(
-      id,
-      input.totalAmount,
-      auditContext.actorUserId,
-      scope,
-    )
-
-    await this.audit.log({
-      entityType: 'domace_claim',
-      entityId: id,
-      action: AuditAction.Update,
-      actorUserId: auditContext.actorUserId,
-      actorIp: auditContext.actorIp,
-      actorUserAgent: auditContext.actorUserAgent,
-      changes: { before, after: updated, field: 'totalAmount' },
-    })
-
-    this.events.publishClaimUpdated(domaceEventPayload(id))
 
     return updated
   }
