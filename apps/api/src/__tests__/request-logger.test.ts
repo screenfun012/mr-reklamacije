@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { requestId } from 'hono/request-id'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Logger } from '@mr/logger'
@@ -63,5 +64,23 @@ describe('request logger', () => {
     expect(first.status).toBe(200)
     expect(second.status).toBe(200)
     expect(infoMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('request logger — request id', () => {
+  it('logs the request id, so one slow request can be found rather than a whole minute', async () => {
+    const infoMock = vi.fn()
+    const logger = { info: infoMock } as unknown as Logger
+
+    const app = new Hono()
+    app.use('*', requestId())
+    app.use('*', createRequestLogger(logger))
+    app.get('/api/claims', (c) => c.json({ ok: true }))
+
+    const res = await app.request('/api/claims')
+
+    const [payload] = infoMock.mock.calls[0] as [Record<string, unknown>, string]
+    expect(payload['requestId']).toBe(res.headers.get('X-Request-Id'))
+    expect(typeof payload['requestId']).toBe('string')
   })
 })

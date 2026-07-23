@@ -1,6 +1,8 @@
 import type { Logger } from '@mr/logger'
 import { ClaimKind, ERROR_CODE } from '@mr/shared'
 import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
+import { requestId } from 'hono/request-id'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AppError } from '../core/errors/app-error.js'
@@ -87,5 +89,45 @@ describe('global error handler', () => {
     expect(body.error.message).toBe('Internal server error')
     expect(body.error.code).toBe(ERROR_CODE.InternalError)
     expect(JSON.stringify(body)).not.toContain('Oops')
+  })
+})
+
+describe('global error handler — HTTPException', () => {
+  it('maps a Hono HTTPException to the standard envelope instead of a generic 500', async () => {
+    // Before this branch existed the export timeout surfaced as a 500 logged as
+    // "unhandled server error", which is the opposite of what a timeout is.
+    const { app, logger } = makeApp()
+    app.get('/test', () => {
+      throw new HTTPException(504, { message: 'Izvoz je predugo trajao.' })
+    })
+
+    const res = await app.request('/test')
+
+    expect(res.status).toBe(504)
+    expect(await res.json()).toEqual({
+      error: {
+        code: ERROR_CODE.ServiceUnavailable,
+        message: 'Izvoz je predugo trajao.',
+        status: 504,
+      },
+    })
+    expect(logger.warn).toHaveBeenCalled()
+    expect(logger.error).not.toHaveBeenCalled()
+  })
+
+  it('carries the request id into the error log line so it ties back to the request', async () => {
+    const { app, logger } = makeApp()
+    app.use('*', requestId())
+    app.get('/test', () => {
+      throw new AppError(ERROR_CODE.NotFound, 404, 'Item missing')
+    })
+
+    const res = await app.request('/test')
+
+    const [payload] = (logger.warn as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      Record<string, unknown>,
+    ]
+    expect(payload['requestId']).toBe(res.headers.get('X-Request-Id'))
+    expect(typeof payload['requestId']).toBe('string')
   })
 })

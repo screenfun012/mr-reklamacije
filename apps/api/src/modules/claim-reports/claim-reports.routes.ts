@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import type { AppVariables } from '../../app.js'
 import { requirePermission } from '../../core/auth/require-permission.js'
 import type { Container } from '../../core/container.js'
+import { exportTimeout } from '../../core/middleware/export-timeout.js'
 import { claimReportExportRateLimiter } from '../../core/middleware/rate-limit.js'
 import { createClaimReportsController } from './claim-reports.controller.js'
 
@@ -19,6 +20,9 @@ export function registerClaimReportsRoutes(
   routes.post('/images', requirePermission('claim_reports.update'), controller.uploadImage)
 
   exportRoutes.use('*', claimReportExportRateLimiter)
+  // A Chromium render waits behind a 2-slot queue; without a ceiling a stuck one
+  // holds its slot and callers just wait until Cloudflare cuts them off.
+  exportRoutes.use('*', exportTimeout)
   exportRoutes.get('/pdf', requirePermission('claim_reports.export'), controller.exportPdf)
   exportRoutes.get('/docx', requirePermission('claim_reports.export'), controller.exportDocx)
   // Client portal: same report document, gated by own-claims export; row-level

@@ -250,6 +250,32 @@ From Synology dump (if Railway is unavailable):
 
 **Test restore quarterly.** Document last tested date in admin wiki.
 
+### ⚠️ Restore ORDER: object storage first, database second
+
+The database and the attachment bucket are backed up on **independent schedules**.
+Restoring them to two different moments produces claims whose photo rows point at
+objects that do not exist in the restored bucket — and it does not fail at restore
+time. It surfaces weeks later as "photos are missing from old claims".
+
+Point-in-time recovery makes this **easier to get wrong, not harder**: PITR can put
+the database at any second, while the bucket only exists as periodic snapshots. The
+finer control is on the wrong half.
+
+So always restore in this order:
+
+1. **Restore the bucket snapshot first.** Railway → Bucket → Backups.
+2. **Read that snapshot's timestamp.** It is the only moment both halves can agree on.
+3. **Bring the database to THAT timestamp** — PITR to the bucket's time, or pick the
+   database snapshot taken closest *before* it.
+
+Choosing a database moment *after* the bucket's leaves rows referencing objects that
+were never in it. Choosing one *before* only hides attachments that exist, which is
+recoverable; prefer that direction if you must round.
+
+Verifying a restore means opening **three claims that have photos** and confirming the
+images load — not that the service starts. A restored database with an empty bucket
+starts perfectly.
+
 ### Migrations discipline
 
 - Migrations live in `packages/db/migrations/`, timestamped and numbered

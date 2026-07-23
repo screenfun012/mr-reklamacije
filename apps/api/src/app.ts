@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { requestId, type RequestIdVariables } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 
 import type { Container } from './core/container.js'
@@ -45,7 +46,7 @@ import { registerNotificationsRoutes } from './modules/notifications/index.js'
 
 export type { MRSessionUser }
 
-export type AppVariables = {
+export type AppVariables = RequestIdVariables & {
   user: MRSessionUser | null
   session: BetterAuthFullSession['session'] | null
 }
@@ -100,6 +101,7 @@ const apiSecureHeaders = secureHeaders({
  * Hono app factory. Middleware order (outer to inner):
  * 1. registerGlobalErrorHandler (app.onError)
  * 2. Secure headers (outermost — covers every response, incl. errors)
+ * 2b. Request id (before the logger, so every line for one request shares it)
  * 3. Request logger
  * 4. General rate limiter (per IP — flood backstop)
  * 4b. Session rate limiter (per signed-in person, on top of the IP layer)
@@ -114,6 +116,9 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
 
   registerGlobalErrorHandler(app, container.logger)
   app.use('*', apiSecureHeaders)
+  // Also echoed as `X-Request-Id`, so an id seen in the browser's network tab is
+  // the same one to grep for in the logs.
+  app.use('*', requestId())
   app.use('*', createRequestLogger(container.logger))
   app.use('*', requestBodyLimit)
   app.use('*', generalRateLimiter)
