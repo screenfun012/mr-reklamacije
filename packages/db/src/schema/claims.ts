@@ -230,6 +230,23 @@ export const domaceClaims = pgTable(
     outcome: text('outcome').notNull().$type<ClaimOutcome>(),
     outcomeResolvedAt: timestamp('outcome_resolved_at', { withTimezone: true, mode: 'date' }),
     claimYear: integer('claim_year').notNull(),
+    // Excel H BROJ RAČUNA — the invoice number (distinct from claim_number, which
+    // holds the old work order / Excel F STARI R/N). The export used to mislabel
+    // claim_number as BROJ RAČUNA; this is the real field. See docs/23.
+    invoiceNumber: text('invoice_number'),
+    // DOMACE money breakdown (docs/23). All nullable, editable in any outcome state.
+    // Excel G — the customer's original invoice amount, captured at intake.
+    originalInvoiceAmount: decimal('original_invoice_amount', {
+      precision: 14,
+      scale: 2,
+      mode: 'number',
+    }),
+    // Excel K — parts, ex-VAT.
+    partsAmount: decimal('parts_amount', { precision: 14, scale: 2, mode: 'number' }),
+    // Excel L — labor, ex-VAT.
+    laborAmount: decimal('labor_amount', { precision: 14, scale: 2, mode: 'number' }),
+    // Excel M UKUPNO — kept, but now COMPUTED = parts + labor (ex-VAT) on write, so
+    // statistics/dashboard that read total_amount are unaffected.
     totalAmount: decimal('total_amount', { precision: 14, scale: 2, mode: 'number' }),
     internalNotes: text('internal_notes'),
     // Multi-row inspection findings (text + free-form type tag); supersedes the
