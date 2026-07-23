@@ -1,0 +1,585 @@
+{
+  "_comment": "Snapshot of 'MR Engines i Tiki Vent - Lista zaposlenih.xlsx' (sheet 23.06.2026). Names reordered Surname-Given -> Given-Surname to match app storage. Regenerate from the Excel if the roster changes.",
+  "departments": [
+    {
+      "code": "PRIJEM",
+      "nameSr": "Prijem",
+      "nameEn": "Intake",
+      "sortOrder": 110
+    },
+    {
+      "code": "CISCENJE",
+      "nameSr": "Čišćenje",
+      "nameEn": "Cleaning",
+      "sortOrder": 120
+    },
+    {
+      "code": "CINKOVANJE",
+      "nameSr": "Cinkovanje",
+      "nameEn": "Zinc Plating",
+      "sortOrder": 130
+    },
+    {
+      "code": "ISPITIVANJE",
+      "nameSr": "Ispitivanje",
+      "nameEn": "Testing",
+      "sortOrder": 140
+    },
+    {
+      "code": "TURBINE",
+      "nameSr": "Turbine",
+      "nameEn": "Turbochargers",
+      "sortOrder": 150
+    },
+    {
+      "code": "ELEKTRICAR",
+      "nameSr": "Električar",
+      "nameEn": "Electrician",
+      "sortOrder": 160
+    },
+    {
+      "code": "RADIONICA",
+      "nameSr": "Radionica",
+      "nameEn": "Workshop",
+      "sortOrder": 170
+    },
+    {
+      "code": "SERVIS",
+      "nameSr": "Servis",
+      "nameEn": "Service",
+      "sortOrder": 180
+    },
+    {
+      "code": "NABAVKA",
+      "nameSr": "Nabavka",
+      "nameEn": "Procurement",
+      "sortOrder": 190
+    },
+    {
+      "code": "ADMINISTRACIJA",
+      "nameSr": "Administracija",
+      "nameEn": "Administration",
+      "sortOrder": 200
+    },
+    {
+      "code": "IT",
+      "nameSr": "IT",
+      "nameEn": "IT",
+      "sortOrder": 210
+    },
+    {
+      "code": "VOZAC",
+      "nameSr": "Vozač",
+      "nameEn": "Driver",
+      "sortOrder": 220
+    },
+    {
+      "code": "DIREKTOR",
+      "nameSr": "Direktor",
+      "nameEn": "Management",
+      "sortOrder": 230
+    }
+  ],
+  "employees": [
+    {
+      "fullName": "Safet Aljija",
+      "departmentCode": "KLIPNJACE"
+    },
+    {
+      "fullName": "Stefan Andreić",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Dušica Andjelković",
+      "departmentCode": "DIREKTOR"
+    },
+    {
+      "fullName": "Saša Andjelković",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Zoran Arsić",
+      "departmentCode": "VOZAC"
+    },
+    {
+      "fullName": "Danilo Biljić",
+      "departmentCode": "IT"
+    },
+    {
+      "fullName": "Željko Božić",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Andreja Branković",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Dušan Brajović",
+      "departmentCode": "RASKLAPANJE"
+    },
+    {
+      "fullName": "Damir Cvetković",
+      "departmentCode": "KONTROLA"
+    },
+    {
+      "fullName": "Milica Cvetković",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Vuk Dimitrijević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Nikola Dinić",
+      "departmentCode": "IT"
+    },
+    {
+      "fullName": "Željko Dragojević",
+      "departmentCode": "KONTROLA"
+    },
+    {
+      "fullName": "Emruš Duljaj",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Elmedin Duljaj",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Milan Dušić",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Aleksandar Djordjević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Damir Djordjević",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Muhamed Faruk",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Nenad Gajić",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Marko Grujić",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Dragan Gigić",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Bojan Ivanović",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Dalibor Ivanović",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Željko Ivić",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Jovan Jandrić",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Ivica Janković",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Saša Jakovljević",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Aleksandar Jaćimović",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Aleksandar Jevremović",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Djordje Jevtić",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Nikola Jevtić",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Aleksandar Jovanović",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Danijela Jovanović",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Stefan Jovanović",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Ivan Jovičić",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Nenad Jovičić",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Aleksandar Jožika",
+      "departmentCode": "RADILICE"
+    },
+    {
+      "fullName": "Anto Jurić",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Igor Kalajdzijevski",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Slavica Kitanović",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Mirko Lazarević",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Ivan Lekić",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Jovica Marinković",
+      "departmentCode": "ELEKTRICAR"
+    },
+    {
+      "fullName": "Milica Marjanović",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Mirjana Marjanović",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Radoje Marjanović",
+      "departmentCode": "VOZAC"
+    },
+    {
+      "fullName": "Darko Marković",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Dragan Marković",
+      "departmentCode": "ISPITIVANJE"
+    },
+    {
+      "fullName": "Jelena Marković",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Aleksandar Mihajlović",
+      "departmentCode": "RASKLAPANJE"
+    },
+    {
+      "fullName": "Darko Mihajlović",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Dušan Mijatović",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Marko Miladinović",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Dragan Milanović",
+      "departmentCode": "RADILICE"
+    },
+    {
+      "fullName": "Tomislav Milanović",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Branislav Milenković",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Natalija Milenković",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Marijana Miletić",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Saša Miletić",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Slobodan Milivojević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Milan Miljuš",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Dragan Milosavljević",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Marko Milosavljević",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Bojan Milosavljević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Goran Milojković",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Marija Mitrović",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Stefan Novaković",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Stefan Pavlović",
+      "departmentCode": "KONTROLA"
+    },
+    {
+      "fullName": "Marko Pavlović",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Aleksandar Perić",
+      "departmentCode": "RASKLAPANJE"
+    },
+    {
+      "fullName": "Jovana Perić",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Miloš Petrović",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Petar Petrović",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Branko Piščević",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Mihajlo Prokić",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Ahmad Rabba",
+      "departmentCode": "RADILICE"
+    },
+    {
+      "fullName": "Goran Radosavljević",
+      "departmentCode": "CINKOVANJE"
+    },
+    {
+      "fullName": "Pavle Radovanović",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Mihajlo Rajić",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Muhamed Ramadanović",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Marko Rolović",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Muhamed Sarwar",
+      "departmentCode": "KLIPNJACE"
+    },
+    {
+      "fullName": "Ivan Stanisavljević",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Biljana Stanisavljević",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Ivica Stanisavljević",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Nenad Stanisavljević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Dejan Stanić",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Snežana Stanković",
+      "departmentCode": "CISCENJE"
+    },
+    {
+      "fullName": "Veljko Stanković",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Julijana Stanojević",
+      "departmentCode": "CISCENJE"
+    },
+    {
+      "fullName": "Saša Stanojević",
+      "departmentCode": "RASKLAPANJE"
+    },
+    {
+      "fullName": "Dejan Simić",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Nataša Stefanović",
+      "departmentCode": "DIREKTOR"
+    },
+    {
+      "fullName": "Ognjan Stoimenov",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Stefan Stojadinović",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Miloš Stojadinović",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Nikola Stojanović",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Saša Stojanović",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Darko Stojimirović",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Stefan Stojićević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Stefan P. Stojićević",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Želimir Stojiljković",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Dijana Stojčić",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Dragan Stokić",
+      "departmentCode": "KLIPNJACE"
+    },
+    {
+      "fullName": "Branko Stupar",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Teodora Tasić",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Bojana Todorović",
+      "departmentCode": "KONTROLA"
+    },
+    {
+      "fullName": "Dragan Todorović",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Milan Tomić",
+      "departmentCode": "GLAVE"
+    },
+    {
+      "fullName": "Rastislav Turan",
+      "departmentCode": "RADIONICA"
+    },
+    {
+      "fullName": "Stanoje Tvrdišić",
+      "departmentCode": "SKLAPANJE"
+    },
+    {
+      "fullName": "Saša Trgovčević",
+      "departmentCode": "PRIJEM"
+    },
+    {
+      "fullName": "Danijela Vasić",
+      "departmentCode": "ADMINISTRACIJA"
+    },
+    {
+      "fullName": "Saša Veljković",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Miloš Ćebić",
+      "departmentCode": "SERVIS"
+    },
+    {
+      "fullName": "Vladimir Šafranko",
+      "departmentCode": "TURBINE"
+    },
+    {
+      "fullName": "Bojan Zdravković",
+      "departmentCode": "SERVIS"
+    },
+    {
+      "fullName": "Nenad Živanović",
+      "departmentCode": "BLOKOVI"
+    },
+    {
+      "fullName": "Marko Živanović",
+      "departmentCode": "SERVIS"
+    },
+    {
+      "fullName": "Tijana Životić",
+      "departmentCode": "NABAVKA"
+    },
+    {
+      "fullName": "Omer Živković",
+      "departmentCode": "PERIONICA"
+    },
+    {
+      "fullName": "Žikica Živković",
+      "departmentCode": "KONTROLA"
+    },
+    {
+      "fullName": "Nenad Živković",
+      "departmentCode": "CINKOVANJE"
+    }
+  ]
+}
