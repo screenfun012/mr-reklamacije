@@ -62,6 +62,18 @@ export class NotificationsService implements NotificationsPort {
     await this.repo.markAllRead(userId)
   }
 
+  /** No audit entry: clearing your own inbox is personal, not a business state change. */
+  async delete(userId: string, id: string): Promise<void> {
+    const removed = await this.repo.deleteOwn(userId, id)
+    if (!removed) {
+      throw new NotFoundError('Notification', id)
+    }
+  }
+
+  async deleteAll(userId: string): Promise<void> {
+    await this.repo.deleteAllOwn(userId)
+  }
+
   async snooze(userId: string, id: string, until: Date): Promise<void> {
     if (until.getTime() <= Date.now()) {
       throw new ValidationError('Snooze target must be in the future')

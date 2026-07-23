@@ -2,6 +2,7 @@ import {
   CustomerKind,
   customersReferenceOptions,
   departmentsReferenceOptions,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
@@ -77,6 +78,7 @@ async function renderWizard(): Promise<void> {
     MANUFACTURERS,
   )
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
   client.setQueryData(departmentsReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(externalPartiesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(

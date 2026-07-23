@@ -80,6 +80,12 @@ export class EmployeesRepository {
       conditions.push(eq(employees.departmentId, query.departmentId))
     }
 
+    // Only workers whose department feeds the "assigned worker" dropdown. The
+    // leftJoin below turns this into an inner filter (NULL department → excluded).
+    if (query.assignableOnly) {
+      conditions.push(eq(departments.providesAssignedWorkers, true))
+    }
+
     const searchCondition = buildSearchCondition(query.search)
     if (searchCondition !== undefined) {
       conditions.push(searchCondition)

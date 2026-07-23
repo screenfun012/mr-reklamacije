@@ -42,7 +42,11 @@ describe('Employees module', () => {
         deletedAt: new Date(),
       })
 
-      const result = await container.employeesRepository.list({ activeOnly: true, limit: 50 })
+      const result = await container.employeesRepository.list({
+        activeOnly: true,
+        assignableOnly: false,
+        limit: 50,
+      })
 
       expect(result.items.length).toBeGreaterThanOrEqual(24)
       expect(result.items.some((item) => item.fullName === 'Deleted Worker')).toBe(false)
@@ -52,6 +56,7 @@ describe('Employees module', () => {
       const departmentId = await getDepartmentIdByCode(ctx.db, 'BLOKOVI')
       const result = await container.employeesRepository.list({
         activeOnly: true,
+        assignableOnly: false,
         limit: 50,
         departmentId,
       })
@@ -60,13 +65,31 @@ describe('Employees module', () => {
       expect(result.items.every((item) => item.departmentId === departmentId)).toBe(true)
     })
 
+    it('filters to workers of assigned-worker departments only', async () => {
+      // SKLAPANJE is seeded with providesAssignedWorkers = true; it has employees.
+      const assemblyId = await getDepartmentIdByCode(ctx.db, 'SKLAPANJE')
+      const result = await container.employeesRepository.list({
+        activeOnly: true,
+        assignableOnly: true,
+        limit: 50,
+      })
+
+      expect(result.items.length).toBeGreaterThan(0)
+      expect(result.items.every((item) => item.departmentId === assemblyId)).toBe(true)
+    })
+
     it('paginates with cursor', async () => {
-      const firstPage = await container.employeesRepository.list({ activeOnly: true, limit: 2 })
+      const firstPage = await container.employeesRepository.list({
+        activeOnly: true,
+        assignableOnly: false,
+        limit: 2,
+      })
       expect(firstPage.hasMore).toBe(true)
       expect(firstPage.nextCursor).not.toBeNull()
 
       const secondPage = await container.employeesRepository.list({
         activeOnly: true,
+        assignableOnly: false,
         limit: 2,
         cursor: firstPage.nextCursor ?? undefined,
       })

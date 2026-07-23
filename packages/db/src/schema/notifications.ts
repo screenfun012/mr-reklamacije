@@ -22,8 +22,10 @@ import { users } from './access-control.js'
  * `data` carries only what the client needs to render a localized title (MR number,
  * customer name, outcome, catalog item name) — never claim internals.
  *
- * Rows are permanent (no soft delete): a notification is a log entry, and dismissing
- * a popup deliberately does NOT delete it — it stays unread in the bell.
+ * No soft delete: dismissing a popup deliberately does NOT remove the row — it
+ * stays unread in the bell. A user CAN explicitly delete their own rows (the
+ * inbox is one row per recipient, so that only clears their own bell), but the
+ * system never auto-prunes.
  */
 export const notifications = pgTable(
   'notifications',

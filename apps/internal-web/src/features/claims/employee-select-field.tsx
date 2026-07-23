@@ -15,6 +15,12 @@ interface EmployeeSelectFieldProps {
   onValueChange: (value: string) => void
   onBlur: () => void
   'aria-label'?: string
+  /**
+   * Name of the currently-assigned worker. The list is now limited to assembly
+   * workers, so a claim assigned to someone outside that set would otherwise lose
+   * its value on edit — keep them selectable so editing never silently clears it.
+   */
+  currentEmployeeName?: string | undefined
 }
 
 /**
@@ -30,7 +36,9 @@ export function EmployeeSelectField({
   onValueChange,
   onBlur,
   'aria-label': ariaLabel,
+  currentEmployeeName,
 }: EmployeeSelectFieldProps): React.ReactElement {
+  const currentIsListed = value.length > 0 && employees.some((employee) => employee.id === value)
   return (
     <Select
       value={value.length > 0 ? value : SELECT_EMPTY_SENTINEL}
@@ -44,6 +52,9 @@ export function EmployeeSelectField({
         <SelectItem value={SELECT_EMPTY_SENTINEL}>
           {m.emotive_claims_create_select_placeholder()}
         </SelectItem>
+        {!currentIsListed && value.length > 0 ? (
+          <SelectItem value={value}>{currentEmployeeName ?? value}</SelectItem>
+        ) : null}
         {employees.map((employee) => (
           <SelectItem key={employee.id} value={employee.id}>
             {employee.fullName}

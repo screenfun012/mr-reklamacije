@@ -59,6 +59,8 @@ interface StepBasicFieldsProps {
   disabled: boolean
   /** Create-only: detail edit reuses these fields, where the claim's own MR would false-positive. */
   checkMrDuplicate?: boolean
+  /** Edit-only: keep the claim's current assigned worker selectable if outside assembly. */
+  currentAssignedWorkerName?: string | undefined
 }
 
 export function StepBasicFields({
@@ -70,6 +72,7 @@ export function StepBasicFields({
   stepErrors,
   disabled,
   checkMrDuplicate = false,
+  currentAssignedWorkerName,
 }: StepBasicFieldsProps): React.ReactElement {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -235,6 +238,7 @@ export function StepBasicFields({
               aria-label={m.claims_field_assigned_worker()}
               onValueChange={field.handleChange}
               onBlur={field.handleBlur}
+              currentEmployeeName={currentAssignedWorkerName}
             />
           </InternalFieldGroup>
         )}

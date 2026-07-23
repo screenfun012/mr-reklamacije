@@ -7,6 +7,7 @@ interface DepartmentSeed {
   nameSr: string
   nameEn: string
   sortOrder: number
+  providesAssignedWorkers?: boolean
 }
 
 const DEPARTMENTS: DepartmentSeed[] = [
@@ -16,7 +17,15 @@ const DEPARTMENTS: DepartmentSeed[] = [
   { code: 'KLIPNJACE', nameSr: 'Klipnjače', nameEn: 'Connecting Rods', sortOrder: 40 },
   { code: 'RASKLAPANJE', nameSr: 'Rasklapanje', nameEn: 'Disassembly', sortOrder: 50 },
   { code: 'PERIONICA', nameSr: 'Perionica', nameEn: 'Parts Washing', sortOrder: 60 },
-  { code: 'SKLAPANJE', nameSr: 'Sklapanje', nameEn: 'Assembly', sortOrder: 70 },
+  // Assembly is where the "assigned worker" comes from — flagged so its workers
+  // populate that dropdown out of the box (admin can flag more departments later).
+  {
+    code: 'SKLAPANJE',
+    nameSr: 'Sklapanje',
+    nameEn: 'Assembly',
+    sortOrder: 70,
+    providesAssignedWorkers: true,
+  },
   { code: 'KONTROLA', nameSr: 'Kontrola', nameEn: 'Quality Control', sortOrder: 80 },
   { code: 'ZAVRSNA_KONTROLA', nameSr: 'Završna kontrola', nameEn: 'Final QC', sortOrder: 90 },
   { code: 'MAGACIN', nameSr: 'Magacin', nameEn: 'Warehouse', sortOrder: 100 },

@@ -23,6 +23,9 @@ export const departments = pgTable(
     nameEn: text('name_en').notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
+    // Workers of a flagged department populate the claim "assigned worker" dropdown
+    // (who assembled the engine). Fault attribution still lists every worker.
+    providesAssignedWorkers: boolean('provides_assigned_workers').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

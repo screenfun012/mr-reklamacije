@@ -2,7 +2,7 @@ import {
   ApiError,
   CustomerKind,
   customersReferenceOptions,
-  employeesReferenceOptions,
+  assignedWorkerReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
   type EmotiveClaimDetail,
@@ -151,7 +151,7 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
+  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
 
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -195,6 +195,7 @@ function BasicEditMode({
             ? { id: claim.engineTypeId, code: claim.engineTypeCode }
             : undefined
         }
+        currentAssignedWorkerName={claim.employeeName ?? undefined}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

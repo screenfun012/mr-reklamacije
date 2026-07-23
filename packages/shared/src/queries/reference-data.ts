@@ -30,7 +30,7 @@ export type EngineTypesReferenceFilters = Partial<
 >
 
 export type EmployeesReferenceFilters = Partial<
-  Pick<EmployeesListQuery, 'search' | 'activeOnly' | 'departmentId'>
+  Pick<EmployeesListQuery, 'search' | 'activeOnly' | 'departmentId' | 'assignableOnly'>
 >
 
 /** Canonical cache key for active-only catalog lookups (dropdowns). */
@@ -175,10 +175,20 @@ export function employeesReferenceOptions(filters: EmployeesReferenceFilters = {
         activeOnly: normalized.activeOnly ?? true,
         search: normalized.search,
         departmentId: normalized.departmentId,
+        assignableOnly: normalized.assignableOnly,
       }),
     staleTime: REFERENCE_STALE_MS,
     gcTime: REFERENCE_GC_MS,
   })
+}
+
+/**
+ * Workers eligible to be a claim's "assigned worker" — those whose department is
+ * flagged `providesAssignedWorkers` (Sklapanje by default, admin-configurable).
+ * Fault attribution deliberately uses the unfiltered `employeesReferenceOptions`.
+ */
+export function assignedWorkerReferenceOptions() {
+  return employeesReferenceOptions({ activeOnly: true, assignableOnly: true })
 }
 
 export function departmentsReferenceQueryKey(
@@ -226,6 +236,9 @@ export async function prefetchClaimEditReferences(queryClient: QueryClient): Pro
   await Promise.all([
     queryClient.ensureQueryData(departmentsReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
     queryClient.ensureQueryData(employeesReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
+    // Assigned-worker field uses a distinct (assembly-only) key — warm it too, else
+    // the create/edit forms flash a skeleton on open waiting for this one query.
+    queryClient.ensureQueryData(assignedWorkerReferenceOptions()),
     queryClient.ensureQueryData(externalPartiesReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
     queryClient.ensureQueryData(engineTypesReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),
     queryClient.ensureQueryData(engineManufacturersReferenceOptions(ACTIVE_REFERENCE_LOOKUP)),

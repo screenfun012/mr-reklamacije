@@ -128,6 +128,25 @@ export class NotificationsRepository {
     return updated.length > 0
   }
 
+  /**
+   * Removes one of the caller's own rows. Returns false when the row does not
+   * exist OR belongs to someone else (→ 404). Because the inbox is one row per
+   * recipient, this only clears it from this user's bell; others keep theirs.
+   */
+  async deleteOwn(userId: string, id: string): Promise<boolean> {
+    const removed = await this.db
+      .delete(notifications)
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning({ id: notifications.id })
+
+    return removed.length > 0
+  }
+
+  /** Clears the caller's whole inbox — their rows only. */
+  async deleteAllOwn(userId: string): Promise<void> {
+    await this.db.delete(notifications).where(eq(notifications.userId, userId))
+  }
+
   async insertMany(rows: readonly NotificationInsert[]): Promise<CreatedNotification[]> {
     if (rows.length === 0) {
       return []

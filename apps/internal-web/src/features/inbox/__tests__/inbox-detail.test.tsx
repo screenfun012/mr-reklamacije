@@ -2,6 +2,7 @@ import {
   ClientSubmissionStatus,
   clientSubmissionAttachmentsOptions,
   clientSubmissionDetailOptions,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
@@ -95,6 +96,7 @@ function seedClient(): QueryClient {
     MANUFACTURERS,
   )
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
   client.setQueryData(
     engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
     ENGINE_TYPES,

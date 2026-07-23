@@ -101,6 +101,7 @@ export {
   departmentsReferenceOptions,
   departmentsReferenceQueryKey,
   EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   employeesReferenceQueryKey,
   engineTypesReferenceOptions,
@@ -126,6 +127,8 @@ export {
 } from './users.js'
 export { completeActivation } from './activation.js'
 export {
+  deleteAllNotifications,
+  deleteNotification,
   markAllNotificationsRead,
   markNotificationRead,
   notificationKeys,

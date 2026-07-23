@@ -31,6 +31,12 @@ export type ReferenceListQuery = z.infer<typeof ReferenceListQuerySchema>
 
 export const EmployeesListQuerySchema = ReferenceListQuerySchema.extend({
   departmentId: z.string().uuid().optional(),
+  // Only workers whose department is flagged as an "assigned worker" source.
+  // Defaults to off (absent = every worker) — opt in with `assignableOnly=true`.
+  assignableOnly: z
+    .string()
+    .optional()
+    .transform((value: string | undefined) => value === 'true'),
 })
 
 export type EmployeesListQuery = z.infer<typeof EmployeesListQuerySchema>
@@ -262,6 +268,7 @@ export const DepartmentListItemSchema = z.object({
   nameEn: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  providesAssignedWorkers: z.boolean(),
   usageCount: z.number().int().nonnegative(),
 })
 
@@ -272,6 +279,7 @@ export const DepartmentCreateInputSchema = z.object({
   nameSr: z.string().trim().min(1).max(200),
   nameEn: z.string().trim().min(1).max(200),
   sortOrder: z.number().int().min(0).optional(),
+  providesAssignedWorkers: z.boolean().optional(),
 })
 
 export type DepartmentCreateInput = z.infer<typeof DepartmentCreateInputSchema>
@@ -282,6 +290,7 @@ export const DepartmentUpdateInputSchema = z
     nameEn: z.string().trim().min(1).max(200).optional(),
     sortOrder: z.number().int().min(0).optional(),
     isActive: z.boolean().optional(),
+    providesAssignedWorkers: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field must be provided',

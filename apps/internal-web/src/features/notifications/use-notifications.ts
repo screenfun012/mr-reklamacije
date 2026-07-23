@@ -1,4 +1,6 @@
 import {
+  deleteAllNotifications,
+  deleteNotification,
   markAllNotificationsRead,
   markNotificationRead,
   notificationKeys,
@@ -86,6 +88,68 @@ export function useMarkAllNotificationsRead(): UseMutationResult<void, Error, vo
         queryClient.setQueryData<NotificationListResponse>(key, {
           ...previous,
           items: previous.items.map((item) => ({ ...item, isRead: true })),
+          unreadCount: 0,
+        })
+      }
+      return { previous }
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous)
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.lists() })
+    },
+  })
+}
+
+/** Optimistically drops one row from the inbox, then rolls back if the server refuses. */
+export function useDeleteNotification(): UseMutationResult<void, Error, string> {
+  const queryClient = useQueryClient()
+  const key = notificationKeys.list(FIRST_PAGE)
+
+  return useMutation<void, Error, string, { previous: NotificationListResponse | undefined }>({
+    mutationFn: (id) => deleteNotification(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<NotificationListResponse>(key)
+      if (previous !== undefined) {
+        queryClient.setQueryData<NotificationListResponse>(key, {
+          ...previous,
+          items: previous.items.filter((item) => item.id !== id),
+          total: Math.max(0, previous.total - 1),
+          unreadCount: Math.max(0, previous.unreadCount - (isUnread(previous, id) ? 1 : 0)),
+        })
+      }
+      return { previous }
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, context.previous)
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.lists() })
+    },
+  })
+}
+
+/** Clears the whole inbox at once. */
+export function useDeleteAllNotifications(): UseMutationResult<void, Error, void> {
+  const queryClient = useQueryClient()
+  const key = notificationKeys.list(FIRST_PAGE)
+
+  return useMutation<void, Error, void, { previous: NotificationListResponse | undefined }>({
+    mutationFn: () => deleteAllNotifications(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<NotificationListResponse>(key)
+      if (previous !== undefined) {
+        queryClient.setQueryData<NotificationListResponse>(key, {
+          ...previous,
+          items: [],
+          total: 0,
           unreadCount: 0,
         })
       }

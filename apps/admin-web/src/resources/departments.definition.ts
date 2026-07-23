@@ -64,6 +64,14 @@ export const departmentsResourceDefinition: ResourceDefinition<
       cellClassName: 'tabular-nums',
     },
     {
+      id: 'providesAssignedWorkers',
+      header: () => m.field_provides_assigned_workers(),
+      cell: (item) =>
+        item.providesAssignedWorkers
+          ? m.admin_departments_active_yes()
+          : m.admin_departments_active_no(),
+    },
+    {
       id: 'isActive',
       header: () => m.field_active(),
       cell: (item) =>
@@ -101,6 +109,15 @@ export const departmentsResourceDefinition: ResourceDefinition<
       label: () => m.field_sort_order(),
       type: 'number',
     },
+    {
+      key: 'providesAssignedWorkers',
+      label: () => m.field_provides_assigned_workers(),
+      type: 'select',
+      options: () => [
+        { value: 'false', label: m.admin_departments_active_no() },
+        { value: 'true', label: m.admin_departments_active_yes() },
+      ],
+    },
   ],
   createSchema: DepartmentCreateInputSchema as unknown as z.ZodType<DepartmentCreateInput>,
   updateSchema: DepartmentUpdateInputSchema as unknown as z.ZodType<DepartmentUpdateInput>,
@@ -125,17 +142,20 @@ export const departmentsResourceDefinition: ResourceDefinition<
     nameSr: item?.nameSr ?? '',
     nameEn: item?.nameEn ?? '',
     sortOrder: item?.sortOrder !== undefined ? String(item.sortOrder) : '',
+    providesAssignedWorkers: item?.providesAssignedWorkers ? 'true' : 'false',
   }),
   buildCreateBody: (values) => ({
     code: (values['code'] ?? '').trim(),
     nameSr: (values['nameSr'] ?? '').trim(),
     nameEn: (values['nameEn'] ?? '').trim(),
     sortOrder: parseOptionalInt(values['sortOrder'] ?? ''),
+    providesAssignedWorkers: values['providesAssignedWorkers'] === 'true',
   }),
   buildUpdateBody: (values) => ({
     nameSr: (values['nameSr'] ?? '').trim(),
     nameEn: (values['nameEn'] ?? '').trim(),
     sortOrder: parseOptionalInt(values['sortOrder'] ?? ''),
+    providesAssignedWorkers: values['providesAssignedWorkers'] === 'true',
   }),
   getDeactivateTargetLabel: (item) => item.nameSr,
   listConfig: {

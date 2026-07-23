@@ -1,6 +1,6 @@
 import {
   ApiError,
-  employeesReferenceOptions,
+  assignedWorkerReferenceOptions,
   engineManufacturersReferenceOptions,
   formatFieldError,
   type ClientSubmissionDetail,
@@ -61,7 +61,7 @@ export function ConvertClaimForm({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
+  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
 
   const convertMutation = useConvertSubmission(submission.id)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})

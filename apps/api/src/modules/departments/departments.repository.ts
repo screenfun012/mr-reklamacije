@@ -36,6 +36,7 @@ interface DepartmentRow {
   nameEn: string
   sortOrder: number
   isActive: boolean
+  providesAssignedWorkers: boolean
   usageCount: number
 }
 
@@ -47,6 +48,7 @@ function mapDepartmentRow(row: DepartmentRow): DepartmentListItem {
     nameEn: row.nameEn,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+    providesAssignedWorkers: row.providesAssignedWorkers,
     usageCount: row.usageCount,
   }
 }
@@ -58,6 +60,7 @@ const DEPARTMENT_COLUMNS = {
   nameEn: departments.nameEn,
   sortOrder: departments.sortOrder,
   isActive: departments.isActive,
+  providesAssignedWorkers: departments.providesAssignedWorkers,
 } as const
 
 export class DepartmentsRepository {
@@ -135,6 +138,7 @@ export class DepartmentsRepository {
         nameEn: input.nameEn,
         sortOrder: input.sortOrder ?? 0,
         isActive: true,
+        providesAssignedWorkers: input.providesAssignedWorkers ?? false,
       })
       .returning(DEPARTMENT_COLUMNS)
 
@@ -153,6 +157,9 @@ export class DepartmentsRepository {
         ...(input.nameEn !== undefined ? { nameEn: input.nameEn } : {}),
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(input.providesAssignedWorkers !== undefined
+          ? { providesAssignedWorkers: input.providesAssignedWorkers }
+          : {}),
       })
       .where(and(eq(departments.id, id), isNull(departments.deletedAt)))
       .returning(DEPARTMENT_COLUMNS)

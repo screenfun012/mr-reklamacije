@@ -5,6 +5,7 @@ import {
   CustomerKind,
   customersReferenceOptions,
   emotiveClaimDetailOptions,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
@@ -132,6 +133,7 @@ function renderDetail(
     MANUFACTURERS,
   )
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>

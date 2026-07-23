@@ -37,6 +37,16 @@ export function markAllNotificationsRead(): Promise<void> {
   return fetchNoContent('/api/notifications/mark-all-read', { method: 'POST' })
 }
 
+/** Removes one of the caller's own rows — clears it from their bell only. */
+export function deleteNotification(id: string): Promise<void> {
+  return fetchNoContent(`/api/notifications/${id}`, { method: 'DELETE' })
+}
+
+/** Clears the caller's whole inbox. */
+export function deleteAllNotifications(): Promise<void> {
+  return fetchNoContent('/api/notifications', { method: 'DELETE' })
+}
+
 /** Postpones this notification's popup until `until`; it stays unread meanwhile. */
 export function snoozeNotification(id: string, until: Date): Promise<void> {
   return fetchNoContent(`/api/notifications/${id}/snooze`, {

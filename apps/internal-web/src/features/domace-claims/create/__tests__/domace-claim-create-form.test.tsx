@@ -1,5 +1,6 @@
 import {
   departmentsReferenceOptions,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
@@ -48,6 +49,7 @@ async function renderForm(): Promise<void> {
     MANUFACTURERS,
   )
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
   client.setQueryData(departmentsReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(externalPartiesReferenceOptions({ activeOnly: true }).queryKey, [])
 

@@ -264,6 +264,46 @@ describe('Notifications integration', () => {
       expect(markAll.status).toBe(204)
       expect((await service.list(userId, { page: 1, pageSize: 20 })).unreadCount).toBe(0)
     })
+
+    it('deletes one of the caller rows and drops it from the inbox', async () => {
+      const userId = await createUser('Deleter')
+      await seedNotifications(userId, 2)
+      const [row] = await service.list(userId, { page: 1, pageSize: 20 }).then((r) => r.items)
+      if (row === undefined) throw new Error('unreachable')
+
+      await service.delete(userId, row.id)
+
+      const result = await service.list(userId, { page: 1, pageSize: 20 })
+      expect(result.total).toBe(1)
+      expect(result.items.some((item) => item.id === row.id)).toBe(false)
+    })
+
+    it("404s (never 403) on another user's notification for delete", async () => {
+      const owner = await createUser('Delete Owner')
+      const intruder = await createUser('Delete Intruder')
+      await seedNotifications(owner, 1)
+      const [row] = await service.list(owner, { page: 1, pageSize: 20 }).then((r) => r.items)
+      if (row === undefined) throw new Error('unreachable')
+
+      const app = createNotificationsTestApp(container, testUser([VIEW_OWN], intruder))
+      const response = await app.request(`/api/notifications/${row.id}`, { method: 'DELETE' })
+      expect(response.status).toBe(404)
+
+      // The owner still has it — a foreign delete changed nothing.
+      expect((await service.list(owner, { page: 1, pageSize: 20 })).total).toBe(1)
+    })
+
+    it('clears the whole inbox for the caller only', async () => {
+      const owner = await createUser('Clear Owner')
+      const stranger = await createUser('Clear Stranger')
+      await seedNotifications(owner, 3)
+      await seedNotifications(stranger, 2)
+
+      await service.deleteAll(owner)
+
+      expect((await service.list(owner, { page: 1, pageSize: 20 })).total).toBe(0)
+      expect((await service.list(stranger, { page: 1, pageSize: 20 })).total).toBe(2)
+    })
   })
 
   describe('fan-out', () => {

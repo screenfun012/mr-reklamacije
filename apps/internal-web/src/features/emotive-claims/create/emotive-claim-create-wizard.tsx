@@ -6,6 +6,7 @@ import {
   CustomerKind,
   customersReferenceOptions,
   departmentsReferenceOptions,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
@@ -53,6 +54,8 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  // Assigned worker comes from assembly only; fault attribution lists every worker.
+  const { data: assignedWorkers } = useSuspenseQuery(assignedWorkerReferenceOptions())
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const { data: departments } = useSuspenseQuery(departmentsReferenceOptions({ activeOnly: true }))
   const { data: externalParties } = useSuspenseQuery(
@@ -149,7 +152,7 @@ export function EmotiveClaimCreateWizard(): React.ReactElement {
             <StepBasicFields
               form={form}
               customers={customers}
-              employees={employees}
+              employees={assignedWorkers}
               manufacturers={manufacturers}
               stepErrors={stepErrors}
               disabled={isPending}

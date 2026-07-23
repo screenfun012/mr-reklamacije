@@ -1,7 +1,7 @@
 import {
   ApiError,
   ClaimOutcome,
-  employeesReferenceOptions,
+  assignedWorkerReferenceOptions,
   engineManufacturersReferenceOptions,
   type DomaceClaimDetail,
 } from '@mr/shared'
@@ -60,7 +60,7 @@ function FullOverviewEdit({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
+  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const mutation = useUpdateDomaceClaimBasic(claim.id)
@@ -115,6 +115,7 @@ function FullOverviewEdit({
               ? { id: claim.engineTypeId, code: claim.engineTypeCode }
               : undefined
           }
+          currentAssignedWorkerName={claim.employeeName ?? undefined}
           stepErrors={stepErrors}
           disabled={mutation.isPending}
         />

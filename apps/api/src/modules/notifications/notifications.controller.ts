@@ -38,6 +38,19 @@ export function createNotificationsController(container: Container) {
       return c.body(null, 204)
     },
 
+    delete: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = NotificationIdParamSchema.parse({ id: c.req.param('id') })
+      await container.notificationsService.delete(user.id, id)
+      return c.body(null, 204)
+    },
+
+    deleteAll: async (c: Context) => {
+      const user = requireUser(c)
+      await container.notificationsService.deleteAll(user.id)
+      return c.body(null, 204)
+    },
+
     snooze: async (c: Context) => {
       const user = requireUser(c)
       const { id } = NotificationIdParamSchema.parse({ id: c.req.param('id') })

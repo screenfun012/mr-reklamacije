@@ -20,8 +20,10 @@ export function registerNotificationsRoutes(
 
   routes.get('/', gate, controller.list)
   routes.post('/mark-all-read', gate, controller.markAllRead)
+  routes.delete('/', gate, controller.deleteAll)
   routes.post('/:id/read', gate, controller.markRead)
   routes.post('/:id/snooze', gate, controller.snooze)
+  routes.delete('/:id', gate, controller.delete)
 
   app.route('/api/notifications', routes)
 }

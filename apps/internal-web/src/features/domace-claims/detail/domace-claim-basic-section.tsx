@@ -1,6 +1,6 @@
 import {
   ApiError,
-  employeesReferenceOptions,
+  assignedWorkerReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
   type DomaceClaimDetail,
@@ -153,7 +153,7 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
+  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const mutation = useUpdateDomaceClaimBasic(claim.id)
@@ -197,6 +197,7 @@ function BasicEditMode({
             ? { id: claim.engineTypeId, code: claim.engineTypeCode }
             : undefined
         }
+        currentAssignedWorkerName={claim.employeeName ?? undefined}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

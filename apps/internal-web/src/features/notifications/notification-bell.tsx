@@ -2,7 +2,7 @@ import { getLocale, m } from '@mr/i18n'
 import { formatTimeAgo, type NotificationItem } from '@mr/shared'
 import { cn, Popover, PopoverContent, PopoverTrigger } from '@mr/ui'
 import { useNavigate } from '@tanstack/react-router'
-import { Bell } from 'lucide-react'
+import { Bell, Trash2 } from 'lucide-react'
 
 import {
   notificationEyebrow,
@@ -13,6 +13,8 @@ import {
 import { useNotificationsUi } from './notifications-context'
 import {
   useCanSeeNotifications,
+  useDeleteAllNotifications,
+  useDeleteNotification,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
@@ -28,6 +30,8 @@ export function NotificationBell(): React.ReactElement | null {
   const { data, isPending, isError, refetch } = useNotifications()
   const markRead = useMarkNotificationRead()
   const markAllRead = useMarkAllNotificationsRead()
+  const deleteOne = useDeleteNotification()
+  const deleteAll = useDeleteAllNotifications()
   const navigate = useNavigate()
 
   if (!canSee) {
@@ -72,14 +76,24 @@ export function NotificationBell(): React.ReactElement | null {
       <PopoverContent align="end" sideOffset={10} className={PANEL_CLASSES}>
         <div className="flex items-center justify-between gap-3 border-b border-[var(--mrg-sep)] px-4 py-3.5">
           <span className="text-[14.5px] font-bold">{m.notifications_title()}</span>
-          <button
-            type="button"
-            disabled={unreadCount === 0 || markAllRead.isPending}
-            onClick={() => markAllRead.mutate()}
-            className="text-[12.5px] text-[var(--mrg-text2)] transition-colors hover:text-[var(--mrg-text)] disabled:pointer-events-none disabled:opacity-45"
-          >
-            {m.notifications_mark_all_read()}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={unreadCount === 0 || markAllRead.isPending}
+              onClick={() => markAllRead.mutate()}
+              className="text-[12.5px] text-[var(--mrg-text2)] transition-colors hover:text-[var(--mrg-text)] disabled:pointer-events-none disabled:opacity-45"
+            >
+              {m.notifications_mark_all_read()}
+            </button>
+            <button
+              type="button"
+              disabled={items.length === 0 || deleteAll.isPending}
+              onClick={() => deleteAll.mutate()}
+              className="text-[12.5px] text-[var(--mrg-text2)] transition-colors hover:text-mri-redh disabled:pointer-events-none disabled:opacity-45"
+            >
+              {m.notifications_delete_all()}
+            </button>
+          </div>
         </div>
 
         {isPending ? <NotificationSkeleton /> : null}
@@ -87,7 +101,12 @@ export function NotificationBell(): React.ReactElement | null {
         {!isPending && !isError && items.length === 0 ? <NotificationEmpty /> : null}
 
         {items.map((item) => (
-          <NotificationRow key={item.id} item={item} onOpen={() => openNotification(item)} />
+          <NotificationRow
+            key={item.id}
+            item={item}
+            onOpen={() => openNotification(item)}
+            onDelete={() => deleteOne.mutate(item.id)}
+          />
         ))}
       </PopoverContent>
     </Popover>
@@ -97,54 +116,66 @@ export function NotificationBell(): React.ReactElement | null {
 function NotificationRow({
   item,
   onOpen,
+  onDelete,
 }: {
   item: NotificationItem
   onOpen: () => void
+  onDelete: () => void
 }): React.ReactElement {
   const Icon = notificationIcon(item.type)
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-start gap-3 px-4 py-[13px] text-left transition-colors hover:bg-[var(--mrg-hover)]"
-    >
-      {item.isRead ? (
-        // Spacer, not a dot — read and unread rows must keep the same columns.
-        <span aria-hidden="true" className="mt-1.5 size-[7px] flex-none" />
-      ) : (
-        <span
+    <div className="group relative flex items-start transition-colors hover:bg-[var(--mrg-hover)]">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-start gap-3 py-[13px] pl-4 pr-2 text-left"
+      >
+        {item.isRead ? (
+          // Spacer, not a dot — read and unread rows must keep the same columns.
+          <span aria-hidden="true" className="mt-1.5 size-[7px] flex-none" />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="mt-1.5 size-[7px] flex-none rounded-full bg-mri-redh shadow-[0_0_8px_rgba(237,28,36,0.8)]"
+          />
+        )}
+        <Icon
+          className={cn('mt-0.5 size-[17px] flex-none', item.isRead && 'opacity-75')}
+          style={{ color: 'var(--mrg-icon)' }}
           aria-hidden="true"
-          className="mt-1.5 size-[7px] flex-none rounded-full bg-mri-redh shadow-[0_0_8px_rgba(237,28,36,0.8)]"
         />
-      )}
-      <Icon
-        className={cn('mt-0.5 size-[17px] flex-none', item.isRead && 'opacity-75')}
-        style={{ color: 'var(--mrg-icon)' }}
-        aria-hidden="true"
-      />
-      <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            'block text-[13.5px] leading-snug',
-            item.isRead
-              ? 'font-medium text-[var(--mrg-text2)]'
-              : 'font-semibold text-[var(--mrg-text)]',
-          )}
-        >
-          {notificationTitle(item)}
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              'block text-[13.5px] leading-snug',
+              item.isRead
+                ? 'font-medium text-[var(--mrg-text2)]'
+                : 'font-semibold text-[var(--mrg-text)]',
+            )}
+          >
+            {notificationTitle(item)}
+          </span>
+          <span
+            className={cn(
+              'mt-1 block font-mono text-[11px] text-[var(--mrg-text2)]',
+              item.isRead && 'opacity-75',
+            )}
+          >
+            {notificationEyebrow(item.type)} ·{' '}
+            {formatTimeAgo(item.createdAt, getLocale(), new Date())}
+          </span>
         </span>
-        <span
-          className={cn(
-            'mt-1 block font-mono text-[11px] text-[var(--mrg-text2)]',
-            item.isRead && 'opacity-75',
-          )}
-        >
-          {notificationEyebrow(item.type)} ·{' '}
-          {formatTimeAgo(item.createdAt, getLocale(), new Date())}
-        </span>
-      </span>
-    </button>
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={m.notifications_delete()}
+        className="mr-2 mt-[11px] grid size-7 flex-none place-items-center rounded-[7px] text-[var(--mrg-text2)] opacity-0 transition-all hover:bg-mri-redh/12 hover:text-mri-redh focus-visible:opacity-100 group-hover:opacity-100"
+      >
+        <Trash2 className="size-[15px]" aria-hidden="true" />
+      </button>
+    </div>
   )
 }
 

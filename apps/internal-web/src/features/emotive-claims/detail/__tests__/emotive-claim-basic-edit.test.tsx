@@ -3,6 +3,7 @@ import {
   ClaimOutcome,
   CustomerKind,
   customersReferenceOptions,
+  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
@@ -85,6 +86,7 @@ function renderLegacyOrphanSection(): void {
     MANUFACTURERS,
   )
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
@@ -144,6 +146,7 @@ function renderSection(canEdit: boolean): void {
     MANUFACTURERS,
   )
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
