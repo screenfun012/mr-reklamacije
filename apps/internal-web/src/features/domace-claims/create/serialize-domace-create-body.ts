@@ -18,7 +18,10 @@ export function serializeDomaceCreateBody(input: DomaceClaimCreateInput): Record
     employeeId: input.employeeId,
     internalNotes: input.internalNotes,
     outcome: input.outcome,
-    totalAmount: input.totalAmount,
+    invoiceNumber: input.invoiceNumber,
+    originalInvoiceAmount: input.originalInvoiceAmount,
+    partsAmount: input.partsAmount,
+    laborAmount: input.laborAmount,
     faults: input.faults,
   }
 }

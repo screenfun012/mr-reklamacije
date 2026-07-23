@@ -1,6 +1,6 @@
 import {
   ApiError,
-  assignedWorkerReferenceOptions,
+  employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
   type DomaceClaimDetail,
@@ -105,6 +105,10 @@ export function DomaceClaimBasicReadOnly({
         )}
         <DetailItem label={m.domace_claims_create_field_claim_number()} value={claim.claimNumber} />
         <DetailItem
+          label={m.domace_claims_create_field_invoice_number()}
+          value={claim.invoiceNumber}
+        />
+        <DetailItem
           label={m.domace_claims_create_field_customer_name()}
           value={claim.customerName}
         />
@@ -153,7 +157,7 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
+  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const mutation = useUpdateDomaceClaimBasic(claim.id)

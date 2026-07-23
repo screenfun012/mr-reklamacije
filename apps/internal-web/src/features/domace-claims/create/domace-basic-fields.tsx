@@ -1,11 +1,11 @@
-import { formatFieldError } from '@mr/shared'
+import { computeDomaceTotal, formatEuroAmount, formatFieldError } from '@mr/shared'
 import type { EmployeeListItem, EngineManufacturerListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 
 import { InternalFieldGroup } from '~/components/internal-field-group'
+import { emptyToAmount } from './domace-claim-create-schemas.js'
 
-import { EmployeeSelectField } from '../../claims/employee-select-field.js'
 import { EngineTypeSearchableSelectField } from '../../claims/engine-type-searchable-select-field.js'
 import { MrDuplicateWarning } from '../../claims/mr-duplicate-warning.js'
 import type { EngineTypeOrphanOption } from '../../claims/engine-type-options.js'
@@ -81,6 +81,25 @@ export function DomaceBasicFields({
           <InternalFieldGroup id="claimNumber" label={m.domace_claims_create_field_claim_number()}>
             <Input
               id="claimNumber"
+              className={FORM_CONTROL_CLASS}
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              disabled={disabled}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="invoiceNumber"
+        children={(field) => (
+          <InternalFieldGroup
+            id="invoiceNumber"
+            label={m.domace_claims_create_field_invoice_number()}
+          >
+            <Input
+              id="invoiceNumber"
               className={FORM_CONTROL_CLASS}
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
@@ -188,20 +207,41 @@ export function DomaceBasicFields({
 
       <form.Field
         name="employeeId"
-        children={(field) => (
-          <InternalFieldGroup id="employeeId" label={m.claims_field_assigned_worker()}>
-            <EmployeeSelectField
-              id="employeeId"
-              value={field.state.value}
-              employees={employees}
-              disabled={disabled}
-              aria-label={m.claims_field_assigned_worker()}
-              onValueChange={field.handleChange}
-              onBlur={field.handleBlur}
-              currentEmployeeName={currentAssignedWorkerName}
-            />
-          </InternalFieldGroup>
-        )}
+        children={(field) => {
+          // ZAPOSLENI for DOMACE = any active employee, searchable. Keep the
+          // claim's current worker selectable even if since deactivated.
+          const options = employees.map((employee) => ({
+            value: employee.id,
+            label: employee.fullName,
+          }))
+          if (
+            field.state.value !== '' &&
+            !options.some((option) => option.value === field.state.value)
+          ) {
+            options.unshift({
+              value: field.state.value,
+              label: currentAssignedWorkerName ?? field.state.value,
+            })
+          }
+          return (
+            <InternalFieldGroup id="employeeId" label={m.domace_claims_create_field_employee()}>
+              <SearchableSelect
+                id="employeeId"
+                className={FORM_CONTROL_CLASS}
+                value={field.state.value}
+                options={options}
+                placeholder={m.emotive_claims_create_select_placeholder()}
+                searchPlaceholder={m.field_search_placeholder()}
+                emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+                noResultsLabel={m.field_no_results()}
+                disabled={disabled}
+                aria-label={m.domace_claims_create_field_employee()}
+                onValueChange={field.handleChange}
+                onBlur={field.handleBlur}
+              />
+            </InternalFieldGroup>
+          )
+        }}
       />
 
       <form.Field
@@ -247,6 +287,101 @@ export function DomaceBasicFields({
           </InternalFieldGroup>
         )}
       />
+
+      <form.Field
+        name="originalInvoiceAmount"
+        children={(field) => (
+          <InternalFieldGroup
+            id="originalInvoiceAmount"
+            label={m.domace_claims_create_field_original_invoice_amount()}
+            error={
+              stepErrors['originalInvoiceAmount'] ?? formatFieldError(field.state.meta.errors[0])
+            }
+          >
+            <Input
+              id="originalInvoiceAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              className={FORM_CONTROL_CLASS}
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              disabled={disabled}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="partsAmount"
+        children={(field) => (
+          <InternalFieldGroup
+            id="partsAmount"
+            label={m.domace_claims_create_field_parts_amount()}
+            error={stepErrors['partsAmount'] ?? formatFieldError(field.state.meta.errors[0])}
+          >
+            <Input
+              id="partsAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              className={FORM_CONTROL_CLASS}
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              disabled={disabled}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="laborAmount"
+        children={(field) => (
+          <InternalFieldGroup
+            id="laborAmount"
+            label={m.domace_claims_create_field_labor_amount()}
+            error={stepErrors['laborAmount'] ?? formatFieldError(field.state.meta.errors[0])}
+          >
+            <Input
+              id="laborAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              className={FORM_CONTROL_CLASS}
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              disabled={disabled}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <InternalFieldGroup id="domaceTotal" label={m.domace_claims_create_field_total()}>
+        <form.Subscribe
+          selector={(state) => {
+            const total = computeDomaceTotal(
+              emptyToAmount(state.values.partsAmount),
+              emptyToAmount(state.values.laborAmount),
+            )
+            return total === null ? '—' : formatEuroAmount(total)
+          }}
+        >
+          {(total) => (
+            <output
+              id="domaceTotal"
+              className={`${FORM_CONTROL_CLASS} flex items-center font-mono tabular-nums`}
+            >
+              {total}
+            </output>
+          )}
+        </form.Subscribe>
+      </InternalFieldGroup>
 
       <form.Field
         name="warrantyReport"

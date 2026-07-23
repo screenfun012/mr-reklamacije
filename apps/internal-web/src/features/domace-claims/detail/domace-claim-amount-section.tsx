@@ -1,15 +1,35 @@
-import { ApiError, ClaimOutcome, formatEuroAmount, type DomaceClaimDetail } from '@mr/shared'
+import { formatEuroAmount, type DomaceClaimDetail } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Input } from '@mr/ui'
 
 interface DomaceClaimAmountSectionProps {
   claim: DomaceClaimDetail
 }
 
+function AmountRow({ label, value }: { label: string; value: number | null }): React.ReactElement {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="text-sm text-mri-text2">{label}</span>
+      <span className="font-mono text-sm tabular-nums text-mri-text">
+        {value === null ? '—' : formatEuroAmount(value)}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Read-only DOMACE money breakdown (docs/23): original invoice, parts ex-VAT,
+ * labor ex-VAT, and the computed UKUPNO. Shown once any amount is recorded —
+ * amounts are captured in any outcome state now, not only when accepted.
+ */
 export function DomaceClaimAmountSection({
   claim,
 }: DomaceClaimAmountSectionProps): React.ReactElement | null {
-  if (claim.outcome !== ClaimOutcome.Accepted) {
+  const hasAny =
+    claim.originalInvoiceAmount !== null ||
+    claim.partsAmount !== null ||
+    claim.laborAmount !== null ||
+    claim.totalAmount !== null
+  if (!hasAny) {
     return null
   }
 
@@ -19,71 +39,17 @@ export function DomaceClaimAmountSection({
         {m.domace_claims_detail_section_amount()}
       </h2>
 
-      {claim.totalAmount !== null ? (
-        <p className="text-sm text-mri-text2">
-          {m.domace_claims_detail_amount_current()}:{' '}
-          <span className="font-medium text-mri-text">{formatEuroAmount(claim.totalAmount)}</span>
-        </p>
-      ) : null}
+      <div className="flex flex-col gap-2">
+        <AmountRow
+          label={m.domace_claims_create_field_original_invoice_amount()}
+          value={claim.originalInvoiceAmount}
+        />
+        <AmountRow label={m.domace_claims_create_field_parts_amount()} value={claim.partsAmount} />
+        <AmountRow label={m.domace_claims_create_field_labor_amount()} value={claim.laborAmount} />
+        <div className="mt-1 border-t border-mri-border pt-2">
+          <AmountRow label={m.domace_claims_create_field_total()} value={claim.totalAmount} />
+        </div>
+      </div>
     </section>
   )
-}
-
-export function DomaceClaimAmountEditField({
-  amountInput,
-  onAmountInputChange,
-  disabled,
-}: {
-  amountInput: string
-  onAmountInputChange: (value: string) => void
-  disabled?: boolean
-}): React.ReactElement {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor="repairAmount" className="text-sm font-medium">
-        {m.domace_claims_detail_field_repair_cost()}
-      </label>
-      <Input
-        id="repairAmount"
-        type="number"
-        min="0"
-        step="0.01"
-        inputMode="decimal"
-        value={amountInput}
-        onChange={(event) => onAmountInputChange(event.target.value)}
-        disabled={disabled === true}
-        placeholder="0,00"
-      />
-    </div>
-  )
-}
-
-export function formatAmountInput(value: number | null): string {
-  if (value === null) {
-    return ''
-  }
-  return String(value)
-}
-
-export function parseDomaceAmountInput(
-  amountInput: string,
-): { ok: true; value: number | null } | { ok: false; error: string } {
-  const trimmed = amountInput.trim()
-  if (trimmed === '') {
-    return { ok: true, value: null }
-  }
-
-  const parsed = Number(trimmed.replace(',', '.'))
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return { ok: false, error: m.domace_claims_detail_amount_invalid() }
-  }
-
-  return { ok: true, value: parsed }
-}
-
-export function resolveAmountSaveError(error: unknown): string {
-  if (error instanceof ApiError) {
-    return error.message
-  }
-  return m.domace_claims_detail_amount_save_error()
 }

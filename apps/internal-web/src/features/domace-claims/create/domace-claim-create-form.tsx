@@ -6,7 +6,6 @@ import { useState } from 'react'
 import {
   CLAIM_DETAIL_DEFAULT_SEARCH,
   departmentsReferenceOptions,
-  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
@@ -41,8 +40,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  // Assigned worker comes from assembly only; fault attribution lists every worker.
-  const { data: assignedWorkers } = useSuspenseQuery(assignedWorkerReferenceOptions())
+  // DOMACE lists every active worker (not assembly-only) for both ZAPOSLENI and faults.
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const { data: departments } = useSuspenseQuery(departmentsReferenceOptions({ activeOnly: true }))
   const { data: externalParties } = useSuspenseQuery(
@@ -112,7 +110,7 @@ export function DomaceClaimCreateForm(): React.ReactElement {
           </h2>
           <DomaceBasicFields
             form={form}
-            employees={assignedWorkers}
+            employees={employees}
             manufacturers={manufacturers}
             stepErrors={stepErrors}
             disabled={isPending}

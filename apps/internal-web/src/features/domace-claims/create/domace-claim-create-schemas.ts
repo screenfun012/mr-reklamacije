@@ -29,12 +29,21 @@ const optionalDateField = z
     message: m.emotive_claims_create_field_date_invalid(),
   })
 
+/** Empty, or a non-negative number — the money inputs (docs/23). */
+const optionalAmountField = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0), {
+    message: m.domace_claims_field_amount_invalid(),
+  })
+
 /**
  * Shared field validators for DOMACE create and detail basic edit forms.
  */
 export const domaceClaimBasicFieldsSchema = z.object({
   mrNumber: z.string().trim().max(50),
   claimNumber: z.string().trim().max(50),
+  invoiceNumber: z.string().trim().max(50),
   customerName: z.string().trim().max(255),
   manufacturerId: z.string().trim(),
   engineTypeId: z.string().trim(),
@@ -43,6 +52,9 @@ export const domaceClaimBasicFieldsSchema = z.object({
   dateOfClaim: optionalDateField,
   warrantyReport: z.string().trim().max(8000),
   employeeId: z.string().trim(),
+  originalInvoiceAmount: optionalAmountField,
+  partsAmount: optionalAmountField,
+  laborAmount: optionalAmountField,
 })
 
 const atLeastOneMrOrCustomerRefine = {
@@ -64,6 +76,7 @@ export const domaceClaimFormSchema = domaceClaimBasicFieldsSchema.refine(
 export type DomaceClaimFormValues = {
   mrNumber: string
   claimNumber: string
+  invoiceNumber: string
   customerName: string
   manufacturerId: string
   engineTypeId: string
@@ -72,12 +85,16 @@ export type DomaceClaimFormValues = {
   dateOfClaim: string
   warrantyReport: string
   employeeId: string
+  originalInvoiceAmount: string
+  partsAmount: string
+  laborAmount: string
   faults: EmotiveClaimFaultDraft[]
 }
 
 export const DOMACE_CLAIM_FORM_DEFAULTS: DomaceClaimFormValues = {
   mrNumber: '',
   claimNumber: '',
+  invoiceNumber: '',
   customerName: '',
   manufacturerId: '',
   engineTypeId: '',
@@ -86,6 +103,9 @@ export const DOMACE_CLAIM_FORM_DEFAULTS: DomaceClaimFormValues = {
   dateOfClaim: '',
   warrantyReport: '',
   employeeId: '',
+  originalInvoiceAmount: '',
+  partsAmount: '',
+  laborAmount: '',
   faults: [],
 }
 
@@ -94,12 +114,18 @@ function emptyToUndefined(value: string): string | undefined {
   return trimmed === '' ? undefined : trimmed
 }
 
+/** An amount input → number, or undefined when empty. */
+export function emptyToAmount(value: string): number | undefined {
+  const trimmed = value.trim()
+  return trimmed === '' ? undefined : Number(trimmed)
+}
+
 export function formValuesToCreateInput(values: DomaceClaimFormValues): DomaceClaimCreateInput {
-  // total_amount is intentionally omitted here: it represents our cost to fix an
-  // accepted claim and is only known during processing (see DOMACE detail, 1.2c).
+  // UKUPNO (total_amount) is not sent — the server computes it = parts + labor.
   return DomaceClaimCreateInputSchema.parse({
     mrNumber: emptyToUndefined(values.mrNumber),
     claimNumber: emptyToUndefined(values.claimNumber),
+    invoiceNumber: emptyToUndefined(values.invoiceNumber),
     customerName: emptyToUndefined(values.customerName),
     manufacturerId: emptyToUndefined(values.manufacturerId),
     engineTypeId: emptyToUndefined(values.engineTypeId),
@@ -108,6 +134,9 @@ export function formValuesToCreateInput(values: DomaceClaimFormValues): DomaceCl
     dateOfFinish: emptyToUndefined(values.dateOfFinish),
     warrantyReport: emptyToUndefined(values.warrantyReport),
     employeeId: emptyToUndefined(values.employeeId),
+    originalInvoiceAmount: emptyToAmount(values.originalInvoiceAmount),
+    partsAmount: emptyToAmount(values.partsAmount),
+    laborAmount: emptyToAmount(values.laborAmount),
     faults: faultDraftsToInput(values.faults),
   })
 }

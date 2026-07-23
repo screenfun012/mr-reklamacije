@@ -1,8 +1,7 @@
 import {
   ApiError,
-  ClaimOutcome,
-  assignedWorkerReferenceOptions,
   engineManufacturersReferenceOptions,
+  employeesReferenceOptions,
   type DomaceClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -17,19 +16,11 @@ import {
   type DomaceClaimFormValues,
 } from '../create/domace-claim-create-schemas.js'
 import { faultItemToDraft } from '../../emotive-claims/faults/fault-draft.js'
-import { DomaceClaimBasicReadOnly } from './domace-claim-basic-section.js'
 import {
   claimToDetailBasicValues,
   detailBasicValuesToPatch,
   domaceClaimDetailBasicSchema,
 } from './domace-claim-detail-schemas.js'
-import {
-  DomaceClaimAmountEditField,
-  formatAmountInput,
-  parseDomaceAmountInput,
-  resolveAmountSaveError,
-} from './domace-claim-amount-section.js'
-import { useUpdateDomaceClaimAmount } from './use-update-domace-claim-amount.js'
 import { useUpdateDomaceClaimBasic } from './use-update-domace-claim-basic.js'
 
 export interface DomaceClaimOverviewEditProps {
@@ -37,30 +28,17 @@ export interface DomaceClaimOverviewEditProps {
   onDone: () => void
 }
 
+// Amounts (docs/23) are now part of the basic edit and editable in any outcome
+// state, so there is one edit path — no accepted-only branch.
 export function DomaceClaimOverviewEdit({
   claim,
   onDone,
 }: DomaceClaimOverviewEditProps): React.ReactElement {
-  // Repair amount is only meaningful once a claim has been accepted; every
-  // other outcome (including pending) gets the full basic-fields edit.
-  if (claim.outcome === ClaimOutcome.Accepted) {
-    return <AcceptedOverviewEdit claim={claim} onDone={onDone} />
-  }
-
-  return <FullOverviewEdit claim={claim} onDone={onDone} />
-}
-
-function FullOverviewEdit({
-  claim,
-  onDone,
-}: {
-  claim: DomaceClaimDetail
-  onDone: () => void
-}): React.ReactElement {
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
+  // DOMACE ZAPOSLENI can be any active employee (not assembly-only), searchable.
+  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const mutation = useUpdateDomaceClaimBasic(claim.id)
@@ -117,67 +95,6 @@ function FullOverviewEdit({
           }
           currentAssignedWorkerName={claim.employeeName ?? undefined}
           stepErrors={stepErrors}
-          disabled={mutation.isPending}
-        />
-      </section>
-
-      <OverviewEditFooter
-        saveError={saveError}
-        isPending={mutation.isPending}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
-    </div>
-  )
-}
-
-function AcceptedOverviewEdit({
-  claim,
-  onDone,
-}: {
-  claim: DomaceClaimDetail
-  onDone: () => void
-}): React.ReactElement {
-  const [amountInput, setAmountInput] = useState(() => formatAmountInput(claim.totalAmount))
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const mutation = useUpdateDomaceClaimAmount(claim.id)
-
-  const handleSave = (): void => {
-    setSaveError(null)
-    const parsed = parseDomaceAmountInput(amountInput)
-    if (!parsed.ok) {
-      setSaveError(parsed.error)
-      return
-    }
-
-    mutation.mutate(parsed.value, {
-      onSuccess: () => onDone(),
-      onError: (error) => setSaveError(resolveAmountSaveError(error)),
-    })
-  }
-
-  const handleCancel = (): void => {
-    setSaveError(null)
-    setAmountInput(formatAmountInput(claim.totalAmount))
-    onDone()
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
-        <h2 className="text-[15px] font-extrabold text-mri-text">
-          {m.domace_claims_create_section_basic()}
-        </h2>
-        <DomaceClaimBasicReadOnly claim={claim} hideMr />
-      </section>
-
-      <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
-        <h2 className="text-[15px] font-extrabold text-mri-text">
-          {m.domace_claims_detail_section_amount()}
-        </h2>
-        <DomaceClaimAmountEditField
-          amountInput={amountInput}
-          onAmountInputChange={setAmountInput}
           disabled={mutation.isPending}
         />
       </section>

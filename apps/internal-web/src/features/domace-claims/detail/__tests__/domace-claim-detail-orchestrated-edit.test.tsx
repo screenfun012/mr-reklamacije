@@ -4,6 +4,7 @@ import {
   ClaimOutcome,
   domaceClaimDetailOptions,
   engineManufacturersReferenceOptions,
+  employeesReferenceOptions,
   engineTypesReferenceOptions,
   type DomaceClaimDetail,
   type EngineManufacturerListItem,
@@ -81,12 +82,18 @@ function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetai
     employeeName: null,
     outcome: ClaimOutcome.Accepted,
     claimYear: 2026,
+    invoiceNumber: null,
+    originalInvoiceAmount: null,
+    partsAmount: null,
+    laborAmount: null,
     totalAmount: 1000,
     createdAt: '2026-05-01T10:00:00.000Z',
     internalNotes: 'Initial note',
+    inspectionReport: null,
     updatedBy: null,
     updatedAt: '2026-05-02T10:00:00.000Z',
     faults: [],
+    findings: [],
     ...overrides,
   }
 }
@@ -104,6 +111,7 @@ function renderDetail(claim: DomaceClaimDetail): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
@@ -144,10 +152,9 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
 
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
-    expect(screen.getByLabelText(m.domace_claims_detail_field_repair_cost())).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
-    ).not.toBeInTheDocument()
+    // Accepted claims now use the full basic edit — amounts are fields, not a
+    // separate repair-cost box.
+    expect(screen.getByLabelText(m.domace_claims_create_field_parts_amount())).toBeInTheDocument()
   })
 
   it('shows the faults edit control on the Kvarovi tab for an accepted claim', () => {
@@ -163,6 +170,7 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
       engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
       MANUFACTURERS,
     )
+    client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
     const node: ReactElement = (
       <QueryClientProvider client={client}>

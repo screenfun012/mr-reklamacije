@@ -1,4 +1,5 @@
 import type { DomaceClaimDetail } from '@mr/shared'
+import { m } from '@mr/i18n'
 
 import { ClaimFindingsSection } from '../../claims/claim-findings-section.js'
 import { useUpdateDomaceClaimFindings } from './use-update-domace-claim-findings.js'
@@ -20,6 +21,7 @@ export function DomaceClaimFindingsSection({
       canEdit={canEdit}
       isSaving={mutation.isPending}
       onSave={(findings) => mutation.mutateAsync({ findings })}
+      title={m.domace_claims_detail_section_findings()}
     />
   )
 }

@@ -1,28 +1,29 @@
-import {
-  ClaimKind,
-  ClaimOutcome,
-  domaceClaimDetailOptions,
-  type DomaceClaimDetail,
-} from '@mr/shared'
+import { ClaimKind, ClaimOutcome, type DomaceClaimDetail } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import type { ReactElement } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { DomaceClaimAmountSection } from '../domace-claim-amount-section.js'
 
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 
+interface AmountOverrides {
+  originalInvoiceAmount?: number | null
+  partsAmount?: number | null
+  laborAmount?: number | null
+  totalAmount?: number | null
+}
+
 function makeClaim(
   outcome: DomaceClaimDetail['outcome'],
-  totalAmount: number | null,
+  amounts: AmountOverrides = {},
 ): DomaceClaimDetail {
   return {
     kind: ClaimKind.Domace,
     id: CLAIM_ID,
     sequenceNumber: 1,
     claimNumber: null,
+    invoiceNumber: null,
     customerName: 'Auto Stanić',
     warrantyReport: null,
     engineTypeId: null,
@@ -35,30 +36,21 @@ function makeClaim(
     employeeName: null,
     outcome,
     claimYear: 2026,
-    totalAmount,
+    originalInvoiceAmount: amounts.originalInvoiceAmount ?? null,
+    partsAmount: amounts.partsAmount ?? null,
+    laborAmount: amounts.laborAmount ?? null,
+    totalAmount: amounts.totalAmount ?? null,
     createdAt: '2026-05-01T10:00:00.000Z',
     engineTypeManufacturer: null,
     manufacturerId: null,
     manufacturerName: null,
     internalNotes: null,
+    inspectionReport: null,
     updatedBy: null,
     updatedAt: '2026-05-02T10:00:00.000Z',
     faults: [],
+    findings: [],
   }
-}
-
-function renderSection(claim: DomaceClaimDetail): void {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
-  client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, claim)
-
-  const node: ReactElement = (
-    <QueryClientProvider client={client}>
-      <DomaceClaimAmountSection claim={claim} />
-    </QueryClientProvider>
-  )
-  render(node)
 }
 
 describe('DomaceClaimAmountSection', () => {
@@ -66,30 +58,36 @@ describe('DomaceClaimAmountSection', () => {
     setLocale('sr')
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('renders nothing when the claim is pending', () => {
-    renderSection(makeClaim(ClaimOutcome.Pending, null))
+  it('renders nothing when no amount is recorded', () => {
+    render(<DomaceClaimAmountSection claim={makeClaim(ClaimOutcome.Pending)} />)
     expect(screen.queryByText(m.domace_claims_detail_section_amount())).not.toBeInTheDocument()
   })
 
-  it('renders nothing when the claim is rejected even if amount exists in data', () => {
-    renderSection(makeClaim(ClaimOutcome.Rejected, 1500))
-    expect(screen.queryByText(m.domace_claims_detail_section_amount())).not.toBeInTheDocument()
-  })
-
-  it('shows read-only amount on an accepted claim without a save button', () => {
-    renderSection(makeClaim(ClaimOutcome.Accepted, 2500))
-
+  it('shows the breakdown on a PENDING claim (amounts no longer gated on accepted)', () => {
+    render(
+      <DomaceClaimAmountSection
+        claim={makeClaim(ClaimOutcome.Pending, {
+          partsAmount: 60000,
+          laborAmount: 24500.5,
+          totalAmount: 84500.5,
+        })}
+      />,
+    )
     expect(screen.getByText(m.domace_claims_detail_section_amount())).toBeInTheDocument()
-    expect(screen.getByText(/2\.500/)).toBeInTheDocument()
+    expect(screen.getByText(m.domace_claims_create_field_parts_amount())).toBeInTheDocument()
+    expect(screen.getByText(m.domace_claims_create_field_labor_amount())).toBeInTheDocument()
+    expect(screen.getByText(/84\.500/)).toBeInTheDocument()
+  })
+
+  it('shows the original invoice amount even with no repair breakdown', () => {
+    render(
+      <DomaceClaimAmountSection
+        claim={makeClaim(ClaimOutcome.Rejected, { originalInvoiceAmount: 50000 })}
+      />,
+    )
     expect(
-      screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByLabelText(m.domace_claims_detail_field_repair_cost()),
-    ).not.toBeInTheDocument()
+      screen.getByText(m.domace_claims_create_field_original_invoice_amount()),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/50\.000/)).toBeInTheDocument()
   })
 })

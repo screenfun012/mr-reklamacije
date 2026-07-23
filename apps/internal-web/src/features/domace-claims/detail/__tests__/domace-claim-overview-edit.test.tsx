@@ -66,12 +66,18 @@ function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetai
     employeeName: null,
     outcome: ClaimOutcome.Pending,
     claimYear: 2026,
+    invoiceNumber: null,
+    originalInvoiceAmount: null,
+    partsAmount: null,
+    laborAmount: null,
     totalAmount: null,
     createdAt: '2026-05-01T10:00:00.000Z',
     internalNotes: null,
+    inspectionReport: null,
     updatedBy: null,
     updatedAt: '2026-05-02T10:00:00.000Z',
     faults: [],
+    findings: [],
     ...overrides,
   }
 }
@@ -149,38 +155,34 @@ describe('DomaceClaimOverviewEdit', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
   })
 
-  it('renders read-only basic fields and a single footer for accepted amount edits', () => {
+  it('edits an ACCEPTED claim with the full basic form (no separate amount path)', () => {
     renderOverviewEdit(makeClaim({ outcome: ClaimOutcome.Accepted, totalAmount: 1500 }))
 
-    expect(screen.getByText('Auto Stanić')).toBeInTheDocument()
-    expect(screen.getByLabelText(m.domace_claims_detail_field_repair_cost())).toBeInTheDocument()
-    expect(
-      screen.getAllByRole('button', { name: m.emotive_claims_detail_basic_save() }),
-    ).toHaveLength(1)
-    expect(
-      screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
-    ).not.toBeInTheDocument()
+    // Same editable basic form as any other outcome — amounts are fields here now.
+    expect(screen.getByLabelText(m.domace_claims_create_field_customer_name())).toBeInTheDocument()
+    expect(screen.getByLabelText(m.domace_claims_create_field_parts_amount())).toBeInTheDocument()
+    expect(screen.getByLabelText(m.domace_claims_create_field_labor_amount())).toBeInTheDocument()
   })
 
-  it('saves accepted amount via the amount endpoint and calls onDone', async () => {
+  it('saves the amounts through the normal PATCH /:id (not a separate amount endpoint)', async () => {
     const onDone = vi.fn()
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => makeClaim({ outcome: ClaimOutcome.Accepted, totalAmount: 2500 }),
+      json: async () => makeClaim({ partsAmount: 2500, totalAmount: 2500 }),
     })
     vi.stubGlobal('fetch', fetchSpy)
 
-    renderOverviewEdit(makeClaim({ outcome: ClaimOutcome.Accepted, totalAmount: null }), onDone)
-    fireEvent.change(screen.getByLabelText(m.domace_claims_detail_field_repair_cost()), {
+    renderOverviewEdit(makeClaim(), onDone)
+    fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_parts_amount()), {
       target: { value: '2500' },
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
-    expect(String(url)).toContain(`/api/domace-claims/${CLAIM_ID}/amount`)
+    expect(String(url)).toBe(`/api/domace-claims/${CLAIM_ID}`)
     expect(init.method).toBe('PATCH')
-    expect(JSON.parse(String(init.body))).toEqual({ totalAmount: 2500 })
+    expect(JSON.parse(String(init.body))).toMatchObject({ partsAmount: 2500 })
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
   })
 

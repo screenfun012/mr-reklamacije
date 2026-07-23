@@ -1,6 +1,5 @@
 import {
   departmentsReferenceOptions,
-  assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
@@ -21,9 +20,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DomaceClaimCreateForm } from '../domace-claim-create-form.js'
 
-// Capture which employee list each section receives — the whole point of the fix
-// is that the assigned-worker field gets assembly-only while fault attribution
-// gets EVERY worker. Collapsing them back to one query would break this test.
+// Capture which employee list each section receives. For DOMACE (docs/23) the
+// ZAPOSLENI field takes EVERY active worker — the same roster as fault
+// attribution — not the assembly-only subset EMOTIVE uses.
 vi.mock('../domace-basic-fields.js', () => ({
   DomaceBasicFields: ({ employees }: { employees: EmployeeListItem[] }) => (
     <div data-testid="basic-employees">{employees.map((e) => e.id).join(',')}</div>
@@ -57,8 +56,7 @@ async function renderForm(): Promise<void> {
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
   })
   client.setQueryData(engineManufacturersReferenceOptions({ activeOnly: true }).queryKey, [])
-  // Assembly-only list for the assigned worker; the full roster for fault attribution.
-  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [ASSEMBLY_WORKER])
+  // One roster feeds both the ZAPOSLENI field and fault attribution.
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [
     ASSEMBLY_WORKER,
     BLOCKS_WORKER,
@@ -90,11 +88,11 @@ describe('DomaceClaimCreateForm worker sources', () => {
     setLocale('sr')
   })
 
-  it('feeds the assigned-worker field assembly only, and fault attribution every worker', async () => {
+  it('feeds every active worker to both the ZAPOSLENI field and fault attribution', async () => {
     await renderForm()
 
     expect(screen.getByTestId('basic-employees')).toHaveTextContent(ASSEMBLY_WORKER.id)
-    expect(screen.getByTestId('basic-employees')).not.toHaveTextContent(BLOCKS_WORKER.id)
+    expect(screen.getByTestId('basic-employees')).toHaveTextContent(BLOCKS_WORKER.id)
 
     expect(screen.getByTestId('faults-employees')).toHaveTextContent(ASSEMBLY_WORKER.id)
     expect(screen.getByTestId('faults-employees')).toHaveTextContent(BLOCKS_WORKER.id)

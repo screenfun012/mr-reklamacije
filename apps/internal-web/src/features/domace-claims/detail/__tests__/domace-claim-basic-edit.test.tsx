@@ -66,12 +66,18 @@ function makeClaim(): DomaceClaimDetail {
     employeeName: null,
     outcome: ClaimOutcome.Pending,
     claimYear: 2026,
+    invoiceNumber: null,
+    originalInvoiceAmount: null,
+    partsAmount: null,
+    laborAmount: null,
     totalAmount: null,
     createdAt: '2026-05-01T10:00:00.000Z',
     internalNotes: null,
+    inspectionReport: null,
     updatedBy: null,
     updatedAt: '2026-05-02T10:00:00.000Z',
     faults: [],
+    findings: [],
   }
 }
 

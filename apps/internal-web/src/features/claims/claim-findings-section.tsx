@@ -16,6 +16,8 @@ interface ClaimFindingsSectionProps {
   canEdit: boolean
   isSaving: boolean
   onSave: (findings: Finding[]) => Promise<unknown>
+  /** Section heading — DOMACE calls it "Napomena" to match its Excel; defaults to the EMOTIVE label. */
+  title?: string
 }
 
 /**
@@ -28,6 +30,7 @@ export function ClaimFindingsSection({
   canEdit,
   isSaving,
   onSave,
+  title,
 }: ClaimFindingsSectionProps): React.ReactElement {
   const [draft, setDraft] = useState<Finding[]>(findings)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -65,7 +68,7 @@ export function ClaimFindingsSection({
   return (
     <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
       <h2 id="claimFindingsHeading" className="text-[15px] font-extrabold text-mri-text">
-        {m.emotive_claims_detail_section_notes()}
+        {title ?? m.emotive_claims_detail_section_notes()}
       </h2>
 
       {canEdit ? (

@@ -20,6 +20,7 @@ export interface DomaceClaimBasicEdit {
   mrNumber: string | null
   customerName: string | null
   claimNumber: string | null
+  invoiceNumber: string | null
   manufacturerId: string | null
   engineTypeId: string | null
   engineCode: string | null
@@ -27,12 +28,25 @@ export interface DomaceClaimBasicEdit {
   dateOfFinish: string | null
   employeeId: string | null
   warrantyReport: string | null
+  originalInvoiceAmount: number | null
+  partsAmount: number | null
+  laborAmount: number | null
+}
+
+function amountToInput(value: number | null): string {
+  return value === null ? '' : String(value)
+}
+
+function inputToAmount(value: string): number | null {
+  const trimmed = value.trim()
+  return trimmed === '' ? null : Number(trimmed)
 }
 
 export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimDetailBasicValues {
   return {
     mrNumber: claim.mrNumber ?? '',
     claimNumber: claim.claimNumber ?? '',
+    invoiceNumber: claim.invoiceNumber ?? '',
     customerName: claim.customerName ?? '',
     manufacturerId: claim.manufacturerId ?? '',
     engineTypeId: claim.engineTypeId ?? '',
@@ -41,6 +55,9 @@ export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimD
     dateOfClaim: claim.dateOfClaim ?? '',
     warrantyReport: claim.warrantyReport ?? '',
     employeeId: claim.employeeId ?? '',
+    originalInvoiceAmount: amountToInput(claim.originalInvoiceAmount),
+    partsAmount: amountToInput(claim.partsAmount),
+    laborAmount: amountToInput(claim.laborAmount),
   }
 }
 
@@ -50,6 +67,7 @@ export function detailBasicValuesToPatch(
   const mrNumber = values.mrNumber.trim()
   const customerName = values.customerName.trim()
   const claimNumber = values.claimNumber.trim()
+  const invoiceNumber = values.invoiceNumber.trim()
   const engineCode = values.engineCode.trim()
   const engineTypeId = values.engineTypeId.trim()
   const manufacturerId = values.manufacturerId.trim()
@@ -61,6 +79,7 @@ export function detailBasicValuesToPatch(
     mrNumber: mrNumber === '' ? null : mrNumber,
     customerName: customerName === '' ? null : customerName,
     claimNumber: claimNumber === '' ? null : claimNumber,
+    invoiceNumber: invoiceNumber === '' ? null : invoiceNumber,
     manufacturerId: manufacturerId === '' ? null : manufacturerId,
     engineTypeId: engineTypeId === '' ? null : engineTypeId,
     engineCode: engineCode === '' ? null : engineCode,
@@ -68,5 +87,8 @@ export function detailBasicValuesToPatch(
     dateOfFinish: dateOfFinish === '' ? null : dateOfFinish,
     employeeId: values.employeeId.trim() === '' ? null : values.employeeId,
     warrantyReport: warrantyReport === '' ? null : warrantyReport,
+    originalInvoiceAmount: inputToAmount(values.originalInvoiceAmount),
+    partsAmount: inputToAmount(values.partsAmount),
+    laborAmount: inputToAmount(values.laborAmount),
   }
 }
