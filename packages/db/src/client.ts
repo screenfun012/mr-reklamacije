@@ -1,6 +1,8 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
 import pg from 'pg'
 
+import * as schema from './schema/index.js'
+
 /**
  * Returns `DATABASE_URL` from the current process environment.
  * Callers (e.g. `apps/api`) should load `.env` before importing this package.
@@ -57,8 +59,11 @@ export function createPool(
 }
 
 /**
- * Drizzle client over a `pg` pool. Pass `schema` in Phase B when tables exist.
+ * Drizzle client over a `pg` pool, WITH the full schema so the relational query
+ * API (`db.query.<table>.findMany({ with: … })`) is available at runtime — not
+ * just in the types. Every existing hand-written `select().leftJoin()` keeps
+ * working unchanged; this only adds the `db.query` namespace alongside them.
  */
 export function createDb(pool: pg.Pool) {
-  return drizzle(pool)
+  return drizzle(pool, { schema })
 }

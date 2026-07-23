@@ -41,6 +41,8 @@ export function createDb(env: Env): DbHandle {
     statementTimeoutMillis: STATEMENT_TIMEOUT_MS,
     idleInTransactionTimeoutMillis: IDLE_IN_TRANSACTION_TIMEOUT_MS,
   })
-  const db = createDrizzleDb(pool) as unknown as NodePgDatabase<typeof schema>
+  // No cast: createDb now builds the client WITH the schema, so its type is
+  // the real relational db type (this used to `as unknown as` past a lying type).
+  const db = createDrizzleDb(pool)
   return { db, pool }
 }
