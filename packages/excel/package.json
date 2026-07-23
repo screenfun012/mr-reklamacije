@@ -21,7 +21,7 @@
   "devDependencies": {
     "@mr/eslint-config": "workspace:*",
     "@mr/tsconfig": "workspace:*",
-    "@types/node": "^22.19.3",
+    "@types/node": "^22.20.1",
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

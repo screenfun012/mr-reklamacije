@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "turbo run build",
@@ -31,7 +31,7 @@
     "@mr/db": "workspace:*",
     "@mr/shared": "workspace:*",
     "@mr/eslint-config": "workspace:*",
-    "@types/node": "^20.19.39",
+    "@types/node": "^22.20.1",
     "concurrently": "^9.2.1",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.2",
