@@ -43,7 +43,7 @@ export const notifications = pgTable(
   (t) => [
     check(
       'notifications_type_check',
-      sql`${t.type} IN ('new_submission', 'outcome_changed', 'claim_created', 'assigned_to_me', 'catalog_added')`,
+      sql`${t.type} IN ('new_submission', 'outcome_changed', 'claim_created', 'assigned_to_me', 'catalog_added', 'submission_rejected')`,
     ),
     check(
       'notifications_entity_type_check',

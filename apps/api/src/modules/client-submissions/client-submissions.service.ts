@@ -205,6 +205,17 @@ export class ClientSubmissionsService {
     this.events.publishClaimCreated({ kind: ClaimKind.Emotive, id: claimId }, submission.customerId)
     this.events.publishClientSubmissionChanged(id)
 
+    // The "new submission" notification is done: replace it with one pointing at
+    // the claim that was just made (best-effort, actor excluded).
+    await this.notifications.notifySubmissionConverted(actor.actorUserId, id, {
+      kind: ClaimKind.Emotive,
+      id: claimId,
+      mrNumber: claim.mrNumber,
+      customerName: claim.customerName,
+      employeeId: claim.employeeId,
+      outcome: claim.outcome,
+    })
+
     return claim
   }
 
@@ -236,6 +247,14 @@ export class ClientSubmissionsService {
     })
 
     this.events.publishClientSubmissionChanged(id)
+
+    // Replace the "new submission" notification with a "rejected" one that still
+    // points at the submission, so the team can open it and read the reason.
+    await this.notifications.notifySubmissionRejected(
+      actor.actorUserId,
+      id,
+      submission.customerName,
+    )
   }
 
   /**

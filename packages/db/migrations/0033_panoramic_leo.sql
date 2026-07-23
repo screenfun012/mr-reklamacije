@@ -1,0 +1,2 @@
+ALTER TABLE "notifications" DROP CONSTRAINT "notifications_type_check";--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_type_check" CHECK ("notifications"."type" IN ('new_submission', 'outcome_changed', 'claim_created', 'assigned_to_me', 'catalog_added', 'submission_rejected'));

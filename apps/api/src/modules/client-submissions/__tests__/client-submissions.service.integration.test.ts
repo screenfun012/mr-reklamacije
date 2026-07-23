@@ -191,6 +191,17 @@ describe('ClientSubmissionsService integration', () => {
     return id
   }
 
+  async function notificationsForUser(userId: string) {
+    return ctx.db
+      .select({
+        type: schema.notifications.type,
+        entityType: schema.notifications.entityType,
+        entityId: schema.notifications.entityId,
+      })
+      .from(schema.notifications)
+      .where(eq(schema.notifications.userId, userId))
+  }
+
   async function seedEngineType(): Promise<string> {
     const [engineType] = await ctx.db
       .insert(schema.engineTypes)
@@ -371,6 +382,35 @@ describe('ClientSubmissionsService integration', () => {
   })
 
   describe('convert', () => {
+    it("replaces the team's new-submission notification with one pointing at the claim", async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+      const operatorId = await seedInboxOperator()
+      const engineTypeId = await seedEngineType()
+
+      const { id } = await service.create(actorFor(submitterId), { message: 'Za konverziju' })
+      submissionCleanup.push(id)
+      expect((await notificationsForUser(operatorId)).map((n) => n.type)).toEqual([
+        NotificationType.NewSubmission,
+      ])
+
+      const claim = await service.convert(
+        actorFor(TEST_USER_ID),
+        id,
+        buildClaimInput({ engineTypeId, mrNumber: `CS-CONV-${uniqueSuffix()}/26` }),
+      )
+
+      const after = await notificationsForUser(operatorId)
+      expect(after).toEqual([
+        {
+          type: NotificationType.ClaimCreated,
+          entityType: NotificationEntityType.EmotiveClaim,
+          entityId: claim.id,
+        },
+      ])
+    })
+
     it('creates an emotive claim, re-points attachments, marks converted and audits', async () => {
       const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
       const engineTypeId = await seedEngineType()
@@ -486,6 +526,35 @@ describe('ClientSubmissionsService integration', () => {
   })
 
   describe('reject', () => {
+    it("replaces the team's new-submission notification with a rejected one", async () => {
+      const submitterId = await seedUser()
+      const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
+      await linkUserToCustomer(customerId, submitterId)
+      const operatorId = await seedInboxOperator()
+
+      // A real submission → the operator gets a `new_submission` notification.
+      const { id } = await service.create(actorFor(submitterId), { message: 'Za odbijanje' })
+      submissionCleanup.push(id)
+      const before = await notificationsForUser(operatorId)
+      expect(before.map((n) => n.type)).toEqual([NotificationType.NewSubmission])
+
+      // A DIFFERENT operator rejects it.
+      await service.reject(
+        actorFor(operatorId === TEST_USER_ID ? submitterId : TEST_USER_ID),
+        id,
+        'Van garancije',
+      )
+
+      const after = await notificationsForUser(operatorId)
+      expect(after).toEqual([
+        {
+          type: NotificationType.SubmissionRejected,
+          entityType: NotificationEntityType.ClientSubmission,
+          entityId: id,
+        },
+      ])
+    })
+
     it('marks the submission rejected, audits and emits an event', async () => {
       const customerId = await seedCustomer(`Partner ${uniqueSuffix()}`)
       const submissionId = await createSubmission(customerId, 'Za odbijanje')

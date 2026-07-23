@@ -1014,5 +1014,7 @@
   "claims_select_row": "Označi reklamaciju",
   "claims_select_all_page": "Označi sve na strani",
   "claims_selected_count": "{count} označeno",
-  "claims_selection_clear": "Poništi izbor"
+  "claims_selection_clear": "Poništi izbor",
+  "notifications_title_submission_rejected": "Odbijena prijava — {customerName}",
+  "notifications_eyebrow_submission_rejected": "ODBIJENO"
 }

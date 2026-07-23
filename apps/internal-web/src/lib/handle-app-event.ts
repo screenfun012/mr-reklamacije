@@ -108,6 +108,9 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
   // list (every page), the nav-badge count and the changed submission's detail.
   if (event.type === ClientSubmissionEventType.Changed) {
     invalidateInternalSubmissionQueries(queryClient, event.payload.id)
+    // Handling a submission also rewrites its notifications (new_submission →
+    // claim_created / submission_rejected), so refresh the bell too.
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.lists() })
     return
   }
 

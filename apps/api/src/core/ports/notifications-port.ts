@@ -39,4 +39,18 @@ export interface NotificationsPort {
     itemId: string,
     itemName: string,
   ): Promise<void>
+
+  /** A submission was converted → replace its new_submission notifications with claim_created. */
+  notifySubmissionConverted(
+    actorUserId: string,
+    submissionId: string,
+    claim: ClaimNotificationContext,
+  ): Promise<void>
+
+  /** A submission was rejected → replace its new_submission notifications with submission_rejected. */
+  notifySubmissionRejected(
+    actorUserId: string,
+    submissionId: string,
+    customerName: string,
+  ): Promise<void>
 }

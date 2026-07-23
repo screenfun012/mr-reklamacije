@@ -1014,5 +1014,7 @@
   "claims_select_row": "Select claim",
   "claims_select_all_page": "Select all on page",
   "claims_selected_count": "{count} selected",
-  "claims_selection_clear": "Clear selection"
+  "claims_selection_clear": "Clear selection",
+  "notifications_title_submission_rejected": "Rejected submission — {customerName}",
+  "notifications_eyebrow_submission_rejected": "REJECTED"
 }

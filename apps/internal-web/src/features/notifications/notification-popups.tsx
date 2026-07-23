@@ -133,6 +133,7 @@ const ACCENT_BY_TYPE: Record<NotificationType, string> = {
   [NotificationType.AssignedToMe]: 'var(--mri-red)',
   [NotificationType.OutcomeChanged]: 'var(--mri-red)',
   [NotificationType.CatalogAdded]: 'var(--mri-red)',
+  [NotificationType.SubmissionRejected]: 'var(--mri-red)',
 }
 
 function accentColor(item: NotificationItem): string {
@@ -289,6 +290,7 @@ function eyebrowFor(item: NotificationItem): string {
     [NotificationType.ClaimCreated]: m.notifications_eyebrow_claim_created,
     [NotificationType.AssignedToMe]: m.notifications_eyebrow_assigned_to_me,
     [NotificationType.CatalogAdded]: m.notifications_eyebrow_catalog_added,
+    [NotificationType.SubmissionRejected]: m.notifications_eyebrow_submission_rejected,
   }
   return EYEBROWS[item.type]()
 }

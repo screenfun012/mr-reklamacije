@@ -232,6 +232,13 @@
       "when": 1784684295001,
       "tag": "0032_motionless_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784780599208,
+      "tag": "0033_panoramic_leo",
+      "breakpoints": true
     }
   ]
 }

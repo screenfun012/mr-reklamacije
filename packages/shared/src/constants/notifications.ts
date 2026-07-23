@@ -6,6 +6,8 @@ export const NotificationType = {
   AssignedToMe: 'assigned_to_me',
   /** An admin-managed catalog gained an entry a worker needs (engine type, manufacturer, customer). */
   CatalogAdded: 'catalog_added',
+  /** A client submission was rejected — replaces the original new_submission for the team. */
+  SubmissionRejected: 'submission_rejected',
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
@@ -16,6 +18,7 @@ export const notificationTypeValues = [
   NotificationType.ClaimCreated,
   NotificationType.AssignedToMe,
   NotificationType.CatalogAdded,
+  NotificationType.SubmissionRejected,
 ] as const
 
 /** What the notification points at. `Catalog` has no screen to open — it is informational. */

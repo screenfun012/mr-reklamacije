@@ -164,6 +164,85 @@ export class NotificationsService implements NotificationsPort {
     })
   }
 
+  /**
+   * A client submission was CONVERTED into a claim. The team's "new submission"
+   * notifications for it are removed and replaced by the standard `claim_created`
+   * notification for the new claim — so the bell now points at the claim that was
+   * made, not the handled submission. The actor is excluded by notifyClaimCreated.
+   */
+  async notifySubmissionConverted(
+    actorUserId: string,
+    submissionId: string,
+    claim: ClaimNotificationContext,
+  ): Promise<void> {
+    await this.resolveSubmission(submissionId, actorUserId)
+    await this.notifyClaimCreated(actorUserId, claim)
+  }
+
+  /**
+   * A client submission was REJECTED. The "new submission" notifications are
+   * removed and replaced by a `submission_rejected` notification that still points
+   * at the submission, so the team can open it and read the rejection reason.
+   */
+  async notifySubmissionRejected(
+    actorUserId: string,
+    submissionId: string,
+    customerName: string,
+  ): Promise<void> {
+    await this.resolveSubmission(submissionId, actorUserId, async (recipients) =>
+      recipients.map((userId) => ({
+        userId,
+        type: NotificationType.SubmissionRejected,
+        entityType: NotificationEntityType.ClientSubmission,
+        entityId: submissionId,
+        data: { customerName },
+      })),
+    )
+  }
+
+  /**
+   * Shared reconciliation for a handled submission: delete the old rows, refresh
+   * the bell of anyone who is NOT about to get a replacement (so their stale
+   * "new submission" clears at once), then optionally fan out replacements.
+   * Best-effort like every fan-out — never rejects.
+   */
+  private async resolveSubmission(
+    submissionId: string,
+    actorUserId: string,
+    buildReplacements?: (recipients: string[]) => Promise<readonly NotificationInsert[]>,
+  ): Promise<void> {
+    // Delete-then-insert on purpose, and NOT in one transaction: the business op
+    // (convert/reject) already committed, and notifications are best-effort. This
+    // order means a crash between the two leaves NOTHING (a clean miss of a
+    // convenience notification), which is better than insert-then-delete leaving
+    // a stale "new submission" duplicate that would never clear.
+    try {
+      const affected = await this.repo.deleteByEntity(
+        NotificationEntityType.ClientSubmission,
+        submissionId,
+      )
+      // Everyone whose row was removed needs their bell refreshed; those who also
+      // get a replacement will be signalled again by fanOut below.
+      for (const userId of affected) {
+        this.events.publishNotificationCreated(userId, submissionId)
+      }
+    } catch (error) {
+      this.logger.error({ err: error }, 'Failed to clear submission notifications')
+    }
+
+    if (buildReplacements === undefined) {
+      return
+    }
+
+    await this.fanOut(async () => {
+      const recipients = await this.repo.findRecipientsWithPermission(
+        'client_submissions.manage',
+        actorUserId,
+      )
+      return buildReplacements(recipients)
+    })
+  }
+
   private assignedRow(userId: string, claim: ClaimNotificationContext): NotificationInsert {
     return {
       userId,

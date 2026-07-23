@@ -1,4 +1,9 @@
-import { SYSTEM_ROLE_ADMIN, UserAccountStatus, type Permission } from '@mr/shared'
+import {
+  SYSTEM_ROLE_ADMIN,
+  UserAccountStatus,
+  type NotificationEntityType,
+  type Permission,
+} from '@mr/shared'
 import { and, count, desc, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
@@ -140,6 +145,21 @@ export class NotificationsRepository {
         })),
       )
       .returning({ id: notifications.id, userId: notifications.userId })
+  }
+
+  /**
+   * Removes every notification pointing at one entity — used when a client
+   * submission is handled, so the "new submission" rows are replaced by the
+   * outcome notification rather than lingering as unread work. Returns the user
+   * ids whose inbox changed, so their bells can be refreshed over SSE.
+   */
+  async deleteByEntity(entityType: NotificationEntityType, entityId: string): Promise<string[]> {
+    const removed = await this.db
+      .delete(notifications)
+      .where(and(eq(notifications.entityType, entityType), eq(notifications.entityId, entityId)))
+      .returning({ userId: notifications.userId })
+
+    return [...new Set(removed.map((row) => row.userId))]
   }
 
   /**

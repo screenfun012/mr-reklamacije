@@ -23,6 +23,7 @@ const ICON_BY_TYPE: Record<NotificationType, LucideIcon> = {
   [NotificationType.ClaimCreated]: FilePlus,
   [NotificationType.AssignedToMe]: User,
   [NotificationType.CatalogAdded]: FilePlus,
+  [NotificationType.SubmissionRejected]: Inbox,
 }
 
 export function notificationIcon(type: NotificationType): LucideIcon {
@@ -35,6 +36,7 @@ const EYEBROW_BY_TYPE: Record<NotificationType, () => string> = {
   [NotificationType.ClaimCreated]: m.notifications_eyebrow_claim_created,
   [NotificationType.AssignedToMe]: m.notifications_eyebrow_assigned_to_me,
   [NotificationType.CatalogAdded]: m.notifications_eyebrow_catalog_added,
+  [NotificationType.SubmissionRejected]: m.notifications_eyebrow_submission_rejected,
 }
 
 export function notificationEyebrow(type: NotificationType): string {
@@ -57,6 +59,8 @@ export function notificationTitle(item: NotificationItem): string {
   switch (item.type) {
     case NotificationType.NewSubmission:
       return m.notifications_title_new_submission({ customerName })
+    case NotificationType.SubmissionRejected:
+      return m.notifications_title_submission_rejected({ customerName })
     case NotificationType.OutcomeChanged: {
       const outcome = item.data.outcome
       return m.notifications_title_outcome_changed({
