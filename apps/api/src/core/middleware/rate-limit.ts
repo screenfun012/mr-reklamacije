@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { ERROR_CODE } from '@mr/shared'
 import type { Context, MiddlewareHandler } from 'hono'
 
@@ -7,7 +9,61 @@ import { clientIpOf } from '../http/client-ip.js'
 interface RateLimitOptions {
   windowMs: number
   max: number
-  keyOf?: (c: Context) => string
+  /** Returning null skips this limiter for the request (another layer covers it). */
+  keyOf?: (c: Context) => string | null
+}
+
+/**
+ * Better-Auth names its session cookie `<prefix>.session_token`, and prepends
+ * `__Secure-` once cookies are secure (production). Match on the suffix so the
+ * key survives both spellings — and a future `cookiePrefix` change.
+ */
+const SESSION_COOKIE_SUFFIX = 'session_token'
+
+/** Stable, non-reversible bucket id for a session cookie (never the raw token). */
+function sessionKeyOf(c: Context): string | null {
+  const header = c.req.header('cookie')
+  if (header === undefined) {
+    return null
+  }
+
+  for (const pair of header.split(';')) {
+    const separator = pair.indexOf('=')
+    if (separator === -1) {
+      continue
+    }
+    const name = pair.slice(0, separator).trim()
+    if (!name.endsWith(SESSION_COOKIE_SUFFIX)) {
+      continue
+    }
+    const value = pair.slice(separator + 1).trim()
+    if (value === '') {
+      continue
+    }
+    return createHash('sha256').update(value).digest('base64url').slice(0, 22)
+  }
+
+  return null
+}
+
+/** Per-IP key — the layer nobody can opt out of, since the caller cannot pick its address. */
+export function ipKeyOf(c: Context): string {
+  return `ip:${clientIpOf(c) ?? 'unknown'}`
+}
+
+/**
+ * Per-session key, or null when the request carries no session cookie (the IP
+ * layer alone covers those). The `s:` prefix keeps a hash from ever colliding
+ * with an address.
+ *
+ * Deliberately NOT a fallback inside the IP limiter: a cookie is client-chosen,
+ * so "key by cookie, else by IP" would let an anonymous caller mint a fresh
+ * bucket per request just by rotating a made-up token. Session keying may only
+ * ever ADD a limit, never replace one.
+ */
+export function sessionBucketKeyOf(c: Context): string | null {
+  const session = sessionKeyOf(c)
+  return session === null ? null : `s:${session}`
 }
 
 interface Bucket {
@@ -23,9 +79,7 @@ interface Bucket {
 export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler {
   const buckets = new Map<string, Bucket>()
 
-  const defaultKey = (c: Context): string => clientIpOf(c) ?? 'unknown'
-
-  const keyOf = options.keyOf ?? defaultKey
+  const keyOf = options.keyOf ?? ipKeyOf
 
   const cleanupIntervalMs = Math.max(options.windowMs, 60_000)
   setInterval(() => {
@@ -39,6 +93,11 @@ export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler 
 
   return async (c, next) => {
     const key = keyOf(c)
+    if (key === null) {
+      await next()
+      return
+    }
+
     const now = Date.now()
     const bucket = buckets.get(key)
 
@@ -63,9 +122,28 @@ export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler 
   }
 }
 
+/**
+ * Volumetric backstop against a flood from one address. NOT a per-person quota:
+ * a whole office shares one public address behind NAT, and every server-rendered
+ * page load arrives over the private network with no client-IP header at all, so
+ * this bucket legitimately carries the traffic of everyone at once. Per-person
+ * fairness is `sessionRateLimiter` below.
+ */
 export const generalRateLimiter = createRateLimiter({
   windowMs: 60_000,
-  max: 100,
+  max: 600,
+})
+
+/**
+ * Per-person quota, applied ON TOP of the per-IP backstop for signed-in callers
+ * (skipped entirely when there is no session cookie). This is what keeps one
+ * runaway tab from spending everyone else's allowance — the failure mode the
+ * per-IP limit alone could not distinguish from "the office is busy".
+ */
+export const sessionRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 120,
+  keyOf: sessionBucketKeyOf,
 })
 
 const isDevelopment = process.env['NODE_ENV'] === 'development'

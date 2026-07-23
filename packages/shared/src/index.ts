@@ -1,5 +1,6 @@
 export { ApiError, parseApiErrorBody } from './api/api-error.js'
 export { fetchJson, fetchParsed } from './api/fetch-json.js'
+export { applyForwardedRequestHeaders, CLIENT_IP_HEADER } from './api/forward-request-headers.js'
 export { fetchNoContent } from './api/fetch-no-content.js'
 export { proxyApiRequest } from './api/proxy-api-request.js'
 export { resolveFetchUrl } from './api/resolve-fetch-url.js'

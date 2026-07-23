@@ -12,6 +12,7 @@ import {
   clientRegistrationRateLimiter,
   generalRateLimiter,
   loginRateLimiter,
+  sessionRateLimiter,
   signupRateLimiter,
 } from './core/middleware/rate-limit.js'
 import { createSignupOriginGuard } from './core/middleware/signup-origin-guard.js'
@@ -100,7 +101,8 @@ const apiSecureHeaders = secureHeaders({
  * 1. registerGlobalErrorHandler (app.onError)
  * 2. Secure headers (outermost — covers every response, incl. errors)
  * 3. Request logger
- * 4. General rate limiter
+ * 4. General rate limiter (per IP — flood backstop)
+ * 4b. Session rate limiter (per signed-in person, on top of the IP layer)
  * 5. Login rate limiter (sign-in email only)
  * 6. Session middleware
  * 7. Global requireAuth with opt-out for public prefixes (auth + health)
@@ -115,6 +117,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   app.use('*', createRequestLogger(container.logger))
   app.use('*', requestBodyLimit)
   app.use('*', generalRateLimiter)
+  app.use('*', sessionRateLimiter)
   app.use('/api/auth/sign-in/email', loginRateLimiter)
   app.use('/api/auth/sign-up/email', signupRateLimiter)
   app.use('/api/auth/sign-up/email', createSignupOriginGuard(container.env.SELF_SIGNUP_ORIGINS))

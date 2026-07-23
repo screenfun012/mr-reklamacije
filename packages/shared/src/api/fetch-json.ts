@@ -1,6 +1,7 @@
 import type { ZodType } from 'zod'
 
 import { ApiError, parseApiErrorBody, type ParsedApiError } from './api-error.js'
+import { forwardSsrRequestHeaders } from './forward-request-headers.js'
 import { resolveFetchUrl } from './resolve-fetch-url.js'
 
 function isBrowser(): boolean {
@@ -18,15 +19,9 @@ async function buildRequestHeaders(init?: RequestInit): Promise<Headers> {
   }
 
   if (!isBrowser()) {
-    try {
-      const { getRequestHeaders } = await import('@tanstack/react-start/server')
-      const cookie = getRequestHeaders().get('cookie')
-      if (cookie && !headers.has('cookie')) {
-        headers.set('cookie', cookie)
-      }
-    } catch {
-      // Outside TanStack Start SSR — no request cookies to forward.
-    }
+    // SSR opens its own connection to the api — the browser's cookie AND client
+    // address only travel if copied across.
+    await forwardSsrRequestHeaders(headers)
   }
 
   return headers
