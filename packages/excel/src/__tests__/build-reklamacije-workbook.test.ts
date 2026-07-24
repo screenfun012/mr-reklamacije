@@ -33,8 +33,11 @@ const sampleDomace: DomaceExportRow = {
   sequenceNumber: 2,
   dateOfClaim: '2025-01-16',
   customerName: 'JERKO',
+  vehicle: 'Renault M9T',
   mrNumber: '100262/25',
   workOrder: '100262/25',
+  previousWorkOrder: 'Stari r.n. 100100/24',
+  originalInvoiceAmount: 300000,
   invoiceNumber: '173/24',
   problemDescription: 'AKSIJALNO ZARIBAO',
   dateOfFinish: null,
@@ -42,7 +45,10 @@ const sampleDomace: DomaceExportRow = {
   employeeId: 'emp-2',
   employeeName: 'MARKO ZIVANOVIC',
   outcome: 'accepted',
+  partsAmount: 200000,
+  laborAmount: 85165,
   totalAmount: 285165,
+  note: 'Zaribao (mehanika)',
   claimYear: 2025,
   faults: [],
 }
@@ -133,12 +139,20 @@ describe('buildReklamacijeWorkbook', () => {
 
     const domace = workbook.getWorksheet('DOMACE REKLAMACIJE ')
     const domaceHeaders = rowValues(domace!, 1)
-    expect(domaceHeaders[0]).toBe('R.B.')
-    // The sheet ends at ZAPOSLENI: the old NAPOMENA column carried the single
-    // free-text note that multi-row findings replaced, and findings deliberately
-    // stay out of the export — the reason lives in OPIS PROBLEMA.
-    expect(domaceHeaders.at(-1)).toBe('ZAPOSLENI')
-    expect(domaceHeaders).not.toContain('NAPOMENA')
+    // Full 15-column business sheet (docs/23), A–O in order.
+    expect(domaceHeaders[0]).toBe('R. B.')
+    expect(domaceHeaders.at(-1)).toBe('NAPOMENA')
+    expect(domaceHeaders).toContain('VOZILO')
+    expect(domaceHeaders).toContain('STARI R/N')
+    expect(domaceHeaders).toContain('IZNOS DELOVA BEZ PDV')
+    // The DOMACE data row: VOZILO composed, STARI R/N, the money breakdown, and
+    // NAPOMENA from findings all land in their columns.
+    const domaceData = rowValues(domace!, 2)
+    expect(domaceData[3]).toBe('Renault M9T') // VOZILO (D)
+    expect(domaceData[5]).toBe('Stari r.n. 100100/24') // STARI R/N (F)
+    expect(domaceData[7]).toBe('173/24') // BROJ RAČUNA (H)
+    expect(domaceData[12]).toBe(285165) // UKUPNO (M)
+    expect(domaceData[14]).toBe('Zaribao (mehanika)') // NAPOMENA (O)
 
     const yearSheet = workbook.getWorksheet('2025')
     expect(yearSheet!.rowCount).toBe(3)

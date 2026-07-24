@@ -1,4 +1,10 @@
-import { buildReklamacijeWorkbook, type DomaceExportRow, type EmotiveExportRow } from '@mr/excel'
+import {
+  buildReklamacijeWorkbook,
+  formatFindingsNote,
+  formatVehicle,
+  type DomaceExportRow,
+  type EmotiveExportRow,
+} from '@mr/excel'
 import {
   AuditAction,
   ExcelExportScope,
@@ -133,16 +139,26 @@ export class ExcelService {
             sequenceNumber: row.sequenceNumber,
             dateOfClaim: row.dateOfClaim,
             customerName: row.customerName,
+            // VOZILO (D) composed from the catalog parts.
+            vehicle: formatVehicle(row.manufacturerName, row.engineTypeCode, row.engineCode),
             mrNumber: row.mrNumber,
+            // RADNI NALOG (E) = our work order; STARI R/N (F) = the old one (claim_number).
             workOrder: row.mrNumber,
-            invoiceNumber: row.claimNumber,
+            previousWorkOrder: row.claimNumber,
+            originalInvoiceAmount: row.originalInvoiceAmount,
+            // BROJ RAČUNA (H) = the real invoice number.
+            invoiceNumber: row.invoiceNumber,
             problemDescription: row.warrantyReport,
             dateOfFinish: row.dateOfFinish,
             engineTypeCode: row.engineTypeCode,
             employeeId: row.employeeId,
             employeeName: formatEmployeeNameForExport(row.employeeName),
             outcome: row.outcome,
+            partsAmount: row.partsAmount,
+            laborAmount: row.laborAmount,
             totalAmount: row.totalAmount,
+            // NAPOMENA (O) = findings folded into one cell.
+            note: formatFindingsNote(row.findings),
             claimYear: row.claimYear,
             faults: mapFaults(row.faults),
           }),

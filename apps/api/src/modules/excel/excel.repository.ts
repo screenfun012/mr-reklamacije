@@ -18,6 +18,7 @@ const {
   domaceClaims,
   employeeMonthlyOutput,
   employees,
+  engineManufacturers,
   engineTypes,
   emotiveClaimFaults,
   emotiveClaims,
@@ -239,16 +240,24 @@ export class ExcelRepository {
         customerName: domaceClaims.customerName,
         mrNumber: domaceClaims.mrNumber,
         claimNumber: domaceClaims.claimNumber,
+        invoiceNumber: domaceClaims.invoiceNumber,
         warrantyReport: domaceClaims.warrantyReport,
+        manufacturerName: engineManufacturers.name,
         engineTypeCode: engineTypes.code,
+        engineCode: domaceClaims.engineCode,
         employeeId: domaceClaims.employeeId,
         employeeName: employees.fullName,
         outcome: domaceClaims.outcome,
+        originalInvoiceAmount: domaceClaims.originalInvoiceAmount,
+        partsAmount: domaceClaims.partsAmount,
+        laborAmount: domaceClaims.laborAmount,
         totalAmount: domaceClaims.totalAmount,
+        findings: domaceClaims.findings,
         claimYear: domaceClaims.claimYear,
       })
       .from(domaceClaims)
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
+      .leftJoin(engineManufacturers, eq(domaceClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
       .where(whereClause)
       .orderBy(asc(domaceClaims.sequenceNumber))
@@ -293,12 +302,19 @@ export class ExcelRepository {
       customerName: row.customerName,
       mrNumber: row.mrNumber,
       claimNumber: row.claimNumber,
+      invoiceNumber: row.invoiceNumber,
       warrantyReport: row.warrantyReport,
+      manufacturerName: row.manufacturerName,
       engineTypeCode: row.engineTypeCode,
+      engineCode: row.engineCode,
       employeeId: row.employeeId,
       employeeName: row.employeeName,
       outcome: row.outcome as DomaceExportDbRow['outcome'],
+      originalInvoiceAmount: row.originalInvoiceAmount,
+      partsAmount: row.partsAmount,
+      laborAmount: row.laborAmount,
       totalAmount: row.totalAmount,
+      findings: row.findings,
       claimYear: row.claimYear,
       faults: faultsByClaimId.get(row.id) ?? [],
     }))

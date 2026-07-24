@@ -22,16 +22,23 @@ const EMOTIVE_HEADERS = [
   'GODINA',
 ] as const
 
+// Full business sheet (docs/23), columns A–O in order.
 const DOMACE_HEADERS = [
-  'R.B.',
+  'R. B.',
   'DATUM',
   'IME STRANKE',
+  'VOZILO',
   'RADNI NALOG',
-  'BROJ RACUNA',
+  'STARI R/N',
+  'IZNOS ORIGINALNOG RAČUNA',
+  'BROJ RAČUNA',
   'OPIS PROBLEMA',
   'REKLAMACIJA',
+  'IZNOS DELOVA BEZ PDV',
+  'IZNOS RADA BEZ PDV',
   'UKUPNO',
   'ZAPOSLENI',
+  'NAPOMENA',
 ] as const
 
 const EMOTIVE_DATA_SHEET_NAME = 'EMOTIVE REKLAMACIJE'
@@ -67,12 +74,18 @@ function domaceRowValues(row: DomaceExportRow): (string | number | null)[] {
     row.sequenceNumber,
     formatExportDate(row.dateOfClaim),
     row.customerName,
+    row.vehicle,
     row.workOrder,
+    row.previousWorkOrder,
+    row.originalInvoiceAmount,
     row.invoiceNumber,
     row.problemDescription,
     formatDomaceOutcome(row.outcome),
+    row.partsAmount,
+    row.laborAmount,
     row.totalAmount,
     row.employeeName,
+    row.note,
   ]
 }
 

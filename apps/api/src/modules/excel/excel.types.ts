@@ -1,4 +1,4 @@
-import type { ClaimFaultItem } from '@mr/shared'
+import type { ClaimFaultItem, Finding } from '@mr/shared'
 
 export interface ExcelActor {
   id: string
@@ -30,12 +30,19 @@ export interface DomaceExportDbRow {
   customerName: string | null
   mrNumber: string | null
   claimNumber: string | null
+  invoiceNumber: string | null
   warrantyReport: string | null
+  manufacturerName: string | null
   engineTypeCode: string | null
+  engineCode: string | null
   employeeId: string | null
   employeeName: string | null
   outcome: 'pending' | 'accepted' | 'rejected' | 'archived'
+  originalInvoiceAmount: number | null
+  partsAmount: number | null
+  laborAmount: number | null
   totalAmount: number | null
+  findings: Finding[] | null
   claimYear: number
   faults: ClaimFaultItem[]
 }
