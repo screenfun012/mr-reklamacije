@@ -8,6 +8,10 @@ import {
 import { z } from 'zod'
 
 import { ForbiddenError } from '../../core/errors/domain-errors.js'
+import {
+  SummaryCache,
+  SUMMARY_CACHE_TTL_SECONDS,
+} from '../../infrastructure/cache/summary-cache.js'
 import type { ClientClaimAuditRow, DashboardRepository } from './dashboard.repository.js'
 import type { DashboardActor, DashboardScope } from './dashboard.types.js'
 import type { DashboardSummaryResponse } from './dashboard.validators.js'
@@ -96,11 +100,21 @@ function deriveActivityEvent(row: ClientClaimAuditRow): ClientPortalActivityItem
 }
 
 export class DashboardService {
-  constructor(private readonly repo: DashboardRepository) {}
+  constructor(
+    private readonly repo: DashboardRepository,
+    private readonly summaryCache: SummaryCache,
+  ) {}
 
   async getSummary(actor: DashboardActor): Promise<DashboardSummaryResponse> {
+    // Global (all-customers) dashboard: keyed only by scope (~2 variants), never per user.
+    // getClientSummary below stays UNCACHED — it is per-customer and low-hit.
     const scope = resolveScope(actor)
-    return this.repo.getSummary(scope)
+    return this.summaryCache.read(
+      'dashboard',
+      [scope.includeEmotive, scope.includeDomace],
+      SUMMARY_CACHE_TTL_SECONDS,
+      () => this.repo.getSummary(scope),
+    )
   }
 
   /**

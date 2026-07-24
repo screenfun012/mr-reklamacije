@@ -7,6 +7,10 @@ import {
 } from '@mr/shared'
 
 import { ForbiddenError } from '../../core/errors/domain-errors.js'
+import {
+  SummaryCache,
+  SUMMARY_CACHE_TTL_SECONDS,
+} from '../../infrastructure/cache/summary-cache.js'
 import { buildStatisticsQueryContext } from './statistics-claim-filter.js'
 import type { StatisticsRepository } from './statistics.repository.js'
 import type { StatisticsActor, StatisticsScope } from './statistics.types.js'
@@ -81,13 +85,38 @@ export function computeVolumeTrend(
 }
 
 export class StatisticsService {
-  constructor(private readonly repo: StatisticsRepository) {}
+  constructor(
+    private readonly repo: StatisticsRepository,
+    private readonly summaryCache: SummaryCache,
+  ) {}
 
   async getSummary(
     actor: StatisticsActor,
     filters: StatisticsSummaryFilters = {},
   ): Promise<StatisticsSummary> {
+    // Resolve scope first: it is the auth gate (throws before any cache work) and, together
+    // with the filters, forms the cache key — the summary is NOT keyed per user.
     const scope = resolveScope(actor)
+    return this.summaryCache.read(
+      'statistics',
+      [
+        scope.includeEmotive,
+        scope.includeDomace,
+        filters.kind,
+        filters.manufacturerId,
+        filters.year,
+        filters.dateFrom?.toISOString(),
+        filters.dateTo?.toISOString(),
+      ],
+      SUMMARY_CACHE_TTL_SECONDS,
+      () => this.computeSummary(scope, filters),
+    )
+  }
+
+  private async computeSummary(
+    scope: StatisticsScope,
+    filters: StatisticsSummaryFilters,
+  ): Promise<StatisticsSummary> {
     const queryContext = buildStatisticsQueryContext(scope, filters)
     const [
       byMonth,
