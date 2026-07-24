@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs'
 import { addEmployeeStatsSheet } from './build-employee-stats-sheet.js'
 import { addFirmStatsSheet } from './build-firm-stats-sheet.js'
 import { formatDomaceOutcome } from './format-domace-outcome.js'
+import { formatEmotiveOutcome } from './format-emotive-outcome.js'
 import { formatExportDate, formatSheetDateLabel } from './format-export-date.js'
 import { formatGreska } from './format-greska.js'
 import { buildMasterRows } from './map-domace-to-emotive-row.js'
@@ -20,6 +21,7 @@ const EMOTIVE_HEADERS = [
   'GRESKA',
   'REMARKS',
   'GODINA',
+  'STATUS',
 ] as const
 
 // Full business sheet (docs/23), columns A–O in order.
@@ -66,6 +68,7 @@ function emotiveRowValues(row: EmotiveExportRow): (string | number | null)[] {
     // header, so it is where the firm shows.
     row.customerName,
     row.claimYear,
+    formatEmotiveOutcome(row.outcome),
   ]
 }
 
