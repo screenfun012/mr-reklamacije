@@ -6,21 +6,29 @@ import type { Redis } from 'ioredis'
  * (Redis disabled) and any runtime error (Redis down): a cache is a best-effort optimization,
  * never a dependency — reads return a miss, writes no-op, so callers always fall back to the
  * database. This is what keeps Redis from becoming a new single point of failure.
+ *
+ * Every key is namespaced by `keyPrefix` (env-scoped; prod carries a secret guard — see
+ * `resolveCacheKeyPrefix`), so one shared Redis can serve prod/dev/staging without collisions.
  */
 export class RedisCache {
   constructor(
     private readonly client: Redis | null,
     private readonly logger?: Logger,
+    private readonly keyPrefix = '',
   ) {}
 
   get enabled(): boolean {
     return this.client !== null
   }
 
+  private k(key: string): string {
+    return this.keyPrefix === '' ? key : `${this.keyPrefix}.${key}`
+  }
+
   async get<T>(key: string): Promise<T | null> {
     if (this.client === null) return null
     try {
-      const raw = await this.client.get(key)
+      const raw = await this.client.get(this.k(key))
       if (raw === null) return null
       const parsed: unknown = JSON.parse(raw)
       return parsed as T
@@ -33,7 +41,7 @@ export class RedisCache {
   async set(key: string, value: unknown, ttlSeconds: number): Promise<void> {
     if (this.client === null) return
     try {
-      await this.client.set(key, JSON.stringify(value), 'EX', ttlSeconds)
+      await this.client.set(this.k(key), JSON.stringify(value), 'EX', ttlSeconds)
     } catch (err) {
       this.logger?.warn({ err, key }, 'redis set failed')
     }
@@ -42,7 +50,7 @@ export class RedisCache {
   async del(...keys: string[]): Promise<void> {
     if (this.client === null || keys.length === 0) return
     try {
-      await this.client.del(...keys)
+      await this.client.del(...keys.map((key) => this.k(key)))
     } catch (err) {
       this.logger?.warn({ err, keys }, 'redis del failed')
     }
@@ -52,7 +60,7 @@ export class RedisCache {
   async incr(key: string): Promise<number> {
     if (this.client === null) return 0
     try {
-      return await this.client.incr(key)
+      return await this.client.incr(this.k(key))
     } catch (err) {
       this.logger?.warn({ err, key }, 'redis incr failed')
       return 0
@@ -63,7 +71,7 @@ export class RedisCache {
   async getNumber(key: string): Promise<number> {
     if (this.client === null) return 0
     try {
-      const raw = await this.client.get(key)
+      const raw = await this.client.get(this.k(key))
       if (raw === null) return 0
       const value = Number(raw)
       return Number.isFinite(value) ? value : 0

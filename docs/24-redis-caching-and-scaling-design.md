@@ -133,6 +133,28 @@ Each phase: small diff → full gate → owner verifies → commit. Nothing conn
 - Keep everything TTL'd and small → RAM stays tens of MB → a few $/month, likely within plan credit.
 - Health check stays a static liveness endpoint; **do not** gate deploys on Redis (it's optional).
 
+### Key namespacing (one Redis for all environments)
+
+Every Redis key is prefixed by environment so a SINGLE Redis instance can serve prod/dev/staging
+without CI/CD juggling — drop one env's keys via its prefix, the others untouched. The prefix is
+applied at the lowest layer (`RedisCache`), so it covers the summary cache today and the Phase 3
+rate-limiter/lockout automatically.
+
+- Prefix is derived from `NODE_ENV` (no new env var): `prod` / `staging` / `dev` / `test`. Keys look
+  like `prod.summary:gen`, `dev.statistics:g0:[...]`.
+- **Production protection factor:** prod additionally carries a tiny 4-char guard derived from
+  `BETTER_AUTH_SECRET` (unique per env) → `prod.{guard}.{key}`. Nothing outside real prod can read
+  or clobber prod's cache even if it mistakenly uses the `prod` prefix — it lacks the secret.
+  Memory-cheap (4 chars). See `resolveCacheKeyPrefix`.
+
+### Flush safety
+
+- The application **never** issues `FLUSHALL`/`FLUSHDB`/pattern deletes — `RedisCache` only touches
+  its own specific prefixed keys. It cannot wipe Redis.
+- A `.claude/settings.local.json` PreToolUse hook **hard-blocks** any terminal `flushall`/`flushdb`,
+  and a memory rule requires Nikola's explicit approval for any Redis flush/mass-delete — so an
+  accidental wipe (of the shared prod cache) can't happen without a deliberate override.
+
 ## 9. Open items to confirm before implementation
 
 1. **Phase ordering.** Recommended: 0 → 1 (relieve now) → 3 (scaling) → 2 (session cache, once Phase 1

@@ -61,6 +61,7 @@ import { createStorageService } from '../infrastructure/storage/create-storage-s
 import type { StorageService } from '../infrastructure/storage/storage.interface.js'
 import { createRedisClient } from '../infrastructure/cache/redis-client.js'
 import { RedisCache } from '../infrastructure/cache/redis-cache.js'
+import { resolveCacheKeyPrefix } from '../infrastructure/cache/cache-key-prefix.js'
 import { SummaryCache } from '../infrastructure/cache/summary-cache.js'
 import { CacheInvalidatingEventBus } from '../infrastructure/cache/cache-invalidating-event-bus.js'
 import { DbAppSettingsReader } from './settings/app-settings.reader.js'
@@ -133,7 +134,7 @@ export function createContainer(env: Env, logger: Logger): Container {
   const { db, pool } = createDb(env)
   const postgresEventBus = new PostgresEventBus(pool, env.DATABASE_URL, logger)
   void postgresEventBus.start()
-  const cache = new RedisCache(createRedisClient(env, logger), logger)
+  const cache = new RedisCache(createRedisClient(env, logger), logger, resolveCacheKeyPrefix(env))
   // Wrap the transport so every claim mutation invalidates the statistics/dashboard cache.
   const eventBus = new CacheInvalidatingEventBus(postgresEventBus, new SummaryCache(cache))
   return buildContainer(env, logger, db, pool, eventBus, cache)

@@ -68,6 +68,14 @@ describe('RedisCache — disabled (null client)', () => {
 })
 
 describe('RedisCache — with a working client', () => {
+  it('namespaces every key with the configured prefix', async () => {
+    const fake = new FakeRedis()
+    const cache = new RedisCache(asRedis(fake), undefined, 'prod.ab12')
+    await cache.set('summary:gen', 1, 60)
+    expect([...fake.store.keys()]).toEqual(['prod.ab12.summary:gen'])
+    await expect(cache.get('summary:gen')).resolves.toBe(1)
+  })
+
   it('round-trips a JSON value', async () => {
     const cache = new RedisCache(asRedis(new FakeRedis()))
     expect(cache.enabled).toBe(true)
