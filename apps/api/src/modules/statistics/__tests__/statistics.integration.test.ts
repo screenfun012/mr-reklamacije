@@ -379,9 +379,6 @@ describe('Statistics module integration', () => {
           }),
           acceptanceRateByMonth: expect.any(Array),
         },
-        bySource: {
-          items: expect.any(Array),
-        },
         byEmployee: {
           items: expect.any(Array),
         },
@@ -500,55 +497,6 @@ describe('Statistics module integration', () => {
   })
 
   describe('when loading breakdown statistics', () => {
-    it('groups emotive claims by claim source', async () => {
-      await createEmotiveClaim(
-        'STAT-SRC-1/26',
-        ClaimOutcome.Accepted,
-        daysAgo(9),
-        undefined,
-        'SELMAN',
-      )
-      await createEmotiveClaim(
-        'STAT-SRC-2/26',
-        ClaimOutcome.Accepted,
-        daysAgo(8),
-        undefined,
-        'VITOBELLO',
-      )
-
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const selman = summary.bySource.items.find((row) => row.code === 'SELMAN')
-      const vitobello = summary.bySource.items.find((row) => row.code === 'VITOBELLO')
-
-      expect(selman?.total).toBeGreaterThanOrEqual(1)
-      expect(vitobello?.total).toBeGreaterThanOrEqual(1)
-    })
-
-    it('returns empty bySource for domace-only statistics scope', async () => {
-      await createEmotiveClaim('STAT-SRC-DOM-ONLY/26')
-      await createDomaceClaim('STAT-SRC-DOM-ONLY-D/26')
-
-      const summary = await container.statisticsService.getSummary(DOMACE_ONLY)
-
-      expect(summary.bySource.items).toEqual([])
-    })
-
-    it('includes unknown source segment for null source_id', async () => {
-      const claimId = await createEmotiveClaim('STAT-SRC-UNK/26')
-      await ctx.db
-        .update(schema.emotiveClaims)
-        .set({ sourceId: null })
-        .where(eq(schema.emotiveClaims.id, claimId))
-
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const unknown = summary.bySource.items.find(
-        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
-      )
-
-      expect(unknown).toMatchObject({ sourceId: null, total: expect.any(Number) })
-      expect(unknown?.total).toBeGreaterThanOrEqual(1)
-    })
-
     it('aggregates assigned employee_id across emotive and domace claims', async () => {
       const employeeId = await getEmployeeIdByNormalizedName(
         ctx.db,
@@ -608,8 +556,13 @@ describe('Statistics module integration', () => {
     })
 
     it('excludes archived claims from breakdown aggregates', async () => {
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
       const before = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const beforeSelman = before.bySource.items.find((row) => row.code === 'SELMAN')?.total ?? 0
+      const beforeCount =
+        before.byEmployee.items.find((row) => row.employeeId === employeeId)?.total ?? 0
 
       const activeId = await createEmotiveClaim('STAT-BRK-ACTIVE/26')
       const archivedId = await createEmotiveClaim('STAT-BRK-ARCH/26')
@@ -620,9 +573,9 @@ describe('Statistics module integration', () => {
         .where(eq(schema.emotiveClaims.id, archivedId))
 
       const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const selman = summary.bySource.items.find((row) => row.code === 'SELMAN')
+      const after = summary.byEmployee.items.find((row) => row.employeeId === employeeId)
 
-      expect(selman?.total).toBe(beforeSelman + 1)
+      expect(after?.total).toBe(beforeCount + 1)
       expect(activeId).toBeDefined()
     })
 
@@ -698,7 +651,7 @@ describe('Statistics module integration', () => {
       expect(summary.byManufacturer.items.some((row) => row.manufacturerId === audiId)).toBe(false)
     })
 
-    it('returns empty source breakdown for domace kind filter', async () => {
+    it('applies the domace kind filter to trends', async () => {
       await createEmotiveClaim('STAT-FIL-KIND-EMO/26')
       await createDomaceClaim('STAT-FIL-KIND-DOM/26')
 
@@ -706,7 +659,6 @@ describe('Statistics module integration', () => {
         kind: ClaimKind.Domace,
       })
 
-      expect(summary.bySource.items).toEqual([])
       expect(summary.trends.byMonth.at(-1)?.domace).toBeGreaterThanOrEqual(1)
       expect(summary.trends.byMonth.at(-1)?.emotive).toBe(0)
     })
@@ -717,7 +669,6 @@ describe('Statistics module integration', () => {
       expect(summary.trends.byMonth.every((row) => row.total === 0)).toBe(true)
       expect(summary.byManufacturer.items).toEqual([])
       expect(summary.outcomes.distribution.total).toBe(0)
-      expect(summary.bySource.items).toEqual([])
       expect(summary.byEmployee.items).toEqual([])
       expect(summary.byEngineType.items).toEqual([])
     })
@@ -731,7 +682,6 @@ describe('Statistics module integration', () => {
       })
 
       expect(summary.trends.byMonth.every((row) => row.total === 0)).toBe(true)
-      expect(summary.bySource.items).toEqual([])
     })
   })
 

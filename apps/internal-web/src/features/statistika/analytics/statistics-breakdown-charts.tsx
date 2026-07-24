@@ -4,7 +4,6 @@ import {
   type StatisticsByEmployee,
   type StatisticsByEngineType,
   type StatisticsByFaults,
-  type StatisticsBySource,
   type StatisticsRankDisplayRow,
   type StatisticsRankRow,
 } from '@mr/shared'
@@ -17,7 +16,6 @@ import { resolveBreakdownDisplayName } from './statistics-breakdown-formatters.j
 import { StatisticsManufacturerRankTooltip } from './statistics-manufacturer-chart-tooltip.js'
 
 export interface StatisticsBreakdownChartsProps {
-  bySource: StatisticsBySource
   byEmployee: StatisticsByEmployee
   byEngineType: StatisticsByEngineType
   byCustomer: StatisticsByCustomer
@@ -164,13 +162,11 @@ function BreakdownRankCard({
 }
 
 export function StatisticsBreakdownCharts({
-  bySource,
   byEmployee,
   byEngineType,
   byCustomer,
   byFaults,
 }: StatisticsBreakdownChartsProps): React.ReactElement | null {
-  const showSource = bySource.items.length > 0
   const showEmployee = byEmployee.items.length > 0
   const showEngineType = byEngineType.items.length > 0
   const showCustomer = byCustomer.items.length > 0
@@ -179,7 +175,7 @@ export function StatisticsBreakdownCharts({
     byFaults.byDepartment.length > 0 ||
     byFaults.byExternalParty.length > 0
 
-  if (!showSource && !showEmployee && !showEngineType && !showCustomer && !showFaults) {
+  if (!showEmployee && !showEngineType && !showCustomer && !showFaults) {
     return null
   }
 
@@ -201,26 +197,6 @@ export function StatisticsBreakdownCharts({
             items={byCustomer.items}
             gradient={STATISTICS_MONO_GRADIENTS.green}
             rollupOthers
-          />
-        </>
-      ) : null}
-
-      {showSource ? (
-        <>
-          <div>
-            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
-              {m.statistika_analytics_source_section_title()}
-            </h3>
-            <p className="mt-1.5 text-sm text-mri-text2">
-              {m.statistika_analytics_source_section_description()}
-            </p>
-          </div>
-          <BreakdownRankCard
-            prefix="source"
-            title={m.statistika_analytics_source_section_title()}
-            items={bySource.items}
-            gradient={STATISTICS_MONO_GRADIENTS.blue}
-            rollupOthers={false}
           />
         </>
       ) : null}

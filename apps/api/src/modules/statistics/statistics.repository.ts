@@ -16,7 +16,6 @@ import {
   type StatisticsManufacturerRow,
   type StatisticsOutcomeDistribution,
   type StatisticsProcessingTime,
-  type StatisticsSourceRow,
   type StatisticsTrendMonth,
   type StatisticsTrendYear,
 } from '@mr/shared'
@@ -73,13 +72,6 @@ interface AcceptanceRateMonthRow extends Record<string, unknown> {
   month: string
   decided: number | string
   accepted: number | string
-}
-
-interface SourceRow extends Record<string, unknown> {
-  source_id: string | null
-  code: string | null
-  name: string | null
-  total: number | string
 }
 
 interface EmployeeRow extends Record<string, unknown> {
@@ -470,38 +462,6 @@ export class StatisticsRepository {
         ratePercent: computeAcceptanceRatePercent(accepted, decided),
       }
     })
-  }
-
-  async fetchBySource(ctx: StatisticsQueryContext): Promise<StatisticsSourceRow[]> {
-    if (!ctx.effectiveScope.includeEmotive) {
-      return []
-    }
-
-    const result = await this.db.execute<SourceRow>(sql`
-      SELECT
-        ec.source_id,
-        MAX(cs.code) AS code,
-        MAX(cs.name) AS name,
-        COUNT(*)::int AS total
-      FROM emotive_claims ec
-      LEFT JOIN claim_sources cs
-        ON cs.id = ec.source_id
-        AND cs.deleted_at IS NULL
-      WHERE ${buildActiveClaimWhere('ec', ctx)}
-      GROUP BY ec.source_id
-      HAVING COUNT(*) > 0
-      ORDER BY total DESC, MAX(cs.name) ASC NULLS LAST
-    `)
-
-    return result.rows.map((row) => ({
-      sourceId: row.source_id,
-      code: row.source_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : (row.code ?? ''),
-      name:
-        row.source_id === null
-          ? 'Nepoznato'
-          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
-      total: toInt(row.total),
-    }))
   }
 
   async fetchByEmployee(ctx: StatisticsQueryContext): Promise<StatisticsEmployeeRow[]> {

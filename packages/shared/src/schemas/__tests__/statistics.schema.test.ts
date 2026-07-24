@@ -14,7 +14,6 @@ const emptyOutcomes = {
 }
 
 const emptyBreakdowns = {
-  bySource: { items: [] },
   byEmployee: { items: [] },
   byEngineType: { items: [] },
   domaceAmounts: { totalAmount: 0, claimCount: 0 },
@@ -62,16 +61,6 @@ describe('StatisticsSummarySchema', () => {
         distribution: { pending: 3, accepted: 4, rejected: 2, total: 9 },
         processingTime: { averageDays: 12.5, medianDays: 10, maxDays: 45, sampleSize: 6 },
         acceptanceRateByMonth: [{ month: '2025-06', decided: 4, accepted: 3, ratePercent: 75 }],
-      },
-      bySource: {
-        items: [
-          {
-            sourceId: '00000000-0000-4000-8000-000000000010',
-            code: 'SELMAN',
-            name: 'Selman',
-            total: 4,
-          },
-        ],
       },
       byEmployee: {
         items: [
@@ -125,7 +114,6 @@ describe('StatisticsSummarySchema', () => {
     expect(parsed.trends.volumeTrend.direction).toBe('rising')
     expect(parsed.byManufacturer.items[1]?.code).toBe(STATISTICS_UNKNOWN_MANUFACTURER_CODE)
     expect(parsed.outcomes.processingTime.sampleSize).toBe(6)
-    expect(parsed.bySource.items[0]?.code).toBe('SELMAN')
     expect(parsed.byEmployee.items[0]?.name).toBe('Marko Marković')
     expect(parsed.byEngineType.items[0]?.code).toBe(STATISTICS_UNKNOWN_CODE)
     expect(parsed.domaceAmounts).toEqual({ totalAmount: 3999.75, claimCount: 2 })

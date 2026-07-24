@@ -96,21 +96,6 @@ export const StatisticsOutcomesSchema = z.object({
 
 export type StatisticsOutcomes = z.infer<typeof StatisticsOutcomesSchema>
 
-export const StatisticsSourceRowSchema = z.object({
-  sourceId: z.string().uuid().nullable(),
-  code: z.string().min(1),
-  name: z.string().min(1),
-  total: z.coerce.number().int().nonnegative(),
-})
-
-export type StatisticsSourceRow = z.infer<typeof StatisticsSourceRowSchema>
-
-export const StatisticsBySourceSchema = z.object({
-  items: z.array(StatisticsSourceRowSchema),
-})
-
-export type StatisticsBySource = z.infer<typeof StatisticsBySourceSchema>
-
 export const StatisticsEmployeeRowSchema = z.object({
   employeeId: z.string().uuid().nullable(),
   code: z.string().min(1),
@@ -195,7 +180,6 @@ export const StatisticsSummarySchema = z.object({
   trends: StatisticsTrendsSchema,
   byManufacturer: StatisticsByManufacturerSchema,
   outcomes: StatisticsOutcomesSchema,
-  bySource: StatisticsBySourceSchema,
   byEmployee: StatisticsByEmployeeSchema,
   byEngineType: StatisticsByEngineTypeSchema,
   domaceAmounts: StatisticsDomaceAmountsSchema,

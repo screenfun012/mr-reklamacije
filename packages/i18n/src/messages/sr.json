@@ -868,8 +868,6 @@
   "statistika_analytics_period_subtitle_rolling": "Poslednjih 24 meseca, bez arhiviranih.",
   "statistika_analytics_period_subtitle_year": "Godina {year}, bez arhiviranih.",
   "statistika_analytics_previous_period": "Prethodni period",
-  "statistika_analytics_source_section_description": "Broj inostranih reklamacija po izvoru (bez arhiviranih).",
-  "statistika_analytics_source_section_title": "Po izvoru",
   "statistika_analytics_title": "Analitika",
   "statistika_analytics_total": "Ukupno",
   "statistika_analytics_trend_falling": "Pad obima",

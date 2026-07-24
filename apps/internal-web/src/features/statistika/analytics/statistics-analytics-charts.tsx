@@ -22,7 +22,6 @@ export function StatisticsAnalyticsCharts({
       ) : null}
       <StatisticsOutcomesCharts outcomes={summary.outcomes} />
       <StatisticsBreakdownCharts
-        bySource={summary.bySource}
         byEmployee={summary.byEmployee}
         byEngineType={summary.byEngineType}
         byCustomer={summary.byCustomer}

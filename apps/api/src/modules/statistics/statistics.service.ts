@@ -96,7 +96,6 @@ export class StatisticsService {
       distribution,
       processingTime,
       acceptanceRateByMonth,
-      sourceItems,
       employeeItems,
       engineTypeItems,
       domaceAmounts,
@@ -109,7 +108,6 @@ export class StatisticsService {
       this.repo.fetchOutcomeDistribution(queryContext),
       this.repo.fetchProcessingTime(queryContext),
       this.repo.fetchAcceptanceRateByMonth(queryContext),
-      this.repo.fetchBySource(queryContext),
       this.repo.fetchByEmployee(queryContext),
       this.repo.fetchByEngineType(queryContext),
       this.repo.fetchDomaceAmounts(queryContext),
@@ -130,9 +128,6 @@ export class StatisticsService {
         distribution,
         processingTime,
         acceptanceRateByMonth,
-      },
-      bySource: {
-        items: sourceItems,
       },
       byEmployee: {
         items: employeeItems,
