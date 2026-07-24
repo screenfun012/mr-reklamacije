@@ -1,5 +1,5 @@
 import type { Locale } from '@mr/i18n'
-import { getLocale, syncRequestLocale } from '@mr/i18n'
+import { getLocale } from '@mr/i18n'
 import type { MRAuthClientForRouteRoles } from './auth-client-types.js'
 import { getClientSession } from './client-session-store.js'
 import {
@@ -39,9 +39,8 @@ export function createRootAuthBeforeLoad(
   return async () => {
     const onServer = !isBrowser()
 
-    if (onServer) {
-      await syncRequestLocale()
-    }
+    // Locale is resolved once per request by the SSR entry (paraglideMiddleware)
+    // into request-scoped AsyncLocalStorage; getLocale() below reads that store.
 
     if (onServer && !loadServerSession) {
       return { authSession: null, locale: getLocale() }

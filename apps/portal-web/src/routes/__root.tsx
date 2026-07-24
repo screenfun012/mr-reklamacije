@@ -17,7 +17,7 @@ import {
   createRootAuthBeforeLoad,
   SESSION_ROUTE_STALE_MS,
 } from '@mr/auth/route-guards'
-import { m, PORTAL_LOCALE_BOOTSTRAP_SCRIPT, syncPortalRequestLocale } from '@mr/i18n'
+import { m, PORTAL_LOCALE_BOOTSTRAP_SCRIPT } from '@mr/i18n'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
@@ -47,18 +47,12 @@ const FONT_PRELOADS = [
     }) as const,
 )
 
-const rootAuthBeforeLoad = createRootAuthBeforeLoad(authClient, loadServerSession)
-
 export const Route = createRootRouteWithContext<PortalRouterContext>()({
   staleTime: SESSION_ROUTE_STALE_MS,
-  beforeLoad: async () => {
-    const session = await rootAuthBeforeLoad()
-    // Re-pin the SSR locale with the PORTAL resolution (cookie or default EN) —
-    // the shared root beforeLoad pins via Accept-Language, which the portal
-    // deliberately ignores. Must run after it so the portal default wins.
-    const locale = await syncPortalRequestLocale()
-    return { ...session, locale }
-  },
+  // The SSR entry (runWithPortalRequestLocale) resolves the portal locale into
+  // request-scoped storage; getLocale() inside beforeLoad reads it, so no
+  // re-pin is needed here.
+  beforeLoad: createRootAuthBeforeLoad(authClient, loadServerSession),
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

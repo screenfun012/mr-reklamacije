@@ -6,9 +6,10 @@ export {
   LOCALE_COOKIE_NAME,
   LOCALE_STORAGE_KEY,
 } from './locale-bootstrap-script.js'
-export { syncRequestLocale } from './sync-request-locale.js'
+export { paraglideMiddleware } from './paraglide/server.js'
 export {
   PORTAL_DEFAULT_LOCALE,
   PORTAL_LOCALE_BOOTSTRAP_SCRIPT,
-  syncPortalRequestLocale,
+  resolvePortalLocaleFromRequest,
+  runWithPortalRequestLocale,
 } from './portal-locale.js'
