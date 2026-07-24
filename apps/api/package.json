@@ -33,6 +33,7 @@
     "@turbodocx/html-to-docx": "^1.22.0",
     "drizzle-orm": "^0.45.2",
     "hono": "4.12.14",
+    "ioredis": "^5.4.1",
     "jose": "6.2.3",
     "kysely": "^0.28.14",
     "pg": "^8.20.0",

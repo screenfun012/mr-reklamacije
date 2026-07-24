@@ -99,6 +99,12 @@ const EnvSchema = z.object({
   // is absent, email is disabled (NoOp) and the admin falls back to manual reset.
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
+
+  // Redis (optional). When set, enables server-side caching (statistics/dashboard) and,
+  // later, a shared rate-limiter/lockout store for multi-replica. Absent => every
+  // Redis-backed feature falls back to in-memory/DB, so the app behaves exactly as today.
+  // MUST be the PRIVATE Railway URL (redis.railway.internal) — the public TCP proxy bills egress.
+  REDIS_URL: z.string().url().optional(),
 })
 
 export type Env = z.infer<typeof EnvSchema>

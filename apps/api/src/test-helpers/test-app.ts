@@ -333,7 +333,16 @@ export function buildTestContainer(
   eventBus?: EventBus,
   emailPort?: EmailPort,
 ): Container {
-  return buildContainer(createTestEnv(databaseUrl), fakeLogger(), db, pool, eventBus, emailPort)
+  // cache defaults to a disabled RedisCache(null) — tests never require Redis.
+  return buildContainer(
+    createTestEnv(databaseUrl),
+    fakeLogger(),
+    db,
+    pool,
+    eventBus,
+    undefined,
+    emailPort,
+  )
 }
 
 export function createPresenceTestApp(

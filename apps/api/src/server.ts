@@ -94,6 +94,7 @@ function shutdown(signal: string): void {
         // Browser already gone — nothing to release.
       })
       .then(() => container.eventBus.dispose?.())
+      .then(() => container.cache.dispose())
       .then(() => container.pool.end())
       .finally(() => {
         logger.info('DB pool closed')

@@ -59,6 +59,8 @@ import { createBetterAuthUserPassword } from '../infrastructure/auth/better-auth
 import { createBetterAuthUserSessions } from '../infrastructure/auth/better-auth-user-sessions.js'
 import { createStorageService } from '../infrastructure/storage/create-storage-service.js'
 import type { StorageService } from '../infrastructure/storage/storage.interface.js'
+import { createRedisClient } from '../infrastructure/cache/redis-client.js'
+import { RedisCache } from '../infrastructure/cache/redis-cache.js'
 import { DbAppSettingsReader } from './settings/app-settings.reader.js'
 
 /**
@@ -70,6 +72,8 @@ export interface Container {
   logger: Logger
   db: NodePgDatabase<typeof schema>
   pool: Pool
+  /** Best-effort server-side cache (Redis when REDIS_URL is set, otherwise a disabled no-op). */
+  cache: RedisCache
   auth: ReturnType<typeof createAuth>
   permissionResolver: ReturnType<typeof createPermissionResolver>
   auditService: AuditPort
@@ -127,7 +131,8 @@ export function createContainer(env: Env, logger: Logger): Container {
   const { db, pool } = createDb(env)
   const eventBus = new PostgresEventBus(pool, env.DATABASE_URL, logger)
   void eventBus.start()
-  return buildContainer(env, logger, db, pool, eventBus)
+  const cache = new RedisCache(createRedisClient(env, logger), logger)
+  return buildContainer(env, logger, db, pool, eventBus, cache)
 }
 
 export function buildContainer(
@@ -136,6 +141,7 @@ export function buildContainer(
   db: NodePgDatabase<typeof schema>,
   pool: Pool,
   eventBus: EventBus = new InProcessEventBus(),
+  cache: RedisCache = new RedisCache(null),
   emailPort: EmailPort = createEmailPort(env),
 ): Container {
   const auth = createAuth(db, {
@@ -324,6 +330,7 @@ export function buildContainer(
     logger,
     db,
     pool,
+    cache,
     auth,
     permissionResolver,
     auditService,
