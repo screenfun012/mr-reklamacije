@@ -1,4 +1,9 @@
-import { createAuth, createPermissionResolver } from '@mr/auth'
+import {
+  createAuth,
+  createLoginAttemptStore,
+  createPermissionResolver,
+  type LoginAttemptStore,
+} from '@mr/auth'
 import { schema } from '@mr/db'
 import { ResourceChangedKey, resolveProtectedSuperAdminEmail } from '@mr/shared'
 import type { Logger } from '@mr/logger'
@@ -61,7 +66,9 @@ import { createStorageService } from '../infrastructure/storage/create-storage-s
 import type { StorageService } from '../infrastructure/storage/storage.interface.js'
 import { createRedisClient } from '../infrastructure/cache/redis-client.js'
 import { RedisCache } from '../infrastructure/cache/redis-cache.js'
+import { createRedisLoginAttemptStore } from '../infrastructure/cache/redis-login-attempt-store.js'
 import { resolveCacheKeyPrefix } from '../infrastructure/cache/cache-key-prefix.js'
+import { createRateLimiters, type RateLimiters } from './middleware/rate-limit.js'
 import { SummaryCache } from '../infrastructure/cache/summary-cache.js'
 import { CacheInvalidatingEventBus } from '../infrastructure/cache/cache-invalidating-event-bus.js'
 import { DbAppSettingsReader } from './settings/app-settings.reader.js'
@@ -77,6 +84,8 @@ export interface Container {
   pool: Pool
   /** Best-effort server-side cache (Redis when REDIS_URL is set, otherwise a disabled no-op). */
   cache: RedisCache
+  /** Rate-limit middlewares, Redis-backed when the cache is enabled (shared across replicas). */
+  rateLimiters: RateLimiters
   auth: ReturnType<typeof createAuth>
   permissionResolver: ReturnType<typeof createPermissionResolver>
   auditService: AuditPort
@@ -134,10 +143,25 @@ export function createContainer(env: Env, logger: Logger): Container {
   const { db, pool } = createDb(env)
   const postgresEventBus = new PostgresEventBus(pool, env.DATABASE_URL, logger)
   void postgresEventBus.start()
-  const cache = new RedisCache(createRedisClient(env, logger), logger, resolveCacheKeyPrefix(env))
+  // One Redis client + env prefix shared by the cache and the login-lockout store.
+  const redis = createRedisClient(env, logger)
+  const keyPrefix = resolveCacheKeyPrefix(env)
+  const cache = new RedisCache(redis, logger, keyPrefix)
   // Wrap the transport so every claim mutation invalidates the statistics/dashboard cache.
   const eventBus = new CacheInvalidatingEventBus(postgresEventBus, new SummaryCache(cache))
-  return buildContainer(env, logger, db, pool, eventBus, cache)
+  // Shared login-lockout across replicas when Redis is on; in-memory (buildContainer default) otherwise.
+  const loginAttemptStore =
+    redis === null ? undefined : createRedisLoginAttemptStore(redis, keyPrefix, logger)
+  return buildContainer(
+    env,
+    logger,
+    db,
+    pool,
+    eventBus,
+    cache,
+    createEmailPort(env),
+    loginAttemptStore,
+  )
 }
 
 export function buildContainer(
@@ -148,12 +172,16 @@ export function buildContainer(
   eventBus: EventBus = new InProcessEventBus(),
   cache: RedisCache = new RedisCache(null),
   emailPort: EmailPort = createEmailPort(env),
+  loginAttemptStore?: LoginAttemptStore,
 ): Container {
+  const rateLimiters = createRateLimiters(cache)
   const auth = createAuth(db, {
     trustedOrigins: env.PUBLIC_ORIGINS,
     onUserRegistered: () => {
       eventBus.publishResourceChanged(ResourceChangedKey.Users)
     },
+    // In-memory by default (tests, single instance); Redis-backed store when supplied.
+    loginAttemptStore: loginAttemptStore ?? createLoginAttemptStore(),
   })
   const permissionResolver = createPermissionResolver(db)
   const auditService = new AuditService(db)
@@ -339,6 +367,7 @@ export function buildContainer(
     db,
     pool,
     cache,
+    rateLimiters,
     auth,
     permissionResolver,
     auditService,

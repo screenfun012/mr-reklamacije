@@ -10,7 +10,7 @@ import { createLoginLockoutHooks } from './hooks/login-lockout.js'
 import { createOnUserRegisteredHook } from './hooks/on-user-registered.js'
 import { createSessionCreateAfterHook } from './hooks/session-create-after.js'
 import { createSessionCreateBeforeHook } from './hooks/session-create-before.js'
-import { createLoginAttemptStore } from './login-attempt-store.js'
+import { createLoginAttemptStore, type LoginAttemptStore } from './login-attempt-store.js'
 import { sharedAuthOptions } from './options.js'
 import { createPermissionResolver } from './permissions.js'
 import { createCachedPermissionResolver } from './server/permission-cache.js'
@@ -30,6 +30,12 @@ export interface CreateAuthOptions {
   trustedOrigins?: string[]
   /** Called after a new pending user row is created (email signup). */
   onUserRegistered?: (userId: string) => void
+  /**
+   * Per-account login-lockout store. Defaults to the in-memory implementation
+   * (single instance); apps/api injects a Redis-backed one so the lockout is
+   * shared across replicas. Same interface either way — no policy change.
+   */
+  loginAttemptStore?: LoginAttemptStore
 }
 
 /**
@@ -63,8 +69,9 @@ export function createAuth(db: NodePgDatabase<typeof schema>, opts: CreateAuthOp
   const resolver = createPermissionResolver(db)
 
   // Per-account (email-keyed) login lockout — brute-force protection that does
-  // NOT collateral-block accounts sharing an IP. In-memory (single instance).
-  const loginAttempts = createLoginAttemptStore()
+  // NOT collateral-block accounts sharing an IP. In-memory by default; apps/api
+  // injects a Redis-backed store (shared across replicas), same policy.
+  const loginAttempts = opts.loginAttemptStore ?? createLoginAttemptStore()
   const loginLockout = createLoginLockoutHooks(loginAttempts)
 
   const cachedByRoles = createCachedPermissionResolver({

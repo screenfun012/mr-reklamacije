@@ -14,69 +14,69 @@ describe('createLoginAttemptStore', () => {
     vi.useRealTimers()
   })
 
-  it('locks the account after 5 failures and reports remaining seconds', () => {
+  it('locks the account after 5 failures and reports remaining seconds', async () => {
     const store = createLoginAttemptStore()
     for (let i = 0; i < 4; i += 1) {
-      store.recordFailure('user@example.com')
-      expect(store.checkLocked('user@example.com')).toBeNull()
+      await store.recordFailure('user@example.com')
+      expect(await store.checkLocked('user@example.com')).toBeNull()
     }
-    store.recordFailure('user@example.com')
+    await store.recordFailure('user@example.com')
 
-    const remaining = store.checkLocked('user@example.com')
+    const remaining = await store.checkLocked('user@example.com')
     expect(remaining).not.toBeNull()
     expect(remaining ?? 0).toBeGreaterThan(0)
     expect(remaining ?? 0).toBeLessThanOrEqual(LOCKOUT_MS / 1000)
   })
 
-  it('keys case-insensitively and trims whitespace', () => {
+  it('keys case-insensitively and trims whitespace', async () => {
     const store = createLoginAttemptStore()
     for (let i = 0; i < 5; i += 1) {
-      store.recordFailure('  Mix@Ed.com ')
+      await store.recordFailure('  Mix@Ed.com ')
     }
-    expect(store.checkLocked('mix@ed.com')).not.toBeNull()
+    expect(await store.checkLocked('mix@ed.com')).not.toBeNull()
   })
 
-  it('clears the lock on a successful login', () => {
+  it('clears the lock on a successful login', async () => {
     const store = createLoginAttemptStore()
     for (let i = 0; i < 5; i += 1) {
-      store.recordFailure('a@b.com')
+      await store.recordFailure('a@b.com')
     }
-    expect(store.checkLocked('a@b.com')).not.toBeNull()
+    expect(await store.checkLocked('a@b.com')).not.toBeNull()
 
-    store.recordSuccess('a@b.com')
-    expect(store.checkLocked('a@b.com')).toBeNull()
+    await store.recordSuccess('a@b.com')
+    expect(await store.checkLocked('a@b.com')).toBeNull()
   })
 
-  it('expires the lock after the lockout window', () => {
+  it('expires the lock after the lockout window', async () => {
     const store = createLoginAttemptStore()
     for (let i = 0; i < 5; i += 1) {
-      store.recordFailure('a@b.com')
+      await store.recordFailure('a@b.com')
     }
-    expect(store.checkLocked('a@b.com')).not.toBeNull()
+    expect(await store.checkLocked('a@b.com')).not.toBeNull()
 
     vi.advanceTimersByTime(LOCKOUT_MS + 1_000)
-    expect(store.checkLocked('a@b.com')).toBeNull()
+    expect(await store.checkLocked('a@b.com')).toBeNull()
   })
 
-  it('keeps accounts independent — locking one never affects another (no shared-IP collateral)', () => {
+  it('keeps accounts independent — locking one never affects another (no shared-IP collateral)', async () => {
     const store = createLoginAttemptStore()
     for (let i = 0; i < 5; i += 1) {
-      store.recordFailure('victim@b.com')
+      await store.recordFailure('victim@b.com')
     }
-    expect(store.checkLocked('victim@b.com')).not.toBeNull()
+    expect(await store.checkLocked('victim@b.com')).not.toBeNull()
 
     // The whole point of per-account keying: a different account is untouched.
-    expect(store.checkLocked('colleague@b.com')).toBeNull()
-    store.recordFailure('colleague@b.com')
-    expect(store.checkLocked('colleague@b.com')).toBeNull()
+    expect(await store.checkLocked('colleague@b.com')).toBeNull()
+    await store.recordFailure('colleague@b.com')
+    expect(await store.checkLocked('colleague@b.com')).toBeNull()
   })
 
-  it('decays failures across the counting window (5 slow failures do not lock)', () => {
+  it('decays failures across the counting window (5 slow failures do not lock)', async () => {
     const store = createLoginAttemptStore()
     for (let i = 0; i < 5; i += 1) {
-      store.recordFailure('slow@b.com')
+      await store.recordFailure('slow@b.com')
       vi.advanceTimersByTime(20 * 60_000)
     }
-    expect(store.checkLocked('slow@b.com')).toBeNull()
+    expect(await store.checkLocked('slow@b.com')).toBeNull()
   })
 })

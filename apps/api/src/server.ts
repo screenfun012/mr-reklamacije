@@ -13,12 +13,14 @@ const env = parseEnv()
 const logger = createLogger('api')
 const container = createContainer(env, logger)
 
-if (env.API_REPLICA_COUNT > 1) {
-  // SSE now propagates across replicas via Postgres LISTEN/NOTIFY (PostgresEventBus),
-  // but the in-memory rate limiter is still per-process — flag the remaining blocker.
+if (env.API_REPLICA_COUNT > 1 && env.REDIS_URL === undefined) {
+  // SSE propagates across replicas via Postgres LISTEN/NOTIFY, and the rate
+  // limiter + login-lockout share state via Redis when REDIS_URL is set. Without
+  // Redis both fall back to per-process in-memory state, so the effective
+  // per-IP/user limit and the lockout fragment (multiply) by replica count.
   logger.warn(
     { replicaCount: env.API_REPLICA_COUNT },
-    'Multiple API replicas: SSE now propagates via Postgres LISTEN/NOTIFY, but the in-memory rate limiter (core/middleware/rate-limit.ts) still fragments per process — the effective per-IP/user limit multiplies by replica count. Move it to a shared store before scaling.',
+    'Multiple API replicas without REDIS_URL: the rate limiter and login-lockout fall back to per-process in-memory state and fragment across replicas. Set REDIS_URL (private redis.railway.internal) to share them. The permission-cache 5-min staleness is separate and already accepted (docs/20).',
   )
 }
 

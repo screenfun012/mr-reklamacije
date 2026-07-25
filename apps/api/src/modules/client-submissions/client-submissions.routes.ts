@@ -4,7 +4,6 @@ import type { AppVariables } from '../../app.js'
 import { requirePermission } from '../../core/auth/require-permission.js'
 import { requirePermissions } from '../../core/auth/require-permissions.js'
 import type { Container } from '../../core/container.js'
-import { clientSubmissionRateLimiter } from '../../core/middleware/rate-limit.js'
 import { createClientSubmissionsController } from './client-submissions.controller.js'
 
 export function registerClientSubmissionsRoutes(
@@ -17,7 +16,7 @@ export function registerClientSubmissionsRoutes(
   // Portal client intake — write-gated + rate limited (20/h per user, defense in depth).
   routes.post(
     '/',
-    clientSubmissionRateLimiter,
+    container.rateLimiters.clientSubmission,
     requirePermission('client_submissions.create'),
     controller.create,
   )

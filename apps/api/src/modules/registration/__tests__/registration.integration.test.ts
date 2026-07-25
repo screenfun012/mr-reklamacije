@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
 import { registerGlobalErrorHandler } from '../../../core/middleware/error-handler.js'
-import { clientRegistrationRateLimiter } from '../../../core/middleware/rate-limit.js'
+import { RedisCache } from '../../../infrastructure/cache/redis-cache.js'
+import { createRateLimiters } from '../../../core/middleware/rate-limit.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import {
   buildTestContainer,
@@ -167,7 +168,7 @@ describe('client registration rate limiter', () => {
   it('rejects requests past the limit with 429', async () => {
     const app = new Hono()
     registerGlobalErrorHandler(app, fakeLogger())
-    app.use('/api/registration', clientRegistrationRateLimiter)
+    app.use('/api/registration', createRateLimiters(new RedisCache(null)).clientRegistration)
     app.post('/api/registration', (c) => c.body(null, 202))
 
     const ip = '203.0.113.77'

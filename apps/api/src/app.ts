@@ -8,14 +8,6 @@ import { createSessionMiddleware } from './core/auth/session-middleware.js'
 import type { BetterAuthFullSession, MRSessionUser } from './core/auth/session-types.js'
 import { requestBodyLimit } from './core/middleware/body-limit.js'
 import { registerGlobalErrorHandler } from './core/middleware/error-handler.js'
-import {
-  activationRateLimiter,
-  clientRegistrationRateLimiter,
-  generalRateLimiter,
-  loginRateLimiter,
-  sessionRateLimiter,
-  signupRateLimiter,
-} from './core/middleware/rate-limit.js'
 import { createSignupOriginGuard } from './core/middleware/signup-origin-guard.js'
 import { createRequestLogger } from './core/middleware/request-logger.js'
 import { registerPresenceRoutes } from './modules/presence/index.js'
@@ -121,14 +113,15 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   app.use('*', requestId())
   app.use('*', createRequestLogger(container.logger))
   app.use('*', requestBodyLimit)
-  app.use('*', generalRateLimiter)
-  app.use('*', sessionRateLimiter)
-  app.use('/api/auth/sign-in/email', loginRateLimiter)
-  app.use('/api/auth/sign-up/email', signupRateLimiter)
+  const rateLimiters = container.rateLimiters
+  app.use('*', rateLimiters.general)
+  app.use('*', rateLimiters.session)
+  app.use('/api/auth/sign-in/email', rateLimiters.login)
+  app.use('/api/auth/sign-up/email', rateLimiters.signup)
   app.use('/api/auth/sign-up/email', createSignupOriginGuard(container.env.SELF_SIGNUP_ORIGINS))
-  app.use('/api/registration', clientRegistrationRateLimiter)
+  app.use('/api/registration', rateLimiters.clientRegistration)
   app.use('/api/registration', createSignupOriginGuard(container.env.CLIENT_SIGNUP_ORIGINS))
-  app.use('/api/activation', activationRateLimiter)
+  app.use('/api/activation', rateLimiters.activation)
   app.use('/api/activation', createSignupOriginGuard(container.env.CLIENT_SIGNUP_ORIGINS))
   app.use('*', createSessionMiddleware(container.auth))
 

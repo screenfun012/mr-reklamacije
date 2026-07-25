@@ -73,7 +73,7 @@ export function createLoginLockoutHooks(store: LoginAttemptStore) {
     if (email === undefined) {
       return
     }
-    const lockedForSeconds = store.checkLocked(email)
+    const lockedForSeconds = await store.checkLocked(email)
     if (lockedForSeconds !== null) {
       throw new APIError(
         'TOO_MANY_REQUESTS',
@@ -98,10 +98,10 @@ export function createLoginLockoutHooks(store: LoginAttemptStore) {
       if (email !== undefined) {
         if (failed) {
           if (countsAsCredentialFailure(returned)) {
-            store.recordFailure(email)
+            await store.recordFailure(email)
           }
         } else {
-          store.recordSuccess(email)
+          await store.recordSuccess(email)
         }
       }
     }

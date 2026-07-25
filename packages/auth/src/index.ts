@@ -6,6 +6,14 @@ export { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'
 export { createLoginAuditHook } from './hooks/login-audit.js'
 export { createPermissionResolver } from './permissions.js'
 export type { PermissionResolver } from './permissions.js'
+export {
+  createLoginAttemptStore,
+  normalizeEmail,
+  LOGIN_MAX_FAILURES,
+  LOGIN_LOCKOUT_MS,
+  LOGIN_WINDOW_MS,
+} from './login-attempt-store.js'
+export type { LoginAttemptStore } from './login-attempt-store.js'
 export { getSession, requireSession, getCurrentUser } from './session-helpers.js'
 export { revokeUserSessions } from './revoke-user-sessions.js'
 export { setUserPassword } from './set-user-password.js'

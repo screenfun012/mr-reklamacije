@@ -5,12 +5,20 @@ import type { Context, MiddlewareHandler } from 'hono'
 
 import { AppError } from '../errors/app-error.js'
 import { clientIpOf } from '../http/client-ip.js'
+import type { RedisCache } from '../../infrastructure/cache/redis-cache.js'
 
 interface RateLimitOptions {
   windowMs: number
   max: number
   /** Returning null skips this limiter for the request (another layer covers it). */
   keyOf?: (c: Context) => string | null
+  /**
+   * Redis key namespace for this limiter. Required once a shared Redis backs the
+   * counters: limiters that produce the same key shape (the five `ipKeyOf` ones all
+   * emit `ip:<addr>`) would otherwise collide on one Redis. Irrelevant to the
+   * in-memory path (each limiter owns its own Map).
+   */
+  name?: string
 }
 
 /**
@@ -71,15 +79,30 @@ interface Bucket {
   resetAt: number
 }
 
+function rejectRateLimited(c: Context, retryAfterSec: number): never {
+  c.header('Retry-After', String(retryAfterSec))
+  throw new AppError(
+    ERROR_CODE.RateLimited,
+    429,
+    `Too many requests. Retry after ${retryAfterSec}s.`,
+  )
+}
+
 /**
- * In-memory fixed-window rate limiter. Suitable for Phase 0
- * (single-instance API). Replace with Redis/unstorage when
- * scaling horizontally in Phase 2+.
+ * Fixed-window rate limiter. Uses the shared Redis counter when `cache` is enabled
+ * (so the limit holds across replicas), and ALWAYS keeps an in-memory Map as the
+ * fallback for when Redis is absent (no `REDIS_URL`) or errors mid-request — the
+ * fallback still limits per replica, it never fails open. Redis and in-memory use
+ * the same anchored-at-first-hit, non-sliding window, so the behaviour is identical.
  */
-export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler {
+export function createRateLimiter(
+  options: RateLimitOptions,
+  cache?: RedisCache,
+): MiddlewareHandler {
   const buckets = new Map<string, Bucket>()
 
   const keyOf = options.keyOf ?? ipKeyOf
+  const namespace = options.name ?? 'default'
 
   const cleanupIntervalMs = Math.max(options.windowMs, 60_000)
   setInterval(() => {
@@ -98,6 +121,18 @@ export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler 
       return
     }
 
+    if (cache?.enabled) {
+      const hit = await cache.fixedWindowHit(namespace, key, options.windowMs)
+      // hit === null → Redis errored → fall through to the in-memory bucket below.
+      if (hit !== null) {
+        if (hit.count > options.max) {
+          rejectRateLimited(c, Math.ceil((hit.ttlMs > 0 ? hit.ttlMs : options.windowMs) / 1000))
+        }
+        await next()
+        return
+      }
+    }
+
     const now = Date.now()
     const bucket = buckets.get(key)
 
@@ -109,108 +144,108 @@ export function createRateLimiter(options: RateLimitOptions): MiddlewareHandler 
 
     bucket.count++
     if (bucket.count > options.max) {
-      const retryAfterSec = Math.ceil((bucket.resetAt - now) / 1000)
-      c.header('Retry-After', String(retryAfterSec))
-      throw new AppError(
-        ERROR_CODE.RateLimited,
-        429,
-        `Too many requests. Retry after ${retryAfterSec}s.`,
-      )
+      rejectRateLimited(c, Math.ceil((bucket.resetAt - now) / 1000))
     }
 
     await next()
   }
 }
 
-/**
- * Volumetric backstop against a flood from one address. NOT a per-person quota:
- * a whole office shares one public address behind NAT, and every server-rendered
- * page load arrives over the private network with no client-IP header at all, so
- * this bucket legitimately carries the traffic of everyone at once. Per-person
- * fairness is `sessionRateLimiter` below.
- */
-export const generalRateLimiter = createRateLimiter({
-  windowMs: 60_000,
-  max: 600,
-})
-
-/**
- * Per-person quota, applied ON TOP of the per-IP backstop for signed-in callers
- * (skipped entirely when there is no session cookie). This is what keeps one
- * runaway tab from spending everyone else's allowance — the failure mode the
- * per-IP limit alone could not distinguish from "the office is busy".
- */
-export const sessionRateLimiter = createRateLimiter({
-  windowMs: 60_000,
-  max: 120,
-  keyOf: sessionBucketKeyOf,
-})
-
 const isDevelopment = process.env['NODE_ENV'] === 'development'
+/** Dev and test relax the tight hourly/export caps so local retries never lock. */
+const isRelaxed = isDevelopment || process.env['NODE_ENV'] === 'test'
+
+/** Per-user export/submission key, with an anonymous bucket when no user is set. */
+function userKeyOf(prefix: string): (c: Context) => string {
+  return (c) => {
+    const user = c.get('user')
+    if (user === null) {
+      return `${prefix}:anonymous`
+    }
+    return `${prefix}:${user.id}`
+  }
+}
+
+/** Every rate limiter, built once against the shared cache (Redis-backed when enabled). */
+export interface RateLimiters {
+  /** Per-IP volumetric flood backstop — the whole office shares one NAT address. */
+  general: MiddlewareHandler
+  /** Per-signed-in-person quota, on top of the IP backstop. */
+  session: MiddlewareHandler
+  /** Per-IP sign-in backstop; the real brute-force control is the per-account lockout. */
+  login: MiddlewareHandler
+  /** Employee self-signup: 3/hour/IP (docs/05). */
+  signup: MiddlewareHandler
+  /** Portal client self-registration: 3/hour/IP. */
+  clientRegistration: MiddlewareHandler
+  /** Portal activation completion: 10/hour/IP (allows password retries). */
+  activation: MiddlewareHandler
+  /** Claim-report export: 5/min/user. */
+  claimReportExport: MiddlewareHandler
+  /** Excel export: 3/min/user. */
+  excelExport: MiddlewareHandler
+  /** Portal client ticket submissions: 20/hour/user (docs/18 §5; logged-in only). */
+  clientSubmission: MiddlewareHandler
+}
 
 /**
- * Loose per-IP volumetric backstop for login (30 / 15 min). The real
- * brute-force control is the per-ACCOUNT lockout in @mr/auth
- * (hooks/login-lockout.ts, keyed by email) — this IP layer only catches gross
- * spray/DoS and must stay loose enough NOT to collateral-block multiple accounts
- * behind one shared (e.g. office / Cloudflare) IP. Gross per-IP abuse is also
- * throttled at the Cloudflare edge. Dev: relaxed so local retries never lock.
+ * Builds every rate limiter against the shared cache. Constructed in the DI container
+ * (never a module singleton) so the limiters can reach the Redis cache. The distinct
+ * per-limiter `name`s are mandatory: on ONE shared Redis the five ipKeyOf limiters all
+ * emit `ip:<addr>` and would collide without a namespace (docs/24 Phase 3). Comments on
+ * the individual limiters live on the `RateLimiters` interface above.
  */
-export const loginRateLimiter = createRateLimiter(
-  isDevelopment ? { windowMs: 60_000, max: 100 } : { windowMs: 15 * 60_000, max: 30 },
-)
-
-export const claimReportExportRateLimiter = createRateLimiter({
-  windowMs: 60_000,
-  max: 5,
-  keyOf: (c) => {
-    const user = c.get('user')
-    if (user === null) {
-      return 'claim-report-export:anonymous'
-    }
-    return `claim-report-export:${user.id}`
-  },
-})
-
-export const excelExportRateLimiter = createRateLimiter({
-  windowMs: 60_000,
-  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
-  keyOf: (c) => {
-    const user = c.get('user')
-    if (user === null) {
-      return 'excel-export:anonymous'
-    }
-    return `excel-export:${user.id}`
-  },
-})
-
-/** Employee self-signup: 3 attempts per hour per IP (docs/05). */
-export const signupRateLimiter = createRateLimiter({
-  windowMs: 60 * 60_000,
-  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
-})
-
-/** Portal client self-registration: 3 attempts per hour per IP (mirrors signup). */
-export const clientRegistrationRateLimiter = createRateLimiter({
-  windowMs: 60 * 60_000,
-  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 3,
-})
-
-/** Portal activation completion: 10 attempts per hour per IP (allows password retries). */
-export const activationRateLimiter = createRateLimiter({
-  windowMs: 60 * 60_000,
-  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 100 : 10,
-})
-
-/** Portal client ticket submissions: 20 per hour per user (docs/18 §5; logged-in only). */
-export const clientSubmissionRateLimiter = createRateLimiter({
-  windowMs: 60 * 60_000,
-  max: isDevelopment || process.env['NODE_ENV'] === 'test' ? 1000 : 20,
-  keyOf: (c) => {
-    const user = c.get('user')
-    if (user === null) {
-      return 'client-submission:anonymous'
-    }
-    return `client-submission:${user.id}`
-  },
-})
+export function createRateLimiters(cache: RedisCache): RateLimiters {
+  return {
+    general: createRateLimiter({ name: 'general', windowMs: 60_000, max: 600 }, cache),
+    session: createRateLimiter(
+      { name: 'session', windowMs: 60_000, max: 120, keyOf: sessionBucketKeyOf },
+      cache,
+    ),
+    login: createRateLimiter(
+      isDevelopment
+        ? { name: 'login', windowMs: 60_000, max: 100 }
+        : { name: 'login', windowMs: 15 * 60_000, max: 30 },
+      cache,
+    ),
+    signup: createRateLimiter(
+      { name: 'signup', windowMs: 60 * 60_000, max: isRelaxed ? 100 : 3 },
+      cache,
+    ),
+    clientRegistration: createRateLimiter(
+      { name: 'client-registration', windowMs: 60 * 60_000, max: isRelaxed ? 100 : 3 },
+      cache,
+    ),
+    activation: createRateLimiter(
+      { name: 'activation', windowMs: 60 * 60_000, max: isRelaxed ? 100 : 10 },
+      cache,
+    ),
+    claimReportExport: createRateLimiter(
+      {
+        name: 'claim-report-export',
+        windowMs: 60_000,
+        max: 5,
+        keyOf: userKeyOf('claim-report-export'),
+      },
+      cache,
+    ),
+    excelExport: createRateLimiter(
+      {
+        name: 'excel-export',
+        windowMs: 60_000,
+        max: isRelaxed ? 100 : 3,
+        keyOf: userKeyOf('excel-export'),
+      },
+      cache,
+    ),
+    clientSubmission: createRateLimiter(
+      {
+        name: 'client-submission',
+        windowMs: 60 * 60_000,
+        max: isRelaxed ? 1000 : 20,
+        keyOf: userKeyOf('client-submission'),
+      },
+      cache,
+    ),
+  }
+}
