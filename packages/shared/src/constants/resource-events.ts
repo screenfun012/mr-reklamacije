@@ -1,4 +1,9 @@
-/** Catalog resource keys carried in SSE `resource_changed` payloads. */
+/**
+ * Resource keys carried in SSE `resource_changed` payloads — mostly catalogs, plus
+ * `intakeOrders`, which reuses this signal rather than inventing an event type: the
+ * requirement is identical (the office must see a car marked "Gotovo" without pressing
+ * refresh) and the payload stays signal-only, carrying no row data.
+ */
 export const ResourceChangedKey = {
   Customers: 'customers',
   EngineTypes: 'engineTypes',
@@ -8,6 +13,7 @@ export const ResourceChangedKey = {
   ExternalParties: 'externalParties',
   ClaimSources: 'claimSources',
   Users: 'users',
+  IntakeOrders: 'intakeOrders',
 } as const
 
 export type ResourceChangedKey = (typeof ResourceChangedKey)[keyof typeof ResourceChangedKey]

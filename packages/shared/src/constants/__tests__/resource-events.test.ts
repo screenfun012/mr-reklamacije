@@ -34,6 +34,12 @@ describe('ResourceChangedKey', () => {
   it('maps users to users query prefix', () => {
     expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.Users)).toEqual([['users']])
   })
+
+  it('maps intakeOrders to the intake-orders prefix, covering list, KPI cards and detail', () => {
+    expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.IntakeOrders)).toEqual([
+      ['intake-orders'],
+    ])
+  })
 })
 
 describe('ResourceEventType', () => {

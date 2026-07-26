@@ -28,6 +28,9 @@ export function queryKeyPrefixesForResourceChanged(
       return [['claim-sources']] as const
     case ResourceChangedKey.Users:
       return [['users']] as const
+    // The list, the KPI cards and any open detail all live under this prefix.
+    case ResourceChangedKey.IntakeOrders:
+      return [['intake-orders']] as const
     default: {
       const _exhaustive: never = resource
       return _exhaustive

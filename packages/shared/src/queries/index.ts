@@ -136,3 +136,20 @@ export {
   snoozeNotification,
 } from './notifications.js'
 export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'
+export {
+  advanceIntakeOrder,
+  buildIntakePhotoUrl,
+  changeIntakeOrderStatus,
+  createIntakeOrder,
+  deleteIntakeOrder,
+  deleteIntakeOrderPhoto,
+  intakeNumberCheckOptions,
+  intakeOrderDetailOptions,
+  intakeOrderKeys,
+  intakeOrderSummaryOptions,
+  intakeOrdersListOptions,
+  intakePlateLookupOptions,
+  signIntakeOrder,
+  updateIntakeOrder,
+  type IntakeOrderListFilters,
+} from './intake-orders.js'
