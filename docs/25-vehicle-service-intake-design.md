@@ -1,0 +1,440 @@
+# docs/25 — Prijem vozila u servis (vehicle service intake)
+
+> **Status: DESIGN, all decisions locked.** First pass 2026-07-26 (from Claude Design's original
+> handoff). **Second pass 2026-07-26**, after prototype v2 + `dopuna-2` came back: the role model,
+> the shell for a serviser, draft ownership and the list's treatment of unfinished intakes were all
+> resolved with Nikola. Implementation **NOT started** — build only on Nikola's per-phase go.
+> **V-0 (migration) needs explicit approval** and a proven clean migrate-from-zero.
+>
+> This is a **new subsystem, not a claim family.** It shares nothing with EMOTIVE/DOMACE except
+> the app shell, the attachments pipeline, audit and SSE. No MR number, no faults, no warranty
+> report, no outcome, no portal.
+
+---
+
+## 1. What it is
+
+When a vehicle arrives at the service shop, a **serviser** fills a digital work order on a tablet,
+replacing the paper "radni nalog za servis": vehicle + owner data, an intake checklist, **photos**,
+a **damage map**, then **both the serviser and the owner sign on screen** and the document is
+**printed**.
+
+The point is **proof of the vehicle's condition at intake** — defence against false damage claims
+("vi ste mi ogrebli auto"). That is why photos, the damage map and both signatures are mandatory
+parts, not nice-to-haves.
+
+**Users:** serviseri on a tablet (iPad landscape 1180×820, finger, often gloves, next to the
+vehicle) and the office on a desktop. Internal only, Serbian UI. **Not** for clients — the portal
+is untouched.
+
+**Explicitly out of scope:** invoicing, prices, parts inventory, scheduling, saobraćajna reader,
+any link to reklamacije, client portal. Services and materials are **plain string lists** — no
+catalog, no quantities, no prices.
+
+---
+
+## 2. Source material
+
+| What | Where | Note |
+| --- | --- | --- |
+| Design handoff (original, still binding where unchanged) | `Downloads/handoff 3/2026-07-26-prijem-vozila-handoff.md` | **not in the repo** — Nikola holds it |
+| **Addendum 1** (14 items we sent to Claude Design) | `docs/design-handoffs/2026-07-26-prijem-vozila-dopuna.md` | in the repo |
+| **Addendum 2** (Design's answer, after prototype v2) | `Downloads/handoff 3/2026-07-26-prijem-dopuna-2.md` | **authoritative where it differs from the original** |
+| **Clickable prototype v2** | `Downloads/handoff 3/prijem-prototip-v2.dc.html` | **the source of truth for behaviour**; UI phases are built against this |
+| Static screens / variants | `Downloads/handoff 3/prijem-ekrani.dc.html` | 1a chosen for UI, 2b for print |
+| Printed manual for serviseri | `Downloads/handoff 3/Uputstvo Prijem Vozila.dc.html` | goes to the workers — see §9 |
+
+The prototype ships the four vehicle silhouettes (`SIL`) and the per-type zone function
+(`zoneOf(type, x, y)`). **Both are transferred 1:1 — never redrawn**, or markers, defect list and
+print stop agreeing.
+
+---
+
+## 3. Locked decisions
+
+### 3.1 UI, shell and who does what
+
+- **The design does not change.** Nikola: *"tako mora da izgleda ui"*. Everything already drawn
+  stays; the addenda are additions, never a redesign.
+- **Zero new tokens.** Verified in code: `InternalPill` tones already carry the handoff's status
+  colours — `Primljeno` = `--color-mri-info` `#2e90fa` (identical) · `U radu` = `--color-mri-warn`
+  `#f5a623` · `Gotovo` = `--color-mri-ok` `#1fa971` (identical) · `Preuzeto` =
+  `--color-mri-archived`. Damage-marker colours map to `--mri-red` / `--mri-warn` /
+  `--mri-archived`.
+- **The operator never fills an intake in.** Confirmed 2026-07-26: the office **oversees and
+  corrects** — it does not stand in for the customer. Consequence: **there is no desktop wizard**,
+  and the "who signs when the operator creates it" problem does not exist.
+- **The wizard is the serviser's, tablet-first.** On a desktop it is only centred
+  (`max-width ≈ 980px`); no second layout, because a second layout for the same flow diverges on
+  the first change. The **list and the detail** are the operator's surface and must read well on a
+  desktop. An operator who walks into the shop with a tablet gets the same tablet layout — that
+  costs nothing extra.
+- **A serviser has no sidebar at all.** His name + role chip and **"Odjavi se" move up into the
+  topbar** for that case (today they live in the sidebar, so without this he would have no way to
+  log out). Seeing his own name matters on a shared tablet: the order is bound to him
+  (`technician_id`) and he signs the document.
+- **The rule is driven by permissions, not by a role name:** the sidebar is not rendered when the
+  user has nothing else to see. Give a serviser access to claims tomorrow from the admin app and
+  the sidebar appears on its own, with no code change.
+- **Consequence to fix in the same phase:** `apps/internal-web/src/config/navigation.ts` currently
+  gates neither **Početna** nor **Statistika** — as it stands a serviser would see both. Statistika
+  gets the existing `STATISTICS_VIEW_PERMISSIONS`; Početna gets the claims-list set (the dashboard
+  is claim-shaped).
+- **The prototype's role switcher is a demo device and is not built.** It exists only so Nikola
+  could compare the two perspectives.
+- **"Kancelarija" is not a role and not a label.** It is `operator` with more permissions. The list
+  subtitle Design drew ("Kancelarija — svi nalozi…") must not use the word as if it were a role.
+- **Existing app shell** (`_shell`: topbar + collapsible sidebar) for operator/admin, sidebar
+  collapsed to the icon rail on tablet. **No second shell** — the prototype's slim breadcrumb bar
+  is not adopted.
+- **Sidebar entry is "Servis"**, between "Mašinska obrada" and "Statistika", `Car` icon (lucide).
+  **Routes stay `/prijem`, `/prijem/novi`, `/prijem/$id`** — "Servis" is the word Nikola and the
+  workers use and it sits among job names; the URL describes what happens on the page and nobody
+  reads it.
+- **A serviser lands on `/prijem` after login** — the dashboard is claims-shaped and would be
+  empty for them. The intake list's four KPI cards already are their dashboard.
+- Serbian + English key parity (CI-enforced), as everywhere else.
+
+### 3.2 Identity and lookup
+
+- **Order number is typed by the serviser**, not generated — it comes from a printed pad. Field
+  sits exactly where the number already appears (top-right of the stepper strip); no new field, no
+  new card. Required for leaving step 1.
+- **Format is free text** — pads vary, so only "non-empty" is validated. Normalized for the
+  uniqueness check by trim + uppercase.
+- **The check runs on the server** (debounced ~400 ms) against signed orders **and** other users'
+  unfinished ones: `GET /api/intake-orders/check-number?number=…`. Three outcomes:
+
+  | Taken by | Result |
+  | --- | --- |
+  | the serviser's own unfinished order | **resume** that intake where it stopped |
+  | a signed order | red, `DALJE` locked, link to that order |
+  | a colleague's unfinished order | amber, `DALJE` locked, **the colleague's name is shown** (internal app — naming them is how the collision actually gets resolved), no link to the order itself |
+
+  This is stricter than the first pass, which only warned: a taken number now **blocks `DALJE`**,
+  matching the unique index. A hard check on save stays as the second layer.
+- **Owner and vehicle are plain columns on the order — no new tables.** Rejected: a `vehicles`
+  registry (typo'd plates create ghost vehicles that someone has to merge by hand) and linking to
+  `customers` (that table carries portal links and claim visibility; walk-in private individuals
+  must not land in it).
+- **Plate lookup:** the plate is stored as typed and normalized separately (uppercase, non-alnum
+  stripped) for search. On a match, the server offers the owner/vehicle data from the most recent
+  order for that plate; accepting it fills vehicle, vehicle type, VIN, owner, address, phone, and
+  the banner turns green so it is not offered in a loop. Changing the plate resets the state.
+
+### 3.3 Flow, drafts and the unfinished list
+
+1. **The order row is created on the server after step 1** (number, plate, owner, phone known) and
+   is **not part of the office's working list while `signed_at IS NULL`**. Reason: photos need a
+   parent to attach to, and the tablet dying no longer costs the intake.
+2. **The server is the source of truth for how far the intake got; `localStorage` is only a buffer
+   for the current device.** Each step transition sends a small `PATCH` (text and JSON only, no
+   photos). The local buffer holds what has not reached the server yet and is flushed upwards when
+   the network returns or the tablet wakes (`visibilitychange`).
+   **This is forced by the drawn UI, not a preference:** Design drew "stao si na koraku 3 od 5" and
+   a colleague-collision warning, and a `localStorage` draft on someone else's tablet can know
+   neither. Hence the new **`draft_step`** column (§4.1).
+3. **Several unfinished intakes per serviser are allowed.** A "only one" limit hits a person at the
+   worst moment and its only escape is paper. The amber `NEDOVRŠEN PRIJEM` banner shows **the most
+   recent** one (plus a count when there are more).
+4. **Resuming on another tablet works** — the order hangs off the account, not the device. A dead
+   battery mid-intake does not mean re-typing everything with the customer standing there.
+5. **Unfinished intakes in the list:** a serviser **sees his own** in his table, clearly marked
+   ("Nedovršen", no finish date), and a click returns him to the wizard. The **operator** does not
+   get them in the normal view but reaches them through a **"Nedovršeni" filter** — the office's
+   table is a work list of real intakes, but if drafts were invisible forever nobody could clean up
+   after a serviser who left the firm.
+6. **KPI cards count signed orders only.** A draft defaults to status `primljeno`, so without this
+   rule "Primljeno: 7" would include half-entered intakes nobody handed over.
+7. **`ODUSTANI` really deletes** the unfinished order. A signed order can only be removed by
+   office/admin, and softly (`deleted_at`) — it is evidence; it leaves the list, never the DB.
+8. **Status is one-way for the serviser** (single next-status button, as designed). Office/admin
+   can set any status to fix a mis-tap. Every change lands in the Istorija tab with name and time.
+9. **After signing:** services, materials and status always remain editable. The **intake
+   condition** (checklist, fuel, damages, photos) may be corrected **only by office/admin**, and
+   then **the printed document must state that it was amended after signing** — otherwise the paper
+   claims the owner confirmed something they did not. The order then permanently carries a
+   `⚠ MENJANO POSLE POTPISA` badge, an amber note in the POTPISI card, and the print marker (§3.5).
+
+### 3.4 Damage map
+
+- **Four vehicle shapes:** auto, kombi, kamionet, džip. Silhouettes and the per-type zone map come
+  **from the prototype (`SIL`, `zoneOf`) unchanged** — same `viewBox="0 0 340 556"`, top view,
+  front at the bottom. Shape is chosen in step 1 with four buttons below "Način dolaska"; default
+  `auto`. Trucks and buses are deliberately out of scope (their zones match none of the four).
+- Zones differ per type and the words must be the ones a serviser would use — a kombi has no
+  "gepek", a kamionet splits into kabina/sanduk. The zone is stored on the damage and printed.
+- Coordinates are stored **in the drawing's space, never screen pixels**, so a marker sits in the
+  same place on tablet, desktop and paper.
+- **List order is the numbering ①②③** — that keeps map, defect list and print from ever
+  disagreeing. Each damage additionally carries a hidden `id` so a photo can point at it stably.
+- **Photos link to a specific damage:** a `◉ SLIKAJ` affordance on each damage row; the photo
+  carries that damage's number and shows it on the thumbnail, in the detail, in the Fotografije tab
+  and on the print. Several photos per damage allowed; the button shows the count once there are
+  any. General whole-vehicle photos stay as they are.
+- **Deleting a damage keeps its photos** — they only lose the number (`damageId → null`). Deleting
+  a marker must not destroy evidence.
+- **The photo reminder never blocks.** An amber footer hint ("2 od 3 oštećenja bez fotke"), the
+  same mechanism steps 1 and 5 already use. Blocking would teach a serviser under pressure to
+  **skip marking damages** so as not to get stuck — fewer recorded damages, not more.
+
+### 3.5 Print
+
+- **Browser print**, A4 portrait, one page, variant 2b. "Save as PDF" lives in the same print
+  dialog on every device including iPad, so PDF export is free.
+- **The server-side Chromium renderer is deliberately not used here**: 1–3 s per render (cold
+  start is likely, since the shared browser now releases itself after 10 min idle) and memory is
+  ~93 % of the hosting bill. The evidence is the record (row + photos + both signatures), which can
+  be re-printed any time; no archived PDF is needed.
+- The drawing is **the order's own vehicle type**, with the same numbered markers.
+- One page is a hard rule, so: **at most 6 photos** plus "Prikazano prvih 6 od N fotografija — sve
+  se čuvaju uz digitalni nalog", and services/materials **capped at 5 items** each.
+- An amended order prints `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` with the timestamp and the
+  name of whoever changed it. **An unamended order gets no addition at all** — a clean document
+  stays clean.
+- **Blocked on Nikola:** the "Obaveze kupaca" document. The handoff requires the work order to
+  share header, footer, typography and margins with the firm's other printed documents. Needed at
+  V-7 only, so it does not block starting.
+
+### 3.6 Photo upload and finishing without a network
+
+Photos are compressed **on the tablet** (~1920 px, JPEG ~0.8 → ~400 KB from a 6–10 MB phone photo,
+~20× less over the hall's WiFi) and uploaded **in the background from step 3 while the serviser
+works through steps 4 and 5**. The camera is the **native file input**
+(`<input type="file" accept="image/*" capture="environment">`) — not `getUserMedia`, which would
+demand HTTPS and make plain-`http` LAN testing impossible. Server side reuses the existing
+`apps/api/src/modules/attachments/attachment-upload-pipeline.ts` (magic-byte check,
+`optimizeAttachmentImage`, thumbnails, ETag caching, streaming) — nothing re-implemented.
+
+Four states per thumbnail: **šalje se** (progress) · **poslato** · **čeka mrežu** (amber, resumes
+by itself) · **nije uspelo** (tap = retry). The stepper strip carries a quiet chip on steps 4–5
+with how many are still going.
+
+**Finishing rules, which must not be got wrong:**
+
+- Both signatures are required; without them the button does nothing.
+- Photos still uploading **while the network is fine** → button becomes `⏳ Čeka se poslednja fotka`
+  and waits. That is a matter of seconds.
+- **No network, or failed photos → the button works.** The order is saved and the photos go later.
+  **A serviser must never stand waiting for WiFi with the customer next to him.**
+- An order saved with photos outstanding shows a visible indicator on the list and the detail
+  (§4.1, `photos_expected`).
+- **Photos that never arrive:** no retention job, no cleanup, no automatic deletion. The order
+  carries the indicator, the office can see something is missing, and that is the whole mechanism.
+  If it ever becomes a real problem it gets solved then.
+
+### 3.7 Speed on the hall's WiFi
+
+The office is on cable, the hall is on varying WiFi. What actually makes this fast, in order of
+impact: **client-side photo compression** (the only genuinely heavy operation) · **the wizard
+touches the network only for small step patches, the plate lookup and the number check** ·
+**localStorage buffer** · route preloading, already in the stack · indexes on the searched columns ·
+thumbnails rather than full images in grids (already exists).
+
+**Redis is deliberately NOT used for this module.** Told to Nikola plainly and accepted. Redis
+today serves exactly two services — statistics and dashboard summaries — both heavy aggregations
+over all claims. An intake list is one indexed read over a small table (~3 ms) while a Redis
+round-trip is ~1 ms, so caching buys nothing measurable and adds an invalidation surface on a table
+servicers write to constantly. If a query is ever measured slow, cache it then, at that one place.
+
+**Storage weight, for the record:** text is negligible (~1.5 KB per order → ~4 MB/year at 10
+orders/day; the whole prod DB is 12.6 MB today). The real volume is photos in MinIO: ~3 MB per
+order → **~8 GB/year**. That is a cost item, not a speed item; a retention policy is the answer if
+it ever matters, not fewer photos.
+
+### 3.8 Where it is built
+
+**Locally, on `pnpm dev:all`** — no staging environment. `docs/01` and `docs/11` describe a
+`staging` environment that **has never been created**; Railway holds one environment with four
+services + Postgres. Staging exists on paper only, and if it is ever built it will be built for its
+real reason (rehearsing restores and migrations), not as a playground for one module. A real tablet
+reaches the dev server over the LAN (`http://192.168.x.x:3002`) — the native camera works over
+plain `http`.
+
+Because Nikola expects the model to change during the build: while it is still moving, the
+migration stays **uncommitted**, the local DB is dropped and re-created from zero as often as
+needed, and only once the UI has proved the model correct does it become **one clean migration**,
+then the full gate, then a push.
+
+---
+
+## 4. Proposed data model
+
+### 4.1 `intake_orders`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid pk | `defaultRandom()` (repo reality is v4, see CLAUDE.md §8) |
+| `order_number` | text NOT NULL | as typed, e.g. `RN-0249/26` |
+| `order_number_key` | text NOT NULL | normalized; unique among non-deleted rows |
+| `status` | text NOT NULL | CHECK `('primljeno','u_radu','gotovo','preuzeto')`, default `primljeno` |
+| `received_at` | timestamptz NOT NULL | default `now()` — datum prijema |
+| `technician_id` | uuid NOT NULL → `users.id` | the serviser; drives the own-only scope and the signature label |
+| `vehicle_type` | text NOT NULL | CHECK `('auto','kombi','kamionet','dzip')`, default `auto` |
+| `plate` | text NOT NULL | as typed |
+| `plate_key` | text NOT NULL | normalized, indexed — the lookup key |
+| `vehicle` | text NOT NULL | marka i model |
+| `vin` | text | |
+| `mileage` | integer | km |
+| `arrival_mode` | text NOT NULL | CHECK `('dovezeno','doslepano','dovuceno')` |
+| `owner_name` | text NOT NULL | person or firm |
+| `owner_address` | text | |
+| `owner_phone` | text NOT NULL | |
+| `owner_remarks` | text | primedbe vlasnika |
+| `fuel_level` | integer NOT NULL | CHECK `0..8` (eighths), default 4 |
+| `checklist` | jsonb NOT NULL | 8 fixed keys → `true｜false｜null` (null = untouched) |
+| `equipment_note` | text | napomena uz opremu |
+| `damages` | jsonb NOT NULL | `[{ id, type, x, y, zone, note? }]`; **array order = the ①②③ numbering** |
+| `services` | jsonb NOT NULL | `string[]` |
+| `materials` | jsonb NOT NULL | `string[]` |
+| **`draft_step`** | **integer** | **1–5, how far the wizard got; NULL once signed.** Without it the banner "stao si na koraku 3 od 5" and the colleague-collision warning cannot be told honestly |
+| **`photos_expected`** | **integer** | **how many photos the tablet held at signing.** The indicator "not all photos arrived" is `count(attachments) < photos_expected`; the server cannot otherwise tell "3 photos, that's all" from "3 of 7 arrived" |
+| `technician_signature` | text | SVG path, normalized to a 460×200 space |
+| `owner_signature` | text | idem |
+| `signed_at` | timestamptz | **NULL = draft: not in the office's working list, in the serviser's own** |
+| `amended_at` | timestamptz | set when the intake condition changes after signing → drives the print marker |
+| `amended_by` | uuid → `users.id` | |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete per house rule |
+
+Checklist keys, exactly these eight in this order: `rezervna · dizalica · komplet · saobracajna ·
+vozacka · prvaPomoc · prsluk · lanci`.
+
+Damage types: `ogrebotina · udubljenje · puknuto · rdja`.
+
+**Indexes:** unique partial on `order_number_key` where `deleted_at IS NULL` · `plate_key` ·
+`status` · partial on `received_at DESC` where `deleted_at IS NULL AND signed_at IS NOT NULL` (the
+office list's read shape) · `technician_id` (the serviser's own list, drafts included).
+
+**Search** (the list searches order number, plate, owner, vehicle): start with plain matching on
+the indexed columns. Only add the FTS-index pattern used by claims if it is measured slow — the
+table is small and expression indexes must stay textually identical to the repository, which is a
+real maintenance cost.
+
+### 4.2 `attachments` — extension (touches a shared table)
+
+Photos reuse the existing polymorphic `attachments` table rather than getting their own, so the
+whole upload/download pipeline comes for free. The migration must:
+
+- add `intake_order_id uuid` nullable + FK → `intake_orders.id` `ON DELETE CASCADE`, partial index
+- add `intake_damage_id text` nullable — points at a damage's `id` inside `damages`; CHECK that it
+  is only ever set when `intake_order_id` is set. **Nullable on purpose**: deleting a damage sets it
+  back to NULL and the photo survives as a general one
+- **extend the `attachments_one_of_claim_check` constraint with a fourth branch**
+  (`claim_kind IS NULL AND intake_order_id IS NOT NULL` and the other three parents NULL)
+
+No new `purpose` value — `intake_order_id IS NOT NULL` already identifies an intake photo, so
+extending that CHECK too would be redundant.
+
+Signatures are **not** attachments: they are SVG path text on the order row.
+
+---
+
+## 5. Permissions and roles
+
+| Permission | Serviser | Operator | Admin |
+| --- | --- | --- | --- |
+| `intake_orders.view` (all orders) | — | ✓ | bypass |
+| `intake_orders.view_own` | ✓ | ✓ | bypass |
+| `intake_orders.create` | ✓ | ✓ | bypass |
+| `intake_orders.update` | ✓ | ✓ | bypass |
+| `intake_orders.advance` (next status only) | ✓ | ✓ | bypass |
+| `intake_orders.change_status` (any status — correction) | — | ✓ | bypass |
+| `intake_orders.amend` (intake condition after signing) | — | ✓ | bypass |
+| `intake_orders.delete` (soft) | — | ✓ | bypass |
+
+- **One new role: `serviser`.** The office are the same people who already process claims, so
+  `operator` simply gains the intake permissions. `viewer` is granted nothing here on purpose.
+  There is **no "kancelarija" role** — that word only ever described the operator.
+- **Naming stays as above.** `dopuna-2` proposed `intake_orders.read.own` / `.correct` / `.archive`;
+  rejected, because every permission in `@mr/shared` is two segments (`emotive_claims.view_own_customer`)
+  and one module must not invent a third.
+- A serviser sees **no** reklamacije, statistika or pristiglo — and no sidebar at all (§3.1).
+- **Row-level scope:** a non-own order returns **404, not 403** (house rule — never leak
+  existence). This is the most bug-prone area in the codebase and has leaked once before
+  (`/api/dashboard/summary`), so it ships with its own regression tests.
+- **Enforcement point for the freeze:** the service must reject a condition change on a signed
+  order unless the actor holds `intake_orders.amend`, and stamp `amended_at`/`amended_by` when it
+  allows one. Serviser holding `update` must not be able to route around this.
+- Deploy note: a new permission + role means **`pnpm --filter @mr/db run db:seed` once after
+  deploy** (additive, prod-safe; admin gets it via the `ALL_PERMISSIONS` bypass already).
+
+---
+
+## 6. API surface
+
+Module `apps/api/src/modules/intake-orders/` per the mandatory anatomy.
+
+| Method + path | Purpose |
+| --- | --- |
+| `GET /api/intake-orders` | list — status filter, search, page; scoped by `view` vs `view_own`; drafts included for own, behind a filter for `view` |
+| `GET /api/intake-orders/check-number` | `?number=…` → `free` / `taken_order` / `taken_draft_other` / `taken_draft_mine` (+ `orderId`, `draftStep`, `by`) |
+| `POST /api/intake-orders` | create after step 1 → 201 |
+| `GET /api/intake-orders/:id` | detail |
+| `PATCH /api/intake-orders/:id` | step patches (incl. `draft_step`), and amendments after signing (gated) |
+| `POST /api/intake-orders/:id/sign` | both signatures + finish → sets `signed_at`, clears `draft_step`, records `photos_expected` |
+| `POST /api/intake-orders/:id/advance` | next status |
+| `POST /api/intake-orders/:id/change-status` | set any status (correction) |
+| `DELETE /api/intake-orders/:id` | soft delete → 204 |
+| `POST /api/intake-orders/:id/photos` | upload, optional `damageId` |
+| `DELETE /api/intake-orders/:id/photos/:attachmentId` | remove a photo |
+| `GET /api/intake-orders/lookup` | `?plate=…` → owner/vehicle prefill from previous orders |
+
+Audit in the **service** layer (every state change: actor, IP, UA, diff), as everywhere.
+`queryOptions` factories in `@mr/shared/src/queries`. SSE is signal-only (`type + id`), reusing the
+existing `PostgresEventBus`.
+
+---
+
+## 7. Scope
+
+**In v1:** the core module + **live list refresh (SSE)** so the office sees a car marked "Gotovo"
+without pressing refresh.
+
+**Approved but deferred to their own phases after the core ships** — Nikola chose core-first so the
+specs can be written knowing how the module is actually used:
+
+1. **In-app notifications** for intake events (needs its own decisions: who receives, snooze,
+   never notify the actor).
+2. **Intake statistics** (vehicles per month, average Primljeno→Preuzeto time). The existing
+   statistics module is built around claim outcomes and amounts; intake has neither.
+3. **Excel export** of orders (needs columns and a consumer).
+
+Not cancelled — just not now.
+
+**Ordering against other pending design work:** the **glass ⌘K palette + Notification Center**
+handoff (`Downloads/handoff 3/2026-07-21-glass-final-handoff.md`) comes **after** this module.
+They do not collide — glass is confined to overlay layers and explicitly must not touch cards,
+forms or tables — so the order is purely priority: intake replaces paper, glass is the same thing
+prettier. Keeping them apart also avoids two hands in `globals.css` in the same week.
+
+---
+
+## 8. Phases
+
+| Phase | Content | Gate |
+| --- | --- | --- |
+| **V-0** | Migration: `intake_orders` + indexes + the `attachments` extension (new columns, FK, **CHECK constraint change on a shared table**) | **Explicit Nikola approval.** `drizzle-kit` generated, never hand-written; prove clean migrate-from-zero; confirm the DDL is only what is intended |
+| **V-1** | `@mr/shared` (Zod, constants, permissions, query factories) · api module · new role + seed | full gate |
+| **V-2** | List screen (KPI cards — signed only, filter + search in URL params, table incl. own drafts, "Nedovršeni" filter for the office) · **sidebar "Servis" + the no-sidebar rule + gating Početna/Statistika** | |
+| **V-3** | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | |
+| **V-4** | Damage map (4 shapes + zone maps from the prototype) + photos (client compression, background upload, per-damage link, four upload states) | **highest risk — leave time** |
+| **V-5** | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | |
+| **V-6** | Detail with 4 tabs, amend affordances, status correction, soft delete | |
+| **V-7** | Print (A4, one page, amended marker, per-type drawing, 6-photo cap) | **needs "Obaveze kupaca" first** |
+
+Then, separately: notifications → statistics → Excel.
+
+Per phase: `pnpm --filter internal-web build` + typecheck; full CI gate before any commit; commit
+only when asked; Nikola pushes.
+
+---
+
+## 9. Open items
+
+1. **"Obaveze kupaca" document** from Nikola — needed at V-7.
+2. **The printed manual for serviseri** (`Uputstvo Prijem Vozila`) goes to the workers, so it must
+   match the application. **Every place where the built app behaves differently from the manual gets
+   reported to Nikola** rather than quietly diverging.
+3. Placement of the vehicle-type buttons (step 1, below "Način dolaska") and of the order-number
+   field (in the stepper strip, unchanged look) are **Nikola's decisions**, not suggestions — but
+   Claude Design may report back if they break the composition, and then Nikola decides what gives.
