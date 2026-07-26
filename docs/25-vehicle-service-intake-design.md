@@ -93,7 +93,14 @@ print stop agreeing.
   reads it.
 - **A serviser lands on `/prijem` after login** — the dashboard is claims-shaped and would be
   empty for them. The intake list's four KPI cards already are their dashboard.
-- Serbian + English key parity (CI-enforced), as everywhere else.
+- Serbian + English key parity (CI-enforced), as everywhere else. **No ICU plurals** — the
+  Paraglide compiler in this repo rejects them (verified: the build fails, and there is not one
+  plural message in the codebase, so `CLAUDE.md`'s "ICU plurals" rule is drift). Count strings
+  are phrased so no grammatical form depends on the number ("Ukupno: 12", not "12 naloga").
+- **A user whose only visible entry is Servis is redirected from `/` to `/prijem`**, in the home
+  route's guard rather than the login form, so sign-in, a bookmark and the logo all obey one
+  rule. Without it a serviser lands on the dashboard, whose loader calls
+  `/api/dashboard/summary` — a permission he does not hold — and every login ends on a 403.
 
 ### 3.2 Identity and lookup
 
@@ -444,7 +451,7 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | --- | --- | --- |
 | **V-0** ✅ | Migration: `intake_orders` + indexes + the `attachments` extension (new columns, FK, **CHECK constraint change on a shared table**) | **DONE** 2026-07-26 — migration `0036_youthful_lightspeed`, `drizzle-kit` generated, clean migrate-from-zero proven (37 migrations on an empty DB). Safe on live data: the three pre-existing CHECK branches only gained `AND intake_order_id IS NULL`, true for every row the moment the nullable column is added, so for old rows the constraint is identical to the one production already enforces — and drizzle applies every statement in one transaction, so a failure can never leave `attachments` unguarded |
 | **V-1** ✅ | `@mr/shared` (Zod, constants, permissions, query factories) · api module · new role + seed · the role's admin-web surface | **DONE** 2026-07-26, gate green (595/595 integration) |
-| **V-2** | List screen (KPI cards — signed only, filter + search in URL params, table incl. own drafts, "Nedovršeni" filter for the office) · **sidebar "Servis" + the no-sidebar rule + gating Početna/Statistika** | |
+| **V-2** ✅ | List screen (KPI cards — signed only, filter + search in URL params, table incl. own drafts, "Nedovršeni" filter for the office) · sidebar "Servis" + the no-sidebar rule + gating Početna/Statistika | **DONE** 2026-07-26, gate green. The wizard and detail got placeholder routes so rows stay clickable |
 | **V-3** | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | |
 | **V-4** | Damage map (4 shapes + zone maps from the prototype) + photos (client compression, background upload, per-damage link, four upload states) | **highest risk — leave time** |
 | **V-5** | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | |
