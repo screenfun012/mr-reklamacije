@@ -50,8 +50,14 @@ export function IntakeFilterBar({
   }, [draft, search, onSearchChange])
 
   return (
-    <div className="flex flex-col gap-3 rounded-[12px] border border-mri-border bg-mri-surface p-3.5 lg:flex-row lg:items-center">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={m.intake_filter_status()}>
+    <div className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface px-[17px] py-[15px] lg:flex-row lg:items-center">
+      {/* One joined segmented control, not separate pills — the prototype wraps the buttons in a
+          single bordered span with the border between them coming from the container. */}
+      <span
+        className="flex flex-none self-start overflow-hidden rounded-[9px] border border-mri-border2"
+        role="group"
+        aria-label={m.intake_filter_status()}
+      >
         <FilterSegment active={status === undefined} onClick={() => onStatusChange(undefined)}>
           {m.intake_filter_all()}
         </FilterSegment>
@@ -64,25 +70,22 @@ export function IntakeFilterBar({
             {INTAKE_STATUS_LABELS[value]()}
           </FilterSegment>
         ))}
-      </div>
+      </span>
 
-      <div className="relative lg:ml-auto lg:w-[320px]">
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-mri-text2"
-        />
+      <span className="flex h-11 flex-1 items-center gap-2.5 rounded-[9px] border border-mri-border2 bg-mri-inbg px-3.5">
+        <Search aria-hidden="true" className="size-4 flex-none text-mri-text2" />
         <input
           type="search"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={m.intake_search_placeholder()}
           aria-label={m.intake_search_placeholder()}
-          className="h-11 w-full rounded-[9px] border border-mri-border bg-mri-inbg pl-9 pr-3 text-base text-mri-text placeholder:text-mri-text2 focus:border-mri-red focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent text-base text-mri-text outline-none placeholder:text-mri-text2"
         />
-      </div>
+      </span>
 
       {showUnfinishedToggle ? (
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-mri-text2">
+        <label className="flex min-h-11 flex-none cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-mri-text2">
           <input
             type="checkbox"
             checked={unfinished}
@@ -111,10 +114,8 @@ function FilterSegment({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-11 cursor-pointer rounded-[9px] border px-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
-        active
-          ? 'border-mri-red bg-mri-red text-white'
-          : 'border-mri-border text-mri-text2 hover:bg-mri-rowhv hover:text-mri-text',
+        'min-h-11 cursor-pointer border-0 px-4 py-2.5 text-[12.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
+        active ? 'bg-mri-red text-white' : 'bg-transparent text-mri-text2 hover:bg-mri-rowhv',
       )}
     >
       {children}

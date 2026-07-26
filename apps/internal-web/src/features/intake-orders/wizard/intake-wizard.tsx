@@ -7,18 +7,17 @@ import {
   updateIntakeOrder,
   type IntakeOrderDetail,
 } from '@mr/shared'
-import { ConfirmDialog, Heading } from '@mr/ui'
+import { ConfirmDialog } from '@mr/ui'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Construction } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 
-import { internalButtonClasses } from '~/components/internal-button'
-import { InternalCard } from '~/components/internal-card'
-import { InternalNote } from '~/components/internal-note'
-import { WizardStepper } from '~/components/wizard-stepper'
 import { showInternalToast } from '~/lib/internal-toast'
 import { IntakeOrderNumberField } from './intake-order-number-field'
+import { IntakePanel } from './intake-panel'
+import { IntakeStepperStrip } from './intake-stepper-strip'
+import { IntakeWizardFooter, type IntakeHintTone } from './intake-wizard-footer'
 import {
   INTAKE_WIZARD_STEP_COUNT,
   clearIntakeDraft,
@@ -151,118 +150,101 @@ export function IntakeWizard(): ReactElement {
   const canLeaveStep1 = step1Complete(values) && !numberTaken
   const forwardDisabled = saving || (step === 1 && !canLeaveStep1)
 
-  const hint = ((): { text: string; tone: 'warn' | 'ok' } => {
-    if (step === 1 && numberTaken) {
-      return { text: m.intake_hint_number_taken(), tone: 'warn' }
+  /**
+   * The prototype distinguishes four states on step 1, in this order — "type the number" comes
+   * before "fill the fields", because with an empty number that is the only thing to do.
+   */
+  const hint = ((): { text: string; tone: IntakeHintTone } => {
+    if (step !== 1) {
+      return { text: m.intake_hint_step({ step }), tone: 'muted' }
     }
-    if (step === 1 && !step1Complete(values)) {
+    if (values.orderNumber.trim().length === 0) {
+      return { text: m.intake_hint_no_number(), tone: 'warn' }
+    }
+    if (numberTaken) {
+      return { text: m.intake_hint_number_taken(), tone: 'bad' }
+    }
+    if (!step1Complete(values)) {
       return { text: m.intake_hint_required(), tone: 'warn' }
     }
-    return { text: m.intake_hint_ready(), tone: 'ok' }
+    return { text: m.intake_hint_ready(), tone: 'muted' }
   })()
 
   return (
-    <div className="mx-auto flex max-w-[1320px] flex-col gap-5 pb-[104px]">
-      <header className="flex flex-col gap-1.5">
-        <Heading level="h1">{m.intake_new_order()}</Heading>
-      </header>
-
-      {foundDraft !== null ? (
-        <InternalNote tone="warn" role="status">
-          <span className="flex flex-wrap items-center gap-3 text-[13px]">
-            {m.intake_draft_found({
-              number: foundDraft.values.orderNumber,
-              step: foundDraft.step,
-            })}
-            <button
-              type="button"
-              onClick={() => {
-                setValues(foundDraft.values)
-                setStep(foundDraft.step)
-                setOrderId(foundDraft.orderId)
-                setFoundDraft(null)
-              }}
-              className="cursor-pointer font-semibold text-mri-redh underline"
-            >
-              {m.intake_draft_resume()}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearIntakeDraft()
-                setFoundDraft(null)
-              }}
-              className="cursor-pointer text-mri-text2 underline"
-            >
-              {m.intake_draft_discard()}
-            </button>
-          </span>
-        </InternalNote>
-      ) : null}
-
-      <div className="flex flex-col gap-4 rounded-[14px] border border-mri-border bg-mri-surface px-5 pt-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 overflow-x-auto">
-          <WizardStepper steps={STEP_LABELS.map((label) => label())} currentIndex={step - 1} />
-        </div>
-        <div className="pb-5 lg:pb-0">
+    <div className="-mx-4 -mb-[72px] -mt-9 flex h-[calc(100vh-59px)] flex-col overflow-hidden sm:-mx-8">
+      {/* 59px = the sticky topbar plus its hairline border, measured — not 58 as the shell's
+          `top-[58px]` suggests. One pixel out and the page grows a vertical scrollbar. */}
+      <IntakeStepperStrip
+        steps={STEP_LABELS.map((label) => label())}
+        currentStep={step}
+        trailing={
           <IntakeOrderNumberField
             value={values.orderNumber}
             onChange={(orderNumber) => patch({ orderNumber })}
             onResume={resumeServerOrder}
             onTakenChange={setNumberTaken}
           />
-        </div>
-      </div>
+        }
+      />
 
-      {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}
-      {step === 2 ? <StepChecklist values={values} onPatch={patch} /> : null}
-      {step >= 3 ? (
-        <InternalCard className="flex flex-col items-center gap-3 border-dashed px-6 py-16 text-center">
-          <Construction className="size-8 text-mri-warn" aria-hidden="true" />
-          <Heading level="h3">{STEP_LABELS[step - 1]?.() ?? ''}</Heading>
-          <p className="text-mri-text2">{m.intake_placeholder_body()}</p>
-        </InternalCard>
+      {foundDraft !== null ? (
+        <div className="mx-4 mt-3.5 flex flex-wrap items-center gap-3.5 rounded-[11px] border border-[rgba(245,166,35,0.26)] bg-[rgba(245,166,35,0.09)] px-4 py-3.5 sm:mx-[26px]">
+          <span className="flex-none font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-mri-warn">
+            {m.intake_draft_tag()}
+          </span>
+          <span className="min-w-0 flex-1 text-[13.5px] leading-normal text-mri-text">
+            {m.intake_draft_found({
+              number: foundDraft.values.orderNumber,
+              step: foundDraft.step,
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setValues(foundDraft.values)
+              setStep(foundDraft.step)
+              setOrderId(foundDraft.orderId)
+              setFoundDraft(null)
+            }}
+            className="h-[42px] flex-none cursor-pointer rounded-[9px] border border-[rgba(245,166,35,0.45)] bg-transparent px-[18px] font-mono text-xs font-extrabold uppercase tracking-[0.08em] text-mri-warn"
+          >
+            {m.intake_draft_resume()}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              clearIntakeDraft()
+              setFoundDraft(null)
+            }}
+            className="flex-none cursor-pointer text-[13px] text-mri-text2 underline"
+          >
+            {m.intake_draft_discard()}
+          </button>
+        </div>
       ) : null}
 
-      <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-mri-border bg-mri-hdr px-4 py-3 backdrop-blur-[14px] sm:px-8">
-        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-3">
-          <span
-            className={
-              hint.tone === 'warn'
-                ? 'font-mono text-[10px] uppercase tracking-[0.14em] text-mri-warn'
-                : 'font-mono text-[10px] uppercase tracking-[0.14em] text-mri-ok'
-            }
-          >
-            {hint.text}
-          </span>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-[18px] sm:px-[26px]">
+        {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}
+        {step === 2 ? <StepChecklist values={values} onPatch={patch} /> : null}
+        {step >= 3 ? (
+          <IntakePanel title={STEP_LABELS[step - 1]?.() ?? ''}>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <Construction className="size-8 text-mri-warn" aria-hidden="true" />
+              <p className="text-mri-text2">{m.intake_placeholder_body()}</p>
+            </div>
+          </IntakePanel>
+        ) : null}
+      </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDiscarding(true)}
-              className={internalButtonClasses('ghost', 'h-12 w-auto px-4')}
-            >
-              {m.intake_action_discard()}
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep((prev) => Math.max(1, prev - 1))}
-              disabled={step === 1}
-              className={internalButtonClasses('outline', 'h-12 w-auto px-4')}
-            >
-              {m.intake_action_back()}
-            </button>
-            <button
-              type="button"
-              onClick={goForward}
-              disabled={forwardDisabled}
-              className={internalButtonClasses('primary', 'h-12 w-auto px-6')}
-            >
-              {m.intake_action_next()}
-            </button>
-          </div>
-        </div>
-      </footer>
+      <IntakeWizardFooter
+        hint={hint.text}
+        hintTone={hint.tone}
+        backDisabled={step === 1}
+        nextDisabled={forwardDisabled}
+        onDiscard={() => setDiscarding(true)}
+        onBack={() => setStep((prev) => Math.max(1, prev - 1))}
+        onNext={goForward}
+      />
 
       <ConfirmDialog
         open={discarding}

@@ -39,14 +39,14 @@ export function IntakeChecklistGrid({
   }
 
   return (
-    <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+    <div className="grid gap-x-4 gap-y-2.5 sm:grid-cols-2">
       {INTAKE_CHECKLIST_KEYS.map((key) => (
         <div key={key} className="flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-[13.5px] font-medium text-mri-text">
+          <span className="min-w-0 flex-1 truncate text-[15px] text-mri-text">
             {ITEM_LABELS[key]()}
           </span>
           <div
-            className="flex flex-none overflow-hidden rounded-[9px] border border-mri-border2"
+            className="flex flex-none overflow-hidden rounded-[10px] border border-mri-border2"
             role="group"
             aria-label={ITEM_LABELS[key]()}
           >
@@ -55,7 +55,7 @@ export function IntakeChecklistGrid({
               onClick={() => set(key, true)}
               aria-pressed={checklist[key] === true}
               className={cn(
-                'h-12 w-[62px] cursor-pointer font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors',
+                'h-12 w-[62px] cursor-pointer text-[13.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
                 checklist[key] === true
                   ? 'bg-[rgba(31,169,113,0.15)] text-mri-ok'
                   : 'text-mri-text2 hover:bg-mri-rowhv',
@@ -69,7 +69,7 @@ export function IntakeChecklistGrid({
               onClick={() => set(key, false)}
               aria-pressed={checklist[key] === false}
               className={cn(
-                'h-12 w-[62px] cursor-pointer font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors',
+                'h-12 w-[62px] cursor-pointer text-[13.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
                 checklist[key] === false
                   ? 'bg-[rgba(224,92,82,0.15)] text-mri-bad'
                   : 'text-mri-text2 hover:bg-mri-rowhv',

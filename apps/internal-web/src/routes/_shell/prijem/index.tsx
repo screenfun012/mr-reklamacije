@@ -4,7 +4,6 @@ import {
   intakeFiltersFromSearch,
   intakeOrderSummaryOptions,
   intakeOrdersListOptions,
-  type IntakeOrderStatus,
   type IntakeOrdersSearch,
 } from '@mr/shared'
 import { Heading, ListPagination } from '@mr/ui'
@@ -82,6 +81,11 @@ function PrijemListScreen(): ReactElement {
             {eyebrowDate(getLocale())}
           </span>
           <Heading level="h1">{m.intake_title()}</Heading>
+          {/* The prototype states the scope under the title, so nobody has to infer why the
+              list is short. Never the word "Kancelarija" — that is not a role (docs/25 §3.1). */}
+          <span className="text-[13px] text-mri-text2">
+            {seesWholeShop ? m.intake_list_scope_all() : m.intake_list_scope_own()}
+          </span>
         </div>
 
         {canCreate ? (
@@ -95,8 +99,12 @@ function PrijemListScreen(): ReactElement {
         ) : null}
       </header>
 
+      <Suspense fallback={null}>
+        <UnfinishedBanner search={search} seesWholeShop={seesWholeShop} />
+      </Suspense>
+
       <Suspense fallback={<IntakeKpiCardsSkeleton />}>
-        <KpiSection activeStatus={search.status} onSelect={(status) => patchSearch({ status })} />
+        <KpiSection />
       </Suspense>
 
       <IntakeFilterBar
@@ -116,15 +124,56 @@ function PrijemListScreen(): ReactElement {
   )
 }
 
-function KpiSection({
-  activeStatus,
-  onSelect,
+/**
+ * The amber "you have an unfinished intake" strip above the KPI row (dopuna-2 §2). Read from
+ * the list the screen already loaded — a caller scoped to their own orders has their drafts in
+ * it, so this costs no extra request. The office does not get the strip: its drafts are other
+ * people's, and it reaches them through the "Nedovršeni" filter instead.
+ */
+function UnfinishedBanner({
+  search,
+  seesWholeShop,
 }: {
-  activeStatus: IntakeOrderStatus | undefined
-  onSelect: (status: IntakeOrderStatus | undefined) => void
-}): ReactElement {
+  search: IntakeOrdersSearch
+  seesWholeShop: boolean
+}): ReactElement | null {
+  const { data } = useSuspenseQuery(intakeOrdersListOptions(intakeFiltersFromSearch(search)))
+
+  if (seesWholeShop) {
+    return null
+  }
+
+  const draft = data.items.find((item) => item.signedAt === null)
+  if (draft === undefined) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3.5 rounded-[11px] border border-[rgba(245,166,35,0.26)] bg-[rgba(245,166,35,0.09)] px-4 py-3.5">
+      <span className="flex-none font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-mri-warn">
+        {m.intake_draft_tag()}
+      </span>
+      <span className="min-w-0 flex-1 text-[13.5px] text-mri-text">
+        {m.intake_draft_list_line({
+          number: draft.orderNumber,
+          vehicle: draft.vehicle,
+          plate: draft.plate,
+          step: draft.draftStep ?? 1,
+        })}
+      </span>
+      <Link
+        to="/prijem/novi"
+        className="h-[42px] flex-none rounded-[9px] border border-[rgba(245,166,35,0.45)] px-[18px] font-mono text-xs font-extrabold uppercase leading-[42px] tracking-[0.08em] text-mri-warn"
+      >
+        {m.intake_draft_resume()}
+      </Link>
+    </div>
+  )
+}
+
+function KpiSection(): ReactElement {
   const { data } = useSuspenseQuery(intakeOrderSummaryOptions())
-  return <IntakeKpiCards summary={data} activeStatus={activeStatus} onSelect={onSelect} />
+  return <IntakeKpiCards summary={data} />
 }
 
 function TableSection({
