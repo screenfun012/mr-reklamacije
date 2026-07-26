@@ -116,6 +116,21 @@ export const IntakeOrderListQuerySchema = z.object({
 
 export type IntakeOrderListQuery = z.infer<typeof IntakeOrderListQuerySchema>
 
+/**
+ * The list screen's URL search params. Kept separate from `IntakeOrderListQuerySchema`:
+ * the API's version coerces strings off the wire, while this one validates an already-typed
+ * router search object and leaves every filter optional so a bare `/prijem` is valid.
+ */
+export const IntakeOrdersSearchSchema = z.object({
+  status: z.enum(intakeOrderStatusValues).optional(),
+  q: z.string().trim().min(1).max(120).optional(),
+  unfinished: z.boolean().optional(),
+  page: z.number().int().min(1).optional(),
+  pageSize: z.union([z.literal(10), z.literal(25), z.literal(50)]).optional(),
+})
+
+export type IntakeOrdersSearch = z.infer<typeof IntakeOrdersSearchSchema>
+
 export const IntakeNumberCheckQuerySchema = z.object({
   number: orderNumberSchema,
 })

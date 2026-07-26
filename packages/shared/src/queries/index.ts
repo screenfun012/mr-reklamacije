@@ -137,12 +137,14 @@ export {
 } from './notifications.js'
 export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'
 export {
+  INTAKE_ORDERS_PAGE_SIZE,
   advanceIntakeOrder,
   buildIntakePhotoUrl,
   changeIntakeOrderStatus,
   createIntakeOrder,
   deleteIntakeOrder,
   deleteIntakeOrderPhoto,
+  intakeFiltersFromSearch,
   intakeNumberCheckOptions,
   intakeOrderDetailOptions,
   intakeOrderKeys,

@@ -3,6 +3,7 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 import { fetchJson, fetchParsed } from '../api/fetch-json.js'
 import { fetchNoContent } from '../api/fetch-no-content.js'
 import type {
+  IntakeOrdersSearch,
   IntakeOrderChangeStatusInput,
   IntakeOrderCreateInput,
   IntakeOrderDetail,
@@ -27,12 +28,26 @@ const INTAKE_DETAIL_STALE_MS = 15_000
  */
 const INTAKE_LOOKUP_STALE_MS = 5_000
 
+/** The list's default page size — the shop does perhaps ten intakes a day. */
+export const INTAKE_ORDERS_PAGE_SIZE = 25
+
 export interface IntakeOrderListFilters {
   status?: IntakeOrderListQuery['status']
   search?: string
   unfinished?: boolean
   page?: number
   pageSize?: number
+}
+
+/** URL search params → list filters, so the route and the loader cannot drift apart. */
+export function intakeFiltersFromSearch(search: IntakeOrdersSearch): IntakeOrderListFilters {
+  return {
+    ...(search.status !== undefined ? { status: search.status } : {}),
+    ...(search.q !== undefined ? { search: search.q } : {}),
+    ...(search.unfinished === true ? { unfinished: true } : {}),
+    page: search.page ?? 1,
+    pageSize: search.pageSize ?? INTAKE_ORDERS_PAGE_SIZE,
+  }
 }
 
 export const intakeOrderKeys = {
