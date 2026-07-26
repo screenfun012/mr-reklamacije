@@ -85,6 +85,11 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 # ⚠️ ALWAYS --force the cacheable tasks before a PUSH: turbo's local cache
 # masked 3 CI failures on 2026-07-17 (stale api build/lint + shared test hits
 # while their inputs had errors). CI runs cache-less and caught them one by one.
+# ⚠️ Add `--concurrency=4` when `pnpm dev:all` is running (or on any busy machine).
+# At the default (= core count) turbo runs three Vite builds AND every test suite at once;
+# with the dev servers also on the CPU, timing-sensitive component tests starve. Measured
+# 2026-07-26: packages/auth's two-factor suite takes 94 ms alone and 14.7 s under that load,
+# blowing a 5 s testTimeout. The tests are fine — the machine was oversubscribed.
 pnpm format:check && pnpm exec turbo run build typecheck lint test --force \
   && pnpm --filter api depcruise && pnpm test:integration
 # (CONTRIBUTING's pre-commit order: format:write, typecheck, test, test:integration, lint, depcruise, format:check)
@@ -113,6 +118,14 @@ Dev resolves workspace packages from **`src/`** (the package `"development"` exp
 
 1. kill ports 3000–3003 (`lsof`/the dev runner) → 2. `pnpm --filter @mr/ui build` → 3. `pnpm dev:all` → 4. **hard refresh** (Cmd+Shift+R).
    Symptom of staleness: Vite logs `page reload packages/ui/dist/...`, or 504/login flicker (API starved by dist watchers). `pnpm dev:check` then `pnpm dev:all`.
+
+### After touching `packages/i18n/src/messages/*.json`
+
+**`pnpm --filter @mr/i18n run compile`, then refresh.** Paraglide generates
+`packages/i18n/src/paraglide/` and dev reads _that_, not the JSON — so without the compile step
+the screen calmly keeps showing the **old** text and it looks like the edit did not apply
+(cost us a debugging detour on 2026-07-26). `dist/paraglide` stays behind too; dev never reads
+it and the gate rebuilds it.
 
 ### Clean migrate-from-zero (proof before pushing a migration)
 
@@ -148,7 +161,7 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 **Database (06):** schema in `packages/db/src/schema/*`, imported everywhere via `@mr/db`. Drizzle only; raw SQL via template literal when needed. Tables snake*case plural; FK `<singular>_id`; explicit index/constraint names (`idx*...`, `fk\_...`). Enum-like columns = `text`+ CHECK (extensible), not PG enum. Money`decimal(14,2)`. `date`for date-only (UTC midnight),`timestamptz` for moments. **Index FKs and WHERE/ORDER BY/JOIN columns** (Drizzle does NOT auto-create FK indexes) — but don't over-index. Multi-row writes in a transaction. Seeds idempotent (`onConflictDoNothing`), split: `runSystemSeeds`(permissions → roles → departments → claim_sources → engine_manufacturers; prod-safe) +`runDemoSeeds`(employees → customers → engine_types → demo claims; dev/test only — integration globalSetup runs both; real data comes from`import-legacy`). **NEVER** `TRUNCATE`/`DROP`prod, connect to prod from local (except read-only tunnel), ship data-deleting migrations without Nikola's OK, or`ON DELETE CASCADE` on business tables except clear parent-child (faults).
 
-**i18n (09-rule):** every user string via Paraglide `m.*`; keys English `namespace_context_variant` (`action_save`, `validation_required`, `nav_emotive_claims`). Both `sr.json` + `en.json` required (CI checks parity). Serbian is primary, informal "ti" form, follow the glossary (always "Prilog", never a synonym). ICU plurals (Serbian one/few/other). Never concatenate translated strings — interpolate. Don't translate IDs/MR numbers/proper nouns; format dates/numbers via `Intl.*`.
+**i18n (09-rule):** every user string via Paraglide `m.*`; keys English `namespace_context_variant` (`action_save`, `validation_required`, `nav_emotive_claims`). Both `sr.json` + `en.json` required (CI checks parity). Serbian is primary, informal "ti" form, follow the glossary (always "Prilog", never a synonym). **NO ICU plurals** — `{count, plural, …}` crashes this repo's Paraglide compile (verified 2026-07-26; the real error hides under a huge base64 blob in the output, and there is not one plural message in the codebase). Phrase counts so no grammatical form depends on the number: "Ukupno: 12", never "{count} naloga", which reads "1 naloga". Never concatenate translated strings — interpolate. Don't translate IDs/MR numbers/proper nouns; format dates/numbers via `Intl.*`.
 
 **Performance (10):** queryOptions factory in `@mr/shared/src/queries`; route loaders prefetch (`ensureQueryData`); `useSuspenseQuery` + Suspense over `isLoading`. Selective columns in list queries, full row + relations in detail. JOINs never N+1. Index FK + WHERE columns. Debounce inputs 300ms. Lazy-load heavy routes. Bundle budgets: admin/internal < 250KB, portal < 150KB gzipped. API p95 < 200ms, DB query p95 < 50ms. _(See drift note on pagination & optimistic updates below.)_
 
