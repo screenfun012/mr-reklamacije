@@ -1,4 +1,9 @@
-import { AuditAction, ResourceChangedKey, intakeOrderStatusValues } from '@mr/shared'
+import {
+  AuditAction,
+  ResourceChangedKey,
+  intakeDamageZoneOf,
+  intakeOrderStatusValues,
+} from '@mr/shared'
 
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import {
@@ -213,7 +218,11 @@ export class IntakeOrdersService {
 
     const isAmendment = before.signedAt !== null && this.assertPostSigningPatchAllowed(patch, actor)
 
-    const updated = await this.repo.update(id, patch, isAmendment ? auditContext.actorUserId : null)
+    const updated = await this.repo.update(
+      id,
+      this.withDerivedZones(patch, before),
+      isAmendment ? auditContext.actorUserId : null,
+    )
     if (updated === null) {
       throw new NotFoundError('Intake order', id)
     }
@@ -232,6 +241,34 @@ export class IntakeOrdersService {
 
     this.signalChanged()
     return updated
+  }
+
+  /**
+   * The zone is derived here, never taken from the client. It is printed on the work order the
+   * customer signs, so a wrong word is a permanent error on evidence — and deriving it from
+   * (vehicleType, x, y) is also what keeps the map, the defect list and the print agreeing.
+   *
+   * Changing the vehicle type re-zones the existing markers, because the same coordinates mean
+   * a different part of a kombi than of a car.
+   */
+  private withDerivedZones(
+    patch: IntakeOrderUpdateInput,
+    before: IntakeOrderDetail,
+  ): IntakeOrderUpdateInput {
+    const vehicleType = patch.vehicleType ?? before.vehicleType
+    const damages = patch.damages ?? (patch.vehicleType !== undefined ? before.damages : undefined)
+
+    if (damages === undefined) {
+      return patch
+    }
+
+    return {
+      ...patch,
+      damages: damages.map((damage) => ({
+        ...damage,
+        zone: intakeDamageZoneOf(vehicleType, damage.x, damage.y),
+      })),
+    }
   }
 
   /**

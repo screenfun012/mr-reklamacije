@@ -327,6 +327,51 @@ describe('Intake orders integration', () => {
     })
   })
 
+  describe('damage zones', () => {
+    it('derives the zone from the coordinates and ignores whatever the client sent', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+
+      const updated = await service.update(
+        draft.id,
+        {
+          damages: [
+            // A client claiming the bonnet for a spot that is the roof must not win: the zone is
+            // printed on the document the customer signs.
+            { id: 'd1', type: IntakeDamageType.Scratch, x: 170, y: 300, zone: 'hauba' },
+          ],
+        },
+        floor,
+        actorContext(floor.id),
+      )
+
+      expect(updated.damages[0]?.zone).toBe('krov')
+    })
+
+    it('re-zones existing markers when the vehicle type changes', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+      const asCar = await service.update(
+        draft.id,
+        { damages: [{ id: 'd1', type: IntakeDamageType.Dent, x: 170, y: 90, zone: 'x' }] },
+        floor,
+        actorContext(floor.id),
+      )
+      expect(asCar.damages[0]?.zone).toBe('gepek / poklopac')
+
+      const asVan = await service.update(
+        draft.id,
+        { vehicleType: IntakeVehicleType.Van },
+        floor,
+        actorContext(floor.id),
+      )
+
+      // One spot, two vehicles: a car's boot lid is a kombi's cargo roof. A kombi must never
+      // print "gepek" — it does not have one.
+      expect(asVan.damages[0]?.zone).toBe('krov teretnog dela')
+    })
+  })
+
   describe('status', () => {
     it('walks the ladder one notch at a time and stops at the end', async () => {
       const floor = await floorActor()

@@ -57,7 +57,7 @@ export function IntakeChecklistGrid({
               className={cn(
                 'h-12 w-[62px] cursor-pointer text-[13.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
                 checklist[key] === true
-                  ? 'bg-[rgba(31,169,113,0.15)] text-mri-ok'
+                  ? 'bg-[rgba(31,169,113,0.16)] text-mri-ok'
                   : 'text-mri-text2 hover:bg-mri-rowhv',
               )}
             >
@@ -71,7 +71,7 @@ export function IntakeChecklistGrid({
               className={cn(
                 'h-12 w-[62px] cursor-pointer text-[13.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
                 checklist[key] === false
-                  ? 'bg-[rgba(224,92,82,0.15)] text-mri-bad'
+                  ? 'bg-[rgba(237,28,36,0.16)] text-mri-redh'
                   : 'text-mri-text2 hover:bg-mri-rowhv',
               )}
             >

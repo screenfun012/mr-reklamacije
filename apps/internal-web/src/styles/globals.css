@@ -47,6 +47,8 @@
   --color-mri-domace: #a78bfa;
   --color-mri-domace-strong: #8b5cf6;
   --color-mri-domace-bg: rgba(139, 92, 246, 0.15);
+  --color-mri-sil: var(--mri-sil);
+  --color-mri-sigink: var(--mri-sigink);
   --color-mri-archived: #96969e;
   --color-mri-archived-bg: rgba(150, 150, 158, 0.13);
 }
@@ -85,6 +87,11 @@
   --mri-btnfg: #101013;
   --mri-btnhv: #ffffff;
   --mri-logoc: #ffffff;
+  /* Vehicle-intake drawings (docs/25). Transferred from the prototype's own `--sil`/`--sigink`,
+     which are the text colour at a set opacity rather than new hues: the damage-map silhouette
+     and the signature ink. */
+  --mri-sil: rgba(255, 255, 255, 0.45);
+  --mri-sigink: #f2f2f3;
 }
 
 :root:not(.dark) {
@@ -103,6 +110,8 @@
   --mri-inbg: rgba(20, 20, 25, 0.03);
   --mri-gear: rgba(20, 20, 25, 0.05);
   --mri-rowhv: rgba(20, 20, 25, 0.03);
+  --mri-sil: rgba(20, 20, 25, 0.5);
+  --mri-sigink: #17171a;
   --mri-btn: #17171a;
   --mri-btnfg: #ffffff;
   --mri-btnhv: #2b2b31;
