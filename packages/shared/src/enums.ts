@@ -18,6 +18,8 @@ export const SystemRoleCode = {
   Operator: 'operator',
   Viewer: 'viewer',
   Client: 'client',
+  /** Shop floor, tablet only — vehicle service intake and nothing else (docs/25). */
+  Serviser: 'serviser',
 } as const
 
 export type SystemRoleCode = (typeof SystemRoleCode)[keyof typeof SystemRoleCode]

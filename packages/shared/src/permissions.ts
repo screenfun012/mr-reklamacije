@@ -57,6 +57,16 @@ export const PERMISSIONS = [
   // notifications (in-app inbox)
   'notifications.view_own',
 
+  // intake_orders (vehicle service intake, docs/25)
+  'intake_orders.view',
+  'intake_orders.view_own',
+  'intake_orders.create',
+  'intake_orders.update',
+  'intake_orders.advance',
+  'intake_orders.change_status',
+  'intake_orders.amend',
+  'intake_orders.delete',
+
   // claim_reports
   'claim_reports.view',
   'claim_reports.update',
@@ -171,6 +181,16 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'attachments.change_visibility',
   'client_submissions.manage',
   'notifications.view_own',
+  // The office oversees every intake and is the only side that may correct one
+  // after signing (docs/25 §5). There is no separate "kancelarija" role.
+  'intake_orders.view',
+  'intake_orders.view_own',
+  'intake_orders.create',
+  'intake_orders.update',
+  'intake_orders.advance',
+  'intake_orders.change_status',
+  'intake_orders.amend',
+  'intake_orders.delete',
   'claim_reports.view',
   'claim_reports.update',
   'customers.view',
@@ -206,6 +226,29 @@ export const VIEWER_PERMISSIONS: readonly Permission[] = [
   'export.workbook_full',
   'export.workbook_partial',
 ] as const
+
+/**
+ * Serviser (docs/25): the shop floor. Sees only his own intake orders, creates and
+ * fills them in, and steps the status forward one notch. Deliberately holds NOTHING
+ * else — no claims, no statistics, no `attachments.*` (intake photos are served by
+ * the intake module under its own permission, so this role can never reach a claim's
+ * files), and no `notifications.view_own` until intake notifications are designed.
+ */
+export const SERVISER_PERMISSIONS: readonly Permission[] = [
+  'intake_orders.view_own',
+  'intake_orders.create',
+  'intake_orders.update',
+  'intake_orders.advance',
+] as const
+
+/**
+ * Permissions that allow viewing intake orders (API + internal-web "Servis").
+ * `view` is the whole shop, `view_own` only the caller's own rows.
+ */
+export const INTAKE_ORDERS_VIEW_PERMISSIONS = [
+  'intake_orders.view',
+  'intake_orders.view_own',
+] as const satisfies readonly Permission[]
 
 /** Permissions that allow viewing the EMOTIVE claims list (API + internal-web route). */
 export const EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS = [

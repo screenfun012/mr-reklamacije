@@ -2,9 +2,11 @@ import {
   ADMIN_PERMISSIONS,
   CLIENT_PERMISSIONS,
   OPERATOR_PERMISSIONS,
+  SERVISER_PERMISSIONS,
   SYSTEM_ROLE_ADMIN,
   SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_OPERATOR,
+  SYSTEM_ROLE_SERVISER,
   SYSTEM_ROLE_VIEWER,
   VIEWER_PERMISSIONS,
 } from '@mr/shared'
@@ -38,6 +40,12 @@ const SYSTEM_ROLES: RoleSeed[] = [
     nameSr: 'Pregled',
     nameEn: 'Viewer',
     permissions: VIEWER_PERMISSIONS,
+  },
+  {
+    code: SYSTEM_ROLE_SERVISER,
+    nameSr: 'Serviser',
+    nameEn: 'Service technician',
+    permissions: SERVISER_PERMISSIONS,
   },
   {
     code: SYSTEM_ROLE_CLIENT,

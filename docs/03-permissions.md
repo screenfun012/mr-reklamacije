@@ -80,6 +80,22 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `client_submissions.create` | Client submits a request (reason + attachments) from the portal |
 | `client_submissions.manage` | View, convert to a claim, or reject client submissions in the internal Inbox |
 
+### Module: `intake_orders` — vehicle service intake (docs/25)
+
+| Permission | Description |
+|---|---|
+| `intake_orders.view` | View every intake order in the shop |
+| `intake_orders.view_own` | View only the caller's own intake orders (a foreign row 404s, never 403) |
+| `intake_orders.create` | Start a new intake |
+| `intake_orders.update` | Fill the wizard in, and edit services/materials afterwards |
+| `intake_orders.advance` | Step the status forward one notch (the serviser's one-way button) |
+| `intake_orders.change_status` | Set any status — correcting a mis-tap, office only |
+| `intake_orders.amend` | Correct the intake condition (damages, checklist, fuel, photos) after signing; stamps `amended_at`/`amended_by` and marks the printed document |
+| `intake_orders.delete` | Soft-delete a signed order (it leaves the list, never the DB) |
+
+Intake photos are served by the intake module under these permissions, **not** by
+`attachments.*` — a serviser must never hold a permission that would also reach a claim's files.
+
 ### Module: `claim_reports`
 
 | Permission | Description |
@@ -226,6 +242,14 @@ attachments.view_internal
 attachments.upload
 attachments.delete_own
 attachments.change_visibility
+intake_orders.view
+intake_orders.view_own
+intake_orders.create
+intake_orders.update
+intake_orders.advance
+intake_orders.change_status
+intake_orders.amend
+intake_orders.delete
 claim_reports.view
 claim_reports.update
 customers.view
@@ -266,6 +290,24 @@ statistics.view_financial
 export.workbook_full       (read is OK; no data modification)
 export.workbook_partial
 ```
+
+### `serviser`
+
+Shop floor, tablet. Vehicle service intake and nothing else — no claims, no statistics,
+no inbox. Uses internal-web, but with a single visible nav entry the sidebar is not
+rendered at all, so his name and logout live in the topbar (docs/25 §3.1).
+
+Permissions:
+```
+intake_orders.view_own
+intake_orders.create
+intake_orders.update
+intake_orders.advance
+```
+
+**Deliberately absent:** `attachments.*` — intake photos are served by the intake module
+under `intake_orders.view`/`view_own`, so this role can never reach a claim's files. Also
+absent: `notifications.view_own`, until intake notifications get their own design pass.
 
 ### `client`
 
