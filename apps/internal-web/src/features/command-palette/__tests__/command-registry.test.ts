@@ -12,11 +12,12 @@ describe('commandPaletteNavItems', () => {
   })
 
   it('keeps the sidebar order, because the palette numbers the rows', () => {
-    expect(commandPaletteNavItems.slice(0, 5).map((item) => item.key)).toEqual([
+    expect(commandPaletteNavItems.slice(0, 6).map((item) => item.key)).toEqual([
       'pocetna',
       'pristiglo',
       'reklamacije',
       'masinska-obrada',
+      'servis',
       'statistika',
     ])
   })
@@ -34,10 +35,10 @@ describe('commandPaletteActionItems', () => {
 describe('filterVisibleNavItems', () => {
   it('hides a command whose single permission the user lacks', () => {
     expect(filterVisibleNavItems(commandPaletteActionItems, []).map((item) => item.key)).toEqual([])
-    // ungated commands still show
+    // Ungated commands still show. Security is the only one left: Početna and Statistika are
+    // now gated too, so a serviser sees neither the screen nor its palette command (docs/25 §3.1).
     const navKeys = filterVisibleNavItems(commandPaletteNavItems, []).map((item) => item.key)
-    expect(navKeys).toContain('pocetna')
-    expect(navKeys).toContain('bezbednost')
+    expect(navKeys).toEqual(['bezbednost'])
   })
 
   it('shows a command when the user has the required permission', () => {

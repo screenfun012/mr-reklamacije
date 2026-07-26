@@ -1,15 +1,27 @@
+import { m } from '@mr/i18n'
 import { useSidebarState } from '@mr/ui'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { MaskedIcon } from '~/components/masked-icon'
+import { filterVisibleNavItems, internalNavItems } from '~/config/navigation'
 import { authClient } from '~/lib/auth-client'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
 
 import { InternalSidebar } from './internal-sidebar'
 import { InternalTopbar } from './internal-topbar'
+
+const rootRoute = getRouteApi('__root__')
+
+const ROLE_LABELS: Record<string, () => string> = {
+  admin: m.users_role_admin,
+  operator: m.users_role_operator,
+  viewer: m.users_role_viewer,
+  client: m.users_role_client,
+  serviser: m.users_role_serviser,
+}
 
 export interface InternalShellProps {
   children: ReactNode
@@ -29,9 +41,21 @@ export function InternalShell({ children }: InternalShellProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { userEmail, userName } = useInternalAuthUser()
+  const { authSession } = rootRoute.useRouteContext()
   const { collapsed, mobileOpen, onToggle, onCloseMobile } = useSidebarState(
     'mrr:internal:sidebar-collapsed',
   )
+
+  const visibleItems = filterVisibleNavItems(internalNavItems, authSession?.user?.permissions ?? [])
+  /**
+   * Nothing to navigate between means no sidebar — a serviser gets the topbar and his one
+   * screen, nothing else (docs/25 §3.1). Derived from permissions rather than a role name, so
+   * granting that person access to something else makes the sidebar appear on its own.
+   */
+  const showSidebar = visibleItems.length > 1
+  const roleLabel = (authSession?.user?.roles ?? [])
+    .map((role) => ROLE_LABELS[role])
+    .find((label) => label !== undefined)
 
   const handleLogout = (): void => {
     void (async () => {
@@ -46,17 +70,33 @@ export function InternalShell({ children }: InternalShellProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-mri-bg font-sans text-mri-text">
-      <InternalTopbar onToggleSidebar={onToggle} />
+      <InternalTopbar
+        onToggleSidebar={onToggle}
+        showSidebarToggle={showSidebar}
+        {...(showSidebar
+          ? {}
+          : {
+              user: {
+                userName,
+                userEmail,
+                roleLabel: roleLabel === undefined ? undefined : roleLabel(),
+                onLogout: handleLogout,
+              },
+            })}
+      />
 
       <div className="flex flex-1 items-stretch">
-        <InternalSidebar
-          userName={userName}
-          userEmail={userEmail}
-          onLogout={handleLogout}
-          collapsed={collapsed}
-          mobileOpen={mobileOpen}
-          onCloseMobile={onCloseMobile}
-        />
+        {showSidebar ? (
+          <InternalSidebar
+            items={visibleItems}
+            userName={userName}
+            userEmail={userEmail}
+            onLogout={handleLogout}
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            onCloseMobile={onCloseMobile}
+          />
+        ) : null}
 
         <div className="relative min-w-0 flex-1 overflow-x-clip">
           <div aria-hidden="true" className="mri-grid-bg mri-grid-fade-down absolute inset-0" />

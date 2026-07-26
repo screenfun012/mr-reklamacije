@@ -3,7 +3,8 @@ import { cn } from '@mr/ui'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { LogOut, Shield } from 'lucide-react'
 
-import { filterVisibleNavItems, internalNavItems } from '~/config/navigation'
+import type { NavItem } from '~/config/navigation'
+import { getInitials } from './internal-user-chip'
 
 const rootRoute = getRouteApi('__root__')
 
@@ -15,18 +16,9 @@ const ROLE_LABELS: Record<string, () => string> = {
   serviser: m.users_role_serviser,
 }
 
-function getInitials(name: string, email: string): string {
-  const source = (name.trim().length > 0 ? name : email).trim()
-  if (source.length === 0) {
-    return '?'
-  }
-  const parts = source.split(/\s+/).filter((part) => part.length > 0)
-  const initials =
-    parts.length >= 2 ? `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}` : source.slice(0, 2)
-  return initials.toUpperCase()
-}
-
 export interface InternalSidebarProps {
+  /** Already filtered by permission in the shell, which also decides whether to render this at all. */
+  items: readonly NavItem[]
   userName: string
   userEmail: string
   onLogout: () => void
@@ -38,6 +30,7 @@ export interface InternalSidebarProps {
 }
 
 export function InternalSidebar({
+  items,
   userName,
   userEmail,
   onLogout,
@@ -46,11 +39,8 @@ export function InternalSidebar({
   onCloseMobile,
 }: InternalSidebarProps) {
   const { authSession } = rootRoute.useRouteContext()
-  const userPermissions = authSession?.user?.permissions ?? []
   const userRoles = authSession?.user?.roles ?? []
   const roleLabel = userRoles.map((role) => ROLE_LABELS[role]).find((label) => label !== undefined)
-
-  const visibleItems = filterVisibleNavItems(internalNavItems, userPermissions)
 
   return (
     <>
@@ -75,7 +65,7 @@ export function InternalSidebar({
           aria-label="Main navigation"
           className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"
         >
-          {visibleItems.map((item) => (
+          {items.map((item) => (
             <Link
               key={item.key}
               to={item.to}

@@ -1,5 +1,9 @@
-import { CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
-import { BarChart3, Briefcase, Cog, Inbox, LayoutDashboard } from 'lucide-react'
+import {
+  CLAIMS_LIST_VIEW_PERMISSIONS,
+  INTAKE_ORDERS_VIEW_PERMISSIONS,
+  STATISTICS_VIEW_PERMISSIONS,
+} from '@mr/shared'
+import { BarChart3, Briefcase, Car, Cog, Inbox, LayoutDashboard } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 import { m } from '@mr/i18n'
@@ -17,10 +21,14 @@ export interface NavItem {
 
 export const internalNavItems: NavItem[] = [
   {
+    // The dashboard is claim-shaped, so it is gated like the claims list rather than
+    // left open: a serviser holds no claims permission and would otherwise land on a
+    // screen with nothing on it (docs/25 §3.1).
     key: 'pocetna',
     label: m.nav_pocetna,
     to: '/',
     icon: LayoutDashboard,
+    permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
     key: 'pristiglo',
@@ -48,10 +56,18 @@ export const internalNavItems: NavItem[] = [
     permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
+    key: 'servis',
+    label: m.nav_servis,
+    to: '/prijem',
+    icon: Car,
+    permissions: [...INTAKE_ORDERS_VIEW_PERMISSIONS],
+  },
+  {
     key: 'statistika',
     label: m.nav_statistika,
     to: '/statistika',
     icon: BarChart3,
+    permissions: [...STATISTICS_VIEW_PERMISSIONS],
   },
 ]
 

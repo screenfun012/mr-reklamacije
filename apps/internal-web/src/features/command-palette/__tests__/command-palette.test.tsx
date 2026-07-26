@@ -94,7 +94,9 @@ describe('CommandPalette', () => {
 
   it('navigates when a navigation command is selected', async () => {
     const user = userEvent.setup()
-    await renderPalette([])
+    // Statistika is permission-gated now, so the caller has to hold it for the command to be
+    // in the palette at all — the point of the test is the navigation, not the gating.
+    await renderPalette(['statistics.view_emotive'])
 
     await user.keyboard('{Meta>}k{/Meta}')
     await user.click(await screen.findByText('Statistika'))
