@@ -70,7 +70,13 @@ export function InternalTopbar({ onToggleSidebar, showSidebarToggle, user }: Int
           </span>
         </div>
         <span aria-hidden="true" className="hidden h-5 w-px bg-mri-border sm:block" />
-        <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mri-text2">
+        {/*
+          Hidden below `sm` like the eyebrow and the divider beside it. It is the one item in
+          this row that neither shrinks nor wraps, and at phone width it pushed the whole
+          header past the viewport — the page scrolled sideways on every screen (measured
+          2026-07-26: 64px over on /reklamacije). The page's own H1 says the same thing.
+        */}
+        <span className="hidden font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mri-text2 sm:inline">
           {sectionLabel(pathname)}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
