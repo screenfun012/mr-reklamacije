@@ -3,8 +3,9 @@
 > **Status: DESIGN, all decisions locked.** First pass 2026-07-26 (from Claude Design's original
 > handoff). **Second pass 2026-07-26**, after prototype v2 + `dopuna-2` came back: the role model,
 > the shell for a serviser, draft ownership and the list's treatment of unfinished intakes were all
-> resolved with Nikola. Implementation **NOT started** — build only on Nikola's per-phase go.
-> **V-0 (migration) needs explicit approval** and a proven clean migrate-from-zero.
+> resolved with Nikola. **Implementation in progress on `feat/vehicle-intake`: V-0, V-1 and V-2 are
+> done and pushed (production untouched — Railway deploys `main`).** Next is V-3. Build only on
+> Nikola's per-phase go.
 >
 > This is a **new subsystem, not a claim family.** It shares nothing with EMOTIVE/DOMACE except
 > the app shell, the attachments pipeline, audit and SSE. No MR number, no faults, no warranty
@@ -76,10 +77,10 @@ print stop agreeing.
 - **The rule is driven by permissions, not by a role name:** the sidebar is not rendered when the
   user has nothing else to see. Give a serviser access to claims tomorrow from the admin app and
   the sidebar appears on its own, with no code change.
-- **Consequence to fix in the same phase:** `apps/internal-web/src/config/navigation.ts` currently
-  gates neither **Početna** nor **Statistika** — as it stands a serviser would see both. Statistika
-  gets the existing `STATISTICS_VIEW_PERMISSIONS`; Početna gets the claims-list set (the dashboard
-  is claim-shaped).
+- **Done in V-2:** `navigation.ts` gated neither **Početna** nor **Statistika**, so a serviser
+  would have seen both. Statistika now carries `STATISTICS_VIEW_PERMISSIONS` and Početna the
+  claims-list set (the dashboard is claim-shaped). The ⌘K palette reads the same list, so it
+  follows automatically.
 - **The prototype's role switcher is a demo device and is not built.** It exists only so Nikola
   could compare the two perspectives.
 - **"Kancelarija" is not a role and not a label.** It is `operator` with more permissions. The list
