@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
-import { dashboardSummaryOptions, INTERNAL_APP_ROLES } from '@mr/shared'
+import { dashboardSummaryOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
 
 import { InternalButton } from '~/components/internal-button'
@@ -9,10 +9,10 @@ import { DashboardClaimListSkeleton } from '~/features/dashboard/dashboard-claim
 import { DashboardClaimsChartSkeleton } from '~/features/dashboard/dashboard-chart-skeleton'
 import { DashboardStatCardsSkeleton } from '~/features/dashboard/dashboard-stat-cards'
 import { DashboardContent } from '~/features/dashboard/dashboard-content'
-import { internalRequireRoles } from '~/lib/auth-guard'
+import { internalHomeGuard } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/_shell/')({
-  beforeLoad: internalRequireRoles(INTERNAL_APP_ROLES),
+  beforeLoad: internalHomeGuard(),
   loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(dashboardSummaryOptions()),
   component: HomeComponent,
   pendingComponent: DashboardSkeleton,
