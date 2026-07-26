@@ -2,6 +2,7 @@ import {
   APPROVE_REGISTRATION_ROLE_CODES,
   DEFAULT_APPROVE_REGISTRATION_ROLE,
   SYSTEM_ROLE_OPERATOR,
+  SYSTEM_ROLE_SERVISER,
   SYSTEM_ROLE_VIEWER,
   type ApproveRegistrationRoleCode,
   type UserListItem,
@@ -28,6 +29,11 @@ const EDITABLE_ROLE_OPTIONS = [
     value: SYSTEM_ROLE_VIEWER,
     label: () => m.users_role_viewer(),
     description: () => m.users_role_viewer_description(),
+  },
+  {
+    value: SYSTEM_ROLE_SERVISER,
+    label: () => m.users_role_serviser(),
+    description: () => m.users_role_serviser_description(),
   },
 ] as const satisfies ReadonlyArray<{
   value: ApproveRegistrationRoleCode

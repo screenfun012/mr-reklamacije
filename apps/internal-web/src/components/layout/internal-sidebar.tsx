@@ -12,6 +12,7 @@ const ROLE_LABELS: Record<string, () => string> = {
   operator: m.users_role_operator,
   viewer: m.users_role_viewer,
   client: m.users_role_client,
+  serviser: m.users_role_serviser,
 }
 
 function getInitials(name: string, email: string): string {

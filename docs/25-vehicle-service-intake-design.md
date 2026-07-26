@@ -345,6 +345,14 @@ Signatures are **not** attachments: they are SVG path text on the order row.
 - **One new role: `serviser`.** The office are the same people who already process claims, so
   `operator` simply gains the intake permissions. `viewer` is granted nothing here on purpose.
   There is **no "kancelarija" role** — that word only ever described the operator.
+- **Badge colour: `mr-warning` (amber)**, approved by Nikola 2026-07-26. The other five hues
+  were taken (admin `mr-brand`, operator `mr-info`, viewer `mr-neutral`, client `mr-accent`),
+  and the reasoning is the one the brandbook already uses for admin-red beside rejected-red: a
+  role badge only exists once the account is approved, so amber-role and the amber "pending"
+  status badge can never share a row. `mr-success` was rejected — every approved serviser
+  would have shown a green role beside a green status.
+- **A serviser deliberately holds no `attachments.*` and no `notifications.view_own`** (see
+  §6 for the photo route, and §7 for notifications).
 - **Naming stays as above.** `dopuna-2` proposed `intake_orders.read.own` / `.correct` / `.archive`;
   rejected, because every permission in `@mr/shared` is two segments (`emotive_claims.view_own_customer`)
   and one module must not invent a third.
@@ -366,22 +374,43 @@ Module `apps/api/src/modules/intake-orders/` per the mandatory anatomy.
 
 | Method + path | Purpose |
 | --- | --- |
-| `GET /api/intake-orders` | list — status filter, search, page; scoped by `view` vs `view_own`; drafts included for own, behind a filter for `view` |
-| `GET /api/intake-orders/check-number` | `?number=…` → `free` / `taken_order` / `taken_draft_other` / `taken_draft_mine` (+ `orderId`, `draftStep`, `by`) |
+| `GET /api/intake-orders` | list — status filter, search, page; scoped by `view` vs `view_own`; drafts included for own, behind `?unfinished=true` for `view` |
+| `GET /api/intake-orders/summary` | the four KPI cards; **signed orders only** |
+| `GET /api/intake-orders/check-number` | `?number=…` → `free` / `taken_order` / `taken_draft_other` / `taken_draft_mine` (+ `orderId`, `draftStep`, `takenByName`) |
 | `POST /api/intake-orders` | create after step 1 → 201 |
-| `GET /api/intake-orders/:id` | detail |
+| `GET /api/intake-orders/:id` | detail — **includes the photo list**, one aggregate fetch per the claims rule |
 | `PATCH /api/intake-orders/:id` | step patches (incl. `draft_step`), and amendments after signing (gated) |
 | `POST /api/intake-orders/:id/sign` | both signatures + finish → sets `signed_at`, clears `draft_step`, records `photos_expected` |
 | `POST /api/intake-orders/:id/advance` | next status |
 | `POST /api/intake-orders/:id/change-status` | set any status (correction) |
 | `DELETE /api/intake-orders/:id` | soft delete → 204 |
-| `POST /api/intake-orders/:id/photos` | upload, optional `damageId` |
-| `DELETE /api/intake-orders/:id/photos/:attachmentId` | remove a photo |
-| `GET /api/intake-orders/lookup` | `?plate=…` → owner/vehicle prefill from previous orders |
+| `GET /api/intake-orders/:id/photos/:attachmentId` | serve a photo (`?variant=thumbnail`) — **V-4** |
+| `POST /api/intake-orders/:id/photos` | upload, optional `damageId` — **V-4** |
+| `DELETE /api/intake-orders/:id/photos/:attachmentId` | remove a photo — **V-4** |
+| `GET /api/intake-orders/lookup` | `?plate=…` → owner/vehicle prefill from previous **signed** orders |
+
+**Photos are served by this module, never by `/api/attachments`.** That route is gated by
+`attachments.view_internal`, and giving a serviser that permission would also let him read a
+claim's files. The intake routes gate on `intake_orders.view`/`view_own` with the same
+row-level scope as the order itself. Upload/delete land in V-4, alongside the tablet-side
+compression and the four upload states they belong with; reading is in V-1 so the detail is
+not half a screen.
 
 Audit in the **service** layer (every state change: actor, IP, UA, diff), as everywhere.
-`queryOptions` factories in `@mr/shared/src/queries`. SSE is signal-only (`type + id`), reusing the
-existing `PostgresEventBus`.
+`queryOptions` factories in `@mr/shared/src/queries`.
+
+**Realtime reuses `resource_changed`** with a new `intakeOrders` key rather than a new event
+type: the requirement is identical, the payload stays signal-only, and the key flows through
+the existing Zod-validated LISTEN/NOTIFY transport and the frontend's invalidation map with
+no new transport code.
+
+**The post-signing freeze is enforced in the service, not on the route.** A serviser holds
+`update`, so a route gate alone would let him patch the intake condition and walk around the
+office's `amend`. Concretely: `services` and `materials` stay free; the condition
+(`checklist`, `fuelLevel`, `damages`, `equipmentNote`) requires `amend` and stamps
+`amended_at`/`amended_by`; **every other field is refused outright** — the drawn UI never
+offers it, and allowing it would let the paper the customer holds and the record diverge with
+nothing saying so.
 
 ---
 
@@ -413,8 +442,8 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 
 | Phase | Content | Gate |
 | --- | --- | --- |
-| **V-0** | Migration: `intake_orders` + indexes + the `attachments` extension (new columns, FK, **CHECK constraint change on a shared table**) | **Explicit Nikola approval.** `drizzle-kit` generated, never hand-written; prove clean migrate-from-zero; confirm the DDL is only what is intended |
-| **V-1** | `@mr/shared` (Zod, constants, permissions, query factories) · api module · new role + seed | full gate |
+| **V-0** ✅ | Migration: `intake_orders` + indexes + the `attachments` extension (new columns, FK, **CHECK constraint change on a shared table**) | **DONE** 2026-07-26 — migration `0036_youthful_lightspeed`, `drizzle-kit` generated, clean migrate-from-zero proven (37 migrations on an empty DB). Safe on live data: the three pre-existing CHECK branches only gained `AND intake_order_id IS NULL`, true for every row the moment the nullable column is added, so for old rows the constraint is identical to the one production already enforces — and drizzle applies every statement in one transaction, so a failure can never leave `attachments` unguarded |
+| **V-1** ✅ | `@mr/shared` (Zod, constants, permissions, query factories) · api module · new role + seed · the role's admin-web surface | **DONE** 2026-07-26, gate green (595/595 integration) |
 | **V-2** | List screen (KPI cards — signed only, filter + search in URL params, table incl. own drafts, "Nedovršeni" filter for the office) · **sidebar "Servis" + the no-sidebar rule + gating Početna/Statistika** | |
 | **V-3** | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | |
 | **V-4** | Damage map (4 shapes + zone maps from the prototype) + photos (client compression, background upload, per-damage link, four upload states) | **highest risk — leave time** |

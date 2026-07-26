@@ -952,6 +952,8 @@
   "users_role_client_description": "Spoljni klijent: kroz portal vidi samo reklamacije svoje firme.",
   "users_role_operator": "Operater",
   "users_role_operator_description": "Obrađuje reklamacije: kreira, menja i menja ishode.",
+  "users_role_serviser": "Serviser",
+  "users_role_serviser_description": "Prijem vozila u servis na tabletu: vidi samo svoje naloge, bez reklamacija i statistike.",
   "users_role_viewer": "Pregled",
   "users_role_viewer_description": "Samo pregled internih reklamacija, bez izmena.",
   "users_roles_edit_button": "Izmeni uloge",

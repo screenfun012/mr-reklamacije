@@ -2,6 +2,7 @@ import {
   EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
   SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_OPERATOR,
+  SYSTEM_ROLE_SERVISER,
   SYSTEM_ROLE_VIEWER,
   customersReferenceOptions,
   type AccountApprovalRoleCode,
@@ -46,6 +47,11 @@ const APPROVE_ROLE_OPTIONS = [
     value: SYSTEM_ROLE_VIEWER,
     label: () => m.users_role_viewer(),
     description: () => m.users_role_viewer_description(),
+  },
+  {
+    value: SYSTEM_ROLE_SERVISER,
+    label: () => m.users_role_serviser(),
+    description: () => m.users_role_serviser_description(),
   },
   {
     value: SYSTEM_ROLE_CLIENT,

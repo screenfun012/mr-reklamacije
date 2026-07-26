@@ -952,6 +952,8 @@
   "users_role_client_description": "External client: sees only their own company's claims in the portal.",
   "users_role_operator": "Operator",
   "users_role_operator_description": "Processes claims: creates, edits, and changes outcomes.",
+  "users_role_serviser": "Service technician",
+  "users_role_serviser_description": "Vehicle service intake on a tablet: sees only their own orders, no claims or statistics.",
   "users_role_viewer": "Viewer",
   "users_role_viewer_description": "Read-only access to internal claims, no changes.",
   "users_roles_edit_button": "Edit roles",

@@ -70,6 +70,7 @@ const ROLE_VALUE_LABELS: Record<string, () => string> = {
   operator: () => m.users_role_operator(),
   viewer: () => m.users_role_viewer(),
   client: () => m.users_role_client(),
+  serviser: () => m.users_role_serviser(),
 }
 
 function formatValue(key: string, value: unknown): string {
