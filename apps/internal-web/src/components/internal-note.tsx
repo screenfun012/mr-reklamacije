@@ -14,6 +14,11 @@ const NOTE_TONES = {
     box: 'border-[rgba(224,92,82,0.26)] bg-[rgba(224,92,82,0.09)]',
     dot: 'bg-mri-bad',
   },
+  // Confirmation, not a warning — e.g. "the previous owner's data was copied in".
+  ok: {
+    box: 'border-[rgba(31,169,113,0.26)] bg-[rgba(31,169,113,0.09)]',
+    dot: 'bg-mri-ok',
+  },
 } as const
 
 /** Tinted note box with a leading status dot (README register info-note pattern). */

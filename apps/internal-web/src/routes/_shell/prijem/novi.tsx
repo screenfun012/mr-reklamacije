@@ -1,11 +1,13 @@
-import { m } from '@mr/i18n'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { IntakePhasePlaceholder } from '~/features/intake-orders/intake-phase-placeholder'
+import { IntakeWizard } from '~/features/intake-orders/wizard/intake-wizard'
 import { internalRequireIntakeOrdersCreate } from '~/lib/auth-guard'
 
-/** The 5-step wizard lands in V-3…V-5; the route is reserved so the list's CTA leads somewhere. */
+/**
+ * Steps 1–2 are built (docs/25 V-3); 3–5 walk into a reserved panel until their phases land,
+ * so the flow is walkable end to end and the stepper never lies about how many steps exist.
+ */
 export const Route = createFileRoute('/_shell/prijem/novi')({
   beforeLoad: internalRequireIntakeOrdersCreate(),
-  component: () => <IntakePhasePlaceholder title={m.intake_new_order()} />,
+  component: IntakeWizard,
 })
