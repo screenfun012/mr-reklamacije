@@ -17,6 +17,7 @@ import type { EventBus } from './ports/event-bus-port.js'
 import { ClaimContextService } from './claims/claim-context.service.js'
 import { AuditLogRepository, AuditLogService, AuditService } from '../modules/audit/index.js'
 import { NotificationsRepository, NotificationsService } from '../modules/notifications/index.js'
+import { IntakeOrdersRepository, IntakeOrdersService } from '../modules/intake-orders/index.js'
 import { ClaimPresenceStore, PresenceService } from '../modules/presence/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
@@ -93,6 +94,8 @@ export interface Container {
   auditLogService: AuditLogService
   notificationsRepository: NotificationsRepository
   notificationsService: NotificationsService
+  intakeOrdersRepository: IntakeOrdersRepository
+  intakeOrdersService: IntakeOrdersService
   presenceService: PresenceService
   employeesRepository: EmployeesRepository
   employeesService: EmployeesService
@@ -190,6 +193,13 @@ export function buildContainer(
 
   const notificationsRepository = new NotificationsRepository(db)
   const notificationsService = new NotificationsService(notificationsRepository, eventBus, logger)
+  const intakeOrdersRepository = new IntakeOrdersRepository(db)
+  const intakeOrdersService = new IntakeOrdersService(
+    intakeOrdersRepository,
+    auditService,
+    eventBus,
+  )
+
   // In-memory, single-replica presence (see presence.store.ts + docs/22 §4).
   const presenceService = new PresenceService(new ClaimPresenceStore())
 
@@ -375,6 +385,8 @@ export function buildContainer(
     auditLogService,
     notificationsRepository,
     notificationsService,
+    intakeOrdersRepository,
+    intakeOrdersService,
     presenceService,
     employeesRepository,
     employeesService,
