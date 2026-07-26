@@ -7,7 +7,7 @@ import {
   type IntakeOrderStatus,
   type IntakeOrdersSearch,
 } from '@mr/shared'
-import { Heading } from '@mr/ui'
+import { Heading, ListPagination } from '@mr/ui'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
@@ -110,7 +110,7 @@ function PrijemListScreen(): ReactElement {
       />
 
       <Suspense fallback={<IntakeOrdersTableSkeleton />}>
-        <TableSection search={search} />
+        <TableSection search={search} onPatchSearch={patchSearch} />
       </Suspense>
     </div>
   )
@@ -127,14 +127,30 @@ function KpiSection({
   return <IntakeKpiCards summary={data} activeStatus={activeStatus} onSelect={onSelect} />
 }
 
-function TableSection({ search }: { search: IntakeOrdersSearch }): ReactElement {
+function TableSection({
+  search,
+  onPatchSearch,
+}: {
+  search: IntakeOrdersSearch
+  onPatchSearch: (next: Partial<IntakeOrdersSearch>) => void
+}): ReactElement {
   const { data } = useSuspenseQuery(intakeOrdersListOptions(intakeFiltersFromSearch(search)))
+
   return (
     <div className="flex flex-col gap-3">
       <IntakeOrdersTable items={data.items} />
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-mri-text2">
-        {m.intake_list_total({ count: data.total })}
-      </p>
+      {/*
+        The shop does ~10 intakes a day, so page 1 fills within days. Without a pager the
+        office would be locked to the newest page with no way back — the same component the
+        claims list uses, so paging behaves identically across the app.
+      */}
+      <ListPagination
+        total={data.total}
+        page={data.page}
+        pageSize={data.pageSize}
+        onPageChange={(page) => onPatchSearch({ page })}
+        onPageSizeChange={(pageSize) => onPatchSearch({ pageSize, page: 1 })}
+      />
     </div>
   )
 }
