@@ -9,7 +9,7 @@ import { InternalPill } from '~/components/internal-pill'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, formatIntakeReceivedAt } from './intake-status'
 
 const COLUMN_CLASSES =
-  'grid grid-cols-[168px_120px_minmax(220px,1fr)_150px_124px_112px_120px] items-center gap-3 px-4'
+  'grid grid-cols-[168px_112px_minmax(180px,1fr)_124px_140px_104px_116px] items-center gap-3 px-4'
 
 export interface IntakeOrdersTableProps {
   items: readonly IntakeOrderListItem[]
