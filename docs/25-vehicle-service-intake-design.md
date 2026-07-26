@@ -4,7 +4,7 @@
 > handoff). **Second pass 2026-07-26**, after prototype v2 + `dopuna-2` came back: the role model,
 > the shell for a serviser, draft ownership and the list's treatment of unfinished intakes were all
 > resolved with Nikola. **Implementation in progress on `feat/vehicle-intake`: V-0, V-1 and V-2 are
-> done and pushed (production untouched — Railway deploys `main`).** Next is V-3. Build only on
+> done and pushed (production untouched — Railway deploys `main`).** Next is V-4. Build only on
 > Nikola's per-phase go.
 >
 > This is a **new subsystem, not a claim family.** It shares nothing with EMOTIVE/DOMACE except
@@ -453,7 +453,7 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | **V-0** ✅ | Migration: `intake_orders` + indexes + the `attachments` extension (new columns, FK, **CHECK constraint change on a shared table**) | **DONE** 2026-07-26 — migration `0036_youthful_lightspeed`, `drizzle-kit` generated, clean migrate-from-zero proven (37 migrations on an empty DB). Safe on live data: the three pre-existing CHECK branches only gained `AND intake_order_id IS NULL`, true for every row the moment the nullable column is added, so for old rows the constraint is identical to the one production already enforces — and drizzle applies every statement in one transaction, so a failure can never leave `attachments` unguarded |
 | **V-1** ✅ | `@mr/shared` (Zod, constants, permissions, query factories) · api module · new role + seed · the role's admin-web surface | **DONE** 2026-07-26, gate green (595/595 integration) |
 | **V-2** ✅ | List screen (KPI cards — signed only, filter + search in URL params, table incl. own drafts, "Nedovršeni" filter for the office) · sidebar "Servis" + the no-sidebar rule + gating Početna/Statistika | **DONE** 2026-07-26, gate green. The wizard and detail got placeholder routes so rows stay clickable |
-| **V-3** | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | |
+| **V-3** ✅ | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | **DONE** 2026-07-27, gate green. Verified in the browser at 1180×820: create → patch → resume → back all persist. Creating an order must be followed by a step patch — create stamps `draft_step = 1`, so without it the resume offer sends the serviser a step backwards |
 | **V-4** | Damage map (4 shapes + zone maps from the prototype) + photos (client compression, background upload, per-damage link, four upload states) | **highest risk — leave time** |
 | **V-5** | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | |
 | **V-6** | Detail with 4 tabs, amend affordances, status correction, soft delete | |
