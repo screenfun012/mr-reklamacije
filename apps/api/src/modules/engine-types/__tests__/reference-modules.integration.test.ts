@@ -476,9 +476,13 @@ describe('Customers reference module', () => {
         assignedBy: TEST_USER_ID,
       })
 
+      // Search by this fixture's own name rather than paging: the integration database is
+      // shared and rows survive across runs (docs/10 drift), so a bare `limit: 50` silently
+      // stopped containing this row once the table passed 50 customers.
       const listed = await container.customersRepository.list({
         kind: CustomerKind.EmotivePartner,
         activeOnly: false,
+        search: 'USAGE-COUNT-FIRMA',
         limit: 50,
       })
 
