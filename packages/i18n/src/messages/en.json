@@ -572,7 +572,7 @@
   "intake_placeholder_back": "Back to the list",
   "intake_placeholder_body": "This screen is built in the next phase. The place is reserved so the links already work.",
   "intake_row_draft": "Unfinished",
-  "intake_row_draft_step": "Unfinished · step {step} of 5",
+  "intake_row_draft_step": "Unfinished · {step}/5",
   "intake_search_placeholder": "Order number, plate, owner…",
   "intake_status_gotovo": "Done",
   "intake_status_preuzeto": "Picked up",

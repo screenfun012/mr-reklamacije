@@ -9,7 +9,7 @@ import { InternalPill } from '~/components/internal-pill'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, formatIntakeReceivedAt } from './intake-status'
 
 const COLUMN_CLASSES =
-  'grid grid-cols-[130px_120px_minmax(220px,1fr)_150px_90px_110px_120px] items-center gap-3 px-4'
+  'grid grid-cols-[168px_120px_minmax(220px,1fr)_150px_124px_112px_120px] items-center gap-3 px-4'
 
 export interface IntakeOrdersTableProps {
   items: readonly IntakeOrderListItem[]
@@ -65,7 +65,7 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                     {item.orderNumber}
                   </span>
                   {item.signedAt === null ? (
-                    <InternalPill tone="warn" className="self-start">
+                    <InternalPill tone="warn" className="self-start whitespace-nowrap">
                       <PencilLine className="size-3" aria-hidden="true" />
                       {item.draftStep === null
                         ? m.intake_row_draft()
@@ -90,7 +90,7 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                   <span className="font-mono">{item.photoCount}</span>
                   {item.photosPending > 0 ? (
                     <span title={m.intake_photos_pending_hint()}>
-                      <InternalPill tone="warn">
+                      <InternalPill tone="warn" className="whitespace-nowrap">
                         {m.intake_photos_pending({ count: item.photosPending })}
                       </InternalPill>
                       <span className="sr-only">{m.intake_photos_pending_hint()}</span>

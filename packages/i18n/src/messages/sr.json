@@ -572,7 +572,7 @@
   "intake_placeholder_back": "Natrag na listu",
   "intake_placeholder_body": "Ovaj ekran se pravi u sledećoj fazi. Mesto je rezervisano da veze u aplikaciji već rade.",
   "intake_row_draft": "Nedovršen",
-  "intake_row_draft_step": "Nedovršen · korak {step} od 5",
+  "intake_row_draft_step": "Nedovršen · {step}/5",
   "intake_search_placeholder": "Broj naloga, registracija, vlasnik…",
   "intake_status_gotovo": "Gotovo",
   "intake_status_preuzeto": "Preuzeto",
