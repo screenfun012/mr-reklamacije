@@ -20,13 +20,18 @@ import {
 import { users } from './access-control.js'
 import { domaceClaims, emotiveClaims } from './claims.js'
 import { clientSubmissions } from './client-submissions.js'
+import { intakeOrders } from './intake-orders.js'
 
 /**
  * Polymorphic attachments: exactly one of emotive_claim_id / domace_claim_id /
- * client_submission_id is set. For claim attachments claim_kind mirrors which claim FK
- * is non-null and CASCADE deletes when the parent claim is removed; a client-submission
- * attachment sets only client_submission_id and leaves claim_kind NULL (on conversion the
- * attachment is re-associated to the created claim and claim_kind is set — see docs/18).
+ * client_submission_id / intake_order_id is set. For claim attachments claim_kind mirrors
+ * which claim FK is non-null and CASCADE deletes when the parent claim is removed; a
+ * client-submission attachment sets only client_submission_id and leaves claim_kind NULL
+ * (on conversion the attachment is re-associated to the created claim and claim_kind is
+ * set — see docs/18); a vehicle-intake photo sets only intake_order_id (docs/25).
+ *
+ * Intake photos need no new `purpose` value — `intake_order_id IS NOT NULL` already
+ * identifies them, so widening that CHECK too would be redundant.
  */
 export const attachments = pgTable(
   'attachments',
@@ -36,6 +41,14 @@ export const attachments = pgTable(
     emotiveClaimId: uuid('emotive_claim_id'),
     domaceClaimId: uuid('domace_claim_id'),
     clientSubmissionId: uuid('client_submission_id'),
+    intakeOrderId: uuid('intake_order_id'),
+    /**
+     * Points at a damage's `id` inside `intake_orders.damages`, so the photo shows that
+     * damage's number. Deliberately nullable and deliberately NOT a foreign key: deleting
+     * a damage sets this back to NULL and the photo survives as a general one — deleting a
+     * marker must never destroy evidence (docs/25 §3.4).
+     */
+    intakeDamageId: text('intake_damage_id'),
     fileName: text('file_name').notNull(),
     storagePath: text('storage_path').notNull(),
     mimeType: text('mime_type').notNull(),
@@ -60,14 +73,26 @@ export const attachments = pgTable(
       'attachments_one_of_claim_check',
       sql`
         (${t.claimKind} = 'emotive' AND ${t.emotiveClaimId} IS NOT NULL
-         AND ${t.domaceClaimId} IS NULL AND ${t.clientSubmissionId} IS NULL)
+         AND ${t.domaceClaimId} IS NULL AND ${t.clientSubmissionId} IS NULL
+         AND ${t.intakeOrderId} IS NULL)
         OR
         (${t.claimKind} = 'domace' AND ${t.emotiveClaimId} IS NULL
-         AND ${t.domaceClaimId} IS NOT NULL AND ${t.clientSubmissionId} IS NULL)
+         AND ${t.domaceClaimId} IS NOT NULL AND ${t.clientSubmissionId} IS NULL
+         AND ${t.intakeOrderId} IS NULL)
         OR
         (${t.claimKind} IS NULL AND ${t.clientSubmissionId} IS NOT NULL
-         AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL)
+         AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL
+         AND ${t.intakeOrderId} IS NULL)
+        OR
+        (${t.claimKind} IS NULL AND ${t.intakeOrderId} IS NOT NULL
+         AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL
+         AND ${t.clientSubmissionId} IS NULL)
       `,
+    ),
+    // A damage reference is meaningless without the intake order it lives on.
+    check(
+      'attachments_intake_damage_requires_order_check',
+      sql`${t.intakeDamageId} IS NULL OR ${t.intakeOrderId} IS NOT NULL`,
     ),
     check('attachments_visibility_check', sql`${t.visibility} IN ('internal', 'client_visible')`),
     check('attachments_purpose_check', sql`${t.purpose} IN ('claim_attachment', 'report_image')`),
@@ -87,6 +112,11 @@ export const attachments = pgTable(
       foreignColumns: [clientSubmissions.id],
     }).onDelete('restrict'),
     foreignKey({
+      name: 'attachments_intake_order_id_fkey',
+      columns: [t.intakeOrderId],
+      foreignColumns: [intakeOrders.id],
+    }).onDelete('cascade'),
+    foreignKey({
       name: 'attachments_uploaded_by_fkey',
       columns: [t.uploadedBy],
       foreignColumns: [users.id],
@@ -101,6 +131,9 @@ export const attachments = pgTable(
     index('idx_attachments_client_submission_id')
       .on(t.clientSubmissionId)
       .where(sql`${t.clientSubmissionId} IS NOT NULL`),
+    index('idx_attachments_intake_order_id')
+      .on(t.intakeOrderId)
+      .where(sql`${t.intakeOrderId} IS NOT NULL`),
   ],
 )
 
@@ -170,6 +203,10 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
   clientSubmission: one(clientSubmissions, {
     fields: [attachments.clientSubmissionId],
     references: [clientSubmissions.id],
+  }),
+  intakeOrder: one(intakeOrders, {
+    fields: [attachments.intakeOrderId],
+    references: [intakeOrders.id],
   }),
   uploader: one(users, {
     fields: [attachments.uploadedBy],

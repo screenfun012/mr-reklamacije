@@ -150,3 +150,76 @@ export const ClientSubmissionStatus = {
 
 export type ClientSubmissionStatus =
   (typeof ClientSubmissionStatus)[keyof typeof ClientSubmissionStatus]
+
+/**
+ * Vehicle service intake (docs/25) — a work order's lifecycle in the shop.
+ * A serviser may only step forward; the office may set any value to correct a
+ * mis-tap. Unrelated to ClaimOutcome: an intake has no accept/reject.
+ */
+export const IntakeOrderStatus = {
+  Received: 'primljeno',
+  InProgress: 'u_radu',
+  Done: 'gotovo',
+  PickedUp: 'preuzeto',
+} as const
+
+export type IntakeOrderStatus = (typeof IntakeOrderStatus)[keyof typeof IntakeOrderStatus]
+
+export const intakeOrderStatusValues = [
+  IntakeOrderStatus.Received,
+  IntakeOrderStatus.InProgress,
+  IntakeOrderStatus.Done,
+  IntakeOrderStatus.PickedUp,
+] as const
+
+/**
+ * Which silhouette the damage map draws, and therefore which zone map applies.
+ * Trucks and buses are deliberately out of scope — their zones match none of
+ * these four (docs/25 §3.4).
+ */
+export const IntakeVehicleType = {
+  Car: 'auto',
+  Van: 'kombi',
+  Pickup: 'kamionet',
+  Suv: 'dzip',
+} as const
+
+export type IntakeVehicleType = (typeof IntakeVehicleType)[keyof typeof IntakeVehicleType]
+
+export const intakeVehicleTypeValues = [
+  IntakeVehicleType.Car,
+  IntakeVehicleType.Van,
+  IntakeVehicleType.Pickup,
+  IntakeVehicleType.Suv,
+] as const
+
+/** How the vehicle reached the shop — drove in, towed on a truck, or dragged. */
+export const IntakeArrivalMode = {
+  Driven: 'dovezeno',
+  Towed: 'doslepano',
+  Dragged: 'dovuceno',
+} as const
+
+export type IntakeArrivalMode = (typeof IntakeArrivalMode)[keyof typeof IntakeArrivalMode]
+
+export const intakeArrivalModeValues = [
+  IntakeArrivalMode.Driven,
+  IntakeArrivalMode.Towed,
+  IntakeArrivalMode.Dragged,
+] as const
+
+export const IntakeDamageType = {
+  Scratch: 'ogrebotina',
+  Dent: 'udubljenje',
+  Cracked: 'puknuto',
+  Rust: 'rdja',
+} as const
+
+export type IntakeDamageType = (typeof IntakeDamageType)[keyof typeof IntakeDamageType]
+
+export const intakeDamageTypeValues = [
+  IntakeDamageType.Scratch,
+  IntakeDamageType.Dent,
+  IntakeDamageType.Cracked,
+  IntakeDamageType.Rust,
+] as const
