@@ -8,13 +8,18 @@ import type { ReactNode } from 'react'
  */
 export function IntakePanel({
   title,
+  badge,
   action,
   className,
+  headerClassName,
   children,
 }: {
   title: string
+  /** Sits directly beside the title, not pushed right — step 3's vehicle-type chip. */
+  badge?: ReactNode
   action?: ReactNode
   className?: string
+  headerClassName?: string
   children: ReactNode
 }) {
   return (
@@ -24,10 +29,11 @@ export function IntakePanel({
         className,
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className={cn('flex items-center gap-3', headerClassName)}>
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
           {title}
         </span>
+        {badge}
         {action !== undefined ? <span className="ml-auto">{action}</span> : null}
       </div>
       {children}

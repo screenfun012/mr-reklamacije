@@ -1,8 +1,9 @@
-import { IntakeArrivalMode, IntakeVehicleType } from '@mr/shared'
+import { IntakeArrivalMode, IntakeDamageType, IntakeVehicleType } from '@mr/shared'
 import { describe, expect, it } from 'vitest'
 
 import {
   emptyIntakeWizardValues,
+  newDamageId,
   step1Complete,
   toCreateInput,
   toUpdateInput,
@@ -126,5 +127,68 @@ describe('valuesFromOrder', () => {
     expect(values.vin).toBe('')
     expect(values.mileage).toBe('')
     expect(values.ownerRemarks).toBe('')
+  })
+})
+
+describe('newDamageId', () => {
+  /**
+   * `crypto.randomUUID()` is gated to secure contexts and the tablet reaches the dev server over
+   * plain http on the hall LAN, so it would throw exactly where this runs.
+   */
+  it('produces distinct ids that fit the wire schema, without needing a secure context', () => {
+    const ids = new Set(Array.from({ length: 500 }, () => newDamageId()))
+
+    expect(ids.size).toBe(500)
+    for (const id of ids) {
+      expect(id.length).toBeGreaterThan(0)
+      expect(id.length).toBeLessThanOrEqual(40)
+    }
+  })
+})
+
+describe('damages round trip', () => {
+  const damage = {
+    id: 'd1',
+    type: IntakeDamageType.Scratch,
+    x: 100,
+    y: 200,
+    zone: 'prednja leva strana',
+  }
+
+  it('sends the markers with the step patch, in the order that IS their numbering', () => {
+    const second = { ...damage, id: 'd2', x: 240 }
+    const patch = toUpdateInput(filledValues({ damages: [damage, second] }), 3)
+
+    expect(patch.damages).toEqual([damage, second])
+  })
+
+  it('starts an intake with no markers rather than undefined, so the map can render at once', () => {
+    expect(emptyIntakeWizardValues().damages).toEqual([])
+  })
+
+  it('copies the server markers instead of aliasing them, so a tap cannot mutate the query cache', () => {
+    const order = {
+      id: 'o1',
+      orderNumber: 'RN-0249/26',
+      vehicleType: IntakeVehicleType.Car,
+      plate: 'NS 445-CD',
+      vehicle: 'Opel Astra',
+      vin: null,
+      mileage: null,
+      arrivalMode: IntakeArrivalMode.Driven,
+      ownerName: 'Marija Simić',
+      ownerAddress: null,
+      ownerPhone: '+381 60 000 1111',
+      ownerRemarks: null,
+      fuelLevel: 3,
+      checklist: emptyIntakeWizardValues().checklist,
+      equipmentNote: null,
+      damages: [damage],
+    }
+
+    const values = valuesFromOrder(order as unknown as Parameters<typeof valuesFromOrder>[0])
+    values.damages.push({ ...damage, id: 'd2' })
+
+    expect(order.damages).toHaveLength(1)
   })
 })

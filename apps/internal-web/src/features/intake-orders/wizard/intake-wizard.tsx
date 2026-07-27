@@ -33,6 +33,7 @@ import {
   type IntakeWizardValues,
 } from './intake-wizard-state'
 import { StepChecklist } from './step-checklist'
+import { StepDamagePhotos } from './step-damage-photos'
 import { StepVehicleOwner } from './step-vehicle-owner'
 
 const STEP_LABELS = [
@@ -216,7 +217,8 @@ export function IntakeWizard(): ReactElement {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-[18px] sm:px-[26px]">
         {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}
         {step === 2 ? <StepChecklist values={values} onPatch={patch} /> : null}
-        {step >= 3 ? (
+        {step === 3 ? <StepDamagePhotos values={values} onPatch={patch} /> : null}
+        {step >= 4 ? (
           <IntakePanel title={STEP_LABELS[step - 1]?.() ?? ''}>
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Construction className="size-8 text-mri-warn" aria-hidden="true" />

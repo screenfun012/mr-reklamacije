@@ -3,6 +3,7 @@ import {
   IntakeArrivalMode,
   IntakeVehicleType,
   type IntakeChecklist,
+  type IntakeDamage,
   type IntakeOrderCreateInput,
   type IntakeOrderDetail,
   type IntakeOrderUpdateInput,
@@ -26,6 +27,8 @@ export interface IntakeWizardValues {
   fuelLevel: number
   checklist: IntakeChecklist
   equipmentNote: string
+  /** Array order IS the ①②③ numbering on the map, in the list and on the print. */
+  damages: IntakeDamage[]
 }
 
 const EMPTY_CHECKLIST: IntakeChecklist = Object.fromEntries(
@@ -48,6 +51,7 @@ export function emptyIntakeWizardValues(): IntakeWizardValues {
     fuelLevel: 4,
     checklist: EMPTY_CHECKLIST,
     equipmentNote: '',
+    damages: [],
   }
 }
 
@@ -117,8 +121,19 @@ export function toUpdateInput(values: IntakeWizardValues, step: number): IntakeO
     fuelLevel: values.fuelLevel,
     checklist: values.checklist,
     equipmentNote: optionalText(values.equipmentNote) ?? null,
+    damages: values.damages,
     draftStep: Math.min(INTAKE_WIZARD_STEP_COUNT, Math.max(1, step)),
   }
+}
+
+/**
+ * A marker's stable id. Deliberately NOT `crypto.randomUUID()`: that is gated to secure contexts,
+ * and the serviser's tablet reaches the dev server over plain `http://192.168.x.x:3002` on the
+ * hall LAN (docs/25 §3.8), where it throws. The id only has to be unique within one intake and
+ * only exists so a photo can point at a damage that keeps its identity while the list renumbers.
+ */
+export function newDamageId(): string {
+  return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
 }
 
 /** Rebuilds the form from a server order — resuming on another tablet. */
@@ -138,6 +153,7 @@ export function valuesFromOrder(order: IntakeOrderDetail): IntakeWizardValues {
     fuelLevel: order.fuelLevel,
     checklist: order.checklist,
     equipmentNote: order.equipmentNote ?? '',
+    damages: [...order.damages],
   }
 }
 
