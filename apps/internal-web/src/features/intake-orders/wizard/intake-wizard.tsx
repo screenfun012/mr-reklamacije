@@ -18,6 +18,7 @@ import { IntakeOrderNumberField } from './intake-order-number-field'
 import { IntakePanel } from './intake-panel'
 import { IntakeStepperStrip } from './intake-stepper-strip'
 import { IntakeWizardFooter, type IntakeHintTone } from './intake-wizard-footer'
+import { IntakeWizardNote } from './intake-wizard-note'
 import {
   INTAKE_WIZARD_STEP_COUNT,
   clearIntakeDraft,
@@ -90,6 +91,21 @@ export function IntakeWizard(): ReactElement {
     setOrderId(order.id)
     setValues(valuesFromOrder(order))
     setStep(order.draftStep ?? 1)
+  }, [])
+
+  const resumeBuffer = useCallback(() => {
+    if (foundDraft === null) {
+      return
+    }
+    setValues(foundDraft.values)
+    setStep(foundDraft.step)
+    setOrderId(foundDraft.orderId)
+    setFoundDraft(null)
+  }, [foundDraft])
+
+  const discardBuffer = useCallback(() => {
+    clearIntakeDraft()
+    setFoundDraft(null)
   }, [])
 
   const resumeServerOrder = useCallback(
@@ -181,47 +197,21 @@ export function IntakeWizard(): ReactElement {
           <IntakeOrderNumberField
             value={values.orderNumber}
             onChange={(orderNumber) => patch({ orderNumber })}
-            onResume={resumeServerOrder}
-            onTakenChange={setNumberTaken}
+            taken={numberTaken}
           />
         }
       />
 
-      {foundDraft !== null ? (
-        <div className="mx-4 mt-3.5 flex flex-wrap items-center gap-3.5 rounded-[11px] border border-[rgba(245,166,35,0.26)] bg-[rgba(245,166,35,0.09)] px-4 py-3.5 sm:mx-[26px]">
-          <span className="flex-none font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-mri-warn">
-            {m.intake_draft_tag()}
-          </span>
-          <span className="min-w-0 flex-1 text-[13.5px] leading-normal text-mri-text">
-            {m.intake_draft_found({
-              number: foundDraft.values.orderNumber,
-              step: foundDraft.step,
-            })}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setValues(foundDraft.values)
-              setStep(foundDraft.step)
-              setOrderId(foundDraft.orderId)
-              setFoundDraft(null)
-            }}
-            className="h-[42px] flex-none cursor-pointer rounded-[9px] border border-[rgba(245,166,35,0.45)] bg-transparent px-[18px] font-mono text-xs font-extrabold uppercase tracking-[0.08em] text-mri-warn"
-          >
-            {m.intake_draft_resume()}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              clearIntakeDraft()
-              setFoundDraft(null)
-            }}
-            className="flex-none cursor-pointer text-[13px] text-mri-text2 underline"
-          >
-            {m.intake_draft_discard()}
-          </button>
-        </div>
-      ) : null}
+      <IntakeWizardNote
+        orderNumber={values.orderNumber}
+        step={step}
+        currentOrderId={orderId}
+        foundDraft={foundDraft}
+        onResumeServer={resumeServerOrder}
+        onResumeBuffer={resumeBuffer}
+        onDiscardBuffer={discardBuffer}
+        onTakenChange={setNumberTaken}
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-[18px] sm:px-[26px]">
         {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}

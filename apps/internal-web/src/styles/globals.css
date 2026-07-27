@@ -58,6 +58,8 @@
   --color-mri-domace-bg: rgba(139, 92, 246, 0.15);
   --color-mri-sil: var(--mri-sil);
   --color-mri-sigink: var(--mri-sigink);
+  --color-mri-amb: var(--mri-amb);
+  --color-mri-grn: var(--mri-grn);
   --color-mri-archived: #96969e;
   --color-mri-archived-bg: rgba(150, 150, 158, 0.13);
 }
@@ -101,6 +103,14 @@
      and the signature ink. */
   --mri-sil: rgba(255, 255, 255, 0.45);
   --mri-sigink: #f2f2f3;
+  /* Fuel-dial amber and green, transferred verbatim from the prototype's `--amb`/`--grn`.
+     They exist as runtime variables — not only inside `@theme inline` like the status hues —
+     because the dial reads them from `var()`; an undefined one drops `stroke` to `none` and the
+     segment vanishes with no error, which is exactly how the amber arc stayed invisible until
+     2026-07-27. Unlike `--color-mri-warn`/`-ok` they carry a darker value for the light theme,
+     as the prototype does. */
+  --mri-amb: #f5a524;
+  --mri-grn: #1fa971;
 }
 
 :root:not(.dark) {
@@ -121,6 +131,8 @@
   --mri-rowhv: rgba(20, 20, 25, 0.03);
   --mri-sil: rgba(20, 20, 25, 0.5);
   --mri-sigink: #17171a;
+  --mri-amb: #a9700f;
+  --mri-grn: #12855a;
   --mri-btn: #17171a;
   --mri-btnfg: #ffffff;
   --mri-btnhv: #2b2b31;
@@ -473,9 +485,12 @@
   }
 }
 
+/* The prototype's rule (`color: var(--text2); opacity: .7`). `currentColor` at 0.38 inherited the
+   CONTROL's text colour, which is near-black in the light theme — the hints were there but too
+   faint to read, which reads as "the field has no hint at all". */
 .mri-input::placeholder {
-  color: currentColor;
-  opacity: 0.38;
+  color: var(--mri-text2);
+  opacity: 0.7;
 }
 
 /* Native select popups follow the theme (prototype `.mri select option`). */
