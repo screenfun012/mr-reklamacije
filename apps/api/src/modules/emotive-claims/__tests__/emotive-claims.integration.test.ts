@@ -1020,14 +1020,18 @@ describe('EmotiveClaimsService integration', () => {
         auditContext,
       )
 
+      // The violation is deliberate, so it has to happen inside its own savepoint: a failed
+      // statement aborts the surrounding transaction, and every test now runs in one.
       await expect(
-        ctx.db.insert(schema.emotiveClaimFaults).values({
-          claimId: created.id,
-          faultType: FaultType.Employee,
-          employeeId: null,
-          departmentId: null,
-          externalPartyId: null,
-        }),
+        ctx.db.transaction(async (tx) =>
+          tx.insert(schema.emotiveClaimFaults).values({
+            claimId: created.id,
+            faultType: FaultType.Employee,
+            employeeId: null,
+            departmentId: null,
+            externalPartyId: null,
+          }),
+        ),
       ).rejects.toThrow()
 
       const [badFault] = await ctx.db
@@ -2043,10 +2047,12 @@ describe('EmotiveClaimsService integration', () => {
 
       const sections = await getSectionUpdatedAt(created.id)
       expect(sections?.['details']).toBeDefined()
-      // Actually re-stamped to a later time, not just left over from creation.
-      expect(new Date(sections!['details']!).getTime()).toBeGreaterThanOrEqual(
-        new Date(detailsAtCreate!).getTime(),
-      )
+      // Actually re-stamped, not just left over from creation. Deliberately NOT an ordering
+      // comparison: create stamps this in JS (`new Date()`) while update stamps it in SQL
+      // (`to_jsonb(now())`), and `now()` is fixed at the start of the transaction — which, with
+      // one transaction per test, is earlier than any JS clock reading taken inside it. The two
+      // values come from different clocks, so only "it changed" is a statement about the code.
+      expect(sections!['details']).not.toBe(detailsAtCreate)
       expect(sections?.['inspection']).toBeUndefined()
     })
 

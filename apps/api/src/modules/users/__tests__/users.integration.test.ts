@@ -351,7 +351,10 @@ describe.sequential('Users module', () => {
     it('returns safe fields without password_hash or two_factor secrets', async () => {
       const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
 
-      const response = await app.request('/api/users')
+      // Searched, not just listed: the list is paginated and ordered newest-first over a database
+      // this suite shares with every other one, so an unfiltered first page is a statement about
+      // how many users happen to exist — not about what the endpoint returns.
+      const response = await app.request('/api/users?search=pera.peric.test%40gmail.com')
       expect(response.status).toBe(200)
 
       const bodyText = await response.text()
