@@ -6,6 +6,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emptyIntakeWizardValues, type IntakeWizardValues } from '../intake-wizard-state.js'
 import { StepDamagePhotos } from '../step-damage-photos.js'
+import type { IntakePhotoQueue } from '../use-intake-photo-queue.js'
+
+function emptyQueue(): IntakePhotoQueue {
+  return {
+    entries: [],
+    pending: 0,
+    failed: 0,
+    enqueue: vi.fn(),
+    retry: vi.fn(),
+    discard: vi.fn(),
+  }
+}
+
+function renderStep(values: IntakeWizardValues, onPatch = vi.fn()) {
+  return render(
+    <StepDamagePhotos
+      values={values}
+      onPatch={onPatch}
+      orderId="order-1"
+      photos={[]}
+      queue={emptyQueue()}
+      onSaveDamages={vi.fn().mockResolvedValue(undefined)}
+      onDeletePhoto={vi.fn().mockResolvedValue(undefined)}
+    />,
+  )
+}
 
 function valuesWithDamages(): IntakeWizardValues {
   return {
@@ -34,7 +60,7 @@ describe('StepDamagePhotos — removing a damage', () => {
     const onPatch = vi.fn()
     const values = valuesWithDamages()
 
-    render(<StepDamagePhotos values={values} onPatch={onPatch} />)
+    renderStep(values, onPatch)
 
     const removeButtons = screen.getAllByRole('button', { name: 'Obriši oštećenje' })
     await user.click(removeButtons[1] as HTMLElement)
@@ -50,7 +76,7 @@ describe('StepDamagePhotos — removing a damage', () => {
   })
 
   it('lists every damage in the order that is its numbering', () => {
-    render(<StepDamagePhotos values={valuesWithDamages()} onPatch={vi.fn()} />)
+    renderStep(valuesWithDamages())
 
     expect(screen.getByText('Ogrebotina — zadnja vrata')).toBeInTheDocument()
     expect(screen.getByText('Udubljenje — leva bočna strana')).toBeInTheDocument()
@@ -58,7 +84,7 @@ describe('StepDamagePhotos — removing a damage', () => {
   })
 
   it('offers the empty-state instruction instead of an empty card', () => {
-    render(<StepDamagePhotos values={emptyIntakeWizardValues()} onPatch={vi.fn()} />)
+    renderStep(emptyIntakeWizardValues())
 
     expect(screen.getByText('Nema unetih oštećenja — tapni na šemu levo.')).toBeInTheDocument()
   })

@@ -2,16 +2,18 @@ import { m } from '@mr/i18n'
 import {
   createIntakeOrder,
   deleteIntakeOrder,
+  deleteIntakeOrderPhoto,
   intakeOrderDetailOptions,
   intakeOrderKeys,
   updateIntakeOrder,
   type IntakeOrderDetail,
+  type IntakeOrderPhoto,
 } from '@mr/shared'
 import { ConfirmDialog } from '@mr/ui'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Construction } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { showInternalToast } from '~/lib/internal-toast'
 import { IntakeOrderNumberField } from './intake-order-number-field'
@@ -35,6 +37,10 @@ import {
 import { StepChecklist } from './step-checklist'
 import { StepDamagePhotos } from './step-damage-photos'
 import { StepVehicleOwner } from './step-vehicle-owner'
+import { useIntakePhotoQueue } from './use-intake-photo-queue'
+
+/** Stable identity, so `photos` defaulting to it never re-renders step 3 for nothing. */
+const EMPTY_PHOTOS: readonly IntakeOrderPhoto[] = []
 
 const STEP_LABELS = [
   () => m.intake_step_1(),
@@ -87,6 +93,44 @@ export function IntakeWizard(): ReactElement {
   const patch = useCallback((next: Partial<IntakeWizardValues>) => {
     setValues((prev) => ({ ...prev, ...next }))
   }, [])
+
+  /** Read by `saveDamages`, which must send the markers as they are at the moment of the tap. */
+  const valuesRef = useRef(values)
+  valuesRef.current = values
+
+  /**
+   * The queue lives here rather than inside step 3 on purpose: a photo taken just before the
+   * signature has to keep uploading after the serviser has moved on, and the server only treats a
+   * late arrival as part of the intake — instead of an amendment that stamps the document — while
+   * it comes from the order's own technician (docs/25 §3.6).
+   */
+  const photoQueue = useIntakePhotoQueue(orderId)
+
+  // Only the photos: the wizard owns `damages` locally, and letting the server copy of those flow
+  // back in mid-edit would fight the serviser's taps.
+  const { data: photos = EMPTY_PHOTOS } = useQuery({
+    ...intakeOrderDetailOptions(orderId ?? ''),
+    enabled: orderId !== null,
+    select: (order: IntakeOrderDetail) => order.photos,
+  })
+
+  const saveDamages = useCallback(async (): Promise<void> => {
+    if (orderId === null) {
+      return
+    }
+    await updateIntakeOrder(orderId, { damages: valuesRef.current.damages })
+  }, [orderId])
+
+  const deletePhoto = useCallback(
+    async (attachmentId: string): Promise<void> => {
+      if (orderId === null) {
+        return
+      }
+      await deleteIntakeOrderPhoto(orderId, attachmentId)
+      await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
+    },
+    [orderId, queryClient],
+  )
 
   const adoptOrder = useCallback((order: IntakeOrderDetail) => {
     setOrderId(order.id)
@@ -172,6 +216,25 @@ export function IntakeWizard(): ReactElement {
    * before "fill the fields", because with an empty number that is the only thing to do.
    */
   const hint = ((): { text: string; tone: IntakeHintTone } => {
+    if (step === 3 && values.damages.length > 0) {
+      // Counted by marker NUMBER, which is what a photo carries — the same 1-based position the
+      // list shows. A reminder only: step 3 never blocks DALJE, because a serviser who cannot
+      // move on learns to stop marking damage at all (docs/25 §3.4).
+      const photographed = new Set(
+        [
+          ...photos.map((photo) => photo.damageId),
+          ...photoQueue.entries.map((e) => e.damageId),
+        ].filter((id): id is string => id !== null),
+      )
+      const missing = values.damages.filter((damage) => !photographed.has(damage.id)).length
+      if (missing > 0) {
+        return {
+          text: m.intake_hint_photos_missing({ missing, total: values.damages.length }),
+          tone: 'warn',
+        }
+      }
+      return { text: m.intake_hint_photos_all(), tone: 'muted' }
+    }
     if (step !== 1) {
       return { text: m.intake_hint_step({ step }), tone: 'muted' }
     }
@@ -217,7 +280,17 @@ export function IntakeWizard(): ReactElement {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-[18px] sm:px-[26px]">
         {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}
         {step === 2 ? <StepChecklist values={values} onPatch={patch} /> : null}
-        {step === 3 ? <StepDamagePhotos values={values} onPatch={patch} /> : null}
+        {step === 3 ? (
+          <StepDamagePhotos
+            values={values}
+            onPatch={patch}
+            orderId={orderId}
+            photos={photos}
+            queue={photoQueue}
+            onSaveDamages={saveDamages}
+            onDeletePhoto={deletePhoto}
+          />
+        ) : null}
         {step >= 4 ? (
           <IntakePanel title={STEP_LABELS[step - 1]?.() ?? ''}>
             <div className="flex flex-col items-center gap-3 py-12 text-center">

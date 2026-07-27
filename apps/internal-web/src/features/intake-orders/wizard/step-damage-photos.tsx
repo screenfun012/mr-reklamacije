@@ -2,15 +2,20 @@ import { m } from '@mr/i18n'
 import {
   IntakeDamageType,
   intakeDamageTypeValues,
+  buildIntakePhotoUrl,
   intakeDamageZoneOf,
   type IntakeDamage,
+  type IntakeOrderPhoto,
 } from '@mr/shared'
 import { ConfirmDialog, cn } from '@mr/ui'
-import { useState, type ReactElement } from 'react'
+import { Camera } from 'lucide-react'
+import { useRef, useState, type ReactElement } from 'react'
 
 import { IntakeDamageMap, intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakePanel } from './intake-panel'
+import { buildPhotoCells, IntakePhotoGrid, type IntakePhotoCell } from './intake-photo-grid'
 import { newDamageId, type IntakeWizardValues } from './intake-wizard-state'
+import type { IntakePhotoQueue } from './use-intake-photo-queue'
 
 const DAMAGE_TYPE_LABEL: Record<IntakeDamageType, () => string> = {
   [IntakeDamageType.Scratch]: () => m.intake_damage_type_ogrebotina(),
@@ -29,14 +34,28 @@ const VEHICLE_TYPE_LABEL = {
 export interface StepDamagePhotosProps {
   values: IntakeWizardValues
   onPatch: (patch: Partial<IntakeWizardValues>) => void
+  orderId: string | null
+  photos: readonly IntakeOrderPhoto[]
+  queue: IntakePhotoQueue
+  /** Pushes the markers to the server and resolves once they are there. */
+  onSaveDamages: () => Promise<void>
+  onDeletePhoto: (attachmentId: string) => Promise<void>
 }
 
 /**
- * Step 3 — where the serviser records what the vehicle already looks like. A tap on the drawing
- * drops a numbered marker of the selected type; the list on the right is the same markers in the
- * same order, which is what keeps map, list and printed order from ever disagreeing.
+ * Step 3 — what the vehicle already looks like. A tap on the drawing drops a numbered marker of
+ * the selected type; the list on the right is the same markers in the same order, and each row
+ * can shoot a photo bound to its damage.
  */
-export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): ReactElement {
+export function StepDamagePhotos({
+  values,
+  onPatch,
+  orderId,
+  photos,
+  queue,
+  onSaveDamages,
+  onDeletePhoto,
+}: StepDamagePhotosProps): ReactElement {
   const [damageType, setDamageType] = useState<IntakeDamageType>(IntakeDamageType.Scratch)
   /**
    * The number is captured when the dialog opens, not looked up while it is on screen: the list
@@ -44,6 +63,15 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
    * "Obrisati oštećenje 0?" for the split second before it closes.
    */
   const [removing, setRemoving] = useState<{ damage: IntakeDamage; number: number } | null>(null)
+  const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
+
+  const damageInputRef = useRef<HTMLInputElement>(null)
+  const pendingDamageId = useRef<string | null>(null)
+
+  const cells = buildPhotoCells(orderId, photos, queue.entries, values.damages)
+  /** Cells carry the marker's NUMBER, which is its 1-based position in the list. */
+  const photoCountOfNumber = (number: number): number =>
+    cells.filter((cell) => cell.number === number).length
 
   const place = (point: { x: number; y: number }): void => {
     onPatch({
@@ -65,6 +93,19 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
   const remove = (damage: IntakeDamage): void => {
     onPatch({ damages: values.damages.filter((row) => row.id !== damage.id) })
     setRemoving(null)
+  }
+
+  /**
+   * The server validates `damageId` against the markers it already holds, so a photo for a marker
+   * that has only been tapped 400 ms ago is refused. Saving first is what makes ◉ SLIKAJ work on
+   * a fresh marker instead of failing in a way the serviser cannot act on.
+   */
+  const shoot = (damageId: string): void => {
+    void (async () => {
+      await onSaveDamages()
+      pendingDamageId.current = damageId
+      damageInputRef.current?.click()
+    })()
   }
 
   return (
@@ -110,7 +151,7 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
         </div>
       </IntakePanel>
 
-      <div className="flex w-full min-h-0 flex-col gap-[14px] lg:w-[520px] lg:flex-none">
+      <div className="flex min-h-0 w-full flex-col gap-[14px] lg:w-[520px] lg:flex-none">
         <IntakePanel
           title={m.intake_card_damage_list()}
           action={
@@ -122,6 +163,7 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
         >
           {values.damages.map((damage, index) => {
             const colour = intakeDamageMarkerColour(damage.type)
+            const shots = photoCountOfNumber(index + 1)
             return (
               <div
                 key={damage.id}
@@ -141,6 +183,20 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
                 </span>
                 <button
                   type="button"
+                  onClick={() => shoot(damage.id)}
+                  disabled={orderId === null}
+                  className={cn(
+                    'flex h-11 flex-none cursor-pointer items-center gap-[7px] rounded-[9px] border px-[13px] font-mono text-[11px] font-extrabold uppercase tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-40',
+                    shots > 0
+                      ? 'border-mri-border2 bg-mri-inbg text-mri-text2'
+                      : 'border-mri-red bg-[rgba(237,28,36,0.13)] text-mri-redh',
+                  )}
+                >
+                  <Camera className="size-[13px]" aria-hidden="true" />
+                  {shots > 0 ? String(shots) : m.intake_photo_shoot()}
+                </button>
+                <button
+                  type="button"
                   onClick={() => setRemoving({ damage, number: index + 1 })}
                   aria-label={m.intake_damage_remove()}
                   className="h-11 w-9 flex-none cursor-pointer text-base text-mri-text2"
@@ -157,7 +213,34 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
             </p>
           ) : null}
         </IntakePanel>
+
+        <IntakePhotoGrid
+          cells={cells}
+          onPick={(files) => queue.enqueue(files, null)}
+          onOpen={setPreview}
+          onRetry={queue.retry}
+        />
       </div>
+
+      <input
+        ref={damageInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        hidden
+        onChange={() => {
+          const input = damageInputRef.current
+          const files = input?.files
+          if (files !== null && files !== undefined && files.length > 0) {
+            queue.enqueue([...files], pendingDamageId.current)
+          }
+          pendingDamageId.current = null
+          if (input !== null) {
+            input.value = ''
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={removing !== null}
@@ -175,6 +258,60 @@ export function StepDamagePhotos({ values, onPatch }: StepDamagePhotosProps): Re
           }
         }}
       />
+
+      {/*
+        Tap opens the photo; deleting it is a button inside that view. Nikola's call, 2026-07-27 —
+        the prototype and the printed instruction both delete on the first tap, and one gloved
+        finger on the wrong cell would destroy evidence of damage the customer has not yet signed
+        for. The divergence from the printed instruction is reported, not hidden.
+      */}
+      {preview !== null ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={m.intake_photo_preview()}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[rgba(11,11,13,0.92)] p-6"
+          onClick={() => setPreview(null)}
+        >
+          {/* The grid deliberately loads thumbnails; the preview is the one place worth the full
+              image, and only once the server actually has it. */}
+          <img
+            src={
+              preview.attachmentId !== null && orderId !== null
+                ? buildIntakePhotoUrl(orderId, preview.attachmentId)
+                : preview.url
+            }
+            alt=""
+            className="max-h-[78vh] max-w-full rounded-xl object-contain"
+          />
+          <div className="flex gap-3" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              className="h-12 cursor-pointer rounded-[11px] border border-mri-border2 bg-mri-inbg px-6 text-sm font-semibold text-mri-text"
+            >
+              {m.action_close()}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void (async () => {
+                  if (preview.attachmentId !== null) {
+                    await onDeletePhoto(preview.attachmentId)
+                  }
+                  if (preview.entryId !== null) {
+                    queue.discard(preview.entryId)
+                  }
+                  setPreview(null)
+                })()
+              }}
+              className="h-12 cursor-pointer rounded-[11px] border border-mri-red bg-[rgba(237,28,36,0.13)] px-6 text-sm font-extrabold uppercase tracking-[0.06em] text-mri-redh"
+            >
+              {m.intake_photo_delete()}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
