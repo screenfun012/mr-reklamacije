@@ -290,6 +290,47 @@ with how many are still going.
   carries the indicator, the office can see something is missing, and that is the whole mechanism.
   If it ever becomes a real problem it gets solved then.
 
+### 3.6a What building step 3 actually turned up (2026-07-27)
+
+Three things were already broken in what V-4a/V-4b had shipped, and none of them was visible,
+because `IntakeDamageMap` had been written and then imported by nothing. They were fixed before
+any screen went on top of them:
+
+- **`var(--mri-warn)` / `var(--mri-archived)` do not exist.** `fill` is an inherited property, so
+  an invalid `var()` does not fall back to black — it inherits the svg's own `fill="none"` and the
+  marker simply is not drawn. The dent and rust markers would have been invisible with nothing in
+  the console. Same family of trap as the fuel dial's amber arc; see CLAUDE.md §5.
+- **The photo route was on the 2 MB default body limit**, not the 130 MB upload window. It would
+  have passed testing — a compressed photo is ~400 KB — and failed only on the HEIC that
+  `compressImage` hands back untouched when it cannot decode it, which is the iPad camera's normal
+  output at 6–10 MB.
+- **Nothing cleared `attachments.intake_damage_id` when a damage was removed**, so the row pointed
+  at an id no longer in the jsonb array. Now done in the same transaction as the damage write.
+
+Two decisions where the prototype, the printed worker instruction and the house rules disagreed,
+both Nikola's, both **divergences from the instruction already in the workers' hands** and so
+reported rather than quietly taken:
+
+- **Tapping a healthy photo opens it; deleting is a button inside that view.** The prototype and
+  the instruction delete on the first tap. One gloved finger on the wrong cell would destroy
+  evidence of damage the customer has not yet signed for.
+- **✕ on a defect row goes through `ConfirmDialog`.** Nothing is lost either way — the photos
+  survive and only lose their number — but the two destructive controls now behave alike.
+
+Implementation notes worth keeping:
+
+- The upload queue lives in the **wizard**, not in step 3. The stepper chip on steps 4–5 reads it,
+  and a photo taken just before the signature has to keep uploading after the serviser moves on —
+  the server only treats a late arrival as part of the intake, rather than an amendment that
+  stamps the document, while it comes from the order's own technician.
+- **`crypto.randomUUID()` is unusable here** — it is gated to secure contexts and the tablet
+  reaches the dev server over plain `http` on the LAN.
+- **`◉ SLIKAJ` saves the markers first.** The server validates `damageId` against the markers it
+  already holds, so a photo for a marker tapped a moment ago is refused.
+- A rejected upload and an unreachable server are told apart by the XHR itself (`error` event vs a
+  non-2xx status), not by `navigator.onLine` — hall WiFi answers DHCP and routes nowhere, and the
+  browser calls that online.
+
 ### 3.7 Speed on the hall's WiFi
 
 The office is on cable, the hall is on varying WiFi. What actually makes this fast, in order of
@@ -529,7 +570,7 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | **V-3** ✅ | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | **DONE** 2026-07-27, gate green. Verified in the browser at 1180×820: create → patch → resume → back all persist. Creating an order must be followed by a step patch — create stamps `draft_step = 1`, so without it the resume offer sends the serviser a step backwards. **Reworked the same day** (§3.1a): the dial animates and recolours, the two resume affordances became one bar, step 2 moved onto `IntakePanel` (it had been using the list/detail card, whose header added 55.5 px and left the two cards ending at different heights), the gauge card went 340 → **330 px**, the order-number input 48 → **40 px**, the checklist labels went back to the prototype's full names, and `::placeholder` moved off `currentColor` — at 0.38 of the control's near-black it was invisible in the light theme, which reads as "the field has no hint" |
 | **V-4a** ✅ | `zoneOf` + the four silhouettes, transferred not redrawn; the server derives the zone and re-zones markers when the vehicle type changes | **DONE** 2026-07-27 |
 | **V-4b** ✅ | Photo endpoints (upload / serve / delete) under the intake permissions — never `/api/attachments`, since a serviser must not hold `attachments.view_internal` | **DONE** 2026-07-27 |
-| **V-4c** | Step 3 in the UI: tap-to-mark damage map, defect list, photo grid with tablet-side compression and the four upload states | **highest risk — leave time** |
+| **V-4c** ✅ | Step 3 in the UI: tap-to-mark damage map, defect list, photo grid with tablet-side compression and the four upload states | **DONE** 2026-07-27, gate green, driven end to end in a browser. Built in three passes — **V-4c-0** fixed three bugs already shipped in V-4a/V-4b before putting a screen on top of them (see §3.6a), **V-4c-1** the map and the defect list, **V-4c-2** the photos. Not verified because it needs the real device: a network drop mid-upload (`wait` → `online` → resume) and a HEIC straight off an iPad |
 | **V-5** | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | |
 | **V-6** | Detail with 4 tabs, amend affordances, status correction, soft delete | |
 | **V-7** | Print (A4, one page, amended marker, per-type drawing, 6-photo cap) | **needs "Obaveze kupaca" first** |
