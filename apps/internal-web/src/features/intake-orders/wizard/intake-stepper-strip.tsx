@@ -13,11 +13,14 @@ import { Fragment, type ReactNode } from 'react'
 export function IntakeStepperStrip({
   steps,
   currentStep,
+  chip,
   trailing,
 }: {
   steps: readonly string[]
   /** 1-based, as the serviser counts them. */
   currentStep: number
+  /** Upload status, between the last step and the order number — where the prototype puts it. */
+  chip?: ReactNode
   trailing: ReactNode
 }) {
   return (
@@ -61,6 +64,7 @@ export function IntakeStepperStrip({
           </Fragment>
         )
       })}
+      {chip !== undefined ? <div className="mr-3.5 flex-none">{chip}</div> : null}
       <div className="flex-none">{trailing}</div>
     </div>
   )

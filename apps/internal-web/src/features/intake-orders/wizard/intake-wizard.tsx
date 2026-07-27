@@ -4,6 +4,7 @@ import {
   deleteIntakeOrder,
   deleteIntakeOrderPhoto,
   intakeOrderDetailOptions,
+  signIntakeOrder,
   intakeOrderKeys,
   updateIntakeOrder,
   type IntakeOrderDetail,
@@ -12,12 +13,11 @@ import {
 import { ConfirmDialog } from '@mr/ui'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { Construction } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { showInternalToast } from '~/lib/internal-toast'
+import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { IntakeOrderNumberField } from './intake-order-number-field'
-import { IntakePanel } from './intake-panel'
 import { IntakeStepperStrip } from './intake-stepper-strip'
 import { IntakeWizardFooter, type IntakeHintTone } from './intake-wizard-footer'
 import { IntakeWizardNote } from './intake-wizard-note'
@@ -36,6 +36,14 @@ import {
 } from './intake-wizard-state'
 import { StepChecklist } from './step-checklist'
 import { StepDamagePhotos } from './step-damage-photos'
+import { StepSignatures } from './step-signatures'
+import { StepSpecification } from './step-specification'
+import { IntakeUploadChip } from './intake-upload-chip'
+import {
+  isSignatureFilled,
+  signatureStrokesToPath,
+  type SignatureStrokes,
+} from './intake-signature-pad'
 import { StepVehicleOwner } from './step-vehicle-owner'
 import { useIntakePhotoQueue } from './use-intake-photo-queue'
 
@@ -58,6 +66,8 @@ const STEP_LABELS = [
 export function IntakeWizard(): ReactElement {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // The signing serviser is whoever is logged in — the order is his by construction.
+  const { userName: technicianName } = useInternalAuthUser()
 
   const [values, setValues] = useState<IntakeWizardValues>(emptyIntakeWizardValues)
   const [step, setStep] = useState(1)
@@ -67,6 +77,14 @@ export function IntakeWizard(): ReactElement {
   const [discarding, setDiscarding] = useState(false)
   /** A buffer found on this tablet at mount — offered once, never forced. */
   const [foundDraft, setFoundDraft] = useState<IntakeDraftBuffer | null>(null)
+  /**
+   * Signatures live here rather than in `IntakeWizardValues`: those are sent on every step patch,
+   * and a signature only ever travels through `/sign`. They are also NOT written to the tablet
+   * buffer — re-signing after a reload costs seconds with the customer already standing there,
+   * and a stored signature is the one thing that must not outlive the moment it was given.
+   */
+  const [technicianStrokes, setTechnicianStrokes] = useState<SignatureStrokes>([])
+  const [ownerStrokes, setOwnerStrokes] = useState<SignatureStrokes>([])
 
   useEffect(() => {
     const draft = readIntakeDraft()
@@ -211,6 +229,51 @@ export function IntakeWizard(): ReactElement {
   const canLeaveStep1 = step1Complete(values) && !numberTaken
   const forwardDisabled = saving || (step === 1 && !canLeaveStep1)
 
+  const bothSigned = isSignatureFilled(technicianStrokes) && isSignatureFilled(ownerStrokes)
+  /**
+   * Waiting is only right while the network is actually carrying photos. With no network, or with
+   * one that already failed, the button works — a serviser must never stand in front of the
+   * customer waiting for the hall's WiFi (docs/25 §3.6).
+   */
+  const blockedByUpload =
+    bothSigned && photoQueue.pending > 0 && photoQueue.online && photoQueue.failed === 0
+  const canFinish = bothSigned && !blockedByUpload
+
+  const finish = (): void => {
+    if (!bothSigned) {
+      showInternalToast(m.intake_finish_need_signatures())
+      return
+    }
+    if (blockedByUpload) {
+      showInternalToast(m.intake_finish_still_uploading({ pending: photoQueue.pending }))
+      return
+    }
+    if (orderId === null) {
+      return
+    }
+
+    void (async () => {
+      setSaving(true)
+      try {
+        await signIntakeOrder(orderId, {
+          technicianSignature: signatureStrokesToPath(technicianStrokes),
+          ownerSignature: signatureStrokesToPath(ownerStrokes),
+          // Everything not yet on the server counts, failures included — otherwise the "not every
+          // photo arrived" indicator reads zero for exactly the photos most likely lost.
+          photosExpected: photos.length + photoQueue.outstanding,
+        })
+        await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
+        clearIntakeDraft()
+        showInternalToast(m.intake_signed_toast({ number: values.orderNumber.trim() }))
+        await navigate({ to: '/prijem/$id', params: { id: orderId } })
+      } catch {
+        showInternalToast(m.intake_sign_failed())
+      } finally {
+        setSaving(false)
+      }
+    })()
+  }
+
   /**
    * The prototype distinguishes four states on step 1, in this order — "type the number" comes
    * before "fill the fields", because with an empty number that is the only thing to do.
@@ -235,6 +298,29 @@ export function IntakeWizard(): ReactElement {
       }
       return { text: m.intake_hint_photos_all(), tone: 'muted' }
     }
+    if (step === 5) {
+      if (!bothSigned) {
+        return { text: m.intake_hint_sign_missing(), tone: 'warn' }
+      }
+      if (photoQueue.failed > 0) {
+        return { text: m.intake_hint_photos_failed(), tone: 'warn' }
+      }
+      if (photoQueue.waiting > 0 || !photoQueue.online) {
+        return { text: m.intake_hint_no_network(), tone: 'warn' }
+      }
+      if (photoQueue.pending > 0) {
+        return { text: m.intake_hint_last_photo({ pending: photoQueue.pending }), tone: 'warn' }
+      }
+      return { text: m.intake_hint_ready_to_finish(), tone: 'muted' }
+    }
+    if (step === 4 && photoQueue.pending > 0) {
+      // Deliberately muted, not amber: the photos going up in the background are the normal case,
+      // not a warning — the prototype re-sets the colour to `--text2` here on purpose.
+      return {
+        text: m.intake_hint_photos_uploading({ pending: photoQueue.pending }),
+        tone: 'muted',
+      }
+    }
     if (step !== 1) {
       return { text: m.intake_hint_step({ step }), tone: 'muted' }
     }
@@ -257,6 +343,16 @@ export function IntakeWizard(): ReactElement {
       <IntakeStepperStrip
         steps={STEP_LABELS.map((label) => label())}
         currentStep={step}
+        chip={
+          (step === 4 || step === 5) && photoQueue.outstanding > 0 ? (
+            <IntakeUploadChip
+              outstanding={photoQueue.outstanding}
+              failed={photoQueue.failed}
+              waiting={photoQueue.waiting}
+              online={photoQueue.online}
+            />
+          ) : undefined
+        }
         trailing={
           <IntakeOrderNumberField
             value={values.orderNumber}
@@ -291,13 +387,23 @@ export function IntakeWizard(): ReactElement {
             onDeletePhoto={deletePhoto}
           />
         ) : null}
-        {step >= 4 ? (
-          <IntakePanel title={STEP_LABELS[step - 1]?.() ?? ''}>
-            <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <Construction className="size-8 text-mri-warn" aria-hidden="true" />
-              <p className="text-mri-text2">{m.intake_placeholder_body()}</p>
-            </div>
-          </IntakePanel>
+        {step === 4 ? <StepSpecification values={values} onPatch={patch} /> : null}
+        {step === 5 ? (
+          <StepSignatures
+            technicianName={technicianName}
+            ownerName={
+              values.ownerName.trim().length > 0
+                ? values.ownerName.trim()
+                : m.intake_signature_owner_fallback()
+            }
+            damageCount={values.damages.length}
+            photoCount={photos.length + photoQueue.outstanding}
+            technicianStrokes={technicianStrokes}
+            ownerStrokes={ownerStrokes}
+            onTechnicianChange={setTechnicianStrokes}
+            onOwnerChange={setOwnerStrokes}
+            bothSigned={bothSigned}
+          />
         ) : null}
       </div>
 
@@ -306,6 +412,18 @@ export function IntakeWizard(): ReactElement {
         hintTone={hint.tone}
         backDisabled={step === 1}
         nextDisabled={forwardDisabled}
+        {...(step === INTAKE_WIZARD_STEP_COUNT
+          ? {
+              finish: {
+                label: blockedByUpload
+                  ? m.intake_action_finish_waiting()
+                  : m.intake_action_finish(),
+                waiting: blockedByUpload,
+                ready: canFinish && !saving,
+                onClick: finish,
+              },
+            }
+          : {})}
         onDiscard={() => setDiscarding(true)}
         onBack={() => setStep((prev) => Math.max(1, prev - 1))}
         onNext={goForward}

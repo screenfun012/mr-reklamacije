@@ -29,6 +29,9 @@ export interface IntakeWizardValues {
   equipmentNote: string
   /** Array order IS the ①②③ numbering on the map, in the list and on the print. */
   damages: IntakeDamage[]
+  /** Plain lines, no catalogue, no quantities, no prices — the work order carries none. */
+  services: string[]
+  materials: string[]
 }
 
 const EMPTY_CHECKLIST: IntakeChecklist = Object.fromEntries(
@@ -52,6 +55,8 @@ export function emptyIntakeWizardValues(): IntakeWizardValues {
     checklist: EMPTY_CHECKLIST,
     equipmentNote: '',
     damages: [],
+    services: [],
+    materials: [],
   }
 }
 
@@ -122,6 +127,8 @@ export function toUpdateInput(values: IntakeWizardValues, step: number): IntakeO
     checklist: values.checklist,
     equipmentNote: optionalText(values.equipmentNote) ?? null,
     damages: values.damages,
+    services: values.services,
+    materials: values.materials,
     draftStep: Math.min(INTAKE_WIZARD_STEP_COUNT, Math.max(1, step)),
   }
 }
@@ -154,6 +161,8 @@ export function valuesFromOrder(order: IntakeOrderDetail): IntakeWizardValues {
     checklist: order.checklist,
     equipmentNote: order.equipmentNote ?? '',
     damages: [...order.damages],
+    services: [...order.services],
+    materials: [...order.materials],
   }
 }
 

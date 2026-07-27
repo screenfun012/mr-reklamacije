@@ -27,9 +27,20 @@ export interface IntakePhotoQueueEntry {
 
 export interface IntakePhotoQueue {
   entries: IntakePhotoQueueEntry[]
-  /** Still on their way or waiting for a network — what `photosExpected` must count. */
+  /** Going up or waiting for a network. */
   pending: number
+  /** Stopped, needs a tap. */
   failed: number
+  /** Held back for a network specifically — what turns the chip amber. */
+  waiting: number
+  /**
+   * Everything that has NOT landed, failures included. This is the number `photos_expected` is
+   * built from: counting only `pending` would drop exactly the photos most likely to be lost and
+   * leave the "not every photo arrived" indicator quietly reading zero.
+   */
+  outstanding: number
+  /** The browser's own view, used only to decide whether finishing should wait. */
+  online: boolean
   enqueue: (files: readonly File[], damageId: string | null) => void
   retry: (entryId: string) => void
   discard: (entryId: string) => void
@@ -144,11 +155,21 @@ export function useIntakePhotoQueue(orderId: string | null): IntakePhotoQueue {
     })
   }, [])
 
+  const [online, setOnline] = useState(true)
+
+  useEffect(() => {
+    setOnline(navigator.onLine)
+  }, [])
+
   // Coming back online is the one moment a waiting photo can move on its own. `navigator.onLine`
   // is not trusted as a source of truth — only as this nudge; the authority is whether the
   // request itself got through.
   useEffect(() => {
+    const goOffline = (): void => {
+      setOnline(false)
+    }
     const resume = (): void => {
+      setOnline(true)
       for (const entry of entriesRef.current) {
         if (entry.state === 'wait') {
           send({ id: entry.id, file: entry.file, damageId: entry.damageId })
@@ -156,8 +177,10 @@ export function useIntakePhotoQueue(orderId: string | null): IntakePhotoQueue {
       }
     }
     window.addEventListener('online', resume)
+    window.addEventListener('offline', goOffline)
     return () => {
       window.removeEventListener('online', resume)
+      window.removeEventListener('offline', goOffline)
     }
   }, [send])
 
@@ -169,10 +192,17 @@ export function useIntakePhotoQueue(orderId: string | null): IntakePhotoQueue {
     }
   }, [])
 
+  const failed = entries.filter((entry) => entry.state === 'err').length
+  const waiting = entries.filter((entry) => entry.state === 'wait').length
+  const pending = entries.filter((entry) => entry.state === 'up').length + waiting
+
   return {
     entries,
-    pending: entries.filter((entry) => entry.state === 'up' || entry.state === 'wait').length,
-    failed: entries.filter((entry) => entry.state === 'err').length,
+    pending,
+    failed,
+    waiting,
+    outstanding: pending + failed,
+    online,
     enqueue,
     retry,
     discard,

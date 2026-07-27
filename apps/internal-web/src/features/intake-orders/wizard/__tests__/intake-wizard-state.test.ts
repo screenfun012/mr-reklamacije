@@ -184,11 +184,15 @@ describe('damages round trip', () => {
       checklist: emptyIntakeWizardValues().checklist,
       equipmentNote: null,
       damages: [damage],
+      services: ['Zamena ulja'],
+      materials: [],
     }
 
     const values = valuesFromOrder(order as unknown as Parameters<typeof valuesFromOrder>[0])
     values.damages.push({ ...damage, id: 'd2' })
+    values.services.push('Balansiranje')
 
     expect(order.damages).toHaveLength(1)
+    expect(order.services).toHaveLength(1)
   })
 })
