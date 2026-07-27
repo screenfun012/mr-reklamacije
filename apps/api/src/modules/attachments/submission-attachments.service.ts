@@ -33,7 +33,7 @@ import {
   writeStoredFile,
   MAX_TOTAL_SIZE_BYTES,
   type AttachmentUploadFileInput,
-} from './attachment-upload-pipeline.js'
+} from '../../core/attachments/attachment-upload-pipeline.js'
 import { AttachmentsRepository } from './attachments.repository.js'
 import type {
   AttachmentsActor,

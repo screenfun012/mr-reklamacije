@@ -35,3 +35,9 @@ export const IntakeOrderIdParamSchema = z.object({
 })
 
 export type IntakeOrderIdParam = z.infer<typeof IntakeOrderIdParamSchema>
+
+export const IntakePhotoParamSchema = z.object({
+  attachmentId: z.string().uuid(),
+})
+
+export type IntakePhotoParam = z.infer<typeof IntakePhotoParamSchema>

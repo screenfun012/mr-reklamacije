@@ -41,6 +41,18 @@ export function registerIntakeOrdersRoutes(
     requirePermission('intake_orders.change_status'),
     controller.changeStatus,
   )
+  // Photos live under the order, never under /api/attachments: that route is gated by
+  // `attachments.view_internal`, and a serviser holding it could read a claim's files.
+  routes.get('/:id/photos/:attachmentId', canRead, controller.servePhoto)
+  routes.post('/:id/photos', requirePermission('intake_orders.update'), controller.uploadPhoto)
+  // Freely while filling the intake in; once signed it is an office amendment, enforced in the
+  // service (Nikola, 2026-07-27).
+  routes.delete(
+    '/:id/photos/:attachmentId',
+    requirePermission('intake_orders.update'),
+    controller.deletePhoto,
+  )
+
   // A serviser discards his own unfinished intake with `update`; removing a SIGNED order
   // additionally requires `delete`, checked in the service.
   routes.delete(

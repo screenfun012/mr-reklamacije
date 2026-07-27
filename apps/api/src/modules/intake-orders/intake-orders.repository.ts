@@ -459,6 +459,99 @@ export class IntakeOrdersRepository {
     return this.findById(id)
   }
 
+  async insertPhoto(values: {
+    orderId: string
+    damageId: string | null
+    fileName: string
+    storagePath: string
+    mimeType: string
+    fileSizeBytes: number
+    contentSha256: string
+    width: number | null
+    height: number | null
+    thumbnailPath: string | null
+    uploadedBy: string
+  }): Promise<IntakeOrderPhoto> {
+    const [row] = await this.db
+      .insert(attachments)
+      .values({
+        intakeOrderId: values.orderId,
+        intakeDamageId: values.damageId,
+        fileName: values.fileName,
+        storagePath: values.storagePath,
+        mimeType: values.mimeType,
+        fileSizeBytes: values.fileSizeBytes,
+        contentSha256: values.contentSha256,
+        width: values.width,
+        height: values.height,
+        thumbnailPath: values.thumbnailPath,
+        uploadedBy: values.uploadedBy,
+      })
+      .returning({
+        id: attachments.id,
+        fileName: attachments.fileName,
+        mimeType: attachments.mimeType,
+        fileSizeBytes: attachments.fileSizeBytes,
+        width: attachments.width,
+        height: attachments.height,
+        thumbnailPath: attachments.thumbnailPath,
+        caption: attachments.caption,
+        damageId: attachments.intakeDamageId,
+        uploadedAt: attachments.uploadedAt,
+      })
+
+    if (!row) {
+      throw new Error('[intake-orders] photo insert returned no row')
+    }
+    return mapPhotoRow(row)
+  }
+
+  /** One photo of one order — the order id is part of the lookup so a foreign id cannot match. */
+  async findPhoto(
+    orderId: string,
+    attachmentId: string,
+  ): Promise<{
+    id: string
+    fileName: string
+    mimeType: string
+    storagePath: string
+    thumbnailPath: string | null
+    contentSha256: string | null
+  } | null> {
+    const [row] = await this.db
+      .select({
+        id: attachments.id,
+        fileName: attachments.fileName,
+        mimeType: attachments.mimeType,
+        storagePath: attachments.storagePath,
+        thumbnailPath: attachments.thumbnailPath,
+        contentSha256: attachments.contentSha256,
+      })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.id, attachmentId),
+          eq(attachments.intakeOrderId, orderId),
+          isNull(attachments.deletedAt),
+        ),
+      )
+      .limit(1)
+
+    return row ?? null
+  }
+
+  /**
+   * Soft delete. The stored bytes stay on purpose: an intake photo is evidence, and a row that is
+   * gone from the screen is enough — deleting objects would also mean a database-only restore
+   * points at files the bucket no longer holds (docs/11).
+   */
+  async softDeletePhoto(orderId: string, attachmentId: string): Promise<void> {
+    await this.db
+      .update(attachments)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(attachments.id, attachmentId), eq(attachments.intakeOrderId, orderId)))
+  }
+
   /** A signed order is evidence: it leaves the list, never the database. */
   async softDelete(id: string): Promise<void> {
     await this.db

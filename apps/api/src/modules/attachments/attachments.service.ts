@@ -40,7 +40,7 @@ import {
   generateImageThumbnail,
   optimizeReportImage,
   shouldGenerateImageThumbnail,
-} from './attachment-image-processing.js'
+} from '../../core/attachments/attachment-image-processing.js'
 import {
   alignFileNameExtension,
   processUploadFile,
@@ -48,7 +48,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   MAX_TOTAL_SIZE_BYTES,
   type AttachmentUploadFileInput,
-} from './attachment-upload-pipeline.js'
+} from '../../core/attachments/attachment-upload-pipeline.js'
 import { AttachmentsRepository } from './attachments.repository.js'
 import type {
   AttachmentsActor,

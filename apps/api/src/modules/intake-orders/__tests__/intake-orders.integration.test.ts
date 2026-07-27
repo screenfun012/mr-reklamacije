@@ -484,6 +484,138 @@ describe('Intake orders integration', () => {
     })
   })
 
+  describe('photos', () => {
+    /** A 1x1 JPEG — real magic bytes, because the pipeline checks them. */
+    const JPEG = Buffer.from(
+      '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwcJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDs0NDL/wAALCAABAAEBAREA/8QAFAABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AmAA=',
+      'base64',
+    )
+
+    function photoFile(name = 'IMG_01.jpg') {
+      return { fileName: name, data: JPEG, caption: null }
+    }
+
+    it('lets a serviser delete his own photo while he is still filling the intake in', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+      const photo = await service.uploadPhoto(
+        draft.id,
+        photoFile(),
+        null,
+        floor,
+        actorContext(floor.id),
+      )
+
+      await service.deletePhoto(draft.id, photo.id, floor, actorContext(floor.id))
+
+      const after = await service.findById(draft.id, floor)
+      expect(after.photos).toHaveLength(0)
+    })
+
+    it('freezes photos at the signature — a serviser can no longer remove one', async () => {
+      const floor = await floorActor()
+      const created = await service.create(createInput(), actorContext(floor.id))
+      const photo = await service.uploadPhoto(
+        created.id,
+        photoFile(),
+        null,
+        floor,
+        actorContext(floor.id),
+      )
+      await service.sign(
+        created.id,
+        { technicianSignature: 'M0 0', ownerSignature: 'M0 0', photosExpected: 1 },
+        floor,
+        actorContext(floor.id),
+      )
+
+      await expect(
+        service.deletePhoto(created.id, photo.id, floor, actorContext(floor.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it("accepts a photo that lands AFTER signing from the order's own serviser, unstamped", async () => {
+      const floor = await floorActor()
+      const orderId = await signedOrder(floor)
+
+      // The tablet was still uploading in the background; the photo was taken before the
+      // signature, so it must not read as an amendment.
+      const photo = await service.uploadPhoto(
+        orderId,
+        photoFile(),
+        null,
+        floor,
+        actorContext(floor.id),
+      )
+
+      const after = await service.findById(orderId, floor)
+      expect(after.photos.map((p) => p.id)).toContain(photo.id)
+      expect(after.amendedAt).toBeNull()
+    })
+
+    it('treats the office adding a photo after signing as an amendment, and stamps it', async () => {
+      const floor = await floorActor()
+      const office = await officeActor('Ana')
+      const orderId = await signedOrder(floor)
+
+      await service.uploadPhoto(orderId, photoFile(), null, office, actorContext(office.id))
+
+      const after = await service.findById(orderId, office)
+      expect(after.amendedAt).not.toBeNull()
+      expect(after.amendedByName).toBe('Ana')
+    })
+
+    it('refuses a damageId that is not on this order', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+
+      await expect(
+        service.uploadPhoto(draft.id, photoFile(), 'nema-me', floor, actorContext(floor.id)),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it("404s when a serviser reaches for a colleague's photo instead of leaking that it exists", async () => {
+      const mine = await floorActor('Pera')
+      const theirs = await floorActor('Mika')
+      const orderId = await signedOrder(theirs)
+      const photo = await service.uploadPhoto(
+        orderId,
+        photoFile(),
+        null,
+        theirs,
+        actorContext(theirs.id),
+      )
+
+      await expect(
+        service.getPhotoDownloadMeta(orderId, photo.id, 'original', mine),
+      ).rejects.toBeInstanceOf(NotFoundError)
+      await expect(
+        service.deletePhoto(orderId, photo.id, mine, actorContext(mine.id)),
+      ).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    it('falls back to the full photo when no thumbnail was generated, rather than 404ing', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+      const photo = await service.uploadPhoto(
+        draft.id,
+        photoFile(),
+        null,
+        floor,
+        actorContext(floor.id),
+      )
+
+      const original = await service.getPhotoDownloadMeta(draft.id, photo.id, 'original', floor)
+      const thumb = await service.getPhotoDownloadMeta(draft.id, photo.id, 'thumbnail', floor)
+
+      // Content-addressed, so a browser revalidates instead of re-downloading over the hall's WiFi.
+      expect(original.etag).not.toBeNull()
+      // An image too small to be worth a thumbnail has none; the grid must still get a picture.
+      expect(thumb.storagePath).toBe(original.storagePath)
+      expect(thumb.etag).toBe(original.etag)
+    })
+  })
+
   describe('realtime + audit', () => {
     it('signals the list to refresh on every change, carrying no row data', async () => {
       const floor = await floorActor()

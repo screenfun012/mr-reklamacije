@@ -1,6 +1,14 @@
 import type { Context } from 'hono'
 
+import { z } from 'zod'
+
 import { getActorContext } from '../../core/http/actor-context.js'
+import {
+  parseAttachmentDownloadRequest,
+  serveCachedAttachmentDownload,
+} from '../../core/http/attachment-download.js'
+import { readUploadFiles } from '../../core/http/upload-files.js'
+import { ValidationError } from '../../core/errors/domain-errors.js'
 import type { MRSessionUser } from '../../core/auth/session-types.js'
 import type { Container } from '../../core/container.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
@@ -11,6 +19,7 @@ import {
   IntakeOrderCreateInputSchema,
   IntakeOrderIdParamSchema,
   IntakeOrderListQuerySchema,
+  IntakePhotoParamSchema,
   IntakeOrderSignInputSchema,
   IntakeOrderUpdateInputSchema,
   IntakePlateLookupQuerySchema,
@@ -125,6 +134,76 @@ export function createIntakeOrdersController(container: Container) {
       const user = requireUser(c)
       const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
       await container.intakeOrdersService.delete(id, actorOf(user), getActorContext(c, user))
+      return c.body(null, 204)
+    },
+
+    /**
+     * One photo per request. The tablet uploads in the background while the serviser works
+     * through steps 4 and 5, so a single failure must retry on its own rather than take a whole
+     * batch down with it.
+     */
+    uploadPhoto: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const formData = await c.req.formData()
+      const damageIdRaw = formData.get('damageId')
+      const damageId = z
+        .string()
+        .trim()
+        .min(1)
+        .max(40)
+        .nullable()
+        .parse(damageIdRaw ?? null)
+
+      const files = await readUploadFiles(formData)
+      const file = files[0]
+      if (file === undefined) {
+        throw new ValidationError('No photo uploaded')
+      }
+
+      const photo = await container.intakeOrdersService.uploadPhoto(
+        id,
+        file,
+        damageId,
+        actorOf(user),
+        getActorContext(c, user),
+      )
+      return c.json(photo, 201)
+    },
+
+    servePhoto: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const { attachmentId } = IntakePhotoParamSchema.parse({
+        attachmentId: c.req.param('attachmentId'),
+      })
+      const { disposition, variant } = parseAttachmentDownloadRequest(c)
+
+      const meta = await container.intakeOrdersService.getPhotoDownloadMeta(
+        id,
+        attachmentId,
+        variant,
+        actorOf(user),
+      )
+
+      return serveCachedAttachmentDownload(c, meta, {
+        disposition,
+        openStream: (storagePath) => container.intakeOrdersService.openPhotoStream(storagePath),
+      })
+    },
+
+    deletePhoto: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const { attachmentId } = IntakePhotoParamSchema.parse({
+        attachmentId: c.req.param('attachmentId'),
+      })
+      await container.intakeOrdersService.deletePhoto(
+        id,
+        attachmentId,
+        actorOf(user),
+        getActorContext(c, user),
+      )
       return c.body(null, 204)
     },
   }

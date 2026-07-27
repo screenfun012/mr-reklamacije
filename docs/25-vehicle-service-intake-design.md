@@ -392,10 +392,24 @@ Module `apps/api/src/modules/intake-orders/` per the mandatory anatomy.
 | `POST /api/intake-orders/:id/advance` | next status |
 | `POST /api/intake-orders/:id/change-status` | set any status (correction) |
 | `DELETE /api/intake-orders/:id` | soft delete → 204 |
-| `GET /api/intake-orders/:id/photos/:attachmentId` | serve a photo (`?variant=thumbnail`) — **V-4** |
-| `POST /api/intake-orders/:id/photos` | upload, optional `damageId` — **V-4** |
-| `DELETE /api/intake-orders/:id/photos/:attachmentId` | remove a photo — **V-4** |
+| `GET /api/intake-orders/:id/photos/:attachmentId` | serve a photo (`?variant=thumbnail`); falls back to the full photo when none was generated |
+| `POST /api/intake-orders/:id/photos` | upload one photo, optional `damageId` |
+| `DELETE /api/intake-orders/:id/photos/:attachmentId` | remove a photo (see the two rules below) |
 | `GET /api/intake-orders/lookup` | `?plate=…` → owner/vehicle prefill from previous **signed** orders |
+
+**Two photo rules Nikola set on 2026-07-27:**
+
+1. **A photo may arrive AFTER signing and is accepted**, because the tablet uploads in the
+   background while the serviser works through steps 4 and 5 — the picture was taken before the
+   signature, and refusing it would lose the evidence the module exists for just because the
+   hall's WiFi stalled. So *who* uploads decides: the order's own serviser is a late arrival and
+   leaves no mark; anyone else adding a photo afterwards is changing the intake condition, which
+   needs `amend` and stamps the printed document.
+2. **The serviser deletes photos freely while filling the intake in** — he may have taken a
+   blurred one and step 3 is where he notices — **and not one minute after signing**. Chosen over
+   "until the car goes into work": the customer signed for the condition those photos show, so
+   removing one afterwards is an office amendment, stamped. Deleting is a soft delete; the stored
+   bytes stay, since a database-only restore must not point at files the bucket no longer holds.
 
 **Photos are served by this module, never by `/api/attachments`.** That route is gated by
 `attachments.view_internal`, and giving a serviser that permission would also let him read a

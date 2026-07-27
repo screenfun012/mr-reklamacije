@@ -15,6 +15,16 @@ import {
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import {
+  processUploadFile,
+  writeStoredFile,
+  type AttachmentUploadFileInput,
+} from '../../core/attachments/attachment-upload-pipeline.js'
+import {
+  buildIntakeAttachmentStoragePath,
+  type StorageService,
+} from '../../infrastructure/storage/storage.interface.js'
+import { extensionForMimeType } from '@mr/shared'
+import {
   normalizeOrderNumberKey,
   normalizePlateKey,
   type IntakeOrdersRepository,
@@ -22,6 +32,7 @@ import {
 import type { IntakeOrdersActor, IntakeOrdersListScope } from './intake-orders.types.js'
 import { IntakeNumberCheckStatus } from './intake-orders.validators.js'
 import type {
+  IntakeOrderPhoto,
   IntakeNumberCheckResponse,
   IntakeOrderChangeStatusInput,
   IntakeOrderCreateInput,
@@ -80,6 +91,7 @@ export class IntakeOrdersService {
     private readonly repo: IntakeOrdersRepository,
     private readonly audit: AuditPort,
     private readonly events: EventBus,
+    private readonly storage: StorageService,
   ) {}
 
   private signalChanged(): void {
@@ -438,6 +450,164 @@ export class IntakeOrdersService {
     })
 
     this.signalChanged()
+  }
+
+  /**
+   * A photo arriving for an order that is ALREADY SIGNED is accepted, not rejected (Nikola,
+   * 2026-07-27). The tablet uploads in the background while the serviser works through steps 4
+   * and 5, so a photo can legitimately land after the signature — it was taken before it, and
+   * refusing it would lose the evidence the whole module exists for, purely because the hall's
+   * WiFi stalled at the wrong second.
+   *
+   * Which is why "who is uploading" decides whether this counts as an amendment: the order's own
+   * serviser is a queued arrival and leaves no mark, while anyone else adding a photo afterwards
+   * is changing the intake condition — that needs `amend` and stamps the printed document.
+   */
+  async uploadPhoto(
+    id: string,
+    file: AttachmentUploadFileInput,
+    damageId: string | null,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderPhoto> {
+    const order = await this.loadVisible(id, actor)
+
+    if (damageId !== null && !order.damages.some((damage) => damage.id === damageId)) {
+      throw new ValidationError('That damage does not exist on this intake order')
+    }
+
+    const isLateArrival = order.technicianId === actor.id
+    const isAmendment = order.signedAt !== null && !isLateArrival
+    if (isAmendment && !actor.permissions.includes('intake_orders.amend')) {
+      throw new ForbiddenError('Adding a photo after signing requires amend')
+    }
+
+    const processed = await processUploadFile(file)
+    const attachmentId = crypto.randomUUID()
+    const storagePath = buildIntakeAttachmentStoragePath({
+      orderId: id,
+      attachmentId,
+      extension: extensionForMimeType(processed.storedMime),
+    })
+
+    const stored = await writeStoredFile(this.storage, {
+      storagePath,
+      storedData: processed.storedData,
+      storedMime: processed.storedMime,
+      optimized: processed.optimized,
+    })
+
+    const photo = await this.repo.insertPhoto({
+      orderId: id,
+      damageId,
+      fileName: file.fileName,
+      storagePath,
+      mimeType: processed.storedMime,
+      fileSizeBytes: processed.storedData.byteLength,
+      contentSha256: processed.contentSha256,
+      width: stored.width,
+      height: stored.height,
+      thumbnailPath: stored.thumbnailPath,
+      uploadedBy: auditContext.actorUserId,
+    })
+
+    if (isAmendment) {
+      await this.repo.update(id, {}, auditContext.actorUserId)
+    }
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: {
+        after: { photoId: photo.id, damageId },
+        transition: isAmendment ? 'amend_photo_added' : 'photo_uploaded',
+      },
+    })
+
+    this.signalChanged()
+    return photo
+  }
+
+  /**
+   * A serviser deletes his own photos freely WHILE FILLING THE INTAKE IN — he may have taken a
+   * blurred one and needs to retake it, and step 3 is where he notices. The moment both
+   * signatures are in, the photos are frozen: the customer signed for the condition those photos
+   * show, so removing one afterwards is an office amendment and stamps the document (Nikola chose
+   * this boundary over "until the car goes into work", 2026-07-27).
+   */
+  async deletePhoto(
+    id: string,
+    attachmentId: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<void> {
+    const order = await this.loadVisible(id, actor)
+    const photo = await this.repo.findPhoto(id, attachmentId)
+    if (photo === null) {
+      throw new NotFoundError('Intake photo', attachmentId)
+    }
+
+    const isAmendment = order.signedAt !== null
+    if (isAmendment && !actor.permissions.includes('intake_orders.amend')) {
+      throw new ForbiddenError('Removing a photo after signing requires amend')
+    }
+
+    await this.repo.softDeletePhoto(id, attachmentId)
+    if (isAmendment) {
+      await this.repo.update(id, {}, auditContext.actorUserId)
+    }
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Delete,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: {
+        before: { photoId: attachmentId, fileName: photo.fileName },
+        transition: isAmendment ? 'amend_photo_removed' : 'photo_removed',
+      },
+    })
+
+    this.signalChanged()
+  }
+
+  /**
+   * Serving goes through this module, never `/api/attachments` — that route is gated by
+   * `attachments.view_internal`, and a serviser holding it could read a claim's files.
+   */
+  async getPhotoDownloadMeta(
+    id: string,
+    attachmentId: string,
+    variant: 'original' | 'thumbnail',
+    actor: IntakeOrdersActor,
+  ): Promise<{ storagePath: string; mimeType: string; fileName: string; etag: string | null }> {
+    await this.loadVisible(id, actor)
+    const photo = await this.repo.findPhoto(id, attachmentId)
+    if (photo === null) {
+      throw new NotFoundError('Intake photo', attachmentId)
+    }
+
+    const useThumbnail = variant === 'thumbnail' && photo.thumbnailPath !== null
+    return {
+      storagePath: useThumbnail ? (photo.thumbnailPath as string) : photo.storagePath,
+      mimeType: useThumbnail ? 'image/jpeg' : photo.mimeType,
+      fileName: photo.fileName,
+      // Content-addressed, so the browser can revalidate instead of re-downloading.
+      etag:
+        photo.contentSha256 === null ? null : `"${photo.contentSha256}${useThumbnail ? '-t' : ''}"`,
+    }
+  }
+
+  async openPhotoStream(
+    storagePath: string,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; size: number }> {
+    return this.storage.readStream(storagePath)
   }
 
   /**

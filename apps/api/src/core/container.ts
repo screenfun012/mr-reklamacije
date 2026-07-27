@@ -193,13 +193,6 @@ export function buildContainer(
 
   const notificationsRepository = new NotificationsRepository(db)
   const notificationsService = new NotificationsService(notificationsRepository, eventBus, logger)
-  const intakeOrdersRepository = new IntakeOrdersRepository(db)
-  const intakeOrdersService = new IntakeOrdersService(
-    intakeOrdersRepository,
-    auditService,
-    eventBus,
-  )
-
   // In-memory, single-replica presence (see presence.store.ts + docs/22 §4).
   const presenceService = new PresenceService(new ClaimPresenceStore())
 
@@ -334,6 +327,15 @@ export function buildContainer(
   const statisticsService = new StatisticsService(statisticsRepository, summaryCache)
 
   const storageService = createStorageService(env)
+
+  // Built after the storage service because intake photos go through it (docs/25 V-4).
+  const intakeOrdersRepository = new IntakeOrdersRepository(db)
+  const intakeOrdersService = new IntakeOrdersService(
+    intakeOrdersRepository,
+    auditService,
+    eventBus,
+    storageService,
+  )
   const attachmentsRepository = new AttachmentsRepository(db)
   const claimContextService = new ClaimContextService(
     emotiveClaimsRepository,

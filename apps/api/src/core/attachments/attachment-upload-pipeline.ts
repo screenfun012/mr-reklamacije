@@ -49,9 +49,12 @@ export interface ProcessedUploadFile {
 
 /**
  * The shared per-file processing stage (magic-byte MIME check → size limit → image
- * recompression → content hash). Used by both claim and submission uploads so the one hardened
- * pipeline runs everywhere; the caller owns target-specific concerns (dedup scope, storage path,
- * total-size cap, row insert).
+ * recompression → content hash). Used by claim, submission AND vehicle-intake uploads so the one
+ * hardened pipeline runs everywhere; the caller owns target-specific concerns (dedup scope,
+ * storage path, total-size cap, row insert).
+ *
+ * Lives in `core/` rather than under a module: it is file infrastructure, not one module's
+ * domain, and depcruise rightly refuses a module importing a sibling module.
  */
 export async function processUploadFile(
   file: AttachmentUploadFileInput,

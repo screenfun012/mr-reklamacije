@@ -45,6 +45,20 @@ export interface SubmissionAttachmentPathInput {
   readonly extension: string
 }
 
+export interface IntakeAttachmentPathInput {
+  readonly orderId: string
+  readonly attachmentId: string
+  readonly extension: string
+}
+
+/**
+ * Storage key for a vehicle-intake photo. No year segment: an intake order is short-lived
+ * paperwork rather than an archive keyed by claim year (docs/25).
+ */
+export function buildIntakeAttachmentStoragePath(input: IntakeAttachmentPathInput): string {
+  return `intake/${input.orderId}/${input.attachmentId}.${input.extension}`
+}
+
 /** Storage key for a portal-submission attachment (no claim year — a submission is pre-claim). */
 export function buildSubmissionAttachmentStoragePath(input: SubmissionAttachmentPathInput): string {
   return `submissions/${input.submissionId}/${input.attachmentId}.${input.extension}`
