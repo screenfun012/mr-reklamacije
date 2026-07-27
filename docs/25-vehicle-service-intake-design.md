@@ -6,7 +6,7 @@
 > resolved with Nikola. **Implementation in progress on `feat/vehicle-intake`: V-0 through V-5 are
 > done — V-0..V-4b pushed, V-4c and V-5 committed and awaiting Nikola's push (production untouched
 > — Railway deploys `main`).** Next is V-6, the four-tab detail. Build only on Nikola's per-phase
-> go.
+> go. **V-7 (print) is not specified** — its premise was wrong, see §3.5.
 >
 > This is a **new subsystem, not a claim family.** It shares nothing with EMOTIVE/DOMACE except
 > the app shell, the attachments pipeline, audit and SSE. No MR number, no faults, no warranty
@@ -260,9 +260,21 @@ nothing anywhere reported an error.
 - An amended order prints `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` with the timestamp and the
   name of whoever changed it. **An unamended order gets no addition at all** — a clean document
   stays clean.
-- **Blocked on Nikola:** the "Obaveze kupaca" document. The handoff requires the work order to
-  share header, footer, typography and margins with the firm's other printed documents. Needed at
-  V-7 only, so it does not block starting.
+⚠️ **This section rests on a premise Nikola rejected (2026-07-27) and must be re-designed with him
+before V-7 starts.** In his words: *"obaveza kupca je nešto totalno drugačije"*, and *"mi generišemo
+dokument kada na kraju se auto završi"*. Two things follow, and neither is settled here:
+
+1. **"Obaveze kupaca" is not what this document assumed.** It was written down as a printed
+   template whose header, footer, typography and margins the intake work order should share. That
+   is not what the document is. It is therefore **not** a blocker for V-7, and asking Nikola for it
+   as one was wrong.
+2. **The printed document is produced when the car is finished, not at intake.** Everything above
+   describes printing the intake order at the moment it is signed. What Nikola actually wants
+   printed, at what moment, and whether the intake record is printed at all, is an open question —
+   not a detail of layout.
+
+Nothing here is built. V-7 stays last and starts with Nikola describing the document he means,
+after which this section gets rewritten rather than patched.
 
 ### 3.6 Photo upload and finishing without a network
 
@@ -585,7 +597,10 @@ only when asked; Nikola pushes.
 
 ## 9. Open items
 
-1. **"Obaveze kupaca" document** from Nikola — needed at V-7.
+1. **What gets printed, and when** — see the warning in §3.5. Nikola: the document is generated
+   when the car is finished, and "Obaveze kupaca" is something else entirely. V-7 cannot be
+   specified until he describes the document he means. This replaces the earlier item, which asked
+   him for a template on a premise that turned out to be wrong.
 2. **The printed manual for serviseri** (`Uputstvo Prijem Vozila`) goes to the workers, so it must
    match the application. **Every place where the built app behaves differently from the manual gets
    reported to Nikola** rather than quietly diverging.
