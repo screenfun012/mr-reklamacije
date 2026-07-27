@@ -55,8 +55,24 @@ print stop agreeing.
 
 ### 3.1 UI, shell and who does what
 
-- **The design does not change.** Nikola: *"tako mora da izgleda ui"*. Everything already drawn
-  stays; the addenda are additions, never a redesign.
+- **The design does not change.** Nikola: *"tako mora da izgleda ui"* — and, after V-2/V-3,
+  sharply: build the UI from the prototype's own values, do not eyeball it, do not invent
+  affordances it lacks and do not skip elements it has. Where the handoff prose and
+  `prijem-prototip-v2` disagree, **the prototype wins** (its table is `min-width: 1080px`; the
+  prose says 1060).
+- **One approved deviation from the prototype, and only one so far:** the fuel needle **animates**
+  (280 ms, `prefers-reduced-motion` honoured). Nikola asked for it 2026-07-27 — a dial that sweeps
+  reads as an instrument, one that snaps reads as a number field. It is implemented by rotating the
+  needle rather than moving its tip, because only a transform can transition, and a test proves the
+  rotation lands the tip exactly where the handoff's `(125 + 78·cos θ, 132 − 78·sin θ)` does. The
+  needle's colour stays white as drawn: the coloured arc already says where the reserve is.
+  ⚠️ **The rotation must be the CSS property, never the SVG `transform` attribute.** Measured in
+  both engines (Playwright, 2026-07-27): Chromium transitions the attribute, **WebKit does not** —
+  its computed transform stays `none` for the whole 280 ms. The tablet is an iPad, so the attribute
+  form would have swept on every desktop we test on and snapped on the only device that matters.
+  Both forms render identically (checked at 0/45/90/135/180°), so this costs nothing but the
+  `transform-box: view-box` + `transform-origin` pair that gives the CSS rotation the same pivot.
+  **The same trap applies to every animated SVG in this module** — the damage map's markers next.
 - **Zero new tokens.** Verified in code: `InternalPill` tones already carry the handoff's status
   colours — `Primljeno` = `--color-mri-info` `#2e90fa` (identical) · `U radu` = `--color-mri-warn`
   `#f5a623` · `Gotovo` = `--color-mri-ok` `#1fa971` (identical) · `Preuzeto` =
@@ -158,7 +174,11 @@ print stop agreeing.
    office/admin, and softly (`deleted_at`) — it is evidence; it leaves the list, never the DB.
 8. **Status is one-way for the serviser** (single next-status button, as designed). Office/admin
    can set any status to fix a mis-tap. Every change lands in the Istorija tab with name and time.
-9. **After signing:** services, materials and status always remain editable. The **intake
+9. **After signing:** services, materials and status always remain editable — **confirmed by
+   Nikola 2026-07-27, "stalno otvorene"**, in any status including `gotovo` and `preuzeto`. The
+   handoff's note ("while the order is U radu") is the outlier and is NOT the rule: during intake
+   nobody knows yet which materials went in, and a car can be finished before someone remembers
+   the filter they actually fitted. Closing the list would mean phoning the office over one line. The **intake
    condition** (checklist, fuel, damages, photos) may be corrected **only by office/admin**, and
    then **the printed document must state that it was amended after signing** — otherwise the paper
    claims the owner confirmed something they did not. The order then permanently carries a

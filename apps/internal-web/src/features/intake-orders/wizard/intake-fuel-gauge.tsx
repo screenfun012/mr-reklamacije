@@ -10,6 +10,13 @@ const CENTER_X = 125
 const CENTER_Y = 132
 const NEEDLE_LENGTH = 78
 
+/**
+ * One rhythm for the whole dial: the needle sweeps and the buttons take their colour over the same
+ * 280 ms, so pressing ¾ reads as one instrument moving rather than a needle and a button reacting
+ * to the same click separately.
+ */
+const SWEEP = 'duration-[280ms] ease-out motion-reduce:transition-none'
+
 const SHORTCUTS = [
   { eighths: 0, label: 'E' },
   { eighths: 2, label: '¼' },
@@ -18,7 +25,17 @@ const SHORTCUTS = [
   { eighths: 8, label: 'F' },
 ] as const
 
-function needleTip(eighths: number): { x: number; y: number } {
+/**
+ * The needle is drawn once at the E end and ROTATED, rather than having its tip moved, because a
+ * moved tip cannot be animated. The two are the same geometry: rotating the E-end point
+ * (125−78, 132) clockwise by `fuel/8 · 180°` lands exactly where the handoff's
+ * `(125 + 78·cos θ, 132 − 78·sin θ)` puts it, for every eighth. Pinned by a test.
+ */
+export function needleRotationDegrees(eighths: number): number {
+  return (eighths / MAX_EIGHTHS) * 180
+}
+
+export function needleTip(eighths: number): { x: number; y: number } {
   const angle = Math.PI - (eighths / MAX_EIGHTHS) * Math.PI
   return {
     x: CENTER_X + NEEDLE_LENGTH * Math.cos(angle),
@@ -40,7 +57,6 @@ export interface IntakeFuelGaugeProps {
  */
 export function IntakeFuelGauge({ eighths, onChange }: IntakeFuelGaugeProps): ReactElement {
   const clamped = Math.min(MAX_EIGHTHS, Math.max(0, eighths))
-  const tip = needleTip(clamped)
   const percent = Math.round((clamped / MAX_EIGHTHS) * 100)
 
   return (
@@ -104,14 +120,32 @@ export function IntakeFuelGauge({ eighths, onChange }: IntakeFuelGaugeProps): Re
           </text>
         </g>
 
+        {/*
+          Approved deviation from the prototype (Nikola, 2026-07-27): the prototype's needle jumps.
+          A dial that sweeps reads as an instrument; one that snaps reads as a number field. Colour
+          stays white as drawn — the coloured arc already says where the reserve is, and a coloured
+          needle would repeat it.
+
+          The rotation is the CSS property and NOT the `transform` attribute, because WebKit — which
+          is the engine on the intake iPad — refuses to transition that attribute; measured, its
+          computed transform stays `none` throughout. The attribute form animates in Chromium, so on
+          a desktop it would have looked finished while the tablet kept snapping. Both forms render
+          the needle in exactly the same place, verified in both engines at 0/45/90/135/180°.
+        */}
         <line
           x1={CENTER_X}
           y1={CENTER_Y}
-          x2={tip.x}
-          y2={tip.y}
+          x2={CENTER_X - NEEDLE_LENGTH}
+          y2={CENTER_Y}
+          style={{
+            transform: `rotate(${needleRotationDegrees(clamped)}deg)`,
+            transformBox: 'view-box',
+            transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+          }}
           stroke="var(--mri-text)"
           strokeWidth="4"
           strokeLinecap="round"
+          className={cn('transition-transform', SWEEP)}
         />
         <circle
           cx={CENTER_X}
@@ -137,7 +171,10 @@ export function IntakeFuelGauge({ eighths, onChange }: IntakeFuelGaugeProps): Re
           onClick={() => onChange(Math.max(0, clamped - 1))}
           disabled={clamped === 0}
           aria-label={m.intake_fuel_less()}
-          className="h-12 flex-1 cursor-pointer rounded-[9px] border border-mri-border2 bg-mri-inbg font-mono text-lg font-semibold text-mri-text transition-colors hover:bg-mri-rowhv disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn(
+            'h-12 flex-1 cursor-pointer rounded-[9px] border border-mri-border2 bg-mri-inbg font-mono text-lg font-semibold text-mri-text transition-colors hover:bg-mri-rowhv disabled:cursor-not-allowed disabled:opacity-40',
+            SWEEP,
+          )}
         >
           −
         </button>
@@ -146,7 +183,10 @@ export function IntakeFuelGauge({ eighths, onChange }: IntakeFuelGaugeProps): Re
           onClick={() => onChange(Math.min(MAX_EIGHTHS, clamped + 1))}
           disabled={clamped === MAX_EIGHTHS}
           aria-label={m.intake_fuel_more()}
-          className="h-12 flex-1 cursor-pointer rounded-[9px] border border-mri-border2 bg-mri-inbg font-mono text-lg font-semibold text-mri-text transition-colors hover:bg-mri-rowhv disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn(
+            'h-12 flex-1 cursor-pointer rounded-[9px] border border-mri-border2 bg-mri-inbg font-mono text-lg font-semibold text-mri-text transition-colors hover:bg-mri-rowhv disabled:cursor-not-allowed disabled:opacity-40',
+            SWEEP,
+          )}
         >
           +
         </button>
@@ -161,8 +201,9 @@ export function IntakeFuelGauge({ eighths, onChange }: IntakeFuelGaugeProps): Re
             aria-pressed={clamped === shortcut.eighths}
             className={cn(
               'h-11 flex-1 cursor-pointer rounded-lg border font-mono text-xs font-semibold transition-colors',
+              SWEEP,
               clamped === shortcut.eighths
-                ? 'border-mri-red bg-[rgba(237,28,36,0.13)] text-mri-text'
+                ? 'border-mri-red bg-[rgba(237,28,36,0.13)] text-mri-redh'
                 : 'border-mri-border2 bg-mri-inbg text-mri-text2 hover:text-mri-text',
             )}
           >
