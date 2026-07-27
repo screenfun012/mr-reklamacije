@@ -119,6 +119,45 @@ print stop agreeing.
   rule. Without it a serviser lands on the dashboard, whose loader calls
   `/api/dashboard/summary` — a permission he does not hold — and every login ends on a 403.
 
+### 3.1a Approved deviations from the prototype (2026-07-27)
+
+The prototype is the source of truth and every departure from it is Nikola's call, taken
+knowingly. There are three, all in the wizard:
+
+- **The fuel dial moves.** The prototype's needle jumps and its arc is three permanently lit
+  segments (grey track, red E→¼, amber ¼→½) with a white number at every level. Ours sweeps, and
+  the dial is now **one empty track plus one filled arc** that grows from E to the needle, coloured
+  by band — **red 0–1/8, amber 2–3/8, green 4–8/8** — with the big digit taking the same colour and
+  a 180 ms nudge as it changes. At E the fill is hidden outright (`opacity: 0`), because a
+  zero-length round cap still paints a red dot on E that reads as a fault light. The painted
+  reserve zone is deliberately gone: on an empty tank it left exactly that red shadow.
+  ⚠ The design note that introduced this said the animation could be transferred from the
+  prototype. It cannot — the prototype has **no** `requestAnimationFrame`, no
+  `stroke-dasharray`/`-dashoffset` and not one CSS `transition` anywhere in the file. This is new
+  work, not a transfer.
+- **No animation frame loop.** The note specified a per-frame exponential (0.19 needle / 0.15
+  arc). CSS transitions give the same feel, retarget from wherever the value currently is (which
+  is the "five fast taps must stay one movement" requirement), cost no re-render, and honour
+  `prefers-reduced-motion` through a media query. `stroke-dashoffset` was measured transitioning
+  in **both Chromium and WebKit** before it was used — WebKit is the iPad, and it is the engine
+  that refuses to transition the SVG `transform` **attribute**, so the needle rotates through the
+  CSS property instead. Anything animated on this dial must keep to `transform` and
+  `stroke-dashoffset`.
+- **One note bar, not two.** The prototype has a single `mrNote` bar under the stepper strip whose
+  four states are mutually exclusive by construction. Ours had grown two independent ones — a
+  localStorage banner plus notes nested inside the stepper strip's trailing slot — so a serviser
+  could be shown two `NASTAVI →` buttons for the same intake. They are merged into
+  `IntakeWizardNote`: the strip carries only the label and the input, and the buffer offer is
+  gated to step 1. The offer is also suppressed when the number resolves to the intake **already
+  open on screen** — the server answers "taken by you" for your own draft.
+
+Two colour tokens were added for this: `--mri-amb` and `--mri-grn`, transferred verbatim from the
+prototype's `--amb`/`--grn` including their **per-theme** values. They exist as runtime variables,
+not only as `@theme inline` entries like the other status hues — the dial reads them from `var()`,
+and an undefined one silently drops `stroke` to `none`. That is exactly how the amber arc stayed
+invisible from the day it was drawn until 2026-07-27: `var(--mri-warn)` never resolved, and
+nothing anywhere reported an error.
+
 ### 3.2 Identity and lookup
 
 - **Order number is typed by the serviser**, not generated — it comes from a printed pad. Field
@@ -487,8 +526,10 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | **V-0** ✅ | Migration: `intake_orders` + indexes + the `attachments` extension (new columns, FK, **CHECK constraint change on a shared table**) | **DONE** 2026-07-26 — migration `0036_youthful_lightspeed`, `drizzle-kit` generated, clean migrate-from-zero proven (37 migrations on an empty DB). Safe on live data: the three pre-existing CHECK branches only gained `AND intake_order_id IS NULL`, true for every row the moment the nullable column is added, so for old rows the constraint is identical to the one production already enforces — and drizzle applies every statement in one transaction, so a failure can never leave `attachments` unguarded |
 | **V-1** ✅ | `@mr/shared` (Zod, constants, permissions, query factories) · api module · new role + seed · the role's admin-web surface | **DONE** 2026-07-26, gate green (595/595 integration) |
 | **V-2** ✅ | List screen (KPI cards — signed only, filter + search in URL params, table incl. own drafts, "Nedovršeni" filter for the office) · sidebar "Servis" + the no-sidebar rule + gating Početna/Statistika | **DONE** 2026-07-26, gate green. The wizard and detail got placeholder routes so rows stay clickable |
-| **V-3** ✅ | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | **DONE** 2026-07-27, gate green. Verified in the browser at 1180×820: create → patch → resume → back all persist. Creating an order must be followed by a step patch — create stamps `draft_step = 1`, so without it the resume offer sends the serviser a step backwards |
-| **V-4** | Damage map (4 shapes + zone maps from the prototype) + photos (client compression, background upload, per-damage link, four upload states) | **highest risk — leave time** |
+| **V-3** ✅ | Wizard steps 1–2 (number field with the server check, vehicle type, plate lookup, resume banner; checklist + fuel gauge) | **DONE** 2026-07-27, gate green. Verified in the browser at 1180×820: create → patch → resume → back all persist. Creating an order must be followed by a step patch — create stamps `draft_step = 1`, so without it the resume offer sends the serviser a step backwards. **Reworked the same day** (§3.1a): the dial animates and recolours, the two resume affordances became one bar, step 2 moved onto `IntakePanel` (it had been using the list/detail card, whose header added 55.5 px and left the two cards ending at different heights), the gauge card went 340 → **330 px**, the order-number input 48 → **40 px**, the checklist labels went back to the prototype's full names, and `::placeholder` moved off `currentColor` — at 0.38 of the control's near-black it was invisible in the light theme, which reads as "the field has no hint" |
+| **V-4a** ✅ | `zoneOf` + the four silhouettes, transferred not redrawn; the server derives the zone and re-zones markers when the vehicle type changes | **DONE** 2026-07-27 |
+| **V-4b** ✅ | Photo endpoints (upload / serve / delete) under the intake permissions — never `/api/attachments`, since a serviser must not hold `attachments.view_internal` | **DONE** 2026-07-27 |
+| **V-4c** | Step 3 in the UI: tap-to-mark damage map, defect list, photo grid with tablet-side compression and the four upload states | **highest risk — leave time** |
 | **V-5** | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | |
 | **V-6** | Detail with 4 tabs, amend affordances, status correction, soft delete | |
 | **V-7** | Print (A4, one page, amended marker, per-type drawing, 6-photo cap) | **needs "Obaveze kupaca" first** |
