@@ -3,9 +3,10 @@
 > **Status: DESIGN, all decisions locked.** First pass 2026-07-26 (from Claude Design's original
 > handoff). **Second pass 2026-07-26**, after prototype v2 + `dopuna-2` came back: the role model,
 > the shell for a serviser, draft ownership and the list's treatment of unfinished intakes were all
-> resolved with Nikola. **Implementation in progress on `feat/vehicle-intake`: V-0, V-1 and V-2 are
-> done and pushed (production untouched — Railway deploys `main`).** Next is V-4. Build only on
-> Nikola's per-phase go.
+> resolved with Nikola. **Implementation in progress on `feat/vehicle-intake`: V-0 through V-5 are
+> done — V-0..V-4b pushed, V-4c and V-5 committed and awaiting Nikola's push (production untouched
+> — Railway deploys `main`).** Next is V-6, the four-tab detail. Build only on Nikola's per-phase
+> go.
 >
 > This is a **new subsystem, not a claim family.** It shares nothing with EMOTIVE/DOMACE except
 > the app shell, the attachments pipeline, audit and SSE. No MR number, no faults, no warranty
@@ -571,7 +572,7 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | **V-4a** ✅ | `zoneOf` + the four silhouettes, transferred not redrawn; the server derives the zone and re-zones markers when the vehicle type changes | **DONE** 2026-07-27 |
 | **V-4b** ✅ | Photo endpoints (upload / serve / delete) under the intake permissions — never `/api/attachments`, since a serviser must not hold `attachments.view_internal` | **DONE** 2026-07-27 |
 | **V-4c** ✅ | Step 3 in the UI: tap-to-mark damage map, defect list, photo grid with tablet-side compression and the four upload states | **DONE** 2026-07-27, gate green, driven end to end in a browser. Built in three passes — **V-4c-0** fixed three bugs already shipped in V-4a/V-4b before putting a screen on top of them (see §3.6a), **V-4c-1** the map and the defect list, **V-4c-2** the photos. Not verified because it needs the real device: a network drop mid-upload (`wait` → `online` → resume) and a HEIC straight off an iPad |
-| **V-5** | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | |
+| **V-5** ✅ | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | **DONE** 2026-07-27, gate green, driven end to end in a browser (create → damage + photo → services and materials → both signatures → finish). Three decisions taken with Nikola that session: the confirmation sentence prints its counts on their own line (`Nedostataka: 1 · Fotografija: 2`) because Serbian declines them and this repo cannot use ICU plurals; the step-4 note drops the prototype's „dok je nalog U radu" clause, which described a restriction the server deliberately does not enforce; and the two spec lists get no empty state, as the prototype has none and the input's own placeholder already instructs. ⚠ The signature pad has NO prototype reference — its pads are empty divs and it cannot sign — so the capture is ours: pointer strokes normalized into the 460×200 space of §4.1, serialized to one `M…L…` run per stroke. `photos_expected` is sent as arrived + outstanding INCLUDING failures; counting only what is still in flight would silence the indicator for exactly the photos most likely lost |
 | **V-6** | Detail with 4 tabs, amend affordances, status correction, soft delete | |
 | **V-7** | Print (A4, one page, amended marker, per-type drawing, 6-photo cap) | **needs "Obaveze kupaca" first** |
 
