@@ -15,13 +15,21 @@ import { INTAKE_SILHOUETTES, INTAKE_SILHOUETTE_VIEWBOX } from './intake-silhouet
  * and a crack are red with white digits. The same colour carries into the defect list and the
  * print, so the number in the circle is recognisable in all three.
  */
+/**
+ * These MUST stay runtime `--mri-*` variables, never `--color-mri-*`. The latter live inside
+ * `@theme inline`, which Tailwind substitutes at build time and never emits, so `var()` finds
+ * nothing — and `fill` is an inherited property, so a marker drawn that way inherits the svg's own
+ * `fill="none"` and vanishes without a single error. `--mri-warn`/`--mri-archived` did exactly
+ * that here until 2026-07-27. The three colours and both digit colours are the prototype's.
+ */
 export function intakeDamageMarkerColour(type: IntakeDamageType): { fill: string; text: string } {
   if (type === IntakeDamageType.Dent) {
-    return { fill: 'var(--mri-warn)', text: '#141417' }
+    return { fill: 'var(--mri-amb)', text: '#141417' }
   }
   if (type === IntakeDamageType.Rust) {
-    return { fill: 'var(--mri-archived)', text: '#fff' }
+    return { fill: 'var(--mri-gry)', text: '#fff' }
   }
+  // Ogrebotina and Puknuto are deliberately the same red — the prototype does not distinguish them.
   return { fill: 'var(--mri-red)', text: '#fff' }
 }
 

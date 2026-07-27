@@ -1,5 +1,17 @@
 import { IntakeOrderStatus, type IntakeChecklist, type IntakeDamage } from '@mr/shared'
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  isNotNull,
+  isNull,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import type { ApiDatabase } from '../../core/database.js'
@@ -427,10 +439,35 @@ export class IntakeOrdersRepository {
       return this.findById(id)
     }
 
-    await this.db
-      .update(intakeOrders)
-      .set(values)
-      .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(intakeOrders)
+        .set(values)
+        .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+
+      // Removing a damage must not destroy its evidence — the photos stay and only lose their
+      // number (docs/25 §3.4). Left alone, `intake_damage_id` would point at an id no longer in
+      // the jsonb array; the badge happens to render as a general photo, but the row is a lie and
+      // any later reader has to be defensive about it. Same transaction as the damage write, so
+      // the two can never disagree.
+      if (patch.damages !== undefined) {
+        const surviving = patch.damages.map((damage) => damage.id)
+        await tx
+          .update(attachments)
+          .set({ intakeDamageId: null })
+          .where(
+            and(
+              eq(attachments.intakeOrderId, id),
+              isNotNull(attachments.intakeDamageId),
+              // `notInArray` with an empty list is a Drizzle footgun; deleting every damage is
+              // exactly the case that reaches it.
+              surviving.length === 0
+                ? undefined
+                : notInArray(attachments.intakeDamageId, surviving),
+            ),
+          )
+      }
+    })
 
     return this.findById(id)
   }

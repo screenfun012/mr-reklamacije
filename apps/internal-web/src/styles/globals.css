@@ -60,6 +60,7 @@
   --color-mri-sigink: var(--mri-sigink);
   --color-mri-amb: var(--mri-amb);
   --color-mri-grn: var(--mri-grn);
+  --color-mri-gry: var(--mri-gry);
   --color-mri-archived: #96969e;
   --color-mri-archived-bg: rgba(150, 150, 158, 0.13);
 }
@@ -111,6 +112,9 @@
      as the prototype does. */
   --mri-amb: #f5a524;
   --mri-grn: #1fa971;
+  /* The rust marker's grey, from the prototype's `--gry`. One value in both themes, as there —
+     and NOT `--color-mri-archived` (#96969e), which means "picked up" on the status pills. */
+  --mri-gry: #6b6c72;
 }
 
 :root:not(.dark) {

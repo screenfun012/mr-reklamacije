@@ -512,6 +512,78 @@ describe('Intake orders integration', () => {
       expect(after.photos).toHaveLength(0)
     })
 
+    it('keeps a photo but drops its number when its damage is removed from the map', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+      const damage = {
+        id: 'd1',
+        type: IntakeDamageType.Scratch,
+        x: 100,
+        y: 200,
+        zone: 'prednja leva strana',
+      }
+      const other = { ...damage, id: 'd2', x: 240, y: 300 }
+      await service.update(draft.id, { damages: [damage, other] }, floor, actorContext(floor.id))
+
+      const bound = await service.uploadPhoto(
+        draft.id,
+        photoFile(),
+        'd1',
+        floor,
+        actorContext(floor.id),
+      )
+      const kept = await service.uploadPhoto(
+        draft.id,
+        photoFile('b.jpg'),
+        'd2',
+        floor,
+        actorContext(floor.id),
+      )
+
+      await service.update(draft.id, { damages: [other] }, floor, actorContext(floor.id))
+
+      const after = await service.findById(draft.id, floor)
+      // Deleting a marker must never destroy evidence — the photo survives, unnumbered.
+      expect(after.photos).toHaveLength(2)
+      expect(after.photos.find((photo) => photo.id === bound.id)?.damageId).toBeNull()
+      // A photo whose damage is still on the map keeps its number.
+      expect(after.photos.find((photo) => photo.id === kept.id)?.damageId).toBe('d2')
+    })
+
+    it('unbinds every photo when the last damage is removed', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+      await service.update(
+        draft.id,
+        {
+          damages: [
+            {
+              id: 'd1',
+              type: IntakeDamageType.Scratch,
+              x: 100,
+              y: 200,
+              zone: 'prednja leva strana',
+            },
+          ],
+        },
+        floor,
+        actorContext(floor.id),
+      )
+      const photo = await service.uploadPhoto(
+        draft.id,
+        photoFile(),
+        'd1',
+        floor,
+        actorContext(floor.id),
+      )
+
+      await service.update(draft.id, { damages: [] }, floor, actorContext(floor.id))
+
+      const after = await service.findById(draft.id, floor)
+      expect(after.photos).toHaveLength(1)
+      expect(after.photos.find((row) => row.id === photo.id)?.damageId).toBeNull()
+    })
+
     it('freezes photos at the signature — a serviser can no longer remove one', async () => {
       const floor = await floorActor()
       const created = await service.create(createInput(), actorContext(floor.id))

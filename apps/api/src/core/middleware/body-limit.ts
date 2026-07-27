@@ -15,10 +15,20 @@ const UPLOAD_MAX_BODY_BYTES = (MAX_FILE_SIZE_MB * 5 + 5) * MB
 
 const UPLOAD_PATHS = new Set(['/api/attachments/upload', '/api/claim-reports/images'])
 
-// Dynamic upload path: POST /api/client-submissions/<uuid>/attachments (portal ticket files).
-const UPLOAD_PATH_PATTERNS = [/^\/api\/client-submissions\/[^/]+\/attachments$/]
+// Dynamic upload paths:
+//   POST /api/client-submissions/<uuid>/attachments — portal ticket files
+//   POST /api/intake-orders/<uuid>/photos — the serviser's tablet, one photo per request.
+// The tablet compresses before sending (~400 KB), but `compressImage` hands back the ORIGINAL file
+// whenever the browser cannot decode it — which is precisely HEIC straight off an iPad camera, at
+// 6–10 MB. Under the default limit that 413s before the service is reached, and the serviser sees
+// a photo stuck on "! PONOVI" forever.
+const UPLOAD_PATH_PATTERNS = [
+  /^\/api\/client-submissions\/[^/]+\/attachments$/,
+  /^\/api\/intake-orders\/[^/]+\/photos$/,
+]
 
-function isUploadPath(path: string): boolean {
+/** Exported for the regression test — a path silently falling to the 2 MB default is invisible. */
+export function isUploadPath(path: string): boolean {
   return UPLOAD_PATHS.has(path) || UPLOAD_PATH_PATTERNS.some((pattern) => pattern.test(path))
 }
 
