@@ -19,6 +19,7 @@ export {
   type IntakeOrderChangeStatusInput,
   type IntakeOrderCreateInput,
   type IntakeOrderDetail,
+  type IntakeOrderHistoryEntry,
   type IntakeOrderListItem,
   type IntakeOrderListQuery,
   type IntakeOrderListResponse,

@@ -68,6 +68,12 @@ export function createIntakeOrdersController(container: Container) {
       return c.json(await container.intakeOrdersService.findById(id, actorOf(user)))
     },
 
+    history: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      return c.json(await container.intakeOrdersService.listHistory(id, actorOf(user)))
+    },
+
     create: async (c: Context) => {
       const user = requireUser(c)
       const body: unknown = await c.req.json()

@@ -14,6 +14,7 @@ import type {
 import {
   IntakeNumberCheckResponseSchema,
   IntakeOrderDetailSchema,
+  IntakeOrderHistoryResponseSchema,
   IntakeOrderListResponseSchema,
   IntakeOrderSummarySchema,
   IntakePlateLookupResponseSchema,
@@ -57,6 +58,7 @@ export const intakeOrderKeys = {
   summary: () => [...intakeOrderKeys.all, 'summary'] as const,
   details: () => [...intakeOrderKeys.all, 'detail'] as const,
   detail: (id: string) => [...intakeOrderKeys.details(), id] as const,
+  history: (id: string) => [...intakeOrderKeys.all, 'history', id] as const,
   numberCheck: (value: string) => [...intakeOrderKeys.all, 'number-check', value] as const,
   plateLookup: (value: string) => [...intakeOrderKeys.all, 'plate-lookup', value] as const,
 }
@@ -116,6 +118,16 @@ export function intakeOrderDetailOptions(id: string) {
  * Is this order number already taken? Four outcomes, one of which ("your own unfinished
  * intake") is an offer to resume rather than an error.
  */
+/** The order's history, as the detail's Istorija tab reads it. */
+export function intakeOrderHistoryOptions(id: string) {
+  return queryOptions({
+    queryKey: intakeOrderKeys.history(id),
+    queryFn: () =>
+      fetchParsed(`/api/intake-orders/${id}/history`, IntakeOrderHistoryResponseSchema),
+    staleTime: INTAKE_DETAIL_STALE_MS,
+  })
+}
+
 export function intakeNumberCheckOptions(orderNumber: string) {
   const trimmed = orderNumber.trim()
   const query = new URLSearchParams({ number: trimmed })

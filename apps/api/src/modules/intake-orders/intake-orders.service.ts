@@ -37,6 +37,7 @@ import type {
   IntakeOrderChangeStatusInput,
   IntakeOrderCreateInput,
   IntakeOrderDetail,
+  IntakeOrderHistoryEntry,
   IntakeOrderListQuery,
   IntakeOrderListResponse,
   IntakeOrderSignInput,
@@ -133,6 +134,15 @@ export class IntakeOrdersService {
 
   async findById(id: string, actor: IntakeOrdersActor): Promise<IntakeOrderDetail> {
     return this.loadVisible(id, actor)
+  }
+
+  /**
+   * The order's history. `loadVisible` runs first, so a serviser asking for a colleague's order
+   * gets the same 404 the detail gives — the history must not become a way around row-level scope.
+   */
+  async listHistory(id: string, actor: IntakeOrdersActor): Promise<IntakeOrderHistoryEntry[]> {
+    await this.loadVisible(id, actor)
+    return this.repo.listHistory(id)
   }
 
   /**

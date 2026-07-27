@@ -33,6 +33,9 @@ export function registerIntakeOrdersRoutes(
 
   routes.post('/', requirePermission('intake_orders.create'), controller.create)
   routes.get('/:id', canRead, controller.detail)
+  // Same gate as the detail: the history is part of reading the order, and the service
+  // re-checks row-level scope so a serviser cannot reach a colleague's through it.
+  routes.get('/:id/history', canRead, controller.history)
   routes.patch('/:id', requirePermission('intake_orders.update'), controller.update)
   routes.post('/:id/sign', requirePermission('intake_orders.update'), controller.sign)
   routes.post('/:id/advance', requirePermission('intake_orders.advance'), controller.advance)

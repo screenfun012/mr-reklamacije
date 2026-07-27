@@ -85,6 +85,27 @@ export const IntakeOrderSignInputSchema = z.object({
 export type IntakeOrderSignInput = z.infer<typeof IntakeOrderSignInputSchema>
 
 /** Office-only correction of a mis-tapped status; a serviser uses `/advance` instead. */
+/**
+ * One line of the order's history. Deliberately a PROJECTION, never the raw audit row: those carry
+ * the actor's IP, their user agent and the whole before/after object — signatures included — and
+ * the people who need this tab (the serviser, the office) must not be handed any of it.
+ */
+export const IntakeOrderHistoryEntrySchema = z.object({
+  id: z.string().uuid(),
+  at: z.string(),
+  action: z.string(),
+  /** `sign` | `advance` | `change_status` | `amend_after_signing` | … — labelled client-side. */
+  transition: z.string().nullable(),
+  actorName: z.string().nullable(),
+  /** Present only for a status move, so the line can read "U radu → Gotovo". */
+  fromStatus: z.string().nullable(),
+  toStatus: z.string().nullable(),
+})
+
+export type IntakeOrderHistoryEntry = z.infer<typeof IntakeOrderHistoryEntrySchema>
+
+export const IntakeOrderHistoryResponseSchema = z.array(IntakeOrderHistoryEntrySchema)
+
 export const IntakeOrderChangeStatusInputSchema = z.object({
   status: z.enum(intakeOrderStatusValues),
 })

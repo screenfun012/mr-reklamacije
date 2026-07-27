@@ -15,11 +15,12 @@ import {
 import { alias } from 'drizzle-orm/pg-core'
 
 import type { ApiDatabase } from '../../core/database.js'
-import { attachments, intakeOrders, users } from './intake-orders.schema.js'
+import { attachments, auditLog, intakeOrders, users } from './intake-orders.schema.js'
 import type { IntakeOrdersListScope } from './intake-orders.types.js'
 import type {
   IntakeOrderCreateInput,
   IntakeOrderDetail,
+  IntakeOrderHistoryEntry,
   IntakeOrderListItem,
   IntakeOrderListQuery,
   IntakeOrderPhoto,
@@ -587,6 +588,45 @@ export class IntakeOrdersRepository {
       .update(attachments)
       .set({ deletedAt: new Date() })
       .where(and(eq(attachments.id, attachmentId), eq(attachments.intakeOrderId, orderId)))
+  }
+
+  /**
+   * The order's history, projected down to what a serviser and the office may see. The audit rows
+   * themselves carry the actor's IP, their user agent and a whole before/after object with the
+   * signature paths in it — none of that leaves this method.
+   */
+  async listHistory(orderId: string): Promise<IntakeOrderHistoryEntry[]> {
+    const rows = await this.db
+      .select({
+        id: auditLog.id,
+        createdAt: auditLog.createdAt,
+        action: auditLog.action,
+        changes: auditLog.changes,
+        actorName: users.name,
+      })
+      .from(auditLog)
+      .leftJoin(users, eq(users.id, auditLog.actorUserId))
+      .where(and(eq(auditLog.entityType, 'intake_order'), eq(auditLog.entityId, orderId)))
+      .orderBy(desc(auditLog.createdAt))
+
+    return rows.map((row) => {
+      const changes = (row.changes ?? {}) as {
+        transition?: unknown
+        before?: { status?: unknown }
+        after?: { status?: unknown }
+      }
+      const text = (value: unknown): string | null => (typeof value === 'string' ? value : null)
+
+      return {
+        id: row.id,
+        at: row.createdAt.toISOString(),
+        action: row.action,
+        transition: text(changes.transition),
+        actorName: row.actorName ?? null,
+        fromStatus: text(changes.before?.status),
+        toStatus: text(changes.after?.status),
+      }
+    })
   }
 
   /** A signed order is evidence: it leaves the list, never the database. */

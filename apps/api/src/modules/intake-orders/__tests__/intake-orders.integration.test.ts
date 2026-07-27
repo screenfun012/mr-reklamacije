@@ -484,6 +484,60 @@ describe('Intake orders integration', () => {
     })
   })
 
+  describe('history', () => {
+    it('tells the story of the order in the order it happened, newest first', async () => {
+      const floor = await floorActor()
+      const orderId = await signedOrder(floor)
+      await service.advance(orderId, floor, actorContext(floor.id))
+
+      const history = await service.listHistory(orderId, floor)
+
+      // create → sign → advance, newest first.
+      expect(history).toHaveLength(3)
+      expect(history[0]?.transition).toBe('advance')
+      expect(history[0]?.fromStatus).toBe('primljeno')
+      expect(history[0]?.toStatus).toBe('u_radu')
+      expect(history[1]?.transition).toBe('sign')
+      expect(history[2]?.action).toBe('create')
+      expect(history[0]?.actorName).not.toBeNull()
+    })
+
+    /**
+     * The history must not become a way around row-level scope: it is the same order, so it is the
+     * same 404 the detail gives — never a 403, which would confirm the order exists.
+     */
+    it("404s for a colleague's order rather than telling them it exists", async () => {
+      const mine = await floorActor('Pera')
+      const theirs = await floorActor('Mika')
+      const orderId = await signedOrder(theirs)
+
+      await expect(service.listHistory(orderId, mine)).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    /**
+     * The audit rows carry the actor's IP, their user agent and a whole before/after object with
+     * the signature paths in it. None of that may reach the tab.
+     */
+    it('projects the row and never hands back the raw audit payload', async () => {
+      const floor = await floorActor()
+      const orderId = await signedOrder(floor)
+
+      const history = await service.listHistory(orderId, floor)
+      const keys = Object.keys(history[0] ?? {}).sort()
+
+      expect(keys).toEqual([
+        'action',
+        'actorName',
+        'at',
+        'fromStatus',
+        'id',
+        'toStatus',
+        'transition',
+      ])
+      expect(JSON.stringify(history)).not.toContain('M 0 0 L 10 10')
+    })
+  })
+
   describe('photos', () => {
     /** A 1x1 JPEG — real magic bytes, because the pipeline checks them. */
     const JPEG = Buffer.from(
