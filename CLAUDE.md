@@ -144,6 +144,7 @@ Empty DB needs these extensions first (the app's integration setup installs them
 - **Typography:** use `<Heading>` from `@mr/ui` (brandbook levels) — no ad-hoc `text-3xl`. Font **Figtree Variable** (+ JetBrains Mono for IDs/MR numbers). _(Note: `.cursor/rules/04-ui.mdc` still says "Inter" — outdated; brandbook + `docs/09` + perf rule say Figtree.)_
 - shadcn/ui base, `lucide-react` icons only, `@tanstack/react-table`/`-form`/`-query`, `recharts`, `sonner`. Other libs need Nikola's OK.
 - Destructive actions always go through `<ConfirmDialog>` (never `confirm()`/`alert()`). Skeletons not spinners. Empty/loading/error states on every list. Permission gating via `<Can>` + route `beforeLoad` (UI is courtesy).
+- **internal-web imports Tiptap's `_variables.scss` with `layer(base)` — do not remove the `layer()`.** That file ends with `:root { &, *, ::before, ::after { transition: none … } }`, and **unlayered CSS beats every layer regardless of specificity**, so unlayered it put `transition-property: none` on every element and silently killed EVERY Tailwind transition in the app (`transition-colors`, hovers, the intake fuel needle) while the classes stayed in the markup and read as working. Found 2026-07-27 only because an animation "disappeared" after a reload. Symptom to recognise: a `transition-*` class computes `transition-property: none` with `duration 0.2s` and `cubic-bezier(0.46, 0.03, 0.52, 0.96)` — those are Tiptap's `--tt-*` defaults, not ours.
 
 ---
 

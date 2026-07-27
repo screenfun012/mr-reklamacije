@@ -5,8 +5,17 @@
 @import '@mr/tailwind-preset';
 @import 'tw-animate-css';
 
-/* Tiptap Simple Editor template (spike) */
-@import '../components/styles/_variables.scss';
+/*
+  Tiptap Simple Editor template (spike).
+
+  `_variables.scss` ends with `:root { &, *, ::before, ::after { transition: none ... } }`, which
+  lands `transition-property: none` on every element in the app. Unlayered CSS beats every layer
+  regardless of specificity, so that one declaration silently killed EVERY Tailwind transition in
+  internal-web — colours, hovers, the fuel needle — while the classes stayed in the markup and read
+  as working. Importing it into `base` puts it below `utilities`, where Tailwind's own rules win.
+  Tiptap's component stylesheets stay unlayered and keep overriding it inside the editor.
+*/
+@import '../components/styles/_variables.scss' layer(base);
 @import '../components/styles/_keyframe-animations.scss';
 
 @theme {
