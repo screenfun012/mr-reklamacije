@@ -488,6 +488,25 @@ export class IntakeOrdersRepository {
     return this.findById(id)
   }
 
+  /**
+   * `photos_expected` is what the tablet held at signing, so the indicator means "photos that
+   * never arrived". An office amendment must move the expectation with it, or removing a bad
+   * photo would claim photos were lost and adding one would silence a real loss.
+   *
+   * Floored in SQL: the column is nullable and carries `photos_expected >= 0`
+   * (intake_orders_photos_expected_check). It can legitimately already sit below the arrived
+   * count — a retry that lands twice, a stale count at signing — and `pendingPhotoCount` clamps
+   * that away, so a bare decrement would walk it under zero and raise a raw constraint error.
+   */
+  async shiftPhotosExpected(orderId: string, delta: number): Promise<void> {
+    await this.db
+      .update(intakeOrders)
+      .set({
+        photosExpected: sql`GREATEST(0, COALESCE(${intakeOrders.photosExpected}, 0) + ${delta})`,
+      })
+      .where(and(eq(intakeOrders.id, orderId), isNull(intakeOrders.deletedAt)))
+  }
+
   async setStatus(id: string, status: string): Promise<IntakeOrderDetail | null> {
     await this.db
       .update(intakeOrders)

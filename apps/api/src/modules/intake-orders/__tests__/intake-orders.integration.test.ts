@@ -13,6 +13,7 @@ import {
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import type { AttachmentUploadFileInput } from '../../../core/attachments/attachment-upload-pipeline.js'
 import type { Container } from '../../../core/container.js'
 import {
   ConflictError,
@@ -62,7 +63,7 @@ const JPEG = Buffer.from(
   'base64',
 )
 
-function photoInput(name = 'IMG_01.jpg') {
+function photoInput(name = 'IMG_01.jpg'): AttachmentUploadFileInput {
   return { fileName: name, data: JPEG, caption: null }
 }
 
@@ -105,6 +106,21 @@ describe('Intake orders integration', () => {
         ownerSignature: 'M 5 5 L 20 20',
         photosExpected: 0,
       },
+      actor,
+      actorContext(actor.id),
+    )
+    return created.id
+  }
+
+  /** A finished intake signed with a specific `photosExpected`, for the amendment-shift tests. */
+  async function signedOrderExpecting(
+    actor: IntakeOrdersActor,
+    photosExpected: number,
+  ): Promise<string> {
+    const created = await service.create(createInput(), actorContext(actor.id))
+    await service.sign(
+      created.id,
+      { technicianSignature: 'M 0 0 L 10 10', ownerSignature: 'M 5 5 L 20 20', photosExpected },
       actor,
       actorContext(actor.id),
     )
@@ -367,6 +383,23 @@ describe('Intake orders integration', () => {
       await expect(
         service.delete(created.id, office, actorContext(office.id)),
       ).resolves.toBeUndefined()
+    })
+
+    it('refuses the office deleting a photo from an unsigned draft too', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      const photo = await service.uploadPhoto(
+        created.id,
+        photoInput(),
+        null,
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      await expect(
+        service.deletePhoto(created.id, photo.id, office, actorContext(office.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
     })
 
     it('leaves the owning serviser free on his own draft', async () => {
@@ -816,6 +849,43 @@ describe('Intake orders integration', () => {
       // An image too small to be worth a thumbnail has none; the grid must still get a picture.
       expect(thumb.storagePath).toBe(original.storagePath)
       expect(thumb.etag).toBe(original.etag)
+    })
+
+    it('keeps the missing-photo count meaning one thing when the office amends', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrderExpecting(serviser, 3) // signed with photosExpected: 3, 0 arrived
+
+      await service.uploadPhoto(id, photoInput(), null, office, actorContext(office.id))
+
+      const afterAdd = await service.findById(id, office)
+      expect(afterAdd.photosPending).toBe(3)
+
+      const photo = afterAdd.photos[0]
+      expect(photo).toBeDefined()
+      await service.deletePhoto(id, photo!.id, office, actorContext(office.id))
+
+      const afterRemove = await service.findById(id, office)
+      expect(afterRemove.photosPending).toBe(3)
+    })
+
+    it('never drives photos_expected below zero, whatever the office removes', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrderExpecting(serviser, 0)
+
+      await service.uploadPhoto(id, photoInput(), null, office, actorContext(office.id))
+      const detail = await service.findById(id, office)
+      const photo = detail.photos[0]
+      expect(photo).toBeDefined()
+
+      // expected is 1 after the add; removing takes it to 0, and a second removal must not
+      // try to take it to -1 and hit intake_orders_photos_expected_check.
+      await expect(
+        service.deletePhoto(id, photo!.id, office, actorContext(office.id)),
+      ).resolves.toBeUndefined()
+      const after = await service.findById(id, office)
+      expect(after.photosPending).toBe(0)
     })
   })
 

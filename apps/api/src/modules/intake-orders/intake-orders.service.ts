@@ -573,6 +573,7 @@ export class IntakeOrdersService {
 
     if (isAmendment) {
       await this.repo.update(id, {}, auditContext.actorUserId)
+      await this.repo.shiftPhotosExpected(id, 1)
     }
 
     await this.audit.log({
@@ -620,6 +621,7 @@ export class IntakeOrdersService {
     await this.repo.softDeletePhoto(id, attachmentId)
     if (isAmendment) {
       await this.repo.update(id, {}, auditContext.actorUserId)
+      await this.repo.shiftPhotosExpected(id, -1)
     }
 
     await this.audit.log({
