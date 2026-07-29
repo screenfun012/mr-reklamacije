@@ -71,12 +71,19 @@ const CONDITION_FIELDS = ['checklist', 'fuelLevel', 'damages', 'equipmentNote'] 
  * fields that stay free (services, materials). The free edit still has to reach the Istorija
  * tab — it is the only change a signed work order allows — so it is tagged rather than left
  * transition-less, which is the shape the history projection drops (docs/25 V-6-1 §6.1).
+ *
+ * Takes `signedAt` itself (not a pre-computed boolean) so a swapped argument at the call site
+ * is a type error, not a silently-flipped transition — the same reason the return type is a
+ * closed union rather than `string | null`.
  */
-function updateTransition(signed: boolean, isAmendment: boolean): string | null {
+function updateTransition(
+  signedAt: string | null,
+  isAmendment: boolean,
+): 'amend_after_signing' | 'spec_updated' | null {
   if (isAmendment) {
     return 'amend_after_signing'
   }
-  if (signed) {
+  if (signedAt !== null) {
     return 'spec_updated'
   }
   return null
@@ -133,6 +140,29 @@ export class IntakeOrdersService {
     }
 
     return order
+  }
+
+  /**
+   * An unfinished intake may only be moved forward by the serviser who started it. Until now the
+   * rule lived only in the wizard's UI, while the server accepted the patch from anyone holding
+   * `intake_orders.update` — and V-6 adds a typeable second entrance to that draft
+   * (`/prijem/novi?resume=<id>`), so the gap stops being theoretical.
+   *
+   * 403, not 404: the row scope has already spoken. A serviser reaching for a colleague's draft
+   * never gets here — `loadVisible` gave him a 404 — so the only caller this can refuse is an
+   * office actor who legitimately knows the order exists.
+   *
+   * `delete` is deliberately NOT guarded: the office throwing away the draft of a serviser who
+   * left the firm is a rule of its own (docs/25 §3.3.5).
+   */
+  private assertDraftOwner(order: IntakeOrderDetail, actor: IntakeOrdersActor): void {
+    if (order.signedAt !== null) {
+      return
+    }
+    if (order.technicianId === actor.id) {
+      return
+    }
+    throw new ForbiddenError('An unfinished intake can only be continued by its own serviser')
   }
 
   async list(
@@ -249,6 +279,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const before = await this.loadVisible(id, actor)
+    this.assertDraftOwner(before, actor)
 
     if (patch.orderNumber !== undefined) {
       await this.assertNumberFree(normalizeOrderNumberKey(patch.orderNumber), id)
@@ -265,7 +296,7 @@ export class IntakeOrdersService {
       throw new NotFoundError('Intake order', id)
     }
 
-    const transition = updateTransition(before.signedAt !== null, isAmendment)
+    const transition = updateTransition(before.signedAt, isAmendment)
 
     await this.audit.log({
       entityType: 'intake_order',
@@ -353,6 +384,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const before = await this.loadVisible(id, actor)
+    this.assertDraftOwner(before, actor)
 
     if (before.signedAt !== null) {
       throw new ConflictError('Intake order is already signed')
@@ -498,6 +530,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderPhoto> {
     const order = await this.loadVisible(id, actor)
+    this.assertDraftOwner(order, actor)
 
     if (damageId !== null && !order.damages.some((damage) => damage.id === damageId)) {
       throw new ValidationError('That damage does not exist on this intake order')
@@ -573,6 +606,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<void> {
     const order = await this.loadVisible(id, actor)
+    this.assertDraftOwner(order, actor)
     const photo = await this.repo.findPhoto(id, attachmentId)
     if (photo === null) {
       throw new NotFoundError('Intake photo', attachmentId)

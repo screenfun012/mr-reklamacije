@@ -56,6 +56,16 @@ function createInput(overrides: Partial<IntakeOrderCreateInput> = {}): IntakeOrd
   }
 }
 
+/** A 1x1 JPEG — real magic bytes, because the pipeline checks them. */
+const JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwcJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDs0NDL/wAALCAABAAEBAREA/8QAFAABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AmAA=',
+  'base64',
+)
+
+function photoInput(name = 'IMG_01.jpg') {
+  return { fileName: name, data: JPEG, caption: null }
+}
+
 describe('Intake orders integration', () => {
   let ctx: TestDbContext
   let container: Container
@@ -327,6 +337,52 @@ describe('Intake orders integration', () => {
     })
   })
 
+  describe('an unfinished intake belongs to its serviser', () => {
+    it('refuses the office on every mutating path while the intake is unsigned', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      await expect(
+        service.update(created.id, { fuelLevel: 4 }, office, actorContext(office.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+      await expect(
+        service.sign(
+          created.id,
+          { technicianSignature: 'M 0 0 L 1 1', ownerSignature: 'M 0 0 L 1 1', photosExpected: 0 },
+          office,
+          actorContext(office.id),
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+      await expect(
+        service.uploadPhoto(created.id, photoInput(), null, office, actorContext(office.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('still lets the office throw an abandoned draft away', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      await expect(
+        service.delete(created.id, office, actorContext(office.id)),
+      ).resolves.toBeUndefined()
+    })
+
+    it('leaves the owning serviser free on his own draft', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      const updated = await service.update(
+        created.id,
+        { fuelLevel: 4 },
+        serviser,
+        actorContext(serviser.id),
+      )
+      expect(updated.fuelLevel).toBe(4)
+    })
+  })
+
   describe('damage zones', () => {
     it('derives the zone from the coordinates and ignores whatever the client sent', async () => {
       const floor = await floorActor()
@@ -570,22 +626,12 @@ describe('Intake orders integration', () => {
   })
 
   describe('photos', () => {
-    /** A 1x1 JPEG — real magic bytes, because the pipeline checks them. */
-    const JPEG = Buffer.from(
-      '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwcJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDs0NDL/wAALCAABAAEBAREA/8QAFAABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AmAA=',
-      'base64',
-    )
-
-    function photoFile(name = 'IMG_01.jpg') {
-      return { fileName: name, data: JPEG, caption: null }
-    }
-
     it('lets a serviser delete his own photo while he is still filling the intake in', async () => {
       const floor = await floorActor()
       const draft = await service.create(createInput(), actorContext(floor.id))
       const photo = await service.uploadPhoto(
         draft.id,
-        photoFile(),
+        photoInput(),
         null,
         floor,
         actorContext(floor.id),
@@ -612,14 +658,14 @@ describe('Intake orders integration', () => {
 
       const bound = await service.uploadPhoto(
         draft.id,
-        photoFile(),
+        photoInput(),
         'd1',
         floor,
         actorContext(floor.id),
       )
       const kept = await service.uploadPhoto(
         draft.id,
-        photoFile('b.jpg'),
+        photoInput('b.jpg'),
         'd2',
         floor,
         actorContext(floor.id),
@@ -656,7 +702,7 @@ describe('Intake orders integration', () => {
       )
       const photo = await service.uploadPhoto(
         draft.id,
-        photoFile(),
+        photoInput(),
         'd1',
         floor,
         actorContext(floor.id),
@@ -674,7 +720,7 @@ describe('Intake orders integration', () => {
       const created = await service.create(createInput(), actorContext(floor.id))
       const photo = await service.uploadPhoto(
         created.id,
-        photoFile(),
+        photoInput(),
         null,
         floor,
         actorContext(floor.id),
@@ -699,7 +745,7 @@ describe('Intake orders integration', () => {
       // signature, so it must not read as an amendment.
       const photo = await service.uploadPhoto(
         orderId,
-        photoFile(),
+        photoInput(),
         null,
         floor,
         actorContext(floor.id),
@@ -715,7 +761,7 @@ describe('Intake orders integration', () => {
       const office = await officeActor('Ana')
       const orderId = await signedOrder(floor)
 
-      await service.uploadPhoto(orderId, photoFile(), null, office, actorContext(office.id))
+      await service.uploadPhoto(orderId, photoInput(), null, office, actorContext(office.id))
 
       const after = await service.findById(orderId, office)
       expect(after.amendedAt).not.toBeNull()
@@ -727,7 +773,7 @@ describe('Intake orders integration', () => {
       const draft = await service.create(createInput(), actorContext(floor.id))
 
       await expect(
-        service.uploadPhoto(draft.id, photoFile(), 'nema-me', floor, actorContext(floor.id)),
+        service.uploadPhoto(draft.id, photoInput(), 'nema-me', floor, actorContext(floor.id)),
       ).rejects.toBeInstanceOf(ValidationError)
     })
 
@@ -737,7 +783,7 @@ describe('Intake orders integration', () => {
       const orderId = await signedOrder(theirs)
       const photo = await service.uploadPhoto(
         orderId,
-        photoFile(),
+        photoInput(),
         null,
         theirs,
         actorContext(theirs.id),
@@ -756,7 +802,7 @@ describe('Intake orders integration', () => {
       const draft = await service.create(createInput(), actorContext(floor.id))
       const photo = await service.uploadPhoto(
         draft.id,
-        photoFile(),
+        photoInput(),
         null,
         floor,
         actorContext(floor.id),
