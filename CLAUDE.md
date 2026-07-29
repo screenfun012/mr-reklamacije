@@ -71,7 +71,8 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 - **Migrations and auth are touched only with explicit approval.** For a migration: verify the journal first, generate via `drizzle-kit` (never hand-write SQL), prove clean migrate-from-zero on an empty DB, and confirm it's only the intended DDL before applying.
 - **Show design decisions before applying** (e.g. color-token mappings, anything that changes visible behavior). If a needed token/resource is missing, propose the mapping and wait.
 - **Full CI gate must be green before any commit.**
-- **Commit only when explicitly asked**; use conventional-commit messages. **Nikola pushes** (you don't `git push`). After a push he restarts & verifies in the browser.
+- **Commit only when explicitly asked**; use conventional-commit messages. An approved plan whose tasks each end in a commit **is** that ask — you don't re-ask per task.
+- **You push, and the bar is the work, not permission** (changed by Nikola 2026-07-30; the old rule was "Nikola pushes, you don't"). Push when the work is genuinely finished: full gate green, no holes, no krpljenje, and nothing "packaged so it makes sense now and gives us a headache later" — his words. If any of that is missing, don't push and say why. Feature branches don't deploy (Railway watches `main`), so a push there costs nothing but protects the work; a push that puts unverified code in front of him is the thing this rule exists to prevent. After a push he restarts & verifies in the browser.
 - **Never start or kill the dev servers.** `pnpm dev:all` lives in Nikola's terminal. For verification use one-off commands that exit (tests, `pnpm dev:check`), never touch his session.
 - **Never interrupt `pnpm install`** (a partial install corrupts `node_modules`).
 - When a rule/doc contradicts reality, say so explicitly and let Nikola decide — don't silently pick one.
