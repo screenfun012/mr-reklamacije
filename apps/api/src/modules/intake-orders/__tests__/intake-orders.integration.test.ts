@@ -861,9 +861,11 @@ describe('Intake orders integration', () => {
       const afterAdd = await service.findById(id, office)
       expect(afterAdd.photosPending).toBe(3)
 
-      const photo = afterAdd.photos[0]
-      expect(photo).toBeDefined()
-      await service.deletePhoto(id, photo!.id, office, actorContext(office.id))
+      const [photo] = afterAdd.photos
+      if (photo === undefined) {
+        throw new Error('expected an uploaded photo')
+      }
+      await service.deletePhoto(id, photo.id, office, actorContext(office.id))
 
       const afterRemove = await service.findById(id, office)
       expect(afterRemove.photosPending).toBe(3)
@@ -874,15 +876,23 @@ describe('Intake orders integration', () => {
       const office = await officeActor()
       const id = await signedOrderExpecting(serviser, 0)
 
-      await service.uploadPhoto(id, photoInput(), null, office, actorContext(office.id))
-      const detail = await service.findById(id, office)
-      const photo = detail.photos[0]
-      expect(photo).toBeDefined()
+      // The order's own serviser uploading after signing is a late arrival, not an amendment
+      // (see `isLateArrival` in uploadPhoto) — arrived rises to 1 while photos_expected stays
+      // at 0. That is the legitimate "arrived exceeds expected" state the column's comment
+      // describes, and the only way to reach it without violating the freeze at signing.
+      const photo = await service.uploadPhoto(
+        id,
+        photoInput(),
+        null,
+        serviser,
+        actorContext(serviser.id),
+      )
 
-      // expected is 1 after the add; removing takes it to 0, and a second removal must not
-      // try to take it to -1 and hit intake_orders_photos_expected_check.
+      // The office removing it IS an amendment, and attempts photos_expected: 0 - 1 — the one
+      // case where GREATEST(0, …) actually differs from a bare decrement and would otherwise
+      // hit intake_orders_photos_expected_check.
       await expect(
-        service.deletePhoto(id, photo!.id, office, actorContext(office.id)),
+        service.deletePhoto(id, photo.id, office, actorContext(office.id)),
       ).resolves.toBeUndefined()
       const after = await service.findById(id, office)
       expect(after.photosPending).toBe(0)
