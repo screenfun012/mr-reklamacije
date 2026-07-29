@@ -606,7 +606,24 @@ export class IntakeOrdersRepository {
       })
       .from(auditLog)
       .leftJoin(users, eq(users.id, auditLog.actorUserId))
-      .where(and(eq(auditLog.entityType, 'intake_order'), eq(auditLog.entityId, orderId)))
+      .where(
+        and(
+          eq(auditLog.entityType, 'intake_order'),
+          eq(auditLog.entityId, orderId),
+          // The intake being filled in is not a change TO the intake: the wizard's own step
+          // patches carry no transition, and a photo that arrives or is retaken before the
+          // signature is the same intake still in progress. Keyed on the transition, not the
+          // action — a photo removal audits as Delete, so "keep every delete" would keep it.
+          // COALESCE is load-bearing: the `create` row has no `transition` key at all, so a
+          // bare `->>'transition' IN (...)` reads SQL NULL there — NULL OR FALSE is NULL in
+          // three-valued logic, and a WHERE clause drops a NULL row exactly like a FALSE one,
+          // silently erasing every order's own creation from its history.
+          sql`NOT (
+            COALESCE(${auditLog.changes}->>'transition', '') IN ('photo_uploaded', 'photo_removed')
+            OR (${auditLog.action} = 'update' AND ${auditLog.changes}->>'transition' IS NULL)
+          )`,
+        ),
+      )
       .orderBy(desc(auditLog.createdAt))
 
     return rows.map((row) => {

@@ -485,21 +485,30 @@ describe('Intake orders integration', () => {
   })
 
   describe('history', () => {
-    it('tells the story of the order in the order it happened, newest first', async () => {
+    it('tells the story of the order — create, sign, advance, each correctly projected', async () => {
       const floor = await floorActor()
       const orderId = await signedOrder(floor)
       await service.advance(orderId, floor, actorContext(floor.id))
 
       const history = await service.listHistory(orderId, floor)
 
-      // create → sign → advance, newest first.
+      // create → sign → advance — all three land inside this ONE test's single wrapping
+      // transaction (test-helpers/test-db.ts), and Postgres's `now()` is frozen for the
+      // whole transaction, so the three audit rows get a byte-identical `created_at`.
+      // Which tied row `ORDER BY created_at DESC` puts first is then an unspecified
+      // implementation detail, not a guarantee — it silently flipped when an unrelated
+      // WHERE-clause addition changed the query plan. So this asserts on what each event
+      // recorded, not on their tied position. Two genuinely separate HTTP requests in
+      // production get distinct timestamps, where newest-first is unambiguous.
       expect(history).toHaveLength(3)
-      expect(history[0]?.transition).toBe('advance')
-      expect(history[0]?.fromStatus).toBe('primljeno')
-      expect(history[0]?.toStatus).toBe('u_radu')
-      expect(history[1]?.transition).toBe('sign')
-      expect(history[2]?.action).toBe('create')
-      expect(history[0]?.actorName).not.toBeNull()
+      const advance = history.find((row) => row.transition === 'advance')
+      const sign = history.find((row) => row.transition === 'sign')
+      const create = history.find((row) => row.action === 'create')
+      expect(advance?.fromStatus).toBe('primljeno')
+      expect(advance?.toStatus).toBe('u_radu')
+      expect(sign).toBeDefined()
+      expect(create).toBeDefined()
+      expect(history.every((row) => row.actorName !== null)).toBe(true)
     })
 
     /**
@@ -535,6 +544,28 @@ describe('Intake orders integration', () => {
         'transition',
       ])
       expect(JSON.stringify(history)).not.toContain('M 0 0 L 10 10')
+    })
+
+    it('keeps a post-signing services edit — the one edit a signed order still allows', async () => {
+      const actor = await floorActor()
+      const id = await signedOrder(actor)
+
+      await service.update(id, { services: ['Zamena filtera'] }, actor, actorContext(actor.id))
+
+      const history = await service.listHistory(id, actor)
+      const specRows = history.filter((row) => row.transition === 'spec_updated')
+      expect(specRows).toHaveLength(1)
+    })
+
+    it('leaves the wizard out of the story — filling an intake in is not a change to it', async () => {
+      const actor = await floorActor()
+      const created = await service.create(createInput(), actorContext(actor.id))
+      await service.update(created.id, { draftStep: 2 }, actor, actorContext(actor.id))
+      await service.update(created.id, { fuelLevel: 5 }, actor, actorContext(actor.id))
+
+      const history = await service.listHistory(created.id, actor)
+      expect(history).toHaveLength(1)
+      expect(history[0]?.action).toBe('create')
     })
   })
 

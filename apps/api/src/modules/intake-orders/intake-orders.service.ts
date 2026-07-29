@@ -66,6 +66,22 @@ const FREE_AFTER_SIGNING = ['services', 'materials'] as const
 /** The intake condition — correcting it after signing requires `intake_orders.amend`. */
 const CONDITION_FIELDS = ['checklist', 'fuelLevel', 'damages', 'equipmentNote'] as const
 
+/**
+ * A patch of a SIGNED order is either an amendment of the condition or an edit of the two
+ * fields that stay free (services, materials). The free edit still has to reach the Istorija
+ * tab — it is the only change a signed work order allows — so it is tagged rather than left
+ * transition-less, which is the shape the history projection drops (docs/25 V-6-1 §6.1).
+ */
+function updateTransition(signed: boolean, isAmendment: boolean): string | null {
+  if (isAmendment) {
+    return 'amend_after_signing'
+  }
+  if (signed) {
+    return 'spec_updated'
+  }
+  return null
+}
+
 function resolveScope(actor: IntakeOrdersActor): IntakeOrdersListScope {
   if (actor.permissions.includes('intake_orders.view')) {
     return { type: 'all' }
@@ -249,6 +265,8 @@ export class IntakeOrdersService {
       throw new NotFoundError('Intake order', id)
     }
 
+    const transition = updateTransition(before.signedAt !== null, isAmendment)
+
     await this.audit.log({
       entityType: 'intake_order',
       entityId: id,
@@ -256,9 +274,8 @@ export class IntakeOrdersService {
       actorUserId: auditContext.actorUserId,
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
-      changes: isAmendment
-        ? { before, after: updated, transition: 'amend_after_signing' }
-        : { before, after: updated },
+      changes:
+        transition === null ? { before, after: updated } : { before, after: updated, transition },
     })
 
     this.signalChanged()
