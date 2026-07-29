@@ -6,7 +6,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { ZodError } from 'zod'
 
 import { AppError } from '../errors/app-error.js'
-import { MrKeyConflictError } from '../errors/domain-errors.js'
+import { ConflictError, MrKeyConflictError } from '../errors/domain-errors.js'
 
 /** Error code for the statuses Hono's own middleware raises. */
 const HTTP_EXCEPTION_CODES: Readonly<Record<number, ErrorCode>> = {
@@ -95,6 +95,8 @@ export function registerGlobalErrorHandler<E extends Env>(app: Hono<E>, logger: 
 
       if (err instanceof MrKeyConflictError) {
         errorBody.details = err.existingClaim
+      } else if (err instanceof ConflictError && err.details !== undefined) {
+        errorBody.details = err.details
       }
 
       return c.json({ error: errorBody }, err.status as ContentfulStatusCode)

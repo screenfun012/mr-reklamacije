@@ -89,6 +89,7 @@ interface OrderRow {
   signedAt: Date | null
   amendedAt: Date | null
   amendedByName: string | null
+  deletedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -157,6 +158,7 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
     amendedAt: row.amendedAt === null ? null : row.amendedAt.toISOString(),
     amendedByName: row.amendedByName,
+    deletedAt: row.deletedAt === null ? null : row.deletedAt.toISOString(),
     photosPending: pendingPhotoCount(row.photosExpected, photos.length),
     photos,
     createdAt: row.createdAt.toISOString(),
@@ -201,18 +203,32 @@ export class IntakeOrdersRepository {
       signedAt: intakeOrders.signedAt,
       amendedAt: intakeOrders.amendedAt,
       amendedByName: amender.name,
+      deletedAt: intakeOrders.deletedAt,
       createdAt: intakeOrders.createdAt,
       updatedAt: intakeOrders.updatedAt,
     }
   }
 
-  async findById(id: string): Promise<IntakeOrderDetail | null> {
+  /**
+   * `includeDeleted` is off by default, so every existing caller keeps hiding removed rows.
+   * The service turns it on only for an actor who may put the order back — reading a removal
+   * is how the correction is offered at all (docs/25 V-6-1 §6.4).
+   */
+  async findById(
+    id: string,
+    options: { includeDeleted?: boolean } = {},
+  ): Promise<IntakeOrderDetail | null> {
+    const conditions = [eq(intakeOrders.id, id)]
+    if (options.includeDeleted !== true) {
+      conditions.push(isNull(intakeOrders.deletedAt))
+    }
+
     const [row] = await this.db
       .select(this.detailSelection())
       .from(intakeOrders)
       .leftJoin(users, eq(users.id, intakeOrders.technicianId))
       .leftJoin(amender, eq(amender.id, intakeOrders.amendedBy))
-      .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+      .where(and(...conditions))
       .limit(1)
 
     if (!row) {
@@ -671,6 +687,14 @@ export class IntakeOrdersRepository {
       .update(intakeOrders)
       .set({ deletedAt: new Date() })
       .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+  }
+
+  /** Puts a removed order back on the list. The caller has already proven the number is free. */
+  async restore(id: string): Promise<void> {
+    await this.db
+      .update(intakeOrders)
+      .set({ deletedAt: null })
+      .where(and(eq(intakeOrders.id, id), isNotNull(intakeOrders.deletedAt)))
   }
 
   /**

@@ -143,6 +143,14 @@ export function createIntakeOrdersController(container: Container) {
       return c.body(null, 204)
     },
 
+    restore: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      return c.json(
+        await container.intakeOrdersService.restore(id, actorOf(user), getActorContext(c, user)),
+      )
+    },
+
     /**
      * One photo per request. The tablet uploads in the background while the serviser works
      * through steps 4 and 5, so a single failure must retry on its own rather than take a whole

@@ -214,6 +214,14 @@ export function deleteIntakeOrder(id: string): Promise<void> {
   return fetchNoContent(`/api/intake-orders/${id}`, { method: 'DELETE' })
 }
 
+/**
+ * Puts a removed order back on the list. Same permission as the removal, and idempotent — an
+ * order that is still on the list comes back unchanged.
+ */
+export function restoreIntakeOrder(id: string): Promise<IntakeOrderDetail> {
+  return fetchJson<IntakeOrderDetail>(`/api/intake-orders/${id}/restore`, { method: 'POST' })
+}
+
 export function deleteIntakeOrderPhoto(id: string, attachmentId: string): Promise<void> {
   return fetchNoContent(`/api/intake-orders/${id}/photos/${attachmentId}`, { method: 'DELETE' })
 }

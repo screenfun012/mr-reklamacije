@@ -63,6 +63,10 @@ export function registerIntakeOrdersRoutes(
     requirePermissions('intake_orders.update', 'intake_orders.delete'),
     controller.delete,
   )
+  // Whoever may remove may put back — the office corrects its own mistakes rather than
+  // living with a one-way delete (docs/25 V-6-1 §6.4). Only a signed order can be removed,
+  // and removing one already requires `delete`, so this needs nothing wider.
+  routes.post('/:id/restore', requirePermission('intake_orders.delete'), controller.restore)
 
   app.route('/api/intake-orders', routes)
 }

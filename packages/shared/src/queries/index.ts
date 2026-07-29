@@ -151,6 +151,7 @@ export {
   intakeOrderSummaryOptions,
   intakeOrdersListOptions,
   intakePlateLookupOptions,
+  restoreIntakeOrder,
   signIntakeOrder,
   updateIntakeOrder,
   type IntakeOrderListFilters,

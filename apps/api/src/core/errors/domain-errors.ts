@@ -35,9 +35,17 @@ export class UnprocessableEntityError extends AppError {
   }
 }
 
+/**
+ * `details` is optional and reaches the client in the envelope's `details` field, so a
+ * conflict can name the row the caller has to go and look at — a bare 409 leaves them
+ * guessing. Omit it and the envelope is byte-identical to before.
+ */
 export class ConflictError extends AppError {
-  constructor(message: string) {
+  readonly details: Record<string, unknown> | undefined
+
+  constructor(message: string, details?: Record<string, unknown>) {
     super(ERROR_CODE.Conflict, 409, message)
+    this.details = details
     Object.setPrototypeOf(this, ConflictError.prototype)
   }
 }

@@ -126,10 +126,16 @@ export class IntakeOrdersService {
    * Loads an order the actor is allowed to touch. A row outside the actor's scope answers
    * 404, never 403 — a serviser must not be able to learn that a colleague's order exists
    * (house rule; this is the class of bug that leaked once already).
+   *
+   * A REMOVED order is readable only by an actor holding `intake_orders.delete`: they are the
+   * ones who can put it back, and the correction cannot be offered on a screen that 404s. To
+   * everyone else a removed order is as invisible as a colleague's — the same 404.
    */
   private async loadVisible(id: string, actor: IntakeOrdersActor): Promise<IntakeOrderDetail> {
     const scope = resolveScope(actor)
-    const order = await this.repo.findById(id)
+    const order = await this.repo.findById(id, {
+      includeDeleted: actor.permissions.includes('intake_orders.delete'),
+    })
 
     if (order === null) {
       throw new NotFoundError('Intake order', id)
@@ -163,6 +169,21 @@ export class IntakeOrdersService {
       return
     }
     throw new ForbiddenError('An unfinished intake can only be continued by its own serviser')
+  }
+
+  /**
+   * A removed order is read-only until it is put back — anything else fabricates history. Every
+   * mutating path carries it, `delete` included: a stale tab pressing "ukloni" twice would
+   * otherwise write a second removal line for a removal that never happened and answer 204.
+   *
+   * The reads are deliberately exempt (`findById`, `listHistory`, `restore`) — they are what the
+   * removed-order screen is built on.
+   */
+  private assertNotDeleted(order: IntakeOrderDetail): void {
+    if (order.deletedAt === null) {
+      return
+    }
+    throw new ConflictError('Intake order is removed from the list — restore it first')
   }
 
   async list(
@@ -279,6 +300,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const before = await this.loadVisible(id, actor)
+    this.assertNotDeleted(before)
     this.assertDraftOwner(before, actor)
 
     if (patch.orderNumber !== undefined) {
@@ -384,6 +406,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const before = await this.loadVisible(id, actor)
+    this.assertNotDeleted(before)
     this.assertDraftOwner(before, actor)
 
     if (before.signedAt !== null) {
@@ -416,6 +439,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const before = await this.loadVisible(id, actor)
+    this.assertNotDeleted(before)
     this.assertSignedForStatusChange(before)
 
     return this.applyStatus(id, nextStatus(before.status), before, 'advance', auditContext)
@@ -429,6 +453,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const before = await this.loadVisible(id, actor)
+    this.assertNotDeleted(before)
     this.assertSignedForStatusChange(before)
 
     if (before.status === input.status) {
@@ -485,6 +510,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<void> {
     const before = await this.loadVisible(id, actor)
+    this.assertNotDeleted(before)
 
     if (before.signedAt === null) {
       await this.repo.hardDelete(id)
@@ -512,6 +538,51 @@ export class IntakeOrdersService {
   }
 
   /**
+   * Puts a removed order back on the list. Same permission as the removal — whoever may remove
+   * may put back, so the office corrects its own mis-tap instead of living with a one-way door
+   * (docs/25 V-6-1 §6.4). Idempotent: an order still on the list is returned untouched, with
+   * nothing recorded, because nothing was corrected.
+   */
+  async restore(
+    id: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderDetail> {
+    const before = await this.loadVisible(id, actor)
+    if (before.deletedAt === null) {
+      return before
+    }
+
+    // Removing an order releases its number: the unique index is partial on live rows. So the
+    // number may be somebody else's by now, and the database would answer that with a raw 23505
+    // rather than something the office can act on. `findByNumberKey` sees live rows only, and
+    // this order is not one of them (the early return above), so it can never match itself.
+    const clash = await this.repo.findByNumberKey(normalizeOrderNumberKey(before.orderNumber))
+    if (clash !== null) {
+      throw new ConflictError('That order number is in use by a live order', { orderId: clash.id })
+    }
+
+    await this.repo.restore(id)
+    const restored = await this.repo.findById(id)
+    if (restored === null) {
+      throw new NotFoundError('Intake order', id)
+    }
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { before, after: restored, transition: 'restore' },
+    })
+
+    this.signalChanged()
+    return restored
+  }
+
+  /**
    * A photo arriving for an order that is ALREADY SIGNED is accepted, not rejected (Nikola,
    * 2026-07-27). The tablet uploads in the background while the serviser works through steps 4
    * and 5, so a photo can legitimately land after the signature — it was taken before it, and
@@ -530,6 +601,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderPhoto> {
     const order = await this.loadVisible(id, actor)
+    this.assertNotDeleted(order)
     this.assertDraftOwner(order, actor)
 
     if (damageId !== null && !order.damages.some((damage) => damage.id === damageId)) {
@@ -607,6 +679,7 @@ export class IntakeOrdersService {
     auditContext: HttpActorContext,
   ): Promise<void> {
     const order = await this.loadVisible(id, actor)
+    this.assertNotDeleted(order)
     this.assertDraftOwner(order, actor)
     const photo = await this.repo.findPhoto(id, attachmentId)
     if (photo === null) {

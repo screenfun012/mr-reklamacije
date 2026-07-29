@@ -237,6 +237,12 @@ export const IntakeOrderDetailSchema = z.object({
   signedAt: z.string().nullable(),
   amendedAt: z.string().nullable(),
   amendedByName: z.string().nullable(),
+  /**
+   * NULL for a live order. Present so the detail can tell a removed order from a live one —
+   * without it the screen would have to infer the state from which list the user arrived
+   * through, and would draw the action row on an order that is off the list.
+   */
+  deletedAt: z.string().nullable(),
   photosPending: z.number().int().nonnegative(),
   photos: z.array(IntakeOrderPhotoSchema),
   createdAt: z.string(),

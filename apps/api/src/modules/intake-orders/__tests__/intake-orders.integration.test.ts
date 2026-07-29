@@ -544,7 +544,155 @@ describe('Intake orders integration', () => {
         .from(schema.intakeOrders)
         .where(eq(schema.intakeOrders.id, orderId))
       expect(row?.deletedAt).not.toBeNull()
-      await expect(service.findById(orderId, office)).rejects.toBeInstanceOf(NotFoundError)
+      // The office is the one actor that must still READ it: it holds `delete`, so it also holds
+      // the correction, and the screen cannot offer "vrati na listu" for an order it cannot open.
+      // The 404 therefore moves to an actor without `delete` — a removed order stays as invisible
+      // to the shop floor as a colleague's order is.
+      await expect(service.findById(orderId, floor)).rejects.toBeInstanceOf(NotFoundError)
+    })
+  })
+
+  describe('restore', () => {
+    it('brings a removed order back to the list', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const number = uniqueNumber('back')
+      const id = await signedOrder(serviser, { orderNumber: number })
+      await service.delete(id, office, actorContext(office.id))
+
+      const gone = await service.list(office, {
+        search: number,
+        unfinished: false,
+        page: 1,
+        pageSize: 25,
+      })
+      expect(gone.items).toHaveLength(0)
+
+      const restored = await service.restore(id, office, actorContext(office.id))
+      expect(restored.deletedAt).toBeNull()
+
+      const back = await service.list(office, {
+        search: number,
+        unfinished: false,
+        page: 1,
+        pageSize: 25,
+      })
+      expect(back.items.map((item) => item.id)).toEqual([id])
+      // "greška se ispravlja, ali se ne krije" — the correction is a line in the record, not a
+      // silent reversal, and the projection keeps `restore` (docs/25 V-6-1 §6.4).
+      const history = await service.listHistory(id, office)
+      expect(history.some((row) => row.transition === 'restore')).toBe(true)
+    })
+
+    it('lets the office read a removed order while everyone else still gets a 404', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(serviser)
+      await service.delete(id, office, actorContext(office.id))
+
+      const seen = await service.findById(id, office)
+      expect(seen.deletedAt).not.toBeNull()
+
+      await expect(service.findById(id, serviser)).rejects.toBeInstanceOf(NotFoundError)
+      // Restore must not become the hole in row-level scope that the detail is not.
+      await expect(service.restore(id, serviser, actorContext(serviser.id))).rejects.toBeInstanceOf(
+        NotFoundError,
+      )
+    })
+
+    it('refuses to restore onto a number somebody else has taken since', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const number = uniqueNumber('clash')
+      const id = await signedOrder(serviser, { orderNumber: number })
+      await service.delete(id, office, actorContext(office.id))
+
+      const replacement = await service.create(
+        createInput({ orderNumber: number }),
+        actorContext(serviser.id),
+      )
+
+      const failure = await service.restore(id, office, actorContext(office.id)).catch((e) => e)
+      expect(failure).toBeInstanceOf(ConflictError)
+      // The office needs to reach the order now holding the number — a bare 409 leaves it
+      // guessing which sheet took it.
+      expect((failure as { details?: unknown }).details).toEqual({ orderId: replacement.id })
+    })
+
+    it('refuses a second removal of an order already off the list', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(serviser)
+      await service.delete(id, office, actorContext(office.id))
+
+      // A stale browser tab pressing "ukloni" twice must not write a second removal line for
+      // a removal that never happened — and must not answer with a success toast either.
+      await expect(service.delete(id, office, actorContext(office.id))).rejects.toBeInstanceOf(
+        ConflictError,
+      )
+    })
+
+    it('is a no-op on an order that is still on the list', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(serviser)
+
+      const same = await service.restore(id, office, actorContext(office.id))
+
+      expect(same.deletedAt).toBeNull()
+      // Nothing was corrected, so nothing is recorded — and the clash check never runs against
+      // the order's own live number, which would otherwise 409 on itself.
+      const history = await service.listHistory(id, office)
+      expect(history.some((row) => row.transition === 'restore')).toBe(false)
+    })
+
+    it('leaves a removed order read-only on every mutating path until it is put back', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(serviser)
+      const photo = await service.uploadPhoto(
+        id,
+        photoInput(),
+        null,
+        serviser,
+        actorContext(serviser.id),
+      )
+      await service.delete(id, office, actorContext(office.id))
+
+      // Matched on the refusal itself, not just on "it threw": a removed row is invisible to
+      // every repository write, so several of these paths already fail for the wrong reason
+      // (a 404 from the re-read) while two — the photo paths — would silently succeed.
+      const readOnly = /removed from the list/
+      await expect(
+        service.update(id, { services: ['Zamena ulja'] }, office, actorContext(office.id)),
+      ).rejects.toThrow(readOnly)
+      await expect(
+        service.sign(
+          id,
+          { technicianSignature: 'M 0 0 L 1 1', ownerSignature: 'M 0 0 L 1 1', photosExpected: 0 },
+          office,
+          actorContext(office.id),
+        ),
+      ).rejects.toThrow(readOnly)
+      await expect(service.advance(id, office, actorContext(office.id))).rejects.toThrow(readOnly)
+      await expect(
+        service.changeStatus(
+          id,
+          { status: IntakeOrderStatus.InProgress },
+          office,
+          actorContext(office.id),
+        ),
+      ).rejects.toThrow(readOnly)
+      await expect(
+        service.uploadPhoto(id, photoInput('late.jpg'), null, office, actorContext(office.id)),
+      ).rejects.toThrow(readOnly)
+      await expect(
+        service.deletePhoto(id, photo.id, office, actorContext(office.id)),
+      ).rejects.toThrow(readOnly)
+
+      const after = await service.findById(id, office)
+      expect(after.photos).toHaveLength(1)
+      expect(after.status).toBe(IntakeOrderStatus.Received)
     })
   })
 

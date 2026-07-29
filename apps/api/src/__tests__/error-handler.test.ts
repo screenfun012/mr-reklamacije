@@ -6,7 +6,7 @@ import { requestId } from 'hono/request-id'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AppError } from '../core/errors/app-error.js'
-import { MrKeyConflictError } from '../core/errors/domain-errors.js'
+import { ConflictError, MrKeyConflictError } from '../core/errors/domain-errors.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
 
 function makeApp() {
@@ -71,6 +71,35 @@ describe('global error handler', () => {
       claimId: '11111111-1111-1111-1111-111111111111',
     })
     expect(body.error.code).toBe(ERROR_CODE.Conflict)
+  })
+
+  /**
+   * A conflict the caller can act on: the intake restore names the order that took the number
+   * back, so the office can open it instead of guessing which sheet holds it.
+   */
+  it("carries a ConflictError's own details in the same envelope shape", async () => {
+    const { app } = makeApp()
+    app.get('/conflict', () => {
+      throw new ConflictError('Taken', { orderId: '22222222-2222-2222-2222-222222222222' })
+    })
+
+    const res = await app.request('/conflict')
+
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { error: { details?: unknown } }
+    expect(body.error.details).toEqual({ orderId: '22222222-2222-2222-2222-222222222222' })
+  })
+
+  it('leaves a plain ConflictError without a details key at all', async () => {
+    const { app } = makeApp()
+    app.get('/conflict', () => {
+      throw new ConflictError('Taken')
+    })
+
+    const res = await app.request('/conflict')
+
+    const body = (await res.json()) as { error: Record<string, unknown> }
+    expect(body.error).toEqual({ code: ERROR_CODE.Conflict, message: 'Taken', status: 409 })
   })
 
   it('maps unknown error to generic 500', async () => {
