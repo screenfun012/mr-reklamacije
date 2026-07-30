@@ -48,7 +48,7 @@ export function ListPagination({
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-muted-foreground">
-        {m.emotive_claims_pagination_showing({ from, to, total })}
+        {m.list_pagination_showing({ from, to, total })}
       </p>
 
       <div className="flex flex-wrap items-center gap-3">

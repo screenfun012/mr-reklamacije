@@ -517,7 +517,7 @@
   "emotive_claims_pagination_page_of": "Page {page} of {totalPages}",
   "emotive_claims_pagination_per_page": "Per page",
   "emotive_claims_pagination_previous": "Previous page",
-  "emotive_claims_pagination_showing": "Showing {from}–{to} of {total} claims",
+  "list_pagination_showing": "Showing {from}–{to} of {total}",
   "emotive_claims_stage_in_progress": "In progress",
   "emotive_claims_stage_not_published_cue": "Not yet published",
   "emotive_claims_stage_published": "Published",

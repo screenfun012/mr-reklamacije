@@ -163,7 +163,7 @@ describe('Intake orders integration', () => {
     })
   })
 
-  describe('unfinished intakes', () => {
+  describe('list views', () => {
     it("keeps a draft out of the office's list but in its own serviser's", async () => {
       const floor = await floorActor()
       const office = await officeActor()
@@ -245,6 +245,24 @@ describe('Intake orders integration', () => {
 
       await expect(
         service.list(viewOnly, { view: 'deleted', page: 1, pageSize: 25 }),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    /*
+     * The own scope ignores `view` by design, so without the scope half of the guard this
+     * actor would be handed his ordinary LIVE list while having asked for the removed one —
+     * refused nowhere, and wrong silently. No seeded role pairs `view_own` with `delete`,
+     * but a custom role built in admin can.
+     */
+    it('refuses the removed view for an actor who may delete but sees only his own rows', async () => {
+      const ownPlusDelete: IntakeOrdersActor = {
+        id: await createUser('Own Plus Delete'),
+        permissions: ['intake_orders.view_own', 'intake_orders.delete'],
+      }
+      await service.create(createInput(), actorContext(ownPlusDelete.id))
+
+      await expect(
+        service.list(ownPlusDelete, { view: 'deleted', page: 1, pageSize: 25 }),
       ).rejects.toBeInstanceOf(ForbiddenError)
     })
 

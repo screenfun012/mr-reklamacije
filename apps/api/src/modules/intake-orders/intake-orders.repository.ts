@@ -277,7 +277,16 @@ export class IntakeOrdersRepository {
     }
 
     if (view === 'deleted') {
-      return and(isNotNull(intakeOrders.deletedAt), isNotNull(intakeOrders.signedAt))
+      /*
+       * Removed rows only. Deliberately NOT also `signed_at IS NOT NULL`: a draft is hard-
+       * deleted (`service.delete` branches on `before.signedAt === null`) so a soft-deleted
+       * unsigned row cannot exist, which made that condition filter nothing — while ensuring
+       * that if one ever DID appear it would be missing from `active` (removed), from
+       * `unfinished` (removed) and from here (unsigned), i.e. invisible everywhere with
+       * nothing raised. Without it such a row shows up here, which is where someone would
+       * look for it.
+       */
+      return isNotNull(intakeOrders.deletedAt)
     }
 
     const live = isNull(intakeOrders.deletedAt)

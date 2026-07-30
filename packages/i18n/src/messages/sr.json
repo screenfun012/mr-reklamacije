@@ -517,7 +517,7 @@
   "emotive_claims_pagination_page_of": "Stranica {page} od {totalPages}",
   "emotive_claims_pagination_per_page": "Po stranici",
   "emotive_claims_pagination_previous": "Prethodna strana",
-  "emotive_claims_pagination_showing": "Prikazano {from}–{to} od {total} reklamacija",
+  "list_pagination_showing": "Prikazano {from}–{to} od {total}",
   "emotive_claims_stage_in_progress": "U obradi",
   "emotive_claims_stage_not_published_cue": "Još nije objavljeno",
   "emotive_claims_stage_published": "Objavljeno",

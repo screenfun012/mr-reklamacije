@@ -1,12 +1,24 @@
 import { m } from '@mr/i18n'
-import type { IntakeOrderListView, IntakeOrderStatus } from '@mr/shared'
+import {
+  intakeOrderListViewValues,
+  type IntakeOrderListView,
+  type IntakeOrderStatus,
+} from '@mr/shared'
 import { cn } from '@mr/ui'
 import { Search } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
 
+import { InternalSelect } from '~/components/internal-field'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_ORDER } from './intake-status'
 
 const SEARCH_DEBOUNCE_MS = 300
+
+/** Keyed off the shared const, so a fourth view cannot be added without a label for it. */
+const VIEW_LABELS: Record<IntakeOrderListView, () => string> = {
+  active: m.intake_filter_view_active,
+  unfinished: m.intake_filter_view_unfinished,
+  deleted: m.intake_filter_view_deleted,
+}
 
 export interface IntakeFilterBarProps {
   status: IntakeOrderStatus | undefined
@@ -87,15 +99,28 @@ export function IntakeFilterBar({
       {showViewSelect ? (
         <label className="flex min-h-11 flex-none items-center gap-2 text-[12.5px] font-semibold text-mri-text2">
           {m.intake_filter_view()}
-          <select
+          {/* `InternalSelect`, not a bare `<select>`: the design system already dresses selects
+              (tinted background, --border2 frame, red focus ring) and a raw one rendered as the
+              browser's default control in the middle of the bar. `h-11` keeps the 44px touch
+              target the filter row was measured at. */}
+          <InternalSelect
             value={view}
-            onChange={(event) => onViewChange(event.target.value as IntakeOrderListView)}
-            className="h-11 rounded-[9px] border border-mri-border2 bg-mri-inbg px-2.5 text-mri-text"
+            /* Narrowed through the shared const rather than asserted: `event.target.value` is
+               genuinely a string, and an `as` here would be a promise the DOM never made. */
+            onChange={(event) => {
+              const next = intakeOrderListViewValues.find((value) => value === event.target.value)
+              if (next !== undefined) {
+                onViewChange(next)
+              }
+            }}
+            className="h-11 w-auto"
           >
-            <option value="active">{m.intake_filter_view_active()}</option>
-            <option value="unfinished">{m.intake_filter_view_unfinished()}</option>
-            <option value="deleted">{m.intake_filter_view_deleted()}</option>
-          </select>
+            {intakeOrderListViewValues.map((value) => (
+              <option key={value} value={value}>
+                {VIEW_LABELS[value]()}
+              </option>
+            ))}
+          </InternalSelect>
         </label>
       ) : null}
     </div>

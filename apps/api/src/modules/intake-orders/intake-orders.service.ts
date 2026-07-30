@@ -186,20 +186,31 @@ export class IntakeOrdersService {
     throw new ConflictError('Intake order is removed from the list — restore it first')
   }
 
-  /**
-   * `view=deleted` is a 403, not a 404: the caller is asking for a whole list they may not
-   * see, not a row they may not know exists — row-level scope's "don't leak existence" rule
-   * does not apply to a view nobody claims is theirs.
-   */
   async list(
     actor: IntakeOrdersActor,
     query: IntakeOrderListQuery,
   ): Promise<IntakeOrderListResponse> {
-    if (query.view === 'deleted' && !actor.permissions.includes('intake_orders.delete')) {
-      throw new ForbiddenError('Reading removed intake orders requires delete')
+    const scope = resolveScope(actor)
+
+    /**
+     * `view=deleted` is refused rather than quietly answered with a different list (spec §6.5).
+     * There are TWO ways to be unable to read it, and the second is easy to miss: without
+     * `intake_orders.delete` at all, and — with `delete` but only `view_own` — on the own
+     * scope, which ignores the view by design and would hand back the caller's ordinary live
+     * rows as though they were the removed ones. No seeded role holds that pair today, but a
+     * custom role built in admin can.
+     *
+     * 403 and not 404: this is a whole collection nobody claims, so refusing it says nothing
+     * about whether any particular order exists. The house rule that row-level denials answer
+     * 404 is about not leaking a specific row, and does not apply here.
+     */
+    if (
+      query.view === 'deleted' &&
+      (scope.type === 'own' || !actor.permissions.includes('intake_orders.delete'))
+    ) {
+      throw new ForbiddenError('Reading removed intake orders requires delete and full list access')
     }
 
-    const scope = resolveScope(actor)
     const { items, total } = await this.repo.list(scope, query)
     return { items, total, page: query.page, pageSize: query.pageSize }
   }

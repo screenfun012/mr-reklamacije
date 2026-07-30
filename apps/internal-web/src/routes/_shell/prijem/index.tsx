@@ -13,7 +13,10 @@ import { Plus } from 'lucide-react'
 import { Suspense, useCallback, type ReactElement } from 'react'
 
 import { internalButtonClasses } from '~/components/internal-button'
+import { InternalPage } from '~/components/layout/internal-page'
+import { formatInternalDateEyebrow } from '~/lib/internal-format'
 import { IntakeFilterBar } from '~/features/intake-orders/intake-filter-bar'
+import { visibleIntakeSearch } from '~/features/intake-orders/intake-list-search'
 import { IntakeKpiCards, IntakeKpiCardsSkeleton } from '~/features/intake-orders/intake-kpi-cards'
 import {
   IntakeOrdersTable,
@@ -23,9 +26,10 @@ import {
 export const Route = createFileRoute('/_shell/prijem/')({
   validateSearch: (search) => IntakeOrdersSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
-  loader: async ({ context: { queryClient }, deps: search }) => {
+  loader: async ({ context: { queryClient, authSession }, deps: search }) => {
+    const visible = visibleIntakeSearch(search, authSession?.user?.permissions ?? [])
     await Promise.all([
-      queryClient.ensureQueryData(intakeOrdersListOptions(intakeFiltersFromSearch(search))),
+      queryClient.ensureQueryData(intakeOrdersListOptions(intakeFiltersFromSearch(visible))),
       queryClient.ensureQueryData(intakeOrderSummaryOptions()),
     ])
   },
@@ -36,23 +40,11 @@ export const Route = createFileRoute('/_shell/prijem/')({
 
 const rootRoute = getRouteApi('__root__')
 
-/** "SUBOTA · 26.07.2026" — localized, so the shop reads its own weekday. */
-function eyebrowDate(locale: string): string {
-  const now = new Date()
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(now).toUpperCase()
-  const date = new Intl.DateTimeFormat(locale, {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(now)
-  return `${weekday} · ${date}`
-}
-
 function PrijemListScreen(): ReactElement {
-  const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions ?? []
+  const search = visibleIntakeSearch(Route.useSearch(), permissions)
   const canCreate = permissions.includes('intake_orders.create')
   /**
    * Only a caller who sees the whole shop gets the view select. A serviser's own drafts are
@@ -74,11 +66,11 @@ function PrijemListScreen(): ReactElement {
   )
 
   return (
-    <div className="mx-auto flex max-w-[1320px] flex-col gap-5">
+    <InternalPage className="flex flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
-            {eyebrowDate(getLocale())}
+            {formatInternalDateEyebrow(new Date(), getLocale())}
           </span>
           <Heading level="h1">{m.intake_title()}</Heading>
           {/* The prototype states the scope under the title, so nobody has to infer why the
@@ -120,7 +112,7 @@ function PrijemListScreen(): ReactElement {
       <Suspense fallback={<IntakeOrdersTableSkeleton />}>
         <TableSection search={search} onPatchSearch={patchSearch} />
       </Suspense>
-    </div>
+    </InternalPage>
   )
 }
 
@@ -206,17 +198,19 @@ function TableSection({
 
 function PrijemPending(): ReactElement {
   return (
-    <div className="mx-auto flex max-w-[1320px] flex-col gap-5">
+    <InternalPage className="flex flex-col gap-5">
       <IntakeKpiCardsSkeleton />
       <IntakeOrdersTableSkeleton />
-    </div>
+    </InternalPage>
   )
 }
 
 function PrijemError(): ReactElement {
   return (
-    <div className="mx-auto max-w-[1320px] rounded-[12px] border border-mri-bad/40 bg-mri-bad-bg px-4 py-10 text-center">
-      <p className="text-mri-bad">{m.intake_list_error()}</p>
-    </div>
+    <InternalPage>
+      <div className="rounded-[12px] border border-mri-bad/40 bg-mri-bad-bg px-4 py-10 text-center">
+        <p className="text-mri-bad">{m.intake_list_error()}</p>
+      </div>
+    </InternalPage>
   )
 }
