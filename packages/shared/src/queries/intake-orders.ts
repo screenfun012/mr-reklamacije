@@ -8,6 +8,7 @@ import type {
   IntakeOrderCreateInput,
   IntakeOrderDetail,
   IntakeOrderListQuery,
+  IntakeOrderListView,
   IntakeOrderSignInput,
   IntakeOrderUpdateInput,
 } from '../schemas/intake-order.wire.schema.js'
@@ -35,7 +36,7 @@ export const INTAKE_ORDERS_PAGE_SIZE = 25
 export interface IntakeOrderListFilters {
   status?: IntakeOrderListQuery['status']
   search?: string
-  unfinished?: boolean
+  view?: IntakeOrderListView
   page?: number
   pageSize?: number
 }
@@ -45,7 +46,7 @@ export function intakeFiltersFromSearch(search: IntakeOrdersSearch): IntakeOrder
   return {
     ...(search.status !== undefined ? { status: search.status } : {}),
     ...(search.q !== undefined ? { search: search.q } : {}),
-    ...(search.unfinished === true ? { unfinished: true } : {}),
+    ...(search.view !== undefined ? { view: search.view } : {}),
     page: search.page ?? 1,
     pageSize: search.pageSize ?? INTAKE_ORDERS_PAGE_SIZE,
   }
@@ -71,8 +72,8 @@ function buildListQuery(filters: IntakeOrderListFilters): string {
   if (filters.search !== undefined && filters.search.length > 0) {
     query.set('search', filters.search)
   }
-  if (filters.unfinished === true) {
-    query.set('unfinished', 'true')
+  if (filters.view !== undefined && filters.view !== 'active') {
+    query.set('view', filters.view)
   }
   query.set('page', String(filters.page ?? 1))
   if (filters.pageSize !== undefined) {
@@ -83,8 +84,8 @@ function buildListQuery(filters: IntakeOrderListFilters): string {
 
 /**
  * The "Servis" list. Scope is the server's call: a caller limited to `intake_orders.view_own`
- * gets their own orders including unfinished ones, everyone else gets the shop's signed
- * orders unless `unfinished` asks for the drafts.
+ * gets their own orders including unfinished ones regardless of `view`, everyone else gets
+ * the shop's signed orders unless `view` asks for the drafts or the removed ones.
  */
 export function intakeOrdersListOptions(filters: IntakeOrderListFilters) {
   return queryOptions({

@@ -186,10 +186,19 @@ export class IntakeOrdersService {
     throw new ConflictError('Intake order is removed from the list — restore it first')
   }
 
+  /**
+   * `view=deleted` is a 403, not a 404: the caller is asking for a whole list they may not
+   * see, not a row they may not know exists — row-level scope's "don't leak existence" rule
+   * does not apply to a view nobody claims is theirs.
+   */
   async list(
     actor: IntakeOrdersActor,
     query: IntakeOrderListQuery,
   ): Promise<IntakeOrderListResponse> {
+    if (query.view === 'deleted' && !actor.permissions.includes('intake_orders.delete')) {
+      throw new ForbiddenError('Reading removed intake orders requires delete')
+    }
+
     const scope = resolveScope(actor)
     const { items, total } = await this.repo.list(scope, query)
     return { items, total, page: query.page, pageSize: query.pageSize }

@@ -55,9 +55,9 @@ function PrijemListScreen(): ReactElement {
   const permissions = authSession?.user?.permissions ?? []
   const canCreate = permissions.includes('intake_orders.create')
   /**
-   * Only a caller who sees the whole shop gets the "Nedovršeni" filter. A serviser's own
-   * drafts are always in his list — it is his unfinished work, and hiding it behind a toggle
-   * would mean he could not resume from the list (docs/25 §3.3).
+   * Only a caller who sees the whole shop gets the view select. A serviser's own drafts are
+   * always in his list — it is his unfinished work, and hiding it behind a view would mean he
+   * could not resume from the list (docs/25 §3.3).
    */
   const seesWholeShop = permissions.includes('intake_orders.view')
 
@@ -110,11 +110,11 @@ function PrijemListScreen(): ReactElement {
       <IntakeFilterBar
         status={search.status}
         search={search.q ?? ''}
-        showUnfinishedToggle={seesWholeShop}
-        unfinished={search.unfinished === true}
+        showViewSelect={seesWholeShop}
+        view={search.view ?? 'active'}
         onStatusChange={(status) => patchSearch({ status })}
         onSearchChange={(value) => patchSearch({ q: value.length > 0 ? value : undefined })}
-        onUnfinishedChange={(value) => patchSearch({ unfinished: value ? true : undefined })}
+        onViewChange={(value) => patchSearch({ view: value === 'active' ? undefined : value })}
       />
 
       <Suspense fallback={<IntakeOrdersTableSkeleton />}>

@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import type { IntakeOrderStatus } from '@mr/shared'
+import type { IntakeOrderListView, IntakeOrderStatus } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { Search } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
@@ -12,21 +12,21 @@ export interface IntakeFilterBarProps {
   status: IntakeOrderStatus | undefined
   search: string
   /** Only offered to a caller who sees the whole shop; a serviser's own drafts are always in. */
-  showUnfinishedToggle: boolean
-  unfinished: boolean
+  showViewSelect: boolean
+  view: IntakeOrderListView
   onStatusChange: (status: IntakeOrderStatus | undefined) => void
   onSearchChange: (search: string) => void
-  onUnfinishedChange: (unfinished: boolean) => void
+  onViewChange: (view: IntakeOrderListView) => void
 }
 
 export function IntakeFilterBar({
   status,
   search,
-  showUnfinishedToggle,
-  unfinished,
+  showViewSelect,
+  view,
   onStatusChange,
   onSearchChange,
-  onUnfinishedChange,
+  onViewChange,
 }: IntakeFilterBarProps): ReactElement {
   const [draft, setDraft] = useState(search)
 
@@ -84,15 +84,18 @@ export function IntakeFilterBar({
         />
       </span>
 
-      {showUnfinishedToggle ? (
-        <label className="flex min-h-11 flex-none cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-mri-text2">
-          <input
-            type="checkbox"
-            checked={unfinished}
-            onChange={(event) => onUnfinishedChange(event.target.checked)}
-            className="size-4 accent-mri-red"
-          />
-          {m.intake_filter_unfinished()}
+      {showViewSelect ? (
+        <label className="flex min-h-11 flex-none items-center gap-2 text-[12.5px] font-semibold text-mri-text2">
+          {m.intake_filter_view()}
+          <select
+            value={view}
+            onChange={(event) => onViewChange(event.target.value as IntakeOrderListView)}
+            className="h-11 rounded-[9px] border border-mri-border2 bg-mri-inbg px-2.5 text-mri-text"
+          >
+            <option value="active">{m.intake_filter_view_active()}</option>
+            <option value="unfinished">{m.intake_filter_view_unfinished()}</option>
+            <option value="deleted">{m.intake_filter_view_deleted()}</option>
+          </select>
         </label>
       ) : null}
     </div>

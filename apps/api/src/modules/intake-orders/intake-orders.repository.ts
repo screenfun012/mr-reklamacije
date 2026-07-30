@@ -1,4 +1,9 @@
-import { IntakeOrderStatus, type IntakeChecklist, type IntakeDamage } from '@mr/shared'
+import {
+  IntakeOrderStatus,
+  type IntakeChecklist,
+  type IntakeDamage,
+  type IntakeOrderListView,
+} from '@mr/shared'
 import {
   and,
   asc,
@@ -261,24 +266,31 @@ export class IntakeOrdersRepository {
   }
 
   /**
-   * Scope and draft visibility in one predicate: a serviser gets his own rows including
-   * unfinished ones, the office gets signed orders unless it asked for the drafts.
+   * Scope and visibility in one predicate. The fork is the point: an `own` scope returns every
+   * live row of the caller, drafts included, and never reads the view — it is his own unfinished
+   * work and hiding it would take away the only way back into it. Only the office's `all` scope
+   * narrows.
    */
-  private scopeCondition(scope: IntakeOrdersListScope, unfinished: boolean) {
-    const live = isNull(intakeOrders.deletedAt)
-
+  private scopeCondition(scope: IntakeOrdersListScope, view: IntakeOrderListView) {
     if (scope.type === 'own') {
-      return and(live, eq(intakeOrders.technicianId, scope.userId))
+      return and(isNull(intakeOrders.deletedAt), eq(intakeOrders.technicianId, scope.userId))
     }
 
-    return and(live, unfinished ? isNull(intakeOrders.signedAt) : isNotNull(intakeOrders.signedAt))
+    if (view === 'deleted') {
+      return and(isNotNull(intakeOrders.deletedAt), isNotNull(intakeOrders.signedAt))
+    }
+
+    const live = isNull(intakeOrders.deletedAt)
+    return view === 'unfinished'
+      ? and(live, isNull(intakeOrders.signedAt))
+      : and(live, isNotNull(intakeOrders.signedAt))
   }
 
   async list(
     scope: IntakeOrdersListScope,
     query: IntakeOrderListQuery,
   ): Promise<{ items: IntakeOrderListItem[]; total: number }> {
-    const conditions = [this.scopeCondition(scope, query.unfinished)]
+    const conditions = [this.scopeCondition(scope, query.view)]
 
     if (query.status !== undefined) {
       conditions.push(eq(intakeOrders.status, query.status))

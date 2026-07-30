@@ -112,21 +112,27 @@ export const IntakeOrderChangeStatusInputSchema = z.object({
 
 export type IntakeOrderChangeStatusInput = z.infer<typeof IntakeOrderChangeStatusInputSchema>
 
-const boolQueryParam = z
-  .string()
-  .optional()
-  .transform((value: string | undefined) => value === 'true')
+/**
+ * The three ways the list can be read: the shop's live signed work, the drafts still being
+ * filled in, or what the office removed. `unfinished` and `deleted` are mutually exclusive —
+ * a draft is hard-deleted, so a removed order is always a signed one — which a pair of
+ * independent checkboxes cannot express but one view can (docs/25 V-6-1a).
+ */
+export const intakeOrderListViewValues = ['active', 'unfinished', 'deleted'] as const
+
+export type IntakeOrderListView = (typeof intakeOrderListViewValues)[number]
 
 /**
- * `unfinished` is only meaningful for a full-view actor: the office's table is a work list
- * of real intakes, so drafts are excluded unless asked for. A caller limited to
- * `view_own` always sees their own drafts — it is their own unfinished work, and hiding it
- * would mean they could not resume from the list.
+ * `view` is only meaningful for a full-view actor: the office's table is a work list
+ * of real intakes, so drafts and removed orders are excluded unless asked for. A caller
+ * limited to `view_own` always sees their own rows including drafts — it is their own
+ * unfinished work, and hiding it would mean they could not resume from the list. `deleted`
+ * additionally requires `intake_orders.delete` (enforced by the service, not this schema).
  */
 export const IntakeOrderListQuerySchema = z.object({
   status: z.enum(intakeOrderStatusValues).optional(),
   search: z.string().trim().min(1).max(120).optional(),
-  unfinished: boolQueryParam.default(false),
+  view: z.enum(intakeOrderListViewValues).default('active'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce
     .number()
@@ -145,7 +151,7 @@ export type IntakeOrderListQuery = z.infer<typeof IntakeOrderListQuerySchema>
 export const IntakeOrdersSearchSchema = z.object({
   status: z.enum(intakeOrderStatusValues).optional(),
   q: z.string().trim().min(1).max(120).optional(),
-  unfinished: z.boolean().optional(),
+  view: z.enum(intakeOrderListViewValues).optional(),
   page: z.number().int().min(1).optional(),
   pageSize: z.union([z.literal(10), z.literal(25), z.literal(50)]).optional(),
 })

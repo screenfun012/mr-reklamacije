@@ -170,11 +170,11 @@ describe('Intake orders integration', () => {
       const draft = await service.create(createInput(), actorContext(floor.id))
 
       const officeList = await service.list(office, {
-        unfinished: false,
+        view: 'active',
         page: 1,
         pageSize: 25,
       })
-      const floorList = await service.list(floor, { unfinished: false, page: 1, pageSize: 25 })
+      const floorList = await service.list(floor, { view: 'active', page: 1, pageSize: 25 })
 
       expect(officeList.items.map((item) => item.id)).not.toContain(draft.id)
       expect(floorList.items.map((item) => item.id)).toContain(draft.id)
@@ -187,7 +187,7 @@ describe('Intake orders integration', () => {
       const office = await officeActor()
       const draft = await service.create(createInput(), actorContext(floor.id))
 
-      const found = await service.list(office, { unfinished: true, page: 1, pageSize: 25 })
+      const found = await service.list(office, { view: 'unfinished', page: 1, pageSize: 25 })
       expect(found.items.map((item) => item.id)).toContain(draft.id)
     })
 
@@ -205,10 +205,59 @@ describe('Intake orders integration', () => {
       const first = await service.create(createInput(), actorContext(floor.id))
       const second = await service.create(createInput(), actorContext(floor.id))
 
-      const list = await service.list(floor, { unfinished: false, page: 1, pageSize: 25 })
+      const list = await service.list(floor, { view: 'active', page: 1, pageSize: 25 })
       expect(list.items.map((item) => item.id)).toEqual(
         expect.arrayContaining([first.id, second.id]),
       )
+    })
+
+    it('still gives a serviser his own drafts under the default view', async () => {
+      const serviser = await floorActor()
+      await service.create(createInput(), actorContext(serviser.id))
+
+      const list = await service.list(serviser, { view: 'active', page: 1, pageSize: 25 })
+      expect(list.items).toHaveLength(1)
+      expect(list.items[0]?.signedAt).toBeNull()
+    })
+
+    it('shows the office removed orders only when it asks, and only with delete', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(serviser)
+      await service.delete(id, office, actorContext(office.id))
+
+      const removed = await service.list(office, { view: 'deleted', page: 1, pageSize: 25 })
+      expect(removed.items.map((row) => row.id)).toContain(id)
+
+      await expect(
+        service.list(serviser, { view: 'deleted', page: 1, pageSize: 25 }),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('refuses the removed view for a full-list reader who lacks delete', async () => {
+      const viewOnly: IntakeOrdersActor = {
+        id: await createUser('View Only'),
+        permissions: ['intake_orders.view'],
+      }
+      const office = await officeActor()
+      const id = await signedOrder(await floorActor())
+      await service.delete(id, office, actorContext(office.id))
+
+      await expect(
+        service.list(viewOnly, { view: 'deleted', page: 1, pageSize: 25 }),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('refuses a view-only actor reading a removed order directly, not just the list', async () => {
+      const viewOnly: IntakeOrdersActor = {
+        id: await createUser('View Only'),
+        permissions: ['intake_orders.view'],
+      }
+      const office = await officeActor()
+      const id = await signedOrder(await floorActor())
+      await service.delete(id, office, actorContext(office.id))
+
+      await expect(service.findById(id, viewOnly)).rejects.toBeInstanceOf(NotFoundError)
     })
   })
 
@@ -562,7 +611,7 @@ describe('Intake orders integration', () => {
 
       const gone = await service.list(office, {
         search: number,
-        unfinished: false,
+        view: 'active',
         page: 1,
         pageSize: 25,
       })
@@ -573,7 +622,7 @@ describe('Intake orders integration', () => {
 
       const back = await service.list(office, {
         search: number,
-        unfinished: false,
+        view: 'active',
         page: 1,
         pageSize: 25,
       })
