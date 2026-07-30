@@ -24,7 +24,12 @@ export function IntakeStepperStrip({
   trailing: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-0 border-b border-mri-border px-4 py-3.5 sm:px-[26px]">
+    /* Pinned under the topbar. The wizard used to seize the viewport height and own its scroll,
+       which kept this strip — and with it the order-number field — on screen the whole way
+       through; now that the page scrolls normally, `sticky` is what preserves that. Offset and
+       surface are borrowed rather than guessed: --mri-topbar-h is the one place the header
+       height lives, and bg/blur match the footer so content passes under both the same way. */
+    <div className="sticky top-[var(--mri-topbar-h)] z-10 flex items-center gap-0 border-b border-mri-border bg-mri-hdr px-4 py-3.5 backdrop-blur-[14px] sm:px-[26px]">
       {steps.map((label, index) => {
         const number = index + 1
         const done = currentStep > number

@@ -49,14 +49,14 @@ export function InternalSidebar({
           type="button"
           aria-label={m.nav_menu_close()}
           onClick={onCloseMobile}
-          className="fixed inset-x-0 bottom-0 top-[58px] z-30 bg-black/50 lg:hidden"
+          className="fixed inset-x-0 bottom-0 top-[var(--mri-topbar-h)] z-30 bg-black/50 lg:hidden"
         />
       ) : null}
 
       <aside
         className={cn(
-          'fixed bottom-0 left-0 top-[58px] z-40 flex w-[236px] flex-none flex-col border-r border-mri-border bg-mri-surface transition-transform duration-200',
-          'lg:sticky lg:z-20 lg:h-[calc(100vh-58px)] lg:translate-x-0 lg:transition-[width]',
+          'fixed bottom-0 left-0 top-[var(--mri-topbar-h)] z-40 flex w-[236px] flex-none flex-col border-r border-mri-border bg-mri-surface transition-transform duration-200',
+          'lg:sticky lg:z-20 lg:h-[calc(100vh-var(--mri-topbar-h))] lg:translate-x-0 lg:transition-[width]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'lg:w-[72px]' : 'lg:w-[236px]',
         )}

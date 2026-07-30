@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 
+import { InternalPage } from '~/components/layout/internal-page'
 import { showInternalToast } from '~/lib/internal-toast'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { IntakeOrderNumberField } from './intake-order-number-field'
@@ -337,9 +338,12 @@ export function IntakeWizard(): ReactElement {
   })()
 
   return (
-    <div className="-mx-4 -mb-[72px] -mt-9 flex h-[calc(100vh-59px)] flex-col overflow-hidden sm:-mx-8">
-      {/* 59px = the sticky topbar plus its hairline border, measured — not 58 as the shell's
-          `top-[58px]` suggests. One pixel out and the page grows a vertical scrollbar. */}
+    /* The column no longer cancels the shell's padding with negative margins, no longer claims
+       the whole viewport height, and no longer owns a scroll — it is an ordinary page capped at
+       `narrow`, and the footer pins itself (see IntakeWizardFooter). The old `-mx-4 -mb-[72px]
+       -mt-9 h-[calc(100vh-59px)] overflow-hidden` was what let it stretch edge to edge on a
+       desktop, and its 59 was the topbar height copied by hand out of another file. */
+    <InternalPage width="narrow" className="flex flex-col">
       <IntakeStepperStrip
         steps={STEP_LABELS.map((label) => label())}
         currentStep={step}
@@ -373,7 +377,7 @@ export function IntakeWizard(): ReactElement {
         onTakenChange={setNumberTaken}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-[18px] sm:px-[26px]">
+      <div className="px-4 py-[18px] sm:px-[26px]">
         {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}
         {step === 2 ? <StepChecklist values={values} onPatch={patch} /> : null}
         {step === 3 ? (
@@ -437,6 +441,6 @@ export function IntakeWizard(): ReactElement {
         confirmLabel={m.intake_action_discard()}
         onConfirm={discard}
       />
-    </div>
+    </InternalPage>
   )
 }

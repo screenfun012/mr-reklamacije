@@ -78,6 +78,21 @@
  * komentar i obara ceo :root blok tokena.)
  */
 
+/**
+ * Layout constants — NOT theme-dependent, so deliberately outside the token blocks below
+ * (which are duplicated per theme; a value repeated there would have to be kept in sync twice).
+ *
+ * --mri-topbar-h is the height the sticky topbar actually OCCUPIES: its 58px inner row plus
+ * the 1px bottom border. It was hand-copied into five places across three files and they
+ * disagreed — the sidebar used 58 (so it sat a pixel high and ran a pixel long) while the
+ * wizard used 59 and its comment warned that one pixel out grows a vertical scrollbar. One
+ * number, one place; anything that starts below the topbar or fills the rest of the viewport
+ * reads it from here.
+ */
+:root {
+  --mri-topbar-h: 59px;
+}
+
 :root {
   /* Dark theme (default) — README token table, left column. */
   --mri-bg: #0b0b0d;

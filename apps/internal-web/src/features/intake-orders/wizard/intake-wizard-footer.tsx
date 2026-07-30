@@ -12,13 +12,19 @@ const HINT_COLOURS: Record<IntakeHintTone, string> = {
 }
 
 /**
- * The wizard's footer — a plain flex sibling at the bottom of the wizard column, exactly as the
- * prototype has it.
+ * The wizard's footer, pinned to the bottom of the viewport while the wizard column is in view.
  *
  * NOT `fixed`: a fixed bar spans the viewport and covered the sidebar, including the logout,
- * which left a serviser with no way to sign out. NOT `sticky` either — measured, it does not
- * pin inside this shell, whose main column is `overflow-x: clip`. The wizard column owns its
- * own scroll instead, which is what makes this footer stay put.
+ * which left a serviser with no way to sign out.
+ *
+ * `sticky` DOES pin here, contrary to what this comment claimed until 2026-07-30. The earlier
+ * note blamed the shell's `overflow-x: clip` main column; re-measured in the live page, a
+ * `position: sticky; bottom: 0` probe inside that same `<main>` pins exactly to the viewport
+ * bottom. `overflow-x: clip` with `overflow-y: visible` is the one pairing CSS deliberately
+ * preserves — unlike `hidden`, which would force the other axis to `auto` and break sticky.
+ * What actually broke it was the wizard root's OWN `overflow-hidden` (any ancestor with
+ * `overflow: hidden` kills sticky); that root claimed the whole viewport height and owned the
+ * scroll. Both are gone, so the bar pins without the column having to seize the page.
  */
 export function IntakeWizardFooter({
   hint,
@@ -41,7 +47,7 @@ export function IntakeWizardFooter({
   onNext: () => void
 }): ReactElement {
   return (
-    <div className="z-20 flex flex-none flex-wrap items-center gap-3 border-t border-mri-border bg-mri-hdr px-4 py-3.5 backdrop-blur-[14px] sm:px-[26px]">
+    <div className="sticky bottom-0 z-20 flex flex-none flex-wrap items-center gap-3 border-t border-mri-border bg-mri-hdr px-4 py-3.5 backdrop-blur-[14px] sm:px-[26px]">
       <span className={cn('font-mono text-[11.5px] tracking-[0.05em]', HINT_COLOURS[hintTone])}>
         {hint}
       </span>

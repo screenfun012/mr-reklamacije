@@ -52,7 +52,9 @@ export function InternalTopbar({ onToggleSidebar, showSidebarToggle, user }: Int
 
   return (
     <header className="sticky top-0 z-30 border-b border-mri-border bg-mri-hdr backdrop-blur-[14px]">
-      <div className="flex h-[58px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
+      {/* Inner row = the occupied height minus this header's own 1px bottom border, so
+          --mri-topbar-h stays the single number everything else offsets against. */}
+      <div className="flex h-[calc(var(--mri-topbar-h)-1px)] items-center gap-3 px-4 sm:gap-4 sm:px-6">
         {showSidebarToggle ? (
           <button
             type="button"
