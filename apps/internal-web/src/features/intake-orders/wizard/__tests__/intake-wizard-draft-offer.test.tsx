@@ -50,11 +50,11 @@ function bufferedValues(): IntakeWizardValues {
   }
 }
 
-function renderWizard(): ReturnType<typeof render> {
+function renderWizard(resumeOrderId?: string): ReturnType<typeof render> {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <IntakeWizard />
+      <IntakeWizard {...(resumeOrderId === undefined ? {} : { resumeOrderId })} />
     </QueryClientProvider>,
   )
 }
@@ -148,5 +148,39 @@ describe('the wizard and the tablet draft buffer', () => {
     document.dispatchEvent(new Event('visibilitychange'))
 
     expect(storedDraft()).toBeNull()
+  })
+
+  it("asked for one intake by id, never offers the tablet's copy of a different one", async () => {
+    // The worst shape of this bug: the tablet still holds RN-0249/26 while the serviser taps
+    // NASTAVI PRIJEM on another order. Honouring the buffer would open the wrong car's intake —
+    // with that customer's name, phone and address on screen.
+    writeIntakeDraft({
+      orderId: 'order-1',
+      step: 2,
+      values: bufferedValues(),
+      savedBy: SERVISER_EMAIL,
+    })
+
+    renderWizard('order-2')
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    expect(
+      screen.queryByText(m.intake_draft_found({ number: 'RN-0249/26', step: 2 })),
+    ).not.toBeInTheDocument()
+  })
+
+  it('still offers the tablet copy when no particular intake was asked for', async () => {
+    writeIntakeDraft({
+      orderId: 'order-1',
+      step: 2,
+      values: bufferedValues(),
+      savedBy: SERVISER_EMAIL,
+    })
+
+    renderWizard()
+
+    expect(
+      await screen.findByText(m.intake_draft_found({ number: 'RN-0249/26', step: 2 })),
+    ).toBeInTheDocument()
   })
 })

@@ -3,9 +3,10 @@ import {
   advanceIntakeOrder,
   deleteIntakeOrder,
   intakeOrderKeys,
+  IntakeOrderStatus,
   type IntakeOrderDetail,
 } from '@mr/shared'
-import { ConfirmDialog } from '@mr/ui'
+import { cn, ConfirmDialog } from '@mr/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState, type ReactElement } from 'react'
@@ -24,6 +25,26 @@ export interface IntakeDetailHeaderProps {
   order: IntakeOrderDetail
   canAdvance: boolean
   canDelete: boolean
+}
+
+const STATUS_PILL_CLASSES = 'px-[11px] py-[5px] text-[10.5px] tracking-[0.08em]'
+
+/**
+ * The prototype tints this button by the status it moves INTO, not by a single house colour
+ * (`prijem-prototip-v2.dc.html:439`, resolved at `:1412-1416`) — so the serviser reads where the
+ * tap will land before he reads the words. Values are its own, transferred rather than judged.
+ * `primary` was wrong here twice over: it is the neutral near-white fill with a 30 px shadow and a
+ * hover lift, which made a routine status nudge the loudest thing on a screen whose real subject is
+ * the car, and it looked identical for all three destinations.
+ */
+const ADVANCE_CLASSES: Record<IntakeOrderStatus, string> = {
+  [IntakeOrderStatus.Received]: '',
+  [IntakeOrderStatus.InProgress]:
+    'border border-[rgba(245,165,36,0.45)] bg-[rgba(245,165,36,0.14)] text-mri-warn hover:bg-[rgba(245,165,36,0.22)]',
+  [IntakeOrderStatus.Done]:
+    'border border-[rgba(31,169,113,0.45)] bg-[rgba(31,169,113,0.16)] text-mri-ok hover:bg-[rgba(31,169,113,0.24)]',
+  [IntakeOrderStatus.PickedUp]:
+    'border border-mri-border2 bg-[rgba(107,108,114,0.16)] text-mri-text hover:bg-[rgba(107,108,114,0.24)]',
 }
 
 export function IntakeDetailHeader({
@@ -83,13 +104,23 @@ export function IntakeDetailHeader({
             {order.orderNumber}
           </h1>
 
-          <InternalPill
-            tone={INTAKE_STATUS_TONES[order.status]}
-            dot
-            className="px-[11px] py-[5px] text-[10.5px] tracking-[0.08em]"
-          >
-            {INTAKE_STATUS_LABELS[order.status]()}
-          </InternalPill>
+          {/* An unfinished intake has no meaningful status yet — it is `primljeno` only by column
+              default — so it carries the draft marker instead, exactly as the list decided. Printing
+              a blue PRIMLJENO directly above the amber "Nedovršen · korak 3 od 5" bar made the same
+              order say two different things, and the pill is what gets read first. */}
+          {order.signedAt === null ? (
+            <InternalPill tone="warn" dot className={STATUS_PILL_CLASSES}>
+              {m.intake_row_draft_step({ step: order.draftStep ?? 1 })}
+            </InternalPill>
+          ) : (
+            <InternalPill
+              tone={INTAKE_STATUS_TONES[order.status]}
+              dot
+              className={STATUS_PILL_CLASSES}
+            >
+              {INTAKE_STATUS_LABELS[order.status]()}
+            </InternalPill>
+          )}
 
           <InternalPill tone="neutral" className="border border-mri-border2 px-[9px] py-1">
             {INTAKE_VEHICLE_TYPE_LABELS[order.vehicleType]()}
@@ -131,10 +162,10 @@ export function IntakeDetailHeader({
         {canAdvance && isLive && next !== null ? (
           <InternalButton
             type="button"
-            variant="primary"
+            variant="ghost"
             disabled={advance.isPending}
             onClick={() => advance.mutate()}
-            className={ACTION_CLASSES}
+            className={cn(ACTION_CLASSES, ADVANCE_CLASSES[next])}
           >
             {m.intake_detail_advance({ status: INTAKE_STATUS_LABELS[next]() })}
           </InternalButton>

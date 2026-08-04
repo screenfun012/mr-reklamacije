@@ -44,9 +44,10 @@ function tabLabel(tab: IntakeDetailTab, photoCount: number): string {
 }
 
 /**
- * Links rather than buttons: the tab lives in the URL, so a middle click, the back button and
- * a shared link all behave the way the address bar promises — and keyboard handling comes for
- * free instead of being re-implemented on a `role="tab"` strip.
+ * Links rather than buttons: the tab lives in the URL, so a middle click and a shared link both
+ * behave the way the address bar promises, and keyboard handling comes for free instead of being
+ * re-implemented on a `role="tab"` strip. NOT the back button, deliberately — `replace` keeps tab
+ * taps out of history, so Back leaves the order rather than walking four tabs backwards.
  */
 export function IntakeDetailTabs({
   order,

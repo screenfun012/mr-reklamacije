@@ -356,3 +356,15 @@ export const IntakeDetailSearchSchema = z.object({
 })
 
 export type IntakeDetailSearch = z.infer<typeof IntakeDetailSearchSchema>
+
+/**
+ * `/prijem/novi?resume=<id>` — the typeable second entrance into an unfinished intake, which the
+ * server has expected since V-6-0. Optional and forgiving for the same reason `tab` is: the wizard
+ * is reached from a plain link in three places, and a stale id out of someone's history must open
+ * an empty intake rather than an error screen.
+ */
+export const IntakeWizardSearchSchema = z.object({
+  resume: z.string().uuid().optional().catch(undefined),
+})
+
+export type IntakeWizardSearch = z.infer<typeof IntakeWizardSearchSchema>

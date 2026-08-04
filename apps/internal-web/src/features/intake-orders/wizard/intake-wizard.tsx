@@ -64,7 +64,15 @@ const STEP_LABELS = [
  * later phases, so the wizard walks into a reserved panel rather than pretending they are
  * missing — the stepper stays honest about how many steps there are.
  */
-export function IntakeWizard(): ReactElement {
+export interface IntakeWizardProps {
+  /**
+   * `/prijem/novi?resume=<id>` — open straight into this unfinished intake. docs/25 §3.3.4
+   * promises resuming works on another tablet, and the detail's NASTAVI PRIJEM is the entrance.
+   */
+  resumeOrderId?: string
+}
+
+export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactElement {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   // The signing serviser is whoever is logged in — the order is his by construction. The email is
@@ -104,11 +112,17 @@ export function IntakeWizard(): ReactElement {
   // two used to decide it separately, and this effect's mount write was the half that decided
   // nothing and overwrote a real draft with an empty one.
   useEffect(() => {
+    // Asked for ONE intake by id, the tablet's own copy is not just irrelevant, it is dangerous:
+    // it may hold a DIFFERENT draft, and offering that would put the serviser inside another
+    // customer's car. The server copy below is the only truth in that case.
+    if (resumeOrderId !== undefined) {
+      return
+    }
     const draft = readIntakeDraft(userEmail)
     if (draft !== null) {
       setFoundDraft(draft)
     }
-  }, [userEmail])
+  }, [userEmail, resumeOrderId])
 
   // The buffer only has to survive a sleeping tablet between two step patches, so it is
   // written on every change — including `visibilitychange`, which is when iPadOS freezes the
@@ -212,6 +226,15 @@ export function IntakeWizard(): ReactElement {
     },
     [adoptOrder, queryClient],
   )
+
+  // Declared after `resumeServerOrder` on purpose — a dependency array is evaluated during
+  // render, so referencing the callback above its own declaration is a temporal-dead-zone crash.
+  useEffect(() => {
+    if (resumeOrderId === undefined) {
+      return
+    }
+    resumeServerOrder(resumeOrderId)
+  }, [resumeOrderId, resumeServerOrder])
 
   /** Leaving step 1 is what creates the row: photos need a parent and the number is claimed. */
   const goForward = (): void => {

@@ -13,7 +13,13 @@ describe('IntakeDraftBar', () => {
       <IntakeDraftBar order={draft} currentUserId={draft.technicianId} canDelete={false} />,
     )
 
-    expect(screen.queryByRole('link', { name: m.intake_draft_resume() })).not.toBeNull()
+    // The TARGET, not just the presence. A bare `/prijem/novi` opens an empty wizard — and if the
+    // tablet still holds a buffer for a different draft, it opens THAT one, putting the serviser
+    // in another customer's car. Asserting only that a link exists is what let that through.
+    expect(screen.getByRole('link', { name: m.intake_draft_resume() })).toHaveAttribute(
+      'href',
+      `/prijem/novi?resume=${draft.id}`,
+    )
     expect(screen.queryByRole('button', { name: m.intake_action_discard() })).not.toBeNull()
   })
 

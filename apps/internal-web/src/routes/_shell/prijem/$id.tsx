@@ -56,7 +56,9 @@ function IntakeDetailPage(): ReactElement {
         canDelete={permissions.includes('intake_orders.delete')}
       />
 
-      {order.deletedAt !== null ? <IntakeRemovedBar order={order} /> : null}
+      {order.deletedAt !== null ? (
+        <IntakeRemovedBar order={order} canDelete={permissions.includes('intake_orders.delete')} />
+      ) : null}
 
       {order.signedAt === null ? (
         <IntakeDraftBar

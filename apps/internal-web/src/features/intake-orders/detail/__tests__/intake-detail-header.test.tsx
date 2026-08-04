@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { IntakeDetailHeader } from '../intake-detail-header.js'
-import { intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
+import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
 
 const NO_PERMS = { canAdvance: false, canDelete: false }
 
@@ -44,5 +44,23 @@ describe('IntakeDetailHeader', () => {
     expect(
       screen.queryByRole('button', { name: m.intake_detail_advance({ status: 'U radu' }) }),
     ).toBeNull()
+  })
+
+  it('marks an unfinished intake as unfinished, not as Primljeno', async () => {
+    // A draft is `primljeno` only because that is the column default. Printing it here put a blue
+    // status pill directly above the amber "Nedovršen" bar, so one order said two things — and the
+    // list already refuses to print it for exactly this reason.
+    await renderDetailUi(
+      <IntakeDetailHeader order={intakeDraftFixture({ draftStep: 3 })} {...NO_PERMS} />,
+    )
+
+    expect(screen.queryByText(m.intake_row_draft_step({ step: 3 }))).not.toBeNull()
+    expect(screen.queryByText('Primljeno')).toBeNull()
+  })
+
+  it('still names the status once the intake is signed', async () => {
+    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
+
+    expect(screen.queryByText('Primljeno')).not.toBeNull()
   })
 })

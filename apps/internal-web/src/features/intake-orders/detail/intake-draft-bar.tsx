@@ -37,8 +37,14 @@ export function IntakeDraftBar({
     mutationFn: () => deleteIntakeOrder(order.id),
     onSuccess: async () => {
       setConfirmDiscard(false)
-      await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
+      // Drop this order's own query rather than invalidating it. Discarding a draft is a HARD
+      // delete, so invalidating `all` refetches the row we just removed, gets a 404, retries it
+      // three times with backoff — and the awaited invalidation holds the serviser on a red
+      // "Nalog nije pronađen" over a discard that in fact succeeded.
+      queryClient.removeQueries({ queryKey: intakeOrderKeys.detail(order.id) })
       await navigate({ to: '/prijem' })
+      await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.lists() })
+      await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.summary() })
     },
     onError: () => showInternalToast(m.intake_discard_failed()),
   })
@@ -55,6 +61,7 @@ export function IntakeDraftBar({
       {isOwner ? (
         <Link
           to="/prijem/novi"
+          search={{ resume: order.id }}
           className="h-[42px] flex-none rounded-[9px] border border-[rgba(245,166,35,0.45)] px-[18px] font-mono text-xs font-extrabold uppercase leading-[42px] tracking-[0.08em] text-mri-warn"
         >
           {m.intake_draft_resume()}
