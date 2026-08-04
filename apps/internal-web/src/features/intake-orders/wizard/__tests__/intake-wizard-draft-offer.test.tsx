@@ -4,9 +4,13 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { deleteIntakeOrderMock, navigateMock } = vi.hoisted(() => ({
+// Hoisted with the mocks: `vi.mock` factories are lifted above every `const`, so a plain top-level
+// binding referenced inside one is still in its temporal dead zone when the factory runs.
+const { deleteIntakeOrderMock, navigateMock, toastMock, SERVISER_EMAIL } = vi.hoisted(() => ({
   deleteIntakeOrderMock: vi.fn(),
   navigateMock: vi.fn(),
+  toastMock: vi.fn(),
+  SERVISER_EMAIL: 'marko@mrgroup.rs',
 }))
 
 vi.mock('@mr/shared', async (importOriginal) => {
@@ -21,8 +25,11 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 // The real hook reads the root route's context, which would drag a whole router in for a name.
 vi.mock('~/lib/use-internal-auth-user', () => ({
-  useInternalAuthUser: () => ({ userName: 'Marko Marković', userEmail: 'marko@mrgroup.rs' }),
+  useInternalAuthUser: () => ({ userName: 'Marko Marković', userEmail: SERVISER_EMAIL }),
 }))
+
+// Sonner needs a <Toaster> to render anything, and what the serviser is TOLD is the point here.
+vi.mock('~/lib/internal-toast', () => ({ showInternalToast: toastMock }))
 
 import { IntakeWizard } from '../intake-wizard.js'
 import {
@@ -69,6 +76,7 @@ describe('the wizard and the tablet draft buffer', () => {
     window.localStorage.clear()
     deleteIntakeOrderMock.mockReset()
     navigateMock.mockReset()
+    toastMock.mockReset()
     // Nothing here needs a real response: with the number field empty every query on the mount
     // path is disabled, and the ones a resume wakes up only feed the note we are not asserting on.
     vi.stubGlobal(
@@ -81,7 +89,7 @@ describe('the wizard and the tablet draft buffer', () => {
   })
 
   it('still offers a draft the serviser neither took nor waved away, after the tablet reloads', async () => {
-    writeIntakeDraft({ orderId: null, step: 2, values: bufferedValues() })
+    writeIntakeDraft({ orderId: null, step: 2, values: bufferedValues(), savedBy: SERVISER_EMAIL })
 
     const first = renderWizard()
     expect(
@@ -100,7 +108,12 @@ describe('the wizard and the tablet draft buffer', () => {
   it('lets go of the intake on ODUSTANI even when the server refuses to delete it', async () => {
     const user = userEvent.setup()
     deleteIntakeOrderMock.mockRejectedValue(new Error('order already gone'))
-    writeIntakeDraft({ orderId: 'order-1', step: 1, values: bufferedValues() })
+    writeIntakeDraft({
+      orderId: 'order-1',
+      step: 1,
+      values: bufferedValues(),
+      savedBy: SERVISER_EMAIL,
+    })
 
     renderWizard()
     await user.click(await screen.findByRole('button', { name: m.intake_draft_resume() }))
@@ -111,12 +124,19 @@ describe('the wizard and the tablet draft buffer', () => {
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/prijem' }))
     expect(deleteIntakeOrderMock).toHaveBeenCalledWith('order-1')
     expect(storedDraft()).toBeNull()
+    // And he is told, in words that hold whether the row survived or the response was simply lost.
+    expect(toastMock).toHaveBeenCalledWith(m.intake_discard_failed())
   })
 
   it('does not write the buffer back when the tablet sleeps right after ODUSTANI', async () => {
     const user = userEvent.setup()
     deleteIntakeOrderMock.mockResolvedValue(undefined)
-    writeIntakeDraft({ orderId: 'order-1', step: 1, values: bufferedValues() })
+    writeIntakeDraft({
+      orderId: 'order-1',
+      step: 1,
+      values: bufferedValues(),
+      savedBy: SERVISER_EMAIL,
+    })
 
     renderWizard()
     await user.click(await screen.findByRole('button', { name: m.intake_draft_resume() }))

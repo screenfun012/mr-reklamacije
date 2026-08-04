@@ -593,7 +593,7 @@
   "intake_col_vehicle_owner": "Vehicle / owner",
   "intake_detail_title": "Service order",
   "intake_discard_description": "The unfinished intake is deleted and its order number is released. This cannot be undone.",
-  "intake_discard_failed": "The order was not deleted from the server — it stayed among the unfinished ones.",
+  "intake_discard_failed": "The order may not have been deleted from the server. Check among the unfinished ones.",
   "intake_discard_title": "Discard this intake?",
   "intake_draft_discard": "Discard",
   "intake_draft_found": "Unfinished intake {number} — you stopped at step {step} of 5",

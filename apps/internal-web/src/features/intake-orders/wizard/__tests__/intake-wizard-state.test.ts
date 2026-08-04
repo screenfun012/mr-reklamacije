@@ -207,6 +207,9 @@ describe('damages round trip', () => {
  * every case below has to clear the key itself or it reads the previous case's write.
  */
 describe('the tablet draft buffer', () => {
+  const SERVISER = 'marko@mrgroup.rs'
+  const KOLEGA = 'jelena@mrgroup.rs'
+
   /** Bypasses `writeIntakeDraft` on purpose: these cases seed shapes the writer refuses to produce. */
   function seedRaw(draft: unknown): void {
     window.localStorage.setItem(INTAKE_DRAFT_STORAGE_KEY, JSON.stringify(draft))
@@ -222,64 +225,114 @@ describe('the tablet draft buffer', () => {
     window.localStorage.clear()
   })
 
-  it('does not offer back a draft that has no order number to name it by', () => {
-    seedRaw({ orderId: null, step: 1, values: emptyIntakeWizardValues(), savedAt: Date.now() })
+  it('gives the shift a name Nikola would recognise: twelve hours', () => {
+    // The one number he actually chose. Written in terms of the constant everywhere else, so
+    // without this line the whole policy could be changed to an hour and every test would pass.
+    expect(INTAKE_DRAFT_MAX_AGE_MS).toBe(12 * 60 * 60 * 1000)
+  })
 
-    expect(readIntakeDraft()).toBeNull()
+  it('does not offer back a draft that has no order number to name it by', () => {
+    seedRaw({
+      orderId: null,
+      step: 1,
+      values: emptyIntakeWizardValues(),
+      savedAt: Date.now(),
+      savedBy: SERVISER,
+    })
+
+    expect(readIntakeDraft(SERVISER)).toBeNull()
   })
 
   it('refuses to replace a real draft with the empty one the wizard builds on mount', () => {
-    writeIntakeDraft({ orderId: null, step: 2, values: filledValues() })
+    writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
 
     // Exactly what the wizard's buffering effect passes on a fresh mount, before the serviser has
     // had a chance to answer the offer the read effect just put on screen.
-    writeIntakeDraft({ orderId: null, step: 1, values: emptyIntakeWizardValues() })
+    writeIntakeDraft({
+      orderId: null,
+      step: 1,
+      values: emptyIntakeWizardValues(),
+      savedBy: SERVISER,
+    })
 
-    expect(readIntakeDraft()?.values.orderNumber).toBe('RN-0249/26')
-    expect(readIntakeDraft()?.step).toBe(2)
+    expect(readIntakeDraft(SERVISER)?.values.orderNumber).toBe('RN-0249/26')
+    expect(readIntakeDraft(SERVISER)?.step).toBe(2)
   })
 
   it('keeps buffering while the intake is still worth resuming', () => {
-    writeIntakeDraft({ orderId: null, step: 1, values: filledValues() })
-    writeIntakeDraft({ orderId: 'order-1', step: 3, values: filledValues() })
+    writeIntakeDraft({ orderId: null, step: 1, values: filledValues(), savedBy: SERVISER })
+    writeIntakeDraft({ orderId: 'order-1', step: 3, values: filledValues(), savedBy: SERVISER })
 
-    expect(readIntakeDraft()?.step).toBe(3)
-    expect(readIntakeDraft()?.orderId).toBe('order-1')
+    expect(readIntakeDraft(SERVISER)?.step).toBe(3)
+    expect(readIntakeDraft(SERVISER)?.orderId).toBe('order-1')
   })
 
   it('keeps buffering when the number is blanked but the server already holds the intake', () => {
-    writeIntakeDraft({ orderId: 'order-1', step: 3, values: filledValues() })
+    writeIntakeDraft({ orderId: 'order-1', step: 3, values: filledValues(), savedBy: SERVISER })
     writeIntakeDraft({
       orderId: 'order-1',
       step: 3,
       values: filledValues({ orderNumber: '', equipmentNote: 'gepek prazan' }),
+      savedBy: SERVISER,
     })
 
     // Written — so the intake keeps being tracked while he retypes the number...
     expect(storedRaw()).toMatchObject({ values: { equipmentNote: 'gepek prazan' } })
     // ...but not offerable, because the offer has nothing to name the intake by.
-    expect(readIntakeDraft()).toBeNull()
+    expect(readIntakeDraft(SERVISER)).toBeNull()
   })
 
   it.each([
-    ['a null values object', { values: null, savedAt: Date.now() }],
+    ['a null values object', { values: null, savedAt: Date.now(), savedBy: SERVISER }],
     ['a values object with no order number', { values: {}, savedAt: Date.now() }],
     ['an array', []],
     ['a bare string', 'nedovrsen prijem'],
   ])('treats %s as no draft at all rather than throwing', (_label, stored) => {
     seedRaw(stored)
 
-    expect(() => readIntakeDraft()).not.toThrow()
-    expect(readIntakeDraft()).toBeNull()
+    expect(() => readIntakeDraft(SERVISER)).not.toThrow()
+    expect(readIntakeDraft(SERVISER)).toBeNull()
   })
 
   it('forgets a draft the serviser explicitly waved away', () => {
-    writeIntakeDraft({ orderId: null, step: 1, values: filledValues() })
+    writeIntakeDraft({ orderId: null, step: 1, values: filledValues(), savedBy: SERVISER })
 
     clearIntakeDraft()
 
-    expect(readIntakeDraft()).toBeNull()
+    expect(readIntakeDraft(SERVISER)).toBeNull()
     expect(storedRaw()).toBeNull()
+  })
+
+  describe('on a tablet two serviseri share', () => {
+    it("does not show one serviser the other's customer", () => {
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
+
+      expect(readIntakeDraft(KOLEGA)).toBeNull()
+    })
+
+    it("leaves the other's draft where it is — it may be his only copy", () => {
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
+
+      readIntakeDraft(KOLEGA)
+
+      expect(readIntakeDraft(SERVISER)?.values.orderNumber).toBe('RN-0249/26')
+    })
+
+    it('offers nothing at all before the session has a name to compare against', () => {
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
+
+      expect(readIntakeDraft('')).toBeNull()
+      expect(storedRaw()).not.toBeNull()
+    })
+
+    it('does not treat two unnamed sessions as the same person', () => {
+      // A draft stored before the session resolved carries no owner. Matching it against an equally
+      // unnamed reader would hand a customer to whoever happens to be holding the tablet — the
+      // "nobody equals nobody" hole that an equality check alone cannot see.
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: '' })
+
+      expect(readIntakeDraft('')).toBeNull()
+    })
   })
 
   describe('after a shift has passed', () => {
@@ -295,33 +348,75 @@ describe('the tablet draft buffer', () => {
     })
 
     it('still offers a draft from earlier in the same shift', () => {
-      writeIntakeDraft({ orderId: null, step: 2, values: filledValues() })
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
 
       vi.advanceTimersByTime(INTAKE_DRAFT_MAX_AGE_MS - 60_000)
 
-      expect(readIntakeDraft()?.values.orderNumber).toBe('RN-0249/26')
+      expect(readIntakeDraft(SERVISER)?.values.orderNumber).toBe('RN-0249/26')
     })
 
     it('stops offering a draft older than a shift', () => {
-      writeIntakeDraft({ orderId: null, step: 2, values: filledValues() })
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
 
       vi.advanceTimersByTime(INTAKE_DRAFT_MAX_AGE_MS + 60_000)
 
-      expect(readIntakeDraft()).toBeNull()
+      expect(readIntakeDraft(SERVISER)).toBeNull()
+    })
+
+    it('throws the expired draft away instead of leaving a customer on a shared tablet', () => {
+      writeIntakeDraft({ orderId: null, step: 2, values: filledValues(), savedBy: SERVISER })
+
+      vi.advanceTimersByTime(INTAKE_DRAFT_MAX_AGE_MS + 60_000)
+      readIntakeDraft(SERVISER)
+
+      // Name, phone, address and plate: dead weight the moment the draft stops being offerable.
+      expect(storedRaw()).toBeNull()
+    })
+
+    it('refuses a stamp from the future rather than trusting it forever', () => {
+      // A tablet whose clock ran ahead and was then corrected. One-sided arithmetic makes the age
+      // negative, and negative is always "within the window" — the draft would never expire.
+      seedRaw({
+        orderId: null,
+        step: 2,
+        values: filledValues(),
+        savedAt: SHIFT_START.getTime() + INTAKE_DRAFT_MAX_AGE_MS + 60_000,
+        savedBy: SERVISER,
+      })
+
+      expect(readIntakeDraft(SERVISER)).toBeNull()
     })
 
     it.each([
+      // These three are refused by the freshness arithmetic itself — `NaN <= x` is false — so they
+      // pin the POSITIVE phrasing of that comparison, not the type assertion.
       ['missing', undefined],
       ['a date string', '2026-08-04T07:30:00.000Z'],
-      ['not a finite number', Number.NaN],
-      // A stamp that arithmetic would happily coerce, and that is otherwise brand new: without an
-      // explicit type assertion this one is offered back, and localStorage is writable by whoever
-      // holds the tablet. The other three are already refused by the freshness comparison itself.
-      ['the right instant but written as a string', String(SHIFT_START.getTime())],
+      ['NaN', Number.NaN],
+      // The one shape the type assertion earns its place against through this route: it survives
+      // the arithmetic, and localStorage is writable by whoever holds the tablet.
+      ['the right instant written as a string', String(SHIFT_START.getTime())],
     ])('refuses a draft whose age is %s', (_label, savedAt) => {
-      seedRaw({ orderId: null, step: 2, values: filledValues(), savedAt })
+      seedRaw({ orderId: null, step: 2, values: filledValues(), savedAt, savedBy: SERVISER })
 
-      expect(readIntakeDraft()).toBeNull()
+      expect(readIntakeDraft(SERVISER)).toBeNull()
+    })
+
+    it('refuses an age that overflows to Infinity', () => {
+      // Hand-built JSON, not `seedRaw`: `JSON.stringify(Infinity)` is `null`, so going through the
+      // helper would seed a different shape and the case would pass without ever testing this one.
+      // `JSON.parse` has no such limit — `1e999` comes back as `Infinity`, which survives the
+      // subtraction (`Date.now() - Infinity` is `-Infinity`, comfortably "within the window").
+      const stored = JSON.stringify({
+        orderId: null,
+        step: 2,
+        values: filledValues(),
+        savedBy: SERVISER,
+      }).replace(/}$/, ',"savedAt":1e999}')
+      window.localStorage.setItem(INTAKE_DRAFT_STORAGE_KEY, stored)
+      expect(JSON.parse(stored).savedAt).toBe(Number.POSITIVE_INFINITY)
+
+      expect(readIntakeDraft(SERVISER)).toBeNull()
     })
   })
 })

@@ -184,10 +184,34 @@ export interface IntakeDraftBuffer {
   values: IntakeWizardValues
   /** Stamped by `writeIntakeDraft` itself, so no caller can forget it. */
   savedAt: number
+  /**
+   * Who left it here. The tablet is shared between serviseri and holds no session of its own, so
+   * without this the next person to open the wizard is offered a colleague's customer — name,
+   * phone and address included — which is exactly what the API refuses to serve him.
+   */
+  savedBy: string
 }
 
 function hasOrderNumber(values: IntakeWizardValues): boolean {
   return values.orderNumber.trim().length > 0
+}
+
+/**
+ * Within one shift of now, in EITHER direction. One-sided arithmetic would read a stamp from the
+ * future as negative age, and negative is always inside the window — a tablet whose clock ran ahead
+ * would carry a draft that never expires.
+ *
+ * `Number.isFinite` is not decoration, and not for the shape it looks like: a missing or
+ * unparseable stamp already fails the comparison, because `NaN <= x` is false. It earns its place
+ * against the two shapes that SURVIVE the arithmetic — a stamp written as a numeric string, which
+ * subtraction happily coerces, and one that overflowed to `Infinity` (`JSON.parse` turns `1e999`
+ * into exactly that). This is `localStorage`: whoever holds the tablet can write it.
+ */
+function isFresh(draft: IntakeDraftBuffer): boolean {
+  return (
+    Number.isFinite(draft.savedAt) &&
+    Math.abs(Date.now() - draft.savedAt) <= INTAKE_DRAFT_MAX_AGE_MS
+  )
 }
 
 /**
@@ -201,27 +225,27 @@ function isWorthKeeping(draft: Omit<IntakeDraftBuffer, 'savedAt'>): boolean {
 }
 
 /**
- * Worth offering back: the offer names the intake by its order number, and a draft older than a
- * shift is not an offer but a trap. The reader and the writer used to decide this separately — and
- * the writer did not decide at all, so a fresh mount overwrote a real draft with an empty one before
- * the serviser could answer the offer. Both now ask the same module, so they cannot disagree again.
- *
- * `Number.isFinite` earns its place against ONE shape, and it is not the obvious one: a missing or
- * unparseable stamp already fails the comparison below, because `NaN <= x` is false. What slips
- * through is a stamp written as a NUMERIC STRING, which the subtraction happily coerces. This is
- * `localStorage`, writable by whoever holds the tablet, so a stamp that is not a number is treated
- * like every other shape that is not ours. (Phrase the comparison the other way round — as an
- * is-expired test — and `NaN` inverts into "fresh"; it is written positively for that reason.)
+ * Worth offering back: it belongs to the person reading it, the offer can name the intake by its
+ * order number, and it is not older than a shift. The reader and the writer used to decide this
+ * separately — and the writer did not decide at all, so a fresh mount overwrote a real draft with an
+ * empty one before the serviser could answer the offer. Both now ask the same module.
  */
-function isOfferable(draft: IntakeDraftBuffer): boolean {
+function isOfferable(draft: IntakeDraftBuffer, reader: string): boolean {
   return (
-    hasOrderNumber(draft.values) &&
-    Number.isFinite(draft.savedAt) &&
-    Date.now() - draft.savedAt <= INTAKE_DRAFT_MAX_AGE_MS
+    reader.length > 0 && draft.savedBy === reader && hasOrderNumber(draft.values) && isFresh(draft)
   )
 }
 
-export function readIntakeDraft(): IntakeDraftBuffer | null {
+/**
+ * `reader` is the signed-in serviser's email — the only session identity available here
+ * synchronously, so it cannot lose a race against hydration and refuse a man his own intake.
+ *
+ * Reading also EVICTS a draft that has gone stale. That is deliberate: nothing else ever deletes
+ * one now that the writer no longer overwrites blindly, and a dead draft is a customer's name,
+ * phone and address left on a tablet the whole shop shares. A draft belonging to someone else is
+ * refused but NOT evicted — it may be the only copy of his step 1.
+ */
+export function readIntakeDraft(reader: string): IntakeDraftBuffer | null {
   if (typeof window === 'undefined') {
     return null
   }
@@ -239,7 +263,11 @@ export function readIntakeDraft(): IntakeDraftBuffer | null {
     // here that throw would escape into the wizard's mount effect, which has no try of its own,
     // and take the whole screen down — with the customer standing at the car.
     const draft = parsed as IntakeDraftBuffer
-    return isOfferable(draft) ? draft : null
+    if (!isFresh(draft)) {
+      clearIntakeDraft()
+      return null
+    }
+    return isOfferable(draft, reader) ? draft : null
   } catch {
     // A corrupt buffer must never block a new intake — the customer is standing there.
     return null

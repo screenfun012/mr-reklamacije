@@ -195,11 +195,12 @@ nothing anywhere reported an error.
    for the current device.** Each step transition sends a small `PATCH` (text and JSON only, no
    photos). The local buffer holds what has not reached the server yet, and it is rewritten on
    `visibilitychange` so that a tablet iPadOS puts to sleep without warning does not lose it.
-   ⚠ **It is not flushed upwards on its own.** An earlier version of this line said it was; nothing
-   ever sent it, so the sentence described an intention rather than the code (found by the buffer
-   audit, 2026-08-04). What reaches the server is only what a step transition patches. Whether an
-   automatic upward flush should exist is open — it needs its own answers for what is sent, when,
-   and what happens when it disagrees with the server.
+   ⚠ **The buffered VALUES are not flushed upwards on their own.** An earlier version of this line
+   said they were; nothing ever sent them, so the sentence described an intention rather than the
+   code (found by the buffer audit, 2026-08-04). What reaches the server is only what a step
+   transition patches. **Photos are the exception and do work as described** — `useIntakePhotoQueue`
+   resumes its uploads when the network returns. Whether the values should follow is open: it needs
+   its own answers for what is sent, when, and what happens when it disagrees with the server.
    **This is forced by the drawn UI, not a preference:** Design drew "stao si na koraku 3 od 5" and
    a colleague-collision warning, and a `localStorage` draft on someone else's tablet can know
    neither. Hence the new **`draft_step`** column (§4.1).

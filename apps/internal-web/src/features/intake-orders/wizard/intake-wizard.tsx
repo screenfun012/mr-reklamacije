@@ -67,8 +67,10 @@ const STEP_LABELS = [
 export function IntakeWizard(): ReactElement {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  // The signing serviser is whoever is logged in — the order is his by construction.
-  const { userName: technicianName } = useInternalAuthUser()
+  // The signing serviser is whoever is logged in — the order is his by construction. The email is
+  // the buffer's owner mark: the tablet is shared, and it is the one identity available here
+  // synchronously, so it cannot lose a race against hydration and refuse a man his own intake.
+  const { userName: technicianName, userEmail } = useInternalAuthUser()
 
   const [values, setValues] = useState<IntakeWizardValues>(emptyIntakeWizardValues)
   const [step, setStep] = useState(1)
@@ -102,11 +104,11 @@ export function IntakeWizard(): ReactElement {
   // two used to decide it separately, and this effect's mount write was the half that decided
   // nothing and overwrote a real draft with an empty one.
   useEffect(() => {
-    const draft = readIntakeDraft()
+    const draft = readIntakeDraft(userEmail)
     if (draft !== null) {
       setFoundDraft(draft)
     }
-  }, [])
+  }, [userEmail])
 
   // The buffer only has to survive a sleeping tablet between two step patches, so it is
   // written on every change — including `visibilitychange`, which is when iPadOS freezes the
@@ -115,7 +117,7 @@ export function IntakeWizard(): ReactElement {
     if (released.current) {
       return
     }
-    const draft: Omit<IntakeDraftBuffer, 'savedAt'> = { orderId, step, values }
+    const draft: Omit<IntakeDraftBuffer, 'savedAt'> = { orderId, step, values, savedBy: userEmail }
     writeIntakeDraft(draft)
     const onHide = (): void => {
       // Releasing does not re-run this effect (a ref is not a dependency), so the listener
@@ -130,7 +132,7 @@ export function IntakeWizard(): ReactElement {
     return () => {
       document.removeEventListener('visibilitychange', onHide)
     }
-  }, [orderId, step, values])
+  }, [orderId, step, values, userEmail])
 
   const patch = useCallback((next: Partial<IntakeWizardValues>) => {
     setValues((prev) => ({ ...prev, ...next }))
@@ -237,15 +239,18 @@ export function IntakeWizard(): ReactElement {
 
   const discard = (): void => {
     void (async () => {
+      // The dialog stays open until we navigate, and its confirm button is a plain button — without
+      // this a second tap fires a second DELETE while the first is still waiting on the hall's WiFi.
+      setSaving(true)
       if (orderId !== null) {
         try {
           await deleteIntakeOrder(orderId)
           await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
         } catch {
-          // The row may survive — a dropped connection, or one a colleague already removed. It
-          // stays in his unfinished list and is recoverable by its number. Abandoning is a local
-          // decision, so the tablet lets go either way; keeping the delete inside the same try as
-          // the release and the navigation made ODUSTANI a button that only showed an error.
+          // We cannot tell a request that never arrived from one that committed and lost its
+          // response, so the message claims neither. Abandoning is a local decision either way:
+          // keeping the delete inside the same try as the release and the navigation made ODUSTANI
+          // a button that only showed an error and left the dead order still being offered.
           showInternalToast(m.intake_discard_failed())
         }
       }
@@ -468,6 +473,7 @@ export function IntakeWizard(): ReactElement {
         title={m.intake_discard_title()}
         description={m.intake_discard_description()}
         confirmLabel={m.intake_action_discard()}
+        pending={saving}
         onConfirm={discard}
       />
     </InternalPage>
