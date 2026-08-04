@@ -60,19 +60,29 @@ export function IntakeSpecList({
   note,
 }: IntakeSpecListProps): ReactElement {
   const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
 
   const add = (): void => {
     const text = draft.trim()
-    if (text.length === 0) {
+    // Keeping the line until the change is accepted leaves it on screen for the whole round trip,
+    // and on the detail an optimistic update has already put it in the list by then — so the
+    // serviser sees it twice and presses Enter again on a field that looks like it did nothing.
+    // Without this guard that sends the same line as many times as he presses.
+    if (text.length === 0 || sending) {
       return
     }
+    setSending(true)
     // The draft is cleared only once the change is accepted — clearing first would destroy the
     // typed line on a failed PATCH, the one moment the serviser cannot get it back. A rejection
     // is therefore handled here by keeping the line; SAYING what failed is the caller's job,
-    // because only it knows what it was doing.
+    // because only it knows what it was doing. The button comes back either way, or one refused
+    // PATCH would lock the card for the rest of the visit.
     void Promise.resolve(onChange([...items, text])).then(
-      () => setDraft(''),
-      () => undefined,
+      () => {
+        setDraft('')
+        setSending(false)
+      },
+      () => setSending(false),
     )
   }
 
@@ -120,9 +130,11 @@ export function IntakeSpecList({
         <button
           type="button"
           onClick={add}
+          disabled={sending}
           className={cn(
             'h-[52px] w-[130px] flex-none cursor-pointer rounded-[10px] border border-dashed border-mri-border2 bg-transparent text-[13px] font-bold uppercase tracking-[0.06em] text-mri-text2',
             'transition-colors duration-200 hover:border-mri-red hover:text-mri-redh motion-reduce:transition-none',
+            'disabled:cursor-wait disabled:opacity-60 disabled:hover:border-mri-border2 disabled:hover:text-mri-text2',
           )}
         >
           {m.intake_spec_add()}

@@ -1,7 +1,8 @@
-import { m } from '@mr/i18n'
+import { m, type Locale } from '@mr/i18n'
 import { IntakeOrderStatus } from '@mr/shared'
 
 import type { InternalPillTone } from '~/components/internal-pill'
+import { internalIntlLocale } from '~/lib/internal-format'
 
 /**
  * Status → pill tone. Verified against the handoff's palette: Primljeno blue, U radu amber,
@@ -29,10 +30,11 @@ export const INTAKE_STATUS_ORDER = [
 ] as const
 
 /** `25.07 · 09:14` — the handoff's list format, localized digits via Intl. */
-export function formatIntakeReceivedAt(iso: string, locale: string): string {
+export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
   const date = new Date(iso)
-  const day = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit' }).format(date)
-  const time = new Intl.DateTimeFormat(locale, {
+  const intl = internalIntlLocale(locale)
+  const day = new Intl.DateTimeFormat(intl, { day: '2-digit', month: '2-digit' }).format(date)
+  const time = new Intl.DateTimeFormat(intl, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -45,14 +47,15 @@ export function formatIntakeReceivedAt(iso: string, locale: string): string {
  * fine for a work list and wrong for an archival read that is reachable from `Uklonjeni`, from
  * a direct link and later from the print.
  */
-export function formatIntakeReceivedAtLong(iso: string, locale: string): string {
+export function formatIntakeReceivedAtLong(iso: string, locale: Locale): string {
   const date = new Date(iso)
-  const day = new Intl.DateTimeFormat(locale, {
+  const intl = internalIntlLocale(locale)
+  const day = new Intl.DateTimeFormat(intl, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   }).format(date)
-  const time = new Intl.DateTimeFormat(locale, {
+  const time = new Intl.DateTimeFormat(intl, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,

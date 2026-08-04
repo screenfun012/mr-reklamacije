@@ -139,6 +139,38 @@ describe('StepDamagePhotos — the photo preview', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  /**
+   * The other half of the same rule, and the one the workshop actually hits: the serviser takes a
+   * photo, sees it is the wrong panel, and deletes it while it is still climbing the hall's WiFi.
+   * There is nothing on the server to delete yet — asking for it would 404 — so only the queue
+   * entry goes. A guard that wraps BOTH halves in `attachmentId !== null` leaves that photo
+   * uploading after he thinks he removed it, and it lands on the signed order.
+   */
+  it('drops a photo that has not reached the server yet without asking the server to', async () => {
+    const user = userEvent.setup()
+    const { onDeletePhoto, queue } = renderStep(
+      emptyIntakeWizardValues(),
+      vi.fn(),
+      emptyQueue([
+        {
+          id: 'q2',
+          damageId: null,
+          state: 'up',
+          progress: 40,
+          previewUrl: 'blob:local-2',
+          attachmentId: null,
+        },
+      ]),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Pregled fotografije' }))
+    await user.click(screen.getByRole('button', { name: 'Obriši fotografiju' }))
+
+    expect(onDeletePhoto).not.toHaveBeenCalled()
+    expect(queue.discard).toHaveBeenCalledWith('q2')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('closes without deleting anything', async () => {
     const user = userEvent.setup()
     const { onDeletePhoto, queue } = renderStep(

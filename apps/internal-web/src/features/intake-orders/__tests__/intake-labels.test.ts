@@ -7,14 +7,14 @@ import {
   INTAKE_CHECKLIST_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
 } from '../intake-labels.js'
-import { formatIntakeReceivedAtLong } from '../intake-status.js'
+import { formatIntakeReceivedAt, formatIntakeReceivedAtLong } from '../intake-status.js'
 
 describe('intake labels', () => {
   beforeEach(() => {
     setLocale('sr', { reload: false })
   })
 
-  it('names every checklist item exactly once', () => {
+  it('gives every checklist item a label', () => {
     for (const key of INTAKE_CHECKLIST_KEYS) {
       expect(INTAKE_CHECKLIST_LABELS[key]()).not.toBe('')
     }
@@ -31,5 +31,21 @@ describe('intake labels', () => {
 
   it('carries the year, because the detail is read years later', () => {
     expect(formatIntakeReceivedAtLong('2026-07-25T07:14:00.000Z', 'sr')).toMatch(/2026/)
+  })
+
+  // `en` alone is US English: `Intl` renders 07/25/2026, month first, and a serviser reading a
+  // work order cannot tell that from 07.25 in a hurry. `internal-format.ts` already learned this
+  // the other way round — plain `sr` gave Cyrillic — and both intake formatters had missed it.
+  it.each([
+    ['sr', /^25\.07\.2026\.? · 09:14$/],
+    ['en', /^25\/07\/2026 · 09:14$/],
+  ])('writes the day before the month on %s, never the other way round', (locale, shape) => {
+    expect(formatIntakeReceivedAtLong('2026-07-25T07:14:00.000Z', locale as 'sr' | 'en')).toMatch(
+      shape,
+    )
+  })
+
+  it('keeps the list format day-first too, so the list and the detail cannot disagree', () => {
+    expect(formatIntakeReceivedAt('2026-07-25T07:14:00.000Z', 'en')).toMatch(/^25\/07 · 09:14$/)
   })
 })

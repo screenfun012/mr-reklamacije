@@ -1,14 +1,19 @@
 import type { Locale } from '@mr/i18n'
 
 /**
- * "PETAK · 04.07.2026" — mono caps date eyebrow above a screen's H1.
- *
- * `sr-Latn-RS`, not `sr-RS`: plain `sr` resolves to Cyrillic, so this printed "ЧЕТВРТАК" while
- * every other word on the screen was Latin. The chart-month formatter below already got this
- * right, which is what made the inconsistency findable.
+ * Neither bare tag is ever what this app wants, and each fails in its own direction: plain `sr`
+ * resolves to CYRILLIC (this once printed "ЧЕТВРТАК" while every other word on the screen was
+ * Latin), and plain `en` is US English, which writes `07/25/2026` — a serviser reading a work
+ * order in a hurry cannot tell that from `25.07`. Every `Intl` call in internal-web goes through
+ * here, so the two halves cannot be got right one at a time.
  */
+export function internalIntlLocale(locale: Locale): string {
+  return locale === 'sr' ? 'sr-Latn-RS' : 'en-GB'
+}
+
+/** "PETAK · 04.07.2026" — mono caps date eyebrow above a screen's H1. */
 export function formatInternalDateEyebrow(now: Date, locale: Locale): string {
-  const weekday = new Intl.DateTimeFormat(locale === 'sr' ? 'sr-Latn-RS' : 'en-GB', {
+  const weekday = new Intl.DateTimeFormat(internalIntlLocale(locale), {
     weekday: 'long',
   }).format(now)
   const day = String(now.getDate()).padStart(2, '0')
@@ -23,7 +28,7 @@ export function formatInternalChartMonth(isoMonth: string, locale: Locale): stri
     return isoMonth
   }
   const date = new Date(Number(year), Number(month) - 1, 1)
-  return new Intl.DateTimeFormat(locale === 'sr' ? 'sr-Latn-RS' : 'en-GB', { month: 'short' })
+  return new Intl.DateTimeFormat(internalIntlLocale(locale), { month: 'short' })
     .format(date)
     .replace('.', '')
     .toUpperCase()

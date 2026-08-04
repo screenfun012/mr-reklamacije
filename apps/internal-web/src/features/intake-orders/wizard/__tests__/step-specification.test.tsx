@@ -1,5 +1,5 @@
 import { setLocale } from '@mr/i18n'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -127,5 +127,63 @@ describe('IntakeSpecList — an async onChange', () => {
     await user.type(input, 'Zamena ulja{Enter}')
 
     expect(input).toHaveValue('')
+  })
+})
+
+describe('IntakeSpecList while a change is in flight', () => {
+  beforeEach(() => {
+    setLocale('sr', { reload: false })
+  })
+
+  function renderList(onChange: (items: string[]) => void | Promise<void>): void {
+    render(
+      <IntakeSpecList
+        title="Usluge"
+        items={[]}
+        placeholder="Dodaj uslugu i pritisni Enter"
+        removeLabel="Ukloni"
+        onChange={onChange}
+      />,
+    )
+  }
+
+  it('sends the line once, however many times the serviser hits Enter', async () => {
+    const user = userEvent.setup()
+    // A PATCH over the hall's WiFi. Until it answers, the line is still in the input — which on
+    // the detail is exactly when an optimistic update has already put it in the list, so the
+    // serviser sees it twice and presses Enter again on what looks like a field that did nothing.
+    let settle = (): void => undefined
+    const onChange = vi.fn(() => new Promise<void>((resolve) => (settle = resolve)))
+    renderList(onChange)
+
+    const input = screen.getByPlaceholderText('Dodaj uslugu i pritisni Enter')
+    await user.type(input, 'Zamena ulja{Enter}')
+    await user.type(input, '{Enter}')
+    await user.click(screen.getByRole('button', { name: '+ Dodaj' }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: '+ Dodaj' })).toBeDisabled()
+
+    settle()
+    await waitFor(() => expect(input).toHaveValue(''))
+    expect(screen.getByRole('button', { name: '+ Dodaj' })).not.toBeDisabled()
+  })
+
+  it('gives the line and the button back when the change is refused', async () => {
+    const user = userEvent.setup()
+    let refuse = (): void => undefined
+    const onChange = vi.fn(
+      () => new Promise<void>((_resolve, reject) => (refuse = () => reject(new Error('offline')))),
+    )
+    renderList(onChange)
+
+    const input = screen.getByPlaceholderText('Dodaj uslugu i pritisni Enter')
+    await user.type(input, 'Zamena ulja{Enter}')
+    refuse()
+
+    // The typed line survives — it is the one thing the serviser cannot get back — and the button
+    // has to come back with it, or a failed PATCH locks the card for the rest of the visit.
+    await waitFor(() => expect(screen.getByRole('button', { name: '+ Dodaj' })).not.toBeDisabled())
+    expect(input).toHaveValue('Zamena ulja')
   })
 })
