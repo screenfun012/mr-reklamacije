@@ -18,14 +18,14 @@ export interface StepSpecificationProps {
 export function StepSpecification({ values, onPatch }: StepSpecificationProps): ReactElement {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-      <SpecList
+      <IntakeSpecList
         title={m.intake_card_services()}
         items={values.services}
         placeholder={m.intake_service_add()}
         removeLabel={m.intake_service_remove()}
         onChange={(services) => onPatch({ services })}
       />
-      <SpecList
+      <IntakeSpecList
         title={m.intake_card_materials()}
         items={values.materials}
         placeholder={m.intake_material_add()}
@@ -37,24 +37,28 @@ export function StepSpecification({ values, onPatch }: StepSpecificationProps): 
   )
 }
 
-interface SpecListProps {
+export interface IntakeSpecListProps {
   title: string
   items: readonly string[]
   placeholder: string
   removeLabel: string
-  onChange: (items: string[]) => void
+  /**
+   * May be async: on the detail every change is a `PATCH`, and the typed line must survive one
+   * that fails. The wizard's synchronous handler satisfies this signature unchanged.
+   */
+  onChange: (items: string[]) => void | Promise<void>
   /** Only the materials card carries one, pinned to the bottom, as the prototype has it. */
   note?: string
 }
 
-function SpecList({
+export function IntakeSpecList({
   title,
   items,
   placeholder,
   removeLabel,
   onChange,
   note,
-}: SpecListProps): ReactElement {
+}: IntakeSpecListProps): ReactElement {
   const [draft, setDraft] = useState('')
 
   const add = (): void => {
@@ -62,8 +66,14 @@ function SpecList({
     if (text.length === 0) {
       return
     }
-    onChange([...items, text])
-    setDraft('')
+    // The draft is cleared only once the change is accepted — clearing first would destroy the
+    // typed line on a failed PATCH, the one moment the serviser cannot get it back. A rejection
+    // is therefore handled here by keeping the line; SAYING what failed is the caller's job,
+    // because only it knows what it was doing.
+    void Promise.resolve(onChange([...items, text])).then(
+      () => setDraft(''),
+      () => undefined,
+    )
   }
 
   return (

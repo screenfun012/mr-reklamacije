@@ -2,7 +2,6 @@ import { m } from '@mr/i18n'
 import {
   IntakeDamageType,
   intakeDamageTypeValues,
-  buildIntakePhotoUrl,
   intakeDamageZoneOf,
   type IntakeDamage,
   type IntakeOrderPhoto,
@@ -15,6 +14,7 @@ import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { IntakeDamageMap, intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakePanel } from './intake-panel'
 import { buildPhotoCells, IntakePhotoGrid, type IntakePhotoCell } from './intake-photo-grid'
+import { IntakePhotoLightbox } from './intake-photo-lightbox'
 import { newDamageId, type IntakeWizardValues } from './intake-wizard-state'
 import type { IntakePhotoQueue } from './use-intake-photo-queue'
 
@@ -253,58 +253,21 @@ export function StepDamagePhotos({
         }}
       />
 
-      {/*
-        Tap opens the photo; deleting it is a button inside that view. Nikola's call, 2026-07-27 —
-        the prototype and the printed instruction both delete on the first tap, and one gloved
-        finger on the wrong cell would destroy evidence of damage the customer has not yet signed
-        for. The divergence from the printed instruction is reported, not hidden.
-      */}
       {preview !== null ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={m.intake_photo_preview()}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[rgba(11,11,13,0.92)] p-6"
-          onClick={() => setPreview(null)}
-        >
-          {/* The grid deliberately loads thumbnails; the preview is the one place worth the full
-              image, and only once the server actually has it. */}
-          <img
-            src={
-              preview.attachmentId !== null && orderId !== null
-                ? buildIntakePhotoUrl(orderId, preview.attachmentId)
-                : preview.url
+        <IntakePhotoLightbox
+          cell={preview}
+          orderId={orderId}
+          onClose={() => setPreview(null)}
+          onDelete={async () => {
+            if (preview.attachmentId !== null) {
+              await onDeletePhoto(preview.attachmentId)
             }
-            alt=""
-            className="max-h-[78vh] max-w-full rounded-xl object-contain"
-          />
-          <div className="flex gap-3" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              className="h-12 cursor-pointer rounded-[11px] border border-mri-border2 bg-mri-inbg px-6 text-sm font-semibold text-mri-text"
-            >
-              {m.action_close()}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void (async () => {
-                  if (preview.attachmentId !== null) {
-                    await onDeletePhoto(preview.attachmentId)
-                  }
-                  if (preview.entryId !== null) {
-                    queue.discard(preview.entryId)
-                  }
-                  setPreview(null)
-                })()
-              }}
-              className="h-12 cursor-pointer rounded-[11px] border border-mri-red bg-[rgba(237,28,36,0.13)] px-6 text-sm font-extrabold uppercase tracking-[0.06em] text-mri-redh"
-            >
-              {m.intake_photo_delete()}
-            </button>
-          </div>
-        </div>
+            if (preview.entryId !== null) {
+              queue.discard(preview.entryId)
+            }
+            setPreview(null)
+          }}
+        />
       ) : null}
     </div>
   )

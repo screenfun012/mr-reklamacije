@@ -6,31 +6,39 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emptyIntakeWizardValues, type IntakeWizardValues } from '../intake-wizard-state.js'
 import { StepDamagePhotos } from '../step-damage-photos.js'
-import type { IntakePhotoQueue } from '../use-intake-photo-queue.js'
+import type { IntakePhotoQueue, IntakePhotoQueueEntry } from '../use-intake-photo-queue.js'
 
-function emptyQueue(): IntakePhotoQueue {
+function emptyQueue(entries: IntakePhotoQueueEntry[] = []): IntakePhotoQueue {
   return {
-    entries: [],
+    entries,
     pending: 0,
     failed: 0,
+    waiting: 0,
+    outstanding: 0,
+    online: true,
     enqueue: vi.fn(),
     retry: vi.fn(),
     discard: vi.fn(),
   }
 }
 
-function renderStep(values: IntakeWizardValues, onPatch = vi.fn()) {
-  return render(
-    <StepDamagePhotos
-      values={values}
-      onPatch={onPatch}
-      orderId="order-1"
-      photos={[]}
-      queue={emptyQueue()}
-      onSaveDamages={vi.fn().mockResolvedValue(undefined)}
-      onDeletePhoto={vi.fn().mockResolvedValue(undefined)}
-    />,
-  )
+function renderStep(values: IntakeWizardValues, onPatch = vi.fn(), queue = emptyQueue()) {
+  const onDeletePhoto = vi.fn().mockResolvedValue(undefined)
+  return {
+    onDeletePhoto,
+    queue,
+    ...render(
+      <StepDamagePhotos
+        values={values}
+        onPatch={onPatch}
+        orderId="order-1"
+        photos={[]}
+        queue={queue}
+        onSaveDamages={vi.fn().mockResolvedValue(undefined)}
+        onDeletePhoto={onDeletePhoto}
+      />,
+    ),
+  }
 }
 
 function valuesWithDamages(): IntakeWizardValues {
@@ -87,5 +95,63 @@ describe('StepDamagePhotos — removing a damage', () => {
     renderStep(emptyIntakeWizardValues())
 
     expect(screen.getByText('Nema unetih oštećenja — tapni na šemu levo.')).toBeInTheDocument()
+  })
+})
+
+describe('StepDamagePhotos — the photo preview', () => {
+  beforeEach(() => {
+    setLocale('sr', { reload: false })
+  })
+
+  function queueWithLandedEntry(): IntakePhotoQueue {
+    return emptyQueue([
+      {
+        id: 'q1',
+        damageId: null,
+        state: 'ok',
+        progress: 100,
+        previewUrl: 'blob:local-1',
+        attachmentId: 'att-1',
+      },
+    ])
+  }
+
+  /**
+   * Deleting has to do BOTH halves: drop the file the server holds and drop the queue entry that
+   * produced it. Doing only the first strands a landed upload in the queue forever, which is what
+   * keeps the "not every photo arrived" indicator lit on an order that is complete.
+   */
+  it('deletes the photo and its queue entry, then closes', async () => {
+    const user = userEvent.setup()
+    const { onDeletePhoto, queue } = renderStep(
+      emptyIntakeWizardValues(),
+      vi.fn(),
+      queueWithLandedEntry(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Pregled fotografije' }))
+    expect(screen.getByRole('dialog', { name: 'Pregled fotografije' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Obriši fotografiju' }))
+
+    expect(onDeletePhoto).toHaveBeenCalledWith('att-1')
+    expect(queue.discard).toHaveBeenCalledWith('q1')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes without deleting anything', async () => {
+    const user = userEvent.setup()
+    const { onDeletePhoto, queue } = renderStep(
+      emptyIntakeWizardValues(),
+      vi.fn(),
+      queueWithLandedEntry(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Pregled fotografije' }))
+    await user.click(screen.getByRole('button', { name: 'Zatvori' }))
+
+    expect(onDeletePhoto).not.toHaveBeenCalled()
+    expect(queue.discard).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
