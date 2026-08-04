@@ -338,15 +338,21 @@ export const IntakeDetailTab = {
 
 export type IntakeDetailTab = (typeof IntakeDetailTab)[keyof typeof IntakeDetailTab]
 
-const intakeDetailTabValues = [
+export const intakeDetailTabValues = [
   IntakeDetailTab.Pregled,
   IntakeDetailTab.Fotografije,
   IntakeDetailTab.Spec,
   IntakeDetailTab.Istorija,
 ] as const
 
+/**
+ * Optional, and it falls back rather than throwing. A required `tab` would force every one of
+ * the three existing links to `/prijem/$id` to carry one (TanStack derives a link's search
+ * requirements from the validator's OUTPUT type), and a stale `?tab=` from a shared link would
+ * drop the reader on the error component instead of the order.
+ */
 export const IntakeDetailSearchSchema = z.object({
-  tab: z.enum(intakeDetailTabValues).default(IntakeDetailTab.Pregled),
+  tab: z.enum(intakeDetailTabValues).optional().catch(undefined),
 })
 
 export type IntakeDetailSearch = z.infer<typeof IntakeDetailSearchSchema>

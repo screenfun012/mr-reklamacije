@@ -29,6 +29,15 @@ export const INTAKE_STATUS_ORDER = [
   IntakeOrderStatus.PickedUp,
 ] as const
 
+/**
+ * The status the advance button moves to, or `null` at the end of the line. `preuzeto` is
+ * terminal and the server answers a further advance with a 409, so hiding the button and
+ * refusing the call agree instead of contradicting each other.
+ */
+export function nextIntakeStatus(current: IntakeOrderStatus): IntakeOrderStatus | null {
+  return INTAKE_STATUS_ORDER[INTAKE_STATUS_ORDER.indexOf(current) + 1] ?? null
+}
+
 /** `25.07 · 09:14` — the handoff's list format, localized digits via Intl. */
 export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
   const date = new Date(iso)
