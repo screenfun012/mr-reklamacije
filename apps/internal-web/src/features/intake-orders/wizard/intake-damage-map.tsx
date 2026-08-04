@@ -33,11 +33,24 @@ export function intakeDamageMarkerColour(type: IntakeDamageType): { fill: string
   return { fill: 'var(--mri-red)', text: '#fff' }
 }
 
+/**
+ * The wizard draws at 236×386 with the orientation words; the detail at the prototype's 152×248
+ * without them (`prijem-prototip-v2.dc.html:494-504`) — at that size the 9px labels render around
+ * 4px, which is a smudge. Everything else the detail keeps, and its markers and outlines are a
+ * shade heavier to survive the 45 % render: r 17 against 16, stroke 2.4 against 2.2. All six
+ * numbers are the prototype's, not a guess.
+ */
+const MAP_VARIANT = {
+  wizard: { width: 236, height: 386, orientation: true, marker: 16, stroke: 2.2 },
+  detail: { width: 152, height: 248, orientation: false, marker: 17, stroke: 2.4 },
+} as const
+
 export interface IntakeDamageMapProps {
   vehicleType: IntakeVehicleType
   damages: readonly IntakeDamage[]
   /** Tapping the drawing adds a marker; omit to render read-only (detail, print). */
   onPlace?: (point: { x: number; y: number }) => void
+  variant?: keyof typeof MAP_VARIANT
 }
 
 /**
@@ -49,7 +62,10 @@ export function IntakeDamageMap({
   vehicleType,
   damages,
   onPlace,
+  variant = 'wizard',
 }: IntakeDamageMapProps): ReactElement {
+  const size = MAP_VARIANT[variant]
+
   const handleClick = (event: MouseEvent<SVGSVGElement>): void => {
     if (onPlace === undefined) {
       return
@@ -67,8 +83,8 @@ export function IntakeDamageMap({
   return (
     <svg
       onClick={handleClick}
-      width="236"
-      height="386"
+      width={size.width}
+      height={size.height}
       viewBox={INTAKE_SILHOUETTE_VIEWBOX}
       fill="none"
       preserveAspectRatio="xMidYMid meet"
@@ -84,27 +100,29 @@ export function IntakeDamageMap({
           fill="currentColor"
           fillOpacity={path.op}
           stroke="currentColor"
-          strokeWidth="2.2"
+          strokeWidth={size.stroke}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
       ))}
 
       {/* Which end is which — without it a marker on a symmetrical silhouette is ambiguous. */}
-      <g
-        fill="currentColor"
-        opacity=".55"
-        fontFamily="JetBrains Mono, monospace"
-        fontSize="9"
-        letterSpacing="1.4"
-      >
-        <text x="6" y="20">
-          {m.intake_map_rear()}
-        </text>
-        <text x="6" y="548">
-          {m.intake_map_front()}
-        </text>
-      </g>
+      {size.orientation ? (
+        <g
+          fill="currentColor"
+          opacity=".55"
+          fontFamily="JetBrains Mono, monospace"
+          fontSize="9"
+          letterSpacing="1.4"
+        >
+          <text x="6" y="20">
+            {m.intake_map_rear()}
+          </text>
+          <text x="6" y="548">
+            {m.intake_map_front()}
+          </text>
+        </g>
+      ) : null}
 
       {damages.map((damage, index) => {
         const colour = intakeDamageMarkerColour(damage.type)
@@ -116,7 +134,7 @@ export function IntakeDamageMap({
             fontWeight="700"
             textAnchor="middle"
           >
-            <circle cx={damage.x} cy={damage.y} r="16" fill={colour.fill} />
+            <circle cx={damage.x} cy={damage.y} r={size.marker} fill={colour.fill} />
             {/* The array index IS the number shown on the map, in the list and on the print. */}
             <text x={damage.x} y={damage.y + 6} fill={colour.text}>
               {index + 1}
