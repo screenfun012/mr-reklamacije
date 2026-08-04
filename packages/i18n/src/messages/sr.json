@@ -593,7 +593,7 @@
   "intake_col_vehicle_owner": "Vozilo / vlasnik",
   "intake_detail_title": "Nalog za servis",
   "intake_discard_description": "Nedovršen prijem se briše i broj naloga se oslobađa. Ovo se ne može vratiti.",
-  "intake_discard_failed": "Odustajanje nije uspelo. Probaj ponovo.",
+  "intake_discard_failed": "Nalog nije obrisan sa servera — ostao je među nedovršenima.",
   "intake_discard_title": "Odustati od prijema?",
   "intake_draft_discard": "Odbaci",
   "intake_draft_found": "Nedovršen prijem {number} — stao si na koraku {step} od 5",

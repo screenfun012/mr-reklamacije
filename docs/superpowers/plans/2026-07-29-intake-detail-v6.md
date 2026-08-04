@@ -1429,6 +1429,14 @@ git commit -m "feat(intake): photos, specification and history tabs — and the 
 
 - [ ] **Step 1: Write the failing tests**
 
+> ⚠ **This first test is now VACUOUS — re-point it before writing Step 4.** The buffer fix of
+> 2026-08-04 (`docs/superpowers/specs/2026-08-04-intake-draft-buffer-invariant-design.md`) guards
+> `writeIntakeDraft`, so the mount write of empty values is a no-op **regardless** of any `resuming`
+> flag. The assertion below therefore passes even if Step 4's guard is never implemented. Whatever
+> Step 4 ends up guarding, prove it by deleting that guard and watching this test go red — as the
+> other tests in that spec each do. The buffer also now carries `savedAt`; build fixtures through
+> `writeIntakeDraft`, never as an object literal, or the reader will refuse them as expired.
+
 ```tsx
 it('does not overwrite another intake\'s buffer while a resume is in flight', async () => {
   writeIntakeDraft({ orderId: 'other-order', step: 3, values: filledValues })

@@ -87,9 +87,23 @@ export function IntakeWizard(): ReactElement {
   const [technicianStrokes, setTechnicianStrokes] = useState<SignatureStrokes>([])
   const [ownerStrokes, setOwnerStrokes] = useState<SignatureStrokes>([])
 
+  /**
+   * The wizard is done with the tablet buffer — the intake was abandoned, or it is signed and we
+   * are leaving. A ref rather than state: the listener below has to see this the moment it happens,
+   * and nothing on screen looks different because of it.
+   */
+  const released = useRef(false)
+  const releaseBuffer = useCallback(() => {
+    released.current = true
+    clearIntakeDraft()
+  }, [])
+
+  // Whether the draft is worth keeping at all is the buffer module's rule, not this screen's — the
+  // two used to decide it separately, and this effect's mount write was the half that decided
+  // nothing and overwrote a real draft with an empty one.
   useEffect(() => {
     const draft = readIntakeDraft()
-    if (draft !== null && draft.values.orderNumber.trim().length > 0) {
+    if (draft !== null) {
       setFoundDraft(draft)
     }
   }, [])
@@ -98,9 +112,18 @@ export function IntakeWizard(): ReactElement {
   // written on every change — including `visibilitychange`, which is when iPadOS freezes the
   // page without warning.
   useEffect(() => {
-    const draft: IntakeDraftBuffer = { orderId, step, values }
+    if (released.current) {
+      return
+    }
+    const draft: Omit<IntakeDraftBuffer, 'savedAt'> = { orderId, step, values }
     writeIntakeDraft(draft)
     const onHide = (): void => {
+      // Releasing does not re-run this effect (a ref is not a dependency), so the listener
+      // registered before the release is still live and still holds its snapshot. Without this
+      // guard a tablet that sleeps during the navigation away writes the buffer straight back.
+      if (released.current) {
+        return
+      }
       writeIntakeDraft(draft)
     }
     document.addEventListener('visibilitychange', onHide)
@@ -214,16 +237,20 @@ export function IntakeWizard(): ReactElement {
 
   const discard = (): void => {
     void (async () => {
-      try {
-        if (orderId !== null) {
+      if (orderId !== null) {
+        try {
           await deleteIntakeOrder(orderId)
           await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
+        } catch {
+          // The row may survive — a dropped connection, or one a colleague already removed. It
+          // stays in his unfinished list and is recoverable by its number. Abandoning is a local
+          // decision, so the tablet lets go either way; keeping the delete inside the same try as
+          // the release and the navigation made ODUSTANI a button that only showed an error.
+          showInternalToast(m.intake_discard_failed())
         }
-        clearIntakeDraft()
-        await navigate({ to: '/prijem' })
-      } catch {
-        showInternalToast(m.intake_discard_failed())
       }
+      releaseBuffer()
+      await navigate({ to: '/prijem' })
     })()
   }
 
@@ -264,7 +291,9 @@ export function IntakeWizard(): ReactElement {
           photosExpected: photos.length + photoQueue.outstanding,
         })
         await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
-        clearIntakeDraft()
+        // Only on the success path: a sign that genuinely failed leaves him standing at the car,
+        // and taking his buffer away then would remove the net while he still needs it.
+        releaseBuffer()
         showInternalToast(m.intake_signed_toast({ number: values.orderNumber.trim() }))
         await navigate({ to: '/prijem/$id', params: { id: orderId } })
       } catch {

@@ -46,11 +46,22 @@ losing the delta since the last patch.
 
 ## 2. Scope
 
-**In scope.** Close the hole so the writer can no longer destroy a draft the reader would offer.
+Nikola widened this on 2026-08-04, after reading the first draft: *"uradi sve što treba i ovo što je
+van domena uradi slobodno, samo uradi sve kako treba"*. So the audit's neighbouring findings are in,
+where doing them now is genuinely better than deferring them.
 
-**Out of scope, decided by Nikola 2026-08-04.** Creating the server row earlier (when a valid free
-number is typed), several keyed buffers, and offering resume from the list screen. §7 records them.
-Anything the audit found that this fix does not touch is recorded in §7 rather than fixed here.
+**In scope.**
+
+1. Close the hole so the writer can no longer destroy a draft the reader would offer (§3.1–§3.3).
+2. Release the buffer properly when the wizard is done with it, so a sleeping tablet cannot write it
+   back after it was cleared (§3.4).
+3. Make ODUSTANI work when the server row is already gone (§3.5).
+
+**Out of scope, with reasons.** Four of the audit's findings are *worse* if taken now than if taken
+deliberately later; §7 items 1–4 carry the argument. They are not deferred for effort — each would
+either break a promise `docs/25` makes about working without WiFi, remove a safety net to fix a case
+that already self-heals, or settle a question that Task 12 has to settle anyway and must not settle
+twice differently.
 
 ---
 
@@ -148,19 +159,74 @@ is treated as expired, not as fresh: the branch has never deployed, so no produc
 one, and refusing an unknown-age buffer is the same answer the module already gives to a shape it
 cannot read.
 
-⚠ **The freshness check must assert the type before it does arithmetic.** Written the obvious way —
-`Date.now() - draft.savedAt <= INTAKE_DRAFT_MAX_AGE_MS` — a `savedAt` that is `undefined` or a
-string yields `NaN`, every comparison against `NaN` is `false`, and the draft is therefore treated
-as **fresh**: the exact opposite of the paragraph above, silently. The check must start from
-`typeof draft.savedAt === 'number'`. T6b in §5 pins it.
+⚠ **The freshness check asserts the type before it does arithmetic**, and the reason is narrower than
+the first draft of this spec claimed. That draft said `NaN` would read as fresh; it does not, as long
+as freshness is phrased **positively** — `Date.now() - savedAt <= MAX` is `false` for `NaN`, so a
+missing or non-numeric stamp is refused by the comparison itself. Phrase the same rule as an
+*is-expired* test (`Date.now() - savedAt > MAX`) and it inverts: `NaN > MAX` is `false`, "not
+expired", offered.
 
-### 3.4 What this does not claim
+What survives the positive phrasing is a **numeric string**: `Date.now() - '1785866080397'` coerces
+to a real number and passes. `localStorage` is writable by whoever holds the tablet, so the module
+refuses a `savedAt` that is not a finite number — the same answer it gives every other shape that is
+not ours. That clause, and only that clause, is what the string-stamp case in §5 distinguishes.
 
-The reader and the writer now agree on the predicate. They do **not** agree on lifetime, and the
-spec should not pretend otherwise: the `visibilitychange` listener (`:103-108`) closes over a draft
-snapshot and its cleanup runs only on unmount or a `[orderId, step, values]` change, so during the
-`await navigate` that follows `finish` (`:267-269`) and `discard` (`:222-223`) a visibility change
-can rewrite the key that was just cleared. Pre-existing, unchanged by this fix, recorded in §7.
+*(The correction came out of the mutation run in §5: deleting `Number.isFinite` reddened nothing
+until a numeric-string case was added. The first explanation was plausible and wrong.)*
+
+### 3.4 Releasing the buffer, not just clearing it
+
+Clearing storage is not enough on its own. The `visibilitychange` listener (`:103-108`) closes over a
+draft snapshot and its cleanup runs only on unmount or a `[orderId, step, values]` change — so during
+the `await navigate` that follows `finish` (`:267-269`) and `discard` (`:222-223`), a tablet that
+sleeps writes the buffer straight back over the clear. That is the same reader/writer disagreement
+this spec exists to remove, so it is closed here rather than named as a limitation.
+
+`clearIntakeDraft()` at those two sites becomes `releaseBuffer()`:
+
+```ts
+/**
+ * The wizard is done with the tablet buffer — the intake was abandoned, or it is signed and we are
+ * navigating away. A ref rather than state: the visibilitychange handler has to see this
+ * immediately, and nothing renders differently because of it.
+ */
+const released = useRef(false)
+```
+
+`releaseBuffer` sets the ref and clears storage; Effect B and its `onHide` handler both return early
+when it is set.
+
+**Which sites release, and which deliberately do not.**
+
+- `discard` (ODUSTANI) — releases. He is leaving.
+- `finish`, **on the success path only** — releases. The intake is signed.
+- `discardBuffer` (waving away the offer) — does **not** release, and needs nothing: he is still
+  working, and the listener's snapshot at that moment is the empty mount state, which §3.1's writer
+  guard already refuses.
+- `finish`, on the failure path — does **not** release. See §7 item 2: keeping his safety net while
+  he is still standing at the car matters more than the stale buffer, which self-heals.
+
+### 3.5 ODUSTANI must work when the order is already gone
+
+`discard` (`:215-228`) awaits `deleteIntakeOrder` **inside** the try that also contains
+`clearIntakeDraft()` and the navigation. So when the delete fails — a lost connection, or a row a
+colleague already removed — the throw skips both: the buffer keeps offering a dead order, the
+serviser stays on the wizard, and ODUSTANI becomes a button that does nothing but show an error.
+
+Abandoning is a local decision, so the tablet must let go either way. The delete moves into its own
+try, and the release and the navigation move out of it:
+
+```
+if (orderId !== null) { try { delete; invalidate } catch { toast } }
+releaseBuffer()
+await navigate({ to: '/prijem' })
+```
+
+A server row that survives is not lost — it stays in his unfinished list and is recoverable by its
+number — so the toast must stop saying *"Odustajanje nije uspelo. Probaj ponovo."*, which after this
+change is false on both counts. `intake_discard_failed` is reworded in both message files to say
+that the order stayed among the unfinished ones. Key kept, text corrected;
+`pnpm --filter @mr/i18n run compile` is required before the change is visible in dev.
 
 ---
 
@@ -205,18 +271,33 @@ Appended to `apps/internal-web/src/features/intake-orders/wizard/__tests__/intak
 | T3 | writing continues while the intake is still worth keeping (step 1 → step 3) | over-apply the guard: an unconditional return, or write-once |
 | T4 | a shape it cannot read is treated as no draft, and does not throw (`{"values":null}`, `{"values":{}}`) | move `isOfferable` outside the try — TypeError |
 | T5 | the number cleared after the server row exists keeps buffering (pins §3.1's two halves) | delete the `orderId !== null` half of `isWorthKeeping` |
-| T6a | a buffer older than 12 h is not offered; one at 11 h 59 m is | delete the freshness clause of `isOfferable` |
-| T6b | a buffer whose `savedAt` is missing or a string is not offered | drop the `typeof === 'number'` assertion — the `NaN` trap in §3.3 |
+| T6a | a buffer older than 12 h is not offered; one at 11 h 59 m is | delete the freshness comparison in `isOfferable` |
+| T6b | a `savedAt` that is missing, a date string, `NaN`, **or the right instant written as a string** is refused | delete `Number.isFinite` — only the string-stamp case reds, and only that case can |
+
+Every mutation above was run, not reasoned about. The run also showed one thing worth keeping:
+rewriting the freshness comparison as an inverted *is-expired* test reddens **nothing**, because
+`Number.isFinite` already refuses the shapes that phrasing would let through. That is defence in
+depth working, not a gap.
 
 New file `__tests__/intake-wizard-draft-offer.test.tsx`:
 
-| # | Test | Reds when you delete |
-|---|------|----------------------|
-| T7 | an offer the serviser neither took nor waved away is still there after a reload — seed, render, assert the note, `unmount()`, render again, assert the note | the write guard (**red on today's code, at the second assertion**) |
+| # | Test | Reds when you break |
+|---|------|---------------------|
+| T7 | an offer the serviser neither took nor waved away is still there after a reload — seed, render, assert the note, `unmount()`, render again, assert the note | delete the write guard (**red on today's code, at the second assertion**) |
+| T8 | ODUSTANI lets go of the intake even when the server delete fails | put the delete back inside the outer try (§3.5) |
+| T9 | a tablet that sleeps right after ODUSTANI does not write the buffer back — release, then dispatch `visibilitychange` | delete the `released` guard from `onHide` (§3.4) |
 
 T2 and T7 both red on today's code, so neither fails uniquely; that is stated here rather than
 discovered in review. T7 is the only test that would notice a future edit bypassing the module and
 writing `localStorage` directly from the component — which is the class of bug being fixed.
+
+⚠ **One site is deliberately left uncovered: the `releaseBuffer()` on `finish`'s success path.**
+Reaching it in a component test means signing both pads, and the signature pad is a canvas driven by
+pointer events that jsdom does not deliver meaningfully — the test would assert on a harness rather
+than on the wizard. What the gap actually leaves untested is a one-word substitution
+(`clearIntakeDraft` → `releaseBuffer`) at a single call site; `releaseBuffer` itself is proven by T9,
+and the release-only-on-success rule is visible in the code beside its reason. Recorded so the review
+pass can decide whether an e2e (none exists in this repo today) is worth standing up for it.
 
 **Four traps the audit found, all of which silently produce a passing-but-worthless test:**
 
@@ -251,50 +332,70 @@ the pattern at `domace-claim-detail-orchestrated-edit.test.tsx:48-60`.
 | File | Change |
 |------|--------|
 | `…/wizard/intake-wizard-state.ts` | `isOfferable`, `isWorthKeeping`, `INTAKE_DRAFT_MAX_AGE_MS`, `savedAt` on `IntakeDraftBuffer`, guards in `readIntakeDraft` (inside the try) and `writeIntakeDraft` |
-| `…/wizard/intake-wizard.tsx` | `:92` loses its inline guard |
-| `…/wizard/__tests__/intake-wizard-state.test.ts` | T1–T6 |
-| `…/wizard/__tests__/intake-wizard-draft-offer.test.tsx` | new, T7 |
+| `…/wizard/intake-wizard.tsx` | `:92` loses its inline guard · `released` ref + `releaseBuffer` · Effect B and `onHide` respect it · `discard` restructured (§3.5) |
+| `packages/i18n/src/messages/{sr,en}.json` | `intake_discard_failed` reworded (§3.5) |
+| `…/wizard/__tests__/intake-wizard-state.test.ts` | T1–T6b |
+| `…/wizard/__tests__/intake-wizard-draft-offer.test.tsx` | new, T7–T9 |
 
-No migration, no API change, no new permission, no i18n key, no dependency.
+No migration, no API change, no new permission, **no new** i18n key, no dependency. One existing
+message's text changes, so `pnpm --filter @mr/i18n run compile` runs before the browser check.
 
 ---
 
-## 7. Recorded, deliberately not fixed here
+## 7. Deliberately not done, with the argument
 
-For the review pass Nikola plans once the intake module is finished.
+Nikola widened the scope to "everything, including what is out of scope". Four things are still left
+out — not for effort, but because taking them now makes the system worse. Each one names what it
+would cost.
 
-1. **`docs/25` §3.3.2 promises something the code does not do.** It says the local buffer "is
-   flushed upwards when the network returns or the tablet wakes (`visibilitychange`)". The
-   `visibilitychange` handler (`:103-105`) only rewrites `localStorage`; nothing is sent to the
-   server. Either the doc or the code is wrong, and it is Nikola's call which.
-2. **`resumeBuffer` trusts `localStorage`'s `orderId` blindly** (`:160-168`) while `resumeServerOrder`
-   always refetches (`:175-189`). A resumed buffer can name a hard-deleted draft or a signed order;
-   all failures surface as the same `intake_save_failed` toast. **Plan Task 12 Step 5** is where the
-   ownership/`signedAt` guards belong. This fix extends how long such a buffer survives; it does not
-   create it.
-3. **`ODUSTANI` cannot clear a buffer whose order is already gone** — `discard` (`:215-228`) awaits
-   the delete inside the try, so a 404 throws before `clearIntakeDraft()` at `:222`. One-line
-   question, separate.
-4. **A failed `finish` leaves a buffer pointing at a signed order** (`clearIntakeDraft` is inside the
-   try, `:259-268`). §3.3's expiry bounds it to 12 h; moving the clear into a `finally` would close
-   it properly.
-5. **The buffer is tablet-scoped, not user-scoped.** It carries no user id
+1. **`resumeBuffer` trusts `localStorage`'s `orderId` blindly** (`:160-168`) while `resumeServerOrder`
+   always refetches (`:175-189`), so a resumed buffer can name a hard-deleted draft or a signed
+   order. The obvious fix — validate against the server before adopting — **breaks a promise
+   `docs/25` makes explicitly**: a serviser must never stand in front of the customer waiting for the
+   hall's WiFi (the reasoning is written into `intake-wizard.tsx:234-238`). A hard validation gate
+   means no resume at all when the network is down, which is exactly when the buffer matters most.
+   The soft version — adopt now, reconcile when the network answers — is a real design, and it is
+   **Task 12 Step 5's** design. Doing a rushed version here and a proper one there is the duplication
+   this whole spec exists to avoid.
+2. **A failed `finish` leaves a buffer pointing at a signed order** (`clearIntakeDraft` is inside the
+   try, `:259-268`), so a WiFi drop that loses the *response* to a successful sign keeps the buffer.
+   Moving the clear into a `finally` was in the first draft of this spec and is **withdrawn**: it
+   would also clear the buffer when signing genuinely failed and the serviser is still at the car,
+   removing his safety net to fix a case that already self-heals. It self-heals because accepting
+   the stale offer fills the number field, the server answers `TakenOrder`, and the note replaces the
+   offer with the red *"broj već pripada potpisanom nalogu"* plus an *Otvori nalog →* link
+   (`intake-wizard-note.tsx:111-131`). §3.3's 12-hour expiry bounds the rest.
+3. **The buffer is tablet-scoped, not user-scoped.** It carries no user id
    (`intake-wizard-state.ts:175-179`) and sign-out does not clear `localStorage`
    (`internal-shell.tsx:59-68`), so a colleague's draft can be offered to whoever mounts the wizard
-   next. Pre-existing and already named in the V-6 spec (`2026-07-29-…-design.md:309-316`); §3.3
-   bounds it to 12 h rather than closing it.
-6. **Plan Task 12's buffer test becomes vacuous under this fix.** `docs/superpowers/plans/2026-07-29-intake-detail-v6.md:1434-1439`
-   asserts `readIntakeDraft()?.orderId` is unchanged after a mount, to prove a `resuming` guard on
-   Effect B. With the writer guarded, the mount write is a no-op regardless, so the assertion holds
-   even if that guard is never implemented. **Re-point it when Task 12 runs.**
+   next. Stamping an owner needs a client-side user id, and the only source is
+   `authClient.useSession()?.user?.id`, which is `undefined` until hydration — a guard written naively
+   against it rejects the owner's own resume whenever the fetch wins the race. **Task 12 has to settle
+   that identity question anyway**; settling it twice, differently, is how the two halves drift apart.
+   Clearing the buffer on sign-out was considered and rejected separately: it adds a new way to lose
+   a draft, which is the opposite of this fix. §3.3's expiry bounds the exposure to one shift.
+4. **Creating the server row as soon as a valid free number is typed**, rather than on leaving step 1.
+   The buffer would stop being anyone's only copy and "nedovršeni" would catch everything. Deferred
+   by Nikola on 2026-08-04 and still the right call: it rewrites the number-check state machine — the
+   most intricate part of step 1, already shipped, browser-verified and reviewed — and doing that
+   inside a bug fix is how a hundred things go wrong at once. Worth deciding deliberately, with time.
+
+**Recorded for the review pass Nikola plans once the intake module is finished.**
+
+5. **Plan Task 12's buffer test becomes vacuous under this fix.**
+   `docs/superpowers/plans/2026-07-29-intake-detail-v6.md:1434-1439` asserts
+   `readIntakeDraft()?.orderId` is unchanged after a mount, to prove a `resuming` guard on Effect B.
+   With the writer guarded, the mount write is a no-op regardless, so the assertion holds even if
+   that guard is never implemented. A ⚠ note is added at that line in the plan; re-point it when
+   Task 12 runs.
+6. **`docs/25` §3.3.2 described something that was never built.** It said the local buffer "is flushed
+   upwards when the network returns or the tablet wakes (`visibilitychange`)". The handler
+   (`:103-105`) only rewrites `localStorage`. The doc is corrected to say what exists; **whether the
+   upward flush should be built is left open**, because it is a feature with its own questions (what
+   is sent, when, and what happens when it conflicts with the server) and not a wording fix.
 7. **One tablet holds one buffer**, while `docs/25` §3.3.3 allows several unfinished intakes per
    serviser. Not a contradiction — the server holds the many, the tablet holds the last mile — but it
    reads like one until said out loud. Starting a different intake replaces the buffered one; that is
    existing behaviour, not introduced here.
 8. **A V-3-era buffer whose `values` predate `damages`/`services`/`materials`** passes `isOfferable`
    and fails later at `toUpdateInput` as a 422. §3.3's expiry makes it unreachable in practice.
-9. **The bigger idea, raised and deferred 2026-08-04:** create the server row as soon as a valid free
-   number is typed, rather than on leaving step 1. The buffer would stop being anyone's only copy and
-   "nedovršeni" would catch everything. Rejected *for now* because it changes the number-check state
-   machine — the most intricate part of step 1, already shipped and reviewed — and doing that inside
-   a bug fix is how a hundred things go wrong at once. Worth deciding deliberately, with time.
