@@ -142,7 +142,10 @@ function FilterSegment({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-11 cursor-pointer border-0 px-4 py-2.5 text-[12.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
+        /* `whitespace-nowrap`: measured at 500px, "U RADU" broke across two lines INSIDE its own
+           segment, which made that one button taller than its neighbours and left the strip
+           ragged. The row is allowed to wrap; a label is not. */
+        'min-h-11 cursor-pointer whitespace-nowrap border-0 px-4 py-2.5 text-[12.5px] font-extrabold uppercase tracking-[0.06em] transition-colors',
         active ? 'bg-mri-red text-white' : 'bg-transparent text-mri-text2 hover:bg-mri-rowhv',
       )}
     >
