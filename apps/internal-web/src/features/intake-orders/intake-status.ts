@@ -39,3 +39,23 @@ export function formatIntakeReceivedAt(iso: string, locale: string): string {
   }).format(date)
   return `${day} · ${time}`
 }
+
+/**
+ * `25.07.2026 · 09:14` — the detail's format. The list's short one drops the year, which is
+ * fine for a work list and wrong for an archival read that is reachable from `Uklonjeni`, from
+ * a direct link and later from the print.
+ */
+export function formatIntakeReceivedAtLong(iso: string, locale: string): string {
+  const date = new Date(iso)
+  const day = new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+  return `${day} · ${time}`
+}

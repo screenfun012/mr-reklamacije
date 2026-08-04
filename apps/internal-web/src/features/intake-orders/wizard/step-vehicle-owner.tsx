@@ -1,8 +1,8 @@
 import { m } from '@mr/i18n'
 import {
-  IntakeArrivalMode,
-  IntakeVehicleType,
+  intakeArrivalModeValues,
   intakePlateLookupOptions,
+  intakeVehicleTypeValues,
   type IntakePlateLookupResponse,
 } from '@mr/shared'
 import { useQuery } from '@tanstack/react-query'
@@ -11,24 +11,12 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { InternalFieldGroup } from '~/components/internal-field-group'
 import { InternalInput } from '~/components/internal-field'
 import { InternalNote } from '~/components/internal-note'
+import { INTAKE_ARRIVAL_MODE_LABELS, INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { IntakeChoiceButtons } from './intake-choice-buttons'
 import { IntakePanel } from './intake-panel'
 import type { IntakeWizardValues } from './intake-wizard-state'
 
 const PLATE_LOOKUP_DEBOUNCE_MS = 400
-
-const ARRIVAL_OPTIONS = [
-  { value: IntakeArrivalMode.Driven, label: () => m.intake_arrival_dovezeno() },
-  { value: IntakeArrivalMode.Towed, label: () => m.intake_arrival_doslepano() },
-  { value: IntakeArrivalMode.Dragged, label: () => m.intake_arrival_dovuceno() },
-] as const
-
-const VEHICLE_TYPE_OPTIONS = [
-  { value: IntakeVehicleType.Car, label: () => m.intake_vehicle_type_auto() },
-  { value: IntakeVehicleType.Van, label: () => m.intake_vehicle_type_kombi() },
-  { value: IntakeVehicleType.Pickup, label: () => m.intake_vehicle_type_kamionet() },
-  { value: IntakeVehicleType.Suv, label: () => m.intake_vehicle_type_dzip() },
-] as const
 
 export interface StepVehicleOwnerProps {
   values: IntakeWizardValues
@@ -143,9 +131,9 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
 
         <IntakeChoiceButtons
           legend={m.intake_field_arrival_mode()}
-          options={ARRIVAL_OPTIONS.map((option) => ({
-            value: option.value,
-            label: option.label(),
+          options={intakeArrivalModeValues.map((mode) => ({
+            value: mode,
+            label: INTAKE_ARRIVAL_MODE_LABELS[mode](),
           }))}
           value={values.arrivalMode}
           onChange={(arrivalMode) => onPatch({ arrivalMode })}
@@ -153,9 +141,9 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
 
         <IntakeChoiceButtons
           legend={m.intake_field_vehicle_type()}
-          options={VEHICLE_TYPE_OPTIONS.map((option) => ({
-            value: option.value,
-            label: option.label(),
+          options={intakeVehicleTypeValues.map((type) => ({
+            value: type,
+            label: INTAKE_VEHICLE_TYPE_LABELS[type](),
           }))}
           value={values.vehicleType}
           onChange={(vehicleType) => onPatch({ vehicleType })}

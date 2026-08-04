@@ -3,16 +3,7 @@ import { INTAKE_CHECKLIST_KEYS, type IntakeChecklist, type IntakeChecklistKey } 
 import { cn } from '@mr/ui'
 import type { ReactElement } from 'react'
 
-const ITEM_LABELS: Record<IntakeChecklistKey, () => string> = {
-  rezervna: m.intake_checklist_rezervna,
-  dizalica: m.intake_checklist_dizalica,
-  komplet: m.intake_checklist_komplet,
-  saobracajna: m.intake_checklist_saobracajna,
-  vozacka: m.intake_checklist_vozacka,
-  prvaPomoc: m.intake_checklist_prva_pomoc,
-  prsluk: m.intake_checklist_prsluk,
-  lanci: m.intake_checklist_lanci,
-}
+import { INTAKE_CHECKLIST_LABELS } from '../intake-labels'
 
 export function countConfirmed(checklist: IntakeChecklist): number {
   return INTAKE_CHECKLIST_KEYS.filter((key) => checklist[key] !== null).length
@@ -43,12 +34,12 @@ export function IntakeChecklistGrid({
       {INTAKE_CHECKLIST_KEYS.map((key) => (
         <div key={key} className="flex items-center justify-between gap-3">
           <span className="min-w-0 flex-1 truncate text-[15px] text-mri-text">
-            {ITEM_LABELS[key]()}
+            {INTAKE_CHECKLIST_LABELS[key]()}
           </span>
           <div
             className="flex flex-none overflow-hidden rounded-[10px] border border-mri-border2"
             role="group"
-            aria-label={ITEM_LABELS[key]()}
+            aria-label={INTAKE_CHECKLIST_LABELS[key]()}
           >
             <button
               type="button"

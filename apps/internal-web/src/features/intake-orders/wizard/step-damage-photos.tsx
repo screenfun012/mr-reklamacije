@@ -11,6 +11,7 @@ import { ConfirmDialog, cn } from '@mr/ui'
 import { Camera } from 'lucide-react'
 import { useRef, useState, type ReactElement } from 'react'
 
+import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { IntakeDamageMap, intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakePanel } from './intake-panel'
 import { buildPhotoCells, IntakePhotoGrid, type IntakePhotoCell } from './intake-photo-grid'
@@ -23,13 +24,6 @@ const DAMAGE_TYPE_LABEL: Record<IntakeDamageType, () => string> = {
   [IntakeDamageType.Cracked]: () => m.intake_damage_type_puknuto(),
   [IntakeDamageType.Rust]: () => m.intake_damage_type_rdja(),
 }
-
-const VEHICLE_TYPE_LABEL = {
-  auto: () => m.intake_vehicle_type_auto(),
-  kombi: () => m.intake_vehicle_type_kombi(),
-  kamionet: () => m.intake_vehicle_type_kamionet(),
-  dzip: () => m.intake_vehicle_type_dzip(),
-} as const
 
 export interface StepDamagePhotosProps {
   values: IntakeWizardValues
@@ -115,7 +109,7 @@ export function StepDamagePhotos({
         headerClassName="gap-2.5"
         badge={
           <span className="rounded-full border border-mri-border2 bg-mri-inbg px-[9px] py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.1em] text-mri-text2">
-            {VEHICLE_TYPE_LABEL[values.vehicleType]()}
+            {INTAKE_VEHICLE_TYPE_LABELS[values.vehicleType]()}
           </span>
         }
         action={<span className="text-[12.5px] text-mri-text2">{m.intake_map_hint()}</span>}

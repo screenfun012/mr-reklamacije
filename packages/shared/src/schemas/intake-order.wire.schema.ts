@@ -328,3 +328,25 @@ export const IntakePlateLookupResponseSchema = z.object({
 })
 
 export type IntakePlateLookupResponse = z.infer<typeof IntakePlateLookupResponseSchema>
+
+export const IntakeDetailTab = {
+  Pregled: 'pregled',
+  Fotografije: 'fotografije',
+  Spec: 'spec',
+  Istorija: 'istorija',
+} as const
+
+export type IntakeDetailTab = (typeof IntakeDetailTab)[keyof typeof IntakeDetailTab]
+
+const intakeDetailTabValues = [
+  IntakeDetailTab.Pregled,
+  IntakeDetailTab.Fotografije,
+  IntakeDetailTab.Spec,
+  IntakeDetailTab.Istorija,
+] as const
+
+export const IntakeDetailSearchSchema = z.object({
+  tab: z.enum(intakeDetailTabValues).default(IntakeDetailTab.Pregled),
+})
+
+export type IntakeDetailSearch = z.infer<typeof IntakeDetailSearchSchema>
