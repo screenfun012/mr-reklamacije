@@ -53,8 +53,7 @@ function recordedThroughStep(order: IntakeOrderDetail): number {
   return order.signedAt !== null ? INTAKE_WIZARD_STEP_COUNT : (order.draftStep ?? 1) - 1
 }
 
-/** Fuel and the checklist are step 2; damage and photos are step 3 (docs/25 §3.2). */
-const STEP_CONDITION = 2
+/** Damage and photos are step 3 (docs/25 §3.2). */
 const STEP_DAMAGE = 3
 
 function SignatureBox({ path, caption }: { path: string | null; caption: string }): ReactElement {
@@ -99,9 +98,21 @@ export function TabOverview({ order }: { order: IntakeOrderDetail }): ReactEleme
   const locale = getLocale()
   const cells = buildPhotoCells(order.id, order.photos, [], order.damages)
   const unchecked = INTAKE_CHECKLIST_KEYS.length - countConfirmed(order.checklist)
-  const recordedThrough = recordedThroughStep(order)
-  const conditionRecorded = recordedThrough >= STEP_CONDITION
-  const damageRecorded = recordedThrough >= STEP_DAMAGE
+  const damageRecorded = recordedThroughStep(order) >= STEP_DAMAGE
+  /*
+   * Fuel gates on the SIGNATURE while damage above gates on the step, and the difference is not an
+   * oversight. `fuel_level` is the only intake column that is NOT NULL with a default (schema:69),
+   * so the row cannot tell "he set 4/8" from "nobody touched the dial" — a step gate would only
+   * move the guess. An empty `damages` array recorded through step 3 IS a statement someone made;
+   * a default 4 never was. The signature is the point where the number stops being a default and
+   * becomes a reading both parties put their name to.
+   *
+   * Ceiling, on purpose: a signed order whose serviser never touched the dial still prints 4/8.
+   * Closing that needs a nullable column plus a "not set" state on the gauge that the prototype
+   * does not have — Nikola weighed it 2026-08-05 and chose this instead (spec
+   * docs/superpowers/specs/2026-08-05-intake-open-questions-design.md §1).
+   */
+  const fuelRecorded = order.signedAt !== null
 
   const facts = [
     {
@@ -133,7 +144,7 @@ export function TabOverview({ order }: { order: IntakeOrderDetail }): ReactEleme
     },
     {
       label: m.intake_fact_fuel(),
-      value: conditionRecorded ? m.intake_fact_fuel_value({ level: order.fuelLevel }) : DASH,
+      value: fuelRecorded ? m.intake_fact_fuel_value({ level: order.fuelLevel }) : DASH,
       className: 'font-mono font-semibold',
     },
     {

@@ -63,13 +63,29 @@ describe('TabOverview', () => {
     expect(screen.queryByText(m.intake_detail_no_damage())).toBeNull()
 
     // And the numbers, which is where a reader's eye actually lands: no green 0 under NEDOSTACI,
-    // and no fuel reading for a tank nobody looked at. Both are step-2/3 facts on a step-2 draft.
+    // because damage is step 3; and no fuel reading, because nothing is signed.
     expect(factValue(m.intake_fact_damages())).toBe(DASH)
     expect(factValue(m.intake_fact_fuel())).toBe(DASH)
     expect(screen.queryByText(m.intake_fact_fuel_value({ level: 6 }))).toBeNull()
   })
 
-  it('shows those same numbers once the intake has been through both steps', async () => {
+  /*
+   * The case that separates the two gates. This draft walked every step, so a step gate would
+   * happily print its fuel — and `fuel_level` is NOT NULL with a default, so that number may be
+   * one nobody ever set. Only the signature makes it a reading. Revert the gate to the step count
+   * and this is the single test that goes red.
+   */
+  it('still withholds the fuel reading on a draft that walked every step but was never signed', async () => {
+    await renderDetailUi(<TabOverview order={intakeDraftFixture({ draftStep: 5, fuelLevel: 6 })} />)
+
+    expect(factValue(m.intake_fact_fuel())).toBe(DASH)
+    expect(screen.queryByText(m.intake_fact_fuel_value({ level: 6 }))).toBeNull()
+    // The neighbouring cell proves the draft really did get that far — otherwise this test would
+    // pass for the boring reason that nothing is recorded at all.
+    expect(factValue(m.intake_fact_damages())).toBe('0')
+  })
+
+  it('shows those same numbers on a signed intake', async () => {
     await renderDetailUi(<TabOverview order={intakeOrderDetailFixture({ fuelLevel: 6 })} />)
 
     expect(factValue(m.intake_fact_damages())).toBe('0')
