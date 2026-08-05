@@ -10,20 +10,13 @@ import { ConfirmDialog, cn } from '@mr/ui'
 import { Camera } from 'lucide-react'
 import { useRef, useState, type ReactElement } from 'react'
 
-import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
+import { INTAKE_DAMAGE_TYPE_LABELS, INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { IntakeDamageMap, intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakePanel } from './intake-panel'
 import { buildPhotoCells, IntakePhotoGrid, type IntakePhotoCell } from './intake-photo-grid'
 import { IntakePhotoLightbox } from './intake-photo-lightbox'
 import { newDamageId, type IntakeWizardValues } from './intake-wizard-state'
 import type { IntakePhotoQueue } from './use-intake-photo-queue'
-
-const DAMAGE_TYPE_LABEL: Record<IntakeDamageType, () => string> = {
-  [IntakeDamageType.Scratch]: () => m.intake_damage_type_ogrebotina(),
-  [IntakeDamageType.Dent]: () => m.intake_damage_type_udubljenje(),
-  [IntakeDamageType.Cracked]: () => m.intake_damage_type_puknuto(),
-  [IntakeDamageType.Rust]: () => m.intake_damage_type_rdja(),
-}
 
 export interface StepDamagePhotosProps {
   values: IntakeWizardValues
@@ -139,7 +132,7 @@ export function StepDamagePhotos({
                   : 'border-mri-border2 bg-mri-inbg font-semibold text-mri-text2',
               )}
             >
-              {DAMAGE_TYPE_LABEL[type]()}
+              {INTAKE_DAMAGE_TYPE_LABELS[type]()}
             </button>
           ))}
         </div>
@@ -171,7 +164,7 @@ export function StepDamagePhotos({
                 </span>
                 <span className="min-w-0 flex-1 text-sm">
                   {m.intake_damage_row_label({
-                    type: DAMAGE_TYPE_LABEL[damage.type](),
+                    type: INTAKE_DAMAGE_TYPE_LABELS[damage.type](),
                     zone: damage.zone,
                   })}
                 </span>

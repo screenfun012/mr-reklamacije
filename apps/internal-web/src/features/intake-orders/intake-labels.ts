@@ -1,5 +1,10 @@
 import { m } from '@mr/i18n'
-import type { IntakeArrivalMode, IntakeChecklistKey, IntakeVehicleType } from '@mr/shared'
+import {
+  IntakeDamageType,
+  type IntakeArrivalMode,
+  type IntakeChecklistKey,
+  type IntakeVehicleType,
+} from '@mr/shared'
 
 /**
  * Label maps shared by the wizard and the detail. They lived private inside the wizard's
@@ -28,4 +33,11 @@ export const INTAKE_ARRIVAL_MODE_LABELS: Record<IntakeArrivalMode, () => string>
   dovezeno: m.intake_arrival_dovezeno,
   doslepano: m.intake_arrival_doslepano,
   dovuceno: m.intake_arrival_dovuceno,
+}
+
+export const INTAKE_DAMAGE_TYPE_LABELS: Record<IntakeDamageType, () => string> = {
+  [IntakeDamageType.Scratch]: m.intake_damage_type_ogrebotina,
+  [IntakeDamageType.Dent]: m.intake_damage_type_udubljenje,
+  [IntakeDamageType.Cracked]: m.intake_damage_type_puknuto,
+  [IntakeDamageType.Rust]: m.intake_damage_type_rdja,
 }

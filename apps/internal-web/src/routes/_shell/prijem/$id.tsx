@@ -1,5 +1,10 @@
 import { m } from '@mr/i18n'
-import { ApiError, IntakeDetailSearchSchema, intakeOrderDetailOptions } from '@mr/shared'
+import {
+  ApiError,
+  IntakeDetailSearchSchema,
+  IntakeDetailTab,
+  intakeOrderDetailOptions,
+} from '@mr/shared'
 import { Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router'
@@ -14,6 +19,7 @@ import {
 import { IntakeDraftBar } from '~/features/intake-orders/detail/intake-draft-bar'
 import { IntakeRemovedBar } from '~/features/intake-orders/detail/intake-removed-bar'
 import { IntakeStatusBar } from '~/features/intake-orders/detail/intake-status-bar'
+import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
 import { authClient } from '~/lib/auth-client'
 
 /**
@@ -74,7 +80,8 @@ function IntakeDetailPage(): ReactElement {
 
       <IntakeDetailTabs order={order} activeTab={activeTab} />
 
-      {/* The four tab bodies mount here — docs/25 V-6-1b, tasks 10 and 11. */}
+      {/* The other three tab bodies mount here — docs/25 V-6-1b, task 11. */}
+      {activeTab === IntakeDetailTab.Pregled ? <TabOverview order={order} /> : null}
     </InternalPage>
   )
 }
