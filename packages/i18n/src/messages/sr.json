@@ -717,7 +717,7 @@
   "intake_note_tag_mine": "Tvoj nedovršen prijem",
   "intake_note_tag_taken": "Broj zauzet",
   "intake_number_taken_order": "Broj {number} već pripada potpisanom nalogu ({vehicle} · {plate})",
-  "intake_photos_pending": "Nedostaje {count}",
+  "intake_photos_pending": "Nedostaje: {count}",
   "intake_photos_pending_hint": "Fotografije sa tableta još nisu sve stigle",
   "intake_plate_applied": "✓ Podaci su preuzeti iz naloga {number}. Sve možeš da izmeniš.",
   "intake_plate_apply": "Popuni podatke",

@@ -1392,8 +1392,9 @@ unreachable (spec §4.7).
 
 - `tab-photos.tsx` — prototype 597–613. One card `FOTODOKUMENTACIJA · N`, `grid-cols-4 gap-3.5`,
   `aspect-[4/3]` cells, the damage badge, caption `IMG_03 · OŠT. 2` (position padded to two digits,
-  the damage suffix only when `damageId` matches). An amber bar above the grid when
-  `photosPending > 0`.
+  the damage suffix only when `damageId` matches). ⚠ **No amber bar here** — the
+  `photosPending` warning was moved page-level on 2026-08-05 and already ships under the header
+  (`intake-photos-pending-note.tsx`); building it again would print the same warning twice.
 - `tab-spec.tsx` — prototype 616–631, two `IntakeSpecList` cards with **no** `note`. Each change
   calls `updateIntakeOrder(id, { services })` / `{ materials }` through a mutation with `onMutate`
   writing the new array into the detail query, and `onError` restoring the previous cache value,

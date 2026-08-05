@@ -210,8 +210,12 @@ One card, `FOTODOKUMENTACIJA · N`, a **4-column** grid of 4:3 thumbnails served
 when the photo points at a damage, `IMG_03` otherwise. The number is the photo's position in the
 list, padded to two digits — the prototype's scheme, and more readable than a phone's own filename.
 
-When `photosPending > 0`, an amber bar above the grid says not every photo from the tablet has
-arrived. This is why `photos_expected` exists, and §6.3 is what keeps it honest.
+> **Superseded 2026-08-05.** This section used to put an amber "not every photo arrived" bar above
+> the grid. That warning now lives once, page-level, under the header — it is the first thing the
+> screen says after the wizard drops the serviser here, and it is readable from all four tabs
+> instead of only this one. Do not build it again inside the tab; see
+> `docs/superpowers/specs/2026-08-05-intake-open-questions-design.md` §2.
+> `photos_expected` still exists for exactly this reason, and §6.3 is still what keeps it honest.
 
 ### 4.6 Specifikacija — **editable**
 
