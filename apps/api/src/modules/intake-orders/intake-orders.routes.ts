@@ -56,8 +56,10 @@ export function registerIntakeOrdersRoutes(
     controller.deletePhoto,
   )
 
-  // A serviser discards his own unfinished intake with `update`; removing a SIGNED order
-  // additionally requires `delete`, checked in the service.
+  // This gate is an OR — it only asks that the caller be in the conversation at all. Which of
+  // the three deletions he may actually perform is decided in the service, where the row is:
+  // his OWN unfinished intake goes with `update`, anyone ELSE's draft and every signed order
+  // additionally require `delete`.
   routes.delete(
     '/:id',
     requirePermissions('intake_orders.update', 'intake_orders.delete'),

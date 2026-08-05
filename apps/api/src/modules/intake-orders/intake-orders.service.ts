@@ -158,8 +158,9 @@ export class IntakeOrdersService {
    * never gets here — `loadVisible` gave him a 404 — so the only caller this can refuse is an
    * office actor who legitimately knows the order exists.
    *
-   * `delete` is deliberately NOT guarded: the office throwing away the draft of a serviser who
-   * left the firm is a rule of its own (docs/25 §3.3.5).
+   * `delete` carries its own version of this rule rather than calling this one, because the two
+   * refusals mean different things and an operator reading the response body deserves the right
+   * sentence. See `delete` below.
    */
   private assertDraftOwner(order: IntakeOrderDetail, actor: IntakeOrdersActor): void {
     if (order.signedAt !== null) {
@@ -523,6 +524,18 @@ export class IntakeOrdersService {
    * An unfinished intake is really deleted — `ODUSTANI` throws the sheet away and releases
    * the number. A signed one is soft-deleted by the office only: it is evidence, so it
    * leaves the list and stays in the database with a trace of who removed it.
+   *
+   * Throwing away a draft that is NOT yours additionally costs `delete`. The route gate is an
+   * OR (`update` or `delete`) and the row scope hands any `intake_orders.view` holder every
+   * serviser's draft, so without this a hand-built role of "sees everything, may edit, may not
+   * delete" could permanently destroy a colleague's started intake — hard, with no `deleted_at`
+   * to undo it — by typing `/prijem/novi?resume=<id>` and pressing ODUSTANI. The office keeps
+   * `delete`, so cleaning up after a serviser who left the firm (docs/25 §3.3) is untouched.
+   * The UI already drew this line (`isOwner || canDelete` in the draft bar); the server was the
+   * half that took it on trust.
+   *
+   * 403, not 404: whoever reaches this branch holds `view` and already sees the draft in his own
+   * list — its existence is not a secret from him, so there is nothing to protect by lying.
    */
   async delete(
     id: string,
@@ -533,6 +546,9 @@ export class IntakeOrdersService {
     this.assertNotDeleted(before)
 
     if (before.signedAt === null) {
+      if (before.technicianId !== actor.id && !actor.permissions.includes('intake_orders.delete')) {
+        throw new ForbiddenError("Discarding another serviser's unfinished intake requires delete")
+      }
       await this.repo.hardDelete(id)
     } else {
       if (!actor.permissions.includes('intake_orders.delete')) {

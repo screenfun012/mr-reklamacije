@@ -452,6 +452,47 @@ describe('Intake orders integration', () => {
       ).resolves.toBeUndefined()
     })
 
+    /*
+     * The route gate is an OR, and the `all` scope hands any `view` holder every serviser's
+     * draft — so the only thing standing between "sees everything, may edit, may not delete"
+     * and a colleague's permanently destroyed intake is this guard. No seeded role pairs
+     * `view` with `update` and withholds `delete`, but a custom role built in admin can.
+     *
+     * The surviving row is asserted, not just the rejection: a guard placed one line too late
+     * would still throw, and the draft would still be gone — hard, with no `deleted_at` to
+     * undo it.
+     */
+    it("refuses a full-list editor without delete throwing away another serviser's draft", async () => {
+      const editorNoDelete: IntakeOrdersActor = {
+        id: await createUser('View Plus Update'),
+        permissions: ['intake_orders.view', 'intake_orders.update'],
+      }
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      await expect(
+        service.delete(created.id, editorNoDelete, actorContext(editorNoDelete.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+
+      const rows = await ctx.db
+        .select({ id: schema.intakeOrders.id })
+        .from(schema.intakeOrders)
+        .where(eq(schema.intakeOrders.id, created.id))
+      expect(rows).toHaveLength(1)
+    })
+
+    it('lets that same editor throw away a draft he started himself', async () => {
+      const editorNoDelete: IntakeOrdersActor = {
+        id: await createUser('View Plus Update Own'),
+        permissions: ['intake_orders.view', 'intake_orders.update'],
+      }
+      const created = await service.create(createInput(), actorContext(editorNoDelete.id))
+
+      await expect(
+        service.delete(created.id, editorNoDelete, actorContext(editorNoDelete.id)),
+      ).resolves.toBeUndefined()
+    })
+
     it('refuses the office deleting a photo from an unsigned draft too', async () => {
       const serviser = await floorActor()
       const office = await officeActor()
