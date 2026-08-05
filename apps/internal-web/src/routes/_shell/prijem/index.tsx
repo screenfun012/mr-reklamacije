@@ -15,6 +15,7 @@ import { Suspense, useCallback, type ReactElement } from 'react'
 import { internalButtonClasses } from '~/components/internal-button'
 import { InternalPage } from '~/components/layout/internal-page'
 import { formatInternalDateEyebrow } from '~/lib/internal-format'
+import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { IntakeFilterBar } from '~/features/intake-orders/intake-filter-bar'
 import { visibleIntakeSearch } from '~/features/intake-orders/intake-list-search'
 import { IntakeKpiCards, IntakeKpiCardsSkeleton } from '~/features/intake-orders/intake-kpi-cards'
@@ -208,9 +209,7 @@ function PrijemPending(): ReactElement {
 function PrijemError(): ReactElement {
   return (
     <InternalPage>
-      <div className="rounded-[12px] border border-mri-bad/40 bg-mri-bad-bg px-4 py-10 text-center">
-        <p className="text-mri-bad">{m.intake_list_error()}</p>
-      </div>
+      <IntakeErrorState title={m.intake_list_error()} description={null} canRetry />
     </InternalPage>
   )
 }

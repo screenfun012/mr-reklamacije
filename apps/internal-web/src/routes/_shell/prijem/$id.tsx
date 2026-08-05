@@ -21,6 +21,7 @@ import { IntakePhotosPendingNote } from '~/features/intake-orders/detail/intake-
 import { IntakeRemovedBar } from '~/features/intake-orders/detail/intake-removed-bar'
 import { IntakeStatusBar } from '~/features/intake-orders/detail/intake-status-bar'
 import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
+import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { authClient } from '~/lib/auth-client'
 
 /**
@@ -134,17 +135,12 @@ function IntakeDetailError({ error }: { error: Error }): ReactElement {
   return (
     <InternalPage className="flex flex-col gap-[15px]">
       <BackLink />
-      <div
-        className="rounded-[12px] border border-mri-bad/40 bg-mri-bad-bg px-4 py-10 text-center"
-        role="alert"
-      >
-        <p className="font-semibold text-mri-text">
-          {isNotFound ? m.intake_detail_not_found_title() : m.intake_detail_error_title()}
-        </p>
-        {isNotFound ? (
-          <p className="mt-1 text-mri-text2">{m.intake_detail_not_found_body()}</p>
-        ) : null}
-      </div>
+      {/* No retry on a 404: the order is not there, and asking again cannot change that. */}
+      <IntakeErrorState
+        title={isNotFound ? m.intake_detail_not_found_title() : m.intake_detail_error_title()}
+        description={isNotFound ? m.intake_detail_not_found_body() : null}
+        canRetry={!isNotFound}
+      />
     </InternalPage>
   )
 }
