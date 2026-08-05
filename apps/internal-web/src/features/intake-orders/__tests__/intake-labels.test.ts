@@ -1,15 +1,28 @@
 import { setLocale } from '@mr/i18n'
-import { INTAKE_CHECKLIST_KEYS, intakeArrivalModeValues, intakeVehicleTypeValues } from '@mr/shared'
+import {
+  IntakeDamageType,
+  INTAKE_CHECKLIST_KEYS,
+  intakeArrivalModeValues,
+  intakeVehicleTypeValues,
+} from '@mr/shared'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   INTAKE_ARRIVAL_MODE_LABELS,
   INTAKE_CHECKLIST_LABELS,
+  INTAKE_DAMAGE_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
 } from '../intake-labels.js'
 import { formatIntakeReceivedAt, formatIntakeReceivedAtLong } from '../intake-status.js'
 
 describe('intake labels', () => {
+  it('gives every damage type a label', () => {
+    // It joined this file from the wizard in Task 10 and skipped the guard the other three have.
+    for (const type of Object.values(IntakeDamageType)) {
+      expect(INTAKE_DAMAGE_TYPE_LABELS[type]()).not.toBe('')
+    }
+  })
+
   beforeEach(() => {
     setLocale('sr', { reload: false })
   })
