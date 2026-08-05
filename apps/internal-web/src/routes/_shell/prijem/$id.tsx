@@ -61,6 +61,7 @@ function IntakeDetailPage(): ReactElement {
         order={order}
         canAdvance={permissions.includes('intake_orders.advance')}
         canDelete={permissions.includes('intake_orders.delete')}
+        canChangeStatus={permissions.includes('intake_orders.change_status')}
       />
 
       {order.deletedAt !== null ? (

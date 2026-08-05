@@ -25,6 +25,12 @@ export interface IntakeDetailHeaderProps {
   order: IntakeOrderDetail
   canAdvance: boolean
   canDelete: boolean
+  /**
+   * Not used to render anything — it decides whether the last status step needs confirming.
+   * Whoever may change the status has the strip right below this header and moves it back in one
+   * tap; whoever may only advance has no way back at all once the order is picked up.
+   */
+  canChangeStatus: boolean
 }
 
 const STATUS_PILL_CLASSES = 'px-[11px] py-[5px] text-[10.5px] tracking-[0.08em]'
@@ -51,10 +57,12 @@ export function IntakeDetailHeader({
   order,
   canAdvance,
   canDelete,
+  canChangeStatus,
 }: IntakeDetailHeaderProps): ReactElement {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [confirmPickup, setConfirmPickup] = useState(false)
 
   // Every intake mutation touches the detail, the list, the KPI row AND the history tab, and
   // all four keys hang off one root — invalidating the root cannot forget one of them.
@@ -64,9 +72,21 @@ export function IntakeDetailHeader({
   const next = nextIntakeStatus(order.status)
   const isLive = order.deletedAt === null && order.signedAt !== null
 
+  /*
+   * "Preuzeto" is the one step this actor cannot walk back: it is the last status, so the button
+   * disappears with it, and it asserts a physical fact — the owner drove the vehicle away. Whoever
+   * holds `change_status` is not in that position (the strip below moves it back in one tap), and
+   * making him confirm three times a day is how a dialog stops being read at all.
+   */
+  const needsPickupConfirm = next === IntakeOrderStatus.PickedUp && !canChangeStatus
+
   const advance = useMutation({
     mutationFn: () => advanceIntakeOrder(order.id),
     onSuccess: async (updated) => {
+      // ConfirmDialog never closes itself — the caller owns `open`. Left standing, its confirm
+      // button re-fires an advance the server now answers 409, so a move that worked reports a
+      // failure.
+      setConfirmPickup(false)
       await invalidate()
       showInternalToast(
         m.intake_detail_advance_done({
@@ -166,7 +186,7 @@ export function IntakeDetailHeader({
             type="button"
             variant="ghost"
             disabled={advance.isPending}
-            onClick={() => advance.mutate()}
+            onClick={() => (needsPickupConfirm ? setConfirmPickup(true) : advance.mutate())}
             className={cn(ACTION_CLASSES, ADVANCE_CLASSES[next])}
           >
             {m.intake_detail_advance({ status: INTAKE_STATUS_LABELS[next]() })}
@@ -184,6 +204,21 @@ export function IntakeDetailHeader({
           </InternalButton>
         ) : null}
       </div>
+
+      {/* `default`, not the dialog's destructive default: a car being collected is the happy end
+          of the job, and red would tell the serviser he is about to break something. The status is
+          not interpolated — this dialog exists for exactly one destination, and `next` is nullable
+          out here. */}
+      <ConfirmDialog
+        open={confirmPickup}
+        onOpenChange={setConfirmPickup}
+        variant="default"
+        title={m.intake_detail_pickup_title({ number: order.orderNumber })}
+        description={m.intake_detail_pickup_description()}
+        confirmLabel={m.intake_detail_pickup_confirm()}
+        pending={advance.isPending}
+        onConfirm={() => advance.mutate()}
+      />
 
       <ConfirmDialog
         open={confirmRemove}
