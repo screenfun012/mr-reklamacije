@@ -596,7 +596,7 @@
   "intake_detail_advance_done": "Order {number} is now “{status}”.",
   "intake_detail_amended_badge": "⚠ Changed after signing",
   "intake_detail_back": "← Back to the list",
-  "intake_detail_draft_step": "Unfinished intake · step {step} of 5",
+  "intake_detail_draft_step": "Step {step} of 5",
   "intake_detail_error_title": "The order could not be loaded. Refresh the page.",
   "intake_detail_not_found_body": "The order does not exist, or it is not yours.",
   "intake_detail_not_found_title": "Order not found",

@@ -54,8 +54,11 @@ describe('IntakeDetailHeader', () => {
       <IntakeDetailHeader order={intakeDraftFixture({ draftStep: 3 })} {...NO_PERMS} />,
     )
 
-    expect(screen.queryByText(m.intake_row_draft_step({ step: 3 }))).not.toBeNull()
+    expect(screen.queryByText(m.intake_row_draft())).not.toBeNull()
     expect(screen.queryByText('Primljeno')).toBeNull()
+    // The step belongs to the bar below, once. Seen in the browser: pill, tag and sentence said
+    // "nedovršen" three times inside 100px, and the step twice.
+    expect(screen.queryByText(m.intake_row_draft_step({ step: 3 }))).toBeNull()
   })
 
   it('still names the status once the intake is signed', async () => {

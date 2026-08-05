@@ -107,10 +107,12 @@ export function IntakeDetailHeader({
           {/* An unfinished intake has no meaningful status yet — it is `primljeno` only by column
               default — so it carries the draft marker instead, exactly as the list decided. Printing
               a blue PRIMLJENO directly above the amber "Nedovršen · korak 3 od 5" bar made the same
-              order say two different things, and the pill is what gets read first. */}
+              order say two different things, and the pill is what gets read first. The STEP is
+              deliberately not repeated here — the bar an inch below carries it, and in the browser
+              the pair read as the same sentence printed twice. */}
           {order.signedAt === null ? (
             <InternalPill tone="warn" dot className={STATUS_PILL_CLASSES}>
-              {m.intake_row_draft_step({ step: order.draftStep ?? 1 })}
+              {m.intake_row_draft()}
             </InternalPill>
           ) : (
             <InternalPill

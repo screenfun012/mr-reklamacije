@@ -596,7 +596,7 @@
   "intake_detail_advance_done": "Status naloga {number} je sada „{status}”.",
   "intake_detail_amended_badge": "⚠ Menjano posle potpisa",
   "intake_detail_back": "← Nazad na listu",
-  "intake_detail_draft_step": "Nedovršen prijem · korak {step} od 5",
+  "intake_detail_draft_step": "Korak {step} od 5",
   "intake_detail_error_title": "Nalog nije moguće učitati. Osveži stranicu.",
   "intake_detail_not_found_body": "Nalog ne postoji ili nije tvoj.",
   "intake_detail_not_found_title": "Nalog nije pronađen",
