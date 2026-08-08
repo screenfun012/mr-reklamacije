@@ -123,7 +123,7 @@ function PrijemListScreen(): ReactElement {
  * it, so this costs no extra request. The office does not get the strip: its drafts are other
  * people's, and it reaches them through the "Nedovršeni" filter instead.
  */
-function UnfinishedBanner({
+export function UnfinishedBanner({
   search,
   seesWholeShop,
 }: {
@@ -154,8 +154,11 @@ function UnfinishedBanner({
           step: draft.draftStep ?? 1,
         })}
       </span>
+      {/* The id, not a bare `/prijem/novi`: without it the wizard opens whatever the tablet's
+          buffer happens to hold — which may be a different customer's car. */}
       <Link
         to="/prijem/novi"
+        search={{ resume: draft.id }}
         className="h-[42px] flex-none rounded-[9px] border border-[rgba(245,166,35,0.45)] px-[18px] font-mono text-xs font-extrabold uppercase leading-[42px] tracking-[0.08em] text-mri-warn"
       >
         {m.intake_draft_resume()}

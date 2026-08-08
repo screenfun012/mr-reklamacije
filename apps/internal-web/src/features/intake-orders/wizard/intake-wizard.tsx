@@ -16,6 +16,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { InternalPage } from '~/components/layout/internal-page'
+import { authClient } from '~/lib/auth-client'
 import { showInternalToast } from '~/lib/internal-toast'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { IntakeOrderNumberField } from './intake-order-number-field'
@@ -60,6 +61,24 @@ const STEP_LABELS = [
 ] as const
 
 /**
+ * Three shapes a `?resume=` fetch can legitimately return and the wizard must refuse: a signed
+ * order (adopting it would let the wizard patch a stamped document), a removed one, and one that
+ * is somebody else's. A serviser's colleague 404s here on the row scope, but an operator holds
+ * `view` + `create`, gets a 200 on any draft and can reach `/prijem/novi` — that pairing is what
+ * would otherwise put another customer's name, phone and address on this tablet.
+ *
+ * The owner clause is checked only once the id is KNOWN. It arrives with the live session, and
+ * refusing while it is still `undefined` would turn a serviser away from his own intake.
+ */
+function isAdoptable(order: IntakeOrderDetail, readerId: string | undefined): boolean {
+  return (
+    order.signedAt === null &&
+    order.deletedAt === null &&
+    (readerId === undefined || order.technicianId === readerId)
+  )
+}
+
+/**
  * The five-step intake. Steps 1–2 are built (V-3); 3–5 are drawn and approved but land in
  * later phases, so the wizard walks into a reserved panel rather than pretending they are
  * missing — the stepper stays honest about how many steps there are.
@@ -79,6 +98,20 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
   // the buffer's owner mark: the tablet is shared, and it is the one identity available here
   // synchronously, so it cannot lose a race against hydration and refuse a man his own intake.
   const { userName: technicianName, userEmail } = useInternalAuthUser()
+  /**
+   * Who is reading this tablet right now. The id exists nowhere else on the client — the router
+   * context carries only roles, name and email — so it comes from the live session, exactly as the
+   * detail's draft bar reads it, and it is `undefined` until that session answers.
+   *
+   * A ref, never a dependency array: `resumeServerOrder` below is a dependency of the mount
+   * effect, so an identity that changes on hydration would re-fire the whole resume — second
+   * fetch, second toast, and a re-adopt that drops the serviser back to the step he has already
+   * moved past.
+   */
+  const { data: session } = authClient.useSession()
+  const reader = { id: session?.user?.id, email: userEmail }
+  const readerRef = useRef(reader)
+  readerRef.current = reader
 
   const [values, setValues] = useState<IntakeWizardValues>(emptyIntakeWizardValues)
   const [step, setStep] = useState(1)
@@ -190,10 +223,16 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
     [orderId, queryClient],
   )
 
-  const adoptOrder = useCallback((order: IntakeOrderDetail) => {
+  /**
+   * `buffer` is this tablet's own copy of the SAME order, when it has one. It wins: a step patch
+   * fires only in `goForward`, so a whole step's typing — step 4's services and materials — lives
+   * nowhere but the buffer until DALJE is pressed, and `?resume=` stays in the address, so every
+   * later reload of it would otherwise re-adopt the server copy straight over that work.
+   */
+  const adoptOrder = useCallback((order: IntakeOrderDetail, buffer: IntakeDraftBuffer | null) => {
     setOrderId(order.id)
-    setValues(valuesFromOrder(order))
-    setStep(order.draftStep ?? 1)
+    setValues(buffer?.values ?? valuesFromOrder(order))
+    setStep(Math.max(buffer?.step ?? 1, order.draftStep ?? 1))
   }, [])
 
   const resumeBuffer = useCallback(() => {
@@ -216,7 +255,14 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       void (async () => {
         try {
           const order = await queryClient.fetchQuery(intakeOrderDetailOptions(id))
-          adoptOrder(order)
+          if (!isAdoptable(order, readerRef.current.id)) {
+            // The same words a serviser already gets for a colleague's draft, whose GET 404s on
+            // the row scope — from where he stands the two cases are the same refusal.
+            showInternalToast(m.intake_resume_failed())
+            return
+          }
+          const draft = readIntakeDraft(readerRef.current.email)
+          adoptOrder(order, draft?.orderId === order.id ? draft : null)
           setFoundDraft(null)
           showInternalToast(m.intake_resume_loaded())
         } catch {
@@ -283,7 +329,12 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
   }
 
   const canLeaveStep1 = step1Complete(values) && !numberTaken
-  const forwardDisabled = saving || (step === 1 && !canLeaveStep1)
+  /**
+   * `numberTaken` blocks on EVERY step, not just the first. A resumed intake whose number was
+   * signed on another tablet meanwhile still had DALJE live, and every patch it sent dead-ended
+   * on a 422 the serviser could do nothing with.
+   */
+  const forwardDisabled = saving || numberTaken || (step === 1 && !canLeaveStep1)
 
   const bothSigned = isSignatureFilled(technicianStrokes) && isSignatureFilled(ownerStrokes)
   /**
@@ -379,14 +430,17 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
         tone: 'muted',
       }
     }
+    // Above the step check, unlike every other step-1 branch: DALJE is now dead on every step
+    // while the number belongs to somebody else, and a button that refuses without saying why
+    // reads as broken. (Empty number cannot reach here — the check query needs one to answer.)
+    if (numberTaken) {
+      return { text: m.intake_hint_number_taken(), tone: 'bad' }
+    }
     if (step !== 1) {
       return { text: m.intake_hint_step({ step }), tone: 'muted' }
     }
     if (values.orderNumber.trim().length === 0) {
       return { text: m.intake_hint_no_number(), tone: 'warn' }
-    }
-    if (numberTaken) {
-      return { text: m.intake_hint_number_taken(), tone: 'bad' }
     }
     if (!step1Complete(values)) {
       return { text: m.intake_hint_required(), tone: 'warn' }
