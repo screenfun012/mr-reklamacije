@@ -5,9 +5,21 @@ import { ApiError } from '../api/api-error.js'
 const DEFAULT_STALE_MS = 30_000
 const MAX_QUERY_RETRIES = 3
 
+/**
+ * 404 belongs on this list for the same reason as the other three: the answer cannot change by
+ * asking again. Retrying it cost four requests and **7.7 seconds of an empty screen** before a
+ * not-found box appeared — measured 2026-08-08 on a serviser opening an order that is not his, which
+ * is the exact case this app answers with 404 rather than 403 so as not to leak existence. A tablet
+ * in front of a customer cannot spend eight seconds saying nothing.
+ */
 function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   if (error instanceof ApiError) {
-    if (error.status === 401 || error.status === 403 || error.status === 429) {
+    if (
+      error.status === 401 ||
+      error.status === 403 ||
+      error.status === 404 ||
+      error.status === 429
+    ) {
       return false
     }
   }
