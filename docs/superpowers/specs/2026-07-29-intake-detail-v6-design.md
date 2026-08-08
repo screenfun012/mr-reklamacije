@@ -576,7 +576,7 @@ The KPI summary is untouched — it already counts live, signed orders only.
 | --- | --- |
 | `routes/_shell/prijem/$id.tsx` | loader + composition, replacing the placeholder |
 | `routes/_shell/prijem/novi.tsx` | the `?resume=` search param |
-| `routes/_shell/prijem/index.tsx` | reads `search.unfinished` at `:114,:117`, so the view rename is a compile break here; and its draft banner's `NASTAVI PRIJEM` at `:165` gains `search={{ resume }}` (§4.8) |
+| `routes/_shell/prijem/index.tsx` | the view rename landed — it reads `search.view` at `:107,:110`; its draft banner's `NASTAVI PRIJEM` gains `search={{ resume }}` at **`:157-158`** (§4.8). ⚠ `:165` is the closing brace of `UnfinishedBanner`, and `:85-86` is the header CTA, which must keep opening an empty intake |
 | `features/intake-orders/intake-filter-bar.tsx` | the view select replaces the checkbox |
 | `features/intake-orders/wizard/intake-wizard.tsx` | `resumeOrderId` prop, the mount-effect resume, the two guards, the buffer-effect gating, and the same guards on `resumeBuffer` (§4.8) |
 | `features/intake-orders/wizard/step-specification.tsx` | export `SpecList` as `IntakeSpecList` with an optional `note` (§4.6) |
@@ -642,9 +642,16 @@ property to its initial value. That is how the fuel dial's amber arc was invisib
      restore it;
    - serviser: open own order (advance works, no status bar, no remove, spec editable), open a
      colleague's id straight from the address bar and get the not-found screen, then try
-     `/prijem/novi?resume=<colleague's draft>` and be turned away;
+     `/prijem/novi?resume=<colleague's draft>` — ⚠ **corrected 2026-08-08:** he is NOT "turned away
+     to the detail". His GET 404s on the row scope, so he gets `Nalog nije moguće učitati.` and stays
+     on an empty new intake; there is no detail he may open. The identity refusal is walked with the
+     **operator** account (`view` + `create`), the only actor that gets a 200 on a foreign draft;
    - both: open an unfinished draft — the continue button appears only for its owner, and continuing
      lands on the right step.
+   - ⚠ **the walk that catches the buffer regression, added 2026-08-08:** from the list banner,
+     resume, advance to step 4, type a service line, do NOT press DALJE, then reload the tab (the
+     address still carries `?resume=`). The line must still be there — the tablet's own copy wins for
+     the same order (plan Step 6′).
 5. Widths at **1180×820**, **820** and **430**: measure `scrollWidth` vs `clientWidth` on the page
    and audit each cell against its column's right edge. Nikola picks the viewport from DevTools'
    Dimensions menu; never resize his window.

@@ -1526,130 +1526,176 @@ git commit -m "feat(intake): photos, specification and history tabs — and the 
 
 ## Task 12: Resuming an unfinished intake, from anywhere
 
-**Files:**
-- Modify: `apps/internal-web/src/routes/_shell/prijem/novi.tsx` (the `?resume=` search param)
-- Modify: `apps/internal-web/src/features/intake-orders/wizard/intake-wizard.tsx`
-- Modify: `apps/internal-web/src/routes/_shell/prijem/index.tsx` (the banner link at :165)
-- Test: `features/intake-orders/wizard/__tests__/intake-wizard-resume.test.tsx`
+**Files** (corrected 2026-08-08 — `novi.tsx` already shipped, `packages/i18n` is not touched, and the
+new test file is the wrong home):
+- Modify: `apps/internal-web/src/features/intake-orders/wizard/intake-wizard.tsx` — the guard
+  (Step 5′), the buffer precedence (Step 6′) and `forwardDisabled` + the hint order (Step 7′b)
+- Modify: `apps/internal-web/src/routes/_shell/prijem/index.tsx` — `search={{ resume: draft.id }}` at
+  **:157-158**, and export `UnfinishedBanner` so it can be asserted
+- Test: extend `features/intake-orders/wizard/__tests__/intake-wizard-draft-offer.test.tsx` — the only
+  harness that renders this wizard. Do **not** create `intake-wizard-resume.test.tsx`.
+- ~~`routes/_shell/prijem/novi.tsx`~~ — shipped in `7afdf5a`.
+- ~~`packages/i18n`~~ — no new key; the refusal reuses `m.intake_resume_failed()` and the shipped
+  number-taken bar.
 
 **Interfaces:**
-- Consumes: `resumeServerOrder`, `adoptOrder`, `resumeBuffer` (all already in `intake-wizard.tsx`), the 403 contract from Task 2.
+- Consumes: `resumeServerOrder`, `adoptOrder`, `resumeBuffer` (all already in `intake-wizard.tsx`),
+  `readIntakeDraft(reader)` / `isOfferable` (`intake-wizard-state.ts` — the identity rule shipped in
+  `69eb7cc`), `authClient.useSession()` for the user id (the router context does not carry it), and
+  the 403/404 contract from Task 2 plus `cec0e1c`.
 
-- [ ] **Step 1: Write the failing tests**
+> ⚠ **REWRITTEN 2026-08-08 by a five-angle plan check (four verifiers + one cross-cutting pass over
+> their reports), before any code. 44 findings; the four angles agreed on the big ones.** Steps 1–4
+> below are **struck out — they are not work.** Half of this task shipped in `7afdf5a`, its identity
+> rule shipped in `69eb7cc`, its buffer invariant in `9f27044`, and its "already signed" warning in
+> V-3. What is genuinely left is four small edits and one decision, all in §Steps 5′–7′.
 
-> ⚠ **This first test is now VACUOUS — re-point it before writing Step 4.** The buffer fix of
-> 2026-08-04 (`docs/superpowers/specs/2026-08-04-intake-draft-buffer-invariant-design.md`) guards
-> `writeIntakeDraft`, so the mount write of empty values is a no-op **regardless** of any `resuming`
-> flag. The assertion below therefore passes even if Step 4's guard is never implemented. Whatever
-> Step 4 ends up guarding, prove it by deleting that guard and watching this test go red — as the
-> other tests in that spec each do. The buffer also now carries `savedAt`; build fixtures through
-> `writeIntakeDraft`, never as an object literal, or the reader will refuse them as expired.
+- [ ] ~~**Step 1: Write the failing tests**~~ — **STRUCK.** Both snippets are unrunnable, and the
+      plan's own ⚠ misdiagnosed why. It said the first test passes vacuously; in fact it **throws on
+      its first line**: `69eb7cc` gave the reader an argument (`readIntakeDraft(reader: string)` →
+      `isOfferable(draft, reader)` → `reader.length > 0`), so `readIntakeDraft()` reads
+      `undefined.length`, is swallowed by the module's own `try`, and returns `null`. The writer also
+      requires `savedBy` (`intake-wizard-state.ts:192`), which neither snippet passes. And the second
+      snippet tests a guard that **already ships**: `isOfferable` refuses a buffer whose
+      `savedBy !== reader`, so a colleague's draft is never offered — it can never go from red to
+      green. New cases go into the existing `__tests__/intake-wizard-draft-offer.test.tsx`, the only
+      harness that renders this wizard, with fixtures built as its own cases build them
+      (`writeIntakeDraft({ orderId, step, values: bufferedValues(), savedBy: SERVISER_EMAIL })`,
+      read back through `storedDraft()`).
 
-```tsx
-it('does not overwrite another intake\'s buffer while a resume is in flight', async () => {
-  writeIntakeDraft({ orderId: 'other-order', step: 3, values: filledValues })
-  render(<IntakeWizard resumeOrderId="target-order" />)
+- [ ] ~~**Step 2: Run them to verify they fail**~~ — **STRUCK** with Step 1. Its stated failure
+      (“`resumeOrderId` is not a prop”) has been false since `7afdf5a`.
 
-  // The buffer must still hold the other intake until the fetch resolves and adopts.
-  expect(readIntakeDraft()?.orderId).toBe('other-order')
-  await waitFor(() => expect(readIntakeDraft()?.orderId).toBe('target-order'))
-})
+- [ ] ~~**Step 3: Add the search param**~~ — **ALREADY SHIPPED** in `7afdf5a`:
+      `IntakeWizardSearchSchema` (`packages/shared/src/schemas/intake-order.wire.schema.ts:366-368`,
+      with a load-bearing `.catch(undefined)` the plan's snippet omitted — a hand-typed `?resume=xx`
+      must degrade to a normal new intake, not throw the route), the route
+      (`routes/_shell/prijem/novi.tsx:12-23`), the `resumeOrderId` prop (`intake-wizard.tsx:72`) and
+      the mount effect (`:232-237`).
 
-it('refuses to hand a colleague\'s buffered draft to whoever is signed in', async () => {
-  writeIntakeDraft({ orderId: 'colleague-order', step: 2, values: filledValues })
-  render(<IntakeWizard />)
+- [ ] ~~**Step 4: Gate both mount effects on the resume**~~ — **STRUCK, and it must not be built.**
+      Three independent reasons:
+      1. **It would re-open the blocker `7afdf5a` closed.** Effect A is already gated *permanently*
+         on the param (`intake-wizard.tsx:118-120`, with the reason at `:115-117`: the tablet's copy
+         "may hold a DIFFERENT draft, and offering that would put the serviser inside another
+         customer's car"). A flag that clears on failure re-runs the effect and offers exactly that.
+         Two shipped tests pin it (`intake-wizard-draft-offer.test.tsx:153-170`, `:172-185`).
+      2. **Effect B needs no flag.** The mount write is already refused by the buffer module's own
+         `isWorthKeeping` (`intake-wizard-state.ts:223-225`) — the `9f27044` invariant.
+      3. **A flag could not fix the loss anyway.** The write it would have to permit is the one that
+         destroys the delta: on adoption, `orderId` and `values` both change, Effect B re-runs
+         (deps `:149`) and replaces the single storage slot with the adopted order. The plan's own
+         bar — prove a guard by deleting it and watching a test go red — cannot be met, because the
+         state after the guard is the state the guard was protecting against.
+      What is real in this area is **which copy of the values wins**, which is Step 6′.
 
-  await user.click(await screen.findByRole('button', { name: m.intake_draft_resume() }))
+- [ ] **Step 5′: One identity/state guard, in `resumeServerOrder` only**
 
-  await waitFor(() => expect(readIntakeDraft()).toBeNull())
-  expect(screen.queryByDisplayValue(filledValues.orderNumber)).toBeNull()
-})
-```
+`resumeServerOrder` (`intake-wizard.tsx:214-228`) adopts whatever the fetch returns, with no check
+at all — and it is the ONLY way a foreign `orderId` can enter this tablet's buffer. `resumeBuffer`
+needs **no** ownership clause: `isOfferable` already refuses anyone else's buffer at read time
+(`intake-wizard-state.ts:233-237`, applied in `readIntakeDraft`, whose only caller passes
+`userEmail`). A second copy of the rule there would be unreachable dead code, which §6 bans.
 
-- [ ] **Step 2: Run them to verify they fail**
+Refuse to adopt — do not navigate, do not add a message — when the fetched order is signed, is
+removed, or is known not to be the caller's, and report with the **existing**
+`m.intake_resume_failed()`, which is already what a serviser sees for a colleague's draft (his GET
+404s on the row scope). Reachability: `SERVISER_PERMISSIONS` is `view_own`+`create`+`update`+
+`advance`, so a colleague's row 404s for him; `OPERATOR_PERMISSIONS` holds `view`+`create`, the only
+pairing that gets a 200 on a foreign draft and can reach `/prijem/novi`. So the identity clause
+exists for the office, and its absence is what would put another customer's name and address on a
+tablet — the Task 9 blocker, one route further along.
 
-Run: `pnpm --filter internal-web test -- intake-wizard-resume`
-Expected: FAIL — `resumeOrderId` is not a prop.
+⚠ **The user id is NOT in the router context.** `SerializableAuthSession` carries only
+`{ roles, permissions, name, email }` (`packages/auth/src/session-payload.ts:13-20`), and
+`useInternalAuthUser` exposes only name + email. The one client source is the live session, exactly
+as the shipped detail reads it: `authClient.useSession()` → `session?.user?.id`
+(`routes/_shell/prijem/$id.tsx:55-57`, passed at `:78`). Two consequences the plan got backwards:
 
-- [ ] **Step 3: Add the search param**
+- **Fail OPEN, not closed:** `id !== undefined && order.technicianId !== id`. The id is `undefined`
+  until the live session resolves, and refusing then would turn a serviser away from his OWN intake.
+  (`intake-draft-bar.tsx:34` fails closed on purpose — hiding a button is harmless. Here it is not.)
+- **Keep the callback referentially stable** — hold the id in a `useRef`, not in the dependency
+  array. `resumeServerOrder` is a dependency of the mount effect (`:232-237`), so adding a value
+  that changes on hydration re-fires the whole resume: second fetch, second toast, and a re-adopt
+  that resets the step the serviser has already moved past.
 
-```tsx
-export const Route = createFileRoute('/_shell/prijem/novi')({
-  beforeLoad: internalRequireIntakeOrdersCreate(),
-  validateSearch: (search) => IntakeWizardSearchSchema.parse(search),
-  component: IntakeWizardRoute,
-})
-```
+- [ ] **Step 6′: Say which copy of the values wins — the buffer, for the same order**
 
-with `IntakeWizardSearchSchema = z.object({ resume: z.string().uuid().optional() })` beside the
-detail search schema in `@mr/shared`, and `IntakeWizardRoute` reading it and passing
-`resumeOrderId`.
+**The hole neither the plan nor any single verifier saw:** `?resume=` is never cleared after
+adoption (the only `navigate` calls are `{ to: '/prijem' }` and `{ to: '/prijem/$id' }`), so every
+later reload of that address re-fetches, re-adopts the SERVER copy, and Effect B then writes it over
+the tablet's newer buffer. A whole step's typing lives only in that buffer — step patches fire only
+in `goForward` (`:240-261`), so step 4's services and materials are nowhere else. Step 7′ makes this
+the shop's most prominent button, so it must be answered here, not drifted into.
 
-- [ ] **Step 4: Gate both mount effects on the resume**
+Inside `resumeServerOrder`, after the fetch passes Step 5′'s checks: read `readIntakeDraft(userEmail)`
+and when `draft.orderId === order.id`, adopt the **buffer's** values with
+`Math.max(draft.step, order.draftStep ?? 1)`; otherwise adopt the server's, as today. The buffer for
+the same order is by construction at or ahead of the last patch, and the reader has already refused
+anything older than a shift or belonging to someone else.
 
-In `intake-wizard.tsx`, derive a flag before the two existing effects and read it inside them:
+Stripping the param instead was considered and rejected: it cannot fix the **first** reload, because
+by the time the param is stripped the adoption has already overwritten the delta.
 
-```tsx
-// The buffer effect writes localStorage from wizard state on mount. With a resume in flight
-// that would overwrite ANOTHER intake's buffer with empty values before the fetch resolves —
-// and with the offer suppressed there is no in-memory copy left to restore from. So both
-// effects wait until the resume has adopted or failed.
-const [resuming, setResuming] = useState(resumeOrderId !== undefined)
-```
+⚠ **Stated loss, on the record:** if the same order was moved forward on ANOTHER tablet within the
+same shift, this tablet's buffer now wins. That is the upward flush the buffer spec leaves open
+(§7.6) and is deliberately out of scope. Say it in the commit message.
 
-Effect A (the buffer offer): `if (resuming) return` before `setFoundDraft`.
-Effect B (the buffer write): `if (resuming) return` before `writeIntakeDraft`.
-A mount effect calls `resumeServerOrder(resumeOrderId)`; both its success and failure paths clear
-`resuming`.
+- [ ] **Step 7′: The list banner, and the dead end past step 1**
 
-- [ ] **Step 5: Guard both resume paths**
+**(a)** `routes/_shell/prijem/index.tsx:157-158` — add `search={{ resume: draft.id }}` to the
+`<Link to="/prijem/novi">`. (The plan's `:165` is a closing brace; `:85-86` is the header CTA, a
+different button that must keep opening an empty intake.) `UnfinishedBanner` is module-local, so
+export it to make the assertion possible; the assertion itself already exists for its twin —
+`detail/__tests__/intake-draft-bar.test.tsx:19-23` asserts the href, and `renderDetailUi` registers
+`/prijem/novi` without `validateSearch`, which is why `search` serialises into it.
 
-Extend `resumeServerOrder` and add the same two checks to `resumeBuffer`:
+**(b)** A stale resume (adopted, then the order was signed elsewhere) shows the shipped red bar but
+still has `DALJE` enabled, and dead-ends on a 422. `intake-wizard.tsx:285-286` becomes
+`saving || numberTaken || (step === 1 && !canLeaveStep1)`, and the `numberTaken` hint branch
+(`:388-390`) is hoisted above the `if (step !== 1)` early return (`:382-384`) so the disabled button
+says why.
 
-```tsx
-const adoptIfMine = useCallback(
-  (order: IntakeOrderDetail): boolean => {
-    if (order.signedAt !== null) {
-      showInternalToast(m.intake_resume_already_signed())
-      void navigate({ to: '/prijem/$id', params: { id: order.id } })
-      return false
-    }
-    if (order.technicianId !== currentUserId) {
-      showInternalToast(m.intake_resume_not_yours())
-      void navigate({ to: '/prijem/$id', params: { id: order.id } })
-      return false
-    }
-    adoptOrder(order)
-    return true
-  },
-  [adoptOrder, currentUserId, navigate],
-)
-```
+This is the whole of what Step 5's `adoptIfMine` was for, and it needs **no new message key**: the
+red bar and its `Otvori nalog →` link already ship (`intake-wizard-note.tsx:111-139`), are driven by
+the ORDER NUMBER — which every adoption fills — and therefore cover all three entrances (`?resume=`,
+the note's own resume, the buffer) without knowing which one ran. They also cannot false-positive on
+the wizard's own draft (`TakenDraftMine` excludes `data.orderId === currentOrderId`, `:90-94`). A
+link the serviser can read and decide on beats a forced redirect. So `intake_resume_already_signed`
+and `intake_resume_not_yours` are **never added**, and `packages/i18n` drops out of this task.
 
-`resumeBuffer` now fetches the order by `foundDraft.orderId` and runs it through `adoptIfMine`;
-when that returns false it calls `clearIntakeDraft()` so a shared tablet does not keep offering a
-draft nobody signed in can move. Shop tablets are shared, and after Task 2 an unguarded adoption
-means every subsequent action 403s with a generic save error and no way out.
+⚠ Known and NOT in scope: a soft-deleted order reads as `Free` from `checkNumber`
+(`findByNumberKey` filters `isNull(deleted_at)`), so the bar cannot announce that one state — every
+mutation on it 409s or 404s. And `finish` is not gated by `forwardDisabled`, so a stale buffer at
+step 5 can still press ZAVRŠI and take a 409. Both pre-existing; report, do not fix here.
 
-`currentUserId` comes from the session the shell already provides — read how the topbar gets the
-signed-in user rather than adding a new query.
+- [ ] **Step 8′: Test ripple, then gate and commit**
 
-- [ ] **Step 6: Point the list banner at the same param**
+⚠ `intake-wizard-draft-offer.test.tsx:108-129` and `:131-151` click resume on a buffer with
+`orderId: 'order-1'` while `beforeEach` stubs **every** request as `new Response('{}')`, which
+`IntakeOrderDetailSchema` rejects. **Two green tests here are not evidence the reconcile works —
+they are evidence it did not fire.** Whatever shape Step 6′ takes, one new case must prove the
+buffer's values survive a `?resume=` reload, and one must prove a foreign order is not adopted.
 
-In `index.tsx:165`, add `search={{ resume: draft.id }}` to the existing `to="/prijem/novi"` link.
-Without it the app ships two `NASTAVI PRIJEM` buttons with different behaviour, the more prominent
-one working only on the tablet holding the buffer.
-
-- [ ] **Step 7: Run the tests, then gate and commit**
-
-Run: `pnpm --filter internal-web test -- intake-wizard`
-Expected: PASS, existing wizard tests included.
+Run: `pnpm --filter internal-web test -- intake-wizard`. Then break each new assertion's line and
+confirm the expected test — and only it — goes red.
 
 ```bash
 pnpm format:check && pnpm exec turbo run build typecheck lint test --force --concurrency=4 && pnpm --filter api depcruise && pnpm test:integration
-git add apps/internal-web packages/shared packages/i18n
-git commit -m "feat(intake): an unfinished intake resumes from the detail, the list and another tablet (docs/25 V-6-1b)"
+git add apps/internal-web
+git commit -m "feat(intake): an unfinished intake resumes from the list, and the tablet's own copy wins (docs/25 V-6-1b)"
 ```
+
+**Acceptance walk, split by actor** (the plan's original walk, and design-spec §8's, cannot be
+performed: for a serviser a colleague's id 404s, so there is no detail to be "turned away" to):
+
+- serviser + a colleague's id → `Nalog nije moguće učitati.`, he stays on an empty new intake.
+- **operator** (`view` + `create`) + a colleague's draft → refused by the identity clause; this is
+  the only actor that reaches it.
+- **the walk that would have caught the real regression:** from the list banner, resume, advance to
+  step 4, type a service line, do NOT press DALJE, reload the tab (the address still carries
+  `?resume=`) — the line must still be there.
 
 ---
 

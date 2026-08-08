@@ -21,7 +21,7 @@ in this order:
 
 React flushes passive effects in hook-declaration order within one commit, so B overwrites the real
 buffer with an empty one immediately after A read it. The offer the serviser sees lives only in
-React state (`foundDraft`); `resumeBuffer` (`:160-168`) restores from that state, not from storage.
+React state (`foundDraft`); `resumeBuffer` (`:199-207`) restores from that state, not from storage.
 So the offer works for exactly as long as the component lives — and not one moment longer. On the
 next mount `readIntakeDraft` returns the empty record, A's guard rejects it, and the intake is never
 offered again.
@@ -139,7 +139,7 @@ buffer without an explicit tap**. After §3.1 the key is cleared only by `discar
 someone types the next order number or taps *Odbaci*.
 
 The worst concrete case the audit found: `finish` calls `clearIntakeDraft()` inside its try
-(`:259-268`), so a WiFi drop that loses the *response* to a successful sign leaves a buffer pointing
+(`:311-332`, the release at `:324`), so a WiFi drop that loses the *response* to a successful sign leaves a buffer pointing
 at an order that is now signed. Post-§3.1 the serviser is offered *"nastavi RN-…, korak 5"*;
 accepting it sends a post-signing patch, `assertPostSigningPatchAllowed` throws, and he gets the
 generic `intake_save_failed` toast with *Odbaci* as the only exit. Today, retyping the number
@@ -397,17 +397,17 @@ Nikola widened the scope to "everything, including what is out of scope". Four t
 out — not for effort, but because taking them now makes the system worse. Each one names what it
 would cost.
 
-1. **`resumeBuffer` trusts `localStorage`'s `orderId` blindly** (`:160-168`) while `resumeServerOrder`
-   always refetches (`:175-189`), so a resumed buffer can name a hard-deleted draft or a signed
+1. **`resumeBuffer` trusts `localStorage`'s `orderId` blindly** (`:199-207`) while `resumeServerOrder`
+   always refetches (`:214-228`), so a resumed buffer can name a hard-deleted draft or a signed
    order. The obvious fix — validate against the server before adopting — **breaks a promise
    `docs/25` makes explicitly**: a serviser must never stand in front of the customer waiting for the
-   hall's WiFi (the reasoning is written into `intake-wizard.tsx:234-238`). A hard validation gate
+   hall's WiFi (the reasoning is written into `intake-wizard.tsx:289-292`). A hard validation gate
    means no resume at all when the network is down, which is exactly when the buffer matters most.
    The soft version — adopt now, reconcile when the network answers — is a real design, and it is
    **Task 12 Step 5's** design. Doing a rushed version here and a proper one there is the duplication
    this whole spec exists to avoid.
 2. **A failed `finish` leaves a buffer pointing at a signed order** (`clearIntakeDraft` is inside the
-   try, `:259-268`), so a WiFi drop that loses the *response* to a successful sign keeps the buffer.
+   try, `:311-332`), so a WiFi drop that loses the *response* to a successful sign keeps the buffer.
    Moving the clear into a `finally` was in the first draft of this spec and is **withdrawn**: it
    would also clear the buffer when signing genuinely failed and the serviser is still at the car,
    removing his safety net to fix a case that already self-heals. It self-heals because accepting
@@ -452,7 +452,7 @@ would cost.
    Task 12 runs.
 6. **`docs/25` §3.3.2 described something that was never built.** It said the local buffer "is flushed
    upwards when the network returns or the tablet wakes (`visibilitychange`)". The handler
-   (`:103-105`) only rewrites `localStorage`. The doc is corrected to say what exists; **whether the
+   (`:136-144`) only rewrites `localStorage`. The doc is corrected to say what exists; **whether the
    upward flush should be built is left open**, because it is a feature with its own questions (what
    is sent, when, and what happens when it conflicts with the server) and not a wording fix.
 7. **One tablet holds one buffer**, while `docs/25` §3.3.3 allows several unfinished intakes per
