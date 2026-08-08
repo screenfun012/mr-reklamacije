@@ -64,9 +64,14 @@ export function IntakeFilterBar({
   return (
     <div className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface px-[17px] py-[15px] lg:flex-row lg:items-center">
       {/* One joined segmented control, not separate pills — the prototype wraps the buttons in a
-          single bordered span with the border between them coming from the container. */}
+          single bordered span with the border between them coming from the container.
+
+          `max-w-full` + `overflow-x-auto`, not `overflow-hidden`: the five segments measure 447px,
+          and on a 430px phone the group sat at right=481 with `Preuzeto` past the edge — clipped,
+          with no scrollbar, so that filter could not be reached at all (measured 2026-08-08). At
+          every width where the content fits, both classes are inert. */}
       <span
-        className="flex flex-none self-start overflow-hidden rounded-[9px] border border-mri-border2"
+        className="flex max-w-full flex-none self-start overflow-x-auto rounded-[9px] border border-mri-border2"
         role="group"
         aria-label={m.intake_filter_status()}
       >

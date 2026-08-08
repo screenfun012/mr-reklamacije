@@ -37,10 +37,13 @@ export function IntakeStatusBar({ order }: { order: IntakeOrderDetail }): ReactE
         {m.intake_status_bar_caption()}
       </span>
 
+      {/* `max-w-full` + `overflow-x-auto` for the same reason as the list's status filter: four
+          joined segments are wider than a phone, and `overflow-hidden` would clip the last one out of
+          reach instead of letting it be swiped to. Inert wherever the row fits. */}
       <div
         role="group"
         aria-label={m.intake_status_bar_caption()}
-        className="flex overflow-hidden rounded-[9px] border border-mri-border2"
+        className="flex max-w-full overflow-x-auto rounded-[9px] border border-mri-border2"
       >
         {INTAKE_STATUS_ORDER.map((status) => (
           <button
