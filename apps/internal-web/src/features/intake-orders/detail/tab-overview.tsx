@@ -17,12 +17,8 @@ import { buildPhotoCells, type IntakePhotoCell } from '../wizard/intake-photo-gr
 import { IntakePhotoLightbox } from '../wizard/intake-photo-lightbox'
 import { INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
+import { CAPTION, CARD, DASH } from './detail-styles'
 
-/** Everything the prototype writes where a value is missing (`prijem-prototip-v2.dc.html:1391`). */
-const DASH = '—'
-
-const CARD = 'rounded-[14px] border border-mri-border bg-mri-surface'
-const CAPTION = 'font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh'
 const FIELD_KEY = 'font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-mri-text2'
 
 /**

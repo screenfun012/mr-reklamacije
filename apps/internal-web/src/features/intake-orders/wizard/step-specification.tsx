@@ -49,6 +49,11 @@ export interface IntakeSpecListProps {
   onChange: (items: string[]) => void | Promise<void>
   /** Only the materials card carries one, pinned to the bottom, as the prototype has it. */
   note?: string
+  /**
+   * A removed order: the server answers every PATCH of one with a 409, so an enabled field would
+   * be an offer the screen cannot keep. The wizard never passes it.
+   */
+  disabled?: boolean
 }
 
 export function IntakeSpecList({
@@ -58,6 +63,7 @@ export function IntakeSpecList({
   removeLabel,
   onChange,
   note,
+  disabled = false,
 }: IntakeSpecListProps): ReactElement {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -110,8 +116,9 @@ export function IntakeSpecList({
                 onChange(items.filter((_, position) => position !== index)),
               ).catch(() => undefined)
             }}
+            disabled={disabled}
             aria-label={removeLabel}
-            className="h-11 w-9 flex-none cursor-pointer text-base text-mri-text2"
+            className="h-11 w-9 flex-none cursor-pointer text-base text-mri-text2 disabled:cursor-default disabled:opacity-40"
           >
             ✕
           </button>
@@ -133,12 +140,16 @@ export function IntakeSpecList({
             }
           }}
           placeholder={placeholder}
-          className="mri-input h-[52px] min-w-0 flex-1 rounded-[10px] border border-mri-border2 bg-mri-inbg px-[15px] text-base text-mri-text outline-none"
+          disabled={disabled}
+          // The schema's own ceiling: a longer line comes back a 400 with nothing on screen
+          // explaining why (`IntakeOrderUpdateInputSchema`, services/materials max 200).
+          maxLength={200}
+          className="mri-input h-[52px] min-w-0 flex-1 rounded-[10px] border border-mri-border2 bg-mri-inbg px-[15px] text-base text-mri-text outline-none disabled:opacity-50"
         />
         <button
           type="button"
           onClick={add}
-          disabled={sending}
+          disabled={sending || disabled}
           className={cn(
             'h-[52px] w-[130px] flex-none cursor-pointer rounded-[10px] border border-dashed border-mri-border2 bg-transparent text-[13px] font-bold uppercase tracking-[0.06em] text-mri-text2',
             'transition-colors duration-200 hover:border-mri-red hover:text-mri-redh motion-reduce:transition-none',

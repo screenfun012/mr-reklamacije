@@ -268,24 +268,31 @@ construction after §6.1, so it needs no pagination.
 Labels are built in the frontend from `action` + `transition` + `fromStatus`/`toStatus`, through a
 lookup map (never a nested ternary) and Paraglide messages in sr and en:
 
-| transition / action | Serbian |
-| --- | --- |
-| `create` | Nalog kreiran |
-| `sign` | Nalog potpisan |
-| `advance` / `change_status` | Status: {from} → {to} |
-| `amend_after_signing` | Zatečeno stanje ispravljeno |
-| `amend_photo_added` | Fotografija dodata posle potpisa |
-| `amend_photo_removed` | Fotografija uklonjena posle potpisa |
-| `spec_updated` | Usluge i materijal izmenjeni |
-| `soft_delete` | Nalog uklonjen sa liste |
-| `restore` | Nalog vraćen na listu |
+> **Reconciled with what shipped, 2026-08-08.** Three strings below are not what the first draft
+> wrote. `create` reads "Nalog otvoren", not "Nalog kreiran" — the shop opens a nalog, it does not
+> create a record. `amend_after_signing` reads "menjano", not "ispravljeno", because the existing
+> `intake_signature_note_amended` already says "je menjano" about the same event and "ispravljeno"
+> asserts the earlier record was WRONG, which nothing in the system knows. The fallback is a full
+> clause ("Nalog izmenjen"), not the bare noun "Izmena", so it reads like its nine neighbours.
+
+| transition / action | Serbian | key |
+| --- | --- | --- |
+| `create` | Nalog otvoren | `intake_history_created` |
+| `sign` | Nalog potpisan | `intake_history_signed` |
+| `advance` / `change_status` | Status: {from} → {to} | `intake_history_status` |
+| `amend_after_signing` | Zatečeno stanje menjano posle potpisa | `intake_history_amended` |
+| `amend_photo_added` | Fotografija dodata posle potpisa | `intake_history_photo_added` |
+| `amend_photo_removed` | Fotografija uklonjena posle potpisa | `intake_history_photo_removed` |
+| `spec_updated` | Usluge i materijal izmenjeni | `intake_history_spec_updated` |
+| `soft_delete` | Nalog uklonjen sa liste | `intake_history_removed` |
+| `restore` | Nalog vraćen na listu | `intake_history_restored` |
 
 `discard_draft` deliberately has **no** label. Discarding an unfinished intake hard-deletes the row
 (`docs/25` §3.3.7), so `GET /:id/history` 404s before the projection ever runs — a label for it
 would be dead the day it was written. The audit row is still written; it is the admin audit log's
 only trace of the discard.
 
-An unrecognised transition falls back to a neutral "Izmena" rather than rendering the raw key — new
+An unrecognised transition falls back to a neutral "Nalog izmenjen" rather than rendering the raw key — new
 transitions arrive with later phases and must not leak an English identifier onto a Serbian screen.
 A missing `actorName` (a deleted user) renders as `—`, never blank.
 
@@ -377,9 +384,16 @@ own counts. The detail is the one screen someone may open from a phone while wal
 - The route follows the established detail pattern verbatim: `beforeLoad` guard, `validateSearch`,
   `pendingComponent`, and an `errorComponent` that tells a 404 apart from a real error — see
   `apps/internal-web/src/routes/_shell/reklamacije/emotive/$id.tsx`.
-- Mutations (advance, change status, edit spec, delete, restore) invalidate the detail, the list and
-  the summary. **No optimistic updates** except the spec list's own rollback-on-failure — `docs/04`
+- Mutations (advance, change status, delete, restore) invalidate the detail, the list and the
+  summary. **No optimistic updates** except the spec list's own rollback-on-failure — `docs/04`
   reserves optimism for small actions, and this is one.
+- **A spec edit is the exception, and deliberately narrow** (corrected 2026-08-08, as built): it
+  writes the server's answer straight into the detail key and invalidates ONLY
+  `intakeOrderKeys.history(id)`. Not the list — it carries no services column, so a refetch would
+  cost a request to redraw identical rows. Not the detail either: an invalidation there races the
+  optimistic write it just made, which is the bug the `cancelQueries` in `onMutate` exists to
+  prevent. History is invalidated because the PATCH writes a `spec_updated` row AND because
+  `resource_changed` never reaches a serviser's channel, so nothing else would ever refresh it.
 - SSE needs no work: the `intakeOrders` key already flows through the existing invalidation map, so
   an operator watching a detail sees a colleague's status change without refreshing.
 

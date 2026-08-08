@@ -1242,5 +1242,17 @@
   "intake_detail_signature_owner": "Owner · {name}",
   "intake_detail_amended_by_unknown": "unknown user",
   "intake_signature_note_clean": "The order is signed and locked. Changes are recorded in the history.",
-  "intake_signature_note_amended": "The recorded condition was changed after signing — {date}, {name}. The printed order the customer holds is not identical to this record."
+  "intake_signature_note_amended": "The recorded condition was changed after signing — {date}, {name}. The printed order the customer holds is not identical to this record.",
+  "intake_card_photo_documentation": "Photo documentation",
+  "intake_photo_caption_damage": "{photo} · DAMAGE {number}",
+  "intake_history_created": "Order opened",
+  "intake_history_signed": "Order signed",
+  "intake_history_status": "Status: {from} → {to}",
+  "intake_history_amended": "Recorded condition changed after signing",
+  "intake_history_photo_added": "Photo added after signing",
+  "intake_history_photo_removed": "Photo removed after signing",
+  "intake_history_spec_updated": "Services and materials updated",
+  "intake_history_removed": "Order removed from the list",
+  "intake_history_restored": "Order restored to the list",
+  "intake_history_generic": "Order changed"
 }

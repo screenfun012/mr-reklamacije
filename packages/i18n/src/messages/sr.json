@@ -1242,5 +1242,17 @@
   "intake_detail_signature_owner": "Vlasnik · {name}",
   "intake_detail_amended_by_unknown": "nepoznat korisnik",
   "intake_signature_note_clean": "Nalog je potpisan i zaključan. Izmene se beleže u istoriji.",
-  "intake_signature_note_amended": "Zatečeno stanje je menjano posle potpisa — {date}, {name}. Odštampani nalog kod mušterije nije identičan ovom zapisu."
+  "intake_signature_note_amended": "Zatečeno stanje je menjano posle potpisa — {date}, {name}. Odštampani nalog kod mušterije nije identičan ovom zapisu.",
+  "intake_card_photo_documentation": "Fotodokumentacija",
+  "intake_photo_caption_damage": "{photo} · OŠT. {number}",
+  "intake_history_created": "Nalog otvoren",
+  "intake_history_signed": "Nalog potpisan",
+  "intake_history_status": "Status: {from} → {to}",
+  "intake_history_amended": "Zatečeno stanje menjano posle potpisa",
+  "intake_history_photo_added": "Fotografija dodata posle potpisa",
+  "intake_history_photo_removed": "Fotografija uklonjena posle potpisa",
+  "intake_history_spec_updated": "Usluge i materijal izmenjeni",
+  "intake_history_removed": "Nalog uklonjen sa liste",
+  "intake_history_restored": "Nalog vraćen na listu",
+  "intake_history_generic": "Nalog izmenjen"
 }

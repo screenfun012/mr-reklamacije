@@ -24,16 +24,24 @@ const RETRY_CLASSES = 'mt-4 h-[46px] w-auto px-[18px] text-[13px]'
  * The same dead wiring shipped in seven other places plus `@mr/ui`'s `RouteError`; all of them were
  * fixed the same way afterwards, so `reset` is now wired to nothing anywhere in the repo — which is
  * what stops the pattern from being copied out of a neighbour again.
+ *
+ * `onRetry` exists for the one caller that is NOT a loader: the Istorija tab fetches inside the
+ * component, and `invalidate()` cannot revive a failed React Query — it sets `retryOnMount = false`
+ * while its error-reset boundary is unreset, so only `refetch()` sends a request. That call site can
+ * assert the wiring, which is what the paragraph above says a loader-shaped one could not.
  */
 export function IntakeErrorState({
   title,
   description,
   canRetry,
+  onRetry,
 }: {
   title: ReactNode
   /** `null` when the box says everything in its title — a 404 needs no second sentence. */
   description: ReactNode
   canRetry: boolean
+  /** Omitted for a loader error, where `router.invalidate()` is the correct retry. */
+  onRetry?: () => void
 }): ReactElement {
   const router = useRouter()
 
@@ -50,6 +58,10 @@ export function IntakeErrorState({
           variant="outline"
           className={RETRY_CLASSES}
           onClick={() => {
+            if (onRetry !== undefined) {
+              onRetry()
+              return
+            }
             void router.invalidate()
           }}
         >

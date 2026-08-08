@@ -38,17 +38,28 @@ export function nextIntakeStatus(current: IntakeOrderStatus): IntakeOrderStatus 
   return INTAKE_STATUS_ORDER[INTAKE_STATUS_ORDER.indexOf(current) + 1] ?? null
 }
 
+function timeOfDay(date: Date, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function fullDate(date: Date, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}
+
 /** `25.07 · 09:14` — the handoff's list format, localized digits via Intl. */
 export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
   const date = new Date(iso)
   const intl = internalIntlLocale(locale)
   const day = new Intl.DateTimeFormat(intl, { day: '2-digit', month: '2-digit' }).format(date)
-  const time = new Intl.DateTimeFormat(intl, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-  return `${day} · ${time}`
+  return `${day} · ${timeOfDay(date, intl)}`
 }
 
 /**
@@ -59,15 +70,20 @@ export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
 export function formatIntakeReceivedAtLong(iso: string, locale: Locale): string {
   const date = new Date(iso)
   const intl = internalIntlLocale(locale)
-  const day = new Intl.DateTimeFormat(intl, {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date)
-  const time = new Intl.DateTimeFormat(intl, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-  return `${day} · ${time}`
+  return `${fullDate(date, intl)} · ${timeOfDay(date, intl)}`
+}
+
+/**
+ * `25.07.2026. 09:14` in sr — a history row's stamp, space-joined as the prototype writes it
+ * (`prijem-prototip-v2.dc.html:995`), because the ` · ` the two formats above use would fight the
+ * `·` already sitting inside the status label beside it.
+ *
+ * The trailing dot after the year is CLDR's `dd.MM.y.` for `sr-Latn` and is KEPT deliberately: the
+ * list and the Pregled card have shipped with it since day one, and making one screen disagree with
+ * two live ones to match an ad-hoc string in the prototype is the worse trade.
+ */
+export function formatIntakeHistoryAt(iso: string, locale: Locale): string {
+  const date = new Date(iso)
+  const intl = internalIntlLocale(locale)
+  return `${fullDate(date, intl)} ${timeOfDay(date, intl)}`
 }

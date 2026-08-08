@@ -20,7 +20,10 @@ import { IntakeDraftBar } from '~/features/intake-orders/detail/intake-draft-bar
 import { IntakePhotosPendingNote } from '~/features/intake-orders/detail/intake-photos-pending-note'
 import { IntakeRemovedBar } from '~/features/intake-orders/detail/intake-removed-bar'
 import { IntakeStatusBar } from '~/features/intake-orders/detail/intake-status-bar'
+import { TabHistory } from '~/features/intake-orders/detail/tab-history'
 import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
+import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
+import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { authClient } from '~/lib/auth-client'
 
@@ -91,8 +94,19 @@ function IntakeDetailPage(): ReactElement {
 
       <IntakeDetailTabs order={order} activeTab={activeTab} />
 
-      {/* The other three tab bodies mount here — docs/25 V-6-1b, task 11. */}
-      {activeTab === IntakeDetailTab.Pregled ? <TabOverview order={order} /> : null}
+      {/* A map, not a ternary chain — `visibleIntakeDetailTab` has already reduced `tab` to one a
+          draft is allowed to show, so every key here is reachable and none is a fallthrough. Only
+          the selected element is rendered; the other three are never mounted. */}
+      {
+        {
+          [IntakeDetailTab.Pregled]: <TabOverview order={order} />,
+          [IntakeDetailTab.Fotografije]: <TabPhotos order={order} />,
+          [IntakeDetailTab.Spec]: (
+            <TabSpec order={order} canUpdate={permissions.includes('intake_orders.update')} />
+          ),
+          [IntakeDetailTab.Istorija]: <TabHistory orderId={order.id} />,
+        }[activeTab]
+      }
     </InternalPage>
   )
 }
