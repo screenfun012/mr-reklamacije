@@ -8,7 +8,7 @@ import {
 } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, useNavigate, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { MaskedIcon } from '~/components/masked-icon'
@@ -182,7 +182,11 @@ function DashboardComponent() {
   )
 }
 
-function DashboardError({ reset }: { reset: () => void }) {
+function DashboardError() {
+  // Not the `reset` the router offers an errorComponent: it clears the catch boundary, the errored
+  // match re-throws, and no request goes out. `invalidate()` is what re-runs the loader.
+  const router = useRouter()
+
   return (
     <div className="relative min-h-screen bg-mrp-bg">
       <div className="mx-auto max-w-[1280px] px-8 pt-24">
@@ -194,7 +198,9 @@ function DashboardError({ reset }: { reset: () => void }) {
           <p className="mt-1 text-sm text-mrp-text2">{m.portal_claims_error_description()}</p>
           <button
             type="button"
-            onClick={reset}
+            onClick={() => {
+              void router.invalidate()
+            }}
             className="mt-5 cursor-pointer rounded-[10px] border border-mrp-border2 bg-mrp-raised px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-colors hover:border-mrp-red hover:text-mrp-redh"
           >
             {m.portal_claims_error_retry()}

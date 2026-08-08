@@ -1,7 +1,7 @@
 import { ApiError, ClaimDetailSearchSchema, emotiveClaimDetailOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Skeleton } from '@mr/ui'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
 import { EmotiveClaimDetailView } from '~/features/emotive-claims/detail/emotive-claim-detail'
@@ -90,14 +90,11 @@ function EmotiveClaimDetailSkeleton(): React.ReactElement {
   )
 }
 
-function EmotiveClaimDetailError({
-  error,
-  reset,
-}: {
-  error: Error
-  reset: () => void
-}): React.ReactElement {
+function EmotiveClaimDetailError({ error }: { error: Error }): React.ReactElement {
   const isNotFound = error instanceof ApiError && error.status === 404
+  // Not the `reset` the router offers an errorComponent: it clears the catch boundary, the errored
+  // match re-throws, and no request goes out. `invalidate()` is what re-runs the loader.
+  const router = useRouter()
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -115,7 +112,14 @@ function EmotiveClaimDetailError({
             : m.emotive_claims_error_description()}
         </p>
         {isNotFound ? null : (
-          <Button type="button" variant="outline" className="mt-4" onClick={reset}>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4"
+            onClick={() => {
+              void router.invalidate()
+            }}
+          >
             {m.emotive_claims_error_retry()}
           </Button>
         )}

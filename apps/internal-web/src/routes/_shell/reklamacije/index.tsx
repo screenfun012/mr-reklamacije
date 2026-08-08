@@ -8,7 +8,7 @@ import {
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Heading } from '@mr/ui'
-import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
 
@@ -126,7 +126,11 @@ function ReklamacijePending() {
   )
 }
 
-function ReklamacijeError({ reset }: { reset: () => void }) {
+function ReklamacijeError() {
+  // Not the `reset` the router offers an errorComponent: it clears the catch boundary, the errored
+  // match re-throws, and no request goes out. `invalidate()` is what re-runs the loader.
+  const router = useRouter()
+
   return (
     <div
       className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
@@ -134,7 +138,14 @@ function ReklamacijeError({ reset }: { reset: () => void }) {
     >
       <p className="text-sm font-medium text-foreground">{m.emotive_claims_error_title()}</p>
       <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_error_description()}</p>
-      <Button type="button" variant="outline" className="mt-4" onClick={reset}>
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-4"
+        onClick={() => {
+          void router.invalidate()
+        }}
+      >
         {m.emotive_claims_error_retry()}
       </Button>
     </div>

@@ -11,7 +11,7 @@ import {
   SUPPORT_EMAIL_BY_KIND,
 } from '@mr/shared'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, Link, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { PortalHeader } from '~/components/portal-header'
@@ -163,7 +163,11 @@ function ClaimDetailComponent() {
   )
 }
 
-function ClaimDetailError({ reset }: { reset: () => void }) {
+function ClaimDetailError() {
+  // Not the `reset` the router offers an errorComponent: it clears the catch boundary, the errored
+  // match re-throws, and no request goes out. `invalidate()` is what re-runs the loader.
+  const router = useRouter()
+
   return (
     <div className="relative min-h-screen bg-mrp-bg">
       <div className="mx-auto max-w-[1120px] px-8 pt-24">
@@ -176,7 +180,9 @@ function ClaimDetailError({ reset }: { reset: () => void }) {
           <div className="mt-5 flex items-center justify-center gap-3">
             <button
               type="button"
-              onClick={reset}
+              onClick={() => {
+                void router.invalidate()
+              }}
               className="cursor-pointer rounded-[10px] border border-mrp-border2 bg-mrp-raised px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-colors hover:border-mrp-red hover:text-mrp-redh"
             >
               {m.portal_claims_error_retry()}

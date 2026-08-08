@@ -21,9 +21,9 @@ const RETRY_CLASSES = 'mt-4 h-[46px] w-auto px-[18px] text-[13px]'
  * render on the client and not on the server — a hydration mismatch in exactly the flow this box is
  * for.
  *
- * ⚠ The same dead `reset` wiring ships in seven other places (both claim details, three lists, two
- * portal screens) plus `@mr/ui`'s `RouteError`, which is internal-web's `defaultErrorComponent`.
- * Reported, deliberately not touched here — that is its own change, not a rider on this one.
+ * The same dead wiring shipped in seven other places plus `@mr/ui`'s `RouteError`; all of them were
+ * fixed the same way afterwards, so `reset` is now wired to nothing anywhere in the repo — which is
+ * what stops the pattern from being copied out of a neighbour again.
  */
 export function IntakeErrorState({
   title,

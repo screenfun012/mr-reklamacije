@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
 import { dashboardSummaryOptions } from '@mr/shared'
@@ -49,7 +49,11 @@ function HomeComponent() {
   )
 }
 
-function HomeError({ reset }: { reset: () => void }) {
+function HomeError() {
+  // Not the `reset` the router offers an errorComponent: it clears the catch boundary, the errored
+  // match re-throws, and no request goes out. `invalidate()` is what re-runs the loader.
+  const router = useRouter()
+
   return (
     <div
       className="mx-auto w-full max-w-[1280px] rounded-[14px] border border-[rgba(224,92,82,0.3)] bg-[rgba(224,92,82,0.06)] px-6 py-8 text-center"
@@ -61,7 +65,9 @@ function HomeError({ reset }: { reset: () => void }) {
         type="button"
         variant="outline"
         className="mx-auto mt-5 h-[42px] w-auto px-6 text-[12.5px]"
-        onClick={reset}
+        onClick={() => {
+          void router.invalidate()
+        }}
       >
         {m.emotive_claims_error_retry()}
       </InternalButton>
