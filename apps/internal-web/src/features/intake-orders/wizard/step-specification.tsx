@@ -101,7 +101,15 @@ export function IntakeSpecList({
           <span className="min-w-0 flex-1 text-[14.5px]">{item}</span>
           <button
             type="button"
-            onClick={() => onChange(items.filter((_, position) => position !== index))}
+            onClick={() => {
+              // The same reason `add()` routes through a promise: on the detail this is a `PATCH`,
+              // and a refused one must not escape as an unhandled rejection. Saying WHAT failed is
+              // the caller's job — only it knows what it was doing — so the refusal is absorbed
+              // here and nowhere else.
+              void Promise.resolve(
+                onChange(items.filter((_, position) => position !== index)),
+              ).catch(() => undefined)
+            }}
             aria-label={removeLabel}
             className="h-11 w-9 flex-none cursor-pointer text-base text-mri-text2"
           >

@@ -128,6 +128,40 @@ describe('IntakeSpecList — an async onChange', () => {
 
     expect(input).toHaveValue('')
   })
+
+  /**
+   * Removal used to hand its promise to nobody, so on the detail a refused `PATCH` from the ✕
+   * escaped as an unhandled rejection — a console error in the browser and a failed test file here,
+   * for a case the caller already reports. The listener below is the only visible symptom, which is
+   * why the test watches for it rather than for something on screen.
+   *
+   * ⚠ `onChange` must NOT be a `vi.fn()`: a spy attaches its own `.then()` to whatever it returns to
+   * fill `mock.settledResults`, which counts as handling the rejection. With a spy here the test
+   * passes just as happily against the bug — measured.
+   */
+  it('absorbs a refused removal instead of leaking it', async () => {
+    const user = userEvent.setup()
+    const leaked: unknown[] = []
+    const record = (reason: unknown): void => {
+      leaked.push(reason)
+    }
+    process.on('unhandledRejection', record)
+
+    render(
+      <IntakeSpecList
+        title="Usluge"
+        items={['Pranje']}
+        placeholder="Dodaj uslugu i pritisni Enter"
+        removeLabel="Obriši uslugu"
+        onChange={() => Promise.reject(new Error('patch failed'))}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Obriši uslugu' }))
+    await new Promise((resolve) => setImmediate(resolve))
+    process.off('unhandledRejection', record)
+
+    expect(leaked).toEqual([])
+  })
 })
 
 describe('IntakeSpecList while a change is in flight', () => {
