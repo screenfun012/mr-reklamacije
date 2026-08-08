@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import { getLocale, m, setLocale } from '../index.js'
@@ -142,5 +146,50 @@ describe('@mr/i18n messages', () => {
     expect(m.auth_login_insufficient_role()).toBe(
       'This application requires a different role. Please sign in with an appropriate account.',
     )
+  })
+})
+
+/**
+ * The house rule is that both catalogues carry every key, and CLAUDE.md says CI enforces it. It did
+ * not: `sr` is the base locale, so Paraglide happily compiles a key that exists only there and then
+ * serves Serbian text to an English reader — silently, in the one place nobody on this team looks.
+ * Two assertions are cheaper than that.
+ */
+describe('@mr/i18n catalogue parity', () => {
+  const messagesDir = fileURLToPath(new URL('../messages/', import.meta.url))
+  const read = (locale: string): Record<string, string> =>
+    JSON.parse(readFileSync(join(messagesDir, `${locale}.json`), 'utf8')) as Record<string, string>
+
+  const sr = read('sr')
+  const en = read('en')
+  const keysOf = (catalogue: Record<string, string>): string[] =>
+    Object.keys(catalogue)
+      .filter((key) => !key.startsWith('$'))
+      .sort()
+
+  it('carries the same keys in both locales', () => {
+    const srKeys = keysOf(sr)
+    const enKeys = keysOf(en)
+
+    expect(srKeys.filter((key) => !enKeys.includes(key))).toEqual([])
+    expect(enKeys.filter((key) => !srKeys.includes(key))).toEqual([])
+  })
+
+  /**
+   * A placeholder that exists in one locale and not the other is worse than a missing key: the
+   * message renders, minus the value it was written to carry.
+   */
+  it('interpolates the same placeholders in both locales', () => {
+    const placeholders = (text: string): string[] =>
+      [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1] as string).sort()
+
+    const mismatched = keysOf(sr)
+      .filter((key) => key in en)
+      .filter(
+        (key) =>
+          placeholders(sr[key] as string).join(',') !== placeholders(en[key] as string).join(','),
+      )
+
+    expect(mismatched).toEqual([])
   })
 })
