@@ -1,25 +1,25 @@
-import {
-  ApiError,
-  clientSubmissionAttachmentsOptions,
-  clientSubmissionDetailOptions,
-} from '@mr/shared'
+import { clientSubmissionAttachmentsOptions, clientSubmissionDetailOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Skeleton } from '@mr/ui'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Suspense } from 'react'
 
 import { InboxDetailView } from '~/features/inbox/inbox-detail'
+import { ensureFound } from '~/lib/ensure-found'
 
 export const Route = createFileRoute('/_shell/pristiglo/$id')({
   loader: async ({ context: { queryClient }, params: { id } }) => {
-    await Promise.all([
-      queryClient.ensureQueryData(clientSubmissionDetailOptions(id)),
-      queryClient.ensureQueryData(clientSubmissionAttachmentsOptions(id)),
-    ])
+    await ensureFound(
+      Promise.all([
+        queryClient.ensureQueryData(clientSubmissionDetailOptions(id)),
+        queryClient.ensureQueryData(clientSubmissionAttachmentsOptions(id)),
+      ]),
+    )
   },
   component: PristigloDetailPage,
   pendingComponent: PristigloDetailPending,
   errorComponent: PristigloDetailError,
+  notFoundComponent: PristigloDetailNotFound,
 })
 
 function BackLink(): React.ReactElement {
@@ -70,9 +70,13 @@ function DetailSkeleton(): React.ReactElement {
   )
 }
 
-function PristigloDetailError({ error }: { error: Error }): React.ReactElement {
-  const isNotFound = error instanceof ApiError && error.status === 404
-
+function InboxDetailBox({
+  title,
+  description,
+}: {
+  title: string
+  description: string
+}): React.ReactElement {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <BackLink />
@@ -80,15 +84,32 @@ function PristigloDetailError({ error }: { error: Error }): React.ReactElement {
         className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
         role="alert"
       >
-        <p className="text-sm font-medium text-foreground">
-          {isNotFound ? m.internal_inbox_not_found_title() : m.internal_inbox_error_title()}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {isNotFound
-            ? m.internal_inbox_not_found_description()
-            : m.internal_inbox_error_description()}
-        </p>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
+  )
+}
+
+function PristigloDetailError(): React.ReactElement {
+  return (
+    <InboxDetailBox
+      title={m.internal_inbox_error_title()}
+      description={m.internal_inbox_error_description()}
+    />
+  )
+}
+
+/**
+ * A submission that is not there is a NOT-FOUND, and the loader now says so (`ensureFound`).
+ * Deciding it from the error's status could not work on a hard load: SSR hands the client a plain
+ * `Error` with no own properties, so a pasted link read as a transport failure.
+ */
+function PristigloDetailNotFound(): React.ReactElement {
+  return (
+    <InboxDetailBox
+      title={m.internal_inbox_not_found_title()}
+      description={m.internal_inbox_not_found_description()}
+    />
   )
 }

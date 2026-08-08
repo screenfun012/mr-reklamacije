@@ -1,10 +1,5 @@
 import { m } from '@mr/i18n'
-import {
-  ApiError,
-  IntakeDetailSearchSchema,
-  IntakeDetailTab,
-  intakeOrderDetailOptions,
-} from '@mr/shared'
+import { IntakeDetailSearchSchema, IntakeDetailTab, intakeOrderDetailOptions } from '@mr/shared'
 import { Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router'
@@ -26,6 +21,7 @@ import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
 import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { authClient } from '~/lib/auth-client'
+import { ensureFound } from '~/lib/ensure-found'
 
 /**
  * The permission guard lives on the parent layout route (`_shell/prijem.tsx`) and covers every
@@ -36,11 +32,12 @@ export const Route = createFileRoute('/_shell/prijem/$id')({
   validateSearch: (search) => IntakeDetailSearchSchema.parse(search),
   loader: async ({ context: { queryClient }, params: { id } }) => {
     // One aggregate fetch. The history is one tab out of four and loads when that tab mounts.
-    await queryClient.ensureQueryData(intakeOrderDetailOptions(id))
+    await ensureFound(queryClient.ensureQueryData(intakeOrderDetailOptions(id)))
   },
   component: IntakeDetailPage,
   pendingComponent: IntakeDetailPending,
   errorComponent: IntakeDetailError,
+  notFoundComponent: IntakeDetailNotFound,
 })
 
 const rootRoute = getRouteApi('__root__')
@@ -143,18 +140,31 @@ function IntakeDetailPending(): ReactElement {
   )
 }
 
-function IntakeDetailError({ error }: { error: Error }): ReactElement {
-  const isNotFound = error instanceof ApiError && error.status === 404
-
+/**
+ * A missing order is a NOT-FOUND, not an error, and the loader turns it into one (`ensureFound`) so
+ * this screen is reached identically on a hard load and on a client-side navigation. It used to be
+ * decided in `IntakeDetailError` from the error's status, which is gone by the time SSR hands it
+ * over — so a pasted link answered "could not be loaded" and offered a retry that could not work.
+ */
+function IntakeDetailNotFound(): ReactElement {
   return (
     <InternalPage className="flex flex-col gap-[15px]">
       <BackLink />
-      {/* No retry on a 404: the order is not there, and asking again cannot change that. */}
+      {/* No retry: the order is not there, and asking again cannot change that. */}
       <IntakeErrorState
-        title={isNotFound ? m.intake_detail_not_found_title() : m.intake_detail_error_title()}
-        description={isNotFound ? m.intake_detail_not_found_body() : null}
-        canRetry={!isNotFound}
+        title={m.intake_detail_not_found_title()}
+        description={m.intake_detail_not_found_body()}
+        canRetry={false}
       />
+    </InternalPage>
+  )
+}
+
+function IntakeDetailError(): ReactElement {
+  return (
+    <InternalPage className="flex flex-col gap-[15px]">
+      <BackLink />
+      <IntakeErrorState title={m.intake_detail_error_title()} description={null} canRetry />
     </InternalPage>
   )
 }

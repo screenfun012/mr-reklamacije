@@ -1,4 +1,4 @@
-import { ApiError, ClaimDetailSearchSchema, domaceClaimDetailOptions } from '@mr/shared'
+import { ClaimDetailSearchSchema, domaceClaimDetailOptions } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { Button, Skeleton } from '@mr/ui'
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router'
@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 
 import { DomaceClaimDetailView } from '~/features/domace-claims/detail/domace-claim-detail'
 import { internalRequireDomaceClaimsView } from '~/lib/auth-guard'
+import { ensureFound } from '~/lib/ensure-found'
 
 export const Route = createFileRoute('/_shell/reklamacije/domace/$id')({
   beforeLoad: internalRequireDomaceClaimsView(),
@@ -14,11 +15,12 @@ export const Route = createFileRoute('/_shell/reklamacije/domace/$id')({
     // Only the claim aggregate is on the view's critical path. Edit-form
     // catalogs load when the edit form mounts — prefetching them here fired
     // 6 concurrent requests per claim open, starving the claim's own fetch.
-    await queryClient.ensureQueryData(domaceClaimDetailOptions(id))
+    await ensureFound(queryClient.ensureQueryData(domaceClaimDetailOptions(id)))
   },
   component: DomaceClaimDetailPage,
   pendingComponent: DomaceClaimDetailPending,
   errorComponent: DomaceClaimDetailError,
+  notFoundComponent: DomaceClaimDetailNotFound,
 })
 
 function BackLink(): React.ReactElement {
@@ -90,8 +92,7 @@ function DomaceClaimDetailSkeleton(): React.ReactElement {
   )
 }
 
-function DomaceClaimDetailError({ error }: { error: Error }): React.ReactElement {
-  const isNotFound = error instanceof ApiError && error.status === 404
+function DomaceClaimDetailError(): React.ReactElement {
   // Not the `reset` the router offers an errorComponent: it clears the catch boundary, the errored
   // match re-throws, and no request goes out. `invalidate()` is what re-runs the loader.
   const router = useRouter()
@@ -103,26 +104,42 @@ function DomaceClaimDetailError({ error }: { error: Error }): React.ReactElement
         className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
         role="alert"
       >
+        <p className="text-sm font-medium text-foreground">{m.emotive_claims_error_title()}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{m.emotive_claims_error_description()}</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            void router.invalidate()
+          }}
+        >
+          {m.emotive_claims_error_retry()}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A claim that is not there is a NOT-FOUND, and the loader now says so (`ensureFound`). Deciding it
+ * from the error's status could not work on a hard load: SSR hands the client a plain `Error` with no
+ * own properties, so a pasted link showed "could not be loaded" and a retry that can never succeed.
+ */
+function DomaceClaimDetailNotFound(): React.ReactElement {
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <BackLink />
+      <div
+        className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
+        role="alert"
+      >
         <p className="text-sm font-medium text-foreground">
-          {isNotFound ? m.domace_claims_detail_not_found_title() : m.emotive_claims_error_title()}
+          {m.domace_claims_detail_not_found_title()}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {isNotFound
-            ? m.domace_claims_detail_not_found_description()
-            : m.emotive_claims_error_description()}
+          {m.domace_claims_detail_not_found_description()}
         </p>
-        {isNotFound ? null : (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-4"
-            onClick={() => {
-              void router.invalidate()
-            }}
-          >
-            {m.emotive_claims_error_retry()}
-          </Button>
-        )}
       </div>
     </div>
   )
