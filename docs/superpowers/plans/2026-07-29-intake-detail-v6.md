@@ -1316,14 +1316,62 @@ git commit -m "feat(intake): the Pregled tab, and the recorded condition finally
 
 ## Task 11: The Fotografije, Specifikacija and Istorija tabs
 
+> **Corrected 2026-08-08 by a five-angle plan check, before any code.** Everything struck through
+> below was verified against the tree at `c4857ed`. The originals named two symbols that do not
+> exist, a test library this app does not have, and a test that passed against the bug.
+
 **Files:**
 - Create: `features/intake-orders/detail/tab-photos.tsx`, `tab-spec.tsx`, `tab-history.tsx`, `history-labels.ts`
-- Test: `features/intake-orders/detail/__tests__/history-labels.test.ts`, `.../tab-spec.test.tsx`
+- **Modify: `routes/_shell/prijem/$id.tsx`** — the mount point. Without it the three files are dead
+  code and a clicked tab renders nothing; the strip already shows all four labels for a signed order
+  (`intake-detail-tabs.tsx:29-34`). Current line to extend, `$id.tsx:95`:
+  `{activeTab === IntakeDetailTab.Pregled ? <TabOverview order={order} /> : null}`. Third task in a
+  row whose file list omitted this — check it every time.
+- **Modify: `features/intake-orders/wizard/step-specification.tsx`** — `IntakeSpecList` has no
+  `disabled` prop (props at `:40-52`), and a removed order's Spec tab is reachable: a
+  `intake_orders.delete` holder can open it and `visibleIntakeDetailTab` does not look at `deletedAt`.
+- **Modify: `features/intake-orders/intake-status.ts`** — history needs `DD.MM.YYYY HH:MM` with a
+  **space** (prototype `:1405`, fixtures `:995`). Both existing formatters join with ` · `, so neither
+  can serve; add a third rather than changing theirs (the list and the Pregled card both want the dot).
+- **Modify: `packages/i18n/src/messages/{sr,en}.json`** — 11 new keys, then
+  `pnpm --filter @mr/i18n run compile`.
+- Test: `features/intake-orders/detail/__tests__/history-labels.test.ts`, `.../tab-spec.test.tsx`,
+  `.../tab-photos.test.tsx`
 
-**Interfaces:**
-- Consumes: `IntakeSpecList` (Task 7), `IntakePhotoLightbox` (Task 7), `intakeOrderHistoryOptions` + `updateIntakeOrder` (`@mr/shared`), the `spec_updated` transition (Task 1).
+**Interfaces (verified signatures, not the plan's paraphrase):**
+- `IntakeSpecList` — `wizard/step-specification.tsx:54`, props `{ title, items, placeholder,
+  removeLabel, onChange: (items: string[]) => void | Promise<void>, note? }`. It owns its input,
+  clears the draft **only when `onChange` resolves**, guards a second Enter with `sending`, and
+  removes by index. Wrapper is `IntakePanel` (radius 15) — the detail's other cards use
+  `tab-overview.tsx:24`'s `CARD` (radius 14). Accepted drift; do not hand-tune.
+- `IntakePhotoLightbox` — `wizard/intake-photo-lightbox.tsx:26`, props `{ cell: IntakePhotoCell,
+  orderId: string | null, onClose, onDelete? }`. Takes a **cell**; resolves the full-size URL itself.
+  Pass no `onDelete` (deletion is V-6-2).
+- `buildPhotoCells(orderId, serverPhotos, queue, damages)` — `wizard/intake-photo-grid.tsx:51`.
+  Already builds the thumbnail URL, the 1-based damage number and the marker colour, and nulls the
+  number when the damage was deleted. Call it with `queue = []`, as `tab-overview.tsx:99` does. The
+  cell carries **no `damageId`** — the caption's suffix condition is `cell.number !== null`.
+  `IntakePhotoGrid` itself is **not** reusable here: it carries the camera/gallery inputs and the `+`
+  cell, which are upload.
+- `intakeOrderHistoryOptions(id)` — `packages/shared/src/queries/intake-orders.ts:122`, key
+  `intakeOrderKeys.history(id)` = `['intake-orders','history',id]`, **not** under `details()`. It was
+  missing from the `@mr/shared` barrel; exported in the 2026-08-08 cleanup commit, so it now imports.
+- `IntakeOrderHistoryEntry` — `intake-order.wire.schema.ts:93`: `id`, **`at`** (not `createdAt`),
+  `action`, `transition: string | null` (**free text, not a union**), `actorName: string | null`,
+  `fromStatus`/`toStatus`: `string | null`. Newest first from the endpoint.
+- `updateIntakeOrder(id, input): Promise<IntakeOrderDetail>` — returns the **full** detail, so
+  `onSuccess` can write it straight into `intakeOrderKeys.detail(id)`. `{ services }` alone is a valid
+  body; `{}` is rejected. Never spread the order in — on a signed order any key outside
+  `{services, materials, checklist, fuelLevel, damages, equipmentNote}` is a 400.
 
 - [ ] **Step 1: Write the failing tests**
+
+House harness, not the ones the original named: **no MSW exists in internal-web** — stub `fetch`
+(`detail/__tests__/intake-detail-header.test.tsx:16-24`), and the fixture is
+`intakeOrderDetailFixture()` / `intakeDraftFixture()` with `await renderDetailUi(ui)`
+(`detail/__tests__/render-detail.tsx:63-91`), which supplies the QueryClient and Router and — the
+reason it exists — **parses the fixture through the wire schema**, since `tsconfig.json` excludes
+`__tests__` from typecheck and a literal would rot silently.
 
 ```ts
 describe('history labels', () => {
@@ -1337,21 +1385,44 @@ describe('history labels', () => {
     expect(historyLabel({ action: 'update', transition: 'something_new', fromStatus: null, toStatus: null }))
       .toBe(m.intake_history_generic())
   })
+
+  // `sign`, `spec_updated`, `amend_after_signing` and `restore` all carry non-null from/toStatus,
+  // because their audit `changes` hold whole before/after objects. A label that branched on
+  // `fromStatus !== null` before the transition check would call all four a status move.
+  it('does not read a signature as a status move', () => {
+    expect(historyLabel({ action: 'update', transition: 'sign', fromStatus: 'primljeno', toStatus: 'primljeno' }))
+      .toBe(m.intake_history_signed())
+  })
 })
 ```
+
+⚠ **The original's tab-spec test passed against the bug.** "The typed line survives a failed PATCH"
+is already `IntakeSpecList`'s own behaviour (`step-specification.tsx:75-86`) — delete `onMutate`,
+`onError` and the toast and it still goes green. It only fails at all if `tab-spec` uses
+**`mutate`** instead of `mutateAsync`, which is worth one assertion of its own. What has to be pinned
+is the optimistic write and the rollback:
 
 ```tsx
-it('puts the typed line back when the save fails', async () => {
-  server.use(failingPatch())
-  const { getByPlaceholderText, getByRole } = render(<TabSpec order={signedOrderFixture} />)
+it('shows the line before the server answers, and takes it back when refused', async () => {
+  // fetch stubbed to 500
+  await renderDetailUi(<TabSpec order={intakeOrderDetailFixture({ services: ['Pranje'] })} />)
 
-  const input = getByPlaceholderText(m.intake_service_placeholder())
-  await user.type(input, 'Zamena filtera')
-  await user.click(getByRole('button', { name: m.intake_spec_add() }))
+  await userEvent.type(screen.getByPlaceholderText(m.intake_service_add()), 'Zamena filtera')
+  await userEvent.click(within(servicesCard()).getByRole('button', { name: m.intake_spec_add() }))
 
-  await waitFor(() => expect(input).toHaveValue('Zamena filtera'))
+  expect(screen.getByText('Zamena filtera')).toBeInTheDocument()   // optimistic
+  await waitFor(() => expect(screen.queryByText('Zamena filtera')).not.toBeInTheDocument()) // rolled back
+  expect(screen.getByPlaceholderText(m.intake_service_add())).toHaveValue('Zamena filtera')
 })
 ```
+
+⚠ `m.intake_service_placeholder()` **does not exist** — the placeholder key is `intake_service_add`
+("Dodaj uslugu i pritisni Enter", `sr.json:694`), which is what the wizard already passes.
+⚠ `getByRole('button', { name: m.intake_spec_add() })` finds **two** buttons — both cards use one
+key. Scope with `within`.
+⚠ Verify each new test by breaking the line it covers. Do not use `vi.fn().mockRejectedValue()` where
+an unhandled rejection is the thing under test: a spy attaches its own `.then()` for
+`mock.settledResults` and swallows it — measured on 2026-08-08.
 
 - [ ] **Step 2: Run them to verify they fail**
 
@@ -1385,29 +1456,65 @@ export function historyLabel(entry: IntakeOrderHistoryEntry): string {
 }
 ```
 
-There is deliberately **no** `discard_draft` entry: that order is hard-deleted, so its history is
-unreachable (spec §4.7).
+The map is **complete against the server** — the service writes exactly `sign`, `advance`,
+`change_status`, `amend_after_signing`, `spec_updated`, `soft_delete`, `restore`,
+`amend_photo_added`, `amend_photo_removed`, plus `action='create'`; `photo_uploaded`,
+`photo_removed` and transition-less updates are filtered out in SQL (`repository.ts:677-680`) and
+`discard_draft` belongs to a hard-deleted row. No dead keys, nothing missing.
+
+⚠ `statusLabel` does not exist and **cannot be a bare index**: the wire types both statuses as
+`string | null` while `INTAKE_STATUS_LABELS` (`intake-status.ts:18`) is keyed by the
+`IntakeOrderStatus` union, and this file **is** typechecked (`noUncheckedIndexedAccess`,
+`noPropertyAccessFromIndexSignature`). Write a narrowing helper over that existing map — do not
+re-map the four statuses — and when a status is null or unknown, fall back to
+`m.intake_history_generic()` for the whole row: half a status line is worse than none.
 
 - [ ] **Step 4: Write the three tabs**
 
-- `tab-photos.tsx` — prototype 597–613. One card `FOTODOKUMENTACIJA · N`, `grid-cols-4 gap-3.5`,
-  `aspect-[4/3]` cells, the damage badge, caption `IMG_03 · OŠT. 2` (position padded to two digits,
-  the damage suffix only when `damageId` matches). ⚠ **No amber bar here** — the
-  `photosPending` warning was moved page-level on 2026-08-05 and already ships under the header
-  (`intake-photos-pending-note.tsx`); building it again would print the same warning twice.
-- `tab-spec.tsx` — prototype 616–631, two `IntakeSpecList` cards with **no** `note`. Each change
-  calls `updateIntakeOrder(id, { services })` / `{ materials }` through a mutation with `onMutate`
-  writing the new array into the detail query, and `onError` restoring the previous cache value,
-  toasting, and handing the typed text back to the input. Inputs are disabled when
-  `deletedAt !== null`.
+Values are the prototype's, read out of `~/Downloads/handoff 3/prijem-prototip-v2.dc.html`, never by
+eye. Colours only through `mri-*` utilities — a runtime `var(--mri-warn)` does not resolve in this app
+(CLAUDE.md §5).
+
+- `tab-photos.tsx` — prototype 597–613. One card (radius **14**, padding `20px 22px`, `gap 14`);
+  header `FOTODOKUMENTACIJA · N` **entirely** in the red mono caption — unlike the Pregled card, which
+  dims its `· N` (`:562`, `tab-overview.tsx:301`); grid `repeat(4,1fr)` **gap 14**; column `gap 7`;
+  thumb `aspect-[4/3]` radius **10** with a `border-mri-border2`; damage badge **22×22** at
+  `left/top 6`, mono `700 11px`; caption mono `500 10.5px text-mri-text2`, format
+  `IMG_ + String(i+1).padStart(2,'0')` + ` · OŠT. {cell.number}` when `cell.number !== null`
+  (`:1443`). A draft reaches this tab (`DRAFT_TABS` includes it), so it must render with
+  `photos: []` — reuse `m.intake_detail_no_photos()` as the Pregled card does. No `+` cell, no
+  upload, and ⚠ **no retry**: re-sending needs the wizard's queue, which is V-6-2. ⚠ **No amber bar
+  here** — the `photosPending` warning ships page-level under the header
+  (`intake-photos-pending-note.tsx`, mounted `$id.tsx:84-86`); building it again would print the same
+  warning twice. If a `@container` is introduced, the lightbox must stay a **sibling** — containment
+  makes the box the containing block for `position: fixed` (`tab-overview.tsx:181-184`).
+- `tab-spec.tsx` — prototype 616–631, two `IntakeSpecList` cards, **no** `note`, wrapper `flex gap-4`
+  with each card `flex-1`. Each change is one mutation over `updateIntakeOrder(id, { services })` /
+  `{ materials }`:
+  `onMutate` **must `await queryClient.cancelQueries` on the detail key first** — for an operator the
+  actor's own SSE event invalidates `['intake-orders']` mid-typing, and an in-flight refetch landing
+  after the optimistic write would clobber it — then `getQueryData` + `setQueryData`; `onSuccess`
+  writes the returned detail; `onError` restores the snapshot and toasts. Copy
+  `features/emotive-claims/detail/use-update-emotive-claim-findings.ts:15-46`, which is the same shape;
+  do not invent a second one. `onChange` returns **`mutateAsync`** so a refusal reaches the list and
+  the typed line survives. Also invalidate `intakeOrderKeys.history(id)`: the PATCH writes a
+  `spec_updated` row, and ⚠ **SSE never reaches a serviser** — `resource_changed` publishes only to
+  `operator/viewer/admin` channels, so for him nothing else would ever refresh it. Pass
+  `disabled={order.deletedAt !== null}` (server answers 409). Cap the input at `maxLength={200}` —
+  the schema's own limit, otherwise a long line 400s for no visible reason.
 - `tab-history.tsx` — prototype 634–645. `useSuspenseQuery(intakeOrderHistoryOptions(id))` inside a
-  Suspense boundary with a skeleton. Rows: time `w-[130px] font-mono text-mri-text2`, the label,
-  then `actorName ?? '—'`.
+  **local** `<Suspense>` with a skeleton: without one the route's `pendingComponent` takes over and
+  blanks the header, both bars and the tab strip on every switch to Istorija. Card radius **14**,
+  padding `20px 22px`, **no gap**, header `mb-3.5`. Row `flex gap-4 py-3 border-b border-mri-border`
+  on **every** row including the last; time `w-[130px] flex-none font-mono text-[12px] font-medium
+  text-mri-text2`; label `flex-1 text-[14px]`; actor `text-[13px] text-mri-text2`, `'—'` when null.
+  No empty state (prototype has none).
 
 - [ ] **Step 5: Run the tests, then gate and commit**
 
 Run: `pnpm --filter internal-web test -- history-labels tab-spec tab-photos`
-Expected: PASS.
+Expected: PASS. Then break each new assertion's line and confirm the expected test — and only it —
+goes red.
 
 ```bash
 pnpm format:check && pnpm exec turbo run build typecheck lint test --force --concurrency=4 && pnpm --filter api depcruise && pnpm test:integration

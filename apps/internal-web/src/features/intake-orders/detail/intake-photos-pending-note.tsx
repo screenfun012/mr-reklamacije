@@ -18,8 +18,9 @@ import { InternalNote } from '~/components/internal-note'
  * is never cleared on removal, so it would say it forever. This is the same liveness the status bar
  * already applies one row below.
  *
- * There is nowhere to act on it yet — the Fotografije tab that would carry a retry is task 11. A
- * truthful warning still beats silence; inventing a retry button here does not.
+ * There is nowhere to act on it yet, and the Fotografije tab is deliberately NOT that place: it is a
+ * read grid, and re-sending a photo needs the wizard's upload queue, which is V-6-2's job. A truthful
+ * warning still beats silence; inventing a retry button here does not.
  */
 export function IntakePhotosPendingNote({ order }: { order: IntakeOrderDetail }): ReactElement {
   return (

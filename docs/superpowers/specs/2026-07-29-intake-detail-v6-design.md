@@ -241,10 +241,11 @@ Two details the extraction has to carry:
 - The materials card hard-codes an info note (`:34`, "Usluge i materijal mogu da se dopunjuju i
   kasnije"). The prototype's Spec tab has no note (`prijem-prototip-v2.dc.html:616-631`), so `note`
   becomes an optional prop the detail leaves unset.
-- `add()` clears its draft input unconditionally (`:65-66`). On the detail the `PATCH` can fail, and
-  clearing first would roll the list back while destroying the line the user typed. The detail
-  restores the text on failure — the input is `IntakeSpecList`'s own state, so the restore lives in
-  `tab-spec.tsx`'s failure branch.
+- The typed line must survive a failed `PATCH`. **As built, `IntakeSpecList` already does this** —
+  `add()` clears its draft only once `onChange` resolves, and keeps it when the promise rejects. So
+  there is nothing to restore from `tab-spec.tsx`; its only obligation is to return a promise that
+  actually rejects, which means `mutateAsync`, not `mutate`. (Earlier drafts of this section
+  described the pre-extraction component, which cleared unconditionally.)
 
 Deleting is by **position**, since two identical service lines are legitimate.
 

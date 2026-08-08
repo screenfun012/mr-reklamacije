@@ -147,6 +147,7 @@ export {
   intakeFiltersFromSearch,
   intakeNumberCheckOptions,
   intakeOrderDetailOptions,
+  intakeOrderHistoryOptions,
   intakeOrderKeys,
   intakeOrderSummaryOptions,
   intakeOrdersListOptions,
