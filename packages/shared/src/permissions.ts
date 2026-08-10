@@ -132,6 +132,12 @@ export const PERMISSIONS = [
   'settings.external_parties.create',
   'settings.external_parties.manage',
   'settings.claim_sources.manage',
+  // The vehicle-intake lists the shop owns (docs/25 §3.0.2). Deliberately `manage`-only and
+  // deliberately NOT in OPERATOR_PERMISSIONS: Nikola asked for the admin app to be the place these
+  // are changed, separated from the operator, "jer ako to ne uradimo onda admin deo gubi smisla".
+  'settings.intake_checklist.manage',
+  'settings.intake_damage_types.manage',
+  'settings.intake_arrival_modes.manage',
   'settings.app_settings.view',
   'settings.app_settings.update',
   'settings.app_settings.manage_secrets',

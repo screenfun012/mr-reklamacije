@@ -130,3 +130,93 @@ export const claimSourcesRelations = relations(claimSources, ({ one }) => ({
     references: [customers.id],
   }),
 }))
+
+/**
+ * The vehicle-intake lists the shop owns (docs/25 §3.0.2, Nikola 2026-08-10). They were hardcoded
+ * in `@mr/shared` until then, which meant a new checklist item or a fifth kind of damage was a code
+ * change — and the admin app, which `docs/13` makes the control plane for exactly this, had nothing
+ * for the service module at all.
+ *
+ * Same shape as `departments`, deliberately: `code` is the stable key an intake order stores, and
+ * the two NAME columns exist because the printed work order is bilingual (V-7 decision ⑪) — a
+ * catalog with only a Serbian name prints Serbian onto an English document.
+ *
+ * The order keeps storing the CODE, never the name, so renaming an item is retroactive by design
+ * (decision ⑫): a typo fixed here is fixed on every screen and every reprint at once.
+ */
+export const intakeChecklistItems = pgTable(
+  'intake_checklist_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull(),
+    nameSr: text('name_sr').notNull(),
+    nameEn: text('name_en').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [uniqueIndex('intake_checklist_items_code_key').on(t.code)],
+)
+
+export const intakeDamageTypes = pgTable(
+  'intake_damage_types',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull(),
+    nameSr: text('name_sr').notNull(),
+    nameEn: text('name_en').notNull(),
+    /**
+     * Which BRAND TONE the marker is drawn in — never a raw colour. The house rule is that colours
+     * come from the `mri-*` tokens and nowhere else (CLAUDE.md §5), and there is a second reason
+     * here: amber carries a different value in the light theme than in the dark one, so a stored
+     * hex would look wrong in one of them. The screen maps the tone to its token.
+     *
+     * SCREEN ONLY: the printed sheet draws every marker in brand red whatever the tone, because
+     * amber and grey do not print legibly (V-7).
+     */
+    markerTone: text('marker_tone').notNull().default('red'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [
+    uniqueIndex('intake_damage_types_code_key').on(t.code),
+    // Only the four tones that exist as RUNTIME variables in `:root`. The status hues
+    // (`warn`/`ok`/`bad`/`info`) live only inside `@theme inline`, so a `var()` on them resolves to
+    // nothing and silently drops `fill` — which is exactly how the fuel dial's amber arc was
+    // invisible from the day it was drawn (CLAUDE.md §5).
+    check(
+      'intake_damage_types_marker_tone_check',
+      sql`${t.markerTone} IN ('red', 'amber', 'grey', 'green')`,
+    ),
+  ],
+)
+
+export const intakeArrivalModes = pgTable(
+  'intake_arrival_modes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull(),
+    nameSr: text('name_sr').notNull(),
+    nameEn: text('name_en').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [uniqueIndex('intake_arrival_modes_code_key').on(t.code)],
+)
