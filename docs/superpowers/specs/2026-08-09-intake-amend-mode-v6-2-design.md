@@ -1,7 +1,7 @@
 # Prijem vozila — režim izmene (V-6-2, dizajn)
 
 **Datum:** 2026-08-09 · **Grana:** `feat/vehicle-intake` · **Osnova:** `9e98878`
-**Status:** predlog — čeka Nikolinu potvrdu pre plana
+**Status:** **odobren** (Nikola, 10.08.) — tri otvorene stavke zatvorene (⑥ ⑦ ⑧ u §1), ide u plan
 
 ---
 
@@ -32,6 +32,9 @@ bio **pogrešan** su označena sa ⚠️ i zapisana namerno — da se za dva mes
 | ③ | Serviser ne vidi žig dok ne osveži (SSE ne stiže do njegove role) | **Prihvaćeno kao poznata granica.** | Nikola, 08.08. |
 | ④ | Gde žive fotografije | **Van režima izmene**, u tabu Fotografije, svaka radnja odmah. | Nikola, 08.08. |
 | ⑤ | Napomena uz opremu dobija polje | **Da** (moja preporuka, prihvaćena „idemo sve po tvojoj preporuci"). ⚠️ Vidi §5 — ni prototip ni papir je ne nude. | Nikola, 09.08. |
+| ⑥ | Žig nema vrstu — kako se rešava (§2.2) | **Neutralne rečenice na bedžu i u listi, vrstu nosi Istorija.** Bez migracije. Odbijeno: precizne rečenice uz telefon bez žiga (obara ①) · kolona `contact_amended_at`. Cena je prihvaćena: iz liste se ne vidi ŠTA je menjano, mora se otvoriti Istorija. | Nikola, 10.08. |
+| ⑦ | Napomena uz opremu — potvrda odluke ⑤ nasuprot handoff-ovom „Ostalo ne" | **Ostaje polje.** Server je od V-6-1 pušta (`CONDITION_FIELDS`, `intake-orders.service.ts:67`), pa bi bez polja pravo postojalo bez ekrana. Odbijeno: suziti server (greška u napomeni tada se ne bi mogla ispraviti nikad). Zapisano kao odstupanje u §5, stavka 2. | Nikola, 10.08. |
+| ⑧ | Traka „nisu sve fotke stigle" na trajno izgubljenoj fotki | **Ostaje zauvek** — traka govori istinu, i to je poznata granica van V-6-2 (§6), bez ijedne linije koda. Odbijeno: dugme „ne očekuj više" (ulazi u obim) · „+" gasi traku (ćutala bi pravi gubitak kad kancelarija doda dodatnu fotku). | Nikola, 10.08. |
 
 ---
 
@@ -76,7 +79,7 @@ i postojalo.
 i dalje potpuno tačna za oba slučaja (odštampani nalog kod mušterije zaista više nije identičan
 zapisu i kad je promenjen samo telefon), a **specifičnost nosi Istorija**, koja jedina zna vrstu.
 
-Četiri niske za tvoju reč (sr; `en.json` dobija par u istom komitu — CI proverava parnost):
+Četiri niske, **odobrene 10.08.** (sr; `en.json` dobija par u istom komitu — CI proverava parnost):
 
 | Ključ | Danas | Predlog |
 |---|---|---|
@@ -269,7 +272,11 @@ tačno u onome što servisera dodiruje — ispravlja se pri sledećem štampanju
 - **③ serviser vidi žig tek na osvežavanju** — SSE ne stiže do njegove role.
 - **Dva operatera u isto vreme** na istom nalogu: pobeđuje poslednji, oba dobiju žig i red u
   Istoriji. Razlika po poljima (§2.3) sužava sudar na isto polje. Nije radni tok koji postoji.
-- **Fotka koja nikad nije stigla** se ne šalje ponovo (offline ①), i traka o njoj ostaje.
+- **Fotka koja nikad nije stigla** se ne šalje ponovo (offline ①), i traka o njoj **ostaje zauvek**
+  (odluka ⑧). „+" je namerno ne gasi: kancelarijski upload diže očekivani broj za 1
+  (`intake-orders.service.ts:682-685`), jer je to nova fotka, a ne ona izgubljena. Traka je interna
+  (`InternalNote`) i ne ide na štampu. Ako se u praksi pokaže da smeta, rešenje je zasebna stavka —
+  radnja „ne očekuj više" koja spusti broj i upiše red u Istoriju — ne tiho gašenje.
 
 ---
 
