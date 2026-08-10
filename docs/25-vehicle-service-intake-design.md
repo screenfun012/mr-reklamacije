@@ -225,10 +225,24 @@ nothing anywhere reported an error.
    handoff's note ("while the order is U radu") is the outlier and is NOT the rule: during intake
    nobody knows yet which materials went in, and a car can be finished before someone remembers
    the filter they actually fitted. Closing the list would mean phoning the office over one line. The **intake
-   condition** (checklist, fuel, damages, photos) may be corrected **only by office/admin**, and
-   then **the printed document must state that it was amended after signing** — otherwise the paper
-   claims the owner confirmed something they did not. The order then permanently carries a
-   `⚠ MENJANO POSLE POTPISA` badge, an amber note in the POTPISI card, and the print marker (§3.5).
+   condition** (checklist, fuel, damages, equipment note, photos) may be corrected **only by
+   office/admin**, and then **the printed document must state that it was amended after signing** —
+   otherwise the paper claims the owner confirmed something they did not. The order then
+   permanently carries a `⚠ MENJANO POSLE POTPISA` badge, an amber note in the POTPISI card, and
+   the print marker (§3.5).
+   **The owner's phone joins that list (Nikola, 2026-08-08, V-6-2 decision ①).** It is the one
+   otherwise-frozen field that makes the record useless for its own purpose — it is how the shop
+   reaches the owner about the car it is holding — so it may be corrected, by the same actors,
+   with the same permanent stamp. Everything else about the owner and the vehicle stays frozen:
+   `orderNumber`, `plate`, `vehicle`, `vehicleType`, `vin`, `mileage`, `arrivalMode`, `ownerName`,
+   `ownerAddress`, `ownerRemarks`.
+   ⚠️ **The stamp is one unnamed pair of columns** (`amended_at`/`amended_by`) read by four
+   surfaces, and only the audit row carries the transition. So the badge, the POTPISI note and the
+   list marker say only **"Nalog je menjan posle potpisa"**, and the Istorija tab is the one place
+   that names WHAT changed (`amend_after_signing` vs `amend_contact_after_signing`). A surface that
+   named the condition would be lying every time a phone was corrected.
+   **A patch that changes nothing leaves no stamp:** the service drops every key whose value already
+   equals the stored one, and if nothing remains there is no write, no history row and no signal.
 
 ### 3.4 Damage map
 
@@ -263,9 +277,14 @@ nothing anywhere reported an error.
 - The drawing is **the order's own vehicle type**, with the same numbered markers.
 - One page is a hard rule, so: **at most 6 photos** plus "Prikazano prvih 6 od N fotografija — sve
   se čuvaju uz digitalni nalog", and services/materials **capped at 5 items** each.
-- An amended order prints `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` with the timestamp and the
-  name of whoever changed it. **An unamended order gets no addition at all** — a clean document
-  stays clean.
+- An amended order prints `⚠ NALOG JE MENJAN POSLE POTPISA` with the timestamp and the name of
+  whoever changed it. **An unamended order gets no addition at all** — a clean document stays
+  clean.
+  ⚠️ **Neutral wording, deliberately** (V-6-2, 2026-08-08): the marker reads off `amended_at`,
+  which is one unnamed column, so the print cannot tell a corrected checklist from a corrected
+  phone. The earlier text here — `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` — would state the
+  wrong reason on every phone correction. V-7 must start from the neutral sentence, and the screen
+  already does.
 ⚠️ **This section rests on a premise Nikola rejected (2026-07-27) and must be re-designed with him
 before V-7 starts.** In his words: *"obaveza kupca je nešto totalno drugačije"*, and *"mi generišemo
 dokument kada na kraju se auto završi"*. Two things follow, and neither is settled here:
@@ -419,7 +438,7 @@ then the full gate, then a push.
 | `technician_signature` | text | SVG path, normalized to a 460×200 space |
 | `owner_signature` | text | idem |
 | `signed_at` | timestamptz | **NULL = draft: not in the office's working list, in the serviser's own** |
-| `amended_at` | timestamptz | set when the intake condition changes after signing → drives the print marker |
+| `amended_at` | timestamptz | set when the condition OR the owner phone changes after signing → drives the print marker. It has no kind: four surfaces read it and only the audit row knows which of the two it was |
 | `amended_by` | uuid → `users.id` | |
 | `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete per house rule |
 
@@ -549,9 +568,17 @@ no new transport code.
 `update`, so a route gate alone would let him patch the intake condition and walk around the
 office's `amend`. Concretely: `services` and `materials` stay free; the condition
 (`checklist`, `fuelLevel`, `damages`, `equipmentNote`) requires `amend` and stamps
-`amended_at`/`amended_by`; **every other field is refused outright** — the drawn UI never
-offers it, and allowing it would let the paper the customer holds and the record diverge with
-nothing saying so.
+`amended_at`/`amended_by` with the transition `amend_after_signing`; `ownerPhone` requires the
+same `amend` and the same stamp but the transition `amend_contact_after_signing`, because the
+vehicle's recorded condition did not change (V-6-2 decision ①); **every other field is refused
+outright** — the drawn UI never offers it, and allowing it would let the paper the customer holds
+and the record diverge with nothing saying so.
+
+A request that carries both buckets writes **one** row, and the condition wins. A request whose
+values all equal the stored ones is not an amendment at all: the service prunes those keys before
+it classifies, so a double tap or a re-submitted form cannot mark a document nobody edited. The
+freeze itself is still decided on the field's NAME, never on its value — a frozen field is refused
+even when the value happens to match.
 
 ---
 
