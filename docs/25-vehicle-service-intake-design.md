@@ -8,6 +8,10 @@
 > — Railway deploys `main`).** Next is V-6, the four-tab detail. Build only on Nikola's per-phase
 > go. **V-7 (print) is not specified** — its premise was wrong, see §3.5.
 >
+> **Update 2026-08-10: the module is complete.** V-6-2 (režim izmene) and **V-7 (print)** are both
+> built and on `feat/vehicle-intake`. The line above about V-7 being unspecified is history — its
+> premise was settled by Nikola's own print spec, see §3.5.
+>
 > This is a **new subsystem, not a claim family.** It shares nothing with EMOTIVE/DOMACE except
 > the app shell, the attachments pipeline, audit and SSE. No MR number, no faults, no warranty
 > report, no outcome, no portal.
@@ -266,40 +270,63 @@ nothing anywhere reported an error.
   same mechanism steps 1 and 5 already use. Blocking would teach a serviser under pressure to
   **skip marking damages** so as not to get stuck — fewer recorded damages, not more.
 
-### 3.5 Print
+### 3.5 Print — BUILT (V-7, 2026-08-10)
 
-- **Browser print**, A4 portrait, one page, variant 2b. "Save as PDF" lives in the same print
-  dialog on every device including iPad, so PDF export is free.
-- **The server-side Chromium renderer is deliberately not used here**: 1–3 s per render (cold
-  start is likely, since the shared browser now releases itself after 10 min idle) and memory is
-  ~93 % of the hosting bill. The evidence is the record (row + photos + both signatures), which can
-  be re-printed any time; no archived PDF is needed.
-- The drawing is **the order's own vehicle type**, with the same numbered markers.
-- One page is a hard rule, so: **at most 6 photos** plus "Prikazano prvih 6 od N fotografija — sve
-  se čuvaju uz digitalni nalog", and services/materials **capped at 5 items** each.
-- An amended order prints `⚠ NALOG JE MENJAN POSLE POTPISA` with the timestamp and the name of
-  whoever changed it. **An unamended order gets no addition at all** — a clean document stays
-  clean.
-  ⚠️ **Neutral wording, deliberately** (V-6-2, 2026-08-08): the marker reads off `amended_at`,
-  which is one unnamed column, so the print cannot tell a corrected checklist from a corrected
-  phone. The earlier text here — `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` — would state the
-  wrong reason on every phone correction. V-7 must start from the neutral sentence, and the screen
-  already does.
-⚠️ **This section rests on a premise Nikola rejected (2026-07-27) and must be re-designed with him
-before V-7 starts.** In his words: *"obaveza kupca je nešto totalno drugačije"*, and *"mi generišemo
-dokument kada na kraju se auto završi"*. Two things follow, and neither is settled here:
+**Browser print**, A4 portrait, `794×1123` @96dpi, **exactly one page**, from
+`features/intake-orders/print/`. "Save as PDF" lives in the same print dialog on every device
+including iPad, so PDF export is free.
 
-1. **"Obaveze kupaca" is not what this document assumed.** It was written down as a printed
-   template whose header, footer, typography and margins the intake work order should share. That
-   is not what the document is. It is therefore **not** a blocker for V-7, and asking Nikola for it
-   as one was wrong.
-2. **The printed document is produced when the car is finished, not at intake.** Everything above
-   describes printing the intake order at the moment it is signed. What Nikola actually wants
-   printed, at what moment, and whether the intake record is printed at all, is an open question —
-   not a detail of layout.
+**The server-side Chromium renderer is deliberately not used**: 1–3 s per render (a cold start is
+likely, since the shared browser releases itself after 10 min idle) and memory is ~93 % of the
+hosting bill. The evidence is the record — row, photos, both signatures — which can be re-printed
+any time; no archived PDF is needed.
 
-Nothing here is built. V-7 stays last and starts with Nikola describing the document he means,
-after which this section gets rewritten rather than patched.
+**The two questions this section used to leave open are answered** (Nikola, 2026-08-10, in
+`docs/superpowers/specs/2026-08-10-intake-print-v7-design.md`):
+
+1. **The intake IS printed, at the moment it is signed, and the paper goes to the owner.** The
+   earlier note here — that the document is produced when the car is finished — described a
+   different document, not this one.
+2. **"Obaveze kupca" IS the house reference after all**, for how the paper LOOKS: it carries a
+   black header band with the emblem and solid red section bands, and so does this. The point is
+   that two papers from the same firm must look like it. That is a visual reference, not the
+   blocker it was once mistaken for.
+
+**Layout:** black band (emblem `public/internal/logo-emblem-white.png`, title, order number, date)
+→ owner and vehicle → red band **ZATEČENO STANJE** (8 checklist rows in 4 columns, then fuel,
+defect count, photo count, owner remarks) → red band **ŠEMA I NEDOSTACI** (silhouette of the
+order's own vehicle type with the same numbered markers, defect rows, services and materials) →
+red band **FOTODOKUMENTACIJA** → the amendment mark, the legal sentence and both signatures,
+pinned to the bottom.
+
+**Both languages, chosen in front of the paper.** The preview carries an `SR`/`EN` segment and the
+sheet renders through Paraglide's per-call `{ locale }` — a foreign customer signs an English work
+order while the office keeps working in Serbian, and the app's own language never moves. ⚠️ Damage
+**zones stay in Serbian** on an English sheet: the zone is derived by the server at marking time
+and stored as data, not as a translatable string.
+
+**One page is a hard rule, and these are the cuts** (`intake-print-data.ts`, all covered by tests):
+at most **6 photos** plus "Prikazano prvih 6 od N fotografija — sve se čuvaju uz digitalni nalog",
+services and materials **capped at 5** each, defects **capped at 12** plus "…i još N — vidi
+digitalni nalog", owner remarks clipped at **180 characters**.
+⚠️ **The defect list flows in TWO columns past six rows.** Measured in the browser 2026-08-10: a
+defect row is 30px, and twelve in one column push the sheet to 1247px against the fixed 1123 — the
+footer with both signatures walks onto a second page. Two columns fit the same twelve. Cutting the
+cap to the seven that fit was the alternative, and defects are the one thing on this paper that
+must not be silently left off it.
+
+**An amended order prints `⚠ NALOG JE MENJAN POSLE POTPISA`** with the timestamp and the name of
+whoever changed it. **An unamended order gets no addition at all** — a clean document stays clean.
+⚠️ **Neutral wording, deliberately** (V-6-2): the marker reads off `amended_at`, which is one
+unnamed column, so the print cannot tell a corrected checklist from a corrected phone. The earlier
+text — `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` — would state the wrong reason on every phone
+correction. Only the Istorija tab knows the kind.
+
+**Two things that are easy to break and were built on purpose:**
+- The **print button waits for the thumbnails**. `window.print()` does not wait for images: fired
+  early it prints six empty frames onto the page the customer is about to sign.
+- `print-color-adjust: exact` on the sheet. Without it the printer drops the red bands and the
+  markers, and the page loses the two things a reader navigates by.
 
 ### 3.6 Photo upload and finishing without a network
 
