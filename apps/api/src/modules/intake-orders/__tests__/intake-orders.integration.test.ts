@@ -127,6 +127,15 @@ describe('Intake orders integration', () => {
     return created.id
   }
 
+  /** Every transition this order's audit rows carry, in no particular order. */
+  async function transitionsOf(orderId: string): Promise<(string | undefined)[]> {
+    const rows = await ctx.db
+      .select({ changes: schema.auditLog.changes })
+      .from(schema.auditLog)
+      .where(eq(schema.auditLog.entityId, orderId))
+    return rows.map((row) => (row.changes as { transition?: string })?.transition)
+  }
+
   beforeEach(async () => {
     ctx = await createTestDbContext()
     events = new RecordingEventBus()
@@ -416,6 +425,110 @@ describe('Intake orders integration', () => {
       )
 
       expect(updated.ownerName).toBe('Ispravljeno Ime')
+      expect(updated.amendedAt).toBeNull()
+    })
+
+    it('lets the office correct the owner phone, and stamps it as a contact amendment', async () => {
+      const floor = await floorActor()
+      const office = await officeActor('Ana')
+      const orderId = await signedOrder(floor)
+
+      const updated = await service.update(
+        orderId,
+        { ownerPhone: '+381 64 111 2233' },
+        office,
+        actorContext(office.id),
+      )
+
+      expect(updated.ownerPhone).toBe('+381 64 111 2233')
+      expect(updated.amendedAt).not.toBeNull()
+      expect(updated.amendedByName).toBe('Ana')
+
+      const transitions = await transitionsOf(orderId)
+      expect(transitions).toContain('amend_contact_after_signing')
+      expect(transitions).not.toContain('amend_after_signing')
+    })
+
+    it('refuses a phone correction from a serviser, who holds no amend', async () => {
+      const floor = await floorActor()
+      const orderId = await signedOrder(floor)
+
+      await expect(
+        service.update(orderId, { ownerPhone: '+381 64 111 2233' }, floor, actorContext(floor.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('writes one history row when a request touches both the condition and the phone', async () => {
+      const floor = await floorActor()
+      const office = await officeActor('Ana')
+      const orderId = await signedOrder(floor)
+
+      await service.update(
+        orderId,
+        { fuelLevel: 6, ownerPhone: '+381 64 111 2233' },
+        office,
+        actorContext(office.id),
+      )
+
+      // The condition wins: the vehicle's recorded state changed, which is the louder fact, and
+      // one request must not leave two rows for a reader to reconcile.
+      const transitions = await transitionsOf(orderId)
+      expect(transitions.filter((value) => value?.startsWith('amend')).length).toBe(1)
+      expect(transitions).toContain('amend_after_signing')
+    })
+
+    it('does not stamp a signed order when every value in the patch is what it already holds', async () => {
+      const floor = await floorActor()
+      const office = await officeActor('Ana')
+      const orderId = await signedOrder(floor)
+      const before = await service.findById(orderId, office)
+
+      const updated = await service.update(
+        orderId,
+        {
+          ownerPhone: before.ownerPhone,
+          fuelLevel: before.fuelLevel,
+          checklist: before.checklist,
+          damages: before.damages,
+          equipmentNote: before.equipmentNote,
+        },
+        office,
+        actorContext(office.id),
+      )
+
+      // The stamp is permanent and it prints. A double tap, a re-submitted form or a second
+      // caller must not be able to mark a document nobody edited.
+      expect(updated.amendedAt).toBeNull()
+      const transitions = await transitionsOf(orderId)
+      expect(transitions.filter((value) => value?.startsWith('amend')).length).toBe(0)
+    })
+
+    it('still refuses a frozen field even when its value is the one already stored', async () => {
+      const floor = await floorActor()
+      const office = await officeActor()
+      const orderId = await signedOrder(floor)
+      const before = await service.findById(orderId, office)
+
+      // Pruning must not become a way past the freeze: a caller who may not touch `ownerName`
+      // learns nothing from whether his value happened to match.
+      await expect(
+        service.update(orderId, { ownerName: before.ownerName }, office, actorContext(office.id)),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('leaves a draft patchable with its whole state, unchanged values included', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+
+      const updated = await service.update(
+        draft.id,
+        { ownerPhone: draft.ownerPhone, fuelLevel: draft.fuelLevel, draftStep: 3 },
+        floor,
+        actorContext(floor.id),
+      )
+
+      // The wizard sends the whole form on every step; pruning is a signed-order rule only.
+      expect(updated.draftStep).toBe(3)
       expect(updated.amendedAt).toBeNull()
     })
   })

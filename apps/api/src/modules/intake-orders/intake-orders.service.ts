@@ -3,6 +3,8 @@ import {
   ResourceChangedKey,
   intakeDamageZoneOf,
   intakeOrderStatusValues,
+  sameIntakeChecklist,
+  sameIntakeDamages,
 } from '@mr/shared'
 
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -67,10 +69,20 @@ const FREE_AFTER_SIGNING = ['services', 'materials'] as const
 const CONDITION_FIELDS = ['checklist', 'fuelLevel', 'damages', 'equipmentNote'] as const
 
 /**
- * A patch of a SIGNED order is either an amendment of the condition or an edit of the two
- * fields that stay free (services, materials). The free edit still has to reach the Istorija
- * tab — it is the only change a signed work order allows — so it is tagged rather than left
- * transition-less, which is the shape the history projection drops (docs/25 V-6-1 §6.1).
+ * Also an amendment — it stamps the document — but not of the vehicle's condition. Nikola,
+ * 2026-08-08: a wrong phone number is the one frozen field that makes the record useless for its
+ * own purpose, since it is how the shop reaches the owner about the car it is holding. Everything
+ * else about the vehicle and the owner stays frozen.
+ */
+const CONTACT_FIELDS = ['ownerPhone'] as const
+
+type IntakeAmendmentKind = 'condition' | 'contact'
+
+/**
+ * A patch of a SIGNED order is an amendment of the condition, an amendment of the contact, or an
+ * edit of the two fields that stay free (services, materials). The free edit still has to reach
+ * the Istorija tab — it is the only change a signed work order allows — so it is tagged rather
+ * than left transition-less, which is the shape the history projection drops (docs/25 V-6-1 §6.1).
  *
  * Takes `signedAt` itself (not a pre-computed boolean) so a swapped argument at the call site
  * is a type error, not a silently-flipped transition — the same reason the return type is a
@@ -78,10 +90,13 @@ const CONDITION_FIELDS = ['checklist', 'fuelLevel', 'damages', 'equipmentNote'] 
  */
 function updateTransition(
   signedAt: string | null,
-  isAmendment: boolean,
-): 'amend_after_signing' | 'spec_updated' | null {
-  if (isAmendment) {
+  amendment: IntakeAmendmentKind | null,
+): 'amend_after_signing' | 'amend_contact_after_signing' | 'spec_updated' | null {
+  if (amendment === 'condition') {
     return 'amend_after_signing'
+  }
+  if (amendment === 'contact') {
+    return 'amend_contact_after_signing'
   }
   if (signedAt !== null) {
     return 'spec_updated'
@@ -328,18 +343,29 @@ export class IntakeOrdersService {
       await this.assertNumberFree(normalizeOrderNumberKey(patch.orderNumber), id)
     }
 
-    const isAmendment = before.signedAt !== null && this.assertPostSigningPatchAllowed(patch, actor)
+    // Zones are derived before the comparison below, so an unmoved marker is measured against
+    // the zone this server would write and not against whatever word the client sent.
+    const derived = this.withDerivedZones(patch, before)
+    const effective = before.signedAt === null ? derived : this.withoutUnchanged(derived, before)
+
+    if (Object.keys(effective).length === 0) {
+      // Nothing to write: no stamp, no history row, no realtime signal.
+      return before
+    }
+
+    const amendment =
+      before.signedAt === null ? null : this.classifyPostSigningPatch(effective, actor)
 
     const updated = await this.repo.update(
       id,
-      this.withDerivedZones(patch, before),
-      isAmendment ? auditContext.actorUserId : null,
+      effective,
+      amendment !== null ? auditContext.actorUserId : null,
     )
     if (updated === null) {
       throw new NotFoundError('Intake order', id)
     }
 
-    const transition = updateTransition(before.signedAt, isAmendment)
+    const transition = updateTransition(before.signedAt, amendment)
 
     await this.audit.log({
       entityType: 'intake_order',
@@ -385,20 +411,24 @@ export class IntakeOrdersService {
   }
 
   /**
-   * Returns true when the patch is an amendment of the intake condition (so the caller
-   * stamps `amended_at`/`amended_by`). Throws when the patch touches anything the signed
-   * document must keep.
+   * Which kind of amendment this patch is (so the caller stamps `amended_at`/`amended_by` and
+   * names the transition), or null when it only touches the free fields. Throws when the patch
+   * touches anything the signed document must keep, and when the caller may not amend at all.
    */
-  private assertPostSigningPatchAllowed(
+  private classifyPostSigningPatch(
     patch: IntakeOrderUpdateInput,
     actor: IntakeOrdersActor,
-  ): boolean {
+  ): IntakeAmendmentKind | null {
     const touched = Object.keys(patch)
     const free = new Set<string>(FREE_AFTER_SIGNING)
     const condition = new Set<string>(CONDITION_FIELDS)
+    const contact = new Set<string>(CONTACT_FIELDS)
 
     const conditionTouched = touched.filter((field) => condition.has(field))
-    const frozenTouched = touched.filter((field) => !free.has(field) && !condition.has(field))
+    const contactTouched = touched.filter((field) => contact.has(field))
+    const frozenTouched = touched.filter(
+      (field) => !free.has(field) && !condition.has(field) && !contact.has(field),
+    )
 
     if (frozenTouched.length > 0) {
       throw new ValidationError(
@@ -406,17 +436,47 @@ export class IntakeOrdersService {
       )
     }
 
-    if (conditionTouched.length === 0) {
-      return false
+    if (conditionTouched.length === 0 && contactTouched.length === 0) {
+      return null
     }
 
     // The freeze is enforced here, not only on the route: a serviser holds `update` and must
     // not be able to route around the office's amend gate by patching the condition.
     if (!actor.permissions.includes('intake_orders.amend')) {
-      throw new ForbiddenError('Correcting the intake condition after signing requires amend')
+      throw new ForbiddenError('Amending a signed intake order requires amend')
     }
 
-    return true
+    // The condition wins when one request carries both — one request, one row in the history.
+    return conditionTouched.length > 0 ? 'condition' : 'contact'
+  }
+
+  /**
+   * Drops every stamping key whose value already equals what the order holds. The stamp is
+   * permanent and it prints, so it must come from a real correction and nothing else — a double
+   * tap, a re-submitted form or a second caller must not be able to mark a document nobody
+   * edited. The screen guards this too; the guard belongs where every caller passes.
+   *
+   * Signed orders only, and only the five fields that can stamp: the wizard patches a draft with
+   * its whole form on every step and expects all of it to land, and a frozen field is refused on
+   * its name rather than on its value — pruning must not become a way past the freeze.
+   */
+  private withoutUnchanged(
+    patch: IntakeOrderUpdateInput,
+    before: IntakeOrderDetail,
+  ): IntakeOrderUpdateInput {
+    const kept = { ...patch }
+
+    if (kept.ownerPhone === before.ownerPhone) delete kept.ownerPhone
+    if (kept.fuelLevel === before.fuelLevel) delete kept.fuelLevel
+    if (kept.equipmentNote === before.equipmentNote) delete kept.equipmentNote
+    if (kept.checklist !== undefined && sameIntakeChecklist(kept.checklist, before.checklist)) {
+      delete kept.checklist
+    }
+    if (kept.damages !== undefined && sameIntakeDamages(kept.damages, before.damages)) {
+      delete kept.damages
+    }
+
+    return kept
   }
 
   /** Both signatures in — the intake is finished and the office's list can see it. */
