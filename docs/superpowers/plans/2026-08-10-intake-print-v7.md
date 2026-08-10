@@ -855,7 +855,14 @@ export function IntakePrintSheet({
     >
       {/* Blok 1 — the black band, edge to edge, as "Obaveze kupca" carries it. */}
       <header className="flex flex-none items-center gap-4 bg-[#17171a] px-[54px] py-[18px] text-white">
-        <img src="/internal/logo-white.png" alt="MR Engines" className="h-[30px] w-auto" />
+        {/* The full emblem — red MR, white script, white "MADE IN SERBIA" ring — because that is
+            what the black band on "Obaveze kupca" carries. The plain wordmark (`logo-white.png`)
+            is the app's chrome and reads as a different mark beside it. */}
+        <img
+          src="/internal/logo-emblem-white.png"
+          alt="MR Engines"
+          className="h-[46px] w-auto"
+        />
         <div className="ml-2">
           <div className="text-[22px] font-black uppercase leading-none tracking-[-0.02em]">
             {m.intake_print_title({}, { locale })}
@@ -1714,6 +1721,12 @@ git push origin feat/vehicle-intake
    print time — a foreigner may bring a car in. The preview carries an `SR` / `EN` segment, the
    sheet renders in the chosen language through Paraglide's per-call `{ locale }`, and the app's
    own language never moves. Built into Tasks 1–4 above.
-2. **The round "MADE IN SERBIA" emblem** that "Obaveze kupca" carries beside the wordmark is not in
-   the repo, and neither is the small emblem in its footer. This plan uses only
-   `public/internal/logo-white.png`, which is. Hand over the files and both slots get filled.
+2. ~~The round "MADE IN SERBIA" emblem~~ **Answered 2026-08-10:** Nikola supplied
+   `POSAO/MR Engines/Font i Logo/MR Engines Logo - Obod iznutra.png`, and the white-ink variant is
+   now committed as `apps/internal-web/public/internal/logo-emblem-white.png` (892×475, 82 KB) —
+   the header band uses it. ⚠️ The source is **already transparent**; what looks like a white
+   background is only how a viewer paints alpha, so nothing was keyed out. The variant was made by
+   keeping the source alpha untouched (that is where the anti-aliasing lives) and restating the ink:
+   pixels where `r - max(g, b) > 40` stay brand red, the rest became white. A black-ink variant for
+   white paper comes out of the same rule with one flag, if a footer mark is ever wanted — the
+   sheet's footer deliberately has none, because the page's height is the scarce thing.

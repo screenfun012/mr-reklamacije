@@ -62,14 +62,18 @@ Stranica je `flex` kolona, `gap: 16px`. Podnožje sa potpisima na `margin-top: a
 ### Blok 1 — Zaglavlje (crna traka, po odluci ⑨)
 Traka preko cele širine strane (od ivice do ivice, bez bočnih margina), pozadina `#17171a`,
 padding `18px 54px`:
-- **Levo:** `logo-white.png` (već u repou, `apps/internal-web/public/internal/logo-white.png`,
-  534×144, beo natpis na providnom) visine ~30px.
+- **Levo:** `logo-emblem-white.png` (`apps/internal-web/public/internal/`, 892×475) visine ~46px —
+  pun amblem: crveni MR, beo rukopis, beo obod „MADE IN SERBIA", isto što nose „Obaveze kupca".
 - **Sredina:** beli naslov `22px w900 uppercase letter-spacing −.02em` **„RADNI NALOG"**, ispod
   sivo-beli `10.5px` **„Prijem vozila u servis"**.
 - **Desno:** broj naloga mono `20px w700` belo, ispod datum i vreme prijema mono `9.5px` sivo.
 
-⚠️ Okrugli amblem („MADE IN SERBIA") koji „Obaveze kupca" nose pored natpisa **nije u repou** —
-za sada se ne koristi. Ako Nikola da fajl, ide levo od natpisa.
+⚠️ Amblem je izveden iz `POSAO/MR Engines/Font i Logo/MR Engines Logo - Obod iznutra.png`
+(Nikola, 10.08.). **Izvor je već providan** — ono što izgleda kao bela podloga je samo prikaz alfe,
+pa se ništa nije „uklanjalo": alfa je zadržana netaknuta (u njoj živi zaglađenje ivica), a
+premazano je samo mastilo — piksel gde je `r - max(g, b) > 40` ostaje brend crvena, ostalo postaje
+belo. Ista računica sa jednim prekidačem daje crnu varijantu za belu hartiju, ako podnožje ikad
+bude tražilo znak; za sada ga nema, jer je visina strane ono čega nema napretek.
 
 ### Blok 2 — Vlasnik i vozilo (dve kolone, `gap: 34px`)
 Bez trake — ovo je prvi sadržaj ispod zaglavlja.
