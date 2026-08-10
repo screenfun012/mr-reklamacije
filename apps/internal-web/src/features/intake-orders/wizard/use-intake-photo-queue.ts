@@ -46,6 +46,15 @@ export interface IntakePhotoQueue {
   discard: (entryId: string) => void
 }
 
+export interface IntakePhotoQueueOptions {
+  /**
+   * An upload stopped. The wizard needs nothing — its stepper chip already reports what is in
+   * flight, on every step. The detail passes a toast, because there the cell is the only report
+   * of a failure and the operator does not have to be standing on the photos tab.
+   */
+  onFailure?: (state: 'wait' | 'err') => void
+}
+
 interface QueueItem extends IntakePhotoQueueEntry {
   file: File
 }
@@ -61,12 +70,23 @@ function localId(): string {
  * late arrival from the order's own technician as part of the intake rather than an amendment.
  * Unmounting the queue with the step would quietly turn that rule into dead code.
  */
-export function useIntakePhotoQueue(orderId: string | null): IntakePhotoQueue {
+export function useIntakePhotoQueue(
+  orderId: string | null,
+  options: IntakePhotoQueueOptions = {},
+): IntakePhotoQueue {
   const queryClient = useQueryClient()
   const [entries, setEntries] = useState<QueueItem[]>([])
   /** Reading state inside the send loop would capture a stale array between two uploads. */
   const entriesRef = useRef<QueueItem[]>([])
   entriesRef.current = entries
+
+  /**
+   * Through a ref, not a dependency: `options` is a fresh object literal on every render of the
+   * caller, so depending on it would rebuild `send` each time and make the online listener
+   * re-subscribe with it.
+   */
+  const optionsRef = useRef(options)
+  optionsRef.current = options
 
   const patch = useCallback((id: string, next: Partial<QueueItem>) => {
     setEntries((prev) => prev.map((item) => (item.id === id ? { ...item, ...next } : item)))
@@ -103,6 +123,7 @@ export function useIntakePhotoQueue(orderId: string | null): IntakePhotoQueue {
           const reason =
             error instanceof IntakePhotoUploadError && error.reason === 'network' ? 'wait' : 'err'
           patch(id, { state: reason })
+          optionsRef.current.onFailure?.(reason)
         })
     },
     [orderId, patch, queryClient],

@@ -1270,6 +1270,16 @@
   "intake_amend_phone_invalid": "Telefon vlasnika ne sme da ostane prazan.",
   "intake_amend_locked": "Zatvori režim izmene da bi ovo bilo dostupno.",
   "intake_damage_type_pick": "Vrsta oštećenja",
+  "intake_photo_add": "Dodaj fotografiju",
+  "intake_photo_add_title": "Dodati fotografiju nalogu {number}?",
+  "intake_photo_add_description": "Fotografija se odmah dodaje nalogu.",
+  "intake_photo_add_stamp_warning": "Nalog ostaje trajno obeležen kao menjan posle potpisa, i to obeležje se štampa.",
+  "intake_photo_add_confirm": "Izaberi fotografiju",
+  "intake_photo_delete_title": "Obrisati fotografiju sa naloga {number}?",
+  "intake_photo_delete_description": "Fotografija se briše odmah i ne može da se vrati. Nalog ostaje trajno obeležen kao menjan posle potpisa.",
+  "intake_photo_delete_confirm": "Obriši fotografiju",
+  "intake_photo_deleted": "Fotografija je obrisana.",
+  "intake_photo_upload_failed": "Fotografija nije poslata. Otvori tab Fotografije i pokušaj ponovo.",
   "intake_fuel_less": "Manje goriva",
   "intake_fuel_more": "Više goriva"
 }

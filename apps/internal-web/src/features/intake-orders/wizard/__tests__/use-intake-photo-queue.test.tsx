@@ -93,6 +93,32 @@ describe('useIntakePhotoQueue', () => {
     expect(result.current.pending).toBe(0)
   })
 
+  it('tells the caller an upload stopped, with which kind of stop it was', async () => {
+    // The detail screen raises a toast off this: there the cell is the only report of a failure,
+    // and the operator does not have to be standing on the photos tab to deserve to know.
+    const onFailure = vi.fn()
+    uploadIntakePhoto.mockRejectedValue(new IntakePhotoUploadError('rejected', 'not an image'))
+    const { result } = renderHook(() => useIntakePhotoQueue('order-1', { onFailure }), { wrapper })
+
+    act(() => {
+      result.current.enqueue([photo()], null)
+    })
+
+    await waitFor(() => expect(onFailure).toHaveBeenCalledWith('err'))
+  })
+
+  it('reports a photo held back for the network as waiting, not as failed', async () => {
+    const onFailure = vi.fn()
+    uploadIntakePhoto.mockRejectedValue(new IntakePhotoUploadError('network', 'no route'))
+    const { result } = renderHook(() => useIntakePhotoQueue('order-1', { onFailure }), { wrapper })
+
+    act(() => {
+      result.current.enqueue([photo()], null)
+    })
+
+    await waitFor(() => expect(onFailure).toHaveBeenCalledWith('wait'))
+  })
+
   it('re-sends the same photo on retry rather than losing its bytes', async () => {
     uploadIntakePhoto.mockRejectedValueOnce(new IntakePhotoUploadError('rejected', 'nope'))
     const { result } = renderHook(() => useIntakePhotoQueue('order-1'), { wrapper })

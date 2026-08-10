@@ -2,10 +2,12 @@ import { m } from '@mr/i18n'
 import { buildIntakePhotoUrl, type IntakeDamage, type IntakeOrderPhoto } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { Camera, Images, Plus } from 'lucide-react'
-import { useRef, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 
 import { intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakePanel } from './intake-panel'
+import { IntakePhotoCellOverlay, photoCellBorderClass } from './intake-photo-cell-state'
+import { useIntakePhotoPicker } from './intake-photo-picker'
 import type { IntakePhotoQueueEntry } from './use-intake-photo-queue'
 
 /** One cell of the grid, from either source: already on the server, or still on its way. */
@@ -20,27 +22,6 @@ export interface IntakePhotoCell {
   /** Present only while the cell is a queue entry — a failed upload retries through it. */
   entryId: string | null
   attachmentId: string | null
-}
-
-const STATE_BORDER: Record<IntakePhotoQueueEntry['state'], string> = {
-  ok: 'border-mri-border2',
-  up: 'border-mri-border2',
-  wait: 'border-[rgba(245,165,36,0.6)]',
-  err: 'border-mri-red',
-}
-
-const STATE_VEIL: Record<IntakePhotoQueueEntry['state'], string> = {
-  ok: '',
-  up: 'bg-[rgba(11,11,13,0.5)]',
-  wait: 'bg-[rgba(11,11,13,0.45)]',
-  err: 'bg-[rgba(237,28,36,0.32)]',
-}
-
-const STATE_TEXT: Record<IntakePhotoQueueEntry['state'], string> = {
-  ok: '',
-  up: 'text-mri-text',
-  wait: 'text-mri-amb',
-  err: 'text-white',
 }
 
 /**
@@ -111,19 +92,7 @@ export function IntakePhotoGrid({
   onOpen,
   onRetry,
 }: IntakePhotoGridProps): ReactElement {
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const galleryRef = useRef<HTMLInputElement>(null)
-
-  const pick = (input: HTMLInputElement | null): void => {
-    const files = input?.files
-    if (files !== null && files !== undefined && files.length > 0) {
-      onPick([...files])
-    }
-    if (input !== null) {
-      // Cleared, or picking the same file twice in a row fires no change event.
-      input.value = ''
-    }
-  }
+  const picker = useIntakePhotoPicker(onPick)
 
   return (
     <IntakePanel
@@ -153,7 +122,7 @@ export function IntakePhotoGrid({
               }
               className={cn(
                 'relative block aspect-[4/3] cursor-pointer overflow-hidden rounded-[9px] border bg-mri-inbg',
-                STATE_BORDER[cell.state],
+                photoCellBorderClass(cell.state),
               )}
             >
               <img src={cell.url} alt="" className="size-full object-cover" />
@@ -167,34 +136,13 @@ export function IntakePhotoGrid({
                 </span>
               ) : null}
 
-              {cell.state !== 'ok' ? (
-                <span
-                  className={cn(
-                    'absolute inset-0 grid place-items-center px-1 text-center font-mono text-[10px] font-bold uppercase leading-[1.4] tracking-[0.08em]',
-                    STATE_VEIL[cell.state],
-                    STATE_TEXT[cell.state],
-                  )}
-                >
-                  {cell.state === 'err'
-                    ? `! ${m.intake_photo_state_failed()}`
-                    : cell.state === 'wait'
-                      ? `⌁ ${m.intake_photo_state_waiting()}`
-                      : `${cell.progress}%`}
-                </span>
-              ) : null}
-
-              {cell.state === 'up' ? (
-                <span
-                  className="absolute bottom-0 left-0 h-[3px] bg-mri-info transition-[width] duration-200"
-                  style={{ width: `${cell.progress}%` }}
-                />
-              ) : null}
+              <IntakePhotoCellOverlay cell={cell} />
             </button>
           ))}
 
           <button
             type="button"
-            onClick={() => cameraRef.current?.click()}
+            onClick={picker.openCamera}
             aria-label={m.intake_photo_open_camera()}
             className="grid aspect-[4/3] cursor-pointer place-items-center rounded-[9px] border border-dashed border-mri-border2 text-mri-text2 transition-colors duration-200 hover:border-mri-red hover:text-mri-redh motion-reduce:transition-none"
           >
@@ -206,7 +154,7 @@ export function IntakePhotoGrid({
       <div className="flex flex-none gap-2.5">
         <button
           type="button"
-          onClick={() => cameraRef.current?.click()}
+          onClick={picker.openCamera}
           className="flex h-[52px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-mri-red bg-[rgba(237,28,36,0.13)] text-sm font-extrabold uppercase tracking-[0.06em] text-mri-redh"
         >
           <Camera className="size-4" aria-hidden="true" />
@@ -214,7 +162,7 @@ export function IntakePhotoGrid({
         </button>
         <button
           type="button"
-          onClick={() => galleryRef.current?.click()}
+          onClick={picker.openGallery}
           className="flex h-[52px] w-[132px] cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-mri-border2 bg-mri-inbg text-[13px] font-semibold text-mri-text2"
         >
           <Images className="size-4" aria-hidden="true" />
@@ -222,29 +170,7 @@ export function IntakePhotoGrid({
         </button>
       </div>
 
-      {/*
-        A native file input, never `getUserMedia`: that demands a secure context, and the tablet
-        reaches the dev server over plain http on the hall LAN (docs/25 §3.8). `capture` is what
-        opens the camera directly — the gallery input is the same element WITHOUT it, which is the
-        whole difference between the two buttons.
-      */}
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        hidden
-        onChange={() => pick(cameraRef.current)}
-      />
-      <input
-        ref={galleryRef}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={() => pick(galleryRef.current)}
-      />
+      {picker.inputs}
     </IntakePanel>
   )
 }

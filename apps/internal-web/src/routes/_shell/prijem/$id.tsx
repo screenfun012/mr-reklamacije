@@ -22,8 +22,10 @@ import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
 import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
 import { useIntakeAmend } from '~/features/intake-orders/detail/use-intake-amend'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
+import { useIntakePhotoQueue } from '~/features/intake-orders/wizard/use-intake-photo-queue'
 import { authClient } from '~/lib/auth-client'
 import { ensureFound } from '~/lib/ensure-found'
+import { showInternalToast } from '~/lib/internal-toast'
 
 /**
  * The permission guard lives on the parent layout route (`_shell/prijem.tsx`) and covers every
@@ -62,6 +64,20 @@ function IntakeDetailPage(): ReactElement {
   const amend = useIntakeAmend(order)
 
   /**
+   * The upload queue lives HERE, not inside the photos tab. The tab body is remounted on every tab
+   * change, and with it would go the in-flight cell, its retry and the online listener — while
+   * `photos_expected` only rises after a successful upload, so a failed office upload would leave
+   * no trace on the screen or on the server. The toast is for the same reason: the cell is the
+   * only report of a failure, and the operator does not have to be standing on that tab.
+   */
+  const photoQueue = useIntakePhotoQueue(order.id, {
+    onFailure: () => showInternalToast(m.intake_photo_upload_failed()),
+  })
+
+  const canAmend = permissions.includes('intake_orders.amend')
+  const canAddPhotos = canAmend && permissions.includes('intake_orders.update') && isLive
+
+  /**
    * The mode is entered from a button that every tab can see, but the buffer only has a body to
    * live in on Pregled — so the move is explicit. `replace`, like the tab strip itself, so Back
    * still leaves the order rather than walking through modes.
@@ -83,7 +99,7 @@ function IntakeDetailPage(): ReactElement {
         canAdvance={permissions.includes('intake_orders.advance')}
         canDelete={permissions.includes('intake_orders.delete')}
         canChangeStatus={permissions.includes('intake_orders.change_status')}
-        canAmend={permissions.includes('intake_orders.amend')}
+        canAmend={canAmend}
         amendActive={amend.active}
         onStartAmend={startAmend}
       />
@@ -139,7 +155,14 @@ function IntakeDetailPage(): ReactElement {
               }
             />
           ),
-          [IntakeDetailTab.Fotografije]: <TabPhotos order={order} />,
+          [IntakeDetailTab.Fotografije]: (
+            <TabPhotos
+              order={order}
+              queue={photoQueue}
+              canAddPhotos={canAddPhotos}
+              isOrderTechnician={session?.user?.id === order.technicianId}
+            />
+          ),
           [IntakeDetailTab.Spec]: (
             <TabSpec order={order} canUpdate={permissions.includes('intake_orders.update')} />
           ),

@@ -1270,6 +1270,16 @@
   "intake_amend_phone_invalid": "The owner's phone cannot be left empty.",
   "intake_amend_locked": "Close edit mode to use this.",
   "intake_damage_type_pick": "Defect type",
+  "intake_photo_add": "Add a photo",
+  "intake_photo_add_title": "Add a photo to order {number}?",
+  "intake_photo_add_description": "The photo is added to the order straight away.",
+  "intake_photo_add_stamp_warning": "The order stays permanently marked as changed after signing, and that mark is printed.",
+  "intake_photo_add_confirm": "Choose a photo",
+  "intake_photo_delete_title": "Delete a photo from order {number}?",
+  "intake_photo_delete_description": "The photo is deleted straight away and cannot be brought back. The order stays permanently marked as changed after signing.",
+  "intake_photo_delete_confirm": "Delete the photo",
+  "intake_photo_deleted": "The photo was deleted.",
+  "intake_photo_upload_failed": "The photo was not sent. Open the Fotografije tab and try again.",
   "intake_fuel_less": "Less fuel",
   "intake_fuel_more": "More fuel"
 }
