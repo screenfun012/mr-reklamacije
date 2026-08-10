@@ -1255,5 +1255,18 @@
   "intake_history_spec_updated": "Services and materials updated",
   "intake_history_removed": "Order removed from the list",
   "intake_history_restored": "Order restored to the list",
-  "intake_history_generic": "Order changed"
+  "intake_history_generic": "Order changed",
+  "intake_amend_start": "Correct the recorded condition",
+  "intake_amend_bar_tag": "EDIT MODE",
+  "intake_amend_bar_note": "You are changing the recorded condition and the owner's phone. Every change marks the order permanently.",
+  "intake_amend_cancel": "Cancel",
+  "intake_amend_save": "✓ Save the change",
+  "intake_amend_confirm_title": "Save the change to order {number}?",
+  "intake_amend_confirm_description": "The order stays permanently marked as changed after signing, and that mark is printed. The customer's printed copy will no longer be identical to this record.",
+  "intake_amend_confirm_photos": "You removed a defect that has photos — they stay, but they lose their number.",
+  "intake_amend_confirm_button": "Save the change",
+  "intake_amend_saved": "Order {number} was changed and marked.",
+  "intake_amend_nothing_changed": "Nothing changed — the order was not marked.",
+  "intake_amend_phone_invalid": "The owner's phone cannot be left empty.",
+  "intake_amend_locked": "Close edit mode to use this."
 }

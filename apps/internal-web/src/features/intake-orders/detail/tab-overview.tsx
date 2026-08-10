@@ -1,7 +1,7 @@
 import { getLocale, m } from '@mr/i18n'
 import { INTAKE_CHECKLIST_KEYS, type IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
-import { useState, type ReactElement } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 
 import { internalIntlLocale } from '~/lib/internal-format'
 
@@ -18,6 +18,7 @@ import { IntakePhotoLightbox } from '../wizard/intake-photo-lightbox'
 import { INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
 import { CAPTION, CARD, DASH } from './detail-styles'
+import type { IntakeAmendEditing } from './use-intake-amend'
 
 const FIELD_KEY = 'font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-mri-text2'
 
@@ -88,7 +89,14 @@ function SignatureBox({ path, caption }: { path: string | null; caption: string 
  * viewport: the shell's sidebar collapses and disappears, so one viewport gives this body three
  * different widths (the same reason `intake-orders-table.tsx` switched).
  */
-export function TabOverview({ order }: { order: IntakeOrderDetail }): ReactElement {
+export function TabOverview({
+  order,
+  amend,
+}: {
+  order: IntakeOrderDetail
+  /** Present only while edit mode is open; absent is the archival read this tab has always been. */
+  amend?: IntakeAmendEditing
+}): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
 
   const locale = getLocale()
@@ -110,7 +118,7 @@ export function TabOverview({ order }: { order: IntakeOrderDetail }): ReactEleme
    */
   const fuelRecorded = order.signedAt !== null
 
-  const facts = [
+  const facts: { label: string; value: ReactNode; className: string }[] = [
     {
       label: m.intake_fact_received(),
       value: formatIntakeReceivedAtLong(order.receivedAt, locale),
@@ -135,7 +143,25 @@ export function TabOverview({ order }: { order: IntakeOrderDetail }): ReactEleme
     { label: m.intake_fact_vin(), value: order.vin ?? DASH, className: 'font-mono font-medium' },
     {
       label: m.intake_field_owner_phone(),
-      value: order.ownerPhone,
+      // The one owner field that may still be corrected (decision ①). Checked here as well as on
+      // the server, because the server's refusal arrives as an unaimed 400 that this screen could
+      // only report as "the action failed" — the operator would not learn which field is wrong.
+      value:
+        amend === undefined ? (
+          order.ownerPhone
+        ) : (
+          <input
+            type="tel"
+            value={amend.buffer.ownerPhone}
+            onChange={(event) => amend.patch({ ownerPhone: event.target.value })}
+            aria-label={m.intake_field_owner_phone()}
+            aria-invalid={!amend.phoneValid}
+            className={cn(
+              'mri-input h-11 w-full rounded-[9px] px-3 font-mono text-sm',
+              !amend.phoneValid && 'border-mri-red',
+            )}
+          />
+        ),
       className: 'font-mono font-medium',
     },
     {

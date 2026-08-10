@@ -31,6 +31,13 @@ export interface IntakeDetailHeaderProps {
    * tap; whoever may only advance has no way back at all once the order is picked up.
    */
   canChangeStatus: boolean
+  canAmend: boolean
+  /**
+   * While edit mode is open every other action here is locked: one mode at a time, so nothing can
+   * throw away an unsaved buffer behind the operator's back or stack a second dialog on the first.
+   */
+  amendActive: boolean
+  onStartAmend: () => void
 }
 
 const STATUS_PILL_CLASSES = 'px-[11px] py-[5px] text-[10.5px] tracking-[0.08em]'
@@ -58,6 +65,9 @@ export function IntakeDetailHeader({
   canAdvance,
   canDelete,
   canChangeStatus,
+  canAmend,
+  amendActive,
+  onStartAmend,
 }: IntakeDetailHeaderProps): ReactElement {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -181,11 +191,28 @@ export function IntakeDetailHeader({
           </span>
         </span>
 
+        {/* Amber, like every other "this order is not in its resting state" surface. The action
+            is neither the happy path nor a destruction, and the brandbook forbids a red primary. */}
+        {canAmend && isLive && !amendActive ? (
+          <InternalButton
+            type="button"
+            variant="ghost"
+            onClick={onStartAmend}
+            className={cn(
+              ACTION_CLASSES,
+              'border border-[rgba(245,165,36,0.45)] bg-[rgba(245,165,36,0.12)] font-extrabold tracking-[0.06em] text-mri-amb hover:bg-[rgba(245,165,36,0.2)]',
+            )}
+          >
+            {m.intake_amend_start()}
+          </InternalButton>
+        ) : null}
+
         {canAdvance && isLive && next !== null ? (
           <InternalButton
             type="button"
             variant="ghost"
-            disabled={advance.isPending}
+            disabled={advance.isPending || amendActive}
+            title={amendActive ? m.intake_amend_locked() : undefined}
             onClick={() => (needsPickupConfirm ? setConfirmPickup(true) : advance.mutate())}
             className={cn(ACTION_CLASSES, ADVANCE_CLASSES[next])}
           >
@@ -197,6 +224,8 @@ export function IntakeDetailHeader({
           <InternalButton
             type="button"
             variant="outline-red"
+            disabled={amendActive}
+            title={amendActive ? m.intake_amend_locked() : undefined}
             onClick={() => setConfirmRemove(true)}
             className={ACTION_CLASSES}
           >

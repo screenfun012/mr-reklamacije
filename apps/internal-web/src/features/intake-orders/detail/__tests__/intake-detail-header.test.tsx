@@ -6,7 +6,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IntakeDetailHeader } from '../intake-detail-header.js'
 import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
 
-const NO_PERMS = { canAdvance: false, canDelete: false, canChangeStatus: false }
+const NO_PERMS = {
+  canAdvance: false,
+  canDelete: false,
+  canChangeStatus: false,
+  canAmend: false,
+  amendActive: false,
+  onStartAmend: () => {},
+}
+
+const ALL_PERMS = {
+  canAdvance: true,
+  canDelete: true,
+  canChangeStatus: true,
+  canAmend: true,
+  amendActive: false,
+  onStartAmend: () => {},
+}
 
 /**
  * The advance handler reads `updated.status` straight into the label map, so a stub answering with
@@ -162,5 +178,46 @@ describe('IntakeDetailHeader', () => {
     await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
 
     expect(screen.queryByText('Primljeno')).not.toBeNull()
+  })
+
+  it('offers the correction to somebody who may amend a live signed order', async () => {
+    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...ALL_PERMS} />)
+
+    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).not.toBeNull()
+  })
+
+  it('offers it to nobody without the permission', async () => {
+    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
+
+    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
+  })
+
+  it('offers no correction on an unfinished intake, which the wizard still owns', async () => {
+    await renderDetailUi(<IntakeDetailHeader order={intakeDraftFixture()} {...ALL_PERMS} />)
+
+    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
+  })
+
+  it('offers no correction on a removed order, which the server refuses anyway', async () => {
+    const order = intakeOrderDetailFixture({ deletedAt: '2026-07-29T08:00:00.000Z' })
+
+    await renderDetailUi(<IntakeDetailHeader order={order} {...ALL_PERMS} />)
+
+    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
+  })
+
+  it('locks advance and remove while the mode is open, so one edit is one edit', async () => {
+    await renderDetailUi(
+      <IntakeDetailHeader order={intakeOrderDetailFixture()} {...ALL_PERMS} amendActive />,
+    )
+
+    expect(screen.getByRole('button', { name: m.intake_detail_remove() })).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: m.intake_detail_advance({ status: m.intake_status_u_radu() }),
+      }),
+    ).toBeDisabled()
+    // And the button that opened the mode is gone: the bar below owns the way out.
+    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
   })
 })

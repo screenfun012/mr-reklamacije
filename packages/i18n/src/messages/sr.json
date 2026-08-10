@@ -1255,5 +1255,18 @@
   "intake_history_spec_updated": "Usluge i materijal izmenjeni",
   "intake_history_removed": "Nalog uklonjen sa liste",
   "intake_history_restored": "Nalog vraćen na listu",
-  "intake_history_generic": "Nalog izmenjen"
+  "intake_history_generic": "Nalog izmenjen",
+  "intake_amend_start": "Ispravi zatečeno stanje",
+  "intake_amend_bar_tag": "REŽIM IZMENE",
+  "intake_amend_bar_note": "Menjaš zapis o zatečenom stanju i telefon vlasnika. Svaka izmena trajno obeležava nalog.",
+  "intake_amend_cancel": "Otkaži",
+  "intake_amend_save": "✓ Sačuvaj izmenu",
+  "intake_amend_confirm_title": "Sačuvati izmenu naloga {number}?",
+  "intake_amend_confirm_description": "Nalog ostaje trajno obeležen kao menjan posle potpisa, i to obeležje se štampa. Mušterijin odštampani primerak više neće biti identičan ovom zapisu.",
+  "intake_amend_confirm_photos": "Obrisao si oštećenje koje ima fotografije — one ostaju, ali gube svoj broj.",
+  "intake_amend_confirm_button": "Sačuvaj izmenu",
+  "intake_amend_saved": "Nalog {number} je izmenjen i obeležen.",
+  "intake_amend_nothing_changed": "Ništa nije promenjeno — nalog nije obeležen.",
+  "intake_amend_phone_invalid": "Telefon vlasnika ne sme da ostane prazan.",
+  "intake_amend_locked": "Zatvori režim izmene da bi ovo bilo dostupno."
 }
