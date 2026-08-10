@@ -84,6 +84,30 @@ In practice, and these are testable, not decorative:
 finishing an intake without a network fails with `intake_sign_failed` and the order stays unsigned
 (§3.6, A3); a photo that fails to upload shows a red cell and no instruction (A4).
 
+### 3.0.1 The intake ends at the signatures (2026-08-10)
+
+The wizard is **four steps**: `Vozilo i vlasnik · Ček-lista · Stanje i fotke · Potpisi`.
+
+**Specifikacija left it.** Services and materials are the SERVISER's work, done later from the
+detail's Specifikacija tab — the receiving worker never sees the field, so there is no step to
+misread and no "do I fill this in?" to answer (Nikola, 2026-08-10). The list component survived the
+step and lives in `wizard/intake-spec-list.tsx`.
+
+**The printed order opens itself** the moment both signatures are in: the wizard hops to the detail
+with `?stampa`, and the detail opens the preview and clears the flag so a reload does not print it
+again (`detail/use-consume-print-flag.ts`). Handing the paper over is the next thing that has to
+happen, so it is not behind a button somebody has to find.
+
+⚠️ **Step numbers are named, not typed** — `INTAKE_WIZARD_STEPS` in `wizard/intake-wizard-state.ts`,
+and the totals in the copy are the `{total}` parameter fed from `INTAKE_WIZARD_STEP_COUNT`. Both
+were bare literals until this change, and removing one step meant hunting `step === 4` and `od 5`
+through six files. Renumbering is now one edit.
+
+⚠️ **`draft_step` still holds 5 on orders parked on the old signatures step, and the CHECK
+constraint still allows 1..5.** Deliberate: narrowing it would need a migration that also rewrites
+existing rows, for nothing but a tighter bound on a column the app no longer fills with a five.
+Resuming clamps into range, and the read schema has no upper bound, so nothing breaks.
+
 ### 3.1 UI, shell and who does what
 
 - **The design does not change.** Nikola: *"tako mora da izgleda ui"* — and, after V-2/V-3,

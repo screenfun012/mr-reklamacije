@@ -3,7 +3,7 @@ import { IntakeDetailSearchSchema, IntakeDetailTab, intakeOrderDetailOptions } f
 import { ConfirmDialog, Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 
 import { InternalPage } from '~/components/layout/internal-page'
 import { IntakeAmendBar } from '~/features/intake-orders/detail/intake-amend-bar'
@@ -21,6 +21,7 @@ import { TabHistory } from '~/features/intake-orders/detail/tab-history'
 import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
 import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
 import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
+import { useConsumePrintFlag } from '~/features/intake-orders/detail/use-consume-print-flag'
 import { useIntakeAmend } from '~/features/intake-orders/detail/use-intake-amend'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { useIntakePhotoQueue } from '~/features/intake-orders/wizard/use-intake-photo-queue'
@@ -65,24 +66,17 @@ function IntakeDetailPage(): ReactElement {
   const amend = useIntakeAmend(order)
   const [printOpen, setPrintOpen] = useState(false)
 
-  /**
-   * The wizard hands the signed order over with `?stampa` set, because printing it is the next
-   * thing that has to happen and the worker should not have to find a button for it
-   * (`docs/25` §3.0). The flag is consumed once: it opens the preview and leaves the address, so a
-   * reload — or a Back into this screen — does not open it again over an order already handed over.
-   */
-  useEffect(() => {
-    if (stampa !== true) {
-      return
-    }
-    setPrintOpen(true)
-    void navigate({
-      to: '/prijem/$id',
-      params: { id },
-      search: { ...(tab === undefined ? {} : { tab }) },
-      replace: true,
-    })
-  }, [stampa, id, tab, navigate])
+  useConsumePrintFlag({
+    stampa,
+    onOpen: () => setPrintOpen(true),
+    onClear: () =>
+      void navigate({
+        to: '/prijem/$id',
+        params: { id },
+        search: { ...(tab === undefined ? {} : { tab }) },
+        replace: true,
+      }),
+  })
 
   /**
    * The upload queue lives HERE, not inside the photos tab. The tab body is remounted on every tab
