@@ -2,7 +2,7 @@ import { m } from '@mr/i18n'
 import type { IntakeOrderDetail } from '@mr/shared'
 import type { ReactElement } from 'react'
 
-import { IntakeSpecList } from '../wizard/step-specification'
+import { IntakeSpecList } from '../wizard/intake-spec-list'
 import { useUpdateIntakeSpec } from './use-update-intake-spec'
 
 /**

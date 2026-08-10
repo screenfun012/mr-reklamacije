@@ -25,6 +25,7 @@ import { IntakeWizardFooter, type IntakeHintTone } from './intake-wizard-footer'
 import { IntakeWizardNote } from './intake-wizard-note'
 import {
   INTAKE_WIZARD_STEP_COUNT,
+  INTAKE_WIZARD_STEPS,
   clearIntakeDraft,
   emptyIntakeWizardValues,
   readIntakeDraft,
@@ -39,7 +40,6 @@ import {
 import { StepChecklist } from './step-checklist'
 import { StepDamagePhotos } from './step-damage-photos'
 import { StepSignatures } from './step-signatures'
-import { StepSpecification } from './step-specification'
 import { IntakeUploadChip } from './intake-upload-chip'
 import {
   isSignatureFilled,
@@ -57,7 +57,6 @@ const STEP_LABELS = [
   () => m.intake_step_2(),
   () => m.intake_step_3(),
   () => m.intake_step_4(),
-  () => m.intake_step_5(),
 ] as const
 
 /**
@@ -232,7 +231,10 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
   const adoptOrder = useCallback((order: IntakeOrderDetail, buffer: IntakeDraftBuffer | null) => {
     setOrderId(order.id)
     setValues(buffer?.values ?? valuesFromOrder(order))
-    setStep(Math.max(buffer?.step ?? 1, order.draftStep ?? 1))
+    // Clamped: `draft_step` still holds 5 on orders parked on the OLD signatures step, and the
+    // check constraint deliberately still allows it (spec §3). Five means "the last step", which
+    // is now four.
+    setStep(Math.min(INTAKE_WIZARD_STEP_COUNT, Math.max(buffer?.step ?? 1, order.draftStep ?? 1)))
   }, [])
 
   const resumeBuffer = useCallback(() => {
@@ -240,7 +242,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       return
     }
     setValues(foundDraft.values)
-    setStep(foundDraft.step)
+    setStep(Math.min(INTAKE_WIZARD_STEP_COUNT, foundDraft.step))
     setOrderId(foundDraft.orderId)
     setFoundDraft(null)
   }, [foundDraft])
@@ -334,7 +336,8 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
    * signed on another tablet meanwhile still had DALJE live, and every patch it sent dead-ended
    * on a 422 the serviser could do nothing with.
    */
-  const forwardDisabled = saving || numberTaken || (step === 1 && !canLeaveStep1)
+  const forwardDisabled =
+    saving || numberTaken || (step === INTAKE_WIZARD_STEPS.Vehicle && !canLeaveStep1)
 
   const bothSigned = isSignatureFilled(technicianStrokes) && isSignatureFilled(ownerStrokes)
   /**
@@ -388,7 +391,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
    * before "fill the fields", because with an empty number that is the only thing to do.
    */
   const hint = ((): { text: string; tone: IntakeHintTone } => {
-    if (step === 3 && values.damages.length > 0) {
+    if (step === INTAKE_WIZARD_STEPS.Damage && values.damages.length > 0) {
       // Counted by marker NUMBER, which is what a photo carries — the same 1-based position the
       // list shows. A reminder only: step 3 never blocks DALJE, because a serviser who cannot
       // move on learns to stop marking damage at all (docs/25 §3.4).
@@ -407,7 +410,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       }
       return { text: m.intake_hint_photos_all(), tone: 'muted' }
     }
-    if (step === 5) {
+    if (step === INTAKE_WIZARD_STEPS.Signatures) {
       if (!bothSigned) {
         return { text: m.intake_hint_sign_missing(), tone: 'warn' }
       }
@@ -422,7 +425,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       }
       return { text: m.intake_hint_ready_to_finish(), tone: 'muted' }
     }
-    if (step === 4 && photoQueue.pending > 0) {
+    if (step === INTAKE_WIZARD_STEPS.Damage && photoQueue.pending > 0) {
       // Deliberately muted, not amber: the photos going up in the background are the normal case,
       // not a warning — the prototype re-sets the colour to `--text2` here on purpose.
       return {
@@ -459,7 +462,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
         steps={STEP_LABELS.map((label) => label())}
         currentStep={step}
         chip={
-          (step === 4 || step === 5) && photoQueue.outstanding > 0 ? (
+          step === INTAKE_WIZARD_STEPS.Signatures && photoQueue.outstanding > 0 ? (
             <IntakeUploadChip
               outstanding={photoQueue.outstanding}
               failed={photoQueue.failed}
@@ -489,9 +492,13 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       />
 
       <div className="px-4 py-[18px] sm:px-[26px]">
-        {step === 1 ? <StepVehicleOwner values={values} onPatch={patch} /> : null}
-        {step === 2 ? <StepChecklist values={values} onPatch={patch} /> : null}
-        {step === 3 ? (
+        {step === INTAKE_WIZARD_STEPS.Vehicle ? (
+          <StepVehicleOwner values={values} onPatch={patch} />
+        ) : null}
+        {step === INTAKE_WIZARD_STEPS.Checklist ? (
+          <StepChecklist values={values} onPatch={patch} />
+        ) : null}
+        {step === INTAKE_WIZARD_STEPS.Damage ? (
           <StepDamagePhotos
             values={values}
             onPatch={patch}
@@ -502,8 +509,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
             onDeletePhoto={deletePhoto}
           />
         ) : null}
-        {step === 4 ? <StepSpecification values={values} onPatch={patch} /> : null}
-        {step === 5 ? (
+        {step === INTAKE_WIZARD_STEPS.Signatures ? (
           <StepSignatures
             technicianName={technicianName}
             ownerName={
@@ -525,7 +531,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       <IntakeWizardFooter
         hint={hint.text}
         hintTone={hint.tone}
-        backDisabled={step === 1}
+        backDisabled={step === INTAKE_WIZARD_STEPS.Vehicle}
         nextDisabled={forwardDisabled}
         {...(step === INTAKE_WIZARD_STEP_COUNT
           ? {

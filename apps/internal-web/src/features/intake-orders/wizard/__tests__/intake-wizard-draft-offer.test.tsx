@@ -252,8 +252,10 @@ describe('the wizard and the tablet draft buffer', () => {
     renderWizard(order.id)
 
     // The buffer's number, not the server's RN-0950/26 — and the buffer's step, not draftStep 3.
+    // Step 4 IS the signatures since Specifikacija left the wizard, so the screen itself is the
+    // assertion rather than a hint string that would move with the numbering again.
     expect(await screen.findByDisplayValue('RN-0249/26')).toBeInTheDocument()
-    expect(screen.getByText(m.intake_hint_step({ step: 4 }))).toBeInTheDocument()
+    expect(screen.getByText(m.intake_signature_title())).toBeInTheDocument()
   })
 
   it("does not fold the tablet's copy of a DIFFERENT intake into the one asked for", async () => {

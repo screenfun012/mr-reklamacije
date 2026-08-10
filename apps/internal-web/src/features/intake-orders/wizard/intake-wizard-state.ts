@@ -9,7 +9,23 @@ import {
   type IntakeOrderUpdateInput,
 } from '@mr/shared'
 
-export const INTAKE_WIZARD_STEP_COUNT = 5
+/**
+ * The steps, by name. They were bare numbers scattered through the wizard until 2026-08-10, when
+ * removing one of them meant hunting `step === 4` and `step === 5` across two hundred lines and
+ * guessing which four was which. Renumbering is now a change here and nowhere else.
+ *
+ * Step 4 used to be Specifikacija. It is gone from the wizard: services and materials are the
+ * serviser's work, not the receiving worker's, and the intake ends when the two signatures are in
+ * (Nikola, 2026-08-10). The list itself lives on in the detail's Specifikacija tab.
+ */
+export const INTAKE_WIZARD_STEPS = {
+  Vehicle: 1,
+  Checklist: 2,
+  Damage: 3,
+  Signatures: 4,
+} as const
+
+export const INTAKE_WIZARD_STEP_COUNT = INTAKE_WIZARD_STEPS.Signatures
 
 /** Everything the wizard collects, as the form holds it (numbers stay strings while typing). */
 export interface IntakeWizardValues {

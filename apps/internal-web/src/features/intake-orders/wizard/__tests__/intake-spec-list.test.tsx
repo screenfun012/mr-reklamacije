@@ -1,16 +1,50 @@
-import { setLocale } from '@mr/i18n'
+import { m, setLocale } from '@mr/i18n'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emptyIntakeWizardValues, type IntakeWizardValues } from '../intake-wizard-state.js'
-import { IntakeSpecList, StepSpecification } from '../step-specification.js'
+import { IntakeSpecList } from '../intake-spec-list.js'
 
 function valuesWith(overrides: Partial<IntakeWizardValues> = {}): IntakeWizardValues {
   return { ...emptyIntakeWizardValues(), ...overrides }
 }
 
-describe('StepSpecification', () => {
+/**
+ * The two lists side by side. This used to be the wizard's step 4; the step is gone (specification
+ * is the serviser's work, not the receiving worker's — 2026-08-10) and the detail's Specifikacija
+ * tab renders the same pair. The behaviour under test was always the LIST's, so it moved here
+ * rather than dying with the wrapper.
+ */
+function SpecPair({
+  values,
+  onPatch,
+}: {
+  values: IntakeWizardValues
+  onPatch: (patch: Partial<IntakeWizardValues>) => void
+}) {
+  return (
+    <div>
+      <IntakeSpecList
+        title={m.intake_card_services()}
+        items={values.services}
+        placeholder={m.intake_service_add()}
+        removeLabel={m.intake_service_remove()}
+        onChange={(services) => onPatch({ services })}
+      />
+      <IntakeSpecList
+        title={m.intake_card_materials()}
+        items={values.materials}
+        placeholder={m.intake_material_add()}
+        removeLabel={m.intake_material_remove()}
+        onChange={(materials) => onPatch({ materials })}
+        note={m.intake_spec_note()}
+      />
+    </div>
+  )
+}
+
+describe('IntakeSpecList', () => {
   beforeEach(() => {
     setLocale('sr', { reload: false })
   })
@@ -18,7 +52,7 @@ describe('StepSpecification', () => {
   it('adds a line on Enter and clears the field for the next one', async () => {
     const user = userEvent.setup()
     const onPatch = vi.fn()
-    render(<StepSpecification values={valuesWith()} onPatch={onPatch} />)
+    render(<SpecPair values={valuesWith()} onPatch={onPatch} />)
 
     const input = screen.getByPlaceholderText('Dodaj uslugu i pritisni Enter')
     await user.type(input, 'Zamena ulja{Enter}')
@@ -30,7 +64,7 @@ describe('StepSpecification', () => {
   it('adds through the button as well as the key', async () => {
     const user = userEvent.setup()
     const onPatch = vi.fn()
-    render(<StepSpecification values={valuesWith()} onPatch={onPatch} />)
+    render(<SpecPair values={valuesWith()} onPatch={onPatch} />)
 
     await user.type(screen.getByPlaceholderText('Dodaj materijal i pritisni Enter'), 'Filter ulja')
     const addButtons = screen.getAllByRole('button', { name: '+ Dodaj' })
@@ -42,7 +76,7 @@ describe('StepSpecification', () => {
   it('refuses a blank line rather than adding an empty row to a signed document', async () => {
     const user = userEvent.setup()
     const onPatch = vi.fn()
-    render(<StepSpecification values={valuesWith()} onPatch={onPatch} />)
+    render(<SpecPair values={valuesWith()} onPatch={onPatch} />)
 
     await user.type(screen.getByPlaceholderText('Dodaj uslugu i pritisni Enter'), '   {Enter}')
 
@@ -57,7 +91,7 @@ describe('StepSpecification', () => {
     const user = userEvent.setup()
     const onPatch = vi.fn()
     render(
-      <StepSpecification
+      <SpecPair
         values={valuesWith({ services: ['Pranje', 'Pranje', 'Balansiranje'] })}
         onPatch={onPatch}
       />,
@@ -70,9 +104,7 @@ describe('StepSpecification', () => {
   })
 
   it('numbers the lines from one, in the order they were entered', () => {
-    render(
-      <StepSpecification values={valuesWith({ services: ['Prva', 'Druga'] })} onPatch={vi.fn()} />,
-    )
+    render(<SpecPair values={valuesWith({ services: ['Prva', 'Druga'] })} onPatch={vi.fn()} />)
 
     expect(screen.getByText('Prva')).toBeInTheDocument()
     expect(screen.getByText('Druga')).toBeInTheDocument()
@@ -81,7 +113,7 @@ describe('StepSpecification', () => {
   })
 
   it('carries the note only on the materials card, and without the "U radu" restriction', () => {
-    render(<StepSpecification values={valuesWith()} onPatch={vi.fn()} />)
+    render(<SpecPair values={valuesWith()} onPatch={vi.fn()} />)
 
     const notes = screen.getAllByText('Usluge i materijal mogu da se dopunjuju i kasnije.')
     expect(notes).toHaveLength(1)

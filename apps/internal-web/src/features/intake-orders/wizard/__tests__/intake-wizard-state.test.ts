@@ -5,6 +5,7 @@ import {
   clearIntakeDraft,
   emptyIntakeWizardValues,
   INTAKE_DRAFT_MAX_AGE_MS,
+  INTAKE_WIZARD_STEP_COUNT,
   INTAKE_DRAFT_STORAGE_KEY,
   newDamageId,
   readIntakeDraft,
@@ -81,10 +82,12 @@ describe('toUpdateInput', () => {
     expect(patch.ownerAddress).toBeNull()
   })
 
-  it('carries the step the serviser reached, clamped to the five that exist', () => {
+  it('carries the step the serviser reached, clamped to the four that exist', () => {
     expect(toUpdateInput(filledValues(), 2).draftStep).toBe(2)
     expect(toUpdateInput(filledValues(), 0).draftStep).toBe(1)
-    expect(toUpdateInput(filledValues(), 9).draftStep).toBe(5)
+    // Four since 2026-08-10: Specifikacija left the wizard, so the signatures are the last step.
+    expect(toUpdateInput(filledValues(), 9).draftStep).toBe(INTAKE_WIZARD_STEP_COUNT)
+    expect(INTAKE_WIZARD_STEP_COUNT).toBe(4)
   })
 })
 

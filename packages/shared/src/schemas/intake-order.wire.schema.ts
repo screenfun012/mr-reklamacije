@@ -65,7 +65,7 @@ export const IntakeOrderUpdateInputSchema = z
     damages: IntakeDamagesSchema.optional(),
     services: z.array(z.string().trim().min(1).max(200)).max(100).optional(),
     materials: z.array(z.string().trim().min(1).max(200)).max(100).optional(),
-    draftStep: z.number().int().min(1).max(5).optional(),
+    draftStep: z.number().int().min(1).max(4).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'Empty update' })
 

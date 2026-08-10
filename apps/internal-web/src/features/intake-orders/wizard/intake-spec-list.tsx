@@ -3,40 +3,16 @@ import { cn } from '@mr/ui'
 import { useState, type ReactElement } from 'react'
 
 import { IntakePanel } from './intake-panel'
-import type { IntakeWizardValues } from './intake-wizard-state'
-
-export interface StepSpecificationProps {
-  values: IntakeWizardValues
-  onPatch: (patch: Partial<IntakeWizardValues>) => void
-}
 
 /**
- * Step 4 — what is to be done and what goes into it. Plain lines: no catalogue, no quantities and
- * deliberately no prices, because the printed work order carries none ("Cene se ovde ne unose",
- * the worker instruction). Both lists stay editable for the life of the order, signed or not.
+ * The services / materials list. It lived inside the wizard's step 4 until 2026-08-10, when that
+ * step was removed: specification is the serviser's work, not the receiving worker's, and the
+ * wizard now ends at the signatures. The LIST survives because the detail's Specifikacija tab is
+ * built on it — the file just stopped being named after a step that no longer exists.
+ *
+ * Plain lines: no catalogue, no quantities and deliberately no prices, because the printed work
+ * order carries none ("Cene se ovde ne unose", the worker instruction).
  */
-export function StepSpecification({ values, onPatch }: StepSpecificationProps): ReactElement {
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-      <IntakeSpecList
-        title={m.intake_card_services()}
-        items={values.services}
-        placeholder={m.intake_service_add()}
-        removeLabel={m.intake_service_remove()}
-        onChange={(services) => onPatch({ services })}
-      />
-      <IntakeSpecList
-        title={m.intake_card_materials()}
-        items={values.materials}
-        placeholder={m.intake_material_add()}
-        removeLabel={m.intake_material_remove()}
-        onChange={(materials) => onPatch({ materials })}
-        note={m.intake_spec_note()}
-      />
-    </div>
-  )
-}
-
 export interface IntakeSpecListProps {
   title: string
   items: readonly string[]
