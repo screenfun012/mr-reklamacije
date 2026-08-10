@@ -1,8 +1,14 @@
 import { m } from '@mr/i18n'
+import { IntakeDamageType, IntakeVehicleType } from '@mr/shared'
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { intakeOrderDetailFixture, renderDetailUi } from '../../detail/__tests__/render-detail.js'
+import {
+  intakeOrderDetailFixture,
+  intakePhotoFixture,
+  renderDetailUi,
+} from '../../detail/__tests__/render-detail.js'
+import { INTAKE_SILHOUETTES } from '../../wizard/intake-silhouettes.js'
 import { IntakePrintSheet } from '../intake-print-sheet.js'
 
 describe('IntakePrintSheet', () => {
@@ -86,5 +92,72 @@ describe('IntakePrintSheet', () => {
 
     expect(screen.getByText(m.intake_print_title({}, { locale: 'en' }))).toBeDefined()
     expect(screen.queryByText(m.intake_print_title({}, { locale: 'sr' }))).toBeNull()
+  })
+})
+
+describe('IntakePrintSheet — evidence', () => {
+  function damage(n: number) {
+    return { id: `d${n}`, type: IntakeDamageType.Scratch, x: 100 + n, y: 60 + n, zone: `Zona ${n}` }
+  }
+
+  it('draws the silhouette of the order vehicle type, not a car by default', async () => {
+    const { container } = await renderDetailUi(
+      <IntakePrintSheet
+        order={intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van })}
+        locale="sr"
+      />,
+    )
+
+    const paths = container.querySelectorAll('[data-testid="print-silhouette"] path')
+    expect(paths.length).toBeGreaterThan(0)
+    expect(paths[0]?.getAttribute('d')).toBe(INTAKE_SILHOUETTES[IntakeVehicleType.Van][0]?.d)
+  })
+
+  it('puts the same number on the marker, the defect row and the photo badge', async () => {
+    const order = intakeOrderDetailFixture({
+      damages: [damage(1), damage(2)],
+      photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444', damageId: 'd2' })],
+    })
+
+    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+
+    expect(container.querySelector('[data-testid="print-marker-2"]')).not.toBeNull()
+    expect(screen.getByTestId('print-damage-2')).toHaveTextContent('Zona 2')
+    expect(screen.getByTestId('print-photo-badge')).toHaveTextContent('2')
+  })
+
+  it('says there were none rather than leaving the defect list blank', async () => {
+    await renderDetailUi(
+      <IntakePrintSheet order={intakeOrderDetailFixture({ damages: [] })} locale="sr" />,
+    )
+
+    expect(screen.getByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeDefined()
+  })
+
+  it('says how many defects were left off the page', async () => {
+    const order = intakeOrderDetailFixture({
+      damages: Array.from({ length: 15 }, (_, i) => damage(i + 1)),
+    })
+
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+
+    expect(
+      screen.getByText(
+        m.intake_print_damages_more({ count: 3, number: order.orderNumber }, { locale: 'sr' }),
+      ),
+    ).toBeDefined()
+  })
+
+  it('prints all markers red, whatever the defect type', async () => {
+    // Amber and grey do not print legibly — the screen's colour map is deliberately not reused.
+    const order = intakeOrderDetailFixture({
+      damages: [{ ...damage(1), type: IntakeDamageType.Rust }],
+    })
+
+    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+
+    expect(
+      container.querySelector('[data-testid="print-marker-1"] circle')?.getAttribute('fill'),
+    ).toBe('#ed1c24')
   })
 })

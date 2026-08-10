@@ -1294,5 +1294,12 @@
   "intake_print_amended": "⚠ THE ORDER WAS CHANGED AFTER SIGNING",
   "intake_print_legal": "By signing, it is confirmed that the condition of the vehicle, its equipment and the defects found are faithfully recorded in this order, including the attached photo documentation ({count} photos, archived with order {number}).",
   "intake_print_role_technician": "TECHNICIAN",
-  "intake_print_role_owner": "OWNER"
+  "intake_print_role_owner": "OWNER",
+  "intake_print_section_scheme": "DIAGRAM AND DEFECTS",
+  "intake_print_section_defects": "DEFECTS FOUND",
+  "intake_print_section_services": "SERVICES",
+  "intake_print_section_materials": "MATERIALS",
+  "intake_print_section_photos": "PHOTO DOCUMENTATION · {count}",
+  "intake_print_no_damage": "No defects were found at intake.",
+  "intake_print_damages_more": "…and {count} more — see digital order {number}"
 }

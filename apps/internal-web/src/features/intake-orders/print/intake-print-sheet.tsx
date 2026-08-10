@@ -4,11 +4,13 @@ import type { ReactElement } from 'react'
 
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
 import { IntakePrintCondition } from './intake-print-condition'
+import { IntakePrintDamages } from './intake-print-damages'
 import {
   buildIntakePrintModel,
   type IntakePrintLocale,
   type IntakePrintModel,
 } from './intake-print-data'
+import { IntakePrintPhotos } from './intake-print-photos'
 import { PRINT_EYEBROW, PRINT_RULE } from './intake-print-styles'
 
 /**
@@ -130,8 +132,9 @@ export function IntakePrintSheet({
 
         <IntakePrintCondition model={model} />
 
-        {/* Task 3 mounts IntakePrintDamages here */}
-        {/* Task 3 mounts IntakePrintPhotos here */}
+        <IntakePrintDamages model={model} />
+
+        <IntakePrintPhotos model={model} />
 
         {/* Pinned to the bottom whatever the blocks above did. */}
         <footer className="mt-auto border-t-[2.5px] border-[#ed1c24] pt-[14px]">

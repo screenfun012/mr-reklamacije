@@ -1294,5 +1294,12 @@
   "intake_print_amended": "⚠ NALOG JE MENJAN POSLE POTPISA",
   "intake_print_legal": "Potpisom se potvrđuje da je zatečeno stanje vozila, opreme i uočenih nedostataka verno prikazano u ovom nalogu, uključujući priloženu fotodokumentaciju ({count} fotografija, arhivirano uz nalog {number}).",
   "intake_print_role_technician": "SERVISER",
-  "intake_print_role_owner": "VLASNIK"
+  "intake_print_role_owner": "VLASNIK",
+  "intake_print_section_scheme": "ŠEMA I NEDOSTACI",
+  "intake_print_section_defects": "UOČENI NEDOSTACI",
+  "intake_print_section_services": "USLUGE",
+  "intake_print_section_materials": "MATERIJAL",
+  "intake_print_section_photos": "FOTODOKUMENTACIJA · {count}",
+  "intake_print_no_damage": "Nema uočenih nedostataka pri prijemu.",
+  "intake_print_damages_more": "…i još {count} — vidi digitalni nalog {number}"
 }
