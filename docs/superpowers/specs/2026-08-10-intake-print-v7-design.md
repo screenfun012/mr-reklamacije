@@ -32,6 +32,7 @@ ionako učitava. V-7 je čist posao na ekranu.
 |---|---------|--------|
 | ⑨ | Izgled: tanke linije (varijanta 2b) ili kao ostali obrasci firme? | **Uskladiti sa „Obavezama kupca":** crna traka u zaglavlju sa logotipom i belim naslovom, **crvene pune trake** kao naslovi sekcija. Ovo menja izabranu varijantu 2b i §5 izvornog dokumenta je i tražio baš to („kad mušterija dobije dva naša dokumenta, moraju izgledati kao iz iste kuće"). |
 | ⑩ | Šta piše u okviru „oznaka izmene"? | **Neutralno: „⚠ NALOG JE MENJAN POSLE POTPISA".** Ne „zatečeno stanje ispravljeno" — `amended_at` nema vrstu, pa bi ispravka telefona odštampala neistinu. Vrstu i dalje zna samo Istorija u aplikaciji (odluka ⑥ od 10.08., već upisana u `docs/25` §3.5). |
+| ⑪ | Na kom jeziku se štampa? | **Na oba, a bira se pred štampu** — stranac dovede auto i potpisuje engleski nalog dok kancelarija radi na srpskom. Pregled nosi prekidač `SR`/`EN`, a list se renderuje kroz Paraglide-ov poziv sa izričitim `{ locale }`, pa **jezik same aplikacije ostaje netaknut**. List nikad ne sme da zove `m.ključ()` golo — to bi pročitalo jezik operatera i odštampalo ga na dokument koji potpisuje neko drugi. |
 
 ---
 

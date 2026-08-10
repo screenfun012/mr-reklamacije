@@ -18,6 +18,7 @@
 - **`print-color-adjust: exact`** on the sheet, or the printer drops the red bands and the markers.
 - **The silhouette and the signature box come from the modules the screen already uses** — `INTAKE_SILHOUETTES` / `INTAKE_SILHOUETTE_VIEWBOX` (`wizard/intake-silhouettes.ts`) and `SIGNATURE_VIEW_BOX` (`wizard/intake-signature-pad.tsx`). A second copy of the drawing or a retyped viewBox will drift and put every marker in the wrong place.
 - **Markers, defect rows and photo badges must carry the SAME numbers.** They all number off the *printed* (possibly truncated) defect list — see Task 1.
+- **The paper's language is CHOSEN at print time, not inherited from the app** (Nikola, 2026-08-10: a foreign customer may bring the car in). Every string on the sheet is resolved with an explicit locale — Paraglide compiles each message as `m.key(inputs, { locale })` (verified in `packages/i18n/src/paraglide/messages/*.js`), so the sheet renders Serbian or English **without touching the app's own locale**. The sheet must never call `m.key()` bare: that would read the ambient locale and quietly print the operator's language onto a document somebody else signs.
 - **No ICU plurals.** Phrase counts so no grammatical form depends on the number.
 - **sr + en key parity is CI-enforced.** New keys land in both `packages/i18n/src/messages/sr.json` and `en.json`. After editing them run `pnpm --filter @mr/i18n build` — `run compile` writes `src/paraglide` but `typecheck` reads `dist/paraglide`, so compile alone leaves typecheck insisting the key does not exist.
 - **Style:** no semicolons, single quotes, 2-space indent, trailing commas. `kebab-case` files, `PascalCase` components, one primary export per file, files under 500 lines. No `any`, no non-null `!`, no nested ternaries (lookup map or a helper component), functions under 30 lines, explicit return types on exports.
@@ -55,6 +56,7 @@ Modified:
 **Files:**
 
 - Create: `apps/internal-web/src/features/intake-orders/print/intake-print-data.ts`
+- Modify: `apps/internal-web/src/features/intake-orders/intake-labels.ts:14-43` (widen the four label maps so a caller may name a locale)
 - Test: `apps/internal-web/src/features/intake-orders/print/__tests__/intake-print-data.test.ts`
 
 **Interfaces:**
@@ -65,15 +67,16 @@ Modified:
   - `interface IntakePrintChecklistRow { key: string; label: string; mark: '✓' | '✗' | '—'; muted: boolean }`
   - `interface IntakePrintDamageRow { id: string; number: number; type: string; zone: string; x: number; y: number }`
   - `interface IntakePrintPhotoCell { id: string; url: string; number: number | null }`
-  - `interface IntakePrintModel { … }` (full shape in Step 3)
-  - `buildIntakePrintModel(order: IntakeOrderDetail, locale: string): IntakePrintModel`
+  - `type IntakePrintLocale = 'sr' | 'en'`
+  - `interface IntakePrintModel { … }` (full shape in Step 3) — it **carries its own `locale`**, so a block component takes one prop and still resolves its captions in the chosen language
+  - `buildIntakePrintModel(order: IntakeOrderDetail, locale: IntakePrintLocale): IntakePrintModel`
 
 - [ ] **Step 1: Write the failing tests**
 
 Create `apps/internal-web/src/features/intake-orders/print/__tests__/intake-print-data.test.ts`:
 
 ```ts
-import { setLocale } from '@mr/i18n'
+import { m, setLocale } from '@mr/i18n'
 import { IntakeDamageType } from '@mr/shared'
 import { beforeAll, describe, expect, it } from 'vitest'
 
@@ -237,6 +240,32 @@ describe('buildIntakePrintModel', () => {
 
     expect(van).not.toEqual(car)
   })
+
+  it('speaks the language it was asked for, not the one the app is in', () => {
+    // The app is Serbian (`setLocale('sr')` above) because that is what the office works in. A
+    // foreign customer still gets an English paper, and the choice must not leak into the app.
+    const order = intakeOrderDetailFixture({ ownerRemarks: null })
+
+    expect(buildIntakePrintModel(order, 'sr').ownerRemarks).toBe(
+      m.intake_print_no_remarks({}, { locale: 'sr' }),
+    )
+    expect(buildIntakePrintModel(order, 'en').ownerRemarks).toBe(
+      m.intake_print_no_remarks({}, { locale: 'en' }),
+    )
+    expect(buildIntakePrintModel(order, 'en').ownerRemarks).not.toBe(
+      buildIntakePrintModel(order, 'sr').ownerRemarks,
+    )
+  })
+
+  it('translates the labels it resolves, not just the sentences', () => {
+    const order = intakeOrderDetailFixture()
+
+    const sr = buildIntakePrintModel(order, 'sr')
+    const en = buildIntakePrintModel(order, 'en')
+
+    expect(en.checklist[0]?.label).not.toBe(sr.checklist[0]?.label)
+    expect(en.arrivalMode).not.toBe(sr.arrivalMode)
+  })
 })
 ```
 
@@ -247,7 +276,29 @@ describe('buildIntakePrintModel', () => {
 Run: `pnpm --filter internal-web test -- intake-print-data`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the model**
+- [ ] **Step 3: Let the label maps take a locale**
+
+`intake-labels.ts` types all four maps as `Record<K, () => string>`, which **erases** the second
+argument the compiled messages actually accept. Widen the type — the values are unchanged, and every
+existing bare call site (`INTAKE_CHECKLIST_LABELS[key]()`) keeps working:
+
+```ts
+/**
+ * A message as Paraglide compiles it: callable bare for the screen, or with an explicit locale for
+ * the printed work order, which must speak the customer's language and not the operator's
+ * (spec §1 decision, 2026-08-10). Typing these as `() => string` silently threw that away.
+ */
+type IntakeLabel = (inputs?: Record<string, never>, options?: { locale?: 'sr' | 'en' }) => string
+
+export const INTAKE_CHECKLIST_LABELS: Record<IntakeChecklistKey, IntakeLabel> = { …unchanged… }
+export const INTAKE_VEHICLE_TYPE_LABELS: Record<IntakeVehicleType, IntakeLabel> = { …unchanged… }
+export const INTAKE_ARRIVAL_MODE_LABELS: Record<IntakeArrivalMode, IntakeLabel> = { …unchanged… }
+export const INTAKE_DAMAGE_TYPE_LABELS: Record<IntakeDamageType, IntakeLabel> = { …unchanged… }
+```
+
+Run `pnpm --filter internal-web typecheck` right after: nothing else should move.
+
+- [ ] **Step 4: Write the model**
 
 Create `apps/internal-web/src/features/intake-orders/print/intake-print-data.ts`:
 
@@ -258,6 +309,8 @@ import {
   INTAKE_CHECKLIST_KEYS,
   type IntakeOrderDetail,
 } from '@mr/shared'
+
+import { internalIntlLocale } from '~/lib/internal-format'
 
 import {
   INTAKE_ARRIVAL_MODE_LABELS,
@@ -277,6 +330,13 @@ export const PRINT_MAX_PHOTOS = 6
 export const PRINT_MAX_LIST_ITEMS = 5
 export const PRINT_MAX_DAMAGES = 12
 export const PRINT_MAX_REMARKS = 180
+
+/**
+ * The paper's language, chosen at print time. A foreign customer brings a car in and signs an
+ * English work order while the office keeps working in Serbian — so this is an argument, never
+ * `getLocale()`. Every `m.*` call below therefore names it explicitly.
+ */
+export type IntakePrintLocale = 'sr' | 'en'
 
 export interface IntakePrintChecklistRow {
   key: string
@@ -304,6 +364,8 @@ export interface IntakePrintPhotoCell {
 }
 
 export interface IntakePrintModel {
+  /** Travels with the data so a block component takes one prop and still resolves its captions. */
+  locale: IntakePrintLocale
   orderNumber: string
   receivedAt: string
   ownerName: string
@@ -340,8 +402,9 @@ const DASH = '—'
 function checklistRow(
   key: (typeof INTAKE_CHECKLIST_KEYS)[number],
   value: boolean | null,
+  locale: IntakePrintLocale,
 ): IntakePrintChecklistRow {
-  const label = INTAKE_CHECKLIST_LABELS[key]()
+  const label = INTAKE_CHECKLIST_LABELS[key]({}, { locale })
   if (value === true) {
     return { key, label, mark: '✓', muted: false }
   }
@@ -351,9 +414,9 @@ function checklistRow(
   return { key, label, mark: DASH, muted: true }
 }
 
-function clipRemarks(value: string | null): string {
+function clipRemarks(value: string | null, locale: IntakePrintLocale): string {
   if (value === null || value.trim().length === 0) {
-    return m.intake_print_no_remarks()
+    return m.intake_print_no_remarks({}, { locale })
   }
   const trimmed = value.trim()
   return trimmed.length <= PRINT_MAX_REMARKS
@@ -365,11 +428,14 @@ function clipRemarks(value: string | null): string {
  * Everything the sheet draws, already cut to size. Built from the order alone — the print has its
  * own typographic scale and a white background, so it never reads the screen's components.
  */
-export function buildIntakePrintModel(order: IntakeOrderDetail, locale: string): IntakePrintModel {
+export function buildIntakePrintModel(
+  order: IntakeOrderDetail,
+  locale: IntakePrintLocale,
+): IntakePrintModel {
   const damages = order.damages.slice(0, PRINT_MAX_DAMAGES).map((damage, index) => ({
     id: damage.id,
     number: index + 1,
-    type: INTAKE_DAMAGE_TYPE_LABELS[damage.type](),
+    type: INTAKE_DAMAGE_TYPE_LABELS[damage.type]({}, { locale }),
     zone: damage.zone,
     x: damage.x,
     y: damage.y,
@@ -386,23 +452,30 @@ export function buildIntakePrintModel(order: IntakeOrderDetail, locale: string):
     number: numberOf(photo.damageId),
   }))
 
+  // Dates follow the paper's language too — an English work order with a Serbian long date is the
+  // same mistake in a smaller place.
+  const dateLocale = internalIntlLocale(locale)
+
   return {
+    locale,
     orderNumber: order.orderNumber,
-    receivedAt: formatIntakeReceivedAtLong(order.receivedAt, locale),
+    receivedAt: formatIntakeReceivedAtLong(order.receivedAt, dateLocale),
     ownerName: order.ownerName,
     ownerAddress: order.ownerAddress ?? DASH,
     ownerPhone: order.ownerPhone,
     vehicle: order.vehicle,
     plate: order.plate,
-    vehicleTypeLabel: INTAKE_VEHICLE_TYPE_LABELS[order.vehicleType]().toUpperCase(),
+    vehicleTypeLabel: INTAKE_VEHICLE_TYPE_LABELS[order.vehicleType]({}, { locale }).toUpperCase(),
     vin: order.vin ?? DASH,
     mileage: order.mileage === null ? DASH : `${order.mileage} km`,
-    arrivalMode: INTAKE_ARRIVAL_MODE_LABELS[order.arrivalMode]().toLowerCase(),
-    checklist: INTAKE_CHECKLIST_KEYS.map((key) => checklistRow(key, order.checklist[key])),
+    arrivalMode: INTAKE_ARRIVAL_MODE_LABELS[order.arrivalMode]({}, { locale }).toLowerCase(),
+    checklist: INTAKE_CHECKLIST_KEYS.map((key) =>
+      checklistRow(key, order.checklist[key], locale),
+    ),
     fuelLevel: order.fuelLevel,
     damageCount: order.damages.length,
     photoCount: order.photos.length,
-    ownerRemarks: clipRemarks(order.ownerRemarks),
+    ownerRemarks: clipRemarks(order.ownerRemarks, locale),
     damages,
     damagesOverflow: order.damages.length - damages.length,
     services: order.services.slice(0, PRINT_MAX_LIST_ITEMS),
@@ -410,14 +483,14 @@ export function buildIntakePrintModel(order: IntakeOrderDetail, locale: string):
     photos,
     photoOverflowText:
       order.photos.length > PRINT_MAX_PHOTOS
-        ? m.intake_print_photos_more({ count: order.photos.length })
+        ? m.intake_print_photos_more({ count: order.photos.length }, { locale })
         : null,
     amended:
       order.amendedAt === null
         ? null
         : {
-            at: formatIntakeReceivedAtLong(order.amendedAt, locale),
-            by: order.amendedByName ?? m.intake_detail_amended_by_unknown(),
+            at: formatIntakeReceivedAtLong(order.amendedAt, dateLocale),
+            by: order.amendedByName ?? m.intake_detail_amended_by_unknown({}, { locale }),
           },
     technicianName: order.technicianName,
     technicianSignature: order.technicianSignature,
@@ -482,7 +555,7 @@ Header band, owner and vehicle, recorded condition, and the footer that carries 
 **Interfaces:**
 
 - Consumes: `buildIntakePrintModel`, `IntakePrintModel` (Task 1); `SIGNATURE_VIEW_BOX` from `../wizard/intake-signature-pad`.
-- Produces: `IntakePrintSheet({ order }: { order: IntakeOrderDetail }): ReactElement` — the whole page, with `id="intake-print-sheet"` on its root (the print CSS in Task 4 targets exactly that id). `IntakePrintCondition({ model }: { model: IntakePrintModel }): ReactElement`.
+- Produces: `IntakePrintSheet({ order, locale }: { order: IntakeOrderDetail; locale: IntakePrintLocale }): ReactElement` — the whole page, with `id="intake-print-sheet"` on its root (the print CSS in Task 4 targets exactly that id). `IntakePrintCondition({ model }: { model: IntakePrintModel }): ReactElement` — one prop, because the model carries the locale.
 - Task 3 adds `IntakePrintDamages` and `IntakePrintPhotos` into the same sheet; leave the two slots as explicit `{/* Task 3 */}` comments so the sheet does not have to be restructured.
 
 - [ ] **Step 1: Write the failing tests**
@@ -501,12 +574,12 @@ describe('IntakePrintSheet', () => {
   it('names the order and the two parties', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderDetailUi(<IntakePrintSheet order={order} />)
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
     expect(screen.getByText(order.orderNumber)).toBeDefined()
     expect(screen.getAllByText(order.ownerName).length).toBeGreaterThan(0)
     expect(screen.getByText(order.technicianName)).toBeDefined()
-    expect(screen.getByText(m.intake_print_title())).toBeDefined()
+    expect(screen.getByText(m.intake_print_title({}, { locale: 'sr' }))).toBeDefined()
   })
 
   it('prints an unchecked equipment row as a dash', async () => {
@@ -523,16 +596,16 @@ describe('IntakePrintSheet', () => {
       },
     })
 
-    await renderDetailUi(<IntakePrintSheet order={order} />)
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
     expect(screen.getByTestId('print-check-rezervna')).toHaveTextContent('—')
     expect(screen.getByTestId('print-check-dizalica')).toHaveTextContent('✓')
   })
 
   it('carries no amendment mark on an order nobody corrected', async () => {
-    await renderDetailUi(<IntakePrintSheet order={intakeOrderDetailFixture()} />)
+    await renderDetailUi(<IntakePrintSheet order={intakeOrderDetailFixture()} locale="sr" />)
 
-    expect(screen.queryByText(m.intake_print_amended())).toBeNull()
+    expect(screen.queryByText(m.intake_print_amended({}, { locale: 'sr' }))).toBeNull()
   })
 
   it('marks a corrected order neutrally, with when and who', async () => {
@@ -543,16 +616,16 @@ describe('IntakePrintSheet', () => {
       amendedByName: 'Jelena Petrović',
     })
 
-    await renderDetailUi(<IntakePrintSheet order={order} />)
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
-    expect(screen.getByText(m.intake_print_amended())).toBeDefined()
+    expect(screen.getByText(m.intake_print_amended({}, { locale: 'sr' }))).toBeDefined()
     expect(screen.getByText(/Jelena Petrović/)).toBeDefined()
   })
 
   it('draws both signatures as vector paths, not images', async () => {
     const order = intakeOrderDetailFixture()
 
-    const { container } = await renderDetailUi(<IntakePrintSheet order={order} />)
+    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
     const paths = container.querySelectorAll('[data-testid="print-signature"] path')
     expect(paths).toHaveLength(2)
@@ -560,11 +633,14 @@ describe('IntakePrintSheet', () => {
   })
 
   it('counts the photos in the legal sentence, because that is what is being signed for', async () => {
-    await renderDetailUi(<IntakePrintSheet order={intakeOrderDetailFixture()} />)
+    await renderDetailUi(<IntakePrintSheet order={intakeOrderDetailFixture()} locale="sr" />)
 
     expect(
       screen.getByText(
-        m.intake_print_legal({ count: 0, number: intakeOrderDetailFixture().orderNumber }),
+        m.intake_print_legal(
+          { count: 0, number: intakeOrderDetailFixture().orderNumber },
+          { locale: 'sr' },
+        ),
       ),
     ).toBeDefined()
   })
@@ -634,9 +710,11 @@ import type { IntakePrintModel } from './intake-print-data'
  * document the customer signs (`docs/25` §4.4).
  */
 export function IntakePrintCondition({ model }: { model: IntakePrintModel }): ReactElement {
+  const { locale } = model
+
   return (
     <section>
-      <div className={PRINT_BAND}>{m.intake_print_section_condition()}</div>
+      <div className={PRINT_BAND}>{m.intake_print_section_condition({}, { locale })}</div>
 
       <div className="mt-[9px] grid grid-cols-4 gap-x-5 gap-y-[6px] text-[11.5px]">
         {model.checklist.map((row) => (
@@ -660,19 +738,19 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
 
       <div className="mt-3 flex gap-8 border-t border-[#e6e7e9] pt-[11px]">
         <div>
-          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_fuel()}</div>
+          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_fuel({}, { locale })}</div>
           <div className={PRINT_FIGURE}>{model.fuelLevel}/8</div>
         </div>
         <div>
-          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_defects()}</div>
+          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_defects({}, { locale })}</div>
           <div className={cn(PRINT_FIGURE, 'text-[#ed1c24]')}>{model.damageCount}</div>
         </div>
         <div>
-          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_photos()}</div>
+          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_photos({}, { locale })}</div>
           <div className={PRINT_FIGURE}>{model.photoCount}</div>
         </div>
         <div className="flex-1">
-          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_remarks()}</div>
+          <div className={PRINT_FIGURE_LABEL}>{m.intake_print_remarks({}, { locale })}</div>
           <div className="mt-[2px] text-[11.5px] leading-[1.5]">{model.ownerRemarks}</div>
         </div>
       </div>
@@ -711,15 +789,17 @@ export const PRINT_RULE = 'h-px bg-[#e6e7e9]'
 Create `intake-print-sheet.tsx`. Values are the prototype's (`prijem-prototip-v2.dc.html:672-800`), with the header turned into a black band per decision ⑨:
 
 ```tsx
-import { getLocale, m } from '@mr/i18n'
+import { m } from '@mr/i18n'
 import type { IntakeOrderDetail } from '@mr/shared'
 import type { ReactElement } from 'react'
 
-import { internalIntlLocale } from '~/lib/internal-format'
-
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
 import { IntakePrintCondition } from './intake-print-condition'
-import { buildIntakePrintModel, type IntakePrintModel } from './intake-print-data'
+import {
+  buildIntakePrintModel,
+  type IntakePrintLocale,
+  type IntakePrintModel,
+} from './intake-print-data'
 import { PRINT_EYEBROW, PRINT_RULE } from './intake-print-styles'
 
 /**
@@ -757,8 +837,15 @@ function SignatureBox({ path, role, name }: { path: string | null; role: string;
  * `print-color-adjust: exact` is not decoration — without it the printer drops the red bands and
  * the defect markers, and the sheet loses the two things a reader navigates by.
  */
-export function IntakePrintSheet({ order }: { order: IntakeOrderDetail }): ReactElement {
-  const model: IntakePrintModel = buildIntakePrintModel(order, internalIntlLocale(getLocale()))
+export function IntakePrintSheet({
+  order,
+  locale,
+}: {
+  order: IntakeOrderDetail
+  /** Chosen in the preview, never read from the app: the paper speaks the customer's language. */
+  locale: IntakePrintLocale
+}): ReactElement {
+  const model: IntakePrintModel = buildIntakePrintModel(order, locale)
 
   return (
     <div
@@ -771,9 +858,9 @@ export function IntakePrintSheet({ order }: { order: IntakeOrderDetail }): React
         <img src="/internal/logo-white.png" alt="MR Engines" className="h-[30px] w-auto" />
         <div className="ml-2">
           <div className="text-[22px] font-black uppercase leading-none tracking-[-0.02em]">
-            {m.intake_print_title()}
+            {m.intake_print_title({}, { locale })}
           </div>
-          <div className="mt-1 text-[10.5px] text-[#b9babd]">{m.intake_print_subtitle()}</div>
+          <div className="mt-1 text-[10.5px] text-[#b9babd]">{m.intake_print_subtitle({}, { locale })}</div>
         </div>
         <div className="ml-auto text-right">
           <div className="font-mono text-[20px] font-bold">{model.orderNumber}</div>
@@ -790,7 +877,7 @@ export function IntakePrintSheet({ order }: { order: IntakeOrderDetail }): React
         {/* Blok 2 */}
         <div className="grid grid-cols-2 gap-[34px]">
           <div>
-            <div className={PRINT_EYEBROW}>{m.intake_print_section_owner()}</div>
+            <div className={PRINT_EYEBROW}>{m.intake_print_section_owner({}, { locale })}</div>
             <div className="mt-[7px] text-[15px] font-extrabold">{model.ownerName}</div>
             <div className="mt-[3px] text-[11.5px] leading-[1.6] text-[#54555b]">
               {model.ownerAddress}
@@ -800,7 +887,7 @@ export function IntakePrintSheet({ order }: { order: IntakeOrderDetail }): React
           </div>
           <div>
             <div className={PRINT_EYEBROW}>
-              {m.intake_print_section_vehicle({ type: model.vehicleTypeLabel })}
+              {m.intake_print_section_vehicle({ type: model.vehicleTypeLabel }, { locale })}
             </div>
             <div className="mt-[7px] text-[15px] font-extrabold">
               {model.vehicle} · <span className="font-mono">{model.plate}</span>
@@ -825,7 +912,7 @@ export function IntakePrintSheet({ order }: { order: IntakeOrderDetail }): React
           {model.amended === null ? null : (
             <div className="mb-[11px] flex items-center gap-2.5 border-[1.5px] border-[#ed1c24] bg-[rgba(237,28,36,0.06)] px-[11px] py-[7px]">
               <span className="flex-none font-mono text-[8.5px] font-bold uppercase tracking-[0.14em] text-[#ed1c24]">
-                {m.intake_print_amended()}
+                {m.intake_print_amended({}, { locale })}
               </span>
               <span className="ml-auto font-mono text-[9px]">
                 {model.amended.at} · {model.amended.by}
@@ -834,18 +921,18 @@ export function IntakePrintSheet({ order }: { order: IntakeOrderDetail }): React
           )}
 
           <div className="mb-[14px] max-w-[600px] text-[9.5px] leading-[1.5] text-[#54555b]">
-            {m.intake_print_legal({ count: model.photoCount, number: model.orderNumber })}
+            {m.intake_print_legal({ count: model.photoCount, number: model.orderNumber }, { locale })}
           </div>
 
           <div className="grid grid-cols-2 gap-10">
             <SignatureBox
               path={model.technicianSignature}
-              role={m.intake_print_role_technician()}
+              role={m.intake_print_role_technician({}, { locale })}
               name={model.technicianName}
             />
             <SignatureBox
               path={model.ownerSignature}
-              role={m.intake_print_role_owner()}
+              role={m.intake_print_role_owner({}, { locale })}
               name={model.ownerName}
             />
           </div>
@@ -901,7 +988,10 @@ describe('IntakePrintSheet — evidence', () => {
 
   it('draws the silhouette of the order vehicle type, not a car by default', async () => {
     const { container } = await renderDetailUi(
-      <IntakePrintSheet order={intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van })} />,
+      <IntakePrintSheet
+        order={intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van })}
+        locale="sr"
+      />,
     )
 
     const paths = container.querySelectorAll('[data-testid="print-silhouette"] path')
@@ -915,7 +1005,7 @@ describe('IntakePrintSheet — evidence', () => {
       photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444', damageId: 'd2' })],
     })
 
-    const { container } = await renderDetailUi(<IntakePrintSheet order={order} />)
+    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
     expect(container.querySelector('[data-testid="print-marker-2"]')).not.toBeNull()
     expect(screen.getByTestId('print-damage-2')).toHaveTextContent('Zona 2')
@@ -925,7 +1015,7 @@ describe('IntakePrintSheet — evidence', () => {
   it('says there were none rather than leaving the defect list blank', async () => {
     await renderDetailUi(<IntakePrintSheet order={intakeOrderDetailFixture({ damages: [] })} />)
 
-    expect(screen.getByText(m.intake_print_no_damage())).toBeDefined()
+    expect(screen.getByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeDefined()
   })
 
   it('says how many defects were left off the page', async () => {
@@ -933,10 +1023,10 @@ describe('IntakePrintSheet — evidence', () => {
       damages: Array.from({ length: 15 }, (_, i) => damage(i + 1)),
     })
 
-    await renderDetailUi(<IntakePrintSheet order={order} />)
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
     expect(
-      screen.getByText(m.intake_print_damages_more({ count: 3, number: order.orderNumber })),
+      screen.getByText(m.intake_print_damages_more({ count: 3, number: order.orderNumber }, { locale: 'sr' })),
     ).toBeDefined()
   })
 
@@ -946,7 +1036,7 @@ describe('IntakePrintSheet — evidence', () => {
       damages: [{ ...damage(1), type: IntakeDamageType.Rust }],
     })
 
-    const { container } = await renderDetailUi(<IntakePrintSheet order={order} />)
+    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
 
     expect(container.querySelector('[data-testid="print-marker-1"] circle')?.getAttribute('fill'))
       .toBe('#ed1c24')
@@ -990,9 +1080,11 @@ import { PRINT_BAND, PRINT_EYEBROW } from './intake-print-styles'
  * nobody can see is a defect the customer never agreed to.
  */
 export function IntakePrintDamages({ model }: { model: IntakePrintModel }): ReactElement {
+  const { locale } = model
+
   return (
     <section>
-      <div className={PRINT_BAND}>{m.intake_print_section_scheme()}</div>
+      <div className={PRINT_BAND}>{m.intake_print_section_scheme({}, { locale })}</div>
 
       <div className="mt-[9px] grid grid-cols-[186px_1fr] gap-7">
         <svg
@@ -1035,7 +1127,7 @@ export function IntakePrintDamages({ model }: { model: IntakePrintModel }): Reac
 
         <div className="flex flex-col gap-[14px]">
           <div>
-            <div className={PRINT_EYEBROW}>{m.intake_print_section_defects()}</div>
+            <div className={PRINT_EYEBROW}>{m.intake_print_section_defects({}, { locale })}</div>
             {model.damages.map((damage) => (
               <div
                 key={damage.id}
@@ -1048,21 +1140,21 @@ export function IntakePrintDamages({ model }: { model: IntakePrintModel }): Reac
               </div>
             ))}
             {model.damages.length === 0 ? (
-              <p className="text-[11.5px] italic text-[#54555b]">{m.intake_print_no_damage()}</p>
+              <p className="text-[11.5px] italic text-[#54555b]">{m.intake_print_no_damage({}, { locale })}</p>
             ) : null}
             {model.damagesOverflow > 0 ? (
               <p className="mt-[5px] text-[9.5px] text-[#54555b]">
-                {m.intake_print_damages_more({
-                  count: model.damagesOverflow,
-                  number: model.orderNumber,
-                })}
+                {m.intake_print_damages_more(
+                  { count: model.damagesOverflow, number: model.orderNumber },
+                  { locale },
+                )}
               </p>
             ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-[22px]">
             <div>
-              <div className={PRINT_EYEBROW}>{m.intake_print_section_services()}</div>
+              <div className={PRINT_EYEBROW}>{m.intake_print_section_services({}, { locale })}</div>
               {model.services.map((service) => (
                 <div key={service} className="text-[12px] leading-[1.8]">
                   {service}
@@ -1070,7 +1162,7 @@ export function IntakePrintDamages({ model }: { model: IntakePrintModel }): Reac
               ))}
             </div>
             <div>
-              <div className={PRINT_EYEBROW}>{m.intake_print_section_materials()}</div>
+              <div className={PRINT_EYEBROW}>{m.intake_print_section_materials({}, { locale })}</div>
               {model.materials.map((material) => (
                 <div key={material} className="text-[12px] leading-[1.8]">
                   {material}
@@ -1101,10 +1193,12 @@ import { PRINT_BAND } from './intake-print-styles'
  * ties a photograph to a line in the list; without it the photos are six pictures of a car.
  */
 export function IntakePrintPhotos({ model }: { model: IntakePrintModel }): ReactElement {
+  const { locale } = model
+
   return (
     <section>
       <div className={PRINT_BAND}>
-        {m.intake_print_section_photos({ count: model.photoCount })}
+        {m.intake_print_section_photos({ count: model.photoCount }, { locale })}
       </div>
 
       <div className="mt-[9px] grid grid-cols-6 gap-2">
@@ -1184,7 +1278,7 @@ git commit -m "feat(intake): the printed order carries the drawing, the defects 
 Create `__tests__/intake-print-dialog.test.tsx`:
 
 ```tsx
-import { m } from '@mr/i18n'
+import { getLocale, m } from '@mr/i18n'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -1251,6 +1345,23 @@ describe('IntakePrintDialog', () => {
     )
   })
 
+  it('prints the language the operator picked, not the one the app is in', async () => {
+    // A foreign customer brings the car in. The office keeps working in Serbian; the paper he
+    // signs must be English, and choosing that must not change the app around it.
+    await renderDetailUi(
+      <IntakePrintDialog order={intakeOrderDetailFixture()} open onClose={() => {}} />,
+    )
+
+    expect(screen.getByText(m.intake_print_title({}, { locale: 'sr' }))).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: 'en' }))
+
+    expect(screen.getByText(m.intake_print_title({}, { locale: 'en' }))).toBeDefined()
+    expect(screen.queryByText(m.intake_print_title({}, { locale: 'sr' }))).toBeNull()
+    // The app's own chrome is untouched — `getLocale()` never moved.
+    expect(getLocale()).toBe('sr')
+  })
+
   it('closes on the close button and on Escape', async () => {
     const onClose = vi.fn()
 
@@ -1297,8 +1408,12 @@ Expected: FAIL — no dialog module; the header's print button is disabled and a
 
 - [ ] **Step 3: Add the strings**
 
-`sr.json`: `"intake_print_preview": "PREGLED ŠTAMPE · A4 · {type}"`, `"intake_print_waiting": "Učitavanje fotografija…"`.
-`en.json`: `"intake_print_preview": "PRINT PREVIEW · A4 · {type}"`, `"intake_print_waiting": "Loading photos…"`.
+`sr.json`: `"intake_print_preview": "PREGLED ŠTAMPE · A4 · {type}"`, `"intake_print_waiting": "Učitavanje fotografija…"`, `"intake_print_language": "Jezik naloga"`.
+`en.json`: `"intake_print_preview": "PRINT PREVIEW · A4 · {type}"`, `"intake_print_waiting": "Loading photos…"`, `"intake_print_language": "Work order language"`.
+
+⚠️ These three are the preview's own chrome, so they follow the **app's** language (bare `m.*`) —
+only the sheet inside follows the chosen one. The `sr` / `en` segment labels are the codes
+themselves and are not translated.
 
 ⚠️ **Delete** `intake_detail_print_unavailable` from both files — it is the sentence that says this feature does not exist yet. Grep for it first; the header is its only consumer.
 
@@ -1345,11 +1460,13 @@ Create `intake-print.css`. This is the house pattern already proven in
 Create `intake-print-dialog.tsx`:
 
 ```tsx
-import { m } from '@mr/i18n'
+import { getLocale, m } from '@mr/i18n'
 import type { IntakeOrderDetail } from '@mr/shared'
+import { cn } from '@mr/ui'
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
+import { PRINT_MAX_PHOTOS, type IntakePrintLocale } from './intake-print-data'
 import { IntakePrintSheet } from './intake-print-sheet'
 import './intake-print.css'
 
@@ -1371,8 +1488,16 @@ export function IntakePrintDialog({
   open: boolean
   onClose: () => void
 }): ReactElement | null {
-  const expected = Math.min(order.photos.length, 6)
+  const expected = Math.min(order.photos.length, PRINT_MAX_PHOTOS)
   const [settled, setSettled] = useState(0)
+  /**
+   * Defaults to the office's own language and is then the operator's to change — a foreign
+   * customer signs an English work order while the app around it stays Serbian. Switching it
+   * resets the image gate, because the sheet remounts and the thumbnails load again.
+   */
+  const [printLocale, setPrintLocale] = useState<IntakePrintLocale>(() =>
+    getLocale() === 'en' ? 'en' : 'sr',
+  )
 
   useEffect(() => {
     if (!open) {
@@ -1415,6 +1540,32 @@ export function IntakePrintDialog({
         {ready ? null : (
           <span className="font-mono text-[10.5px] text-[#b9babd]">{m.intake_print_waiting()}</span>
         )}
+
+        {/* The paper's language, not the app's. Two segments rather than a dialog before the
+            preview: the operator SEES what he is about to hand over. */}
+        <div
+          role="group"
+          aria-label={m.intake_print_language()}
+          className="flex overflow-hidden rounded-[9px] border border-white/25"
+        >
+          {(['sr', 'en'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={printLocale === value}
+              onClick={() => {
+                setPrintLocale(value)
+                setSettled(0)
+              }}
+              className={cn(
+                'h-[42px] w-[52px] cursor-pointer font-mono text-[12px] font-bold uppercase',
+                printLocale === value ? 'bg-white text-[#141417]' : 'bg-transparent text-white',
+              )}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -1437,7 +1588,7 @@ export function IntakePrintDialog({
         onLoad={() => setSettled((count) => count + 1)}
         onError={() => setSettled((count) => count + 1)}
       >
-        <IntakePrintSheet order={order} />
+        <IntakePrintSheet key={printLocale} order={order} locale={printLocale} />
       </div>
     </div>
   )
@@ -1559,12 +1710,10 @@ git push origin feat/vehicle-intake
 
 ## Open questions — answer before Task 2, they change strings only
 
-1. **Which language does the paper print in?** This plan follows the house rule (all strings through
-   Paraglide, so the sheet follows the operator's UI language) and ships `en` translations for key
-   parity. That means an operator working in English prints an English work order — including the
-   legal sentence — for a Serbian customer to sign. If the paper must always be Serbian regardless
-   of the UI, say so: it is a one-line change in `IntakePrintSheet`, but it has to be a decision,
-   not a default.
+1. ~~Which language does the paper print in?~~ **Answered 2026-08-10:** both, and it is chosen at
+   print time — a foreigner may bring a car in. The preview carries an `SR` / `EN` segment, the
+   sheet renders in the chosen language through Paraglide's per-call `{ locale }`, and the app's
+   own language never moves. Built into Tasks 1–4 above.
 2. **The round "MADE IN SERBIA" emblem** that "Obaveze kupca" carries beside the wordmark is not in
    the repo, and neither is the small emblem in its footer. This plan uses only
    `public/internal/logo-white.png`, which is. Hand over the files and both slots get filled.
