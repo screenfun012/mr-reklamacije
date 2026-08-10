@@ -150,7 +150,19 @@ export function TabOverview({
   const fuelReadValue =
     order.signedAt === null ? DASH : m.intake_fact_fuel_value({ level: order.fuelLevel })
 
-  const facts: { label: string; value: ReactNode; className: string }[] = [
+  /**
+   * A fact cell is a quarter of the left column — 116px on the office iPad held upright, which is
+   * enough for text and not enough for a control. Measured 2026-08-10 at 1024×1366: the phone
+   * input showed `+381 64 111` and swallowed the last four digits WHILE THEY WERE BEING CORRECTED,
+   * and the fuel stepper's `+` sat on top of the neighbouring NEDOSTACI value. The page never
+   * overflowed, so nothing above the cell could report it.
+   *
+   * So the two cells that hold controls take two columns while the mode is open. Read mode is
+   * untouched: its values are text and wrap.
+   */
+  const controlCell = amend === undefined ? '' : 'col-span-2'
+
+  const facts: { label: string; value: ReactNode; className: string; cellClassName?: string }[] = [
     {
       label: m.intake_fact_received(),
       value: formatIntakeReceivedAtLong(order.receivedAt, locale),
@@ -195,6 +207,7 @@ export function TabOverview({
           />
         ),
       className: 'font-mono font-medium',
+      cellClassName: controlCell,
     },
     {
       label: m.intake_fact_fuel(),
@@ -208,6 +221,7 @@ export function TabOverview({
           />
         ),
       className: 'font-mono font-semibold',
+      cellClassName: controlCell,
     },
     {
       label: m.intake_fact_damages(),
@@ -257,7 +271,7 @@ export function TabOverview({
               <h2 className={cn(CAPTION, 'mb-3.5')}>{m.intake_detail_card_basics()}</h2>
               <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
                 {facts.map((fact) => (
-                  <div key={fact.label} className="min-w-0">
+                  <div key={fact.label} className={cn('min-w-0', fact.cellClassName)}>
                     <div className={cn(FIELD_KEY, 'mb-[5px]')}>{fact.label}</div>
                     <div className={cn('break-words text-sm text-mri-text', fact.className)}>
                       {fact.value}

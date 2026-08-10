@@ -194,6 +194,27 @@ describe('TabOverview in edit mode', () => {
     expect(patch).toHaveBeenCalledWith({ fuelLevel: 7 })
   })
 
+  it('gives the two control cells two columns, because one is 116px on the office iPad', async () => {
+    // jsdom has no layout, so this pins the DECISION, not the pixels: measured 2026-08-10 at
+    // 1024×1366 the phone input showed `+381 64 111` and ate the last four digits while they were
+    // being corrected, and the fuel `+` sat on the neighbouring value. The page never overflowed.
+    const { order, amend } = editing()
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    const cellOf = (label: string): Element | null => screen.getByText(label).parentElement
+    expect(cellOf(m.intake_field_owner_phone())).toHaveClass('col-span-2')
+    expect(cellOf(m.intake_fact_fuel())).toHaveClass('col-span-2')
+  })
+
+  it('leaves the read view on four even columns', async () => {
+    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} />)
+
+    const cell = screen.getByText(m.intake_field_owner_phone()).parentElement
+    expect(cell).toHaveClass('min-w-0')
+    expect(cell).not.toHaveClass('col-span-2')
+  })
+
   it('edits the phone, and marks it invalid once it is emptied', async () => {
     const { order, patch, amend } = editing()
 
