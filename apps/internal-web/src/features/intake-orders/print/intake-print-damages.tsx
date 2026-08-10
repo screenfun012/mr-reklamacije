@@ -5,6 +5,9 @@ import { INTAKE_SILHOUETTE_VIEWBOX } from '../wizard/intake-silhouettes'
 import type { IntakePrintModel } from './intake-print-data'
 import { PRINT_BAND, PRINT_EYEBROW } from './intake-print-styles'
 
+/** Past this many the list flows in two columns — see the comment at the list itself. */
+const DEFECTS_PER_COLUMN = 6
+
 /**
  * The drawing and what it means. Every marker prints solid red with a white digit, whatever the
  * defect type: the screen's amber and grey do not survive a printer, and a marker nobody can see
@@ -59,17 +62,29 @@ export function IntakePrintDamages({ model }: { model: IntakePrintModel }): Reac
         <div className="flex flex-col gap-[14px]">
           <div>
             <div className={PRINT_EYEBROW}>{m.intake_print_section_defects({}, { locale })}</div>
-            {model.damages.map((damage) => (
-              <div
-                key={damage.id}
-                data-testid={`print-damage-${damage.number}`}
-                className="flex gap-3 border-b border-[#e6e7e9] py-[5px] text-[12px]"
-              >
-                <span className="w-4 font-mono font-bold">{damage.number}</span>
-                <span className="flex-1">{damage.type}</span>
-                <span className="text-[#54555b]">{damage.zone}</span>
-              </div>
-            ))}
+            {/*
+              Two columns once the list is long. Measured 2026-08-10 in the browser: a defect row
+              is 30px, and twelve of them in a single column push the sheet to 1247px against a
+              fixed 1123 — the page overflows by 124px and the footer with both signatures walks
+              onto a second sheet. Two columns fit the same twelve.
+              The alternative was cutting the cap to the seven that fit, and defects are the one
+              thing on this paper that must not be silently left off it.
+            */}
+            <div
+              className={model.damages.length > DEFECTS_PER_COLUMN ? 'columns-2 gap-[18px]' : ''}
+            >
+              {model.damages.map((damage) => (
+                <div
+                  key={damage.id}
+                  data-testid={`print-damage-${damage.number}`}
+                  className="flex break-inside-avoid gap-3 border-b border-[#e6e7e9] py-[5px] text-[12px]"
+                >
+                  <span className="w-4 font-mono font-bold">{damage.number}</span>
+                  <span className="flex-1">{damage.type}</span>
+                  <span className="text-[#54555b]">{damage.zone}</span>
+                </div>
+              ))}
+            </div>
             {model.damages.length === 0 ? (
               <p className="text-[11.5px] italic text-[#54555b]">
                 {m.intake_print_no_damage({}, { locale })}

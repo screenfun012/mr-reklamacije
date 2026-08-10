@@ -161,3 +161,32 @@ describe('IntakePrintSheet — evidence', () => {
     ).toBe('#ed1c24')
   })
 })
+
+describe('IntakePrintSheet — the one-page rule', () => {
+  function damage(n: number) {
+    return { id: `d${n}`, type: IntakeDamageType.Scratch, x: 100 + n, y: 60 + n, zone: `Zona ${n}` }
+  }
+
+  /*
+   * jsdom has no layout, so this pins the DECISION, not the pixels. Measured in a real browser
+   * 2026-08-10: a defect row is 30px and twelve in ONE column push the sheet to 1247px against a
+   * fixed 1123 — the footer with both signatures walks onto a second page. Two columns fit twelve.
+   */
+  it('flows a long defect list in two columns, so twelve of them still fit on one page', async () => {
+    const order = intakeOrderDetailFixture({
+      damages: Array.from({ length: 12 }, (_, i) => damage(i + 1)),
+    })
+
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+
+    expect(screen.getByTestId('print-damage-1').parentElement).toHaveClass('columns-2')
+  })
+
+  it('keeps a short list in one column, where it reads better', async () => {
+    const order = intakeOrderDetailFixture({ damages: [damage(1), damage(2)] })
+
+    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+
+    expect(screen.getByTestId('print-damage-1').parentElement).not.toHaveClass('columns-2')
+  })
+})
