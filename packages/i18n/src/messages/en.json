@@ -1281,5 +1281,18 @@
   "intake_photo_deleted": "The photo was deleted.",
   "intake_photo_upload_failed": "The photo was not sent. Open the Fotografije tab and try again.",
   "intake_print_no_remarks": "No remarks.",
-  "intake_print_photos_more": "Showing the first 6 of {count} photos — all of them are kept with the digital order."
+  "intake_print_photos_more": "Showing the first 6 of {count} photos — all of them are kept with the digital order.",
+  "intake_print_title": "Work order",
+  "intake_print_subtitle": "Vehicle service intake",
+  "intake_print_section_owner": "OWNER",
+  "intake_print_section_vehicle": "VEHICLE · {type}",
+  "intake_print_section_condition": "CONDITION AT INTAKE",
+  "intake_print_fuel": "FUEL",
+  "intake_print_defects": "DEFECTS",
+  "intake_print_photos": "PHOTOS",
+  "intake_print_remarks": "OWNER'S REMARKS",
+  "intake_print_amended": "⚠ THE ORDER WAS CHANGED AFTER SIGNING",
+  "intake_print_legal": "By signing, it is confirmed that the condition of the vehicle, its equipment and the defects found are faithfully recorded in this order, including the attached photo documentation ({count} photos, archived with order {number}).",
+  "intake_print_role_technician": "TECHNICIAN",
+  "intake_print_role_owner": "OWNER"
 }
