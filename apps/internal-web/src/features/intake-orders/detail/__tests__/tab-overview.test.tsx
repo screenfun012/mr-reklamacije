@@ -1,8 +1,10 @@
 import { m } from '@mr/i18n'
-import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 
+import { INTAKE_CHECKLIST_LABELS } from '../../intake-labels.js'
 import { TabOverview } from '../tab-overview.js'
+import { intakeAmendBufferFrom } from '../use-intake-amend.js'
 import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
 
 const DASH = '—'
@@ -126,5 +128,83 @@ describe('TabOverview', () => {
     )
 
     expect(screen.queryByText(new RegExp(m.intake_detail_amended_by_unknown()))).not.toBeNull()
+  })
+})
+
+describe('TabOverview in edit mode', () => {
+  function editing(order = intakeOrderDetailFixture(), patch = vi.fn()) {
+    return {
+      order,
+      patch,
+      amend: { buffer: intakeAmendBufferFrom(order), patch, phoneValid: true },
+    }
+  }
+
+  it('turns the condition card into live DA/NE controls', async () => {
+    const { order, patch, amend } = editing()
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    const group = screen.getByRole('group', { name: INTAKE_CHECKLIST_LABELS.lanci() })
+    fireEvent.click(within(group).getByText(m.intake_checklist_yes()))
+
+    expect(patch).toHaveBeenCalledWith({ checklist: { ...order.checklist, lanci: true } })
+  })
+
+  it('keeps the third state: tapping the active side again clears the row', async () => {
+    // The prototype's DA/NE control cannot do this, and without it the office can mark a document
+    // "NE" by mistake with no way back — on evidence a customer signed.
+    const { order, patch, amend } = editing()
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    const group = screen.getByRole('group', { name: INTAKE_CHECKLIST_LABELS.dizalica() })
+    fireEvent.click(within(group).getByText(m.intake_checklist_yes()))
+
+    expect(patch).toHaveBeenCalledWith({ checklist: { ...order.checklist, dizalica: null } })
+  })
+
+  it('edits the equipment note, which the server has allowed since V-6-1', async () => {
+    const { order, patch, amend } = editing(intakeOrderDetailFixture({ equipmentNote: null }))
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    fireEvent.change(screen.getByLabelText(m.intake_field_equipment_note()), {
+      target: { value: 'nema ključa za točkove' },
+    })
+
+    expect(patch).toHaveBeenCalledWith({ equipmentNote: 'nema ključa za točkove' })
+  })
+
+  it('steps the fuel level, and refuses to walk past either end of the gauge', async () => {
+    const { order, patch, amend } = editing(intakeOrderDetailFixture({ fuelLevel: 8 }))
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    fireEvent.click(screen.getByRole('button', { name: m.intake_fuel_more() }))
+    expect(patch).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: m.intake_fuel_less() }))
+    expect(patch).toHaveBeenCalledWith({ fuelLevel: 7 })
+  })
+
+  it('edits the phone, and marks it invalid once it is emptied', async () => {
+    const { order, patch, amend } = editing()
+
+    await renderDetailUi(<TabOverview order={order} amend={{ ...amend, phoneValid: false }} />)
+
+    const input = screen.getByLabelText(m.intake_field_owner_phone())
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+
+    fireEvent.change(input, { target: { value: '+381 64 111 2233' } })
+    expect(patch).toHaveBeenCalledWith({ ownerPhone: '+381 64 111 2233' })
+  })
+
+  it('leaves the read view untouched when no mode is open', async () => {
+    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} />)
+
+    expect(screen.queryByRole('group', { name: INTAKE_CHECKLIST_LABELS.lanci() })).toBeNull()
+    expect(screen.queryByRole('button', { name: m.intake_fuel_more() })).toBeNull()
+    expect(screen.queryByLabelText(m.intake_field_equipment_note())).toBeNull()
   })
 })

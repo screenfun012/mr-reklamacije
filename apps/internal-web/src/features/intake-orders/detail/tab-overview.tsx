@@ -1,41 +1,64 @@
 import { getLocale, m } from '@mr/i18n'
-import { INTAKE_CHECKLIST_KEYS, type IntakeOrderDetail } from '@mr/shared'
+import type { IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useState, type ReactElement, type ReactNode } from 'react'
 
 import { internalIntlLocale } from '~/lib/internal-format'
 
-import {
-  INTAKE_ARRIVAL_MODE_LABELS,
-  INTAKE_CHECKLIST_LABELS,
-  INTAKE_DAMAGE_TYPE_LABELS,
-} from '../intake-labels'
+import { INTAKE_ARRIVAL_MODE_LABELS, INTAKE_DAMAGE_TYPE_LABELS } from '../intake-labels'
 import { formatIntakeReceivedAtLong } from '../intake-status'
-import { countConfirmed } from '../wizard/intake-checklist-grid'
 import { IntakeDamageMap, intakeDamageMarkerColour } from '../wizard/intake-damage-map'
 import { buildPhotoCells, type IntakePhotoCell } from '../wizard/intake-photo-grid'
 import { IntakePhotoLightbox } from '../wizard/intake-photo-lightbox'
 import { INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
-import { CAPTION, CARD, DASH } from './detail-styles'
+import { CardCondition } from './card-condition'
+import { CAPTION, CARD, DASH, FIELD_KEY } from './detail-styles'
 import type { IntakeAmendEditing } from './use-intake-amend'
 
-const FIELD_KEY = 'font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-mri-text2'
+/** The gauge in eighths, as the prototype's stepper (§3.4) — 44px keys, a real minus sign. */
+function FuelStepper({
+  level,
+  onChange,
+}: {
+  level: number
+  onChange: (level: number) => void
+}): ReactElement {
+  const key =
+    'size-11 flex-none cursor-pointer rounded-[9px] bg-mri-inbg font-mono text-[17px] font-semibold text-mri-text transition-colors hover:text-mri-redh disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-mri-text'
 
-/**
- * The recorded condition, read back. The third state is the whole point: `IntakeChecklistSchema`
- * is `boolean | null` and the prototype's print collapses it to ✓/✕, which prints an item nobody
- * checked as "NE" — a false statement on a document the customer signed (`docs/25` §4.4).
- */
-function conditionMark(value: boolean | null): { mark: string; className: string } {
-  if (value === true) {
-    return { mark: '✓', className: 'text-mri-grn' }
-  }
-  if (value === false) {
-    return { mark: '✗', className: 'text-mri-redh' }
-  }
-  return { mark: DASH, className: 'text-mri-text2' }
+  return (
+    <span className="flex items-center gap-2">
+      {/* Disabled at the ends rather than clamped: a clamp would report a change that never
+          happens, and the operator would learn nothing from a button that answers nothing. */}
+      <button
+        type="button"
+        onClick={() => onChange(level - 1)}
+        disabled={level <= 0}
+        aria-label={m.intake_fuel_less()}
+        className={key}
+      >
+        {'−'}
+      </button>
+      <span className="font-mono text-[26px] font-extrabold leading-none text-mri-text">
+        {level}
+      </span>
+      <span className="text-base text-mri-text2">/8</span>
+      <button
+        type="button"
+        onClick={() => onChange(level + 1)}
+        disabled={level >= MAX_FUEL_EIGHTHS}
+        aria-label={m.intake_fuel_more()}
+        className={key}
+      >
+        +
+      </button>
+    </span>
+  )
 }
+
+/** The dial is in eighths and the wire schema caps it there (`fuelLevel: 0..8`). */
+const MAX_FUEL_EIGHTHS = 8
 
 /**
  * How far the intake actually got, in wizard steps. A draft parked on step 2 has recorded NOTHING
@@ -95,13 +118,12 @@ export function TabOverview({
 }: {
   order: IntakeOrderDetail
   /** Present only while edit mode is open; absent is the archival read this tab has always been. */
-  amend?: IntakeAmendEditing
+  amend?: IntakeAmendEditing | undefined
 }): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
 
   const locale = getLocale()
   const cells = buildPhotoCells(order.id, order.photos, [], order.damages)
-  const unchecked = INTAKE_CHECKLIST_KEYS.length - countConfirmed(order.checklist)
   const damageRecorded = recordedThroughStep(order) >= STEP_DAMAGE
   /*
    * Fuel gates on the SIGNATURE while damage above gates on the step, and the difference is not an
@@ -115,8 +137,11 @@ export function TabOverview({
    * Closing that needs a nullable column plus a "not set" state on the gauge that the prototype
    * does not have — Nikola weighed it 2026-08-05 and chose this instead (spec
    * docs/superpowers/specs/2026-08-05-intake-open-questions-design.md §1).
+   *
+   * Edit mode is only ever open on a signed order, so the stepper below never has to draw the dash.
    */
-  const fuelRecorded = order.signedAt !== null
+  const fuelReadValue =
+    order.signedAt === null ? DASH : m.intake_fact_fuel_value({ level: order.fuelLevel })
 
   const facts: { label: string; value: ReactNode; className: string }[] = [
     {
@@ -166,7 +191,15 @@ export function TabOverview({
     },
     {
       label: m.intake_fact_fuel(),
-      value: fuelRecorded ? m.intake_fact_fuel_value({ level: order.fuelLevel }) : DASH,
+      value:
+        amend === undefined ? (
+          fuelReadValue
+        ) : (
+          <FuelStepper
+            level={amend.buffer.fuelLevel}
+            onChange={(level) => amend.patch({ fuelLevel: level })}
+          />
+        ),
       className: 'font-mono font-semibold',
     },
     {
@@ -280,42 +313,7 @@ export function TabOverview({
               </div>
             </section>
 
-            <section className={cn(CARD, 'px-5 py-[18px]')}>
-              <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-                <h2 className={CAPTION}>{m.intake_card_condition()}</h2>
-                {unchecked > 0 ? (
-                  <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
-                    {m.intake_condition_unchecked({ count: unchecked })}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
-                {INTAKE_CHECKLIST_KEYS.map((key) => {
-                  const state = conditionMark(order.checklist[key])
-                  return (
-                    <div
-                      key={key}
-                      data-testid={`condition-${key}`}
-                      className="flex min-w-0 items-center gap-2"
-                    >
-                      <span
-                        className={cn('flex-none font-mono text-sm font-bold', state.className)}
-                      >
-                        {state.mark}
-                      </span>
-                      <span className="min-w-0 flex-1 text-[13px] text-mri-text">
-                        {INTAKE_CHECKLIST_LABELS[key]()}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {order.equipmentNote === null ? null : (
-                <p className="mt-3.5 text-[13.5px] italic text-mri-text2">{order.equipmentNote}</p>
-              )}
-            </section>
+            <CardCondition order={order} amend={amend} />
           </div>
 
           <div className="flex flex-col gap-[14px] @min-[860px]:w-[320px] @min-[860px]:flex-none">

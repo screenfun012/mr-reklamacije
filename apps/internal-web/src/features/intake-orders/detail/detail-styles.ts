@@ -14,3 +14,7 @@ export const CAPTION =
 
 /** Everything the prototype writes where a value is missing (`prijem-prototip-v2.dc.html:1391`). */
 export const DASH = '—'
+
+/** The small mono caption above a single value. Shared the day a card moved into its own file. */
+export const FIELD_KEY =
+  'font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-mri-text2'

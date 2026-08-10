@@ -132,15 +132,11 @@ function IntakeDetailPage(): ReactElement {
           [IntakeDetailTab.Pregled]: (
             <TabOverview
               order={order}
-              {...(amend.active
-                ? {
-                    amend: {
-                      buffer: amend.buffer,
-                      patch: amend.patch,
-                      phoneValid: amend.phoneValid,
-                    },
-                  }
-                : {})}
+              amend={
+                amend.active
+                  ? { buffer: amend.buffer, patch: amend.patch, phoneValid: amend.phoneValid }
+                  : undefined
+              }
             />
           ),
           [IntakeDetailTab.Fotografije]: <TabPhotos order={order} />,

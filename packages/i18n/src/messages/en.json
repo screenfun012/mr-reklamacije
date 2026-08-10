@@ -1268,5 +1268,7 @@
   "intake_amend_saved": "Order {number} was changed and marked.",
   "intake_amend_nothing_changed": "Nothing changed — the order was not marked.",
   "intake_amend_phone_invalid": "The owner's phone cannot be left empty.",
-  "intake_amend_locked": "Close edit mode to use this."
+  "intake_amend_locked": "Close edit mode to use this.",
+  "intake_fuel_less": "Less fuel",
+  "intake_fuel_more": "More fuel"
 }
