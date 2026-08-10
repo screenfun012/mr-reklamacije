@@ -1280,6 +1280,6 @@
   "intake_photo_delete_confirm": "Obriši fotografiju",
   "intake_photo_deleted": "Fotografija je obrisana.",
   "intake_photo_upload_failed": "Fotografija nije poslata. Otvori tab Fotografije i pokušaj ponovo.",
-  "intake_fuel_less": "Manje goriva",
-  "intake_fuel_more": "Više goriva"
+  "intake_print_no_remarks": "Bez primedbi.",
+  "intake_print_photos_more": "Prikazano prvih 6 od {count} fotografija — sve se čuvaju uz digitalni nalog."
 }

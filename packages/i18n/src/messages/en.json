@@ -1280,6 +1280,6 @@
   "intake_photo_delete_confirm": "Delete the photo",
   "intake_photo_deleted": "The photo was deleted.",
   "intake_photo_upload_failed": "The photo was not sent. Open the Fotografije tab and try again.",
-  "intake_fuel_less": "Less fuel",
-  "intake_fuel_more": "More fuel"
+  "intake_print_no_remarks": "No remarks.",
+  "intake_print_photos_more": "Showing the first 6 of {count} photos — all of them are kept with the digital order."
 }
