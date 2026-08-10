@@ -10,7 +10,6 @@ import {
   type IntakePrintLocale,
   type IntakePrintModel,
 } from './intake-print-data'
-import { IntakePrintPhotos } from './intake-print-photos'
 import { PRINT_EYEBROW, PRINT_RULE } from './intake-print-styles'
 
 /**
@@ -133,8 +132,6 @@ export function IntakePrintSheet({
         <IntakePrintCondition model={model} />
 
         <IntakePrintDamages model={model} />
-
-        <IntakePrintPhotos model={model} />
 
         {/* Pinned to the bottom whatever the blocks above did. */}
         <footer className="mt-auto border-t-[2.5px] border-[#ed1c24] pt-[14px]">

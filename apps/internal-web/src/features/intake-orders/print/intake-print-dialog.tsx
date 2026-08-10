@@ -4,7 +4,7 @@ import { cn } from '@mr/ui'
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
-import { PRINT_MAX_PHOTOS, type IntakePrintLocale } from './intake-print-data'
+import type { IntakePrintLocale } from './intake-print-data'
 import { IntakePrintSheet } from './intake-print-sheet'
 import './intake-print.css'
 
@@ -28,20 +28,12 @@ export function IntakePrintDialog({
   open: boolean
   onClose: () => void
 }): ReactElement | null {
-  const expected = Math.min(order.photos.length, PRINT_MAX_PHOTOS)
-  const [settled, setSettled] = useState(0)
   /**
    * Defaults to the office's own language and is then the operator's to change — a foreign
    * customer signs an English work order while the app around it stays Serbian. Switching resets
    * the image gate, because the sheet remounts and the thumbnails load again.
    */
   const [printLocale, setPrintLocale] = useState<IntakePrintLocale>(() => getLocale())
-
-  useEffect(() => {
-    if (!open) {
-      setSettled(0)
-    }
-  }, [open])
 
   useEffect(() => {
     if (!open) {
@@ -60,7 +52,6 @@ export function IntakePrintDialog({
     return null
   }
 
-  const ready = settled >= expected
   const vehicleType = INTAKE_VEHICLE_TYPE_LABELS[order.vehicleType]()
 
   return (
@@ -74,10 +65,6 @@ export function IntakePrintDialog({
         <span className="font-mono text-[10.5px] font-semibold tracking-[0.18em] text-white">
           {m.intake_print_preview({ type: vehicleType })}
         </span>
-        {ready ? null : (
-          <span className="font-mono text-[10.5px] text-[#b9babd]">{m.intake_print_waiting()}</span>
-        )}
-
         {/* The paper's language, not the app's. Two segments rather than a question before the
             preview: the operator SEES what he is about to hand over. */}
         <div
@@ -90,10 +77,7 @@ export function IntakePrintDialog({
               key={value}
               type="button"
               aria-pressed={printLocale === value}
-              onClick={() => {
-                setPrintLocale(value)
-                setSettled(0)
-              }}
+              onClick={() => setPrintLocale(value)}
               className={cn(
                 'h-[42px] w-[52px] cursor-pointer font-mono text-[12px] font-bold uppercase',
                 printLocale === value ? 'bg-white text-[#141417]' : 'bg-transparent text-white',
@@ -113,7 +97,6 @@ export function IntakePrintDialog({
         </button>
         <button
           type="button"
-          disabled={!ready}
           onClick={() => window.print()}
           className="h-[42px] cursor-pointer rounded-[9px] bg-[#f2f2f3] px-[22px] text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#141417] disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -122,15 +105,12 @@ export function IntakePrintDialog({
       </div>
 
       {/*
-        `onLoad`/`onError` sit on the WRAPPER on purpose: those events do not bubble in the DOM, but
-        React's synthetic system does propagate them — so one pair of handlers counts every
-        thumbnail without threading a callback down through three components.
+        No image gate any more, and deliberately none left behind: it existed because
+        `window.print()` does not wait for images and would print empty frames. The sheet has
+        carried no photographs since 2026-08-10, so there is nothing to wait for — and a dead gate
+        kept "just in case" is the thing nobody can explain later.
       */}
-      <div
-        className="flex-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
-        onLoad={() => setSettled((count) => count + 1)}
-        onError={() => setSettled((count) => count + 1)}
-      >
+      <div className="flex-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
         <IntakePrintSheet key={printLocale} order={order} locale={printLocale} />
       </div>
     </div>

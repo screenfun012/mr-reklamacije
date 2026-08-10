@@ -6,7 +6,7 @@ import {
   intakeOrderDetailFixture,
   intakePhotoFixture,
 } from '../../detail/__tests__/render-detail.js'
-import { buildIntakePrintModel, PRINT_MAX_DAMAGES, PRINT_MAX_PHOTOS } from '../intake-print-data.js'
+import { buildIntakePrintModel, PRINT_MAX_DAMAGES } from '../intake-print-data.js'
 
 function damage(n: number) {
   return {
@@ -74,43 +74,14 @@ describe('buildIntakePrintModel', () => {
     expect(model.markers).toHaveLength(PRINT_MAX_DAMAGES)
   })
 
-  it('drops the badge of a photo whose defect did not make the page', () => {
-    // Otherwise the paper carries a ⑬ that appears nowhere in the list beside it.
-    const order = intakeOrderDetailFixture({
-      damages: Array.from({ length: 15 }, (_, i) => damage(i + 1)),
-      photos: [photo(1, 'd13')],
-    })
-
-    expect(buildIntakePrintModel(order, 'sr').photos[0]?.number).toBeNull()
-  })
-
-  it('numbers a photo by the defect it belongs to', () => {
-    const order = intakeOrderDetailFixture({
-      damages: [damage(1), damage(2)],
-      photos: [photo(1, 'd2')],
-    })
-
-    expect(buildIntakePrintModel(order, 'sr').photos[0]?.number).toBe(2)
-  })
-
-  it('shows six photos and reports the rest', () => {
+  it('still counts the photographs, which is all the paper says about them now', () => {
+    // The thumbnails left the document on 2026-08-10; the count is what stayed, in the figures row
+    // and in the legal sentence the customer signs.
     const order = intakeOrderDetailFixture({
       photos: Array.from({ length: 9 }, (_, i) => photo(i, null)),
     })
 
-    const model = buildIntakePrintModel(order, 'sr')
-
-    expect(model.photos).toHaveLength(PRINT_MAX_PHOTOS)
-    expect(model.photoCount).toBe(9)
-    expect(model.photoOverflowText).not.toBeNull()
-  })
-
-  it('says nothing extra when six photos are all of them', () => {
-    const order = intakeOrderDetailFixture({
-      photos: Array.from({ length: 6 }, (_, i) => photo(i, null)),
-    })
-
-    expect(buildIntakePrintModel(order, 'sr').photoOverflowText).toBeNull()
+    expect(buildIntakePrintModel(order, 'sr').photoCount).toBe(9)
   })
 
   it('keeps five services and five materials', () => {

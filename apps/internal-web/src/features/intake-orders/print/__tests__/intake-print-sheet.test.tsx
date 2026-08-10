@@ -113,7 +113,7 @@ describe('IntakePrintSheet — evidence', () => {
     expect(paths[0]?.getAttribute('d')).toBe(INTAKE_SILHOUETTES[IntakeVehicleType.Van][0]?.d)
   })
 
-  it('puts the same number on the marker, the defect row and the photo badge', async () => {
+  it('puts the same number on the marker and on the defect row', async () => {
     const order = intakeOrderDetailFixture({
       damages: [damage(1), damage(2)],
       photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444', damageId: 'd2' })],
@@ -123,7 +123,6 @@ describe('IntakePrintSheet — evidence', () => {
 
     expect(container.querySelector('[data-testid="print-marker-2"]')).not.toBeNull()
     expect(screen.getByTestId('print-damage-2')).toHaveTextContent('Zona 2')
-    expect(screen.getByTestId('print-photo-badge')).toHaveTextContent('2')
   })
 
   it('says there were none rather than leaving the defect list blank', async () => {

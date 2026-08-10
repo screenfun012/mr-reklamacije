@@ -9,11 +9,6 @@ import {
 } from '../../detail/__tests__/render-detail.js'
 import { IntakePrintDialog } from '../intake-print-dialog.js'
 
-/** The sheet's thumbnails are decorative (`alt=""`), so they are hidden from the a11y tree. */
-function thumbnails(): HTMLElement[] {
-  return screen.getAllByRole('img', { hidden: true })
-}
-
 describe('IntakePrintDialog', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -40,40 +35,23 @@ describe('IntakePrintDialog', () => {
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1))
   })
 
-  it('will not print while a photograph is still loading', async () => {
-    // `window.print()` does not wait for images. Fired early it prints empty frames — and the
-    // customer signs a page whose evidence is missing.
-    const print = vi.fn()
-    vi.stubGlobal('print', print)
+  it('is ready to print the moment it opens, and carries no photograph to wait for', async () => {
+    // There used to be a gate here: `window.print()` does not wait for images and would print six
+    // empty frames. The photographs left the document on 2026-08-10, so the gate went with them
+    // rather than being left behind as something nobody could explain.
+    //
+    // The header emblem is the one image left, and it is a local asset the operator can see in the
+    // preview before he presses print — the preview IS the gate now.
     const order = intakeOrderDetailFixture({
       photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444' })],
     })
 
     await renderDetailUi(<IntakePrintDialog order={order} open onClose={() => {}} />)
 
-    expect(screen.getByRole('button', { name: m.intake_detail_print() })).toBeDisabled()
-
-    const [first] = thumbnails()
-    fireEvent.load(first as HTMLElement)
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: m.intake_detail_print() })).toBeEnabled(),
-    )
-  })
-
-  it('lets a photograph that fails to load through, rather than locking the button forever', async () => {
-    const order = intakeOrderDetailFixture({
-      photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444' })],
-    })
-
-    await renderDetailUi(<IntakePrintDialog order={order} open onClose={() => {}} />)
-
-    const [first] = thumbnails()
-    fireEvent.error(first as HTMLElement)
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: m.intake_detail_print() })).toBeEnabled(),
-    )
+    expect(screen.getByRole('button', { name: m.intake_detail_print() })).toBeEnabled()
+    const images = screen.getAllByRole('img', { hidden: true })
+    expect(images).toHaveLength(1)
+    expect(images[0]).toHaveAttribute('alt', 'MR Engines')
   })
 
   it('prints the language the operator picked, not the one the app is in', async () => {

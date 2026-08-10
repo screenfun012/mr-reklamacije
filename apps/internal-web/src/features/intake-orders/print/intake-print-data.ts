@@ -1,5 +1,5 @@
 import { m, type Locale } from '@mr/i18n'
-import { buildIntakePhotoUrl, INTAKE_CHECKLIST_KEYS, type IntakeOrderDetail } from '@mr/shared'
+import { INTAKE_CHECKLIST_KEYS, type IntakeOrderDetail } from '@mr/shared'
 
 import {
   INTAKE_ARRIVAL_MODE_LABELS,
@@ -11,11 +11,14 @@ import { formatIntakeReceivedAtLong } from '../intake-status'
 import { INTAKE_SILHOUETTES, type IntakeSilhouettePath } from '../wizard/intake-silhouettes'
 
 /**
- * One A4 page is a rule, not a preference. These are the cuts, in the order the design applies
- * them — and they live here rather than inside the components so that what the customer receives
- * is decided once, in a place a test can interrogate.
+ * One A4 page is a rule, not a preference. These are the cuts, and they live here rather than
+ * inside the components so that what the customer receives is decided once, in a place a test can
+ * interrogate.
+ *
+ * Photographs are NOT among them: they left the document on 2026-08-10 (Nikola — "to ne mora da
+ * stoji, može da stoji koliko slika je slikano"). The count still appears in the figures row and in
+ * the legal sentence, which is how the customer knows they exist and where.
  */
-export const PRINT_MAX_PHOTOS = 6
 export const PRINT_MAX_LIST_ITEMS = 5
 export const PRINT_MAX_DAMAGES = 12
 export const PRINT_MAX_REMARKS = 180
@@ -44,16 +47,6 @@ export interface IntakePrintDamageRow {
   y: number
 }
 
-export interface IntakePrintPhotoCell {
-  id: string
-  url: string
-  /**
-   * The defect this photo documents, or null for a general shot — and null when that defect did
-   * not fit on the page, because a badge the list cannot explain is worse than no badge.
-   */
-  number: number | null
-}
-
 export interface IntakePrintModel {
   /** Travels with the data, so a block component takes one prop and still resolves its captions. */
   locale: IntakePrintLocale
@@ -78,8 +71,6 @@ export interface IntakePrintModel {
   damagesOverflow: number
   services: string[]
   materials: string[]
-  photos: IntakePrintPhotoCell[]
-  photoOverflowText: string | null
   amended: { at: string; by: string } | null
   technicianName: string
   technicianSignature: string | null
@@ -130,11 +121,6 @@ export function buildIntakePrintModel(
     y: damage.y,
   }))
 
-  // Markers, defect rows and photo badges all number off THIS list — they are required to agree,
-  // and they only can if they share one source.
-  const numberOf = (damageId: string | null): number | null =>
-    damages.find((damage) => damage.id === damageId)?.number ?? null
-
   return {
     locale,
     orderNumber: order.orderNumber,
@@ -157,15 +143,6 @@ export function buildIntakePrintModel(
     damagesOverflow: order.damages.length - damages.length,
     services: order.services.slice(0, PRINT_MAX_LIST_ITEMS),
     materials: order.materials.slice(0, PRINT_MAX_LIST_ITEMS),
-    photos: order.photos.slice(0, PRINT_MAX_PHOTOS).map((photo) => ({
-      id: photo.id,
-      url: buildIntakePhotoUrl(order.id, photo.id, 'thumbnail'),
-      number: numberOf(photo.damageId),
-    })),
-    photoOverflowText:
-      order.photos.length > PRINT_MAX_PHOTOS
-        ? m.intake_print_photos_more({ count: order.photos.length }, { locale })
-        : null,
     amended:
       order.amendedAt === null
         ? null
