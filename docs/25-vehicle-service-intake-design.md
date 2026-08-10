@@ -58,6 +58,32 @@ print stop agreeing.
 
 ## 3. Locked decisions
 
+### 3.0 The rule that outranks the rest: the screen leads, the worker rides
+
+**Nikola, 2026-08-10, and it binds the whole module:** the people using this are not computer
+literate. They will find every hole. Every moment where the screen does not say what happens next
+becomes *"komplikovano je, ne razumem, ne znam šta da radim"* — and then the tablet gets put down
+and the job goes back onto paper. So the module **leads them**; they are along for the ride.
+
+In practice, and these are testable, not decorative:
+
+1. **No screen ever ends without a next action.** If the worker finished something, the thing he
+   does next is on the screen, and it is the loudest thing on it. He never has to know where to go.
+2. **What can be decided for him, is.** A choice only exists when he is the only one who can
+   answer it. Every other setting has a default and lives out of his way — in admin (§3.9), not in
+   his flow.
+3. **An error says what to DO, not what failed.** "Zaključivanje naloga nije uspelo" is a dead end
+   with a customer standing at the car. "Nema mreže — sačuvano na tabletu, pošalji kad se vrati
+   signal" is an instruction.
+4. **Nothing that looks tappable is a dead end.** A control that cannot succeed is not shown. This
+   is the same rule that killed eight "Pokušaj ponovo" buttons on 2026-08-06.
+5. **He is never asked for something he was not given.** No field whose answer lives in another
+   program, no jargon, no abbreviation he does not use out loud in the shop.
+
+⚠️ **Known dead ends this rule condemns, not yet fixed** — they are scheduled, not forgotten:
+finishing an intake without a network fails with `intake_sign_failed` and the order stays unsigned
+(§3.6, A3); a photo that fails to upload shows a red cell and no instruction (A4).
+
 ### 3.1 UI, shell and who does what
 
 - **The design does not change.** Nikola: *"tako mora da izgleda ui"* — and, after V-2/V-3,
