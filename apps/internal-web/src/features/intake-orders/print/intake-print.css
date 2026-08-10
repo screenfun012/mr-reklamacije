@@ -1,0 +1,28 @@
+/*
+ * Print only the sheet. `visibility`, not `display`: hiding the ancestors with `display: none`
+ * would take the sheet down with them, while `visibility: hidden` leaves the box tree standing so
+ * the sheet can be made visible again inside it. Same pattern the claim report already uses.
+ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #intake-print-sheet,
+  #intake-print-sheet * {
+    visibility: visible;
+  }
+
+  #intake-print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    box-shadow: none;
+  }
+}

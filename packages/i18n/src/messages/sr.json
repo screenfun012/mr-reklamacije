@@ -601,7 +601,6 @@
   "intake_detail_not_found_body": "Nalog ne postoji ili nije tvoj.",
   "intake_detail_not_found_title": "Nalog nije pronađen",
   "intake_detail_print": "⎙ Štampaj",
-  "intake_detail_print_unavailable": "Štampa naloga se pravi u sledećoj fazi.",
   "intake_detail_pickup_confirm": "Vozilo je preuzeto",
   "intake_detail_pickup_description": "Ovo znači da je vlasnik odvezao vozilo. Posle ovoga status ne možeš sam da vratiš.",
   "intake_detail_pickup_title": "Označiti nalog {number} kao preuzet?",
@@ -1301,5 +1300,8 @@
   "intake_print_section_materials": "MATERIJAL",
   "intake_print_section_photos": "FOTODOKUMENTACIJA · {count}",
   "intake_print_no_damage": "Nema uočenih nedostataka pri prijemu.",
-  "intake_print_damages_more": "…i još {count} — vidi digitalni nalog {number}"
+  "intake_print_damages_more": "…i još {count} — vidi digitalni nalog {number}",
+  "intake_print_preview": "PREGLED ŠTAMPE · A4 · {type}",
+  "intake_print_waiting": "Učitavanje fotografija…",
+  "intake_print_language": "Jezik naloga"
 }

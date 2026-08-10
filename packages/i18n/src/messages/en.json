@@ -601,7 +601,6 @@
   "intake_detail_not_found_body": "The order does not exist, or it is not yours.",
   "intake_detail_not_found_title": "Order not found",
   "intake_detail_print": "⎙ Print",
-  "intake_detail_print_unavailable": "Printing the order is built in a later phase.",
   "intake_detail_pickup_confirm": "The vehicle was picked up",
   "intake_detail_pickup_description": "This means the owner has driven the vehicle away. You cannot move the status back yourself afterwards.",
   "intake_detail_pickup_title": "Mark order {number} as picked up?",
@@ -1301,5 +1300,8 @@
   "intake_print_section_materials": "MATERIALS",
   "intake_print_section_photos": "PHOTO DOCUMENTATION · {count}",
   "intake_print_no_damage": "No defects were found at intake.",
-  "intake_print_damages_more": "…and {count} more — see digital order {number}"
+  "intake_print_damages_more": "…and {count} more — see digital order {number}",
+  "intake_print_preview": "PRINT PREVIEW · A4 · {type}",
+  "intake_print_waiting": "Loading photos…",
+  "intake_print_language": "Work order language"
 }

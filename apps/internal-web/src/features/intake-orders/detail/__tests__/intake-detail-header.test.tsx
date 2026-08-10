@@ -221,3 +221,22 @@ describe('IntakeDetailHeader', () => {
     expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
   })
 })
+
+describe('IntakeDetailHeader — print', () => {
+  it('opens the print preview instead of standing there disabled', async () => {
+    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
+
+    const button = screen.getByRole('button', { name: m.intake_detail_print() })
+    expect(button).toBeEnabled()
+
+    fireEvent.click(button)
+
+    expect(screen.getByRole('dialog')).toBeDefined()
+  })
+
+  it('offers no print on an unfinished intake — there is nothing signed to hand over', async () => {
+    await renderDetailUi(<IntakeDetailHeader order={intakeDraftFixture()} {...NO_PERMS} />)
+
+    expect(screen.queryByRole('button', { name: m.intake_detail_print() })).toBeNull()
+  })
+})

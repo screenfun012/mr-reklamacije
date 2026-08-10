@@ -15,11 +15,11 @@ import { InternalButton } from '~/components/internal-button'
 import { InternalPill } from '~/components/internal-pill'
 import { showInternalToast } from '~/lib/internal-toast'
 
+import { IntakePrintDialog } from '../print/intake-print-dialog'
 import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, nextIntakeStatus } from '../intake-status'
 
 const ACTION_CLASSES = 'h-[46px] w-auto px-[18px] text-[13px]'
-const PRINT_REASON_ID = 'intake-detail-print-reason'
 
 export interface IntakeDetailHeaderProps {
   order: IntakeOrderDetail
@@ -73,6 +73,7 @@ export function IntakeDetailHeader({
   const navigate = useNavigate()
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [confirmPickup, setConfirmPickup] = useState(false)
+  const [printOpen, setPrintOpen] = useState(false)
 
   // Every intake mutation touches the detail, the list, the KPI row AND the history tab, and
   // all four keys hang off one root — invalidating the root cannot forget one of them.
@@ -174,22 +175,18 @@ export function IntakeDetailHeader({
       </div>
 
       <div className="ml-auto flex flex-wrap items-start justify-end gap-2.5">
-        {/* The title sits on a live wrapper: a disabled control fires no pointer events and is
-            skipped by the tab order, so a title on the button itself is never readable. */}
-        <span title={m.intake_detail_print_unavailable()}>
+        {/* Signed orders only: the paper is the signed record handed to the owner, and a draft has
+            nothing signed to hand over. */}
+        {order.signedAt === null ? null : (
           <InternalButton
             type="button"
             variant="outline"
-            disabled
-            aria-describedby={PRINT_REASON_ID}
+            onClick={() => setPrintOpen(true)}
             className={ACTION_CLASSES}
           >
             {m.intake_detail_print()}
           </InternalButton>
-          <span id={PRINT_REASON_ID} className="sr-only">
-            {m.intake_detail_print_unavailable()}
-          </span>
-        </span>
+        )}
 
         {/* Amber, like every other "this order is not in its resting state" surface. The action
             is neither the happy path nor a destruction, and the brandbook forbids a red primary. */}
@@ -248,6 +245,8 @@ export function IntakeDetailHeader({
         pending={advance.isPending}
         onConfirm={() => advance.mutate()}
       />
+
+      <IntakePrintDialog order={order} open={printOpen} onClose={() => setPrintOpen(false)} />
 
       <ConfirmDialog
         open={confirmRemove}
