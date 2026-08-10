@@ -3,7 +3,7 @@ import { IntakeDetailSearchSchema, IntakeDetailTab, intakeOrderDetailOptions } f
 import { ConfirmDialog, Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import type { ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 
 import { InternalPage } from '~/components/layout/internal-page'
 import { IntakeAmendBar } from '~/features/intake-orders/detail/intake-amend-bar'
@@ -13,6 +13,7 @@ import {
   visibleIntakeDetailTab,
 } from '~/features/intake-orders/detail/intake-detail-tabs'
 import { IntakeDraftBar } from '~/features/intake-orders/detail/intake-draft-bar'
+import { IntakePrintDialog } from '~/features/intake-orders/print/intake-print-dialog'
 import { IntakePhotosPendingNote } from '~/features/intake-orders/detail/intake-photos-pending-note'
 import { IntakeRemovedBar } from '~/features/intake-orders/detail/intake-removed-bar'
 import { IntakeStatusBar } from '~/features/intake-orders/detail/intake-status-bar'
@@ -48,7 +49,7 @@ const rootRoute = getRouteApi('__root__')
 
 function IntakeDetailPage(): ReactElement {
   const { id } = Route.useParams()
-  const { tab } = Route.useSearch()
+  const { tab, stampa } = Route.useSearch()
   const { data: order } = useSuspenseQuery(intakeOrderDetailOptions(id))
 
   const { authSession } = rootRoute.useRouteContext()
@@ -62,6 +63,26 @@ function IntakeDetailPage(): ReactElement {
 
   const navigate = useNavigate()
   const amend = useIntakeAmend(order)
+  const [printOpen, setPrintOpen] = useState(false)
+
+  /**
+   * The wizard hands the signed order over with `?stampa` set, because printing it is the next
+   * thing that has to happen and the worker should not have to find a button for it
+   * (`docs/25` §3.0). The flag is consumed once: it opens the preview and leaves the address, so a
+   * reload — or a Back into this screen — does not open it again over an order already handed over.
+   */
+  useEffect(() => {
+    if (stampa !== true) {
+      return
+    }
+    setPrintOpen(true)
+    void navigate({
+      to: '/prijem/$id',
+      params: { id },
+      search: { ...(tab === undefined ? {} : { tab }) },
+      replace: true,
+    })
+  }, [stampa, id, tab, navigate])
 
   /**
    * The upload queue lives HERE, not inside the photos tab. The tab body is remounted on every tab
@@ -102,6 +123,7 @@ function IntakeDetailPage(): ReactElement {
         canAmend={canAmend}
         amendActive={amend.active}
         onStartAmend={startAmend}
+        onPrint={() => setPrintOpen(true)}
       />
 
       {amend.active ? (
@@ -169,6 +191,8 @@ function IntakeDetailPage(): ReactElement {
           [IntakeDetailTab.Istorija]: <TabHistory orderId={order.id} />,
         }[activeTab]
       }
+
+      <IntakePrintDialog order={order} open={printOpen} onClose={() => setPrintOpen(false)} />
 
       {/* Asked once, on Sačuvaj (decision ②), and it says what the mark means — the operator is
           about to change a document a customer signed and holds a printed copy of. */}

@@ -15,7 +15,6 @@ import { InternalButton } from '~/components/internal-button'
 import { InternalPill } from '~/components/internal-pill'
 import { showInternalToast } from '~/lib/internal-toast'
 
-import { IntakePrintDialog } from '../print/intake-print-dialog'
 import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, nextIntakeStatus } from '../intake-status'
 
@@ -32,6 +31,8 @@ export interface IntakeDetailHeaderProps {
    */
   canChangeStatus: boolean
   canAmend: boolean
+  /** The page owns the preview, because it is also the thing the wizard's flag lands on. */
+  onPrint: () => void
   /**
    * While edit mode is open every other action here is locked: one mode at a time, so nothing can
    * throw away an unsaved buffer behind the operator's back or stack a second dialog on the first.
@@ -68,12 +69,12 @@ export function IntakeDetailHeader({
   canAmend,
   amendActive,
   onStartAmend,
+  onPrint,
 }: IntakeDetailHeaderProps): ReactElement {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [confirmPickup, setConfirmPickup] = useState(false)
-  const [printOpen, setPrintOpen] = useState(false)
 
   // Every intake mutation touches the detail, the list, the KPI row AND the history tab, and
   // all four keys hang off one root — invalidating the root cannot forget one of them.
@@ -181,7 +182,7 @@ export function IntakeDetailHeader({
           <InternalButton
             type="button"
             variant="outline"
-            onClick={() => setPrintOpen(true)}
+            onClick={onPrint}
             className={ACTION_CLASSES}
           >
             {m.intake_detail_print()}
@@ -245,8 +246,6 @@ export function IntakeDetailHeader({
         pending={advance.isPending}
         onConfirm={() => advance.mutate()}
       />
-
-      <IntakePrintDialog order={order} open={printOpen} onClose={() => setPrintOpen(false)} />
 
       <ConfirmDialog
         open={confirmRemove}

@@ -2,6 +2,7 @@ import { m } from '@mr/i18n'
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
+import { INTAKE_WIZARD_STEP_COUNT } from '../../wizard/intake-wizard-state.js'
 import { IntakeDraftBar } from '../intake-draft-bar.js'
 import { intakeDraftFixture, renderDetailUi } from './render-detail.js'
 
@@ -51,6 +52,8 @@ describe('IntakeDraftBar', () => {
       <IntakeDraftBar order={draft} currentUserId={draft.technicianId} canDelete={false} />,
     )
 
-    expect(screen.queryByText(m.intake_detail_draft_step({ step: 3 }))).not.toBeNull()
+    expect(
+      screen.queryByText(m.intake_detail_draft_step({ step: 3, total: INTAKE_WIZARD_STEP_COUNT })),
+    ).not.toBeNull()
   })
 })

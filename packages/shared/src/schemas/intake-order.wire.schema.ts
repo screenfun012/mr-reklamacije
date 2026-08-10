@@ -353,6 +353,13 @@ export const intakeDetailTabValues = [
  */
 export const IntakeDetailSearchSchema = z.object({
   tab: z.enum(intakeDetailTabValues).optional().catch(undefined),
+  /**
+   * Set once, by the wizard, on the hop that follows the two signatures: the printed order is what
+   * the receiving worker hands the owner, so the screen opens it for him rather than asking him to
+   * find a button (`docs/25` §3.0). The detail strips it from the address as soon as it has acted,
+   * so a reload does not open the preview a second time.
+   */
+  stampa: z.boolean().optional().catch(undefined),
 })
 
 export type IntakeDetailSearch = z.infer<typeof IntakeDetailSearchSchema>

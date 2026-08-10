@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
 
-import type { IntakeDraftBuffer } from './intake-wizard-state'
+import { INTAKE_WIZARD_STEP_COUNT, type IntakeDraftBuffer } from './intake-wizard-state'
 
 const CHECK_DEBOUNCE_MS = 400
 
@@ -146,7 +146,8 @@ export function IntakeWizardNote({
         tag: m.intake_draft_tag(),
         text: m.intake_draft_found({
           number: foundDraft.values.orderNumber,
-          step: foundDraft.step,
+          step: Math.min(foundDraft.step, INTAKE_WIZARD_STEP_COUNT),
+          total: INTAKE_WIZARD_STEP_COUNT,
         }),
         action: (
           <NoteButton tone="warn" onClick={onResumeBuffer}>

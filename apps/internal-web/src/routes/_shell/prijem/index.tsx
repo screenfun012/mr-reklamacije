@@ -16,6 +16,7 @@ import { internalButtonClasses } from '~/components/internal-button'
 import { InternalPage } from '~/components/layout/internal-page'
 import { formatInternalDateEyebrow } from '~/lib/internal-format'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
+import { INTAKE_WIZARD_STEP_COUNT } from '~/features/intake-orders/wizard/intake-wizard-state'
 import { IntakeFilterBar } from '~/features/intake-orders/intake-filter-bar'
 import { visibleIntakeSearch } from '~/features/intake-orders/intake-list-search'
 import { IntakeKpiCards, IntakeKpiCardsSkeleton } from '~/features/intake-orders/intake-kpi-cards'
@@ -151,7 +152,8 @@ export function UnfinishedBanner({
           number: draft.orderNumber,
           vehicle: draft.vehicle,
           plate: draft.plate,
-          step: draft.draftStep ?? 1,
+          step: Math.min(draft.draftStep ?? 1, INTAKE_WIZARD_STEP_COUNT),
+          total: INTAKE_WIZARD_STEP_COUNT,
         })}
       </span>
       {/* The id, not a bare `/prijem/novi`: without it the wizard opens whatever the tablet's

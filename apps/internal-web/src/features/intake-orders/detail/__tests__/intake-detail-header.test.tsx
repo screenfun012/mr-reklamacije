@@ -3,6 +3,7 @@ import { IntakeOrderStatus } from '@mr/shared'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { INTAKE_WIZARD_STEP_COUNT } from '../../wizard/intake-wizard-state.js'
 import { IntakeDetailHeader } from '../intake-detail-header.js'
 import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
 
@@ -13,6 +14,7 @@ const NO_PERMS = {
   canAmend: false,
   amendActive: false,
   onStartAmend: () => {},
+  onPrint: () => {},
 }
 
 const ALL_PERMS = {
@@ -22,6 +24,7 @@ const ALL_PERMS = {
   canAmend: true,
   amendActive: false,
   onStartAmend: () => {},
+  onPrint: () => {},
 }
 
 /**
@@ -171,7 +174,9 @@ describe('IntakeDetailHeader', () => {
     expect(screen.queryByText('Primljeno')).toBeNull()
     // The step belongs to the bar below, once. Seen in the browser: pill, tag and sentence said
     // "nedovršen" three times inside 100px, and the step twice.
-    expect(screen.queryByText(m.intake_row_draft_step({ step: 3 }))).toBeNull()
+    expect(
+      screen.queryByText(m.intake_row_draft_step({ step: 3, total: INTAKE_WIZARD_STEP_COUNT })),
+    ).toBeNull()
   })
 
   it('still names the status once the intake is signed', async () => {
@@ -223,15 +228,21 @@ describe('IntakeDetailHeader', () => {
 })
 
 describe('IntakeDetailHeader — print', () => {
-  it('opens the print preview instead of standing there disabled', async () => {
-    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
+  it('asks for the print instead of standing there disabled', async () => {
+    // The preview itself belongs to the PAGE, because the page is also what the wizard's `?stampa`
+    // flag lands on — two owners of one dialog would race each other open.
+    const onPrint = vi.fn()
+
+    await renderDetailUi(
+      <IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} onPrint={onPrint} />,
+    )
 
     const button = screen.getByRole('button', { name: m.intake_detail_print() })
     expect(button).toBeEnabled()
 
     fireEvent.click(button)
 
-    expect(screen.getByRole('dialog')).toBeDefined()
+    expect(onPrint).toHaveBeenCalledTimes(1)
   })
 
   it('offers no print on an unfinished intake — there is nothing signed to hand over', async () => {

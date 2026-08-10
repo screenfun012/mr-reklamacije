@@ -7,6 +7,8 @@ import { useState, type ReactElement } from 'react'
 
 import { showInternalToast } from '~/lib/internal-toast'
 
+import { INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
+
 export interface IntakeDraftBarProps {
   order: IntakeOrderDetail
   /**
@@ -55,7 +57,10 @@ export function IntakeDraftBar({
         {m.intake_draft_tag()}
       </span>
       <span className="min-w-0 flex-1 text-[13.5px] text-mri-text">
-        {m.intake_detail_draft_step({ step: order.draftStep ?? 1 })}
+        {m.intake_detail_draft_step({
+          step: order.draftStep ?? 1,
+          total: INTAKE_WIZARD_STEP_COUNT,
+        })}
       </span>
 
       {isOwner ? (

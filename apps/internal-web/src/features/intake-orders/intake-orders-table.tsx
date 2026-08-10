@@ -7,6 +7,7 @@ import type { ReactElement } from 'react'
 
 import { InternalPill } from '~/components/internal-pill'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, formatIntakeReceivedAt } from './intake-status'
+import { INTAKE_WIZARD_STEP_COUNT } from './wizard/intake-wizard-state'
 
 /**
  * Column widths, gap and padding are the prototype's, to the pixel
@@ -91,7 +92,10 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                 <InternalPill tone="warn" className="whitespace-nowrap">
                   {item.draftStep === null
                     ? m.intake_row_draft()
-                    : m.intake_row_draft_step({ step: item.draftStep })}
+                    : m.intake_row_draft_step({
+                        step: item.draftStep,
+                        total: INTAKE_WIZARD_STEP_COUNT,
+                      })}
                 </InternalPill>
               ) : (
                 <InternalPill tone={INTAKE_STATUS_TONES[item.status]} dot>

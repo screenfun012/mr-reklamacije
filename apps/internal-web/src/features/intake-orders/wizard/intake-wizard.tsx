@@ -377,7 +377,9 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
         // and taking his buffer away then would remove the net while he still needs it.
         releaseBuffer()
         showInternalToast(m.intake_signed_toast({ number: values.orderNumber.trim() }))
-        await navigate({ to: '/prijem/$id', params: { id: orderId } })
+        // With the flag: the printed order is the next thing that has to happen, so the detail
+        // opens it instead of leaving him on a screen with four tabs (`docs/25` §3.0).
+        await navigate({ to: '/prijem/$id', params: { id: orderId }, search: { stampa: true } })
       } catch {
         showInternalToast(m.intake_sign_failed())
       } finally {
@@ -440,7 +442,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
       return { text: m.intake_hint_number_taken(), tone: 'bad' }
     }
     if (step !== 1) {
-      return { text: m.intake_hint_step({ step }), tone: 'muted' }
+      return { text: m.intake_hint_step({ step, total: INTAKE_WIZARD_STEP_COUNT }), tone: 'muted' }
     }
     if (values.orderNumber.trim().length === 0) {
       return { text: m.intake_hint_no_number(), tone: 'warn' }

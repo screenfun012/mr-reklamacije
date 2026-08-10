@@ -58,6 +58,7 @@ import { IntakeWizard } from '../intake-wizard.js'
 import {
   emptyIntakeWizardValues,
   INTAKE_DRAFT_STORAGE_KEY,
+  INTAKE_WIZARD_STEP_COUNT,
   writeIntakeDraft,
   type IntakeWizardValues,
 } from '../intake-wizard-state.js'
@@ -145,7 +146,9 @@ describe('the wizard and the tablet draft buffer', () => {
 
     const first = renderWizard()
     expect(
-      await screen.findByText(m.intake_draft_found({ number: 'RN-0249/26', step: 2 })),
+      await screen.findByText(
+        m.intake_draft_found({ number: 'RN-0249/26', step: 2, total: INTAKE_WIZARD_STEP_COUNT }),
+      ),
     ).toBeInTheDocument()
 
     // The tablet is discarded in the background and comes back — the serviser never answered.
@@ -153,7 +156,9 @@ describe('the wizard and the tablet draft buffer', () => {
     renderWizard()
 
     expect(
-      await screen.findByText(m.intake_draft_found({ number: 'RN-0249/26', step: 2 })),
+      await screen.findByText(
+        m.intake_draft_found({ number: 'RN-0249/26', step: 2, total: INTAKE_WIZARD_STEP_COUNT }),
+      ),
     ).toBeInTheDocument()
   })
 
@@ -217,7 +222,9 @@ describe('the wizard and the tablet draft buffer', () => {
 
     await waitFor(() => expect(fetch).toHaveBeenCalled())
     expect(
-      screen.queryByText(m.intake_draft_found({ number: 'RN-0249/26', step: 2 })),
+      screen.queryByText(
+        m.intake_draft_found({ number: 'RN-0249/26', step: 2, total: INTAKE_WIZARD_STEP_COUNT }),
+      ),
     ).not.toBeInTheDocument()
   })
 
@@ -232,7 +239,9 @@ describe('the wizard and the tablet draft buffer', () => {
     renderWizard()
 
     expect(
-      await screen.findByText(m.intake_draft_found({ number: 'RN-0249/26', step: 2 })),
+      await screen.findByText(
+        m.intake_draft_found({ number: 'RN-0249/26', step: 2, total: INTAKE_WIZARD_STEP_COUNT }),
+      ),
     ).toBeInTheDocument()
   })
 
