@@ -57,7 +57,9 @@ export function StepSignatures({
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-[18px] lg:flex-row">
+      {/* `items-start`, and no `flex-1`: the pads size themselves now (see `IntakeSignaturePad`),
+          and a row that stretched them was the thing that squeezed the drawing surface to 2px. */}
+      <div className="flex flex-col gap-[18px] lg:flex-row lg:items-start">
         <IntakeSignaturePad
           title={m.intake_signature_technician()}
           name={technicianName}

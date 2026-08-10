@@ -66,7 +66,7 @@ export function IntakeSignaturePad({
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-1 flex-col gap-[13px] rounded-[15px] border bg-mri-surface px-5 py-[18px]',
+        'flex min-w-0 flex-1 flex-col gap-[13px] rounded-[15px] border bg-mri-surface px-5 py-[18px]',
         // An unsigned pad is outlined in red and lit: on step 5 it is the only thing left to do.
         signed ? 'border-mri-border' : 'border-mri-red shadow-[0_0_0_3px_rgba(237,28,36,0.14)]',
       )}
@@ -113,7 +113,16 @@ export function IntakeSignaturePad({
         }}
         style={{ touchAction: 'none' }}
         className={cn(
-          'relative min-h-0 flex-1 cursor-crosshair rounded-xl bg-mri-inbg',
+          // The pad carries its OWN shape, and deliberately not `flex-1`. It used to take whatever
+          // height was left over, and there was none: the step root's `h-full` resolves against a
+          // parent with no definite height, so the whole chain collapsed and the drawing surface
+          // measured 2px — the height of its own border. Points still landed (the `rect.height === 0`
+          // guard reads 2, not 0), so nothing errored; there was simply nowhere to sign.
+          //
+          // The aspect is the pad's own 460×200 space, so what is drawn matches what is printed:
+          // the sheet renders the path in that ratio, and a signature drawn in a squashed box would
+          // come out stretched on paper.
+          'relative aspect-[460/200] w-full flex-none cursor-crosshair rounded-xl bg-mri-inbg',
           signed
             ? 'border border-solid border-[rgba(31,169,113,0.45)]'
             : 'border border-dashed border-mri-border2',
