@@ -2,9 +2,11 @@ import { setLocale } from '@mr/i18n'
 import {
   IntakeArrivalMode,
   IntakeOrderDetailSchema,
+  IntakeOrderPhotoSchema,
   IntakeOrderStatus,
   IntakeVehicleType,
   type IntakeOrderDetail,
+  type IntakeOrderPhoto,
 } from '@mr/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -14,7 +16,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { render } from '@testing-library/react'
+import { render, type RenderResult } from '@testing-library/react'
 import type { ReactElement } from 'react'
 
 const SIGNED_ORDER = {
@@ -73,6 +75,23 @@ export function intakeOrderDetailFixture(
   return IntakeOrderDetailSchema.parse({ ...SIGNED_ORDER, ...overrides })
 }
 
+/** One photo on the server, optionally bound to a damage marker. */
+export function intakePhotoFixture(overrides: Partial<IntakeOrderPhoto> = {}): IntakeOrderPhoto {
+  return IntakeOrderPhotoSchema.parse({
+    id: '44444444-4444-4444-8444-444444444444',
+    fileName: 'IMG_01.jpg',
+    mimeType: 'image/jpeg',
+    fileSizeBytes: 120_000,
+    width: 2048,
+    height: 1536,
+    thumbnailPath: null,
+    caption: null,
+    damageId: null,
+    uploadedAt: '2026-07-27T19:00:00.000Z',
+    ...overrides,
+  })
+}
+
 /** An unsigned draft: no signatures, a step to resume from, and nothing to advance. */
 export function intakeDraftFixture(overrides: Partial<IntakeOrderDetail> = {}): IntakeOrderDetail {
   return intakeOrderDetailFixture({
@@ -88,7 +107,7 @@ export function intakeDraftFixture(overrides: Partial<IntakeOrderDetail> = {}): 
  * The detail's components carry `<Link>`s and React Query mutations, so neither renders
  * bare. Routes registered here are the ones those links point at.
  */
-export async function renderDetailUi(ui: ReactElement): Promise<void> {
+export async function renderDetailUi(ui: ReactElement): Promise<RenderResult> {
   setLocale('sr', { reload: false })
 
   const queryClient = new QueryClient({
@@ -106,5 +125,7 @@ export async function renderDetailUi(ui: ReactElement): Promise<void> {
   })
   await router.load()
 
-  render(<RouterProvider router={router as never} />)
+  // Hands back the render result so a test that needs a SECOND render of the same component can
+  // unmount the first — two mounted copies make every `getBy*` ambiguous.
+  return render(<RouterProvider router={router as never} />)
 }

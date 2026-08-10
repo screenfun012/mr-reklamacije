@@ -1,11 +1,17 @@
 import { m } from '@mr/i18n'
+import { IntakeDamageType } from '@mr/shared'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { INTAKE_CHECKLIST_LABELS } from '../../intake-labels.js'
+import { INTAKE_CHECKLIST_LABELS, INTAKE_DAMAGE_TYPE_LABELS } from '../../intake-labels.js'
 import { TabOverview } from '../tab-overview.js'
 import { intakeAmendBufferFrom } from '../use-intake-amend.js'
-import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
+import {
+  intakeDraftFixture,
+  intakeOrderDetailFixture,
+  intakePhotoFixture,
+  renderDetailUi,
+} from './render-detail.js'
 
 const DASH = '—'
 
@@ -206,5 +212,99 @@ describe('TabOverview in edit mode', () => {
     expect(screen.queryByRole('group', { name: INTAKE_CHECKLIST_LABELS.lanci() })).toBeNull()
     expect(screen.queryByRole('button', { name: m.intake_fuel_more() })).toBeNull()
     expect(screen.queryByLabelText(m.intake_field_equipment_note())).toBeNull()
+    expect(screen.queryByRole('group', { name: m.intake_damage_type_pick() })).toBeNull()
+    expect(screen.queryByRole('button', { name: m.intake_map_aria() })).toBeNull()
+  })
+
+  it('drops a marker of the selected type where the diagram is tapped', async () => {
+    const { order, patch, amend } = editing(intakeOrderDetailFixture({ damages: [] }))
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: INTAKE_DAMAGE_TYPE_LABELS[IntakeDamageType.Dent]() }),
+    )
+
+    // jsdom has no layout, so every rect is 0×0 — and the map refuses a tap on an unmeasured
+    // drawing, because dividing by that width would place the marker at NaN. Measuring it here is
+    // what a browser does for free.
+    const map = screen.getByRole('button', { name: m.intake_map_aria() })
+    vi.spyOn(map, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 340,
+      bottom: 556,
+      width: 340,
+      height: 556,
+      toJSON: () => ({}),
+    })
+    fireEvent.click(map, { clientX: 170, clientY: 278 })
+
+    const damages = patch.mock.calls[0]?.[0]?.damages
+    expect(damages).toHaveLength(1)
+    expect(damages[0].type).toBe(IntakeDamageType.Dent)
+    expect(damages[0].x).toBeCloseTo(170)
+    expect(damages[0].y).toBeCloseTo(278)
+    // The server derives the zone again, but the wire schema refuses an empty one, so the screen
+    // has to send a real word or the whole save fails in Zod.
+    expect(damages[0].zone.length).toBeGreaterThan(0)
+  })
+
+  it('removes a defect row without asking, because nothing has left the screen yet', async () => {
+    const damage = {
+      id: 'd1',
+      type: IntakeDamageType.Scratch,
+      x: 100,
+      y: 60,
+      zone: 'Prednja leva',
+    }
+    const { order, patch, amend } = editing(intakeOrderDetailFixture({ damages: [damage] }))
+
+    await renderDetailUi(<TabOverview order={order} amend={amend} />)
+
+    fireEvent.click(screen.getByRole('button', { name: m.intake_damage_remove() }))
+
+    expect(patch).toHaveBeenCalledWith({ damages: [] })
+  })
+
+  it('numbers the photos from the buffer, not from the stored order', async () => {
+    // Otherwise the badges keep the numbering from before the edit while the list beside them has
+    // already renumbered — two answers to one question, on the same screen.
+    const damage = {
+      id: 'd1',
+      type: IntakeDamageType.Scratch,
+      x: 100,
+      y: 60,
+      zone: 'Prednja leva',
+    }
+    const order = intakeOrderDetailFixture({
+      damages: [damage],
+      photos: [intakePhotoFixture({ damageId: 'd1' })],
+    })
+
+    const kept = await renderDetailUi(
+      <TabOverview
+        order={order}
+        amend={{ buffer: intakeAmendBufferFrom(order), patch: vi.fn(), phoneValid: true }}
+      />,
+    )
+    const badged = screen.getByRole('button', { name: m.intake_photo_preview() })
+    expect(within(badged).queryByText('1')).not.toBeNull()
+    kept.unmount()
+
+    await renderDetailUi(
+      <TabOverview
+        order={order}
+        amend={{
+          buffer: { ...intakeAmendBufferFrom(order), damages: [] },
+          patch: vi.fn(),
+          phoneValid: true,
+        }}
+      />,
+    )
+    const bare = screen.getByRole('button', { name: m.intake_photo_preview() })
+    expect(within(bare).queryByText('1')).toBeNull()
   })
 })

@@ -1269,6 +1269,7 @@
   "intake_amend_nothing_changed": "Ništa nije promenjeno — nalog nije obeležen.",
   "intake_amend_phone_invalid": "Telefon vlasnika ne sme da ostane prazan.",
   "intake_amend_locked": "Zatvori režim izmene da bi ovo bilo dostupno.",
+  "intake_damage_type_pick": "Vrsta oštećenja",
   "intake_fuel_less": "Manje goriva",
   "intake_fuel_more": "Više goriva"
 }
