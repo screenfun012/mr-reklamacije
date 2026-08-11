@@ -188,6 +188,8 @@ export const IntakeOrderListItemSchema = z.object({
   vehicle: z.string(),
   ownerName: z.string(),
   technicianName: z.string(),
+  /** The shop's working note beside the signed number — null until someone writes one (docs/25 §5). */
+  contactPhone: z.string().nullable(),
   damageCount: z.number().int().nonnegative(),
   photoCount: z.number().int().nonnegative(),
   /** NULL while the intake is still being filled in — the row renders as "Nedovršen". */
@@ -236,6 +238,8 @@ export const IntakeOrderDetailSchema = z.object({
   ownerName: z.string(),
   ownerAddress: z.string().nullable(),
   ownerPhone: z.string(),
+  /** The shop's working note beside the signed number — null until someone writes one (docs/25 §5). */
+  contactPhone: z.string().nullable(),
   ownerRemarks: z.string().nullable(),
   fuelLevel: z.number().int(),
   checklist: IntakeChecklistSchema,

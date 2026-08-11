@@ -21,6 +21,7 @@ const order: IntakeOrderListItem = {
   plate: 'BG-950-AA',
   vehicle: 'Opel Astra',
   ownerName: 'Brzi kurir doo',
+  contactPhone: null,
   technicianName: 'Nikola Admin',
   damageCount: 1,
   photoCount: 3,

@@ -430,15 +430,16 @@ describe('Intake orders integration', () => {
 
     /*
      * The third member of `FREE_AFTER_SIGNING`, and the only one this task ADDED — so it needs its
-     * own line. Read off the COLUMN, not the response: the wire field is on the input model only
-     * until the next task adds it to the two read models. The transition alone would not be enough —
-     * it is derived from the patch, so it would survive a repository that writes nothing.
+     * own line. Read off the COLUMN as well as the response, now that both read models carry the
+     * field too. The transition alone would not be enough — it is derived from the patch, so it
+     * would survive a repository that writes nothing.
      */
     it('accepts a contact number on a signed order and names it in Istorija', async () => {
       const office = await officeActor()
       const id = await signedOrder(await floorActor())
+      const before = await service.findById(id, office)
 
-      await service.update(
+      const updated = await service.update(
         id,
         { contactPhone: '+381 64 123 4567' },
         office,
@@ -450,7 +451,24 @@ describe('Intake orders integration', () => {
         .from(schema.intakeOrders)
         .where(eq(schema.intakeOrders.id, id))
       expect(row?.contactPhone).toBe('+381 64 123 4567')
+      expect(updated.contactPhone).toBe('+381 64 123 4567')
+      // The whole reason this field is allowed to exist: the signed number is untouched.
+      expect(updated.ownerPhone).toBe(before.ownerPhone)
       expect(await transitionsOf(id)).toContain('contact_added')
+    })
+
+    it('clears the contact number when sent null', async () => {
+      const office = await officeActor()
+      const id = await signedOrder(await floorActor())
+      await service.update(id, { contactPhone: '+381 64 1' }, office, actorContext(office.id))
+
+      const cleared = await service.update(
+        id,
+        { contactPhone: null },
+        office,
+        actorContext(office.id),
+      )
+      expect(cleared.contactPhone).toBeNull()
     })
 
     it('refuses a contact number on a DRAFT — there the real field is simply corrected', async () => {

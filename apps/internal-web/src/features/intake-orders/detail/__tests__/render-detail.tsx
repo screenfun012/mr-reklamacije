@@ -35,6 +35,7 @@ const SIGNED_ORDER = {
   ownerName: 'Brzi kurir doo',
   ownerAddress: 'Vojvode Stepe 12, Beograd',
   ownerPhone: '+381 61 234 5678',
+  contactPhone: null,
   ownerRemarks: null,
   fuelLevel: 3,
   checklist: {

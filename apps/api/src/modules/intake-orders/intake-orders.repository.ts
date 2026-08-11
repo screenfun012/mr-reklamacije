@@ -79,6 +79,7 @@ interface OrderRow {
   ownerName: string
   ownerAddress: string | null
   ownerPhone: string
+  contactPhone: string | null
   ownerRemarks: string | null
   fuelLevel: number
   checklist: IntakeChecklist | null
@@ -147,6 +148,7 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     ownerName: row.ownerName,
     ownerAddress: row.ownerAddress,
     ownerPhone: row.ownerPhone,
+    contactPhone: row.contactPhone,
     ownerRemarks: row.ownerRemarks,
     fuelLevel: row.fuelLevel,
     checklist: row.checklist ?? EMPTY_CHECKLIST,
@@ -186,6 +188,7 @@ export class IntakeOrdersRepository {
       ownerName: intakeOrders.ownerName,
       ownerAddress: intakeOrders.ownerAddress,
       ownerPhone: intakeOrders.ownerPhone,
+      contactPhone: intakeOrders.contactPhone,
       ownerRemarks: intakeOrders.ownerRemarks,
       fuelLevel: intakeOrders.fuelLevel,
       checklist: intakeOrders.checklist,
@@ -327,6 +330,7 @@ export class IntakeOrdersRepository {
           plate: intakeOrders.plate,
           vehicle: intakeOrders.vehicle,
           ownerName: intakeOrders.ownerName,
+          contactPhone: intakeOrders.contactPhone,
           technicianName: users.name,
           damageCount: sql<number>`COALESCE(jsonb_array_length(${intakeOrders.damages}), 0)::int`,
           photoCount,
@@ -352,6 +356,7 @@ export class IntakeOrdersRepository {
       plate: row.plate,
       vehicle: row.vehicle,
       ownerName: row.ownerName,
+      contactPhone: row.contactPhone,
       technicianName: row.technicianName ?? '',
       damageCount: row.damageCount,
       photoCount: row.photoCount,
