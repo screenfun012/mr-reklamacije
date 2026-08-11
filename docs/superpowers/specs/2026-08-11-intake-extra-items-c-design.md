@@ -1,9 +1,12 @@
 # Prijem vozila — dva „+", da radnik upiše ono što spisak ne nudi (C, dizajn)
 
 **Datum:** 2026-08-11 · **Grana:** `feat/vehicle-intake` · **Osnova:** `bcce1d8`
-**Status:** dizajn odobren po sekcijama (Nikola, 11.08.), kod nije počet
+**Status:** dizajn odobren po sekcijama (Nikola, 11.08.), odluka ⑱ obrnuta istog dana, kod nije počet
 
-Deo **C** iz reda **A ✅ → B ✅ → G → C → D → E → F**.
+Deo **C** iz reda **A ✅ → B ✅ → H → G → C → D → E → F**.
+
+⚠️ **Čita se posle H** (`2026-08-11-intake-freeze-after-signing-h-design.md`). H je poništio režim
+izmene i time skinuo posao sa ovog speca na dva mesta — vidi odluku ⑱ i §6.
 
 ---
 
@@ -65,7 +68,7 @@ unutrašnjost i izduvni sistem se na siluetu ne mogu dodirnuti, a brojčić upu�
 |---|---------|--------|
 | ⑯ | Šta pravi „+" na zatečenom stanju? | **Nov DA/NE red, samo na tom nalogu.** Odbijeno: red koji ulazi u katalog za sve — to ruši razlog zbog kog G postoji („razdvojiti admina od operatera") i `docs/13` (katalog je adminov, interno samo čita). Odbijeno i: „to je već slobodan tekst" — „Napomena uz opremu" postoji, ali Nikola je tražio **stavku**, jer stavka nosi DA/NE i tako se pojavljuje na papiru. |
 | ⑰ | Gde stoji „+" na oštećenjima? | **Nedostatak bez mesta na šemi**, u odeljku „OSTALO", bez brojčića. Odbijeno: marker sa svojim opisom i napomena na postojećem markeru — nijedno ne pokriva felne, koje su bile Nikolin primer. |
-| ⑱ | Radi li „+" i posle potpisa? | **Da**, kroz postojeći režim izmene, uz postojeći žig. Bez toga zaboravljene „felne izgrebane" nikad ne mogu da se dopišu, a kancelarija već sme da ispravi ček-listu i markere. |
+| ⑱ | Radi li „+" i posle potpisa? | **NE — odluka obrnuta istog dana** (Nikola, 11.08.). „+" radi **samo u čarobnjaku**, dok nalog nije potpisan. Prvo je bilo „da, kroz režim izmene", a onda je Nikola postavio nadređeno pravilo: potpis zamrzava zapis, jer vlasnik u ruci drži papir i neslaganje je konflikt. Time je poništen ceo režim izmene (V-6-2) — svoj deo, **`docs/superpowers/specs/2026-08-11-intake-freeze-after-signing-h-design.md`**, koji ide **pre** C. |
 | ⑲ | Počinje li „Napomena uz opremu" da se štampa? | **Ne u ovom zahvatu** (Nikola, 11.08.). ⚠️ Posledica koju treba znati: papir će nositi dopisane DA/NE redove, a slobodan tekst iz istog polja neće. Ostaje prijavljeno, §8. |
 | ⑳ | Može li fotografija na „ostalo"? | **Ne.** Fotografija se veže preko `damageId`, a red bez markera ga nema. Slika izgrebanih felni ide kao **opšta fotografija** — ta ćelija već postoji na koraku 3. Vezivanje bi tražilo `id` po redu i granu u vezivanju slika, za stvar koja već ima put. |
 | ㉑ | Računa li brojka „NEDOSTACI · N" i „ostalo"? | **Da**, i na ekranu i na papiru. Inače list piše „3" a lista ispod ima 5 — laž na dokumentu koji je dokaz. |
@@ -113,8 +116,8 @@ export const IntakeExtraDamagesSchema = z.array(z.string().trim().min(1).max(200
 već `string[]` sa `.max(100)` na listi i `.max(200)` na stavci. Ista ograničenja, ništa novo da se
 izmišlja i objašnjava.
 
-Bez `id` po redu, namerno: red ne nosi ništa što bi na njega upućivalo (fotografija ne, odluka ⑳),
-a uporedba za režim izmene ide po vrednosti.
+Bez `id` po redu, namerno: red ne nosi ništa što bi na njega upućivalo — fotografija ne (odluka ⑳),
+a posle potpisa se liste ne menjaju uopšte (odluka ⑱).
 
 ⚠️ **`.max(100)` sa žice i kapa na papiru su DVA razna broja i ne mešaju se.** `.max(100)` brani da
 pozivalac upiše smeće u red baze; kapa na papiru je pitanje da li strana staje i **određuje se
@@ -142,12 +145,12 @@ Podnaslov „OSTALO" se na ekranu **pojavljuje samo kad ima najmanje jedan red**
 `+ Dodaj nedostatak` stoji **uvek** — inače radnik ne bi imao gde da dodirne prvi put. Na papiru se
 ceo podblok pojavljuje samo kad ima redova (§5).
 
-**Detalj** (`detail/card-condition.tsx`, `detail/card-damages.tsx`). Čitanje: dopisano se prikazuje
-na istom mestu i istim oblikom, da potpisan nalog na ekranu izgleda kao papir u ruci. U **režimu
-izmene** se pojave isti „+" i ✕, a bafer u `detail/use-intake-amend.ts` dobija dve nove liste.
+**Detalj** (`detail/card-condition.tsx`, `detail/card-damages.tsx`). **Samo čitanje** — dopisano se
+prikazuje na istom mestu i istim oblikom, da potpisan nalog na ekranu izgleda kao papir u ruci.
+Nijedan „+" i nijedan ✕ ne postoje na detalju: po H, potpis zamrzava zapis (odluka ⑱).
 
-**Nijedan nov dijalog.** ✕ briše odmah, a posle potpisa jedina potvrda je ona koja već postoji —
-jednom, na „Sačuvaj", sa objašnjenjem šta žig znači (odluka ② iz V-6-2). Model se ne menja.
+**Nijedan nov dijalog.** ✕ postoji samo u čarobnjaku, gde nalog još nije potpisan, i briše odmah —
+jedan dodir da se doda, jedan da se skloni, ništa da se potvrđuje.
 
 Prazan naziv → „Dodaj" je zatamnjeno; **nema poruke o grešci**, jer nema šta da se objasni.
 
@@ -174,7 +177,8 @@ nedostataka u jednoj koloni daje **1247px prema fiksnih 1123** i odnese podnožj
 drugu stranu. Zato:
 
 - **kape se ne pogađaju nego mere u brauzeru na najgorem slučaju**: 12 markera + dopisani nedostaci
-  + ček-lista sa dopisanim stavkama + duga primedba + oznaka izmene + 5/5 usluga i materijala
+  + ček-lista sa dopisanim stavkama + duga primedba + 5/5 usluga i materijala (oznaka izmene više ne
+  postoji — H je briše)
 - ostatak nosi natpis koji **već postoji** — `intake_print_damages_more`
   („…i još {count} — vidi digitalni nalog {number}"). Jedna rečenica, bez blizanca: kad prelivaju i
   markeri i „ostalo", `{count}` je **njihov zbir**, jer papir govori mušteriji koliko nedostataka
@@ -187,16 +191,14 @@ drugu stranu. Zato:
 ## 6. Server
 
 - ulazna šema (`intake-order.wire.schema.ts`) i šema za čitanje dobijaju dve nove stavke iz §3.2
-- `CONDITION_FIELDS` (`intake-orders.service.ts:69`) dobija dve nove liste. **Time se besplatno
-  dobijaju:** kapija `intake_orders.amend`, žig „menjano posle potpisa" na sve četiri površine, i red
-  u Istoriji (`amend_after_signing`) — **bez nove dozvole, bez novog prelaza, bez nove odluke za
-  radnika.**
-- dve nove uporedbe pored `sameIntakeChecklist`/`sameIntakeDamages`
-  (`packages/shared/src/utils/intake-condition-equal.ts`): `sameIntakeExtraChecklist`,
-  `sameIntakeExtraDamages`. Zahtev koji ne menja ništa **ne sme da udari žig** — straža stoji i u
-  klijentu (`use-intake-amend.ts`) **i u servisu**, jer je žig trajan i ekranu se ne veruje
-  (blocker #3 iz V-6-2)
-- **nema promene SSE-a, nema nove dozvole, nema novog prelaza u Istoriji**
+- **ništa više.** Posle H jedini spisak u servisu je `FREE_AFTER_SIGNING = ['services', 'materials']`,
+  a sve što nije u njemu je posle potpisa odbijeno **na ime polja**. Dve nove kolone su zamrznute time
+  što nisu na tom spisku — **bez ijedne nove straže, bez nove dozvole, bez novog prelaza u Istoriji,
+  bez promene SSE-a.**
+
+⚠️ Ovo je drugi put da H skida posao sa C-a: pre H su ovde stajale **dve nove uporedbe** (da zahtev
+koji ne menja ništa ne udari žig). Bez žiga nemaju čemu da služe, a `intake-condition-equal.ts` H
+briše ceo.
 
 ---
 
@@ -208,8 +210,7 @@ Merenjem u brauzeru:
 Testovima (svaki mora da padne kad se linija koju pokriva pokvari — mutacija, ne argument):
 - ukupan broj u brojaču raste sa dopisanom stavkom (ne literal)
 - „ostalo" ulazi u brojku nedostataka na ekranu i na papiru
-- patch koji ne menja dopisane liste **ne udara žig** — i na klijentu i u servisu
-- bez `intake_orders.amend`, patch dopisanih lista na **potpisan** nalog → 403
+- patch dopisanih lista na **potpisan** nalog → **odbijen** (H, odluka ⑱) — bez izuzetka, i za admina
 - prazan/beli naziv se ne dodaje
 - dopisana stavka bez odgovora se štampa kao nedirnuta, ne kao „nema"
 - „ostalo" red se štampa **bez** brojčića
@@ -244,7 +245,7 @@ primopredaja (F).
 | **C-0** | migracija `0038` (dve kolone) + šema u `@mr/db` | ⚠️ **traži izričito odobrenje pre primene**; dokazan lanac od nule |
 | **C-1** | `@mr/shared` (šeme + dve uporedbe) · api (`CONDITION_FIELDS`, validacija) · brisanje mrtvog `note` | gejt zelen, komit |
 | **C-2** | čarobnjak: korak 2 i korak 3 | gejt zelen, komit |
-| **C-3** | detalj: čitanje + režim izmene | gejt zelen, komit |
+| **C-3** | detalj: čitanje (samo čitanje — H je sklonio režim izmene) | gejt zelen, komit |
 | **C-4** | papir + **merenje najgoreg slučaja** | gejt zelen, komit |
 
 Pun gejt pre svakog komita. Komit samo kad je faza cela.
