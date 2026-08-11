@@ -328,17 +328,20 @@ export class IntakeOrdersService {
       this.assertPostSigningPatchAllowed(patch)
     }
 
+    // The added number exists only because the signed one is frozen. On a draft there is nothing
+    // to work around: the real field is still editable, and a second place to type the same thing
+    // is a hole the screen would have to explain (docs/25 §3.0).
+    if (before.signedAt === null && patch.contactPhone !== undefined) {
+      throw new ValidationError(
+        'contactPhone belongs to a signed order — correct ownerPhone instead',
+      )
+    }
+
     if (patch.orderNumber !== undefined) {
       await this.assertNumberFree(normalizeOrderNumberKey(patch.orderNumber), id)
     }
 
     const effective = this.withDerivedZones(patch, before)
-
-    if (Object.keys(effective).length === 0) {
-      // Nothing to write: no history row, no realtime signal.
-      return before
-    }
-
     const updated = await this.repo.update(id, effective)
     if (updated === null) {
       throw new NotFoundError('Intake order', id)

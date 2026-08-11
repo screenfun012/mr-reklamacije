@@ -452,10 +452,6 @@ export class IntakeOrdersRepository {
     if (patch.materials !== undefined) values['materials'] = patch.materials
     if (patch.draftStep !== undefined) values['draftStep'] = patch.draftStep
 
-    if (Object.keys(values).length === 0) {
-      return this.findById(id)
-    }
-
     await this.db.transaction(async (tx) => {
       await tx
         .update(intakeOrders)

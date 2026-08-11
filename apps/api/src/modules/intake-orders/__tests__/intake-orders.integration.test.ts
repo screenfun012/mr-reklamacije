@@ -428,6 +428,45 @@ describe('Intake orders integration', () => {
       expect(await transitionsOf(id)).toContain('spec_updated')
     })
 
+    /*
+     * The third member of `FREE_AFTER_SIGNING`, and the only one this task ADDED — so it needs its
+     * own line. Read off the COLUMN, not the response: the wire field is on the input model only
+     * until the next task adds it to the two read models. The transition alone would not be enough —
+     * it is derived from the patch, so it would survive a repository that writes nothing.
+     */
+    it('accepts a contact number on a signed order and names it in Istorija', async () => {
+      const office = await officeActor()
+      const id = await signedOrder(await floorActor())
+
+      await service.update(
+        id,
+        { contactPhone: '+381 64 123 4567' },
+        office,
+        actorContext(office.id),
+      )
+
+      const [row] = await ctx.db
+        .select({ contactPhone: schema.intakeOrders.contactPhone })
+        .from(schema.intakeOrders)
+        .where(eq(schema.intakeOrders.id, id))
+      expect(row?.contactPhone).toBe('+381 64 123 4567')
+      expect(await transitionsOf(id)).toContain('contact_added')
+    })
+
+    it('refuses a contact number on a DRAFT — there the real field is simply corrected', async () => {
+      const serviser = await floorActor()
+      const draft = await service.create(createInput(), actorContext(serviser.id))
+
+      await expect(
+        service.update(
+          draft.id,
+          { contactPhone: '+381 64 1' },
+          serviser,
+          actorContext(serviser.id),
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
     it('refuses to remove a signed order, and still discards a draft', async () => {
       const serviser = await floorActor()
       const office = await officeActor()

@@ -186,8 +186,9 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'attachments.change_visibility',
   'client_submissions.manage',
   'notifications.view_own',
-  // The office oversees every intake and is the only side that may correct one
-  // after signing (docs/25 §5). There is no separate "kancelarija" role.
+  // The office oversees every intake. It cannot CORRECT one after signing — since 2026-08-11
+  // nobody can, admin included (docs/25 §3.0.1) — but it owns the status, the specification and
+  // the added contact number. There is no separate "kancelarija" role.
   'intake_orders.view',
   'intake_orders.view_own',
   'intake_orders.create',

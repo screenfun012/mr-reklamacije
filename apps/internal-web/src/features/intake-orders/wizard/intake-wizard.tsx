@@ -61,7 +61,8 @@ const STEP_LABELS = [
 
 /**
  * Three shapes a `?resume=` fetch can legitimately return and the wizard must refuse: a signed
- * order (adopting it would let the wizard patch a stamped document), a removed one, and one that
+ * order (adopting it would aim the wizard's patches at a frozen record, docs/25 §3.0.1, and every
+ * step patch it sends would come back 422), a removed one, and one that
  * is somebody else's. A serviser's colleague 404s here on the row scope, but an operator holds
  * `view` + `create`, gets a 200 on any draft and can reach `/prijem/novi` — that pairing is what
  * would otherwise put another customer's name, phone and address on this tablet.
