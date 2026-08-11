@@ -64,7 +64,6 @@ export const PERMISSIONS = [
   'intake_orders.update',
   'intake_orders.advance',
   'intake_orders.change_status',
-  'intake_orders.amend',
   'intake_orders.delete',
 
   // claim_reports
@@ -195,7 +194,6 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'intake_orders.update',
   'intake_orders.advance',
   'intake_orders.change_status',
-  'intake_orders.amend',
   'intake_orders.delete',
   'claim_reports.view',
   'claim_reports.update',

@@ -120,8 +120,6 @@ describe('valuesFromOrder', () => {
       technicianSignature: null,
       ownerSignature: null,
       signedAt: null,
-      amendedAt: null,
-      amendedByName: null,
       photosPending: 0,
       photos: [],
       createdAt: '2026-07-26T09:00:00.000Z',

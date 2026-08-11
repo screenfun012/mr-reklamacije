@@ -58,6 +58,7 @@ Domain terms kept verbatim (never translate/rename): **EMOTIVE, DOMACE, UKUPNO, 
 - **Admin = control plane (`docs/13`, binding):** every feature must leave an "admin hook" — (1) state changes write audit, (2) categories live in a registry not hardcoded, (3) gated actions map to a named permission, (4) catalogs are CRUD-able from admin, internal only reads.
 - **Soft deletes only** for business data (`deleted_at`); repos filter `deleted_at IS NULL` by default. Forward-only migrations (revert = new migration).
 - **Fault attribution:** a fault row has exactly one of `{employeeId, departmentId, externalPartyId}` (CHECK constraint), keyed by `fault_type`.
+- **Prijem: potpis zamrzava zapis (2026-08-11, deo H).** Potpisi prijema zatvaraju sve što je radnik uneo; posle njih se menjaju samo `services`, `materials` i `contactPhone` (`FREE_AFTER_SIGNING` u `intake-orders.service.ts` je ceo spisak, i odbijanje ide na IME polja, ne na vrednost). Potpisan nalog se **ne briše**; fotografija se posle potpisa prima samo od nalogovog servisera i samo dok `photosPending > 0`, a ne briše se nikome. Razlog je vlasnikov odštampani papir: sve što se kod nas može pomeriti je neslaganje sa dokumentom koji je potpisao. **Režim izmene (V-6-2 — žig „menjano posle potpisa", dozvola `intake_orders.amend`, kolone `amended_at`/`amended_by`) je RETIRED — ne vraćati ga**; objava neslaganja je bila samo neslaganje. Drugo zamrzavanje, na primopredaji, sleće sa delom F.
 
 ---
 

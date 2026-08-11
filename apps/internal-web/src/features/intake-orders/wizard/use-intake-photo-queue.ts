@@ -66,8 +66,8 @@ function localId(): string {
 /**
  * The upload queue, deliberately owned by the WIZARD and not by step 3. Two reasons, both from
  * docs/25: the stepper chip on steps 4–5 reports what is still in flight, and a photo taken just
- * before the signature must keep uploading after the serviser has moved on — the server treats a
- * late arrival from the order's own technician as part of the intake rather than an amendment.
+ * before the signature must keep uploading after the serviser has moved on — the server accepts a
+ * late arrival from the order's own technician as part of the intake rather than refusing it.
  * Unmounting the queue with the step would quietly turn that rule into dead code.
  */
 export function useIntakePhotoQueue(

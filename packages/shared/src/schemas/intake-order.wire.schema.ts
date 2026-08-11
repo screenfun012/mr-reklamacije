@@ -58,6 +58,14 @@ export const IntakeOrderUpdateInputSchema = z
     ownerName: z.string().trim().min(1).max(160).optional(),
     ownerAddress: z.string().trim().max(240).nullable().optional(),
     ownerPhone: z.string().trim().min(3).max(40).optional(),
+    /**
+     * The shop's working note, not evidence — the signed `ownerPhone` is never overwritten
+     * (docs/25 §5). Nullable so a number written by mistake can be taken back off the screen.
+     * ⚠ Only the input model carries it so far: the two READ models, the fixtures and the guard
+     * that refuses it on a draft land with the next task, which is what makes it reachable from a
+     * screen. It is here already because `FREE_AFTER_SIGNING` and `updateTransition` name it.
+     */
+    contactPhone: z.string().trim().min(3).max(40).nullable().optional(),
     ownerRemarks: z.string().trim().max(2000).nullable().optional(),
     fuelLevel: z.number().int().min(0).max(8).optional(),
     checklist: IntakeChecklistSchema.optional(),
@@ -94,7 +102,7 @@ export const IntakeOrderHistoryEntrySchema = z.object({
   id: z.string().uuid(),
   at: z.string(),
   action: z.string(),
-  /** `sign` | `advance` | `change_status` | `amend_after_signing` | … — labelled client-side. */
+  /** `sign` | `advance` | `change_status` | `spec_updated` | … — labelled client-side. */
   transition: z.string().nullable(),
   actorName: z.string().nullable(),
   /** Present only for a status move, so the line can read "U radu → Gotovo". */
@@ -186,8 +194,6 @@ export const IntakeOrderListItemSchema = z.object({
   signedAt: z.string().nullable(),
   /** 1–5 while unfinished, so the list can say where it stopped. */
   draftStep: z.number().int().nullable(),
-  /** Set once the intake condition was corrected after signing. */
-  amendedAt: z.string().nullable(),
   /** How many of the tablet's photos never arrived; 0 when everything is in. */
   photosPending: z.number().int().nonnegative(),
 })
@@ -241,8 +247,6 @@ export const IntakeOrderDetailSchema = z.object({
   technicianSignature: z.string().nullable(),
   ownerSignature: z.string().nullable(),
   signedAt: z.string().nullable(),
-  amendedAt: z.string().nullable(),
-  amendedByName: z.string().nullable(),
   /**
    * NULL for a live order. Present so the detail can tell a removed order from a live one —
    * without it the screen would have to infer the state from which list the user arrived

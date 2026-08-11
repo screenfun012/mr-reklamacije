@@ -1,5 +1,6 @@
 import { schema } from '@mr/db'
 import {
+  ADMIN_PERMISSIONS,
   IntakeArrivalMode,
   IntakeDamageType,
   IntakeNumberCheckStatus,
@@ -27,7 +28,7 @@ import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { IntakeOrdersService } from '../intake-orders.service.js'
 import type { IntakeOrdersActor } from '../intake-orders.types.js'
-import type { IntakeOrderCreateInput } from '../intake-orders.validators.js'
+import type { IntakeOrderCreateInput, IntakeOrderUpdateInput } from '../intake-orders.validators.js'
 
 const OFFICE_PERMISSIONS = [...OPERATOR_PERMISSIONS]
 const FLOOR_PERMISSIONS = [...SERVISER_PERMISSIONS]
@@ -112,7 +113,7 @@ describe('Intake orders integration', () => {
     return created.id
   }
 
-  /** A finished intake signed with a specific `photosExpected`, for the amendment-shift tests. */
+  /** A finished intake signed with a specific `photosExpected`, for the late-arrival tests. */
   async function signedOrderExpecting(
     actor: IntakeOrdersActor,
     photosExpected: number,
@@ -125,6 +126,16 @@ describe('Intake orders integration', () => {
       actorContext(actor.id),
     )
     return created.id
+  }
+
+  /**
+   * Takes an order off the list the only way left: a signed order is no longer removable through
+   * the service (㉗ of the freeze spec), so the repository is called directly. The removed-order
+   * screen, its list filter and `restore` deliberately stay in the code until Nikola decides their
+   * fate (spec §7) — so their coverage stays too, and this is how it reaches the state it needs.
+   */
+  async function removeFromList(orderId: string): Promise<void> {
+    await container.intakeOrdersRepository.softDelete(orderId)
   }
 
   /** Every transition this order's audit rows carry, in no particular order. */
@@ -233,7 +244,7 @@ describe('Intake orders integration', () => {
       const serviser = await floorActor()
       const office = await officeActor()
       const id = await signedOrder(serviser)
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       const removed = await service.list(office, { view: 'deleted', page: 1, pageSize: 25 })
       expect(removed.items.map((row) => row.id)).toContain(id)
@@ -248,9 +259,8 @@ describe('Intake orders integration', () => {
         id: await createUser('View Only'),
         permissions: ['intake_orders.view'],
       }
-      const office = await officeActor()
       const id = await signedOrder(await floorActor())
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       await expect(
         service.list(viewOnly, { view: 'deleted', page: 1, pageSize: 25 }),
@@ -280,9 +290,8 @@ describe('Intake orders integration', () => {
         id: await createUser('View Only'),
         permissions: ['intake_orders.view'],
       }
-      const office = await officeActor()
       const id = await signedOrder(await floorActor())
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       await expect(service.findById(id, viewOnly)).rejects.toBeInstanceOf(NotFoundError)
     })
@@ -350,186 +359,135 @@ describe('Intake orders integration', () => {
     })
   })
 
-  describe('the freeze after signing', () => {
-    it('lets anyone with update still edit services and materials', async () => {
-      const floor = await floorActor()
-      const orderId = await signedOrder(floor)
-
-      const updated = await service.update(
-        orderId,
-        { services: ['Zamena ulja'], materials: ['Filter'] },
-        floor,
-        actorContext(floor.id),
-      )
-
-      expect(updated.services).toEqual(['Zamena ulja'])
-      expect(updated.amendedAt).toBeNull()
-    })
-
-    it('refuses a serviser correcting the intake condition, even though he holds update', async () => {
-      const floor = await floorActor()
-      const orderId = await signedOrder(floor)
-
-      await expect(
-        service.update(orderId, { fuelLevel: 2 }, floor, actorContext(floor.id)),
-      ).rejects.toBeInstanceOf(ForbiddenError)
-    })
-
-    it('stamps the order when the office corrects the condition, so the print can admit it', async () => {
-      const floor = await floorActor()
-      const office = await officeActor('Ana')
-      const orderId = await signedOrder(floor)
-
-      const amended = await service.update(
-        orderId,
-        {
-          fuelLevel: 6,
-          damages: [
-            {
-              id: 'd1',
-              type: IntakeDamageType.Scratch,
-              x: 100,
-              y: 200,
-              zone: 'prednja leva strana',
-            },
-          ],
-        },
-        office,
-        actorContext(office.id),
-      )
-
-      expect(amended.amendedAt).not.toBeNull()
-      expect(amended.amendedByName).toBe('Ana')
-      expect(amended.fuelLevel).toBe(6)
-    })
-
-    it('refuses a field the signed paper carries, even for the office', async () => {
-      const floor = await floorActor()
+  describe('the signature freezes the record', () => {
+    it('refuses every frozen field on a signed order, office and floor alike', async () => {
+      const serviser = await floorActor()
       const office = await officeActor()
-      const orderId = await signedOrder(floor)
+      const id = await signedOrder(serviser)
+      const stored = await service.findById(id, office)
 
+      const frozen: IntakeOrderUpdateInput[] = [
+        { plate: 'BG-999-XX' },
+        { vehicleType: IntakeVehicleType.Van },
+        { ownerName: 'Neko Drugi' },
+        { ownerPhone: '+381 60 000 0000' },
+        { ownerRemarks: 'dopisano posle' },
+        { fuelLevel: 1 },
+        { checklist: { ...stored.checklist, rezervna: false } },
+        { damages: [] },
+        { equipmentNote: 'dopisano posle' },
+      ]
+
+      // An admin holds every permission there is, so he is the one actor who could still have a
+      // way in. The freeze has no permission branch at all — this pins that it never grows one (㉕).
+      const admin: IntakeOrdersActor = {
+        id: await createUser('Admin'),
+        permissions: [...ADMIN_PERMISSIONS],
+      }
+
+      for (const patch of frozen) {
+        for (const actor of [office, serviser, admin]) {
+          await expect(
+            service.update(id, patch, actor, actorContext(actor.id)),
+          ).rejects.toBeInstanceOf(ValidationError)
+        }
+      }
+    })
+
+    it('refuses a frozen field even when the value equals what is stored', async () => {
+      const office = await officeActor()
+      const id = await signedOrder(await floorActor())
+      const before = await service.findById(id, office)
+
+      // Refused on the field's NAME. Pruning a key because it happens to match would make
+      // "send it again with the same value" a way past the freeze.
       await expect(
-        service.update(orderId, { ownerName: 'Neko Drugi' }, office, actorContext(office.id)),
+        service.update(id, { ownerName: before.ownerName }, office, actorContext(office.id)),
       ).rejects.toBeInstanceOf(ValidationError)
     })
 
-    it('leaves an unsigned intake fully editable without any amend stamp', async () => {
-      const floor = await floorActor()
-      const draft = await service.create(createInput(), actorContext(floor.id))
-
-      const updated = await service.update(
-        draft.id,
-        { ownerName: 'Ispravljeno Ime', fuelLevel: 7, draftStep: 2 },
-        floor,
-        actorContext(floor.id),
-      )
-
-      expect(updated.ownerName).toBe('Ispravljeno Ime')
-      expect(updated.amendedAt).toBeNull()
-    })
-
-    it('lets the office correct the owner phone, and stamps it as a contact amendment', async () => {
-      const floor = await floorActor()
-      const office = await officeActor('Ana')
-      const orderId = await signedOrder(floor)
-
-      const updated = await service.update(
-        orderId,
-        { ownerPhone: '+381 64 111 2233' },
-        office,
-        actorContext(office.id),
-      )
-
-      expect(updated.ownerPhone).toBe('+381 64 111 2233')
-      expect(updated.amendedAt).not.toBeNull()
-      expect(updated.amendedByName).toBe('Ana')
-
-      const transitions = await transitionsOf(orderId)
-      expect(transitions).toContain('amend_contact_after_signing')
-      expect(transitions).not.toContain('amend_after_signing')
-    })
-
-    it('refuses a phone correction from a serviser, who holds no amend', async () => {
-      const floor = await floorActor()
-      const orderId = await signedOrder(floor)
-
-      await expect(
-        service.update(orderId, { ownerPhone: '+381 64 111 2233' }, floor, actorContext(floor.id)),
-      ).rejects.toBeInstanceOf(ForbiddenError)
-    })
-
-    it('writes one history row when a request touches both the condition and the phone', async () => {
-      const floor = await floorActor()
-      const office = await officeActor('Ana')
-      const orderId = await signedOrder(floor)
-
-      await service.update(
-        orderId,
-        { fuelLevel: 6, ownerPhone: '+381 64 111 2233' },
-        office,
-        actorContext(office.id),
-      )
-
-      // The condition wins: the vehicle's recorded state changed, which is the louder fact, and
-      // one request must not leave two rows for a reader to reconcile.
-      const transitions = await transitionsOf(orderId)
-      expect(transitions.filter((value) => value?.startsWith('amend')).length).toBe(1)
-      expect(transitions).toContain('amend_after_signing')
-    })
-
-    it('does not stamp a signed order when every value in the patch is what it already holds', async () => {
-      const floor = await floorActor()
-      const office = await officeActor('Ana')
-      const orderId = await signedOrder(floor)
-      const before = await service.findById(orderId, office)
-
-      const updated = await service.update(
-        orderId,
-        {
-          ownerPhone: before.ownerPhone,
-          fuelLevel: before.fuelLevel,
-          checklist: before.checklist,
-          damages: before.damages,
-          equipmentNote: before.equipmentNote,
-        },
-        office,
-        actorContext(office.id),
-      )
-
-      // The stamp is permanent and it prints. A double tap, a re-submitted form or a second
-      // caller must not be able to mark a document nobody edited.
-      expect(updated.amendedAt).toBeNull()
-      const transitions = await transitionsOf(orderId)
-      expect(transitions.filter((value) => value?.startsWith('amend')).length).toBe(0)
-    })
-
-    it('still refuses a frozen field even when its value is the one already stored', async () => {
-      const floor = await floorActor()
+    it('still accepts services and materials, lets one be removed, and says so in Istorija', async () => {
       const office = await officeActor()
-      const orderId = await signedOrder(floor)
-      const before = await service.findById(orderId, office)
+      const id = await signedOrder(await floorActor())
 
-      // Pruning must not become a way past the freeze: a caller who may not touch `ownerName`
-      // learns nothing from whether his value happened to match.
+      const withParts = await service.update(
+        id,
+        { services: ['zamena ulja'], materials: ['filter', 'ulje 5W30'] },
+        office,
+        actorContext(office.id),
+      )
+      expect(withParts.materials).toEqual(['filter', 'ulje 5W30'])
+
+      const withoutOne = await service.update(
+        id,
+        { materials: ['filter'] },
+        office,
+        actorContext(office.id),
+      )
+      expect(withoutOne.materials).toEqual(['filter'])
+      expect(await transitionsOf(id)).toContain('spec_updated')
+    })
+
+    it('refuses to remove a signed order, and still discards a draft', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const signed = await signedOrder(serviser)
+
+      await expect(service.delete(signed, office, actorContext(office.id))).rejects.toBeInstanceOf(
+        ValidationError,
+      )
+
+      const draft = await service.create(createInput(), actorContext(serviser.id))
+      await service.delete(draft.id, serviser, actorContext(serviser.id))
+      await expect(service.findById(draft.id, office)).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    it('accepts a late photo from the order own serviser, only up to photos_expected', async () => {
+      const serviser = await floorActor()
+      const id = await signedOrderExpecting(serviser, 1)
+
+      const photo = await service.uploadPhoto(
+        id,
+        photoInput(),
+        null,
+        serviser,
+        actorContext(serviser.id),
+      )
+      expect(photo.id).toBeDefined()
+
+      // The record no longer admits anything is missing, so the door is shut.
       await expect(
-        service.update(orderId, { ownerName: before.ownerName }, office, actorContext(office.id)),
+        service.uploadPhoto(id, photoInput(), null, serviser, actorContext(serviser.id)),
       ).rejects.toBeInstanceOf(ValidationError)
     })
 
-    it('leaves a draft patchable with its whole state, unchanged values included', async () => {
-      const floor = await floorActor()
-      const draft = await service.create(createInput(), actorContext(floor.id))
+    it('refuses a photo on a signed order from anyone but its own serviser', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrderExpecting(serviser, 2)
 
-      const updated = await service.update(
-        draft.id,
-        { ownerPhone: draft.ownerPhone, fuelLevel: draft.fuelLevel, draftStep: 3 },
-        floor,
-        actorContext(floor.id),
+      await expect(
+        service.uploadPhoto(id, photoInput(), null, office, actorContext(office.id)),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('refuses removing a photo from a signed order, for everyone', async () => {
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrderExpecting(serviser, 1)
+      const photo = await service.uploadPhoto(
+        id,
+        photoInput(),
+        null,
+        serviser,
+        actorContext(serviser.id),
       )
 
-      // The wizard sends the whole form on every step; pruning is a signed-order rule only.
-      expect(updated.draftStep).toBe(3)
-      expect(updated.amendedAt).toBeNull()
+      for (const actor of [serviser, office]) {
+        await expect(
+          service.deletePhoto(id, photo.id, actor, actorContext(actor.id)),
+        ).rejects.toBeInstanceOf(ValidationError)
+      }
     })
   })
 
@@ -743,34 +701,6 @@ describe('Intake orders integration', () => {
       const check = await service.checkNumber(orderNumber, floor)
       expect(check.status).toBe(IntakeNumberCheckStatus.Free)
     })
-
-    it('refuses to let a serviser remove a signed order', async () => {
-      const floor = await floorActor()
-      const orderId = await signedOrder(floor)
-
-      await expect(service.delete(orderId, floor, actorContext(floor.id))).rejects.toBeInstanceOf(
-        ForbiddenError,
-      )
-    })
-
-    it('soft-deletes a signed order for the office — evidence leaves the list, not the database', async () => {
-      const floor = await floorActor()
-      const office = await officeActor()
-      const orderId = await signedOrder(floor)
-
-      await service.delete(orderId, office, actorContext(office.id))
-
-      const [row] = await ctx.db
-        .select({ deletedAt: schema.intakeOrders.deletedAt })
-        .from(schema.intakeOrders)
-        .where(eq(schema.intakeOrders.id, orderId))
-      expect(row?.deletedAt).not.toBeNull()
-      // The office is the one actor that must still READ it: it holds `delete`, so it also holds
-      // the correction, and the screen cannot offer "vrati na listu" for an order it cannot open.
-      // The 404 therefore moves to an actor without `delete` — a removed order stays as invisible
-      // to the shop floor as a colleague's order is.
-      await expect(service.findById(orderId, floor)).rejects.toBeInstanceOf(NotFoundError)
-    })
   })
 
   describe('restore', () => {
@@ -779,7 +709,7 @@ describe('Intake orders integration', () => {
       const office = await officeActor()
       const number = uniqueNumber('back')
       const id = await signedOrder(serviser, { orderNumber: number })
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       const gone = await service.list(office, {
         search: number,
@@ -809,7 +739,7 @@ describe('Intake orders integration', () => {
       const serviser = await floorActor()
       const office = await officeActor()
       const id = await signedOrder(serviser)
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       const seen = await service.findById(id, office)
       expect(seen.deletedAt).not.toBeNull()
@@ -826,7 +756,7 @@ describe('Intake orders integration', () => {
       const office = await officeActor()
       const number = uniqueNumber('clash')
       const id = await signedOrder(serviser, { orderNumber: number })
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       const replacement = await service.create(
         createInput({ orderNumber: number }),
@@ -844,10 +774,11 @@ describe('Intake orders integration', () => {
       const serviser = await floorActor()
       const office = await officeActor()
       const id = await signedOrder(serviser)
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
-      // A stale browser tab pressing "ukloni" twice must not write a second removal line for
-      // a removal that never happened — and must not answer with a success toast either.
+      // A second removal must not write a removal line for a removal that never happened, and
+      // must not answer with a success toast either. No screen offers this any more (the freeze
+      // took the button), but the guard stays for as long as the removed view does (spec §7).
       await expect(service.delete(id, office, actorContext(office.id))).rejects.toBeInstanceOf(
         ConflictError,
       )
@@ -870,7 +801,9 @@ describe('Intake orders integration', () => {
     it('leaves a removed order read-only on every mutating path until it is put back', async () => {
       const serviser = await floorActor()
       const office = await officeActor()
-      const id = await signedOrder(serviser)
+      // Signed as still expecting one photo, so the late arrival below is accepted and there is
+      // a photo to reach for once the order is off the list.
+      const id = await signedOrderExpecting(serviser, 1)
       const photo = await service.uploadPhoto(
         id,
         photoInput(),
@@ -878,7 +811,7 @@ describe('Intake orders integration', () => {
         serviser,
         actorContext(serviser.id),
       )
-      await service.delete(id, office, actorContext(office.id))
+      await removeFromList(id)
 
       // Matched on the refusal itself, not just on "it threw": a removed row is invisible to
       // every repository write, so several of these paths already fail for the wrong reason
@@ -1117,59 +1050,6 @@ describe('Intake orders integration', () => {
       expect(after.photos.find((row) => row.id === photo.id)?.damageId).toBeNull()
     })
 
-    it('freezes photos at the signature — a serviser can no longer remove one', async () => {
-      const floor = await floorActor()
-      const created = await service.create(createInput(), actorContext(floor.id))
-      const photo = await service.uploadPhoto(
-        created.id,
-        photoInput(),
-        null,
-        floor,
-        actorContext(floor.id),
-      )
-      await service.sign(
-        created.id,
-        { technicianSignature: 'M0 0', ownerSignature: 'M0 0', photosExpected: 1 },
-        floor,
-        actorContext(floor.id),
-      )
-
-      await expect(
-        service.deletePhoto(created.id, photo.id, floor, actorContext(floor.id)),
-      ).rejects.toBeInstanceOf(ForbiddenError)
-    })
-
-    it("accepts a photo that lands AFTER signing from the order's own serviser, unstamped", async () => {
-      const floor = await floorActor()
-      const orderId = await signedOrder(floor)
-
-      // The tablet was still uploading in the background; the photo was taken before the
-      // signature, so it must not read as an amendment.
-      const photo = await service.uploadPhoto(
-        orderId,
-        photoInput(),
-        null,
-        floor,
-        actorContext(floor.id),
-      )
-
-      const after = await service.findById(orderId, floor)
-      expect(after.photos.map((p) => p.id)).toContain(photo.id)
-      expect(after.amendedAt).toBeNull()
-    })
-
-    it('treats the office adding a photo after signing as an amendment, and stamps it', async () => {
-      const floor = await floorActor()
-      const office = await officeActor('Ana')
-      const orderId = await signedOrder(floor)
-
-      await service.uploadPhoto(orderId, photoInput(), null, office, actorContext(office.id))
-
-      const after = await service.findById(orderId, office)
-      expect(after.amendedAt).not.toBeNull()
-      expect(after.amendedByName).toBe('Ana')
-    })
-
     it('refuses a damageId that is not on this order', async () => {
       const floor = await floorActor()
       const draft = await service.create(createInput(), actorContext(floor.id))
@@ -1182,7 +1062,8 @@ describe('Intake orders integration', () => {
     it("404s when a serviser reaches for a colleague's photo instead of leaking that it exists", async () => {
       const mine = await floorActor('Pera')
       const theirs = await floorActor('Mika')
-      const orderId = await signedOrder(theirs)
+      // Expecting one photo, so his own late arrival is accepted — the subject here is the 404.
+      const orderId = await signedOrderExpecting(theirs, 1)
       const photo = await service.uploadPhoto(
         orderId,
         photoInput(),
@@ -1219,53 +1100,6 @@ describe('Intake orders integration', () => {
       expect(thumb.storagePath).toBe(original.storagePath)
       expect(thumb.etag).toBe(original.etag)
     })
-
-    it('keeps the missing-photo count meaning one thing when the office amends', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const id = await signedOrderExpecting(serviser, 3) // signed with photosExpected: 3, 0 arrived
-
-      await service.uploadPhoto(id, photoInput(), null, office, actorContext(office.id))
-
-      const afterAdd = await service.findById(id, office)
-      expect(afterAdd.photosPending).toBe(3)
-
-      const [photo] = afterAdd.photos
-      if (photo === undefined) {
-        throw new Error('expected an uploaded photo')
-      }
-      await service.deletePhoto(id, photo.id, office, actorContext(office.id))
-
-      const afterRemove = await service.findById(id, office)
-      expect(afterRemove.photosPending).toBe(3)
-    })
-
-    it('never drives photos_expected below zero, whatever the office removes', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const id = await signedOrderExpecting(serviser, 0)
-
-      // The order's own serviser uploading after signing is a late arrival, not an amendment
-      // (see `isLateArrival` in uploadPhoto) — arrived rises to 1 while photos_expected stays
-      // at 0. That is the legitimate "arrived exceeds expected" state the column's comment
-      // describes, and the only way to reach it without violating the freeze at signing.
-      const photo = await service.uploadPhoto(
-        id,
-        photoInput(),
-        null,
-        serviser,
-        actorContext(serviser.id),
-      )
-
-      // The office removing it IS an amendment, and attempts photos_expected: 0 - 1 — the one
-      // case where GREATEST(0, …) actually differs from a bare decrement and would otherwise
-      // hit intake_orders_photos_expected_check.
-      await expect(
-        service.deletePhoto(id, photo.id, office, actorContext(office.id)),
-      ).resolves.toBeUndefined()
-      const after = await service.findById(id, office)
-      expect(after.photosPending).toBe(0)
-    })
   })
 
   describe('realtime + audit', () => {
@@ -1277,22 +1111,6 @@ describe('Intake orders integration', () => {
       expect(events.resourceEvents).toContainEqual(
         expect.objectContaining({ resource: ResourceChangedKey.IntakeOrders }),
       )
-    })
-
-    it('audits an amendment with its own transition, so the history can name it', async () => {
-      const floor = await floorActor()
-      const office = await officeActor()
-      const orderId = await signedOrder(floor)
-
-      await service.update(orderId, { fuelLevel: 1 }, office, actorContext(office.id))
-
-      const rows = await ctx.db
-        .select({ changes: schema.auditLog.changes })
-        .from(schema.auditLog)
-        .where(eq(schema.auditLog.entityId, orderId))
-
-      const transitions = rows.map((row) => (row.changes as { transition?: string })?.transition)
-      expect(transitions).toContain('amend_after_signing')
     })
   })
 })

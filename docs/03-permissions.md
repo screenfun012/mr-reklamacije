@@ -87,11 +87,14 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `intake_orders.view` | View every intake order in the shop |
 | `intake_orders.view_own` | View only the caller's own intake orders (a foreign row 404s, never 403) |
 | `intake_orders.create` | Start a new intake |
-| `intake_orders.update` | Fill the wizard in, and edit services/materials afterwards |
+| `intake_orders.update` | Fill the wizard in, and edit services/materials/the added contact number afterwards |
 | `intake_orders.advance` | Step the status forward one notch (the serviser's one-way button) |
 | `intake_orders.change_status` | Set any status — correcting a mis-tap, office only |
-| `intake_orders.amend` | Correct the intake condition (damages, checklist, fuel, photos) after signing; stamps `amended_at`/`amended_by` and marks the printed document |
-| `intake_orders.delete` | Soft-delete a signed order (it leaves the list, never the DB) |
+| `intake_orders.delete` | Discard another serviser's unfinished draft (a signed order can no longer be removed by anyone — docs/25 §3.0.1) |
+
+⚠️ **`intake_orders.amend` was removed on 2026-08-11** (the signature now freezes the record, so
+there is no amended state to permit). It never reached production; in dev and test its
+`role_permissions` row is left as an orphan on purpose.
 
 Intake photos are served by the intake module under these permissions, **not** by
 `attachments.*` — a serviser must never hold a permission that would also reach a claim's files.
@@ -248,7 +251,6 @@ intake_orders.create
 intake_orders.update
 intake_orders.advance
 intake_orders.change_status
-intake_orders.amend
 intake_orders.delete
 claim_reports.view
 claim_reports.update

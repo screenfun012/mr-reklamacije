@@ -18,12 +18,6 @@ import {
 } from '@tanstack/react-router'
 import { render, type RenderResult } from '@testing-library/react'
 import type { ReactElement } from 'react'
-import { vi } from 'vitest'
-
-import type {
-  IntakePhotoQueue,
-  IntakePhotoQueueEntry,
-} from '../../wizard/use-intake-photo-queue.js'
 
 const SIGNED_ORDER = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -61,8 +55,6 @@ const SIGNED_ORDER = {
   technicianSignature: 'M 0 0 L 10 10',
   ownerSignature: 'M 0 0 L 20 20',
   signedAt: '2026-07-27T19:10:00.000Z',
-  amendedAt: null,
-  amendedByName: null,
   deletedAt: null,
   photosPending: 0,
   photos: [],
@@ -96,40 +88,6 @@ export function intakePhotoFixture(overrides: Partial<IntakeOrderPhoto> = {}): I
     uploadedAt: '2026-07-27T19:00:00.000Z',
     ...overrides,
   })
-}
-
-/**
- * An upload queue that holds nothing. `TabPhotos` takes the queue as a prop precisely so a test
- * does not have to run the real one — its timers, object URLs and network live in its own suite.
- */
-export function emptyQueueStub(overrides: Partial<IntakePhotoQueue> = {}): IntakePhotoQueue {
-  return {
-    entries: [],
-    pending: 0,
-    failed: 0,
-    waiting: 0,
-    outstanding: 0,
-    online: true,
-    enqueue: vi.fn(),
-    retry: vi.fn(),
-    discard: vi.fn(),
-    ...overrides,
-  }
-}
-
-/** One entry in that queue — an upload that has landed keeps its `attachmentId`. */
-export function queueEntryStub(
-  overrides: Partial<IntakePhotoQueueEntry> = {},
-): IntakePhotoQueueEntry {
-  return {
-    id: 'q1',
-    damageId: null,
-    state: 'ok',
-    progress: 100,
-    previewUrl: 'blob:test',
-    attachmentId: null,
-    ...overrides,
-  }
 }
 
 /** An unsigned draft: no signatures, a step to resume from, and nothing to advance. */

@@ -17,7 +17,6 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/pg-core'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { attachments, auditLog, intakeOrders, users } from './intake-orders.schema.js'
@@ -92,8 +91,6 @@ interface OrderRow {
   technicianSignature: string | null
   ownerSignature: string | null
   signedAt: Date | null
-  amendedAt: Date | null
-  amendedByName: string | null
   deletedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -161,8 +158,6 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     technicianSignature: row.technicianSignature,
     ownerSignature: row.ownerSignature,
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
-    amendedAt: row.amendedAt === null ? null : row.amendedAt.toISOString(),
-    amendedByName: row.amendedByName,
     deletedAt: row.deletedAt === null ? null : row.deletedAt.toISOString(),
     photosPending: pendingPhotoCount(row.photosExpected, photos.length),
     photos,
@@ -170,9 +165,6 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     updatedAt: row.updatedAt.toISOString(),
   }
 }
-
-/** Second join onto users: who corrected the intake condition after signing. */
-const amender = alias(users, 'amender')
 
 export class IntakeOrdersRepository {
   constructor(private readonly db: ApiDatabase) {}
@@ -206,8 +198,6 @@ export class IntakeOrdersRepository {
       technicianSignature: intakeOrders.technicianSignature,
       ownerSignature: intakeOrders.ownerSignature,
       signedAt: intakeOrders.signedAt,
-      amendedAt: intakeOrders.amendedAt,
-      amendedByName: amender.name,
       deletedAt: intakeOrders.deletedAt,
       createdAt: intakeOrders.createdAt,
       updatedAt: intakeOrders.updatedAt,
@@ -232,7 +222,6 @@ export class IntakeOrdersRepository {
       .select(this.detailSelection())
       .from(intakeOrders)
       .leftJoin(users, eq(users.id, intakeOrders.technicianId))
-      .leftJoin(amender, eq(amender.id, intakeOrders.amendedBy))
       .where(and(...conditions))
       .limit(1)
 
@@ -343,7 +332,6 @@ export class IntakeOrdersRepository {
           photoCount,
           signedAt: intakeOrders.signedAt,
           draftStep: intakeOrders.draftStep,
-          amendedAt: intakeOrders.amendedAt,
           photosExpected: intakeOrders.photosExpected,
         })
         .from(intakeOrders)
@@ -369,7 +357,6 @@ export class IntakeOrdersRepository {
       photoCount: row.photoCount,
       signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
       draftStep: row.draftStep,
-      amendedAt: row.amendedAt === null ? null : row.amendedAt.toISOString(),
       photosPending: pendingPhotoCount(row.photosExpected, row.photoCount),
     }))
 
@@ -436,11 +423,7 @@ export class IntakeOrdersRepository {
     return detail
   }
 
-  async update(
-    id: string,
-    patch: IntakeOrderUpdateInput,
-    amendedBy: string | null,
-  ): Promise<IntakeOrderDetail | null> {
+  async update(id: string, patch: IntakeOrderUpdateInput): Promise<IntakeOrderDetail | null> {
     const values: Record<string, unknown> = {}
 
     if (patch.orderNumber !== undefined) {
@@ -459,6 +442,7 @@ export class IntakeOrdersRepository {
     if (patch.ownerName !== undefined) values['ownerName'] = patch.ownerName
     if (patch.ownerAddress !== undefined) values['ownerAddress'] = patch.ownerAddress
     if (patch.ownerPhone !== undefined) values['ownerPhone'] = patch.ownerPhone
+    if (patch.contactPhone !== undefined) values['contactPhone'] = patch.contactPhone
     if (patch.ownerRemarks !== undefined) values['ownerRemarks'] = patch.ownerRemarks
     if (patch.fuelLevel !== undefined) values['fuelLevel'] = patch.fuelLevel
     if (patch.checklist !== undefined) values['checklist'] = patch.checklist
@@ -467,11 +451,6 @@ export class IntakeOrdersRepository {
     if (patch.services !== undefined) values['services'] = patch.services
     if (patch.materials !== undefined) values['materials'] = patch.materials
     if (patch.draftStep !== undefined) values['draftStep'] = patch.draftStep
-
-    if (amendedBy !== null) {
-      values['amendedAt'] = new Date()
-      values['amendedBy'] = amendedBy
-    }
 
     if (Object.keys(values).length === 0) {
       return this.findById(id)
@@ -523,25 +502,6 @@ export class IntakeOrdersRepository {
       .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
 
     return this.findById(id)
-  }
-
-  /**
-   * `photos_expected` is what the tablet held at signing, so the indicator means "photos that
-   * never arrived". An office amendment must move the expectation with it, or removing a bad
-   * photo would claim photos were lost and adding one would silence a real loss.
-   *
-   * Floored in SQL: the column is nullable and carries `photos_expected >= 0`
-   * (intake_orders_photos_expected_check). It can legitimately already sit below the arrived
-   * count — a retry that lands twice, a stale count at signing — and `pendingPhotoCount` clamps
-   * that away, so a bare decrement would walk it under zero and raise a raw constraint error.
-   */
-  async shiftPhotosExpected(orderId: string, delta: number): Promise<void> {
-    await this.db
-      .update(intakeOrders)
-      .set({
-        photosExpected: sql`GREATEST(0, COALESCE(${intakeOrders.photosExpected}, 0) + ${delta})`,
-      })
-      .where(and(eq(intakeOrders.id, orderId), isNull(intakeOrders.deletedAt)))
   }
 
   async setStatus(id: string, status: string): Promise<IntakeOrderDetail | null> {

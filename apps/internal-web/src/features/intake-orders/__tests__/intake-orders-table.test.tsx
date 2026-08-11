@@ -26,7 +26,6 @@ const order: IntakeOrderListItem = {
   photoCount: 3,
   signedAt: '2026-07-27T19:10:00.000Z',
   draftStep: null,
-  amendedAt: null,
   photosPending: 0,
 }
 

@@ -190,9 +190,9 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
 
   /**
    * The queue lives here rather than inside step 3 on purpose: a photo taken just before the
-   * signature has to keep uploading after the serviser has moved on, and the server only treats a
-   * late arrival as part of the intake — instead of an amendment that stamps the document — while
-   * it comes from the order's own technician (docs/25 §3.6).
+   * signature has to keep uploading after the serviser has moved on, and the server accepts a late
+   * arrival as part of the intake — instead of refusing it — only while it comes from the order's
+   * own technician and only up to `photos_expected` (docs/25 §3.6).
    */
   const photoQueue = useIntakePhotoQueue(orderId)
 

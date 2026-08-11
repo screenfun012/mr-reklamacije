@@ -4,10 +4,15 @@ import { AuditAction, type IntakeOrderHistoryEntry } from '@mr/shared'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_ORDER } from '../intake-status'
 
 /**
- * Complete against the server: `IntakeOrdersService` writes exactly these plus `advance`,
- * `change_status` and `action = 'create'`, while `photo_uploaded`, `photo_removed` and
- * transition-less updates are filtered out in SQL (`intake-orders.repository.ts:677-680`) and
- * `discard_draft` belongs to a row that no longer exists.
+ * Against the server, `IntakeOrdersService` writes exactly these plus `advance`, `change_status`
+ * and `action = 'create'`, while `photo_uploaded`, `photo_removed` and transition-less updates are
+ * filtered out in SQL (`intake-orders.repository.ts`) and `discard_draft` belongs to a row that no
+ * longer exists.
+ *
+ * Two deliberate gaps since the freeze (2026-08-11): `contact_added` is written by the server but
+ * gets its label with the contact-number field, and until then falls back to the neutral clause;
+ * `soft_delete` is no longer written by anything — a signed order cannot be removed — and is kept
+ * only for rows recorded before that, for as long as the removed view exists at all.
  */
 const TRANSITION_LABELS: Record<string, () => string> = {
   sign: m.intake_history_signed,

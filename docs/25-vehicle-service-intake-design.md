@@ -98,6 +98,34 @@ with `?stampa`, and the detail opens the preview and clears the flag so a reload
 again (`detail/use-consume-print-flag.ts`). Handing the paper over is the next thing that has to
 happen, so it is not behind a button somebody has to find.
 
+**And the signatures FREEZE the record (H, 2026-08-11).** The owner walks out holding that printed
+sheet, so anything that can still move on our side is a conflict with a document he signed — and
+grounds for a complaint against his own evidence. Two freezes, each on its own pair of signatures:
+
+| Moment | Frozen | Still live |
+| --- | --- | --- |
+| **Intake signatures** (worker + owner) → `signed_at` | vehicle, owner, the signed phone, checklist, fuel, damages, equipment note, intake photos | **Specifikacija** (`services`, `materials`) — adding **and removing** · the status ladder · discarding a **draft** (hard delete, as today) · the added contact number (§5) |
+| **Handover signatures** (serviser + owner, status Preuzeto) | **everything, Specifikacija included** — a signed handover does not go backwards, status least of all | nothing |
+
+The second freeze lands physically with part F, when handover signatures first exist; the rule is
+written now so F is not a third time the same thing gets decided.
+
+- `FREE_AFTER_SIGNING` in `intake-orders.service.ts` is the WHOLE list, and the refusal is on the
+  field's **name**, never on its value — "send it again with the same value" must not be a way past
+  the freeze.
+- **No exception for admin.** A freeze with an exception is not a freeze, and the server judges it —
+  `assertPostSigningPatchAllowed` has no permission branch at all.
+- A signed order **cannot be removed**: if a signed record may be destroyed, freezing its fields is
+  weaker than deleting the whole document. Only an unfinished draft is discarded.
+- A photo after signing is accepted **only from the order's own serviser and only while
+  `photosPending > 0`** — that is the tablet delivering what it already held at signing (§3.6), and
+  the door is exactly as wide as the record admits something is missing. **Removing** a photo after
+  signing is refused to everyone.
+
+⚠️ **The amend mode (V-6-2, built 10.08. — the "menjano posle potpisa" stamp, permission
+`intake_orders.amend`, columns `amended_at`/`amended_by`) is RETIRED. Do not bring it back.** It
+answered the same risk with "allow it, but say so loudly"; the announcement WAS the divergence.
+
 ⚠️ **Step numbers are named, not typed** — `INTAKE_WIZARD_STEPS` in `wizard/intake-wizard-state.ts`,
 and the totals in the copy are the `{total}` parameter fed from `INTAKE_WIZARD_STEP_COUNT`. Both
 were bare literals until this change, and removing one step meant hunting `step === 4` and `od 5`
@@ -270,33 +298,27 @@ nothing anywhere reported an error.
    after a serviser who left the firm.
 6. **KPI cards count signed orders only.** A draft defaults to status `primljeno`, so without this
    rule "Primljeno: 7" would include half-entered intakes nobody handed over.
-7. **`ODUSTANI` really deletes** the unfinished order. A signed order can only be removed by
-   office/admin, and softly (`deleted_at`) — it is evidence; it leaves the list, never the DB.
+7. **`ODUSTANI` really deletes** the unfinished order. A signed order **cannot be removed at all**
+   since H (2026-08-11, §3.0.1): it is the shop's half of a document the owner is holding, and if it
+   may be destroyed then freezing its fields is weaker than deleting the whole thing. ⚠️ The soft
+   delete, `restore` and the "Uklonjeni" list view are therefore left without a single way in; they
+   stay in the code, unreached, until Nikola decides their fate (H spec §7).
 8. **Status is one-way for the serviser** (single next-status button, as designed). Office/admin
    can set any status to fix a mis-tap. Every change lands in the Istorija tab with name and time.
-9. **After signing:** services, materials and status always remain editable — **confirmed by
-   Nikola 2026-07-27, "stalno otvorene"**, in any status including `gotovo` and `preuzeto`. The
-   handoff's note ("while the order is U radu") is the outlier and is NOT the rule: during intake
-   nobody knows yet which materials went in, and a car can be finished before someone remembers
-   the filter they actually fitted. Closing the list would mean phoning the office over one line. The **intake
-   condition** (checklist, fuel, damages, equipment note, photos) may be corrected **only by
-   office/admin**, and then **the printed document must state that it was amended after signing** —
-   otherwise the paper claims the owner confirmed something they did not. The order then
-   permanently carries a `⚠ MENJANO POSLE POTPISA` badge, an amber note in the POTPISI card, and
-   the print marker (§3.5).
-   **The owner's phone joins that list (Nikola, 2026-08-08, V-6-2 decision ①).** It is the one
-   otherwise-frozen field that makes the record useless for its own purpose — it is how the shop
-   reaches the owner about the car it is holding — so it may be corrected, by the same actors,
-   with the same permanent stamp. Everything else about the owner and the vehicle stays frozen:
-   `orderNumber`, `plate`, `vehicle`, `vehicleType`, `vin`, `mileage`, `arrivalMode`, `ownerName`,
-   `ownerAddress`, `ownerRemarks`.
-   ⚠️ **The stamp is one unnamed pair of columns** (`amended_at`/`amended_by`) read by four
-   surfaces, and only the audit row carries the transition. So the badge, the POTPISI note and the
-   list marker say only **"Nalog je menjan posle potpisa"**, and the Istorija tab is the one place
-   that names WHAT changed (`amend_after_signing` vs `amend_contact_after_signing`). A surface that
-   named the condition would be lying every time a phone was corrected.
-   **A patch that changes nothing leaves no stamp:** the service drops every key whose value already
-   equals the stored one, and if nothing remains there is no write, no history row and no signal.
+9. **After signing:** services, materials and status remain editable — **confirmed by Nikola
+   2026-07-27, "stalno otvorene"**, in any status including `gotovo` and `preuzeto`. The handoff's
+   note ("while the order is U radu") is the outlier and is NOT the rule: during intake nobody knows
+   yet which materials went in, and a car can be finished before someone remembers the filter they
+   actually fitted. Closing the list would mean phoning the office over one line.
+   **Everything else is frozen — see §3.0.1 for the rule and `FREE_AFTER_SIGNING` for the whole
+   list.** The intake condition (checklist, fuel, damages, equipment note, photos), the vehicle, the
+   owner and the signed phone can no longer be corrected by anybody, admin included; a wrong phone
+   is answered by writing a SECOND number beside it (§5), never over it.
+   ⚠️ **Superseded (H, 2026-08-11):** the office used to be able to correct the condition and the
+   owner's phone, which stamped `amended_at`/`amended_by` and printed `⚠ MENJANO POSLE POTPISA`
+   (V-6-2 decision ①, 2026-08-08). That whole mode is retired — the announcement of the divergence
+   WAS the divergence — and this paragraph is kept only so the reversal does not read as an
+   oversight in half a year.
 
 ### 3.4 Damage map
 
@@ -346,8 +368,7 @@ any time; no archived PDF is needed.
 → owner and vehicle → red band **ZATEČENO STANJE** (8 checklist rows in 4 columns, then fuel,
 defect count, photo count, owner remarks) → red band **ŠEMA I NEDOSTACI** (silhouette of the
 order's own vehicle type with the same numbered markers, defect rows, services and materials) →
-red band **FOTODOKUMENTACIJA** → the amendment mark, the legal sentence and both signatures,
-pinned to the bottom.
+red band **FOTODOKUMENTACIJA** → the legal sentence and both signatures, pinned to the bottom.
 
 **Both languages, chosen in front of the paper.** The preview carries an `SR`/`EN` segment and the
 sheet renders through Paraglide's per-call `{ locale }` — a foreign customer signs an English work
@@ -365,12 +386,10 @@ footer with both signatures walks onto a second page. Two columns fit the same t
 cap to the seven that fit was the alternative, and defects are the one thing on this paper that
 must not be silently left off it.
 
-**An amended order prints `⚠ NALOG JE MENJAN POSLE POTPISA`** with the timestamp and the name of
-whoever changed it. **An unamended order gets no addition at all** — a clean document stays clean.
-⚠️ **Neutral wording, deliberately** (V-6-2): the marker reads off `amended_at`, which is one
-unnamed column, so the print cannot tell a corrected checklist from a corrected phone. The earlier
-text — `⚠ ZATEČENO STANJE ISPRAVLJENO POSLE POTPISA` — would state the wrong reason on every phone
-correction. Only the Istorija tab knows the kind.
+⚠️ **The sheet no longer prints an amendment marker** (H, 2026-08-11): nothing can change a signed
+order any more, so `⚠ NALOG JE MENJAN POSLE POTPISA` could only ever have printed a falsehood. It
+was built in V-6-2 and removed with the rest of the amend mode (§3.0.1). Every printed order is now
+a clean document by construction.
 
 **Two things that are easy to break and were built on purpose:**
 - The **print button waits for the thumbnails**. `window.print()` does not wait for images: fired
@@ -434,10 +453,10 @@ reported rather than quietly taken:
 
 Implementation notes worth keeping:
 
-- The upload queue lives in the **wizard**, not in step 3. The stepper chip on steps 4–5 reads it,
-  and a photo taken just before the signature has to keep uploading after the serviser moves on —
-  the server only treats a late arrival as part of the intake, rather than an amendment that
-  stamps the document, while it comes from the order's own technician.
+- The upload queue lives in the **wizard**, not in step 3. The stepper chip on the last steps reads
+  it, and a photo taken just before the signature has to keep uploading after the serviser moves on —
+  the server accepts a late arrival as part of the intake, rather than refusing it, only while it
+  comes from the order's own technician and only up to `photos_expected` (§3.0.1).
 - **`crypto.randomUUID()` is unusable here** — it is gated to secure contexts and the tablet
   reaches the dev server over plain `http` on the LAN.
 - **`◉ SLIKAJ` saves the markers first.** The server validates `damageId` against the markers it
@@ -515,8 +534,8 @@ then the full gate, then a push.
 | `technician_signature` | text | SVG path, normalized to a 460×200 space |
 | `owner_signature` | text | idem |
 | `signed_at` | timestamptz | **NULL = draft: not in the office's working list, in the serviser's own** |
-| `amended_at` | timestamptz | set when the condition OR the owner phone changes after signing → drives the print marker. It has no kind: four surfaces read it and only the audit row knows which of the two it was |
-| `amended_by` | uuid → `users.id` | |
+| `contact_phone` | text | the second number the shop may write down beside the signed one, on a SIGNED order only; never printed, internal only (§5). NULL = none written |
+| ~~`amended_at`~~ / ~~`amended_by`~~ | timestamptz / uuid | ⚠️ **RETIRED (H, 2026-08-11).** Nothing writes or reads them any more; the columns themselves are dropped by H-4 with Nikola's explicit approval, so until then a `NOT NULL`-free pair of unused columns is what the table holds |
 | `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete per house rule |
 
 Checklist keys, exactly these eight in this order: `rezervna · dizalica · komplet · saobracajna ·
@@ -562,8 +581,12 @@ Signatures are **not** attachments: they are SVG path text on the order row.
 | `intake_orders.update` | ✓ | ✓ | bypass |
 | `intake_orders.advance` (next status only) | ✓ | ✓ | bypass |
 | `intake_orders.change_status` (any status — correction) | — | ✓ | bypass |
-| `intake_orders.amend` (intake condition after signing) | — | ✓ | bypass |
-| `intake_orders.delete` (soft) | — | ✓ | bypass |
+| `intake_orders.delete` | — | ✓ | bypass |
+
+⚠️ **`intake_orders.amend` is GONE (H, 2026-08-11)** — removed from `PERMISSIONS` and from
+`OPERATOR_PERMISSIONS` with the amend mode itself (§3.0.1). It was never seeded in production. In
+the dev and test databases its `role_permissions` row is left as an orphan on purpose: the string
+simply stops being checked.
 
 - **One new role: `serviser`.** The office are the same people who already process claims, so
   `operator` simply gains the intake permissions. `viewer` is granted nothing here on purpose.
@@ -583,9 +606,19 @@ Signatures are **not** attachments: they are SVG path text on the order row.
 - **Row-level scope:** a non-own order returns **404, not 403** (house rule — never leak
   existence). This is the most bug-prone area in the codebase and has leaked once before
   (`/api/dashboard/summary`), so it ships with its own regression tests.
-- **Enforcement point for the freeze:** the service must reject a condition change on a signed
-  order unless the actor holds `intake_orders.amend`, and stamp `amended_at`/`amended_by` when it
-  allows one. Serviser holding `update` must not be able to route around this.
+- **Enforcement point for the freeze:** the service rejects **every** field outside
+  `FREE_AFTER_SIGNING` on a signed order (`assertPostSigningPatchAllowed`), with no permission
+  branch — a serviser holding `update` must not be able to route around it, and neither may an
+  admin. `ValidationError` (422) for the freeze; `ForbiddenError` (403) stays for missing rights.
+- **The added contact number (H, 2026-08-11).** A phone typed wrong at intake would otherwise stay
+  wrong forever, and the walk-in owner is deliberately not written into `customers`, so the number
+  lives only on this order. The signed `owner_phone` is **never overwritten**; the shop writes a
+  second one beside it — `intake_orders.contact_phone`, **no new permission** (it joins
+  `FREE_AFTER_SIGNING`), only on a signed order, never printed, internal only, and the Istorija line
+  is `contact_added`. ⚠️ This is **not** `amend_contact_after_signing` renamed: that one recorded the
+  signed number being overwritten, this one records a second number written beside it — which is
+  why one left and the other arrived. The signed number must stay visible on screen and labelled as
+  the signed one, or the added one quietly takes its place and the divergence is back.
 - Deploy note: a new permission + role means **`pnpm --filter @mr/db run db:seed` once after
   deploy** (additive, prod-safe; admin gets it via the `ALL_PERMISSIONS` bypass already).
 
@@ -602,11 +635,11 @@ Module `apps/api/src/modules/intake-orders/` per the mandatory anatomy.
 | `GET /api/intake-orders/check-number` | `?number=…` → `free` / `taken_order` / `taken_draft_other` / `taken_draft_mine` (+ `orderId`, `draftStep`, `takenByName`) |
 | `POST /api/intake-orders` | create after step 1 → 201 |
 | `GET /api/intake-orders/:id` | detail — **includes the photo list**, one aggregate fetch per the claims rule |
-| `PATCH /api/intake-orders/:id` | step patches (incl. `draft_step`), and amendments after signing (gated) |
+| `PATCH /api/intake-orders/:id` | step patches (incl. `draft_step`); on a signed order only `FREE_AFTER_SIGNING` — everything else is 422 |
 | `POST /api/intake-orders/:id/sign` | both signatures + finish → sets `signed_at`, clears `draft_step`, records `photos_expected` |
 | `POST /api/intake-orders/:id/advance` | next status |
 | `POST /api/intake-orders/:id/change-status` | set any status (correction) |
-| `DELETE /api/intake-orders/:id` | soft delete → 204 |
+| `DELETE /api/intake-orders/:id` | discard an unfinished draft (hard, releases the number) → 204; a signed order is 422 |
 | `GET /api/intake-orders/:id/photos/:attachmentId` | serve a photo (`?variant=thumbnail`); falls back to the full photo when none was generated |
 | `POST /api/intake-orders/:id/photos` | upload one photo, optional `damageId` |
 | `DELETE /api/intake-orders/:id/photos/:attachmentId` | remove a photo (see the two rules below) |
@@ -615,16 +648,17 @@ Module `apps/api/src/modules/intake-orders/` per the mandatory anatomy.
 **Two photo rules Nikola set on 2026-07-27:**
 
 1. **A photo may arrive AFTER signing and is accepted**, because the tablet uploads in the
-   background while the serviser works through steps 4 and 5 — the picture was taken before the
-   signature, and refusing it would lose the evidence the module exists for just because the
-   hall's WiFi stalled. So *who* uploads decides: the order's own serviser is a late arrival and
-   leaves no mark; anyone else adding a photo afterwards is changing the intake condition, which
-   needs `amend` and stamps the printed document.
+   background while the serviser works through the last steps — the picture was taken before the
+   signature, and refusing it would lose the evidence the module exists for just because the hall's
+   WiFi stalled. **Tightened by H (2026-08-11):** accepted only from the order's OWN serviser and
+   only while `photosPending > 0`. The old gate asked who, never how many, so the same serviser
+   could hang a photo of damage done in the shop onto a frozen record a week later.
 2. **The serviser deletes photos freely while filling the intake in** — he may have taken a
    blurred one and step 3 is where he notices — **and not one minute after signing**. Chosen over
-   "until the car goes into work": the customer signed for the condition those photos show, so
-   removing one afterwards is an office amendment, stamped. Deleting is a soft delete; the stored
-   bytes stay, since a database-only restore must not point at files the bucket no longer holds.
+   "until the car goes into work": the customer signed for the condition those photos show. Since H
+   that removal is refused to **everyone** (422), the office included. Deleting a draft's photo is a
+   soft delete; the stored bytes stay, since a database-only restore must not point at files the
+   bucket no longer holds.
 
 **Photos are served by this module, never by `/api/attachments`.** That route is gated by
 `attachments.view_internal`, and giving a serviser that permission would also let him read a
@@ -642,20 +676,16 @@ the existing Zod-validated LISTEN/NOTIFY transport and the frontend's invalidati
 no new transport code.
 
 **The post-signing freeze is enforced in the service, not on the route.** A serviser holds
-`update`, so a route gate alone would let him patch the intake condition and walk around the
-office's `amend`. Concretely: `services` and `materials` stay free; the condition
-(`checklist`, `fuelLevel`, `damages`, `equipmentNote`) requires `amend` and stamps
-`amended_at`/`amended_by` with the transition `amend_after_signing`; `ownerPhone` requires the
-same `amend` and the same stamp but the transition `amend_contact_after_signing`, because the
-vehicle's recorded condition did not change (V-6-2 decision ①); **every other field is refused
-outright** — the drawn UI never offers it, and allowing it would let the paper the customer holds
-and the record diverge with nothing saying so.
+`update`, so a route gate alone would let him patch a signed order — and there is no second gate
+left to catch him, since the freeze has no permission of its own. `assertPostSigningPatchAllowed`
+refuses every field outside `FREE_AFTER_SIGNING` (`services`, `materials`, `contactPhone`) with a
+`ValidationError`, naming the fields the caller actually sent.
 
-A request that carries both buckets writes **one** row, and the condition wins. A request whose
-values all equal the stored ones is not an amendment at all: the service prunes those keys before
-it classifies, so a double tap or a re-submitted form cannot mark a document nobody edited. The
-freeze itself is still decided on the field's NAME, never on its value — a frozen field is refused
-even when the value happens to match.
+The refusal is decided on the field's **NAME**, never on its value — otherwise "send it again with
+the same value" would be a way past the freeze. It is asserted on the RAW patch, before the server
+derives damage zones, because a `vehicleType` patch pulls `damages` in and the message must name
+what was sent. The Istorija line is `spec_updated`, or `contact_added` when the patch carries the
+added number.
 
 ---
 
@@ -695,8 +725,8 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | **V-4b** ✅ | Photo endpoints (upload / serve / delete) under the intake permissions — never `/api/attachments`, since a serviser must not hold `attachments.view_internal` | **DONE** 2026-07-27 |
 | **V-4c** ✅ | Step 3 in the UI: tap-to-mark damage map, defect list, photo grid with tablet-side compression and the four upload states | **DONE** 2026-07-27, gate green, driven end to end in a browser. Built in three passes — **V-4c-0** fixed three bugs already shipped in V-4a/V-4b before putting a screen on top of them (see §3.6a), **V-4c-1** the map and the defect list, **V-4c-2** the photos. Not verified because it needs the real device: a network drop mid-upload (`wait` → `online` → resume) and a HEIC straight off an iPad |
 | **V-5** ✅ | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | **DONE** 2026-07-27, gate green, driven end to end in a browser (create → damage + photo → services and materials → both signatures → finish). Three decisions taken with Nikola that session: the confirmation sentence prints its counts on their own line (`Nedostataka: 1 · Fotografija: 2`) because Serbian declines them and this repo cannot use ICU plurals; the step-4 note drops the prototype's „dok je nalog U radu" clause, which described a restriction the server deliberately does not enforce; and the two spec lists get no empty state, as the prototype has none and the input's own placeholder already instructs. ⚠ The signature pad has NO prototype reference — its pads are empty divs and it cannot sign — so the capture is ours: pointer strokes normalized into the 460×200 space of §4.1, serialized to one `M…L…` run per stroke. `photos_expected` is sent as arrived + outstanding INCLUDING failures; counting only what is still in flight would silence the indicator for exactly the photos most likely lost |
-| **V-6** | Detail with 4 tabs, amend affordances, status correction, soft delete | |
-| **V-7** | Print (A4, one page, amended marker, per-type drawing, 6-photo cap) | **needs "Obaveze kupaca" first** |
+| **V-6** | Detail with 4 tabs, status correction — its amend affordances and soft delete are RETIRED by H (§3.0.1) | |
+| **V-7** | Print (A4, one page, per-type drawing, 6-photo cap; the amended marker is RETIRED by H) | **needs "Obaveze kupaca" first** |
 
 Then, separately: notifications → statistics → Excel.
 

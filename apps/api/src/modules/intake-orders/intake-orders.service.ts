@@ -3,8 +3,6 @@ import {
   ResourceChangedKey,
   intakeDamageZoneOf,
   intakeOrderStatusValues,
-  sameIntakeChecklist,
-  sameIntakeDamages,
 } from '@mr/shared'
 
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -55,53 +53,38 @@ import type {
 const STATUS_ORDER = intakeOrderStatusValues
 
 /**
- * What may still be edited freely once the customer has signed. Services and materials are
- * the shop's own running record and change all the time.
+ * What may still be edited once the customer has signed — and it is the WHOLE list.
  *
- * Everything else is on the paper the customer holds. The intake CONDITION (checklist, fuel,
- * damages) may be corrected by the office, which stamps the order as amended and marks the
- * printed document. Any other field is refused outright: the drawn UI never offers it, and
- * allowing it would let the paper and the record diverge with nothing saying so.
+ * The signature closes the record (Nikola, 2026-08-11): the owner walks out holding a printed
+ * sheet, so anything that can still move on our side is a conflict with a document he signed —
+ * and grounds for a complaint against his own evidence. Services and materials are the shop's
+ * running record of work that happens AFTER the intake; `contactPhone` is a working note that
+ * never overwrites the signed number (docs/25 §5).
+ *
+ * This replaced the amend mode, which allowed the correction and announced it with a permanent
+ * stamp. Do not reintroduce a stamped edit path: the announcement WAS the divergence.
  */
-const FREE_AFTER_SIGNING = ['services', 'materials'] as const
-
-/** The intake condition — correcting it after signing requires `intake_orders.amend`. */
-const CONDITION_FIELDS = ['checklist', 'fuelLevel', 'damages', 'equipmentNote'] as const
+const FREE_AFTER_SIGNING = ['services', 'materials', 'contactPhone'] as const
 
 /**
- * Also an amendment — it stamps the document — but not of the vehicle's condition. Nikola,
- * 2026-08-08: a wrong phone number is the one frozen field that makes the record useless for its
- * own purpose, since it is how the shop reaches the owner about the car it is holding. Everything
- * else about the vehicle and the owner stays frozen.
- */
-const CONTACT_FIELDS = ['ownerPhone'] as const
-
-type IntakeAmendmentKind = 'condition' | 'contact'
-
-/**
- * A patch of a SIGNED order is an amendment of the condition, an amendment of the contact, or an
- * edit of the two fields that stay free (services, materials). The free edit still has to reach
- * the Istorija tab — it is the only change a signed work order allows — so it is tagged rather
- * than left transition-less, which is the shape the history projection drops (docs/25 V-6-1 §6.1).
+ * A signed order allows exactly two changes, and each gets its own name in Istorija. A patch that
+ * carries the contact number is named for it: services and materials move constantly and would
+ * otherwise bury the one entry that says somebody wrote a second phone number on a signed order.
  *
- * Takes `signedAt` itself (not a pre-computed boolean) so a swapped argument at the call site
- * is a type error, not a silently-flipped transition — the same reason the return type is a
- * closed union rather than `string | null`.
+ * Takes `signedAt` itself (not a pre-computed boolean) so a swapped argument at the call site is a
+ * type error, and returns a closed union rather than `string | null` for the same reason.
  */
 function updateTransition(
   signedAt: string | null,
-  amendment: IntakeAmendmentKind | null,
-): 'amend_after_signing' | 'amend_contact_after_signing' | 'spec_updated' | null {
-  if (amendment === 'condition') {
-    return 'amend_after_signing'
+  patch: IntakeOrderUpdateInput,
+): 'contact_added' | 'spec_updated' | null {
+  if (signedAt === null) {
+    return null
   }
-  if (amendment === 'contact') {
-    return 'amend_contact_after_signing'
+  if (patch.contactPhone !== undefined) {
+    return 'contact_added'
   }
-  if (signedAt !== null) {
-    return 'spec_updated'
-  }
-  return null
+  return 'spec_updated'
 }
 
 function resolveScope(actor: IntakeOrdersActor): IntakeOrdersListScope {
@@ -339,33 +322,29 @@ export class IntakeOrdersService {
     this.assertNotDeleted(before)
     this.assertDraftOwner(before, actor)
 
+    // Asserted on the RAW patch, before zones are derived: a `vehicleType` patch pulls `damages`
+    // in below, and the refusal must name what the caller actually sent.
+    if (before.signedAt !== null) {
+      this.assertPostSigningPatchAllowed(patch)
+    }
+
     if (patch.orderNumber !== undefined) {
       await this.assertNumberFree(normalizeOrderNumberKey(patch.orderNumber), id)
     }
 
-    // Zones are derived before the comparison below, so an unmoved marker is measured against
-    // the zone this server would write and not against whatever word the client sent.
-    const derived = this.withDerivedZones(patch, before)
-    const effective = before.signedAt === null ? derived : this.withoutUnchanged(derived, before)
+    const effective = this.withDerivedZones(patch, before)
 
     if (Object.keys(effective).length === 0) {
-      // Nothing to write: no stamp, no history row, no realtime signal.
+      // Nothing to write: no history row, no realtime signal.
       return before
     }
 
-    const amendment =
-      before.signedAt === null ? null : this.classifyPostSigningPatch(effective, actor)
-
-    const updated = await this.repo.update(
-      id,
-      effective,
-      amendment !== null ? auditContext.actorUserId : null,
-    )
+    const updated = await this.repo.update(id, effective)
     if (updated === null) {
       throw new NotFoundError('Intake order', id)
     }
 
-    const transition = updateTransition(before.signedAt, amendment)
+    const transition = updateTransition(before.signedAt, effective)
 
     await this.audit.log({
       entityType: 'intake_order',
@@ -411,72 +390,20 @@ export class IntakeOrdersService {
   }
 
   /**
-   * Which kind of amendment this patch is (so the caller stamps `amended_at`/`amended_by` and
-   * names the transition), or null when it only touches the free fields. Throws when the patch
-   * touches anything the signed document must keep, and when the caller may not amend at all.
+   * A signed order accepts only `FREE_AFTER_SIGNING`. Refused on the field's NAME, never on its
+   * value: pruning a key because it happens to equal what is stored would make "send it again with
+   * the same value" a way past the freeze. Enforced HERE and not only on the route — a serviser
+   * holds `update`, and there is no second gate left to catch him.
    */
-  private classifyPostSigningPatch(
-    patch: IntakeOrderUpdateInput,
-    actor: IntakeOrdersActor,
-  ): IntakeAmendmentKind | null {
-    const touched = Object.keys(patch)
+  private assertPostSigningPatchAllowed(patch: IntakeOrderUpdateInput): void {
     const free = new Set<string>(FREE_AFTER_SIGNING)
-    const condition = new Set<string>(CONDITION_FIELDS)
-    const contact = new Set<string>(CONTACT_FIELDS)
+    const frozen = Object.keys(patch).filter((field) => !free.has(field))
 
-    const conditionTouched = touched.filter((field) => condition.has(field))
-    const contactTouched = touched.filter((field) => contact.has(field))
-    const frozenTouched = touched.filter(
-      (field) => !free.has(field) && !condition.has(field) && !contact.has(field),
-    )
-
-    if (frozenTouched.length > 0) {
+    if (frozen.length > 0) {
       throw new ValidationError(
-        `Signed intake order: ${frozenTouched.join(', ')} cannot be changed after signing`,
+        `Signed intake order: ${frozen.join(', ')} cannot be changed after signing`,
       )
     }
-
-    if (conditionTouched.length === 0 && contactTouched.length === 0) {
-      return null
-    }
-
-    // The freeze is enforced here, not only on the route: a serviser holds `update` and must
-    // not be able to route around the office's amend gate by patching the condition.
-    if (!actor.permissions.includes('intake_orders.amend')) {
-      throw new ForbiddenError('Amending a signed intake order requires amend')
-    }
-
-    // The condition wins when one request carries both — one request, one row in the history.
-    return conditionTouched.length > 0 ? 'condition' : 'contact'
-  }
-
-  /**
-   * Drops every stamping key whose value already equals what the order holds. The stamp is
-   * permanent and it prints, so it must come from a real correction and nothing else — a double
-   * tap, a re-submitted form or a second caller must not be able to mark a document nobody
-   * edited. The screen guards this too; the guard belongs where every caller passes.
-   *
-   * Signed orders only, and only the five fields that can stamp: the wizard patches a draft with
-   * its whole form on every step and expects all of it to land, and a frozen field is refused on
-   * its name rather than on its value — pruning must not become a way past the freeze.
-   */
-  private withoutUnchanged(
-    patch: IntakeOrderUpdateInput,
-    before: IntakeOrderDetail,
-  ): IntakeOrderUpdateInput {
-    const kept = { ...patch }
-
-    if (kept.ownerPhone === before.ownerPhone) delete kept.ownerPhone
-    if (kept.fuelLevel === before.fuelLevel) delete kept.fuelLevel
-    if (kept.equipmentNote === before.equipmentNote) delete kept.equipmentNote
-    if (kept.checklist !== undefined && sameIntakeChecklist(kept.checklist, before.checklist)) {
-      delete kept.checklist
-    }
-    if (kept.damages !== undefined && sameIntakeDamages(kept.damages, before.damages)) {
-      delete kept.damages
-    }
-
-    return kept
   }
 
   /** Both signatures in — the intake is finished and the office's list can see it. */
@@ -582,8 +509,8 @@ export class IntakeOrdersService {
 
   /**
    * An unfinished intake is really deleted — `ODUSTANI` throws the sheet away and releases
-   * the number. A signed one is soft-deleted by the office only: it is evidence, so it
-   * leaves the list and stays in the database with a trace of who removed it.
+   * the number. A SIGNED one cannot be removed at all any more (2026-08-11): if a signed record
+   * may be destroyed, freezing its fields is weaker than deleting the whole document.
    *
    * Throwing away a draft that is NOT yours additionally costs `delete`. The route gate is an
    * OR (`update` or `delete`) and the row scope hands any `intake_orders.view` holder every
@@ -605,17 +532,19 @@ export class IntakeOrdersService {
     const before = await this.loadVisible(id, actor)
     this.assertNotDeleted(before)
 
-    if (before.signedAt === null) {
-      if (before.technicianId !== actor.id && !actor.permissions.includes('intake_orders.delete')) {
-        throw new ForbiddenError("Discarding another serviser's unfinished intake requires delete")
-      }
-      await this.repo.hardDelete(id)
-    } else {
-      if (!actor.permissions.includes('intake_orders.delete')) {
-        throw new ForbiddenError('Removing a signed intake order requires delete')
-      }
-      await this.repo.softDelete(id)
+    /**
+     * The signature closes the record, and that includes whether it exists: a signed order is the
+     * shop's half of a document the owner is holding. Only an unfinished draft can be discarded,
+     * and that is a HARD delete — its number goes back into circulation.
+     */
+    if (before.signedAt !== null) {
+      throw new ValidationError('A signed intake order cannot be removed')
     }
+
+    if (before.technicianId !== actor.id && !actor.permissions.includes('intake_orders.delete')) {
+      throw new ForbiddenError("Discarding another serviser's unfinished intake requires delete")
+    }
+    await this.repo.hardDelete(id)
 
     await this.audit.log({
       entityType: 'intake_order',
@@ -624,10 +553,9 @@ export class IntakeOrdersService {
       actorUserId: auditContext.actorUserId,
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
-      changes: {
-        before,
-        transition: before.signedAt === null ? 'discard_draft' : 'soft_delete',
-      },
+      // Only a draft reaches this line, so there is one transition left to write. The row it
+      // belongs to is gone (hard delete), which is why the history projection never shows it.
+      changes: { before, transition: 'discard_draft' },
     })
 
     this.signalChanged()
@@ -680,14 +608,10 @@ export class IntakeOrdersService {
 
   /**
    * A photo arriving for an order that is ALREADY SIGNED is accepted, not rejected (Nikola,
-   * 2026-07-27). The tablet uploads in the background while the serviser works through steps 4
-   * and 5, so a photo can legitimately land after the signature — it was taken before it, and
+   * 2026-07-27). The tablet uploads in the background while the serviser works through the last
+   * steps, so a photo can legitimately land after the signature — it was taken before it, and
    * refusing it would lose the evidence the whole module exists for, purely because the hall's
    * WiFi stalled at the wrong second.
-   *
-   * Which is why "who is uploading" decides whether this counts as an amendment: the order's own
-   * serviser is a queued arrival and leaves no mark, while anyone else adding a photo afterwards
-   * is changing the intake condition — that needs `amend` and stamps the printed document.
    */
   async uploadPhoto(
     id: string,
@@ -704,10 +628,23 @@ export class IntakeOrdersService {
       throw new ValidationError('That damage does not exist on this intake order')
     }
 
-    const isLateArrival = order.technicianId === actor.id
-    const isAmendment = order.signedAt !== null && !isLateArrival
-    if (isAmendment && !actor.permissions.includes('intake_orders.amend')) {
-      throw new ForbiddenError('Adding a photo after signing requires amend')
+    /**
+     * A late arrival is the tablet delivering what it already held at signing — not a change, which
+     * is why `docs/25` §3.6 can promise "no network → the order saves, the photos go by themselves".
+     *
+     * ⚠ The old gate asked only WHO uploads, never how many, so the order's own serviser could hang
+     * a photo of damage done in the shop onto a frozen record a week later. `photos_expected` was
+     * written at signing as "arrived + outstanding, failures included", so `photosPending` is
+     * exactly how many photos the record still admits are missing — and the door is that wide, no
+     * wider.
+     */
+    if (order.signedAt !== null) {
+      if (order.technicianId !== actor.id) {
+        throw new ForbiddenError('A signed intake order accepts photos only from its own serviser')
+      }
+      if (order.photosPending <= 0) {
+        throw new ValidationError('A signed intake order already holds every photo it expected')
+      }
     }
 
     const processed = await processUploadFile(file)
@@ -739,11 +676,6 @@ export class IntakeOrdersService {
       uploadedBy: auditContext.actorUserId,
     })
 
-    if (isAmendment) {
-      await this.repo.update(id, {}, auditContext.actorUserId)
-      await this.repo.shiftPhotosExpected(id, 1)
-    }
-
     await this.audit.log({
       entityType: 'intake_order',
       entityId: id,
@@ -753,7 +685,7 @@ export class IntakeOrdersService {
       actorUserAgent: auditContext.actorUserAgent,
       changes: {
         after: { photoId: photo.id, damageId },
-        transition: isAmendment ? 'amend_photo_added' : 'photo_uploaded',
+        transition: 'photo_uploaded',
       },
     })
 
@@ -764,9 +696,8 @@ export class IntakeOrdersService {
   /**
    * A serviser deletes his own photos freely WHILE FILLING THE INTAKE IN — he may have taken a
    * blurred one and needs to retake it, and step 3 is where he notices. The moment both
-   * signatures are in, the photos are frozen: the customer signed for the condition those photos
-   * show, so removing one afterwards is an office amendment and stamps the document (Nikola chose
-   * this boundary over "until the car goes into work", 2026-07-27).
+   * signatures are in, the photos are frozen for everyone (Nikola chose this boundary over
+   * "until the car goes into work", 2026-07-27).
    */
   async deletePhoto(
     id: string,
@@ -782,16 +713,16 @@ export class IntakeOrdersService {
       throw new NotFoundError('Intake photo', attachmentId)
     }
 
-    const isAmendment = order.signedAt !== null
-    if (isAmendment && !actor.permissions.includes('intake_orders.amend')) {
-      throw new ForbiddenError('Removing a photo after signing requires amend')
+    /**
+     * The customer signed for the condition these photos show, so removing one afterwards is
+     * exactly the divergence the freeze exists to prevent. Refused for everyone — the office no
+     * longer has a stamp to record it with, and a silent removal is worse than a refusal.
+     */
+    if (order.signedAt !== null) {
+      throw new ValidationError('A signed intake order: photos cannot be removed')
     }
 
     await this.repo.softDeletePhoto(id, attachmentId)
-    if (isAmendment) {
-      await this.repo.update(id, {}, auditContext.actorUserId)
-      await this.repo.shiftPhotosExpected(id, -1)
-    }
 
     await this.audit.log({
       entityType: 'intake_order',
@@ -802,7 +733,7 @@ export class IntakeOrdersService {
       actorUserAgent: auditContext.actorUserAgent,
       changes: {
         before: { photoId: attachmentId, fileName: photo.fileName },
-        transition: isAmendment ? 'amend_photo_removed' : 'photo_removed',
+        transition: 'photo_removed',
       },
     })
 

@@ -37,13 +37,7 @@ describe('IntakeDetailHeader', () => {
   it('offers no edit and no removal on a signed order', async () => {
     await renderDetailUi(
       <IntakeDetailHeader
-        // Carries the stamp on purpose: the badge used to gate on `amendedAt !== null`, so this is
-        // the one fixture where the pre-change component WOULD have drawn it. A null `amendedAt`
-        // makes the assertion pass for free and proves nothing.
-        order={intakeOrderDetailFixture({
-          amendedAt: '2026-07-28T10:00:00.000Z',
-          amendedByName: 'Jelena Petrović',
-        })}
+        order={intakeOrderDetailFixture()}
         canAdvance
         canChangeStatus
         onPrint={vi.fn()}
@@ -54,8 +48,6 @@ describe('IntakeDetailHeader', () => {
       screen.queryByRole('button', { name: 'Ispravi zatečeno stanje' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Ukloni nalog' })).not.toBeInTheDocument()
-    // Nothing can set the stamp any more, so the badge must not exist either.
-    expect(screen.queryByText(/Menjano posle potpisa/)).not.toBeInTheDocument()
   })
 
   it('offers the next status only with the advance permission, and never past Preuzeto', async () => {

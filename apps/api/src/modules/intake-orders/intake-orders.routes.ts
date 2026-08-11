@@ -14,8 +14,8 @@ import { createIntakeOrdersController } from './intake-orders.controller.js'
  * cannot even learn that a colleague's intake exists.
  *
  * The route gates are the outer layer only. `update` is held by a serviser too, so the
- * post-signing freeze (the office's `amend`) is enforced in the service, where it cannot be
- * routed around.
+ * post-signing freeze is enforced in the service, where it cannot be routed around — and it has
+ * no permission branch at all: a signed order is closed to everyone, admin included.
  */
 export function registerIntakeOrdersRoutes(
   app: Hono<{ Variables: AppVariables }>,
@@ -48,26 +48,27 @@ export function registerIntakeOrdersRoutes(
   // `attachments.view_internal`, and a serviser holding it could read a claim's files.
   routes.get('/:id/photos/:attachmentId', canRead, controller.servePhoto)
   routes.post('/:id/photos', requirePermission('intake_orders.update'), controller.uploadPhoto)
-  // Freely while filling the intake in; once signed it is an office amendment, enforced in the
-  // service (Nikola, 2026-07-27).
+  // Freely while filling the intake in; once signed, refused to everyone — enforced in the
+  // service (Nikola, 2026-07-27, tightened 2026-08-11).
   routes.delete(
     '/:id/photos/:attachmentId',
     requirePermission('intake_orders.update'),
     controller.deletePhoto,
   )
 
-  // This gate is an OR — it only asks that the caller be in the conversation at all. Which of
-  // the three deletions he may actually perform is decided in the service, where the row is:
-  // his OWN unfinished intake goes with `update`, anyone ELSE's draft and every signed order
-  // additionally require `delete`.
+  // This gate is an OR — it only asks that the caller be in the conversation at all. Which
+  // deletion he may actually perform is decided in the service, where the row is: his OWN
+  // unfinished intake goes with `update`, anyone ELSE's draft additionally requires `delete`,
+  // and a SIGNED order can no longer be removed by anybody.
   routes.delete(
     '/:id',
     requirePermissions('intake_orders.update', 'intake_orders.delete'),
     controller.delete,
   )
-  // Whoever may remove may put back — the office corrects its own mistakes rather than
-  // living with a one-way delete (docs/25 V-6-1 §6.4). Only a signed order can be removed,
-  // and removing one already requires `delete`, so this needs nothing wider.
+  // Whoever may remove may put back — the office corrects its own mistakes rather than living
+  // with a one-way delete (docs/25 V-6-1 §6.4). Nothing can reach the removed state any more
+  // (2026-08-11), so this route only serves rows removed before that; it stays until the removed
+  // view's own fate is decided, and `delete` is the right gate for as long as it does.
   routes.post('/:id/restore', requirePermission('intake_orders.delete'), controller.restore)
 
   app.route('/api/intake-orders', routes)

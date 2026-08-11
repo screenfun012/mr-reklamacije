@@ -68,9 +68,9 @@ describe('historyLabel', () => {
   })
 
   /*
-   * `sign`, `spec_updated`, `amend_after_signing` and `restore` all carry non-null from/toStatus,
-   * because their audit `changes` hold whole before/after objects. A label that branched on
-   * `fromStatus !== null` before the transition check would call all four a status move.
+   * `sign`, `spec_updated` and `restore` all carry non-null from/toStatus, because their audit
+   * `changes` hold whole before/after objects. A label that branched on `fromStatus !== null`
+   * before the transition check would call all three a status move.
    */
   it('does not read a signature as a status move', () => {
     expect(historyLabel(entry({ transition: 'sign' }))).toBe(m.intake_history_signed())
