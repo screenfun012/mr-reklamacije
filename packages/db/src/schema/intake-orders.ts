@@ -103,7 +103,6 @@ export const intakeOrders = pgTable(
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   },
   (t) => [
     check(
@@ -127,17 +126,16 @@ export const intakeOrders = pgTable(
       columns: [t.technicianId],
       foreignColumns: [users.id],
     }).onDelete('restrict'),
-    // A number is taken only by a live order; deleting one releases it, exactly
-    // like the MR registry's release-on-delete.
-    uniqueIndex('uq_intake_orders_order_number_key')
-      .on(t.orderNumberKey)
-      .where(sql`${t.deletedAt} IS NULL`),
+    // A number is taken by any existing row; hard-deleting a draft releases it,
+    // exactly like the MR registry's release-on-delete. A signed order can never
+    // be deleted, so there is no "hidden" row left to carve out with a WHERE.
+    uniqueIndex('uq_intake_orders_order_number_key').on(t.orderNumberKey),
     index('idx_intake_orders_plate_key').on(t.plateKey),
     index('idx_intake_orders_status').on(t.status),
     // The office list's only read shape: signed orders, newest first.
     index('idx_intake_orders_received_at')
       .on(t.receivedAt.desc())
-      .where(sql`${t.deletedAt} IS NULL AND ${t.signedAt} IS NOT NULL`),
+      .where(sql`${t.signedAt} IS NOT NULL`),
     // The serviser's own list — drafts included, so no signed_at predicate here.
     index('idx_intake_orders_technician_id').on(t.technicianId),
   ],

@@ -300,9 +300,11 @@ nothing anywhere reported an error.
    rule "Primljeno: 7" would include half-entered intakes nobody handed over.
 7. **`ODUSTANI` really deletes** the unfinished order. A signed order **cannot be removed at all**
    since H (2026-08-11, §3.0.1): it is the shop's half of a document the owner is holding, and if it
-   may be destroyed then freezing its fields is weaker than deleting the whole thing. ⚠️ The soft
-   delete, `restore` and the "Uklonjeni" list view are therefore left without a single way in; they
-   stay in the code, unreached, until Nikola decides their fate (H spec §7).
+   may be destroyed then freezing its fields is weaker than deleting the whole thing. ⚠️ **Removed
+   entirely (2026-08-11):** `intake_orders` never had a writer for soft delete, `restore` or an
+   "Uklonjeni" view — Nikola approved dropping the unused `deleted_at` column outright rather than
+   leaving dead code behind it. There is no removed-order view: a draft is hard-deleted, a signed
+   order cannot be deleted at all, full stop.
 8. **Status is one-way for the serviser** (single next-status button, as designed). Office/admin
    can set any status to fix a mis-tap. Every change lands in the Istorija tab with name and time.
 9. **After signing:** services, materials and status remain editable — **confirmed by Nikola
@@ -565,16 +567,17 @@ then the full gate, then a push.
 | `signed_at` | timestamptz | **NULL = draft: not in the office's working list, in the serviser's own** |
 | `contact_phone` | text | the second number the shop may write down beside the signed one, on a SIGNED order only; never printed, internal only (§5). NULL = none written |
 | ~~`amended_at`~~ / ~~`amended_by`~~ | timestamptz / uuid | ⚠️ **RETIRED (H, 2026-08-11).** Nothing writes or reads them any more; the columns themselves are dropped by H-4 with Nikola's explicit approval, so until then a `NOT NULL`-free pair of unused columns is what the table holds |
-| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete per house rule |
+| `created_at` / `updated_at` | timestamptz | ~~`deleted_at`~~ **DROPPED (2026-08-11, migration `0040`):** the column never had a writer — an unfinished draft is hard-deleted and a signed order can never be deleted — so it always held 0 soft-deleted rows; Nikola approved removing it rather than leaving dead schema behind |
 
 Checklist keys, exactly these eight in this order: `rezervna · dizalica · komplet · saobracajna ·
 vozacka · prvaPomoc · prsluk · lanci`.
 
 Damage types: `ogrebotina · udubljenje · puknuto · rdja`.
 
-**Indexes:** unique partial on `order_number_key` where `deleted_at IS NULL` · `plate_key` ·
-`status` · partial on `received_at DESC` where `deleted_at IS NULL AND signed_at IS NOT NULL` (the
-office list's read shape) · `technician_id` (the serviser's own list, drafts included).
+**Indexes:** unique, unconditional, on `order_number_key` (2026-08-11: no `deleted_at` predicate
+left to carve out — a number is taken by any existing row, and hard-deleting a draft releases it)
+· `plate_key` · `status` · partial on `received_at DESC` where `signed_at IS NOT NULL` (the office
+list's read shape) · `technician_id` (the serviser's own list, drafts included).
 
 **Search** (the list searches order number, plate, owner, vehicle): start with plain matching on
 the indexed columns. Only add the FTS-index pattern used by claims if it is measured slow — the
