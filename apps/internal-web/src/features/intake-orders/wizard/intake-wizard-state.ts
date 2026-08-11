@@ -87,7 +87,7 @@ export function step1Complete(values: IntakeWizardValues): boolean {
   )
 }
 
-/** Exported for the detail's amend buffer, which has to trim exactly the way the wizard does. */
+/** Trims a form field to `undefined` when empty, so an untouched optional field patches as absent. */
 export function optionalText(value: string): string | undefined {
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined

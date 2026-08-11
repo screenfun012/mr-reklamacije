@@ -6,10 +6,10 @@ import { IntakeSpecList } from '../wizard/intake-spec-list'
 import { useUpdateIntakeSpec } from './use-update-intake-spec'
 
 /**
- * Services and materials, editable for the life of the order (docs/25 §3.3.9, spec §4.6). NOT the
- * amend mode: these are the only two fields that stay free after signing, so no ⚠ stamp and no
- * amber banner — presenting them inside the edit mode would wrongly suggest the customer's paper
- * had been altered.
+ * Services and materials, editable for the life of the order (docs/25 §3.3.9, spec §4.6) — the two
+ * fields the signature freeze (docs/25 §3.0) leaves open. Every other field on a signed order is a
+ * read-only record of what the customer received; these two are the repair job itself, tracked
+ * until Preuzeto, so they carry no ⚠ stamp and no amber banner.
  *
  * No save button: every add and every ✕ is its own `PATCH`. The wizard's step 4 looks the same but
  * is not — there `onPatch` only moves local form state and ONE request carries the whole order when

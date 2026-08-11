@@ -22,10 +22,8 @@ import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
 import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
 import { useConsumePrintFlag } from '~/features/intake-orders/detail/use-consume-print-flag'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
-import { useIntakePhotoQueue } from '~/features/intake-orders/wizard/use-intake-photo-queue'
 import { authClient } from '~/lib/auth-client'
 import { ensureFound } from '~/lib/ensure-found'
-import { showInternalToast } from '~/lib/internal-toast'
 
 /**
  * The permission guard lives on the parent layout route (`_shell/prijem.tsx`) and covers every
@@ -75,17 +73,6 @@ function IntakeDetailPage(): ReactElement {
       }),
   })
 
-  /**
-   * The upload queue lives HERE, not inside the photos tab. The tab body is remounted on every tab
-   * change, and with it would go the in-flight cell, its retry and the online listener — while
-   * `photos_expected` only rises after a successful upload, so a failed office upload would leave
-   * no trace on the screen or on the server. The toast is for the same reason: the cell is the
-   * only report of a failure, and the operator does not have to be standing on that tab.
-   */
-  const photoQueue = useIntakePhotoQueue(order.id, {
-    onFailure: () => showInternalToast(m.intake_photo_upload_failed()),
-  })
-
   return (
     <InternalPage className="flex flex-col gap-[15px]">
       <IntakeDetailHeader
@@ -129,7 +116,7 @@ function IntakeDetailPage(): ReactElement {
           [IntakeDetailTab.Pregled]: (
             <TabOverview order={order} canUpdate={permissions.includes('intake_orders.update')} />
           ),
-          [IntakeDetailTab.Fotografije]: <TabPhotos order={order} queue={photoQueue} />,
+          [IntakeDetailTab.Fotografije]: <TabPhotos order={order} />,
           [IntakeDetailTab.Spec]: (
             <TabSpec order={order} canUpdate={permissions.includes('intake_orders.update')} />
           ),

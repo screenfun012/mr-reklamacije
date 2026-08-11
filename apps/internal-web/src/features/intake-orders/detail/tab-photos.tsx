@@ -6,7 +6,6 @@ import { useState, type ReactElement } from 'react'
 import { buildPhotoCells, type IntakePhotoCell } from '../wizard/intake-photo-grid'
 import { IntakePhotoCellOverlay, photoCellBorderClass } from '../wizard/intake-photo-cell-state'
 import { IntakePhotoLightbox } from '../wizard/intake-photo-lightbox'
-import type { IntakePhotoQueue } from '../wizard/use-intake-photo-queue'
 import { CAPTION, CARD } from './detail-styles'
 
 /** `IMG_03` — the photo's position in the list, padded, as the prototype names them (`:1443`). */
@@ -22,17 +21,12 @@ function photoName(index: number): string {
  * No "not every photo arrived" bar either: that warning ships once, page-level under the header,
  * where all four tabs can see it (`intake-photos-pending-note.tsx`).
  */
-export function TabPhotos({
-  order,
-  queue,
-}: {
-  order: IntakeOrderDetail
-  /** Owned by the PAGE: a tab change unmounts this body, and an upload must survive it. */
-  queue: IntakePhotoQueue
-}): ReactElement {
+export function TabPhotos({ order }: { order: IntakeOrderDetail }): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
 
-  const cells = buildPhotoCells(order.id, order.photos, queue.entries, order.damages)
+  // No queue: the route no longer owns an upload queue (photos land only through the wizard now
+  // that the office `+` cell is gone), so every cell here comes straight from the server.
+  const cells = buildPhotoCells(order.id, order.photos, [], order.damages)
 
   return (
     // The lightbox is a sibling of the card, never a child of a `@container`: containment makes

@@ -6,11 +6,9 @@ import { describe, expect, it } from 'vitest'
 
 import { TabPhotos } from '../tab-photos.js'
 import {
-  emptyQueueStub,
   intakeDraftFixture,
   intakeOrderDetailFixture,
   intakePhotoFixture,
-  queueEntryStub,
   renderDetailUi,
 } from './render-detail.js'
 
@@ -42,10 +40,7 @@ const TWO_PHOTOS = [
 describe('TabPhotos', () => {
   it('offers no + cell and no delete on a signed order', async () => {
     await renderDetailUi(
-      <TabPhotos
-        order={intakeOrderDetailFixture({ photos: [intakePhotoFixture()] })}
-        queue={emptyQueueStub()}
-      />,
+      <TabPhotos order={intakeOrderDetailFixture({ photos: [intakePhotoFixture()] })} />,
     )
 
     expect(screen.queryByRole('button', { name: 'Dodaj fotografiju' })).not.toBeInTheDocument()
@@ -54,7 +49,7 @@ describe('TabPhotos', () => {
   it('numbers each shot by its position and names the damage it belongs to', async () => {
     const order = intakeOrderDetailFixture({ damages: DAMAGES, photos: TWO_PHOTOS })
 
-    await renderDetailUi(<TabPhotos order={order} queue={emptyQueueStub()} />)
+    await renderDetailUi(<TabPhotos order={order} />)
 
     expect(screen.getByRole('heading')).toHaveTextContent(
       `${m.intake_card_photo_documentation()} · 2`,
@@ -69,7 +64,7 @@ describe('TabPhotos', () => {
 
   it('says there are none rather than drawing an empty grid, on a draft too', async () => {
     // A draft reaches this tab — `DRAFT_TABS` includes it — and has usually taken nothing yet.
-    await renderDetailUi(<TabPhotos order={intakeDraftFixture()} queue={emptyQueueStub()} />)
+    await renderDetailUi(<TabPhotos order={intakeDraftFixture()} />)
 
     expect(screen.getByText(m.intake_detail_no_photos())).toBeDefined()
   })
@@ -77,21 +72,12 @@ describe('TabPhotos', () => {
   it('opens the full photo on a tap', async () => {
     const order = intakeOrderDetailFixture({ damages: DAMAGES, photos: TWO_PHOTOS })
 
-    await renderDetailUi(<TabPhotos order={order} queue={emptyQueueStub()} />)
+    await renderDetailUi(<TabPhotos order={order} />)
     expect(screen.queryByRole('dialog')).toBeNull()
 
     const [first] = screen.getAllByRole('button', { name: m.intake_photo_preview() })
     await userEvent.click(first as HTMLElement)
 
     expect(screen.getByRole('dialog')).toBeDefined()
-  })
-
-  it('shows a cell that is still on its way, so a failed office upload is visible here', async () => {
-    const order = intakeOrderDetailFixture()
-    const queue = emptyQueueStub({ entries: [queueEntryStub({ id: 'q1', state: 'err' })] })
-
-    await renderDetailUi(<TabPhotos order={order} queue={queue} />)
-
-    expect(screen.getByText(`! ${m.intake_photo_state_failed()}`)).toBeDefined()
   })
 })

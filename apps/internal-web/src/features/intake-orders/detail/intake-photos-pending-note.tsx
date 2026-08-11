@@ -19,8 +19,8 @@ import { InternalNote } from '~/components/internal-note'
  * already applies one row below.
  *
  * There is nowhere to act on it yet, and the Fotografije tab is deliberately NOT that place: it is a
- * read grid, and re-sending a photo needs the wizard's upload queue, which is V-6-2's job. A truthful
- * warning still beats silence; inventing a retry button here does not.
+ * read grid with no upload queue of its own (H retired the office's ability to add a photo here at
+ * all). A truthful warning still beats silence; inventing a retry button here does not.
  */
 export function IntakePhotosPendingNote({ order }: { order: IntakeOrderDetail }): ReactElement {
   return (
