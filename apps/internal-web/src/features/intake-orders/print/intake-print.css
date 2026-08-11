@@ -1,4 +1,37 @@
 /*
+ * The preview scales down to whatever width it was given, and the scale arrives as a custom property
+ * from the dialog, which is the only thing that can measure the room. 90% of intake happens on a
+ * tablet or a phone, where A4's real 794px is about twice the viewport — and a flex child wider than
+ * its container is CENTRED, so its left edge lands at a negative coordinate that no scroll can
+ * reach. Measured 2026-08-11 at 390px in Chromium and WebKit both: the sheet sat at -202px with
+ * `scrollLeft` floored at 0, so the first 202px of every row was unreachable.
+ *
+ * `transform` and NOT `zoom`, which would reserve the height for free: WebKit inflates text inside a
+ * zoomed box (measured the same day — 16px rendered as 20.9px at the zoom Chromium rendered as
+ * 16px), so the paper would reflow on the iPad the serviser holds and the one-page rule in
+ * `intake-print-data.ts` would be computed against a layout nobody tested.
+ *
+ * The numbers are A4 at 96dpi, the same literals the sheet's own class carries.
+ */
+.intake-print-scaler {
+  /*
+   * A transform does not change layout size, so the box has to reserve what the transform paints.
+   * Without this the dialog goes on scrolling A4's full 1123px past a sheet that only draws 484 of
+   * them, and the operator scrolls through emptiness looking for the rest of the page.
+   *
+   * It must stay UNPOSITIONED: `position: relative` here would make it the containing block for the
+   * absolutely-positioned sheet below, and the paper would print offset from the page origin.
+   */
+  width: calc(794px * var(--intake-print-scale, 1));
+  height: calc(1123px * var(--intake-print-scale, 1));
+}
+
+.intake-print-scaler > #intake-print-sheet {
+  transform: scale(var(--intake-print-scale, 1));
+  transform-origin: top left;
+}
+
+/*
  * Print only the sheet. `visibility`, not `display`: hiding the ancestors with `display: none`
  * would take the sheet down with them, while `visibility: hidden` leaves the box tree standing so
  * the sheet can be made visible again inside it. Same pattern the claim report already uses.
@@ -24,5 +57,19 @@
     top: 0;
     margin: 0;
     box-shadow: none;
+  }
+
+  /*
+   * The paper is 1:1 whatever the screen was doing. Plain rules rather than `!important`, and this
+   * block deliberately stays LAST in the file: the scale never becomes an inline style, so equal
+   * specificity plus source order is all it takes to win.
+   */
+  .intake-print-scaler {
+    width: auto;
+    height: auto;
+  }
+
+  .intake-print-scaler > #intake-print-sheet {
+    transform: none;
   }
 }

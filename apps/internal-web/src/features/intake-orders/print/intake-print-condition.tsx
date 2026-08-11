@@ -17,25 +17,35 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
     <section>
       <div className={PRINT_BAND}>{m.intake_print_section_condition({}, { locale })}</div>
 
-      <div className="mt-[9px] grid grid-cols-4 gap-x-5 gap-y-[6px] text-[11.5px]">
-        {model.checklist.map((row) => (
-          <div
-            key={row.key}
-            data-testid={`print-check-${row.key}`}
-            className={cn('flex gap-2', row.muted && 'text-[#54555b]')}
-          >
-            <span
-              className={cn(
-                'font-mono font-bold',
-                row.mark === '✗' ? 'text-[#ed1c24]' : 'text-[#17171a]',
-              )}
+      {/* A band with nothing under it is a heading over a void on a document the customer signs, so
+          the absence is stated instead of hidden — reachable only when the catalog was still empty at
+          the moment the order was taken. Same reasoning as the third state above: what nobody
+          recorded must read as unrecorded, not as blank paper. */}
+      {model.checklist.length === 0 ? (
+        <div className="mt-[9px] text-[11.5px] text-[#54555b]">
+          {m.intake_print_condition_empty({}, { locale })}
+        </div>
+      ) : (
+        <div className="mt-[9px] grid grid-cols-4 gap-x-5 gap-y-[6px] text-[11.5px]">
+          {model.checklist.map((row) => (
+            <div
+              key={row.key}
+              data-testid={`print-check-${row.key}`}
+              className={cn('flex gap-2', row.muted && 'text-[#54555b]')}
             >
-              {row.mark}
-            </span>
-            {row.label}
-          </div>
-        ))}
-      </div>
+              <span
+                className={cn(
+                  'font-mono font-bold',
+                  row.mark === '✗' ? 'text-[#ed1c24]' : 'text-[#17171a]',
+                )}
+              >
+                {row.mark}
+              </span>
+              {row.label}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-3 flex gap-8 border-t border-[#e6e7e9] pt-[11px]">
         <div>

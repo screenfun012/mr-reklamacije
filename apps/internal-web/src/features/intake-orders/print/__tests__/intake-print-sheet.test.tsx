@@ -62,6 +62,23 @@ describe('IntakePrintSheet', () => {
     expect(screen.getByTestId('print-check-dizalica')).toHaveTextContent('✓')
   })
 
+  /**
+   * Reachable when the catalog was still empty at the moment the order was taken. The band used to
+   * print with nothing under it — a heading over a void on the document the customer signs.
+   */
+  it('says the checklist was not filled in rather than banding an empty space', async () => {
+    await renderSheet(intakeOrderDetailFixture({ checklist: {} }))
+
+    expect(screen.getByText(m.intake_print_section_condition({}, { locale: 'sr' }))).toBeDefined()
+    expect(screen.getByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeDefined()
+  })
+
+  it('keeps the empty line off the paper when there are rows to print', async () => {
+    await renderSheet(intakeOrderDetailFixture())
+
+    expect(screen.queryByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeNull()
+  })
+
   it('draws both signatures as vector paths, not images', async () => {
     const order = intakeOrderDetailFixture()
 

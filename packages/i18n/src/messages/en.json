@@ -1271,6 +1271,7 @@
   "intake_print_section_owner": "OWNER",
   "intake_print_section_vehicle": "VEHICLE · {type}",
   "intake_print_section_condition": "CONDITION AT INTAKE",
+  "intake_print_condition_empty": "The checklist was not filled in.",
   "intake_print_fuel": "FUEL",
   "intake_print_defects": "DEFECTS",
   "intake_print_photos": "PHOTOS",

@@ -1271,6 +1271,7 @@
   "intake_print_section_owner": "VLASNIK",
   "intake_print_section_vehicle": "VOZILO · {type}",
   "intake_print_section_condition": "ZATEČENO STANJE",
+  "intake_print_condition_empty": "Ček-lista nije popunjena.",
   "intake_print_fuel": "GORIVO",
   "intake_print_defects": "NEDOSTACI",
   "intake_print_photos": "FOTOGRAFIJA",

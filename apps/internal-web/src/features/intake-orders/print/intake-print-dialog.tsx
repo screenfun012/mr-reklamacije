@@ -2,10 +2,11 @@ import { getLocale, m } from '@mr/i18n'
 import { intakeChecklistItemsDisplayOptions, type IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactElement } from 'react'
 
 import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import type { IntakePrintLocale } from './intake-print-data'
+import { useIntakePrintScale } from './intake-print-scale'
 import { IntakePrintSheet } from './intake-print-sheet'
 import './intake-print.css'
 
@@ -43,6 +44,12 @@ export function IntakePrintDialog({
    */
   const { data: checklistItems = [] } = useQuery(intakeChecklistItemsDisplayOptions())
 
+  /**
+   * The room the paper has, measured. Everything the dialog lays out sits inside that element, so its
+   * content width IS the available width — the dialog's own padding is already out of it.
+   */
+  const { measureRef, scale } = useIntakePrintScale()
+
   useEffect(() => {
     if (!open) {
       return
@@ -67,9 +74,16 @@ export function IntakePrintDialog({
       role="dialog"
       aria-modal="true"
       aria-label={m.intake_print_preview({ type: vehicleType })}
+      ref={measureRef}
       className="fixed inset-0 z-50 flex flex-col items-center overflow-auto bg-[rgba(11,11,13,0.92)] p-6"
     >
-      <div className="mb-[14px] flex w-[794px] flex-none items-center gap-3">
+      {/* `items-center` stays: every child below is now at most as wide as this box, so centring
+          them is what puts the paper in the middle of a desktop screen instead of what pushed its
+          left edge out of reach on a phone. */}
+      <div
+        data-testid="intake-print-toolbar"
+        className="mb-[14px] flex w-full max-w-[794px] flex-none flex-wrap items-center gap-3"
+      >
         <span className="font-mono text-[10.5px] font-semibold tracking-[0.18em] text-white">
           {m.intake_print_preview({ type: vehicleType })}
         </span>
@@ -87,7 +101,7 @@ export function IntakePrintDialog({
               aria-pressed={printLocale === value}
               onClick={() => setPrintLocale(value)}
               className={cn(
-                'h-[42px] w-[52px] cursor-pointer font-mono text-[12px] font-bold uppercase',
+                'min-h-11 w-[52px] cursor-pointer font-mono text-[12px] font-bold uppercase',
                 printLocale === value ? 'bg-white text-[#141417]' : 'bg-transparent text-white',
               )}
             >
@@ -99,14 +113,14 @@ export function IntakePrintDialog({
         <button
           type="button"
           onClick={onClose}
-          className="h-[42px] cursor-pointer rounded-[9px] border border-white/25 bg-white/10 px-5 text-[12.5px] font-bold uppercase tracking-[0.06em] text-white"
+          className="min-h-11 cursor-pointer rounded-[9px] border border-white/25 bg-white/10 px-5 text-[12.5px] font-bold uppercase tracking-[0.06em] text-white"
         >
           {m.action_close()}
         </button>
         <button
           type="button"
           onClick={() => window.print()}
-          className="h-[42px] cursor-pointer rounded-[9px] bg-[#f2f2f3] px-[22px] text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#141417] disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 cursor-pointer rounded-[9px] bg-[#f2f2f3] px-[22px] text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-[#141417] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {m.intake_detail_print()}
         </button>
@@ -118,7 +132,14 @@ export function IntakePrintDialog({
         carried no photographs since 2026-08-10, so there is nothing to wait for — and a dead gate
         kept "just in case" is the thing nobody can explain later.
       */}
-      <div className="flex-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+      {/* The shadow rides the reserved box rather than the sheet, so it stays a crisp 24px drop at
+          every scale instead of shrinking with the paper. `intake-print.css` owns the arithmetic and
+          the print reset; the only thing React contributes is the measured number. */}
+      <div
+        data-testid="intake-print-scaler"
+        className="intake-print-scaler flex-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+        style={{ '--intake-print-scale': scale } as CSSProperties}
+      >
         <IntakePrintSheet
           key={printLocale}
           order={order}
