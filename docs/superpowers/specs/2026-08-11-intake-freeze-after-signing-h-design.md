@@ -1,7 +1,7 @@
 # Prijem vozila — potpis zamrzava zapis (H, dizajn)
 
 **Datum:** 2026-08-11 · **Grana:** `feat/vehicle-intake` · **Osnova:** `a057f66`
-**Status:** pravilo odobreno (Nikola, 11.08.), tri čitanja potvrđena, kod nije počet
+**Status:** pravilo odobreno (Nikola, 11.08.), tri čitanja potvrđena, telefon (§5) odobren, kod nije počet
 
 Nov deo **H**, i ide **prvi**: red je **H → G → C → D → E → F**.
 
@@ -65,7 +65,7 @@ je vlasnik potpisao.
 | ㉗ | Sme li potpisan nalog da se briše? | **Ne.** Brisanje ostaje samo za nedovršene nacrte. Ako se potpisan zapis sme obrisati, zamrzavanje podataka je slabije od brisanja celog dokaza — veća rupa od one koju zatvaramo. |
 | ㉘ | Dokle je Specifikacija živa? | Do **primopredaje**. Serviser dodaje i **uklanja** — Nikolin primer: uzeo materijal pa mu ne treba. Ovo se ne menja u H; `FREE_AFTER_SIGNING` već tako radi. |
 | ㉙ | Zakašnjele fotografije? | **Primaju se, ali samo do `photos_expected`.** Vidi §4 — ovo je moja preporuka i jedina stvar u H koja **dodaje** stražu umesto da je briše. |
-| ㉚ | Pogrešan telefon vlasnika? | **Zamrznut, kao sve ostalo.** ⚠️ Cena je Nikolina sopstvena rečenica od 08.08.: telefon je „kako radnja dolazi do vlasnika auta koji drži", i pogrešan broj čini zapis neupotrebljivim za svoju svrhu. Vidi §5 — aditivni izlaz koji ne pravi neslaganje postoji i **čeka Nikolinu reč**. |
+| ㉚ | Pogrešan telefon vlasnika? | **Potpisani broj ostaje zamrznut, a radnja dobija DRUGI, dopisan broj** (Nikola, 11.08.). Nova kolona `contact_phone`, van potpisanog zapisa, ne štampa se, vidi se samo interno. Papir i zapis ostaju identični — jer se potpisano ne prepisuje — a radnja ume da pozove vlasnika. Vidi §5. |
 
 ---
 
@@ -141,22 +141,33 @@ fotke stigle" i dalje govori istinu i dalje ostaje zauvek (odluka ⑧).
 
 ---
 
-## 5. Telefon vlasnika — otvoreno, čeka Nikolinu reč
+## 5. Telefon — potpisani se zamrzava, dopisani se dodaje
 
-Pod pravilom iz §1 pogrešno ukucan telefon **ostaje pogrešan zauvek**, a radnja nema drugi način da
-dođe do vlasnika: šetač se namerno ne upisuje u `customers` (`schema/intake-orders.ts`, komentar na
-vrhu), pa broj živi samo na ovom nalogu.
+Pod pravilom iz §1 pogrešno ukucan telefon ostao bi pogrešan zauvek, a radnja nema drugi način da
+dođe do vlasnika: šetač se namerno **ne** upisuje u `customers` (`schema/intake-orders.ts`, komentar
+na vrhu), pa broj živi samo na ovom nalogu. To je jedini slučaj u H gde bi zamrzavanje štetilo svrsi
+samog zapisa, i Nikola je to sam napisao 08.08.
 
-To je jedini slučaj u H gde zamrzavanje šteti svrsi samog zapisa, i Nikola je to sam napisao 08.08.
+**Rešenje je aditivno, i zato ne pravi neslaganje:** potpisani `owner_phone` se **nikad ne prepisuje**.
 
-**Aditivni izlaz koji ne pravi neslaganje** (moja preporuka): potpisani `owner_phone` se **nikad ne
-prepisuje**, a radnja dobija **odvojenu kolonu za kontakt** (`contact_phone`, prazna po
-podrazumevanoj vrednosti) koja se **ne štampa na potpisanom nalogu** i vidi se samo interno, uz
-natpis „Broj na potpisanom nalogu: …". Papir i zapis ostaju identični — jer se ono što je potpisano
-ne dira — a radnja ume da pozove vlasnika.
+| | |
+|---|---|
+| kolona | `contact_phone text` (bez `NOT NULL`, bez podrazumevane vrednosti — prazno znači „nije dopisan") |
+| ograničenje | isto kao `owner_phone`: `z.string().trim().min(3).max(40)`, plus `null` da se dopisani broj može i skloniti |
+| kad se pojavljuje | **samo na potpisanom nalogu.** Dok je nacrt, pogrešan broj se prosto ispravi na mestu — polje koje postoji i pre potpisa bilo bi drugi način da se unese isti podatak |
+| dozvola | **nema nove.** `contactPhone` ulazi u `FREE_AFTER_SIGNING` uz `services`/`materials` — dopisan broj nije dokaz nego radna beleška radnje |
+| štampa | **ne.** Ni na prijemnom nalogu. Za dokument o primopredaji (F) odlučuje se tamo |
+| ekran | na detalju, u kartici osnovnih podataka: potpisani broj kao danas, pa ispod „Broj za kontakt (dopisan)" sa mestom za unos i sklanjanje. ⚠️ Potpisani broj mora ostati **vidljiv i označen kao potpisani**, inače dopisani tiho zauzme njegovo mesto i vratili smo neslaganje kroz zadnja vrata |
+| Istorija | nov prelaz `contact_added` → „Dopisan broj za kontakt" |
 
-Bez toga: nalog sa pogrešnim brojem se ne može upotrebiti za ono zbog čega ima telefon.
-**Ne gradim ništa od ovoga bez Nikoline reči** — H stoji i bez njega, sa telefonom zamrznutim.
+⚠️ **Ovo NIJE `amend_contact_after_signing` pod drugim imenom.** Onaj je beležio da je **potpisani**
+broj prepisan; ovaj beleži da je **pored njega** dopisan drugi. Prvi je pravio neslaganje sa papirom,
+drugi ga ne može napraviti jer ništa ne prepisuje. Ta razlika je razlog zbog kog jedan ide a drugi
+dolazi, i piše ovde da se za pola godine ne pročita kao vraćanje obrisanog.
+
+⚠️ Na primopredaji (drugo zamrzavanje) i `contact_phone` se zamrzava, **svesno**: posle predatog
+vozila nema poziva u okviru ovog naloga. Ako se u radu pokaže da ima (garancija), to je odluka za F,
+sa stvarnim iskustvom u rukama, ne pretpostavkom sada.
 
 ---
 
@@ -174,6 +185,10 @@ Svaki test mora da padne kad se linija koju pokriva pokvari (mutacija, ne argume
   odbijena**; od bilo koga drugog posle potpisa → odbijena; **brisanje** fotografije posle potpisa →
   odbijeno
 - nijedna površina ne nudi izmenu na potpisanom nalogu — ni dugme, ni traka, ni bedž
+- `contactPhone` na potpisan nalog prolazi i **ne dira `ownerPhone`** (uporedba oba polja posle
+  zahteva), Istorija dobije `contact_added`, i potpisani broj ostaje vidljiv na ekranu
+- `contactPhone` na **nacrt** → odbijen (polje postoji samo posle potpisa)
+- `contactPhone` se **ne pojavljuje** ni u jednom modelu za štampu
 
 ⚠️ Postojeći testovi V-6-2 (žig, Istorija, bafer, `use-intake-amend`) **se brišu, ne prepravljaju.**
 Test koji dokazuje ponašanje koje više ne postoji je gori od nepostojećeg testa.
@@ -182,11 +197,18 @@ Test koji dokazuje ponašanje koje više ne postoji je gori od nepostojećeg tes
 
 ## 7. Granice
 
-**Nije u H:** drugo zamrzavanje na primopredaji (pravilo je zapisano, sleće sa **F**) · kolone
-`amended_at`/`amended_by` se prestaju upisivati u H, a **migracija koja ih briše traži Nikolino
-izričito odobrenje** i ide zadnja, kad ih više nijedan red koda ne čita · telefon (§5) · nov nalog
-kao put za ozbiljnu grešku — nije traženo, i pod ovim pravilom ispravka i JESTE ta koja pravi
-konflikt.
+**Nije u H:** drugo zamrzavanje na primopredaji (pravilo je zapisano, sleće sa **F**) · nov nalog kao
+put za ozbiljnu grešku — nije traženo, i pod ovim pravilom ispravka i JESTE ta koja pravi konflikt ·
+`contact_phone` na dokumentu o primopredaji (odluka za F, §5).
+
+⚠️⚠️ **PRIJAVLJENO, ČEKA NIKOLINU ODVOJENU REČ — posledica ㉗ koju nisam predvideo.** `softDelete` na
+nalogu (`:617`) ima **tačno jednog pozivaoca**: granu za potpisan nalog. Nacrt se briše **tvrdo**
+(`:612`). Dakle kad potpisan nalog prestane da se briše, meko brisanje ostaje **bez ijednog puta**, a
+sa njim bez svrhe: `restore` (`:642-678`), straža `deletedAt` (`:195-202`), **filter „Uklonjeni" na
+listi**, i dva natpisa u Istoriji („Nalog uklonjen sa liste" / „Nalog vraćen na listu"). To je ceo
+jedan pregled koji nikad više ne može da dobije red. **H ga ne dira** — nije traženo, a brisanje celog
+pregleda je odluka za sebe. ⚠️ Postojeći meko obrisani redovi u razvojnoj bazi i dalje se prikazuju,
+pa pregled ne izgleda prazan dok se u njega ne pogleda posle H.
 
 **Prijavljeno, nedirnuto** (iz speca za C, i dalje stoji): „Napomena uz opremu" se ne štampa ·
 `IntakeDamagesSchema` nema `.max()` · `services`/`materials` se štampaju bez kape.
@@ -197,8 +219,12 @@ konflikt.
 
 | Faza | Sadržaj | Kraj |
 |---|---|---|
-| **H-1** | server: jedna straža umesto mašinerije žiga · dozvola `amend` van `@mr/shared` · brisanje `intake-condition-equal.ts` · fotografije po §4 · brisanje potpisanog naloga odbijeno · `docs/25` + `CLAUDE.md` §2 | gejt zelen, komit |
-| **H-2** | internal-web: traka i bafer režima izmene, bedž, napomena uz potpise, marker u listi, oznaka na papiru · natpisi iz oba jezika + `compile` | gejt zelen, komit |
-| **H-3** | migracija koja briše `amended_at`/`amended_by` | ⚠️ **traži izričito odobrenje**; dokazan lanac od nule |
+| **H-1** | migracija: **dodaje** `contact_phone` (aditivna, nijedan red se ne dira) + šema u `@mr/db` | ⚠️ odobrenje pre primene; dokazan lanac od nule |
+| **H-2** | server: jedna straža umesto mašinerije žiga · dozvola `amend` van `@mr/shared` · brisanje `intake-condition-equal.ts` · `contactPhone` u `FREE_AFTER_SIGNING` + prelaz `contact_added` · fotografije po §4 · brisanje potpisanog naloga odbijeno · `docs/25` + `CLAUDE.md` §2 | gejt zelen, komit |
+| **H-3** | internal-web: traka i bafer režima izmene, bedž, napomena uz potpise, marker u listi, oznaka na papiru **izlaze** · polje „Broj za kontakt" **ulazi** · natpisi iz oba jezika + `compile` | gejt zelen, komit |
+| **H-4** | migracija koja **briše** `amended_at`/`amended_by` — ide zadnja, kad ih više nijedan red koda ne čita | ⚠️ **traži izričito odobrenje**; dokazan lanac od nule |
+
+**Dve migracije, namerno.** `contact_phone` mora da postoji pre ekrana koji ga puni, a kolone žiga
+smeju da odu tek kad ih ni server ni ekran više ne čitaju. Jedna migracija ne može oba.
 
 Pun gejt pre svakog komita.
