@@ -40,6 +40,12 @@ describe('ResourceChangedKey', () => {
       ['intake-orders'],
     ])
   })
+
+  it('maps intakeChecklistItems to its own catalog prefix', () => {
+    expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.IntakeChecklistItems)).toEqual([
+      ['intake-checklist-items'],
+    ])
+  })
 })
 
 describe('ResourceEventType', () => {

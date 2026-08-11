@@ -23,6 +23,7 @@ import { registerClaimSourcesRoutes } from '../modules/claim-sources/index.js'
 import { registerCustomersRoutes } from '../modules/customers/index.js'
 import { registerUsersRoutes } from '../modules/users/index.js'
 import { registerDepartmentsRoutes } from '../modules/departments/index.js'
+import { registerIntakeChecklistItemsRoutes } from '../modules/intake-checklist-items/index.js'
 import { registerDomaceClaimsRoutes } from '../modules/domace-claims/index.js'
 import { registerEmployeesRoutes } from '../modules/employees/index.js'
 import { registerEmotiveClaimsRoutes } from '../modules/emotive-claims/index.js'
@@ -127,6 +128,7 @@ export function createReferenceTestApp(
   registerUsersRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
+  registerIntakeChecklistItemsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
 
   return app

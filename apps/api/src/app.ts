@@ -36,6 +36,7 @@ import { registerStatisticsRoutes } from './modules/statistics/index.js'
 import { registerMrRegistryRoutes } from './modules/mr-registry/index.js'
 import { registerNotificationsRoutes } from './modules/notifications/index.js'
 import { registerIntakeOrdersRoutes } from './modules/intake-orders/index.js'
+import { registerIntakeChecklistItemsRoutes } from './modules/intake-checklist-items/index.js'
 
 export type { MRSessionUser }
 
@@ -161,6 +162,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerExcelRoutes(app, container)
   registerNotificationsRoutes(app, container)
   registerIntakeOrdersRoutes(app, container)
+  registerIntakeChecklistItemsRoutes(app, container)
   registerEventsRoutes(app, container)
 
   return app

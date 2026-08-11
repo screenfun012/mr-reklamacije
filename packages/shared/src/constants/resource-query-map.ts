@@ -31,6 +31,10 @@ export function queryKeyPrefixesForResourceChanged(
     // The list, the KPI cards and any open detail all live under this prefix.
     case ResourceChangedKey.IntakeOrders:
       return [['intake-orders']] as const
+    // The wizard picker, the detail card and the print model all read the catalog through this
+    // prefix, so a rename or a retired item reaches every open screen without a refresh.
+    case ResourceChangedKey.IntakeChecklistItems:
+      return [['intake-checklist-items']] as const
     default: {
       const _exhaustive: never = resource
       return _exhaustive

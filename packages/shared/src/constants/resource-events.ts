@@ -14,6 +14,7 @@ export const ResourceChangedKey = {
   ClaimSources: 'claimSources',
   Users: 'users',
   IntakeOrders: 'intakeOrders',
+  IntakeChecklistItems: 'intakeChecklistItems',
 } as const
 
 export type ResourceChangedKey = (typeof ResourceChangedKey)[keyof typeof ResourceChangedKey]

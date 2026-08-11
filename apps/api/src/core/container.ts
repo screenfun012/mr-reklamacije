@@ -29,6 +29,10 @@ import { createEmailPort } from '../infrastructure/email/email-adapter.js'
 import { FaultsRepository } from './claims/faults.repository.js'
 import { MrRegistryRepository, MrRegistryService } from './mr-registry/index.js'
 import { DepartmentsRepository, DepartmentsService } from '../modules/departments/index.js'
+import {
+  IntakeChecklistItemsRepository,
+  IntakeChecklistItemsService,
+} from '../modules/intake-checklist-items/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { DashboardRepository, DashboardService } from '../modules/dashboard/index.js'
@@ -117,6 +121,8 @@ export interface Container {
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
   departmentsService: DepartmentsService
+  intakeChecklistItemsRepository: IntakeChecklistItemsRepository
+  intakeChecklistItemsService: IntakeChecklistItemsService
   eventBus: EventBus
   emotiveClaimsRepository: EmotiveClaimsRepository
   emotiveClaimsService: EmotiveClaimsService
@@ -266,6 +272,13 @@ export function buildContainer(
   const departmentsRepository = new DepartmentsRepository(db)
   const departmentsService = new DepartmentsService(departmentsRepository, auditService, eventBus)
 
+  const intakeChecklistItemsRepository = new IntakeChecklistItemsRepository(db)
+  const intakeChecklistItemsService = new IntakeChecklistItemsService(
+    intakeChecklistItemsRepository,
+    auditService,
+    eventBus,
+  )
+
   const emotiveFaultsRepository = new FaultsRepository(schema.emotiveClaimFaults)
   const mrRegistryRepository = new MrRegistryRepository(db)
   const mrRegistryService = new MrRegistryService(mrRegistryRepository)
@@ -410,6 +423,8 @@ export function buildContainer(
     claimSourcesService,
     departmentsRepository,
     departmentsService,
+    intakeChecklistItemsRepository,
+    intakeChecklistItemsService,
     eventBus,
     emotiveClaimsRepository,
     emotiveClaimsService,

@@ -14,6 +14,7 @@ import type {
   ExternalPartyListItem,
   ReferenceListQuery,
 } from '../schemas/reference-data.schema.js'
+import type { IntakeChecklistItemListItem } from '../schemas/intake-checklist-item.schema.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
 
 const REFERENCE_STALE_MS = Number.POSITIVE_INFINITY
@@ -203,6 +204,32 @@ export function departmentsReferenceOptions(filters: ReferenceLookupFilters = {}
     queryKey: departmentsReferenceQueryKey(normalized),
     queryFn: () =>
       fetchAllReferencePages<DepartmentListItem>('/api/departments', {
+        activeOnly: normalized.activeOnly ?? true,
+        search: normalized.search,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
+export function intakeChecklistItemsReferenceQueryKey(
+  filters: ReferenceLookupFilters = {},
+): readonly ['intake-checklist-items', 'reference', ReferenceLookupFilters] {
+  return ['intake-checklist-items', 'reference', normalizeReferenceLookupFilters(filters)] as const
+}
+
+/**
+ * `activeOnly: true` is the PICKER — the wizard offers only live items. `activeOnly: false` is the
+ * DISPLAY path, and it must stay available: a signed order can hold the code of an item the shop has
+ * since deactivated, and that row still has to render with its name (plan D3). An order is
+ * evidence; it must not lose a line.
+ */
+export function intakeChecklistItemsReferenceOptions(filters: ReferenceLookupFilters = {}) {
+  const normalized = normalizeReferenceLookupFilters(filters)
+  return queryOptions({
+    queryKey: intakeChecklistItemsReferenceQueryKey(normalized),
+    queryFn: () =>
+      fetchAllReferencePages<IntakeChecklistItemListItem>('/api/intake-checklist-items', {
         activeOnly: normalized.activeOnly ?? true,
         search: normalized.search,
       }),
