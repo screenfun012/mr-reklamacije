@@ -162,6 +162,9 @@ describe('buildIntakePrintModel', () => {
       'sr',
     )
 
+    // Positive control: proves the fixture override actually landed and the model is not simply
+    // empty, so the absence assertion below means something.
+    expect(JSON.stringify(model)).toContain('+381 11 111')
     // The paper is the signed record. The working note has no business on it (docs/25 §5).
     expect(JSON.stringify(model)).not.toContain('+381 64 999')
   })

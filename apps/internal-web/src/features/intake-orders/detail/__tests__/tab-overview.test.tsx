@@ -108,9 +108,23 @@ describe('TabOverview', () => {
   it('gives the facts grid four even columns, with no cell singled out', async () => {
     await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
 
-    const cell = screen.getByText(m.intake_field_owner_phone()).parentElement
+    const cell = screen.getByText(m.intake_fact_vin()).parentElement
     expect(cell).toHaveClass('min-w-0')
     expect(cell).not.toHaveClass('col-span-2')
+  })
+
+  /*
+   * The one deliberate exception to the row above. V-6-2 already lost the last four digits of a
+   * phone number to a plain 1/4-width grid cell that could not grow past a control's fixed width,
+   * with no scrollbar to hint anything was wrong — this cell spans the row instead of repeating
+   * that. jsdom does no layout, so this only proves the class survives, not that the pixels fit;
+   * see the task-5 report for the widths (1180 / 1440 / 430) a human still has to check.
+   */
+  it('spans the owner-phone cell across the row so its added-contact control has room', async () => {
+    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+
+    const cell = screen.getByText(m.intake_field_owner_phone()).parentElement
+    expect(cell).toHaveClass('min-w-0', 'col-span-2', '@min-[860px]:col-span-4')
   })
 
   // H retired the whole editing mode this tab used to grow (docs/25 §3.0): the checklist grid, the

@@ -131,6 +131,12 @@ export function TabOverview({
         </>
       ),
       className: '',
+      // This cell alone carries a live control, not just a read value. At the 1180px iPad-landscape
+      // width the serviser actually holds, an even 1/4 grid column here is ~114px — a repeat of the
+      // V-6-2 bug where a narrower-than-needed cell silently clipped digits off the phone it was
+      // correcting, with no scrollbar to hint anything was wrong. Spanning the row gives the input
+      // room instead of fighting a fixed min-width against a column that cannot grow.
+      cellClassName: 'col-span-2 @min-[860px]:col-span-4',
     },
     {
       label: m.intake_fact_fuel(),

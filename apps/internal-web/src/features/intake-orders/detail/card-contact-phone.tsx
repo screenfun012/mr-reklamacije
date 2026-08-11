@@ -49,16 +49,27 @@ export function IntakeContactPhone({
 
       {canUpdate ? (
         <div className="flex flex-wrap items-center gap-2">
+          {/* `w-full`, not a fixed min-width: a floor in px fights a grid column that cannot grow
+              past it, and the loser is invisible — no scrollbar, just clipped digits (V-6-2). A
+              percentage width can never overflow its own row, whatever that row's cell turns out
+              to be. */}
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={m.intake_contact_phone_placeholder()}
-            className="mri-input min-w-[200px] flex-1 rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-2 font-sans text-[13.5px] text-mri-text outline-none"
+            className="mri-input w-full rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-2 font-sans text-[13.5px] text-mri-text outline-none"
           />
           <InternalButton
             type="button"
             variant="ghost"
-            disabled={save.isPending || draft.trim().length < 3}
+            // The server has no no-op guard on this PATCH — it writes and audits whatever arrives —
+            // so a second press on an unchanged value would append a second `contact_added` row to
+            // Istorija for nothing. Comparing against the stored value keeps that write meaningful.
+            disabled={
+              save.isPending ||
+              draft.trim().length < 3 ||
+              draft.trim() === (order.contactPhone ?? '')
+            }
             onClick={() => save.mutate(draft.trim())}
           >
             {m.intake_contact_phone_save()}
