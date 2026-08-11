@@ -1,9 +1,15 @@
 # Prijem vozila — admin dobija kontrolu nad spiskovima (G, dizajn)
 
 **Datum:** 2026-08-11 · **Grana:** `feat/vehicle-intake` · **Osnova:** `1c59476`
-**Status:** obim odobren (Nikola, 10.08.), odluka o preimenovanju donета 11.08.
+**Status:** obim odobren (Nikola, 10.08.), odluka o preimenovanju doneta 11.08.
+**Sloj baze je SAGRAĐEN** (`bcce1d8`): migracija `0037_watery_hellfire_club`, seed u `runSystemSeeds`,
+tri dozvole. **API modul i admin ekran nisu počeli.**
 
-Deo **G** iz reda **A ✅ → B ✅ → G → C → D → E → F**.
+⚠️ **Dve ispravke ovog speca, obe od 11.08.:** `marker_colour` je postao `marker_tone` (§3), i režim
+izmene iz spiska potrošača (§4) **više ne postoji** — deo H ga je ukinuo, pa detalj „Zatečeno stanje"
+čita katalog samo za prikaz. G je time dobio manje posla nego što mu je prvobitni tekst pisao.
+
+Deo **G** iz reda **A ✅ → B ✅ → H ✅ → G → C → D → E → F**.
 
 ---
 
@@ -52,8 +58,14 @@ Tabela u `packages/db/src/schema/catalogs.ts`, po uzoru na `departments`:
 `id` · `code` (stabilan, jedinstven) · `name_sr` · `name_en` · `sort_order` · `is_active` ·
 `created_at` · `updated_at` · `deleted_at` (meko brisanje).
 
-Tip oštećenja dodatno nosi **`marker_colour`** — boju kruga na šemi. ⚠️ Samo za ekran: štampa sve
-markere crta crveno bez obzira na tip, jer amber i siva ne izlaze čitko (V-7).
+Tip oštećenja dodatno nosi **`marker_tone`** — ⚠️ **ne boju nego TON**, i to je ispravka ovog speca
+učinjena pri gradnji sloja baze (`bcce1d8`). Prva verzija je imala `marker_colour` sa proverom na heks,
+pa se videlo da boje markera danas nisu heks nego tokeni (`--mri-red`, `--mri-amb`, `--mri-gry`) i da
+**amber ima drugu vrednost u svetloj temi** — sačuvan heks bi izgubio temu i pustio bilo koju boju na
+marker, što `CLAUDE.md` §5 zabranjuje. Kolona je zato `marker_tone text NOT NULL DEFAULT 'red'` sa
+CHECK-om na **četiri tona koji stvarno postoje** (`red`, `amber`, `grey`, `green`); ekran ton mapira u
+svoj token. ⚠️ Samo za ekran: štampa sve markere crta crveno bez obzira na ton, jer amber i siva ne
+izlaze čitko (V-7).
 
 Po katalogu ide: API modul (`apps/api/src/modules/<naziv>/`, sedam fajlova kao `departments`) ·
 Zod šeme i query factory u `@mr/shared` · dozvola `settings.<naziv>.manage` · definicija resursa u
@@ -71,7 +83,7 @@ Ovo je pravi posao; tabele su lak deo.
 
 | Katalog | Ekrani koji prestaju da čitaju konstantu |
 |---|---|
-| **Ček-lista** | čarobnjak korak 2 · detalj „Zatečeno stanje" (i čitanje i režim izmene) · **štampa** (model + blok) |
+| **Ček-lista** | čarobnjak korak 2 · detalj „Zatečeno stanje" (**samo čitanje**) · **štampa** (model + blok) |
 | **Tipovi oštećenja** | čarobnjak korak 3 (birač tipa) · detalj „Šema i nedostaci" (birač i boje markera) · **štampa** (redovi nedostataka) |
 | **Načini dolaska** | čarobnjak korak 1 (tri dugmeta) · detalj „Osnovni podaci" · **štampa** |
 
