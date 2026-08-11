@@ -342,7 +342,36 @@ nothing anywhere reported an error.
   same mechanism steps 1 and 5 already use. Blocking would teach a serviser under pressure to
   **skip marking damages** so as not to get stuck — fewer recorded damages, not more.
 
-### 3.5 Print — BUILT (V-7, 2026-08-10)
+### 3.5 Print — TWO DOCUMENTS, and the second one contains the first (Nikola, 2026-08-11)
+
+There are **two** printed documents in a vehicle's life here, and the rule between them is Nikola's:
+
+| | Contains | Signed by |
+| --- | --- | --- |
+| **1 — intake** (BUILT, V-7) | everything up to the moment of signing: basic data, the condition (checklist), fuel, the damage map with its defect list, remarks | receiving worker + owner |
+| **2 — handover** (part **F**, NOT built) | **everything document 1 carries, PLUS everything that happened after it** — the specification of works, materials, the whole account of what the shop did to the vehicle | serviser + owner |
+
+Nikola, verbatim: *„drugi dokument […] treba da sadrzi podatke iz prvog dokumenta kao i podatke nakon
+toga, znaci celukupnost o vozilu […] sve mora da bude na tom dokumentu da vlasnik je upoznat sa svime i
+potpisao da je saglasan i da uzima vozilo."* The reason is a dispute he expects: a car that fails after
+pickup and an owner who says *„ja ne znam šta ste radili na njemu"* — the answer is the specification of
+works on the paper he signed. Or an owner who says at pickup *„ja nemam to i to"* when he does, and
+signed for it before taking the vehicle back.
+
+⚠️ **Document 2 therefore CANNOT be capped at one page, and nothing on it may be truncated.** Document 1
+already only just fits one A4 — V-7 measured that 12 defects in a single column push the footer with
+both signatures onto a second sheet — and document 2 carries strictly more. **Nikola, 2026-08-11: one
+page when it fits, and when the lists are longer it flows onto a second, a third, as long as it takes.**
+No "…and N more — see order" line on this document: the whole purpose is that nothing is missing, so an
+omission is the first thing a dissatisfied owner reaches for. Signatures go **last**, after everything,
+because what is being signed is the totality.
+
+⚠️ This reverses nothing about document 1: it stays exactly one page, with its existing caps and its
+"…i još N" overflow line. The two documents have different jobs and therefore different rules.
+
+---
+
+#### Document 1 — as built (V-7, 2026-08-10)
 
 **Browser print**, A4 portrait, `794×1123` @96dpi, **exactly one page**, from
 `features/intake-orders/print/`. "Save as PDF" lives in the same print dialog on every device
