@@ -85,7 +85,7 @@ function buildListQuery(filters: IntakeOrderListFilters): string {
 /**
  * The "Servis" list. Scope is the server's call: a caller limited to `intake_orders.view_own`
  * gets their own orders including unfinished ones regardless of `view`, everyone else gets
- * the shop's signed orders unless `view` asks for the drafts or the removed ones.
+ * the shop's signed orders unless `view` asks for the drafts.
  */
 export function intakeOrdersListOptions(filters: IntakeOrderListFilters) {
   return queryOptions({
@@ -208,19 +208,11 @@ export function changeIntakeOrderStatus(
 }
 
 /**
- * Removes an order from the list. An unfinished one is really deleted (`ODUSTANI`); a signed
- * one is soft-deleted, because it is evidence.
+ * Throws an unfinished intake away (`ODUSTANI`) and releases its number. A signed order cannot be
+ * removed at all — it is the shop's half of a document the owner is holding.
  */
 export function deleteIntakeOrder(id: string): Promise<void> {
   return fetchNoContent(`/api/intake-orders/${id}`, { method: 'DELETE' })
-}
-
-/**
- * Puts a removed order back on the list. Same permission as the removal, and idempotent — an
- * order that is still on the list comes back unchanged.
- */
-export function restoreIntakeOrder(id: string): Promise<IntakeOrderDetail> {
-  return fetchJson<IntakeOrderDetail>(`/api/intake-orders/${id}/restore`, { method: 'POST' })
 }
 
 export function deleteIntakeOrderPhoto(id: string, attachmentId: string): Promise<void> {

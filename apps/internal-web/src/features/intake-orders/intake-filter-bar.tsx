@@ -13,11 +13,10 @@ import { INTAKE_STATUS_LABELS, INTAKE_STATUS_ORDER } from './intake-status'
 
 const SEARCH_DEBOUNCE_MS = 300
 
-/** Keyed off the shared const, so a fourth view cannot be added without a label for it. */
+/** Keyed off the shared const, so a third view cannot be added without a label for it. */
 const VIEW_LABELS: Record<IntakeOrderListView, () => string> = {
   active: m.intake_filter_view_active,
   unfinished: m.intake_filter_view_unfinished,
-  deleted: m.intake_filter_view_deleted,
 }
 
 export interface IntakeFilterBarProps {

@@ -35,10 +35,10 @@ export function TabSpec({
    * guards its own add button with `sending`, but nothing guarded the ✕, and nothing at all guarded
    * the two cards against each other.
    *
-   * `deletedAt` and the permission are the two states where the server would refuse anyway (409 and
-   * 403) — an enabled field there is an offer the screen cannot keep.
+   * The permission is the state where the server would refuse anyway (403) — an enabled field there
+   * is an offer the screen cannot keep.
    */
-  const frozen = order.deletedAt !== null || !canUpdate || update.isPending
+  const frozen = !canUpdate || update.isPending
 
   return (
     // Two equal cards side by side at every width, as the prototype has it (`:616-631`). No

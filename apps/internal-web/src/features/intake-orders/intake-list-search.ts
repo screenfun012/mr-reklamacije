@@ -2,15 +2,14 @@ import type { IntakeOrdersSearch } from '@mr/shared'
 
 /**
  * The `Prikaz` select is office-only, but the search PARAM is not — a pasted
- * `/prijem?view=deleted` reaches the route for whoever opens it. Left alone the server refuses
- * it (403) before the screen renders, the route falls to its error component, and a serviser is
- * left with no table, no filter bar and no way to clear the param from the page: recoverable
- * only by navigating in again from the sidebar. So a caller who cannot see the whole shop has
- * the param dropped and gets his ordinary list.
+ * `/prijem?view=unfinished` reaches the route for whoever opens it. The own scope ignores the view
+ * by design, so such a caller would be served his ordinary list under a query key nobody else
+ * shares, for a control he cannot see or clear from the page. So the param is dropped for a caller
+ * who cannot see the whole shop.
  *
  * It lives here rather than inside the route because the loader and the screen build the query
- * key SEPARATELY. Sanitising only one of them puts them on different keys and the refused
- * request happens anyway — both call this.
+ * key SEPARATELY. Sanitising only one of them puts them on different keys and the extra request
+ * happens anyway — both call this.
  */
 export function visibleIntakeSearch(
   search: IntakeOrdersSearch,

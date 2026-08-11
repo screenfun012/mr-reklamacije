@@ -121,21 +121,17 @@ export const IntakeOrderChangeStatusInputSchema = z.object({
 export type IntakeOrderChangeStatusInput = z.infer<typeof IntakeOrderChangeStatusInputSchema>
 
 /**
- * The three ways the list can be read: the shop's live signed work, the drafts still being
- * filled in, or what the office removed. `unfinished` and `deleted` are mutually exclusive —
- * a draft is hard-deleted, so a removed order is always a signed one — which a pair of
- * independent checkboxes cannot express but one view can (docs/25 V-6-1a).
+ * The two ways the list can be read: the shop's signed work, or the drafts still being filled in.
  */
-export const intakeOrderListViewValues = ['active', 'unfinished', 'deleted'] as const
+export const intakeOrderListViewValues = ['active', 'unfinished'] as const
 
 export type IntakeOrderListView = (typeof intakeOrderListViewValues)[number]
 
 /**
  * `view` is only meaningful for a full-view actor: the office's table is a work list
- * of real intakes, so drafts and removed orders are excluded unless asked for. A caller
- * limited to `view_own` always sees their own rows including drafts — it is their own
- * unfinished work, and hiding it would mean they could not resume from the list. `deleted`
- * additionally requires `intake_orders.delete` (enforced by the service, not this schema).
+ * of real intakes, so drafts are excluded unless asked for. A caller limited to `view_own`
+ * always sees their own rows including drafts — it is their own unfinished work, and hiding it
+ * would mean they could not resume from the list.
  */
 export const IntakeOrderListQuerySchema = z.object({
   status: z.enum(intakeOrderStatusValues).optional(),
@@ -251,12 +247,6 @@ export const IntakeOrderDetailSchema = z.object({
   technicianSignature: z.string().nullable(),
   ownerSignature: z.string().nullable(),
   signedAt: z.string().nullable(),
-  /**
-   * NULL for a live order. Present so the detail can tell a removed order from a live one —
-   * without it the screen would have to infer the state from which list the user arrived
-   * through, and would draw the action row on an order that is off the list.
-   */
-  deletedAt: z.string().nullable(),
   photosPending: z.number().int().nonnegative(),
   photos: z.array(IntakeOrderPhotoSchema),
   createdAt: z.string(),

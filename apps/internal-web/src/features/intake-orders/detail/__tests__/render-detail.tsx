@@ -56,7 +56,6 @@ const SIGNED_ORDER = {
   technicianSignature: 'M 0 0 L 10 10',
   ownerSignature: 'M 0 0 L 20 20',
   signedAt: '2026-07-27T19:10:00.000Z',
-  deletedAt: null,
   photosPending: 0,
   photos: [],
   createdAt: '2026-07-27T18:42:00.000Z',

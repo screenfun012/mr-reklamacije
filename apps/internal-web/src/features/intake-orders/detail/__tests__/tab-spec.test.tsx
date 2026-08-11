@@ -190,34 +190,10 @@ describe('TabSpec', () => {
     expect(detailGetCount()).toBe(0)
   })
 
-  it('lets nothing be typed or deleted on an order that was removed from the list', async () => {
-    stubFetch(() => Promise.resolve(json({})))
-
-    await renderDetailUi(
-      <SpecUnderRoute
-        order={intakeOrderDetailFixture({
-          services: ['Pranje'],
-          materials: ['Filter'],
-          deletedAt: '2026-07-29T08:00:00.000Z',
-        })}
-      />,
-    )
-
-    // The server answers a PATCH of a removed order with a 409, so an enabled field would be an
-    // offer the screen cannot keep.
-    expect(serviceInput()).toBeDisabled()
-    for (const add of screen.getAllByRole('button', { name: m.intake_spec_add() })) {
-      expect(add).toBeDisabled()
-    }
-    for (const remove of removeButtons()) {
-      expect(remove).toBeDisabled()
-    }
-  })
-
   it('lets nothing be edited without the update permission', async () => {
     // A custom role with `intake_orders.view` and no `update` can open this tab. Every attempt would
-    // 403 with only the generic toast to show for it — the same argument as the removed order, and
-    // the same shape as the header's `canAdvance`/`canDelete`/`canChangeStatus`.
+    // 403 with only the generic toast to show for it — the same shape as the header's
+    // `canAdvance`/`canDelete`/`canChangeStatus`.
     stubFetch(() => Promise.resolve(json({})))
 
     await renderDetailUi(

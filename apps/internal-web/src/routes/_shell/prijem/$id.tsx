@@ -14,7 +14,6 @@ import {
 import { IntakeDraftBar } from '~/features/intake-orders/detail/intake-draft-bar'
 import { IntakePrintDialog } from '~/features/intake-orders/print/intake-print-dialog'
 import { IntakePhotosPendingNote } from '~/features/intake-orders/detail/intake-photos-pending-note'
-import { IntakeRemovedBar } from '~/features/intake-orders/detail/intake-removed-bar'
 import { IntakeStatusBar } from '~/features/intake-orders/detail/intake-status-bar'
 import { TabHistory } from '~/features/intake-orders/detail/tab-history'
 import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
@@ -55,7 +54,7 @@ function IntakeDetailPage(): ReactElement {
   // it exists on the client (the same source the claim attachments tab reads).
   const { data: session } = authClient.useSession()
 
-  const isLive = order.deletedAt === null && order.signedAt !== null
+  const signed = order.signedAt !== null
   const activeTab = visibleIntakeDetailTab(tab, order.signedAt)
 
   const navigate = useNavigate()
@@ -82,27 +81,19 @@ function IntakeDetailPage(): ReactElement {
         onPrint={() => setPrintOpen(true)}
       />
 
-      {order.deletedAt !== null ? (
-        <IntakeRemovedBar order={order} canDelete={permissions.includes('intake_orders.delete')} />
-      ) : null}
-
-      {order.signedAt === null ? (
+      {signed ? null : (
         <IntakeDraftBar
           order={order}
           currentUserId={session?.user?.id}
           canDelete={permissions.includes('intake_orders.delete')}
         />
-      ) : null}
+      )}
 
       {/* Structurally signed-only: `photos_expected` is written by the sign call and nowhere else,
-          so this can never fire on a draft and never stacks with the bar above. Removed orders are
-          excluded on purpose — the server refuses every upload to one, and removal never clears the
-          expectation, so it would ask forever for something nobody can do. */}
-      {order.deletedAt === null && order.photosPending > 0 ? (
-        <IntakePhotosPendingNote order={order} />
-      ) : null}
+          so this can never fire on a draft and never stacks with the bar above. */}
+      {order.photosPending > 0 ? <IntakePhotosPendingNote order={order} /> : null}
 
-      {isLive && permissions.includes('intake_orders.change_status') ? (
+      {signed && permissions.includes('intake_orders.change_status') ? (
         <IntakeStatusBar order={order} />
       ) : null}
 

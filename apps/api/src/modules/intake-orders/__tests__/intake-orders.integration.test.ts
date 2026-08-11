@@ -128,16 +128,6 @@ describe('Intake orders integration', () => {
     return created.id
   }
 
-  /**
-   * Takes an order off the list the only way left: a signed order is no longer removable through
-   * the service (㉗ of the freeze spec), so the repository is called directly. The removed-order
-   * screen, its list filter and `restore` deliberately stay in the code until Nikola decides their
-   * fate (spec §7) — so their coverage stays too, and this is how it reaches the state it needs.
-   */
-  async function removeFromList(orderId: string): Promise<void> {
-    await container.intakeOrdersRepository.softDelete(orderId)
-  }
-
   /** Every transition this order's audit rows carry, in no particular order. */
   async function transitionsOf(orderId: string): Promise<(string | undefined)[]> {
     const rows = await ctx.db
@@ -238,62 +228,6 @@ describe('Intake orders integration', () => {
       const list = await service.list(serviser, { view: 'active', page: 1, pageSize: 25 })
       expect(list.items).toHaveLength(1)
       expect(list.items[0]?.signedAt).toBeNull()
-    })
-
-    it('shows the office removed orders only when it asks, and only with delete', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const id = await signedOrder(serviser)
-      await removeFromList(id)
-
-      const removed = await service.list(office, { view: 'deleted', page: 1, pageSize: 25 })
-      expect(removed.items.map((row) => row.id)).toContain(id)
-
-      await expect(
-        service.list(serviser, { view: 'deleted', page: 1, pageSize: 25 }),
-      ).rejects.toBeInstanceOf(ForbiddenError)
-    })
-
-    it('refuses the removed view for a full-list reader who lacks delete', async () => {
-      const viewOnly: IntakeOrdersActor = {
-        id: await createUser('View Only'),
-        permissions: ['intake_orders.view'],
-      }
-      const id = await signedOrder(await floorActor())
-      await removeFromList(id)
-
-      await expect(
-        service.list(viewOnly, { view: 'deleted', page: 1, pageSize: 25 }),
-      ).rejects.toBeInstanceOf(ForbiddenError)
-    })
-
-    /*
-     * The own scope ignores `view` by design, so without the scope half of the guard this
-     * actor would be handed his ordinary LIVE list while having asked for the removed one —
-     * refused nowhere, and wrong silently. No seeded role pairs `view_own` with `delete`,
-     * but a custom role built in admin can.
-     */
-    it('refuses the removed view for an actor who may delete but sees only his own rows', async () => {
-      const ownPlusDelete: IntakeOrdersActor = {
-        id: await createUser('Own Plus Delete'),
-        permissions: ['intake_orders.view_own', 'intake_orders.delete'],
-      }
-      await service.create(createInput(), actorContext(ownPlusDelete.id))
-
-      await expect(
-        service.list(ownPlusDelete, { view: 'deleted', page: 1, pageSize: 25 }),
-      ).rejects.toBeInstanceOf(ForbiddenError)
-    })
-
-    it('refuses a view-only actor reading a removed order directly, not just the list', async () => {
-      const viewOnly: IntakeOrdersActor = {
-        id: await createUser('View Only'),
-        permissions: ['intake_orders.view'],
-      }
-      const id = await signedOrder(await floorActor())
-      await removeFromList(id)
-
-      await expect(service.findById(id, viewOnly)).rejects.toBeInstanceOf(NotFoundError)
     })
   })
 
@@ -587,8 +521,7 @@ describe('Intake orders integration', () => {
      * `view` with `update` and withholds `delete`, but a custom role built in admin can.
      *
      * The surviving row is asserted, not just the rejection: a guard placed one line too late
-     * would still throw, and the draft would still be gone — hard, with no `deleted_at` to
-     * undo it.
+     * would still throw, and the draft would still be gone — hard, with nothing to undo it with.
      */
     it("refuses a full-list editor without delete throwing away another serviser's draft", async () => {
       const editorNoDelete: IntakeOrdersActor = {
@@ -757,153 +690,6 @@ describe('Intake orders integration', () => {
 
       const check = await service.checkNumber(orderNumber, floor)
       expect(check.status).toBe(IntakeNumberCheckStatus.Free)
-    })
-  })
-
-  describe('restore', () => {
-    it('brings a removed order back to the list', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const number = uniqueNumber('back')
-      const id = await signedOrder(serviser, { orderNumber: number })
-      await removeFromList(id)
-
-      const gone = await service.list(office, {
-        search: number,
-        view: 'active',
-        page: 1,
-        pageSize: 25,
-      })
-      expect(gone.items).toHaveLength(0)
-
-      const restored = await service.restore(id, office, actorContext(office.id))
-      expect(restored.deletedAt).toBeNull()
-
-      const back = await service.list(office, {
-        search: number,
-        view: 'active',
-        page: 1,
-        pageSize: 25,
-      })
-      expect(back.items.map((item) => item.id)).toEqual([id])
-      // "greška se ispravlja, ali se ne krije" — the correction is a line in the record, not a
-      // silent reversal, and the projection keeps `restore` (docs/25 V-6-1 §6.4).
-      const history = await service.listHistory(id, office)
-      expect(history.some((row) => row.transition === 'restore')).toBe(true)
-    })
-
-    it('lets the office read a removed order while everyone else still gets a 404', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const id = await signedOrder(serviser)
-      await removeFromList(id)
-
-      const seen = await service.findById(id, office)
-      expect(seen.deletedAt).not.toBeNull()
-
-      await expect(service.findById(id, serviser)).rejects.toBeInstanceOf(NotFoundError)
-      // Restore must not become the hole in row-level scope that the detail is not.
-      await expect(service.restore(id, serviser, actorContext(serviser.id))).rejects.toBeInstanceOf(
-        NotFoundError,
-      )
-    })
-
-    it('refuses to restore onto a number somebody else has taken since', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const number = uniqueNumber('clash')
-      const id = await signedOrder(serviser, { orderNumber: number })
-      await removeFromList(id)
-
-      const replacement = await service.create(
-        createInput({ orderNumber: number }),
-        actorContext(serviser.id),
-      )
-
-      const failure = await service.restore(id, office, actorContext(office.id)).catch((e) => e)
-      expect(failure).toBeInstanceOf(ConflictError)
-      // The office needs to reach the order now holding the number — a bare 409 leaves it
-      // guessing which sheet took it.
-      expect((failure as { details?: unknown }).details).toEqual({ orderId: replacement.id })
-    })
-
-    it('refuses a second removal of an order already off the list', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const id = await signedOrder(serviser)
-      await removeFromList(id)
-
-      // A second removal must not write a removal line for a removal that never happened, and
-      // must not answer with a success toast either. No screen offers this any more (the freeze
-      // took the button), but the guard stays for as long as the removed view does (spec §7).
-      await expect(service.delete(id, office, actorContext(office.id))).rejects.toBeInstanceOf(
-        ConflictError,
-      )
-    })
-
-    it('is a no-op on an order that is still on the list', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      const id = await signedOrder(serviser)
-
-      const same = await service.restore(id, office, actorContext(office.id))
-
-      expect(same.deletedAt).toBeNull()
-      // Nothing was corrected, so nothing is recorded — and the clash check never runs against
-      // the order's own live number, which would otherwise 409 on itself.
-      const history = await service.listHistory(id, office)
-      expect(history.some((row) => row.transition === 'restore')).toBe(false)
-    })
-
-    it('leaves a removed order read-only on every mutating path until it is put back', async () => {
-      const serviser = await floorActor()
-      const office = await officeActor()
-      // Signed as still expecting one photo, so the late arrival below is accepted and there is
-      // a photo to reach for once the order is off the list.
-      const id = await signedOrderExpecting(serviser, 1)
-      const photo = await service.uploadPhoto(
-        id,
-        photoInput(),
-        null,
-        serviser,
-        actorContext(serviser.id),
-      )
-      await removeFromList(id)
-
-      // Matched on the refusal itself, not just on "it threw": a removed row is invisible to
-      // every repository write, so several of these paths already fail for the wrong reason
-      // (a 404 from the re-read) while two — the photo paths — would silently succeed.
-      const readOnly = /removed from the list/
-      await expect(
-        service.update(id, { services: ['Zamena ulja'] }, office, actorContext(office.id)),
-      ).rejects.toThrow(readOnly)
-      await expect(
-        service.sign(
-          id,
-          { technicianSignature: 'M 0 0 L 1 1', ownerSignature: 'M 0 0 L 1 1', photosExpected: 0 },
-          office,
-          actorContext(office.id),
-        ),
-      ).rejects.toThrow(readOnly)
-      await expect(service.advance(id, office, actorContext(office.id))).rejects.toThrow(readOnly)
-      await expect(
-        service.changeStatus(
-          id,
-          { status: IntakeOrderStatus.InProgress },
-          office,
-          actorContext(office.id),
-        ),
-      ).rejects.toThrow(readOnly)
-      await expect(
-        service.uploadPhoto(id, photoInput('late.jpg'), null, office, actorContext(office.id)),
-      ).rejects.toThrow(readOnly)
-      await expect(
-        service.deletePhoto(id, photo.id, office, actorContext(office.id)),
-      ).rejects.toThrow(readOnly)
-
-      const after = await service.findById(id, office)
-      expect(after.photos).toHaveLength(1)
-      expect(after.status).toBe(IntakeOrderStatus.Received)
     })
   })
 

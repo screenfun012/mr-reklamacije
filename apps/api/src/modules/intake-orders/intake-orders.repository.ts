@@ -92,7 +92,6 @@ interface OrderRow {
   technicianSignature: string | null
   ownerSignature: string | null
   signedAt: Date | null
-  deletedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -160,7 +159,6 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     technicianSignature: row.technicianSignature,
     ownerSignature: row.ownerSignature,
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
-    deletedAt: row.deletedAt === null ? null : row.deletedAt.toISOString(),
     photosPending: pendingPhotoCount(row.photosExpected, photos.length),
     photos,
     createdAt: row.createdAt.toISOString(),
@@ -201,31 +199,17 @@ export class IntakeOrdersRepository {
       technicianSignature: intakeOrders.technicianSignature,
       ownerSignature: intakeOrders.ownerSignature,
       signedAt: intakeOrders.signedAt,
-      deletedAt: intakeOrders.deletedAt,
       createdAt: intakeOrders.createdAt,
       updatedAt: intakeOrders.updatedAt,
     }
   }
 
-  /**
-   * `includeDeleted` is off by default, so every existing caller keeps hiding removed rows.
-   * The service turns it on only for an actor who may put the order back — reading a removal
-   * is how the correction is offered at all (docs/25 V-6-1 §6.4).
-   */
-  async findById(
-    id: string,
-    options: { includeDeleted?: boolean } = {},
-  ): Promise<IntakeOrderDetail | null> {
-    const conditions = [eq(intakeOrders.id, id)]
-    if (options.includeDeleted !== true) {
-      conditions.push(isNull(intakeOrders.deletedAt))
-    }
-
+  async findById(id: string): Promise<IntakeOrderDetail | null> {
     const [row] = await this.db
       .select(this.detailSelection())
       .from(intakeOrders)
       .leftJoin(users, eq(users.id, intakeOrders.technicianId))
-      .where(and(...conditions))
+      .where(eq(intakeOrders.id, id))
       .limit(1)
 
     if (!row) {
@@ -259,32 +243,16 @@ export class IntakeOrdersRepository {
 
   /**
    * Scope and visibility in one predicate. The fork is the point: an `own` scope returns every
-   * live row of the caller, drafts included, and never reads the view — it is his own unfinished
+   * row of the caller, drafts included, and never reads the view — it is his own unfinished
    * work and hiding it would take away the only way back into it. Only the office's `all` scope
    * narrows.
    */
   private scopeCondition(scope: IntakeOrdersListScope, view: IntakeOrderListView) {
     if (scope.type === 'own') {
-      return and(isNull(intakeOrders.deletedAt), eq(intakeOrders.technicianId, scope.userId))
+      return eq(intakeOrders.technicianId, scope.userId)
     }
 
-    if (view === 'deleted') {
-      /*
-       * Removed rows only. Deliberately NOT also `signed_at IS NOT NULL`: a draft is hard-
-       * deleted (`service.delete` branches on `before.signedAt === null`) so a soft-deleted
-       * unsigned row cannot exist, which made that condition filter nothing — while ensuring
-       * that if one ever DID appear it would be missing from `active` (removed), from
-       * `unfinished` (removed) and from here (unsigned), i.e. invisible everywhere with
-       * nothing raised. Without it such a row shows up here, which is where someone would
-       * look for it.
-       */
-      return isNotNull(intakeOrders.deletedAt)
-    }
-
-    const live = isNull(intakeOrders.deletedAt)
-    return view === 'unfinished'
-      ? and(live, isNull(intakeOrders.signedAt))
-      : and(live, isNotNull(intakeOrders.signedAt))
+    return view === 'unfinished' ? isNull(intakeOrders.signedAt) : isNotNull(intakeOrders.signedAt)
   }
 
   async list(
@@ -370,7 +338,7 @@ export class IntakeOrdersRepository {
 
   /** KPI cards: signed orders only, so a half-entered intake never inflates "Primljeno". */
   async summary(scope: IntakeOrdersListScope): Promise<IntakeOrderSummary> {
-    const conditions = [isNull(intakeOrders.deletedAt), isNotNull(intakeOrders.signedAt)]
+    const conditions = [isNotNull(intakeOrders.signedAt)]
     if (scope.type === 'own') {
       conditions.push(eq(intakeOrders.technicianId, scope.userId))
     }
@@ -458,10 +426,7 @@ export class IntakeOrdersRepository {
     if (patch.draftStep !== undefined) values['draftStep'] = patch.draftStep
 
     await this.db.transaction(async (tx) => {
-      await tx
-        .update(intakeOrders)
-        .set(values)
-        .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+      await tx.update(intakeOrders).set(values).where(eq(intakeOrders.id, id))
 
       // Removing a damage must not destroy its evidence — the photos stay and only lose their
       // number (docs/25 §3.4). Left alone, `intake_damage_id` would point at an id no longer in
@@ -500,7 +465,7 @@ export class IntakeOrdersRepository {
         signedAt: new Date(),
         draftStep: null,
       })
-      .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+      .where(eq(intakeOrders.id, id))
 
     return this.findById(id)
   }
@@ -509,7 +474,7 @@ export class IntakeOrdersRepository {
     await this.db
       .update(intakeOrders)
       .set({ status: status as IntakeOrderDetail['status'] })
-      .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
+      .where(eq(intakeOrders.id, id))
 
     return this.findById(id)
   }
@@ -663,22 +628,6 @@ export class IntakeOrdersRepository {
     })
   }
 
-  /** A signed order is evidence: it leaves the list, never the database. */
-  async softDelete(id: string): Promise<void> {
-    await this.db
-      .update(intakeOrders)
-      .set({ deletedAt: new Date() })
-      .where(and(eq(intakeOrders.id, id), isNull(intakeOrders.deletedAt)))
-  }
-
-  /** Puts a removed order back on the list. The caller has already proven the number is free. */
-  async restore(id: string): Promise<void> {
-    await this.db
-      .update(intakeOrders)
-      .set({ deletedAt: null })
-      .where(and(eq(intakeOrders.id, id), isNotNull(intakeOrders.deletedAt)))
-  }
-
   /**
    * An abandoned draft is really deleted — that is what `ODUSTANI` means, and it releases
    * the order number for the pad's next sheet.
@@ -712,7 +661,7 @@ export class IntakeOrdersRepository {
       })
       .from(intakeOrders)
       .leftJoin(users, eq(users.id, intakeOrders.technicianId))
-      .where(and(eq(intakeOrders.orderNumberKey, numberKey), isNull(intakeOrders.deletedAt)))
+      .where(eq(intakeOrders.orderNumberKey, numberKey))
       .limit(1)
 
     return row ?? null
@@ -733,13 +682,7 @@ export class IntakeOrdersRepository {
         ownerPhone: intakeOrders.ownerPhone,
       })
       .from(intakeOrders)
-      .where(
-        and(
-          eq(intakeOrders.plateKey, plateKey),
-          isNull(intakeOrders.deletedAt),
-          isNotNull(intakeOrders.signedAt),
-        ),
-      )
+      .where(and(eq(intakeOrders.plateKey, plateKey), isNotNull(intakeOrders.signedAt)))
       .orderBy(desc(intakeOrders.receivedAt))
       .limit(1)
 

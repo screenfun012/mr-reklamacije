@@ -60,22 +60,18 @@ const STEP_LABELS = [
 ] as const
 
 /**
- * Three shapes a `?resume=` fetch can legitimately return and the wizard must refuse: a signed
+ * Two shapes a `?resume=` fetch can legitimately return and the wizard must refuse: a signed
  * order (adopting it would aim the wizard's patches at a frozen record, docs/25 §3.0.1, and every
- * step patch it sends would come back 422), a removed one, and one that
- * is somebody else's. A serviser's colleague 404s here on the row scope, but an operator holds
- * `view` + `create`, gets a 200 on any draft and can reach `/prijem/novi` — that pairing is what
- * would otherwise put another customer's name, phone and address on this tablet.
+ * step patch it sends would come back 422), and one that is somebody else's. A serviser's
+ * colleague 404s here on the row scope, but an operator holds `view` + `create`, gets a 200 on any
+ * draft and can reach `/prijem/novi` — that pairing is what would otherwise put another customer's
+ * name, phone and address on this tablet.
  *
  * The owner clause is checked only once the id is KNOWN. It arrives with the live session, and
  * refusing while it is still `undefined` would turn a serviser away from his own intake.
  */
 function isAdoptable(order: IntakeOrderDetail, readerId: string | undefined): boolean {
-  return (
-    order.signedAt === null &&
-    order.deletedAt === null &&
-    (readerId === undefined || order.technicianId === readerId)
-  )
+  return order.signedAt === null && (readerId === undefined || order.technicianId === readerId)
 }
 
 /**

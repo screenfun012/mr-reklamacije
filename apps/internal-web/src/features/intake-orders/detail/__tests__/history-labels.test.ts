@@ -11,8 +11,7 @@ import { historyLabel } from '../history-labels.js'
  *
  * `fromStatus`/`toStatus` default to the signed order's own status rather than to null, because
  * that is what the server actually sends for every transition — the audit `changes` carry whole
- * before/after objects, so `status` is present on a signature and on a removal exactly as it is on
- * a status move.
+ * before/after objects, so `status` is present on a signature exactly as it is on a status move.
  */
 function entry(overrides: Partial<IntakeOrderHistoryEntry>): IntakeOrderHistoryEntry {
   return IntakeOrderHistoryEntrySchema.parse({
@@ -35,8 +34,6 @@ const EVERY_TRANSITION: readonly [string, () => string][] = [
   ['sign', m.intake_history_signed],
   ['spec_updated', m.intake_history_spec_updated],
   ['contact_added', m.intake_history_contact_added],
-  ['soft_delete', m.intake_history_removed],
-  ['restore', m.intake_history_restored],
 ]
 
 describe('historyLabel', () => {
@@ -69,9 +66,9 @@ describe('historyLabel', () => {
   })
 
   /*
-   * `sign`, `spec_updated` and `restore` all carry non-null from/toStatus, because their audit
-   * `changes` hold whole before/after objects. A label that branched on `fromStatus !== null`
-   * before the transition check would call all three a status move.
+   * `sign` and `spec_updated` both carry non-null from/toStatus, because their audit `changes` hold
+   * whole before/after objects. A label that branched on `fromStatus !== null` before the
+   * transition check would call both a status move.
    */
   it('does not read a signature as a status move', () => {
     expect(historyLabel(entry({ transition: 'sign' }))).toBe(m.intake_history_signed())

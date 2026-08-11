@@ -67,7 +67,6 @@ export function IntakeDetailHeader({
     queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
 
   const next = nextIntakeStatus(order.status)
-  const isLive = order.deletedAt === null && order.signedAt !== null
 
   /*
    * "Preuzeto" is the one step this actor cannot walk back: it is the last status, so the button
@@ -154,7 +153,7 @@ export function IntakeDetailHeader({
           </InternalButton>
         )}
 
-        {canAdvance && isLive && next !== null ? (
+        {canAdvance && order.signedAt !== null && next !== null ? (
           <InternalButton
             type="button"
             variant="ghost"

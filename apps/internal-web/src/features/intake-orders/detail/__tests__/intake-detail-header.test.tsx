@@ -61,16 +61,6 @@ describe('IntakeDetailHeader', () => {
     ).not.toBeNull()
   })
 
-  it('draws no advance action on a removed order, whatever the caller may do', async () => {
-    const order = intakeOrderDetailFixture({ deletedAt: '2026-07-29T08:00:00.000Z' })
-
-    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance canChangeStatus={false} />)
-
-    expect(
-      screen.queryByRole('button', { name: m.intake_detail_advance({ status: 'U radu' }) }),
-    ).toBeNull()
-  })
-
   /*
    * These three pin the whole rule, and they assert WHICH request fired rather than which sentence
    * appeared: a dialog that renders but does not hold the request back protects nothing.

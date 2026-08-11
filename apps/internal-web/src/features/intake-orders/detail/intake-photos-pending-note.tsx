@@ -13,11 +13,6 @@ import { InternalNote } from '~/components/internal-note'
  * literals is the "copy-paste ×3" the house rules list under never-commit. The geometry override
  * is what seats it in the same row family as the two bars above it.
  *
- * A removed order is deliberately excluded even when photos are outstanding: the server refuses
- * every upload to it, so the note would ask for something that cannot be done — and `photosExpected`
- * is never cleared on removal, so it would say it forever. This is the same liveness the status bar
- * already applies one row below.
- *
  * There is nowhere to act on it yet, and the Fotografije tab is deliberately NOT that place: it is a
  * read grid with no upload queue of its own (H retired the office's ability to add a photo here at
  * all). A truthful warning still beats silence; inventing a retry button here does not.
