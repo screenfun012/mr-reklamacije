@@ -155,11 +155,28 @@ export const intakeChecklistResourceDefinition: ResourceDefinition<
     defaultPageSize: 25,
     getSearchableText: (item) => [item.code, item.nameSr, item.nameEn].join(' '),
   },
-  // No `lifecycle`: unlike the other seven catalogs, this list item carries no `usageCount` (a
-  // code lives inside every order's jsonb `checklist` map, so counting usage means scanning every
-  // order) and the API's DELETE is a soft-delete with no usage guard, on purpose (see
-  // IntakeChecklistItemsService.softDelete) — revivable by re-creating the same code later. The
-  // generic hard-delete dialog copy says "permanently deleted, cannot be undone", which would be
-  // false here. The admin screen exposes exactly what the shop owner needs: add, rename, reorder,
-  // retire (the isActive toggle above) — not a delete affordance the brief never asked for.
+  lifecycle: {
+    // `0`, not a placeholder: `IntakeChecklistItemsService.softDelete` has no usage guard at all,
+    // by design — a code lives inside every order's jsonb `checklist` map, so counting real usage
+    // would mean scanning every order, and blocking removal would leave the shop unable to retire
+    // an item it stopped checking (plan D3). "0 blocks nothing" is literally true here, so the
+    // hard-delete button below is never disabled for this catalog.
+    getUsageCount: () => 0,
+    reactivateTitle: () => m.intake_checklist_admin_reactivate_title(),
+    reactivateDescription: (item) =>
+      m.intake_checklist_admin_reactivate_description({ name: item.nameSr }),
+    reactivateConfirmLabel: () => m.intake_checklist_admin_reactivate_confirm(),
+    reactivateSuccessMessage: () => m.intake_checklist_admin_reactivate_success(),
+    // Deliberately NOT the other catalogs' "permanently deleted, cannot be undone" copy — that
+    // would be false here. The row leaves this list, but the code stays on every order that
+    // already recorded it (plan D3), and re-creating the same code later revives the same row
+    // (IntakeChecklistItemsRepository.create → revive).
+    hardDeleteTitle: () => m.intake_checklist_admin_hard_delete_title(),
+    hardDeleteDescription: (item) =>
+      m.intake_checklist_admin_hard_delete_description({ name: item.nameSr }),
+    hardDeleteConfirmLabel: () => m.intake_checklist_admin_hard_delete_confirm(),
+    hardDeleteSuccessMessage: () => m.intake_checklist_admin_hard_delete_success(),
+    // Never actually shown (`getUsageCount` always returns 0), but the type requires it.
+    hardDeleteBlockedTooltip: () => m.admin_catalog_hard_delete_blocked(),
+  },
 }
