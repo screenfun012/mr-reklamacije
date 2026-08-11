@@ -64,6 +64,13 @@ export const intakeOrders = pgTable(
     ownerName: text('owner_name').notNull(),
     ownerAddress: text('owner_address'),
     ownerPhone: text('owner_phone').notNull(),
+    /**
+     * A second number the shop may write down AFTER signing, when the signed one turns out to be
+     * wrong. `owner_phone` is evidence and is never overwritten (docs/25 §5): the owner walks out
+     * holding a printed sheet, so the number on it must keep matching the record. This is the
+     * shop's working note — never printed, internal only, and only ever set on a signed order.
+     */
+    contactPhone: text('contact_phone'),
     ownerRemarks: text('owner_remarks'),
     /** Fuel gauge in eighths, as the paper form draws it. */
     fuelLevel: integer('fuel_level').notNull().default(4),
