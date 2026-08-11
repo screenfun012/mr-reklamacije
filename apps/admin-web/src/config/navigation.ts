@@ -2,6 +2,7 @@ import { m } from '@mr/i18n'
 import {
   Briefcase,
   Building2,
+  ClipboardCheck,
   Cog,
   Cpu,
   Globe,
@@ -107,5 +108,11 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_claim_sources,
     to: '/settings/claim-sources',
     icon: Inbox,
+  },
+  {
+    key: 'intake-checklist',
+    label: m.nav_intake_checklist,
+    to: '/settings/intake-checklist',
+    icon: ClipboardCheck,
   },
 ]

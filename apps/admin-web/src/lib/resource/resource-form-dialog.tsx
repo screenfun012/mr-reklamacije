@@ -131,6 +131,9 @@ export function ResourceFormDialog<
                 <div key={field.key} className="space-y-1.5">
                   <span className="text-sm font-medium">{field.label()}</span>
                   <p className="text-sm text-muted-foreground">{value}</p>
+                  {field.hint ? (
+                    <p className="text-xs text-muted-foreground">{field.hint()}</p>
+                  ) : null}
                 </div>
               )
             }
@@ -207,6 +210,9 @@ export function ResourceFormDialog<
                   disabled={isPending}
                   onChange={(event) => setFieldValue(field.key, event.target.value)}
                 />
+                {field.hint ? (
+                  <p className="text-xs text-muted-foreground">{field.hint()}</p>
+                ) : null}
               </div>
             )
           })}

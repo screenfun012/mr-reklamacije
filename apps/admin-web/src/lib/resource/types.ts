@@ -14,6 +14,8 @@ interface ResourceFormFieldBase {
   editOnly?: boolean
   /** When true, empty value blocks submit. */
   required?: boolean
+  /** Short explanatory text rendered under the field (e.g. why it's fixed, or why it's required). */
+  hint?: () => string
 }
 
 export interface ResourceTextFormFieldDef extends ResourceFormFieldBase {
