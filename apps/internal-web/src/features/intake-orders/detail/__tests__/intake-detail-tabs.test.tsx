@@ -21,7 +21,7 @@ describe('visibleIntakeDetailTab', () => {
 
   /*
    * A pasted or bookmarked `/prijem/<draft>?tab=istorija` must not leave the screen on a tab
-   * the draft does not offer — the same hole `visibleIntakeSearch` closes for `?view=`.
+   * the draft does not offer.
    */
   it('collapses a tab a draft does not offer back to Pregled', () => {
     expect(visibleIntakeDetailTab(IntakeDetailTab.Istorija, null)).toBe(IntakeDetailTab.Pregled)

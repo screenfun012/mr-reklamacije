@@ -8,7 +8,8 @@ import type { ReactElement } from 'react'
  * The tab is a URL param, and the param is not gated by what the screen draws — a pasted or
  * bookmarked `/prijem/<draft>?tab=istorija` reaches a draft, which offers neither Specifikacija
  * nor Istorija (§4.8). Left alone that leaves the reader on a strip with no active tab and a
- * body that is not there. Same hole `visibleIntakeSearch` closes for `?view=`.
+ * body that is not there. Same class of hole the search schemas close by catching a param value
+ * they no longer know instead of throwing.
  */
 export function visibleIntakeDetailTab(
   tab: IntakeDetailTab | undefined,

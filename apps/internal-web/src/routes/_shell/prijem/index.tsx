@@ -18,7 +18,6 @@ import { formatInternalDateEyebrow } from '~/lib/internal-format'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { INTAKE_WIZARD_STEP_COUNT } from '~/features/intake-orders/wizard/intake-wizard-state'
 import { IntakeFilterBar } from '~/features/intake-orders/intake-filter-bar'
-import { visibleIntakeSearch } from '~/features/intake-orders/intake-list-search'
 import { IntakeKpiCards, IntakeKpiCardsSkeleton } from '~/features/intake-orders/intake-kpi-cards'
 import {
   IntakeOrdersTable,
@@ -28,10 +27,9 @@ import {
 export const Route = createFileRoute('/_shell/prijem/')({
   validateSearch: (search) => IntakeOrdersSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
-  loader: async ({ context: { queryClient, authSession }, deps: search }) => {
-    const visible = visibleIntakeSearch(search, authSession?.user?.permissions ?? [])
+  loader: async ({ context: { queryClient }, deps: search }) => {
     await Promise.all([
-      queryClient.ensureQueryData(intakeOrdersListOptions(intakeFiltersFromSearch(visible))),
+      queryClient.ensureQueryData(intakeOrdersListOptions(intakeFiltersFromSearch(search))),
       queryClient.ensureQueryData(intakeOrderSummaryOptions()),
     ])
   },
@@ -46,7 +44,7 @@ function PrijemListScreen(): ReactElement {
   const navigate = useNavigate({ from: Route.fullPath })
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions ?? []
-  const search = visibleIntakeSearch(Route.useSearch(), permissions)
+  const search = Route.useSearch()
   const canCreate = permissions.includes('intake_orders.create')
   /**
    * Only a caller who sees the whole shop gets the view select. A serviser's own drafts are

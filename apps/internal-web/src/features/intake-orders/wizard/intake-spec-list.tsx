@@ -26,8 +26,9 @@ export interface IntakeSpecListProps {
   /** Only the materials card carries one, pinned to the bottom, as the prototype has it. */
   note?: string
   /**
-   * A removed order: the server answers every PATCH of one with a 409, so an enabled field would
-   * be an offer the screen cannot keep. The wizard never passes it.
+   * The reader holds no `intake_orders.update`, or a PATCH is already in flight — the server would
+   * refuse either way, so an enabled field would be an offer the screen cannot keep. The wizard
+   * never passes it.
    */
   disabled?: boolean
 }

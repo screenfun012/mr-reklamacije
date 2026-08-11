@@ -1,5 +1,6 @@
 import { m } from '@mr/i18n'
 import {
+  INTAKE_SEARCH_MAX_LENGTH,
   intakeOrderListViewValues,
   type IntakeOrderListView,
   type IntakeOrderStatus,
@@ -96,6 +97,11 @@ export function IntakeFilterBar({
           onChange={(event) => setDraft(event.target.value)}
           placeholder={m.intake_search_placeholder()}
           aria-label={m.intake_search_placeholder()}
+          /* Matches the schema's own cap. Without it the 121st keystroke went into the URL, where
+             `validateSearch` refused it and took the whole list page down with an error screen —
+             a hole a worker fell into by typing. The schema now catches such a value too; this
+             attribute is the half that stops it being created. */
+          maxLength={INTAKE_SEARCH_MAX_LENGTH}
           className="min-w-0 flex-1 border-0 bg-transparent text-base text-mri-text outline-none placeholder:text-mri-text2"
         />
       </span>

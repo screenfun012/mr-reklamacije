@@ -128,6 +128,13 @@ export const intakeOrderListViewValues = ['active', 'unfinished'] as const
 export type IntakeOrderListView = (typeof intakeOrderListViewValues)[number]
 
 /**
+ * The search box's cap, shared so the input's `maxLength` cannot drift from the schema that
+ * enforces it — the attribute is what stops an over-long value being put in the URL at all, and the
+ * two only work as a pair while they agree on the number.
+ */
+export const INTAKE_SEARCH_MAX_LENGTH = 120
+
+/**
  * `view` is only meaningful for a full-view actor: the office's table is a work list
  * of real intakes, so drafts are excluded unless asked for. A caller limited to `view_own`
  * always sees their own rows including drafts — it is their own unfinished work, and hiding it
@@ -135,7 +142,7 @@ export type IntakeOrderListView = (typeof intakeOrderListViewValues)[number]
  */
 export const IntakeOrderListQuerySchema = z.object({
   status: z.enum(intakeOrderStatusValues).optional(),
-  search: z.string().trim().min(1).max(120).optional(),
+  search: z.string().trim().min(1).max(INTAKE_SEARCH_MAX_LENGTH).optional(),
   view: z.enum(intakeOrderListViewValues).default('active'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce
@@ -151,13 +158,32 @@ export type IntakeOrderListQuery = z.infer<typeof IntakeOrderListQuerySchema>
  * The list screen's URL search params. Kept separate from `IntakeOrderListQuerySchema`:
  * the API's version coerces strings off the wire, while this one validates an already-typed
  * router search object and leaves every filter optional so a bare `/prijem` is valid.
+ *
+ * EVERY field CATCHES instead of throwing, and the fallback is always "field absent" — which each
+ * consumer already reads as its default (`intakeFiltersFromSearch` omits an absent filter and
+ * resolves `page ?? 1` / `pageSize ?? INTAKE_ORDERS_PAGE_SIZE`). The route bare-`parse`s this in
+ * `validateSearch`, so ONE bad param there throws before the screen renders and drops the reader on
+ * the list's error component — with no table, no filter bar and no way to clear the param from the
+ * page, recoverable only by navigating in from the sidebar. A bad URL must degrade to the default
+ * view, never to an error screen (`docs/25` §3.0: the screen leads, the worker is driven).
+ *
+ * That is not hypothetical for any of them: `?view=deleted` sits in bookmarks from before the removed
+ * view was retired, and a `q` over the cap was reachable by TYPING until the search input got its
+ * matching `maxLength`.
+ *
+ * ⚠ Tolerance belongs to the URL, NOT to the API. `IntakeOrderListQuerySchema` above parses what a
+ * caller sends the endpoint and stays strict on purpose — a bad `pageSize` there is a bad request and
+ * must still be refused. The two schemas are deliberately separate; do not merge them.
  */
 export const IntakeOrdersSearchSchema = z.object({
-  status: z.enum(intakeOrderStatusValues).optional(),
-  q: z.string().trim().min(1).max(120).optional(),
-  view: z.enum(intakeOrderListViewValues).optional(),
-  page: z.number().int().min(1).optional(),
-  pageSize: z.union([z.literal(10), z.literal(25), z.literal(50)]).optional(),
+  status: z.enum(intakeOrderStatusValues).optional().catch(undefined),
+  q: z.string().trim().min(1).max(INTAKE_SEARCH_MAX_LENGTH).optional().catch(undefined),
+  view: z.enum(intakeOrderListViewValues).optional().catch(undefined),
+  page: z.number().int().min(1).optional().catch(undefined),
+  pageSize: z
+    .union([z.literal(10), z.literal(25), z.literal(50)])
+    .optional()
+    .catch(undefined),
 })
 
 export type IntakeOrdersSearch = z.infer<typeof IntakeOrdersSearchSchema>
