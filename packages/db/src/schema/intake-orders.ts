@@ -98,9 +98,6 @@ export const intakeOrders = pgTable(
     ownerSignature: text('owner_signature'),
     /** NULL = draft. Set once both signatures are in and the intake is finished. */
     signedAt: timestamp('signed_at', { withTimezone: true, mode: 'date' }),
-    /** Set when the intake condition is corrected after signing — drives the print marker. */
-    amendedAt: timestamp('amended_at', { withTimezone: true, mode: 'date' }),
-    amendedBy: uuid('amended_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -130,11 +127,6 @@ export const intakeOrders = pgTable(
       columns: [t.technicianId],
       foreignColumns: [users.id],
     }).onDelete('restrict'),
-    foreignKey({
-      name: 'intake_orders_amended_by_fkey',
-      columns: [t.amendedBy],
-      foreignColumns: [users.id],
-    }).onDelete('set null'),
     // A number is taken only by a live order; deleting one releases it, exactly
     // like the MR registry's release-on-delete.
     uniqueIndex('uq_intake_orders_order_number_key')
@@ -154,10 +146,6 @@ export const intakeOrders = pgTable(
 export const intakeOrdersRelations = relations(intakeOrders, ({ one }) => ({
   technician: one(users, {
     fields: [intakeOrders.technicianId],
-    references: [users.id],
-  }),
-  amender: one(users, {
-    fields: [intakeOrders.amendedBy],
     references: [users.id],
   }),
 }))
