@@ -3,6 +3,7 @@ import { IntakeDamageType, IntakeVehicleType } from '@mr/shared'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
+  intakeChecklistCatalogFixture,
   intakeOrderDetailFixture,
   intakePhotoFixture,
 } from '../../detail/__tests__/render-detail.js'
@@ -21,6 +22,9 @@ function damage(n: number) {
 function photo(n: number, damageId: string | null) {
   return intakePhotoFixture({ id: `4444444${n}-4444-4444-8444-444444444444`, damageId })
 }
+
+/** The shop's list as the seed leaves it, `lanci` retired — the same catalog the screens read. */
+const CATALOG = intakeChecklistCatalogFixture()
 
 describe('buildIntakePrintModel', () => {
   beforeAll(() => {
@@ -43,17 +47,70 @@ describe('buildIntakePrintModel', () => {
       },
     })
 
-    const marks = buildIntakePrintModel(order, 'sr').checklist.map((row) => row.mark)
+    const marks = buildIntakePrintModel(order, CATALOG, 'sr').checklist.map((row) => row.mark)
 
     expect(marks[0]).toBe('✓')
     expect(marks[1]).toBe('✗')
     expect(marks[2]).toBe('—')
   })
 
+  it('names the rows from the catalog, in the catalog order', () => {
+    const rows = buildIntakePrintModel(intakeOrderDetailFixture(), CATALOG, 'sr').checklist
+
+    expect(rows.map((row) => row.label)).toEqual([
+      'Rezervna guma',
+      'Dizalica',
+      'Komplet dizalice',
+      'Saobraćajna dozvola',
+      'Vozačka dozvola',
+      'Prva pomoć',
+      'Prsluk i trougao',
+      'Lanci / alat',
+    ])
+  })
+
+  it('still names an item the shop has retired, because this order recorded it', () => {
+    // `lanci` is inactive in the fixture catalog. The picker would not offer it for a new intake; a
+    // sheet that already holds it must still print its name and not a bare code (plan D3).
+    const rows = buildIntakePrintModel(intakeOrderDetailFixture(), CATALOG, 'sr').checklist
+
+    expect(rows.at(-1)).toMatchObject({ key: 'lanci', label: 'Lanci / alat' })
+  })
+
+  it('prints a code the catalog no longer holds at all rather than dropping the line', () => {
+    const catalog = CATALOG.filter((item) => item.code !== 'prsluk')
+
+    const rows = buildIntakePrintModel(intakeOrderDetailFixture(), catalog, 'sr').checklist
+
+    expect(rows).toHaveLength(8)
+    expect(rows.map((row) => row.label)).toContain('prsluk')
+  })
+
+  it('prints the rows the order recorded, not the ones the catalog offers today', () => {
+    // Nine items in the catalog, eight on this signed order. The ninth was added after it was
+    // signed, and that sheet never had nine rows (plan D4).
+    const catalog = [
+      ...CATALOG,
+      {
+        id: '00000000-0000-4000-8000-000000000099',
+        code: 'patosnici',
+        nameSr: 'Gumeni patosnici',
+        nameEn: 'Rubber mats',
+        sortOrder: 90,
+        isActive: true,
+      },
+    ]
+
+    const rows = buildIntakePrintModel(intakeOrderDetailFixture(), catalog, 'sr').checklist
+
+    expect(rows).toHaveLength(8)
+    expect(rows.map((row) => row.key)).not.toContain('patosnici')
+  })
+
   it('numbers defects from 1 in list order, and the markers carry the same numbers', () => {
     const order = intakeOrderDetailFixture({ damages: [damage(1), damage(2), damage(3)] })
 
-    const model = buildIntakePrintModel(order, 'sr')
+    const model = buildIntakePrintModel(order, CATALOG, 'sr')
 
     expect(model.damages.map((d) => d.number)).toEqual([1, 2, 3])
     expect(model.markers.map((marker) => marker.number)).toEqual([1, 2, 3])
@@ -66,7 +123,7 @@ describe('buildIntakePrintModel', () => {
       damages: Array.from({ length: 15 }, (_, i) => damage(i + 1)),
     })
 
-    const model = buildIntakePrintModel(order, 'sr')
+    const model = buildIntakePrintModel(order, CATALOG, 'sr')
 
     expect(model.damages).toHaveLength(PRINT_MAX_DAMAGES)
     expect(model.damagesOverflow).toBe(3)
@@ -81,7 +138,7 @@ describe('buildIntakePrintModel', () => {
       photos: Array.from({ length: 9 }, (_, i) => photo(i, null)),
     })
 
-    expect(buildIntakePrintModel(order, 'sr').photoCount).toBe(9)
+    expect(buildIntakePrintModel(order, CATALOG, 'sr').photoCount).toBe(9)
   })
 
   it('keeps five services and five materials', () => {
@@ -90,7 +147,7 @@ describe('buildIntakePrintModel', () => {
       materials: ['1', '2', '3', '4', '5', '6', '7'],
     })
 
-    const model = buildIntakePrintModel(order, 'sr')
+    const model = buildIntakePrintModel(order, CATALOG, 'sr')
 
     expect(model.services).toHaveLength(5)
     expect(model.materials).toHaveLength(5)
@@ -99,7 +156,7 @@ describe('buildIntakePrintModel', () => {
   it('clips a long owner remark and marks the clip', () => {
     const order = intakeOrderDetailFixture({ ownerRemarks: 'x'.repeat(400) })
 
-    const remarks = buildIntakePrintModel(order, 'sr').ownerRemarks
+    const remarks = buildIntakePrintModel(order, CATALOG, 'sr').ownerRemarks
 
     expect(remarks.length).toBeLessThanOrEqual(181)
     expect(remarks.endsWith('…')).toBe(true)
@@ -108,13 +165,14 @@ describe('buildIntakePrintModel', () => {
   it('says "no remarks" rather than leaving the field blank', () => {
     const order = intakeOrderDetailFixture({ ownerRemarks: null })
 
-    expect(buildIntakePrintModel(order, 'sr').ownerRemarks.length).toBeGreaterThan(0)
+    expect(buildIntakePrintModel(order, CATALOG, 'sr').ownerRemarks.length).toBeGreaterThan(0)
   })
 
   it('takes the silhouette from the order vehicle type, not from a default', () => {
-    const car = buildIntakePrintModel(intakeOrderDetailFixture(), 'sr').silhouette
+    const car = buildIntakePrintModel(intakeOrderDetailFixture(), CATALOG, 'sr').silhouette
     const van = buildIntakePrintModel(
       intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van }),
+      CATALOG,
       'sr',
     ).silhouette
 
@@ -126,22 +184,22 @@ describe('buildIntakePrintModel', () => {
     // an English paper, and choosing it must not move the app.
     const order = intakeOrderDetailFixture({ ownerRemarks: null })
 
-    expect(buildIntakePrintModel(order, 'sr').ownerRemarks).toBe(
+    expect(buildIntakePrintModel(order, CATALOG, 'sr').ownerRemarks).toBe(
       m.intake_print_no_remarks({}, { locale: 'sr' }),
     )
-    expect(buildIntakePrintModel(order, 'en').ownerRemarks).toBe(
+    expect(buildIntakePrintModel(order, CATALOG, 'en').ownerRemarks).toBe(
       m.intake_print_no_remarks({}, { locale: 'en' }),
     )
-    expect(buildIntakePrintModel(order, 'en').ownerRemarks).not.toBe(
-      buildIntakePrintModel(order, 'sr').ownerRemarks,
+    expect(buildIntakePrintModel(order, CATALOG, 'en').ownerRemarks).not.toBe(
+      buildIntakePrintModel(order, CATALOG, 'sr').ownerRemarks,
     )
   })
 
   it('translates the labels it resolves, not just the sentences', () => {
     const order = intakeOrderDetailFixture()
 
-    const sr = buildIntakePrintModel(order, 'sr')
-    const en = buildIntakePrintModel(order, 'en')
+    const sr = buildIntakePrintModel(order, CATALOG, 'sr')
+    const en = buildIntakePrintModel(order, CATALOG, 'en')
 
     expect(en.checklist[0]?.label).not.toBe(sr.checklist[0]?.label)
     expect(en.arrivalMode).not.toBe(sr.arrivalMode)
@@ -151,14 +209,15 @@ describe('buildIntakePrintModel', () => {
     // An English work order with a Serbian long date is the same mistake in a smaller place.
     const order = intakeOrderDetailFixture()
 
-    expect(buildIntakePrintModel(order, 'en').receivedAt).not.toBe(
-      buildIntakePrintModel(order, 'sr').receivedAt,
+    expect(buildIntakePrintModel(order, CATALOG, 'en').receivedAt).not.toBe(
+      buildIntakePrintModel(order, CATALOG, 'sr').receivedAt,
     )
   })
 
   it('never carries the added contact number onto the sheet', () => {
     const model = buildIntakePrintModel(
       intakeOrderDetailFixture({ ownerPhone: '+381 11 111', contactPhone: '+381 64 999' }),
+      CATALOG,
       'sr',
     )
 

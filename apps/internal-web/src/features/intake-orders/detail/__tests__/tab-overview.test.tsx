@@ -2,9 +2,13 @@ import { m } from '@mr/i18n'
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { INTAKE_CHECKLIST_LABELS } from '../../intake-labels.js'
 import { TabOverview } from '../tab-overview.js'
-import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail.js'
+import {
+  intakeChecklistCatalogFixture,
+  intakeDraftFixture,
+  intakeOrderDetailFixture,
+  renderDetailUi,
+} from './render-detail.js'
 
 const DASH = '—'
 
@@ -35,6 +39,68 @@ describe('TabOverview', () => {
     expect(screen.getByTestId('condition-dizalica')).toHaveTextContent('✗')
     expect(screen.getByTestId('condition-komplet')).toHaveTextContent('✓')
     expect(screen.getByText(m.intake_condition_unchecked({ count: 1 }))).toBeDefined()
+  })
+
+  /**
+   * The row is on a signed order, and the shop has retired the item since. Reading the wizard's
+   * picker here (`activeOnly: true`) would find no row for `lanci` and print the bare code onto a
+   * document the customer signed — which is exactly what plan D3 forbids. The fixture catalog marks
+   * `lanci` inactive, and the card reads the DISPLAY key, so this goes red the moment it switches.
+   */
+  it('keeps naming an item the shop has retired since the order was signed', async () => {
+    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+
+    expect(screen.getByTestId('condition-lanci')).toHaveTextContent('Lanci / alat')
+  })
+
+  /**
+   * A code nobody can explain any more — an order from before the catalog, or hand-edited data. It
+   * still shows, because it is a line the customer agreed to; dropping it would quietly shorten the
+   * record (plan D3).
+   */
+  it('shows a code the catalog has no row for at all, rather than dropping the line', async () => {
+    const catalog = intakeChecklistCatalogFixture().filter((item) => item.code !== 'rezervna')
+
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />,
+      catalog,
+    )
+
+    expect(screen.getByTestId('condition-rezervna')).toHaveTextContent('rezervna')
+  })
+
+  /**
+   * D4, on the screen this time: the count is the order's own rows, not what the catalog offers. An
+   * item added this morning must not turn an old "7 recorded" into eight.
+   */
+  it('counts the rows the order recorded, not the ones the catalog offers today', async () => {
+    const order = intakeOrderDetailFixture({
+      checklist: {
+        rezervna: null,
+        dizalica: null,
+        komplet: true,
+        saobracajna: true,
+        vozacka: true,
+        prvaPomoc: true,
+        prsluk: true,
+        lanci: true,
+      },
+    })
+    const catalog = [
+      ...intakeChecklistCatalogFixture(),
+      ...intakeChecklistCatalogFixture()
+        .slice(0, 1)
+        .map((item) => ({
+          ...item,
+          id: '00000000-0000-4000-8000-000000000099',
+          code: 'patosnici',
+        })),
+    ]
+
+    await renderDetailUi(<TabOverview order={order} canUpdate={false} />, catalog)
+
+    expect(screen.queryByTestId('condition-patosnici')).toBeNull()
+    expect(screen.getByText(m.intake_condition_unchecked({ count: 2 }))).toBeDefined()
   })
 
   it('draws no signature block on an unsigned draft', async () => {
@@ -133,7 +199,7 @@ describe('TabOverview', () => {
   it('never renders the retired editing controls', async () => {
     await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
 
-    expect(screen.queryByRole('group', { name: INTAKE_CHECKLIST_LABELS.lanci() })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Lanci / alat' })).toBeNull()
     expect(screen.queryByRole('button', { name: m.intake_fuel_more() })).toBeNull()
     expect(screen.queryByLabelText(m.intake_field_equipment_note())).toBeNull()
     expect(screen.queryByRole('group', { name: m.intake_damage_type_pick() })).toBeNull()

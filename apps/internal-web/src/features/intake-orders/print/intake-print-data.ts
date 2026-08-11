@@ -1,9 +1,9 @@
 import { m, type Locale } from '@mr/i18n'
-import { INTAKE_CHECKLIST_KEYS, type IntakeOrderDetail } from '@mr/shared'
+import type { IntakeChecklistItemListItem, IntakeOrderDetail } from '@mr/shared'
 
+import { resolveIntakeChecklistRows, type IntakeChecklistRow } from '../intake-checklist-catalog'
 import {
   INTAKE_ARRIVAL_MODE_LABELS,
-  INTAKE_CHECKLIST_LABELS,
   INTAKE_DAMAGE_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
 } from '../intake-labels'
@@ -80,19 +80,19 @@ export interface IntakePrintModel {
 
 const DASH = '—'
 
-function checklistRow(
-  key: (typeof INTAKE_CHECKLIST_KEYS)[number],
-  value: boolean | null,
-  locale: IntakePrintLocale,
-): IntakePrintChecklistRow {
-  const label = INTAKE_CHECKLIST_LABELS[key]({}, { locale })
-  if (value === true) {
-    return { key, label, mark: '✓', muted: false }
+/**
+ * The name is already resolved against the catalog by the time it gets here, in the language the
+ * paper was asked for — so nothing on this sheet calls a message key for an equipment name any more.
+ */
+function printChecklistRow(row: IntakeChecklistRow): IntakePrintChecklistRow {
+  const shared = { key: row.code, label: row.name }
+  if (row.value === true) {
+    return { ...shared, mark: '✓', muted: false }
   }
-  if (value === false) {
-    return { key, label, mark: '✗', muted: true }
+  if (row.value === false) {
+    return { ...shared, mark: '✗', muted: true }
   }
-  return { key, label, mark: DASH, muted: true }
+  return { ...shared, mark: DASH, muted: true }
 }
 
 function clipRemarks(value: string | null, locale: IntakePrintLocale): string {
@@ -104,11 +104,16 @@ function clipRemarks(value: string | null, locale: IntakePrintLocale): string {
 }
 
 /**
- * Everything the sheet draws, already cut to size. Built from the order alone: the print has its
- * own typographic scale and a white background, so it never reads the screen's components.
+ * Everything the sheet draws, already cut to size. Built from the order and the catalog: the print
+ * has its own typographic scale and a white background, so it never reads the screen's components.
+ *
+ * `checklistItems` must be the DISPLAY read of the catalog — deactivated and removed items
+ * included. This sheet is what the customer signed, and a row whose item the shop has since retired
+ * still has to print with its name (plan D3).
  */
 export function buildIntakePrintModel(
   order: IntakeOrderDetail,
+  checklistItems: readonly IntakeChecklistItemListItem[],
   locale: IntakePrintLocale,
 ): IntakePrintModel {
   const damages = order.damages.slice(0, PRINT_MAX_DAMAGES).map((damage, index) => ({
@@ -133,7 +138,11 @@ export function buildIntakePrintModel(
     vin: order.vin ?? DASH,
     mileage: order.mileage === null ? DASH : `${order.mileage} km`,
     arrivalMode: INTAKE_ARRIVAL_MODE_LABELS[order.arrivalMode]({}, { locale }).toLowerCase(),
-    checklist: INTAKE_CHECKLIST_KEYS.map((key) => checklistRow(key, order.checklist[key], locale)),
+    // The ORDER's own rows, never the catalog's (plan D4): an item added since must not appear on a
+    // sheet somebody already signed, and it never had that row.
+    checklist: resolveIntakeChecklistRows(order.checklist, checklistItems, locale).map(
+      printChecklistRow,
+    ),
     fuelLevel: order.fuelLevel,
     damageCount: order.damages.length,
     photoCount: order.photos.length,

@@ -1,10 +1,5 @@
 import { m, type Locale } from '@mr/i18n'
-import {
-  IntakeDamageType,
-  type IntakeArrivalMode,
-  type IntakeChecklistKey,
-  type IntakeVehicleType,
-} from '@mr/shared'
+import { IntakeDamageType, type IntakeArrivalMode, type IntakeVehicleType } from '@mr/shared'
 
 /**
  * A message as Paraglide compiles it: callable bare for the screen, or with an explicit locale for
@@ -17,18 +12,12 @@ type IntakeLabel = (inputs?: Record<string, never>, options?: { locale?: Locale 
  * Label maps shared by the wizard and the detail. They lived private inside the wizard's
  * components; the detail needs the same words, and a second copy means a rename updates one
  * screen and silently not the other.
+ *
+ * The equipment checklist is NOT here any more: those names live in the `intake_checklist_items`
+ * catalog the shop maintains, so they come from the database and are resolved per code
+ * (`intake-checklist-catalog.ts`). A hardcoded map could only ever name the eight items the code
+ * shipped with.
  */
-export const INTAKE_CHECKLIST_LABELS: Record<IntakeChecklistKey, IntakeLabel> = {
-  rezervna: m.intake_checklist_rezervna,
-  dizalica: m.intake_checklist_dizalica,
-  komplet: m.intake_checklist_komplet,
-  saobracajna: m.intake_checklist_saobracajna,
-  vozacka: m.intake_checklist_vozacka,
-  prvaPomoc: m.intake_checklist_prva_pomoc,
-  prsluk: m.intake_checklist_prsluk,
-  lanci: m.intake_checklist_lanci,
-}
-
 export const INTAKE_VEHICLE_TYPE_LABELS: Record<IntakeVehicleType, IntakeLabel> = {
   auto: m.intake_vehicle_type_auto,
   kombi: m.intake_vehicle_type_kombi,

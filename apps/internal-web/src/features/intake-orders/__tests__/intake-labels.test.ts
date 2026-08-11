@@ -1,15 +1,9 @@
 import { setLocale } from '@mr/i18n'
-import {
-  IntakeDamageType,
-  INTAKE_CHECKLIST_KEYS,
-  intakeArrivalModeValues,
-  intakeVehicleTypeValues,
-} from '@mr/shared'
+import { IntakeDamageType, intakeArrivalModeValues, intakeVehicleTypeValues } from '@mr/shared'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   INTAKE_ARRIVAL_MODE_LABELS,
-  INTAKE_CHECKLIST_LABELS,
   INTAKE_DAMAGE_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
 } from '../intake-labels.js'
@@ -27,11 +21,9 @@ describe('intake labels', () => {
     setLocale('sr', { reload: false })
   })
 
-  it('gives every checklist item a label', () => {
-    for (const key of INTAKE_CHECKLIST_KEYS) {
-      expect(INTAKE_CHECKLIST_LABELS[key]()).not.toBe('')
-    }
-  })
+  // The checklist items had a case here too, iterating a hardcoded list of eight keys. They are a
+  // catalog the shop owns now, so there is no label map left to guard — the names come from the
+  // database and `intake-checklist-catalog.test.ts` covers how a code resolves to one.
 
   it('names every vehicle type and every arrival mode', () => {
     for (const type of intakeVehicleTypeValues) {

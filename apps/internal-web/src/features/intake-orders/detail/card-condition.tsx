@@ -1,15 +1,15 @@
-import { m } from '@mr/i18n'
-import { INTAKE_CHECKLIST_KEYS, type IntakeOrderDetail } from '@mr/shared'
+import { getLocale, m } from '@mr/i18n'
+import { intakeChecklistItemsDisplayOptions, type IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
+import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
-import { INTAKE_CHECKLIST_LABELS } from '../intake-labels'
-import { countConfirmed } from '../wizard/intake-checklist-grid'
+import { resolveIntakeChecklistRows } from '../intake-checklist-catalog'
 import { CAPTION, CARD, DASH } from './detail-styles'
 
 /**
- * The recorded condition, read back. The third state is the whole point: `IntakeChecklistSchema`
- * is `boolean | null` and the prototype's print collapses it to ✓/✕, which prints an item nobody
+ * The recorded condition, read back. The third state is the whole point: the checklist holds
+ * `boolean | null` and the prototype's print collapses it to ✓/✕, which prints an item nobody
  * checked as "NE" — a false statement on a document the customer signed (`docs/25` §4.4).
  */
 function conditionMark(value: boolean | null): { mark: string; className: string } {
@@ -25,9 +25,16 @@ function conditionMark(value: boolean | null): { mark: string; className: string
 /**
  * "Zatečeno stanje" — a pure read of what was recorded at intake. The record is frozen the moment
  * both parties sign it (docs/25 §3.0), so this card has had nothing to correct since H.
+ *
+ * The rows are the ones the ORDER recorded, and only their names come from the catalog (plan D4):
+ * an item the office added this morning must not appear on a work order signed last month. The
+ * DISPLAY reader is the one to use here — it carries deactivated and removed items too, so a row a
+ * customer signed for keeps its name instead of printing as a bare code (plan D3).
  */
 export function CardCondition({ order }: { order: IntakeOrderDetail }): ReactElement {
-  const unchecked = INTAKE_CHECKLIST_KEYS.length - countConfirmed(order.checklist)
+  const { data: items = [] } = useQuery(intakeChecklistItemsDisplayOptions())
+  const rows = resolveIntakeChecklistRows(order.checklist, items, getLocale())
+  const unchecked = rows.filter((row) => row.value === null).length
 
   return (
     <section className={cn(CARD, 'px-5 py-[18px]')}>
@@ -41,20 +48,18 @@ export function CardCondition({ order }: { order: IntakeOrderDetail }): ReactEle
       </div>
 
       <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
-        {INTAKE_CHECKLIST_KEYS.map((key) => {
-          const state = conditionMark(order.checklist[key])
+        {rows.map((row) => {
+          const state = conditionMark(row.value)
           return (
             <div
-              key={key}
-              data-testid={`condition-${key}`}
+              key={row.code}
+              data-testid={`condition-${row.code}`}
               className="flex min-w-0 items-center gap-2"
             >
               <span className={cn('flex-none font-mono text-sm font-bold', state.className)}>
                 {state.mark}
               </span>
-              <span className="min-w-0 flex-1 text-[13px] text-mri-text">
-                {INTAKE_CHECKLIST_LABELS[key]()}
-              </span>
+              <span className="min-w-0 flex-1 text-[13px] text-mri-text">{row.name}</span>
             </div>
           )
         })}

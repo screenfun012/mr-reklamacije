@@ -1,13 +1,15 @@
 import {
-  INTAKE_CHECKLIST_KEYS,
   IntakeArrivalMode,
   IntakeVehicleType,
   type IntakeChecklist,
+  type IntakeChecklistItemListItem,
   type IntakeDamage,
   type IntakeOrderCreateInput,
   type IntakeOrderDetail,
   type IntakeOrderUpdateInput,
 } from '@mr/shared'
+
+import { untouchedIntakeChecklist, type IntakeChecklistByCode } from '../intake-checklist-catalog'
 
 /**
  * The steps, by name. They were bare numbers scattered through the wizard until 2026-08-10, when
@@ -41,7 +43,8 @@ export interface IntakeWizardValues {
   ownerPhone: string
   ownerRemarks: string
   fuelLevel: number
-  checklist: IntakeChecklist
+  /** Keyed by catalog code, so the shop can rename or extend the list without touching this form. */
+  checklist: IntakeChecklistByCode
   equipmentNote: string
   /** Array order IS the ①②③ numbering on the map, in the list and on the print. */
   damages: IntakeDamage[]
@@ -49,10 +52,6 @@ export interface IntakeWizardValues {
   services: string[]
   materials: string[]
 }
-
-const EMPTY_CHECKLIST: IntakeChecklist = Object.fromEntries(
-  INTAKE_CHECKLIST_KEYS.map((key) => [key, null]),
-) as IntakeChecklist
 
 export function emptyIntakeWizardValues(): IntakeWizardValues {
   return {
@@ -68,7 +67,9 @@ export function emptyIntakeWizardValues(): IntakeWizardValues {
     ownerPhone: '',
     ownerRemarks: '',
     fuelLevel: 4,
-    checklist: EMPTY_CHECKLIST,
+    // Empty, not eight nulls: which rows an intake records is the shop's catalog to decide, and
+    // `toUpdateInput` fills it in from that catalog on the way to the server.
+    checklist: {},
     equipmentNote: '',
     damages: [],
     services: [],
@@ -127,7 +128,11 @@ export function toCreateInput(values: IntakeWizardValues): IntakeOrderCreateInpu
  * payload is a couple of kilobytes and a diff would need the wizard to track what changed
  * across a tablet sleeping mid-intake.
  */
-export function toUpdateInput(values: IntakeWizardValues, step: number): IntakeOrderUpdateInput {
+export function toUpdateInput(
+  values: IntakeWizardValues,
+  step: number,
+  checklistItems: readonly IntakeChecklistItemListItem[],
+): IntakeOrderUpdateInput {
   return {
     orderNumber: values.orderNumber.trim(),
     vehicleType: values.vehicleType,
@@ -141,7 +146,19 @@ export function toUpdateInput(values: IntakeWizardValues, step: number): IntakeO
     ownerPhone: values.ownerPhone.trim(),
     ownerRemarks: optionalText(values.ownerRemarks) ?? null,
     fuelLevel: values.fuelLevel,
-    checklist: values.checklist,
+    /**
+     * Every item the catalog offers gets a row, ticked or not, and what the serviser actually said
+     * wins over it. A row nobody touched has to be recorded, because that is what prints as `—`; a
+     * row simply absent from the map prints as nothing and the document loses a line (docs/25 §4.4).
+     *
+     * The assertion is the ONE place a code-keyed map crosses into the wire type, which is still the
+     * closed eight-key object until the schema opens (task 4). Every code in it comes from the
+     * catalog the API validates against, and the catalog holds exactly those eight today.
+     */
+    checklist: {
+      ...untouchedIntakeChecklist(checklistItems),
+      ...values.checklist,
+    } as IntakeChecklist,
     equipmentNote: optionalText(values.equipmentNote) ?? null,
     damages: values.damages,
     services: values.services,

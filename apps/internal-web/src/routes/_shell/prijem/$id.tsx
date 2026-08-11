@@ -1,5 +1,10 @@
 import { m } from '@mr/i18n'
-import { IntakeDetailSearchSchema, IntakeDetailTab, intakeOrderDetailOptions } from '@mr/shared'
+import {
+  intakeChecklistItemsDisplayOptions,
+  IntakeDetailSearchSchema,
+  IntakeDetailTab,
+  intakeOrderDetailOptions,
+} from '@mr/shared'
 import { Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
@@ -33,7 +38,13 @@ export const Route = createFileRoute('/_shell/prijem/$id')({
   validateSearch: (search) => IntakeDetailSearchSchema.parse(search),
   loader: async ({ context: { queryClient }, params: { id } }) => {
     // One aggregate fetch. The history is one tab out of four and loads when that tab mounts.
-    await ensureFound(queryClient.ensureQueryData(intakeOrderDetailOptions(id)))
+    await Promise.all([
+      ensureFound(queryClient.ensureQueryData(intakeOrderDetailOptions(id))),
+      // The checklist names, for the condition card and the printed sheet. The DISPLAY read, so a
+      // row whose item the shop retired keeps its name (plan D3) — and awaited, because printing is
+      // one tap away and a sheet of bare codes is not something to hand a customer.
+      queryClient.ensureQueryData(intakeChecklistItemsDisplayOptions()),
+    ])
   },
   component: IntakeDetailPage,
   pendingComponent: IntakeDetailPending,

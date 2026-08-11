@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { INTAKE_CHECKLIST_KEYS } from '@mr/shared'
+import type { IntakeChecklistItemListItem } from '@mr/shared'
 import type { ReactElement } from 'react'
 
 import { InternalFieldGroup } from '~/components/internal-field-group'
@@ -10,11 +10,14 @@ import type { IntakeWizardValues } from './intake-wizard-state'
 
 export interface StepChecklistProps {
   values: IntakeWizardValues
+  /** The catalog as it stands today, active items only — the picker (plan D3). */
+  items: readonly IntakeChecklistItemListItem[]
   onPatch: (patch: Partial<IntakeWizardValues>) => void
 }
 
-export function StepChecklist({ values, onPatch }: StepChecklistProps): ReactElement {
-  const confirmed = countConfirmed(values.checklist)
+export function StepChecklist({ values, items, onPatch }: StepChecklistProps): ReactElement {
+  const codes = items.map((item) => item.code)
+  const confirmed = countConfirmed(values.checklist, codes)
 
   return (
     // `items-stretch` is what makes the two cards end level, as step 1 and the prototype already
@@ -34,18 +37,28 @@ export function StepChecklist({ values, onPatch }: StepChecklistProps): ReactEle
         title={m.intake_card_condition()}
         className="min-w-0 flex-1"
         action={
-          <span className="font-mono text-[11px] uppercase text-mri-text2">
-            {m.intake_checklist_confirmed({
-              confirmed,
-              total: INTAKE_CHECKLIST_KEYS.length,
-            })}
-          </span>
+          // Nothing to count while the catalog is empty, and "0 / 0 potvrđeno" over an instruction
+          // reads as a broken screen rather than an unfinished setup.
+          items.length === 0 ? undefined : (
+            <span className="font-mono text-[11px] uppercase text-mri-text2">
+              {m.intake_checklist_confirmed({ confirmed, total: items.length })}
+            </span>
+          )
         }
       >
-        <IntakeChecklistGrid
-          checklist={values.checklist}
-          onChange={(checklist) => onPatch({ checklist })}
-        />
+        {items.length === 0 ? (
+          // A fresh database has no checklist until the office fills one in, and an empty card is a
+          // dead end the serviser cannot get out of (docs/25 §3.0). Say who adds them, and where.
+          <p className="px-2.5 py-3 text-[13.5px] italic text-mri-text2">
+            {m.intake_checklist_empty()}
+          </p>
+        ) : (
+          <IntakeChecklistGrid
+            items={items}
+            checklist={values.checklist}
+            onChange={(checklist) => onPatch({ checklist })}
+          />
+        )}
 
         <InternalFieldGroup id="intake-equipment-note" label={m.intake_field_equipment_note()}>
           <textarea

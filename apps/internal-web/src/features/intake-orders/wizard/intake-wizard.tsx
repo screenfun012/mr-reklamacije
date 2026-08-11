@@ -3,10 +3,12 @@ import {
   createIntakeOrder,
   deleteIntakeOrder,
   deleteIntakeOrderPhoto,
+  intakeChecklistItemsReferenceOptions,
   intakeOrderDetailOptions,
   signIntakeOrder,
   intakeOrderKeys,
   updateIntakeOrder,
+  type IntakeChecklistItemListItem,
   type IntakeOrderDetail,
   type IntakeOrderPhoto,
 } from '@mr/shared'
@@ -51,6 +53,9 @@ import { useIntakePhotoQueue } from './use-intake-photo-queue'
 
 /** Stable identity, so `photos` defaulting to it never re-renders step 3 for nothing. */
 const EMPTY_PHOTOS: readonly IntakeOrderPhoto[] = []
+
+/** Same reason, for the checklist catalog: a fresh `[]` per render would re-render step 2. */
+const EMPTY_CHECKLIST_ITEMS: readonly IntakeChecklistItemListItem[] = []
 
 const STEP_LABELS = [
   () => m.intake_step_1(),
@@ -201,6 +206,16 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
     select: (order: IntakeOrderDetail) => order.photos,
   })
 
+  /**
+   * The shop's equipment list as it stands today — the PICKER, so active items only (plan D3). Read
+   * here rather than inside step 2 because `toUpdateInput` needs it as well: an item nobody ticked
+   * still has to be RECORDED, or the printed order silently drops that line. The route loader has
+   * already warmed this query, so step 2 does not flash empty and the first patch is never blind.
+   */
+  const { data: checklistItems = EMPTY_CHECKLIST_ITEMS } = useQuery(
+    intakeChecklistItemsReferenceOptions({ activeOnly: true }),
+  )
+
   const saveDamages = useCallback(async (): Promise<void> => {
     if (orderId === null) {
       return
@@ -291,9 +306,9 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
           setOrderId(created.id)
           // Create stamps draft_step = 1, so without this follow-up the server would think the
           // intake is still on step 1 and the resume offer would send him a step backwards.
-          await updateIntakeOrder(created.id, toUpdateInput(values, step + 1))
+          await updateIntakeOrder(created.id, toUpdateInput(values, step + 1, checklistItems))
         } else {
-          await updateIntakeOrder(orderId, toUpdateInput(values, step + 1))
+          await updateIntakeOrder(orderId, toUpdateInput(values, step + 1, checklistItems))
         }
         await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
         setStep((prev) => Math.min(INTAKE_WIZARD_STEP_COUNT, prev + 1))
@@ -495,7 +510,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
           <StepVehicleOwner values={values} onPatch={patch} />
         ) : null}
         {step === INTAKE_WIZARD_STEPS.Checklist ? (
-          <StepChecklist values={values} onPatch={patch} />
+          <StepChecklist values={values} items={checklistItems} onPatch={patch} />
         ) : null}
         {step === INTAKE_WIZARD_STEPS.Damage ? (
           <StepDamagePhotos

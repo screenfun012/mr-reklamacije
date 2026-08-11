@@ -54,6 +54,19 @@ describe('IntakePrintDialog', () => {
     expect(images[0]).toHaveAttribute('alt', 'MR Engines')
   })
 
+  /**
+   * The dialog is where the sheet's names come from, and it must read the DISPLAY catalog: `lanci` is
+   * retired in the fixture, so the wizard's picker would not carry it and this preview would show a
+   * bare code on the paper a customer signs (plan D3). Switch the factory and this goes red.
+   */
+  it('names a retired checklist item on the paper, not its bare code', async () => {
+    await renderDetailUi(
+      <IntakePrintDialog order={intakeOrderDetailFixture()} open onClose={() => {}} />,
+    )
+
+    expect(screen.getByTestId('print-check-lanci')).toHaveTextContent('Lanci / alat')
+  })
+
   it('prints the language the operator picked, not the one the app is in', async () => {
     // A foreign customer brings the car in. The office keeps working in Serbian; the paper he
     // signs must be English, and choosing that must not change the app around it.

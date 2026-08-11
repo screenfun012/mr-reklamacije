@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import type { IntakeOrderDetail } from '@mr/shared'
+import type { IntakeChecklistItemListItem, IntakeOrderDetail } from '@mr/shared'
 import type { ReactElement } from 'react'
 
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
@@ -62,13 +62,19 @@ function SignatureBox({
  */
 export function IntakePrintSheet({
   order,
+  checklistItems,
   locale,
 }: {
   order: IntakeOrderDetail
+  /**
+   * Handed in rather than fetched here: the sheet is a pure render of paper, and the names it needs
+   * come from the DISPLAY read of the catalog so a retired item keeps its name (plan D3).
+   */
+  checklistItems: readonly IntakeChecklistItemListItem[]
   /** Chosen in the preview, never read from the app: the paper speaks the customer's language. */
   locale: IntakePrintLocale
 }): ReactElement {
-  const model: IntakePrintModel = buildIntakePrintModel(order, locale)
+  const model: IntakePrintModel = buildIntakePrintModel(order, checklistItems, locale)
 
   return (
     <div

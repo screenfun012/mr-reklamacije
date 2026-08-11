@@ -1,21 +1,40 @@
 import { m } from '@mr/i18n'
-import { IntakeDamageType, IntakeVehicleType } from '@mr/shared'
-import { screen } from '@testing-library/react'
+import { IntakeDamageType, IntakeVehicleType, type IntakeOrderDetail } from '@mr/shared'
+import { screen, type RenderResult } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import {
+  intakeChecklistCatalogFixture,
   intakeOrderDetailFixture,
   intakePhotoFixture,
   renderDetailUi,
 } from '../../detail/__tests__/render-detail.js'
 import { INTAKE_SILHOUETTES } from '../../wizard/intake-silhouettes.js'
+import type { IntakePrintLocale } from '../intake-print-data.js'
 import { IntakePrintSheet } from '../intake-print-sheet.js'
+
+/**
+ * The catalog travels as a prop, not as a hook: the sheet is a pure render of paper and the dialog
+ * is what fetches (its own test covers that it fetches the DISPLAY read).
+ */
+function renderSheet(
+  order: IntakeOrderDetail,
+  locale: IntakePrintLocale = 'sr',
+): Promise<RenderResult> {
+  return renderDetailUi(
+    <IntakePrintSheet
+      order={order}
+      checklistItems={intakeChecklistCatalogFixture()}
+      locale={locale}
+    />,
+  )
+}
 
 describe('IntakePrintSheet', () => {
   it('names the order and the two parties', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    await renderSheet(order)
 
     expect(screen.getByText(order.orderNumber)).toBeDefined()
     expect(screen.getAllByText(order.ownerName).length).toBeGreaterThan(0)
@@ -37,7 +56,7 @@ describe('IntakePrintSheet', () => {
       },
     })
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    await renderSheet(order)
 
     expect(screen.getByTestId('print-check-rezervna')).toHaveTextContent('—')
     expect(screen.getByTestId('print-check-dizalica')).toHaveTextContent('✓')
@@ -46,7 +65,7 @@ describe('IntakePrintSheet', () => {
   it('draws both signatures as vector paths, not images', async () => {
     const order = intakeOrderDetailFixture()
 
-    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    const { container } = await renderSheet(order)
 
     const paths = container.querySelectorAll('[data-testid="print-signature"] path')
     expect(paths).toHaveLength(2)
@@ -56,7 +75,7 @@ describe('IntakePrintSheet', () => {
   it('counts the photos in the legal sentence, because that is what is being signed for', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    await renderSheet(order)
 
     expect(
       screen.getByText(
@@ -68,7 +87,7 @@ describe('IntakePrintSheet', () => {
   it('renders in the language it was handed, not the app one', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="en" />)
+    await renderSheet(order, 'en')
 
     expect(screen.getByText(m.intake_print_title({}, { locale: 'en' }))).toBeDefined()
     expect(screen.queryByText(m.intake_print_title({}, { locale: 'sr' }))).toBeNull()
@@ -81,11 +100,8 @@ describe('IntakePrintSheet — evidence', () => {
   }
 
   it('draws the silhouette of the order vehicle type, not a car by default', async () => {
-    const { container } = await renderDetailUi(
-      <IntakePrintSheet
-        order={intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van })}
-        locale="sr"
-      />,
+    const { container } = await renderSheet(
+      intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van }),
     )
 
     const paths = container.querySelectorAll('[data-testid="print-silhouette"] path')
@@ -99,16 +115,14 @@ describe('IntakePrintSheet — evidence', () => {
       photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444', damageId: 'd2' })],
     })
 
-    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    const { container } = await renderSheet(order)
 
     expect(container.querySelector('[data-testid="print-marker-2"]')).not.toBeNull()
     expect(screen.getByTestId('print-damage-2')).toHaveTextContent('Zona 2')
   })
 
   it('says there were none rather than leaving the defect list blank', async () => {
-    await renderDetailUi(
-      <IntakePrintSheet order={intakeOrderDetailFixture({ damages: [] })} locale="sr" />,
-    )
+    await renderSheet(intakeOrderDetailFixture({ damages: [] }))
 
     expect(screen.getByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeDefined()
   })
@@ -118,7 +132,7 @@ describe('IntakePrintSheet — evidence', () => {
       damages: Array.from({ length: 15 }, (_, i) => damage(i + 1)),
     })
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    await renderSheet(order)
 
     expect(
       screen.getByText(
@@ -133,7 +147,7 @@ describe('IntakePrintSheet — evidence', () => {
       damages: [{ ...damage(1), type: IntakeDamageType.Rust }],
     })
 
-    const { container } = await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    const { container } = await renderSheet(order)
 
     expect(
       container.querySelector('[data-testid="print-marker-1"] circle')?.getAttribute('fill'),
@@ -156,7 +170,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
       damages: Array.from({ length: 12 }, (_, i) => damage(i + 1)),
     })
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    await renderSheet(order)
 
     expect(screen.getByTestId('print-damage-1').parentElement).toHaveClass('columns-2')
   })
@@ -164,7 +178,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
   it('keeps a short list in one column, where it reads better', async () => {
     const order = intakeOrderDetailFixture({ damages: [damage(1), damage(2)] })
 
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
+    await renderSheet(order)
 
     expect(screen.getByTestId('print-damage-1').parentElement).not.toHaveClass('columns-2')
   })

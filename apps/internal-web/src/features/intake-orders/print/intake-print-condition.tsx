@@ -6,9 +6,9 @@ import type { IntakePrintModel } from './intake-print-data'
 import { PRINT_BAND, PRINT_FIGURE, PRINT_FIGURE_LABEL } from './intake-print-styles'
 
 /**
- * The recorded condition. The eight equipment rows print in four columns, and a row nobody touched
- * prints `—`: collapsing the third state to ✕ puts a statement nobody made onto a document the
- * customer signs (`docs/25` §4.4).
+ * The recorded condition. The equipment rows — as many as the order recorded, in four columns — and a
+ * row nobody touched prints `—`: collapsing the third state to ✕ puts a statement nobody made onto a
+ * document the customer signs (`docs/25` §4.4).
  */
 export function IntakePrintCondition({ model }: { model: IntakePrintModel }): ReactElement {
   const { locale } = model

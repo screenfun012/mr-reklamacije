@@ -17,6 +17,26 @@ import {
   type IntakeWizardValues,
 } from '../intake-wizard-state'
 
+/** Two of the shop's checklist items — enough to tell "a row per catalog item" from "the eight". */
+const CATALOG = [
+  {
+    id: '00000000-0000-4000-8000-000000000001',
+    code: 'rezervna',
+    nameSr: 'Rezervna guma',
+    nameEn: 'Spare tyre',
+    sortOrder: 10,
+    isActive: true,
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000002',
+    code: 'dizalica',
+    nameSr: 'Dizalica',
+    nameEn: 'Jack',
+    sortOrder: 20,
+    isActive: true,
+  },
+]
+
 function filledValues(overrides: Partial<IntakeWizardValues> = {}): IntakeWizardValues {
   return {
     ...emptyIntakeWizardValues(),
@@ -77,16 +97,35 @@ describe('toCreateInput', () => {
 
 describe('toUpdateInput', () => {
   it('clears an emptied optional with null instead of leaving the old value behind', () => {
-    const patch = toUpdateInput(filledValues({ vin: '', ownerAddress: '  ' }), 2)
+    const patch = toUpdateInput(filledValues({ vin: '', ownerAddress: '  ' }), 2, CATALOG)
     expect(patch.vin).toBeNull()
     expect(patch.ownerAddress).toBeNull()
   })
 
+  /**
+   * An item nobody ticked still has to be RECORDED, because that is what prints as `—`. A row simply
+   * missing from the map prints as nothing at all, and the sheet the customer signs quietly loses a
+   * line (docs/25 §4.4). What the serviser actually said always wins over the untouched row.
+   */
+  it('records a row for every item the catalog offers, ticked or not', () => {
+    const patch = toUpdateInput(filledValues({ checklist: { dizalica: false } }), 2, CATALOG)
+
+    expect(patch.checklist).toEqual({ rezervna: null, dizalica: false })
+  })
+
+  it('keeps a code the catalog no longer offers, because the order already recorded it', () => {
+    // A draft resumed after the shop retired an item: dropping the row here would silently rewrite
+    // what was recorded before (plan D3).
+    const patch = toUpdateInput(filledValues({ checklist: { lanci: true } }), 2, CATALOG)
+
+    expect(patch.checklist).toEqual({ rezervna: null, dizalica: null, lanci: true })
+  })
+
   it('carries the step the serviser reached, clamped to the four that exist', () => {
-    expect(toUpdateInput(filledValues(), 2).draftStep).toBe(2)
-    expect(toUpdateInput(filledValues(), 0).draftStep).toBe(1)
+    expect(toUpdateInput(filledValues(), 2, CATALOG).draftStep).toBe(2)
+    expect(toUpdateInput(filledValues(), 0, CATALOG).draftStep).toBe(1)
     // Four since 2026-08-10: Specifikacija left the wizard, so the signatures are the last step.
-    expect(toUpdateInput(filledValues(), 9).draftStep).toBe(INTAKE_WIZARD_STEP_COUNT)
+    expect(toUpdateInput(filledValues(), 9, CATALOG).draftStep).toBe(INTAKE_WIZARD_STEP_COUNT)
     expect(INTAKE_WIZARD_STEP_COUNT).toBe(4)
   })
 })
@@ -163,7 +202,7 @@ describe('damages round trip', () => {
 
   it('sends the markers with the step patch, in the order that IS their numbering', () => {
     const second = { ...damage, id: 'd2', x: 240 }
-    const patch = toUpdateInput(filledValues({ damages: [damage, second] }), 3)
+    const patch = toUpdateInput(filledValues({ damages: [damage, second] }), 3, CATALOG)
 
     expect(patch.damages).toEqual([damage, second])
   })

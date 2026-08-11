@@ -1,10 +1,13 @@
 import { setLocale } from '@mr/i18n'
 import {
+  intakeChecklistItemsDisplayQueryKey,
   IntakeArrivalMode,
+  IntakeChecklistItemListItemSchema,
   IntakeOrderDetailSchema,
   IntakeOrderPhotoSchema,
   IntakeOrderStatus,
   IntakeVehicleType,
+  type IntakeChecklistItemListItem,
   type IntakeOrderDetail,
   type IntakeOrderPhoto,
 } from '@mr/shared'
@@ -90,6 +93,45 @@ export function intakePhotoFixture(overrides: Partial<IntakeOrderPhoto> = {}): I
   })
 }
 
+/**
+ * The shop's checklist catalog as the seed leaves it — same codes, names and order as
+ * `packages/db/src/seed/intake-catalogs.ts`, because that is what production reads. `lanci` is
+ * DEACTIVATED here on purpose: the display path has to keep naming it (plan D3), and a catalog where
+ * every row is live could never show that.
+ */
+const CHECKLIST_CATALOG = [
+  { code: 'rezervna', nameSr: 'Rezervna guma', nameEn: 'Spare tyre', sortOrder: 10 },
+  { code: 'dizalica', nameSr: 'Dizalica', nameEn: 'Jack', sortOrder: 20 },
+  { code: 'komplet', nameSr: 'Komplet dizalice', nameEn: 'Jack kit', sortOrder: 30 },
+  {
+    code: 'saobracajna',
+    nameSr: 'Saobraćajna dozvola',
+    nameEn: 'Vehicle registration',
+    sortOrder: 40,
+  },
+  { code: 'vozacka', nameSr: 'Vozačka dozvola', nameEn: "Driver's licence", sortOrder: 50 },
+  { code: 'prvaPomoc', nameSr: 'Prva pomoć', nameEn: 'First-aid kit', sortOrder: 60 },
+  { code: 'prsluk', nameSr: 'Prsluk i trougao', nameEn: 'Hi-vis vest and triangle', sortOrder: 70 },
+  {
+    code: 'lanci',
+    nameSr: 'Lanci / alat',
+    nameEn: 'Chains / tools',
+    sortOrder: 80,
+    isActive: false,
+  },
+]
+
+/** Parsed through the wire schema, for the same reason the order fixture is. */
+export function intakeChecklistCatalogFixture(): IntakeChecklistItemListItem[] {
+  return CHECKLIST_CATALOG.map((item, index) =>
+    IntakeChecklistItemListItemSchema.parse({
+      id: `00000000-0000-4000-8000-00000000000${index}`,
+      isActive: true,
+      ...item,
+    }),
+  )
+}
+
 /** An unsigned draft: no signatures, a step to resume from, and nothing to advance. */
 export function intakeDraftFixture(overrides: Partial<IntakeOrderDetail> = {}): IntakeOrderDetail {
   return intakeOrderDetailFixture({
@@ -105,12 +147,21 @@ export function intakeDraftFixture(overrides: Partial<IntakeOrderDetail> = {}): 
  * The detail's components carry `<Link>`s and React Query mutations, so neither renders
  * bare. Routes registered here are the ones those links point at.
  */
-export async function renderDetailUi(ui: ReactElement): Promise<RenderResult> {
+export async function renderDetailUi(
+  ui: ReactElement,
+  /**
+   * The checklist catalog the screen reads its names from. Seeded rather than fetched, and seeded on
+   * the DISPLAY key, which is the one the condition card and the printed sheet use — a test that
+   * passes with the picker's key instead would be proving the wrong reader.
+   */
+  checklistItems: readonly IntakeChecklistItemListItem[] = intakeChecklistCatalogFixture(),
+): Promise<RenderResult> {
   setLocale('sr', { reload: false })
 
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
+  queryClient.setQueryData(intakeChecklistItemsDisplayQueryKey(), checklistItems)
   const rootRoute = createRootRoute({
     component: () => <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
   })

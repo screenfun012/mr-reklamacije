@@ -1,4 +1,4 @@
-import { IntakeWizardSearchSchema } from '@mr/shared'
+import { intakeChecklistItemsReferenceOptions, IntakeWizardSearchSchema } from '@mr/shared'
 import { createFileRoute } from '@tanstack/react-router'
 import type { ReactElement } from 'react'
 
@@ -12,6 +12,11 @@ import { internalRequireIntakeOrdersCreate } from '~/lib/auth-guard'
 export const Route = createFileRoute('/_shell/prijem/novi')({
   beforeLoad: internalRequireIntakeOrdersCreate(),
   validateSearch: (search) => IntakeWizardSearchSchema.parse(search),
+  loader: async ({ context: { queryClient } }) => {
+    // Awaited, not fired and forgotten: step 2 draws this catalog, and the very first step patch
+    // records a row per item in it. Half a wizard is worse than a wizard that says it cannot open.
+    await queryClient.ensureQueryData(intakeChecklistItemsReferenceOptions({ activeOnly: true }))
+  },
   component: NewIntakePage,
 })
 

@@ -1,6 +1,7 @@
 import { getLocale, m } from '@mr/i18n'
-import type { IntakeOrderDetail } from '@mr/shared'
+import { intakeChecklistItemsDisplayOptions, type IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
@@ -34,6 +35,13 @@ export function IntakePrintDialog({
    * the image gate, because the sheet remounts and the thumbnails load again.
    */
   const [printLocale, setPrintLocale] = useState<IntakePrintLocale>(() => getLocale())
+
+  /**
+   * The names the sheet prints. The DISPLAY read, not the wizard's picker: this paper is evidence,
+   * and a row whose item the shop deactivated or removed since must still print with its name
+   * rather than as a bare code (plan D3). The detail's route loader has already warmed it.
+   */
+  const { data: checklistItems = [] } = useQuery(intakeChecklistItemsDisplayOptions())
 
   useEffect(() => {
     if (!open) {
@@ -111,7 +119,12 @@ export function IntakePrintDialog({
         kept "just in case" is the thing nobody can explain later.
       */}
       <div className="flex-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
-        <IntakePrintSheet key={printLocale} order={order} locale={printLocale} />
+        <IntakePrintSheet
+          key={printLocale}
+          order={order}
+          checklistItems={checklistItems}
+          locale={printLocale}
+        />
       </div>
     </div>
   )
