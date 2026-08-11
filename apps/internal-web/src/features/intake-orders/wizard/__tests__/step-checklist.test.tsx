@@ -36,12 +36,18 @@ describe('StepChecklist', () => {
     setLocale('sr', { reload: false })
   })
 
-  it('the total comes from the catalog, not from a literal', () => {
-    // Nine items in the catalog must read "… / 9". A literal 8 survives every other test in this
-    // file, and the browser already caught that shape once in B ("Korak 2 / 5" over four steps).
+  it('the total comes from the catalog, and an untouched list reads zero', () => {
+    // Nine items in the catalog must read "0 / 9", and the WHOLE string is asserted, not the "/ 9"
+    // fragment: the count and the total both live in this one label, and a fragment leaves the count
+    // unpinned. Under `checklist[code] !== null` an absent code reads `undefined !== null` → true, so
+    // a fresh step 2 would claim "9 / 9 potvrđeno" before the worker has tapped anything — a screen
+    // lying about a document that is evidence (docs/25 §3.0). The browser caught the total half of
+    // this shape once already in B ("Korak 2 / 5" over four steps).
     renderStepChecklist(catalogOf(9))
 
-    expect(screen.getByText(/\/ 9/)).toBeInTheDocument()
+    expect(
+      screen.getByText(m.intake_checklist_confirmed({ confirmed: 0, total: 9 })),
+    ).toBeInTheDocument()
   })
 
   it('draws the items the catalog carries, by their catalog names', () => {
@@ -54,13 +60,18 @@ describe('StepChecklist', () => {
   it('counts what the serviser answered, not what the map happens to hold', () => {
     const values: IntakeWizardValues = {
       ...emptyIntakeWizardValues(),
-      // Two answered, one explicitly untouched — the third state is not a confirmation.
+      /**
+       * Two answered and BOTH shapes of "not answered": `code2` explicitly untouched, `code3` absent
+       * from the map altogether — which is what a half-tapped step 2 really holds now that the wizard
+       * starts from `{}`. The absent one is what separates this predicate from `!== null`; with every
+       * key present the two are indistinguishable.
+       */
       checklist: { code0: true, code1: false, code2: null },
     }
 
-    renderStepChecklist(catalogOf(3), values)
+    renderStepChecklist(catalogOf(4), values)
 
-    expect(screen.getByText(m.intake_checklist_confirmed({ confirmed: 2, total: 3 }))).toBeDefined()
+    expect(screen.getByText(m.intake_checklist_confirmed({ confirmed: 2, total: 4 }))).toBeDefined()
   })
 
   it('records the tap against the item code', async () => {
