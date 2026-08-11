@@ -238,6 +238,34 @@ export function intakeChecklistItemsReferenceOptions(filters: ReferenceLookupFil
   })
 }
 
+/**
+ * The DISPLAY path, and deliberately its OWN factory rather than a third boolean on the reference
+ * filters: `ReferenceLookupFilters` is shared by seven catalogs that have no `includeDeleted`, and a
+ * filter object meaning different things per catalog is worse than a second name. It takes no
+ * arguments because this reader always wants everything — the detail card and the printed sheet must
+ * name every code an order recorded, including one whose item the shop has since removed (plan D3).
+ * The key stays under the same first segment, so the SSE prefix invalidation covers it too.
+ */
+export function intakeChecklistItemsDisplayQueryKey(): readonly [
+  'intake-checklist-items',
+  'display',
+] {
+  return ['intake-checklist-items', 'display'] as const
+}
+
+export function intakeChecklistItemsDisplayOptions() {
+  return queryOptions({
+    queryKey: intakeChecklistItemsDisplayQueryKey(),
+    queryFn: () =>
+      fetchAllReferencePages<IntakeChecklistItemListItem>('/api/intake-checklist-items', {
+        activeOnly: false,
+        includeDeleted: true,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
 export function externalPartiesReferenceQueryKey(
   filters: ReferenceLookupFilters = {},
 ): readonly ['external-parties', 'reference', ReferenceLookupFilters] {

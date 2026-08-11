@@ -1,6 +1,6 @@
 import { schema } from '@mr/db'
 import { AuditAction } from '@mr/shared'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -34,13 +34,21 @@ describe('Intake checklist items module', () => {
   let ctx: TestDbContext
   let container: Container
 
-  async function listCodes(activeOnly: boolean): Promise<string[]> {
-    const page = await container.intakeChecklistItemsService.list({ activeOnly, limit: 50 })
+  async function listCodes(activeOnly: boolean, includeDeleted = false): Promise<string[]> {
+    const page = await container.intakeChecklistItemsService.list({
+      activeOnly,
+      includeDeleted,
+      limit: 50,
+    })
     return page.items.map((item) => item.code)
   }
 
   async function idOfCode(code: string): Promise<string> {
-    const page = await container.intakeChecklistItemsService.list({ activeOnly: false, limit: 50 })
+    const page = await container.intakeChecklistItemsService.list({
+      activeOnly: false,
+      includeDeleted: false,
+      limit: 50,
+    })
     const item = page.items.find((row) => row.code === code)
     if (item === undefined) {
       throw new Error(`seed missing: ${code}`)
@@ -126,6 +134,30 @@ describe('Intake checklist items module', () => {
     expect(await listCodes(false)).not.toContain('lanci')
   })
 
+  it('hands a removed item only to the display path, which must name every recorded code', async () => {
+    const chainsId = await idOfCode('lanci')
+    await container.intakeChecklistItemsService.softDelete(chainsId, ACTOR)
+
+    // The picker and the admin screen are both done with it…
+    expect(await listCodes(true)).not.toContain('lanci')
+    expect(await listCodes(false)).not.toContain('lanci')
+    // …but a signed order still holds this code, and the detail card and the printed sheet have to
+    // put a NAME on that row rather than a bare code (plan D3).
+    expect(await listCodes(false, true)).toContain('lanci')
+  })
+
+  it('searches across the code and both names', async () => {
+    const page = await container.intakeChecklistItemsService.list({
+      // Serbian name only ("Rezervna guma"), so a search that ignored nameSr would come back empty.
+      search: 'guma',
+      activeOnly: false,
+      includeDeleted: false,
+      limit: 50,
+    })
+
+    expect(page.items.map((item) => item.code)).toEqual(['rezervna'])
+  })
+
   it('revives a retired code instead of failing on the unique index', async () => {
     const chainsId = await idOfCode('lanci')
     await container.intakeChecklistItemsService.softDelete(chainsId, ACTOR)
@@ -138,6 +170,33 @@ describe('Intake checklist items module', () => {
     expect(revived.id).toBe(chainsId)
     expect(revived.nameSr).toBe('Lanci za snijeg')
     expect(await listCodes(false)).toContain('lanci')
+  })
+
+  it('audits a revival with what the row used to be, not as a blank create', async () => {
+    const chainsId = await idOfCode('lanci')
+    await container.intakeChecklistItemsService.softDelete(chainsId, ACTOR)
+    await container.intakeChecklistItemsService.create(
+      { code: 'lanci', nameSr: 'Lanci za snijeg', nameEn: 'Snow chains' },
+      ACTOR,
+    )
+
+    const [entry] = await ctx.db
+      .select({ changes: schema.auditLog.changes })
+      .from(schema.auditLog)
+      .where(
+        and(
+          eq(schema.auditLog.entityId, chainsId),
+          eq(schema.auditLog.action, AuditAction.Create),
+          eq(schema.auditLog.entityType, 'intake_checklist_item'),
+        ),
+      )
+
+    const changes = entry?.changes as
+      | { before?: { nameSr?: string }; after?: { nameSr?: string } }
+      | undefined
+    // Same id as before, so the old names are only in the trail if the revival records them.
+    expect(changes?.before?.nameSr).toBe('Lanci / alat')
+    expect(changes?.after?.nameSr).toBe('Lanci za snijeg')
   })
 
   it('writes an audit row for every change', async () => {
@@ -212,6 +271,42 @@ describe('Intake checklist items module', () => {
       // `code` is not in the update schema, so a body carrying only `code` has no updatable field.
       expect(response.status).toBe(400)
       expect(await listCodes(false)).toContain('rezervna')
+    })
+
+    it('refuses a PATCH that smuggles a code alongside a real field, instead of ignoring it', async () => {
+      const spareId = await idOfCode('rezervna')
+      const app = createReferenceTestApp(container, testUser([...MANAGE], TEST_USER_ID))
+
+      const response = await app.request(`/api/intake-checklist-items/${spareId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'nova_sifra', nameSr: 'Rezervna guma (puna)' }),
+      })
+
+      // Silently stripping `code` would answer 200 and change nothing about it — the admin would be
+      // told the edit worked. Refuse loudly and apply NOTHING.
+      expect(response.status).toBe(400)
+      const item = await container.intakeChecklistItemsRepository.findById(spareId)
+      expect(item?.nameSr).toBe('Rezervna guma')
+      expect(item?.code).toBe('rezervna')
+    })
+
+    it('passes includeDeleted=true across the wire for the display path', async () => {
+      const chainsId = await idOfCode('lanci')
+      await container.intakeChecklistItemsService.softDelete(chainsId, ACTOR)
+      const app = createReferenceTestApp(container, testUser([...MANAGE], TEST_USER_ID))
+
+      const withoutFlag = await app.request('/api/intake-checklist-items?activeOnly=false')
+      const withFlag = await app.request(
+        '/api/intake-checklist-items?activeOnly=false&includeDeleted=true',
+      )
+
+      const codesOf = async (response: Response): Promise<string[]> => {
+        const page = (await response.json()) as { items: { code: string }[] }
+        return page.items.map((item) => item.code)
+      }
+      expect(await codesOf(withoutFlag)).not.toContain('lanci')
+      expect(await codesOf(withFlag)).toContain('lanci')
     })
 
     it('deletes over HTTP with 204 and leaves the row soft-deleted', async () => {

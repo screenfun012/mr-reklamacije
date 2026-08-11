@@ -1,5 +1,24 @@
 import { z } from 'zod'
 
+import { ReferenceListQuerySchema } from './reference-data.schema.js'
+
+/**
+ * The catalog's own list query: the seven other catalogs need only `activeOnly`, this one also has a
+ * DISPLAY reader. `activeOnly: true` is the wizard's picker, `activeOnly: false` is the admin screen,
+ * and `includeDeleted: true` is the detail card and the printed sheet — an order stores CODES, so a
+ * code whose item the shop has since removed must still resolve to a name instead of printing bare
+ * on a document a customer signed (plan D3). Defaults to false: only the display path opts in, and
+ * absent means "live rows only" the way every other repo read in this codebase does.
+ */
+export const IntakeChecklistItemsListQuerySchema = ReferenceListQuerySchema.extend({
+  includeDeleted: z
+    .string()
+    .optional()
+    .transform((value: string | undefined) => value === 'true'),
+})
+
+export type IntakeChecklistItemsListQuery = z.infer<typeof IntakeChecklistItemsListQuerySchema>
+
 /**
  * The code is what an intake order STORES (`checklist` is a `{code: DA/NE}` map), so it is the
  * stable identity and it is never edited after creation — changing it would orphan every order that
@@ -24,10 +43,16 @@ export const IntakeChecklistItemCreateInputSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
+/**
+ * `.strict()`, not the default strip: a body carrying `code` is an attempt to change the code, and
+ * quietly dropping it would answer 200 while the code stayed put — the admin would be told an edit
+ * worked when nothing happened. Refuse loudly instead.
+ */
 export const IntakeChecklistItemUpdateInputSchema = IntakeChecklistItemCreateInputSchema.omit({
   code: true,
 })
   .partial()
+  .strict()
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field must be provided',
   })

@@ -6,14 +6,14 @@ import { getActorContext } from '../../core/http/actor-context.js'
 import {
   IntakeChecklistItemCreateInputSchema,
   IntakeChecklistItemIdParamSchema,
+  IntakeChecklistItemsListQuerySchema,
   IntakeChecklistItemUpdateInputSchema,
-  ReferenceListQuerySchema,
 } from './intake-checklist-items.validators.js'
 
 export function createIntakeChecklistItemsController(container: Container) {
   return {
     list: async (c: Context) => {
-      const query = ReferenceListQuerySchema.parse(c.req.query())
+      const query = IntakeChecklistItemsListQuerySchema.parse(c.req.query())
       const result = await container.intakeChecklistItemsService.list(query)
       return c.json(result)
     },

@@ -8,10 +8,16 @@ import { intakeChecklistItems } from './intake-checklist-items.schema.js'
 import type {
   IntakeChecklistItemCreateInput,
   IntakeChecklistItemListItem,
+  IntakeChecklistItemsListQuery,
   IntakeChecklistItemUpdateInput,
-  ReferenceListQuery,
   ReferenceListResponse,
 } from './intake-checklist-items.validators.js'
+
+export interface IntakeChecklistItemCreateResult {
+  item: IntakeChecklistItemListItem
+  /** The row as it stood before a retired code was revived onto it; `null` for a fresh insert. */
+  revived: IntakeChecklistItemListItem | null
+}
 
 const ITEM_COLUMNS = {
   id: intakeChecklistItems.id,
@@ -26,10 +32,16 @@ export class IntakeChecklistItemsRepository {
   constructor(private readonly db: ApiDatabase) {}
 
   async list(
-    query: ReferenceListQuery,
+    query: IntakeChecklistItemsListQuery,
   ): Promise<ReferenceListResponse<IntakeChecklistItemListItem>> {
     const cursor = parseOptionalKeysetCursor(query.cursor)
-    const conditions: SQL[] = [isNull(intakeChecklistItems.deletedAt)]
+    const conditions: SQL[] = []
+
+    // Removed rows stay out of every read except the display path, which must resolve a name for
+    // every code an order recorded (plan D3).
+    if (!query.includeDeleted) {
+      conditions.push(isNull(intakeChecklistItems.deletedAt))
+    }
 
     if (query.activeOnly) {
       conditions.push(eq(intakeChecklistItems.isActive, true))
@@ -37,13 +49,14 @@ export class IntakeChecklistItemsRepository {
 
     if (query.search !== undefined) {
       const pattern = `%${query.search}%`
-      conditions.push(
-        or(
-          ilike(intakeChecklistItems.code, pattern),
-          ilike(intakeChecklistItems.nameSr, pattern),
-          ilike(intakeChecklistItems.nameEn, pattern),
-        )!,
+      const searchCondition = or(
+        ilike(intakeChecklistItems.code, pattern),
+        ilike(intakeChecklistItems.nameSr, pattern),
+        ilike(intakeChecklistItems.nameEn, pattern),
       )
+      if (searchCondition !== undefined) {
+        conditions.push(searchCondition)
+      }
     }
 
     const keysetCondition = keysetAfter(
@@ -81,11 +94,12 @@ export class IntakeChecklistItemsRepository {
     return row ?? null
   }
 
-  async create(input: IntakeChecklistItemCreateInput): Promise<IntakeChecklistItemListItem> {
+  async create(input: IntakeChecklistItemCreateInput): Promise<IntakeChecklistItemCreateResult> {
     // The unique index on `code` is NOT partial, so a soft-deleted row still holds its code. Look
     // past `deleted_at` here or re-adding a retired item hits a 23505 the caller cannot read.
+    // Nested so the row's own columns stay one readable object while `deleted_at` rides alongside.
     const [existing] = await this.db
-      .select({ id: intakeChecklistItems.id, deletedAt: intakeChecklistItems.deletedAt })
+      .select({ item: ITEM_COLUMNS, deletedAt: intakeChecklistItems.deletedAt })
       .from(intakeChecklistItems)
       .where(eq(intakeChecklistItems.code, input.code))
       .limit(1)
@@ -95,9 +109,10 @@ export class IntakeChecklistItemsRepository {
     }
 
     // A retired item coming back is a revival, not a second row: old orders carrying this code get
-    // their name back instead of printing a bare code (plan D3).
+    // their name back instead of printing a bare code (plan D3). The row's id survives, so the
+    // caller is handed what it used to be — otherwise the old names leave no trace anywhere.
     if (existing !== undefined) {
-      return this.revive(existing.id, input)
+      return { item: await this.revive(existing.item.id, input), revived: existing.item }
     }
 
     const [created] = await this.db
@@ -115,7 +130,7 @@ export class IntakeChecklistItemsRepository {
       throw new InternalError('Failed to create intake checklist item')
     }
 
-    return created
+    return { item: created, revived: null }
   }
 
   private async revive(

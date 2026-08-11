@@ -110,6 +110,8 @@ export {
   engineManufacturersReferenceQueryKey,
   externalPartiesReferenceOptions,
   externalPartiesReferenceQueryKey,
+  intakeChecklistItemsDisplayOptions,
+  intakeChecklistItemsDisplayQueryKey,
   intakeChecklistItemsReferenceOptions,
   intakeChecklistItemsReferenceQueryKey,
   prefetchClaimEditReferences,

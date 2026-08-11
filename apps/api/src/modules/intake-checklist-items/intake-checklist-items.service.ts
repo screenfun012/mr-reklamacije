@@ -8,8 +8,8 @@ import type { IntakeChecklistItemsRepository } from './intake-checklist-items.re
 import type {
   IntakeChecklistItemCreateInput,
   IntakeChecklistItemListItem,
+  IntakeChecklistItemsListQuery,
   IntakeChecklistItemUpdateInput,
-  ReferenceListQuery,
   ReferenceListResponse,
 } from './intake-checklist-items.validators.js'
 
@@ -23,7 +23,7 @@ export class IntakeChecklistItemsService {
   ) {}
 
   async list(
-    query: ReferenceListQuery,
+    query: IntakeChecklistItemsListQuery,
   ): Promise<ReferenceListResponse<IntakeChecklistItemListItem>> {
     return this.repo.list(query)
   }
@@ -32,21 +32,22 @@ export class IntakeChecklistItemsService {
     input: IntakeChecklistItemCreateInput,
     actor: HttpActorContext,
   ): Promise<IntakeChecklistItemListItem> {
-    const created = await this.repo.create(input)
+    const { item, revived } = await this.repo.create(input)
 
     await this.audit.log({
       entityType: ENTITY_TYPE,
-      entityId: created.id,
+      entityId: item.id,
       action: AuditAction.Create,
       actorUserId: actor.actorUserId,
       actorIp: actor.actorIp,
       actorUserAgent: actor.actorUserAgent,
-      changes: { after: created },
+      // A revival lands on the row that already existed, so its old state belongs in the trail.
+      changes: revived === null ? { after: item } : { before: revived, after: item },
     })
 
     this.eventBus.publishResourceChanged(ResourceChangedKey.IntakeChecklistItems)
 
-    return created
+    return item
   }
 
   async update(
