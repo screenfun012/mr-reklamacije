@@ -43,26 +43,6 @@ describe('IntakePrintSheet', () => {
     expect(screen.getByTestId('print-check-dizalica')).toHaveTextContent('✓')
   })
 
-  it('carries no amendment mark on an order nobody corrected', async () => {
-    await renderDetailUi(<IntakePrintSheet order={intakeOrderDetailFixture()} locale="sr" />)
-
-    expect(screen.queryByText(m.intake_print_amended({}, { locale: 'sr' }))).toBeNull()
-  })
-
-  it('marks a corrected order neutrally, with when and who', async () => {
-    // Neutral by decision ⑩: `amended_at` has no kind, so naming one would print the wrong reason
-    // every time a phone number was the thing corrected.
-    const order = intakeOrderDetailFixture({
-      amendedAt: '2026-07-28T10:00:00.000Z',
-      amendedByName: 'Jelena Petrović',
-    })
-
-    await renderDetailUi(<IntakePrintSheet order={order} locale="sr" />)
-
-    expect(screen.getByText(m.intake_print_amended({}, { locale: 'sr' }))).toBeDefined()
-    expect(screen.getByText(/Jelena Petrović/)).toBeDefined()
-  })
-
   it('draws both signatures as vector paths, not images', async () => {
     const order = intakeOrderDetailFixture()
 

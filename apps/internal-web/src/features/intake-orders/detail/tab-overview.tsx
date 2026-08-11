@@ -14,51 +14,6 @@ import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
 import { CardCondition } from './card-condition'
 import { CardDamages } from './card-damages'
 import { CAPTION, CARD, DASH, FIELD_KEY } from './detail-styles'
-import type { IntakeAmendEditing } from './use-intake-amend'
-
-/** The gauge in eighths, as the prototype's stepper (§3.4) — 44px keys, a real minus sign. */
-function FuelStepper({
-  level,
-  onChange,
-}: {
-  level: number
-  onChange: (level: number) => void
-}): ReactElement {
-  const key =
-    'size-11 flex-none cursor-pointer rounded-[9px] bg-mri-inbg font-mono text-[17px] font-semibold text-mri-text transition-colors hover:text-mri-redh disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-mri-text'
-
-  return (
-    <span className="flex items-center gap-2">
-      {/* Disabled at the ends rather than clamped: a clamp would report a change that never
-          happens, and the operator would learn nothing from a button that answers nothing. */}
-      <button
-        type="button"
-        onClick={() => onChange(level - 1)}
-        disabled={level <= 0}
-        aria-label={m.intake_fuel_less()}
-        className={key}
-      >
-        {'−'}
-      </button>
-      <span className="font-mono text-[26px] font-extrabold leading-none text-mri-text">
-        {level}
-      </span>
-      <span className="text-base text-mri-text2">/8</span>
-      <button
-        type="button"
-        onClick={() => onChange(level + 1)}
-        disabled={level >= MAX_FUEL_EIGHTHS}
-        aria-label={m.intake_fuel_more()}
-        className={key}
-      >
-        +
-      </button>
-    </span>
-  )
-}
-
-/** The dial is in eighths and the wire schema caps it there (`fuelLevel: 0..8`). */
-const MAX_FUEL_EIGHTHS = 8
 
 /**
  * How far the intake actually got, in wizard steps. A draft parked on step 2 has recorded NOTHING
@@ -114,23 +69,19 @@ function SignatureBox({ path, caption }: { path: string | null; caption: string 
  */
 export function TabOverview({
   order,
-  amend,
 }: {
   order: IntakeOrderDetail
-  /** Present only while edit mode is open; absent is the archival read this tab has always been. */
-  amend?: IntakeAmendEditing | undefined
+  /**
+   * Unused here — task 5 mounts `IntakeContactPhone` in this tab and reads it there to gate that
+   * card's own edit affordance. Threaded through now so `$id.tsx` gets one call site to update,
+   * not two, once that card exists.
+   */
+  canUpdate: boolean
 }): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
 
   const locale = getLocale()
-  // Fed from the BUFFER while editing: a marker removed a second ago must stop numbering its
-  // photos at once, or the badges answer the question the list beside them already re-answered.
-  const cells = buildPhotoCells(
-    order.id,
-    order.photos,
-    [],
-    amend === undefined ? order.damages : amend.buffer.damages,
-  )
+  const cells = buildPhotoCells(order.id, order.photos, [], order.damages)
   const damageRecorded = recordedThroughStep(order) >= STEP_DAMAGE
   /*
    * Fuel gates on the SIGNATURE while damage above gates on the step, and the difference is not an
@@ -144,23 +95,9 @@ export function TabOverview({
    * Closing that needs a nullable column plus a "not set" state on the gauge that the prototype
    * does not have — Nikola weighed it 2026-08-05 and chose this instead (spec
    * docs/superpowers/specs/2026-08-05-intake-open-questions-design.md §1).
-   *
-   * Edit mode is only ever open on a signed order, so the stepper below never has to draw the dash.
    */
   const fuelReadValue =
     order.signedAt === null ? DASH : m.intake_fact_fuel_value({ level: order.fuelLevel })
-
-  /**
-   * A fact cell is a quarter of the left column — 116px on the office iPad held upright, which is
-   * enough for text and not enough for a control. Measured 2026-08-10 at 1024×1366: the phone
-   * input showed `+381 64 111` and swallowed the last four digits WHILE THEY WERE BEING CORRECTED,
-   * and the fuel stepper's `+` sat on top of the neighbouring NEDOSTACI value. The page never
-   * overflowed, so nothing above the cell could report it.
-   *
-   * So the two cells that hold controls take two columns while the mode is open. Read mode is
-   * untouched: its values are text and wrap.
-   */
-  const controlCell = amend === undefined ? '' : 'col-span-2'
 
   const facts: { label: string; value: ReactNode; className: string; cellClassName?: string }[] = [
     {
@@ -187,41 +124,13 @@ export function TabOverview({
     { label: m.intake_fact_vin(), value: order.vin ?? DASH, className: 'font-mono font-medium' },
     {
       label: m.intake_field_owner_phone(),
-      // The one owner field that may still be corrected (decision ①). Checked here as well as on
-      // the server, because the server's refusal arrives as an unaimed 400 that this screen could
-      // only report as "the action failed" — the operator would not learn which field is wrong.
-      value:
-        amend === undefined ? (
-          order.ownerPhone
-        ) : (
-          <input
-            type="tel"
-            value={amend.buffer.ownerPhone}
-            onChange={(event) => amend.patch({ ownerPhone: event.target.value })}
-            aria-label={m.intake_field_owner_phone()}
-            aria-invalid={!amend.phoneValid}
-            className={cn(
-              'mri-input h-11 w-full rounded-[9px] px-3 font-mono text-sm',
-              !amend.phoneValid && 'border-mri-red',
-            )}
-          />
-        ),
+      value: order.ownerPhone,
       className: 'font-mono font-medium',
-      cellClassName: controlCell,
     },
     {
       label: m.intake_fact_fuel(),
-      value:
-        amend === undefined ? (
-          fuelReadValue
-        ) : (
-          <FuelStepper
-            level={amend.buffer.fuelLevel}
-            onChange={(level) => amend.patch({ fuelLevel: level })}
-          />
-        ),
+      value: fuelReadValue,
       className: 'font-mono font-semibold',
-      cellClassName: controlCell,
     },
     {
       label: m.intake_fact_damages(),
@@ -238,20 +147,6 @@ export function TabOverview({
     },
     { label: m.intake_field_owner_address(), value: order.ownerAddress ?? DASH, className: '' },
   ]
-
-  const note =
-    order.amendedAt === null
-      ? {
-          text: m.intake_signature_note_clean(),
-          className: 'border-[rgba(31,169,113,0.3)] bg-[rgba(31,169,113,0.1)] text-mri-grn',
-        }
-      : {
-          text: m.intake_signature_note_amended({
-            date: formatIntakeReceivedAtLong(order.amendedAt, locale),
-            name: order.amendedByName ?? m.intake_detail_amended_by_unknown(),
-          }),
-          className: 'border-[rgba(245,165,36,0.4)] bg-[rgba(245,165,36,0.1)] text-mri-amb',
-        }
 
   return (
     // The lightbox is a SIBLING of the `@container`, not a child. `@container` compiles to
@@ -281,9 +176,9 @@ export function TabOverview({
               </div>
             </section>
 
-            <CardDamages order={order} damageRecorded={damageRecorded} amend={amend} />
+            <CardDamages order={order} damageRecorded={damageRecorded} />
 
-            <CardCondition order={order} amend={amend} />
+            <CardCondition order={order} />
           </div>
 
           <div className="flex flex-col gap-[14px] @min-[860px]:w-[320px] @min-[860px]:flex-none">
@@ -339,15 +234,6 @@ export function TabOverview({
                   path={order.ownerSignature}
                   caption={m.intake_detail_signature_owner({ name: order.ownerName })}
                 />
-
-                <div
-                  className={cn(
-                    'mt-auto flex flex-none items-start gap-[9px] rounded-[10px] border px-3 py-[9px]',
-                    note.className,
-                  )}
-                >
-                  <span className="text-[11.5px] leading-[1.45]">{note.text}</span>
-                </div>
               </section>
             )}
           </div>

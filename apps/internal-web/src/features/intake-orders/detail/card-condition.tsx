@@ -4,9 +4,8 @@ import { cn } from '@mr/ui'
 import type { ReactElement } from 'react'
 
 import { INTAKE_CHECKLIST_LABELS } from '../intake-labels'
-import { countConfirmed, IntakeChecklistGrid } from '../wizard/intake-checklist-grid'
-import { CAPTION, CARD, DASH, FIELD_KEY } from './detail-styles'
-import type { IntakeAmendEditing } from './use-intake-amend'
+import { countConfirmed } from '../wizard/intake-checklist-grid'
+import { CAPTION, CARD, DASH } from './detail-styles'
 
 /**
  * The recorded condition, read back. The third state is the whole point: `IntakeChecklistSchema`
@@ -24,23 +23,11 @@ function conditionMark(value: boolean | null): { mark: string; className: string
 }
 
 /**
- * "Zatečeno stanje" — read and corrected by the SAME card. The prototype draws a second card for
- * the checklist in edit mode; we already have this one, and a second would render the eight rows
- * twice on one screen, one dead and one live, a finger apart.
- *
- * In edit mode the grid is the wizard's `IntakeChecklistGrid`, not a re-drawn DA/NE pair: it is the
- * only control that returns a row to "not checked" on a second tap. The price is the prototype's
- * 52×44 becoming 62px, and the third state is worth more than the number (spec §5.4).
+ * "Zatečeno stanje" — a pure read of what was recorded at intake. The record is frozen the moment
+ * both parties sign it (docs/25 §3.0), so this card has had nothing to correct since H.
  */
-export function CardCondition({
-  order,
-  amend,
-}: {
-  order: IntakeOrderDetail
-  amend?: IntakeAmendEditing | undefined
-}): ReactElement {
-  const checklist = amend === undefined ? order.checklist : amend.buffer.checklist
-  const unchecked = INTAKE_CHECKLIST_KEYS.length - countConfirmed(checklist)
+export function CardCondition({ order }: { order: IntakeOrderDetail }): ReactElement {
+  const unchecked = INTAKE_CHECKLIST_KEYS.length - countConfirmed(order.checklist)
 
   return (
     <section className={cn(CARD, 'px-5 py-[18px]')}>
@@ -53,67 +40,35 @@ export function CardCondition({
         ) : null}
       </div>
 
-      {amend === undefined ? (
-        <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
-          {INTAKE_CHECKLIST_KEYS.map((key) => {
-            const state = conditionMark(order.checklist[key])
-            return (
-              <div
-                key={key}
-                data-testid={`condition-${key}`}
-                className="flex min-w-0 items-center gap-2"
-              >
-                <span className={cn('flex-none font-mono text-sm font-bold', state.className)}>
-                  {state.mark}
-                </span>
-                <span className="min-w-0 flex-1 text-[13px] text-mri-text">
-                  {INTAKE_CHECKLIST_LABELS[key]()}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <IntakeChecklistGrid
-          checklist={amend.buffer.checklist}
-          onChange={(next) => amend.patch({ checklist: next })}
-        />
-      )}
+      <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
+        {INTAKE_CHECKLIST_KEYS.map((key) => {
+          const state = conditionMark(order.checklist[key])
+          return (
+            <div
+              key={key}
+              data-testid={`condition-${key}`}
+              className="flex min-w-0 items-center gap-2"
+            >
+              <span className={cn('flex-none font-mono text-sm font-bold', state.className)}>
+                {state.mark}
+              </span>
+              <span className="min-w-0 flex-1 text-[13px] text-mri-text">
+                {INTAKE_CHECKLIST_LABELS[key]()}
+              </span>
+            </div>
+          )
+        })}
+      </div>
 
-      <EquipmentNote order={order} amend={amend} />
+      <EquipmentNote order={order} />
     </section>
   )
 }
 
-/**
- * Its own component rather than a branch inside the card: read mode hides an empty note entirely,
- * edit mode always offers the field, and expressing both in one place needs a nested ternary the
- * house rules forbid.
- */
-function EquipmentNote({
-  order,
-  amend,
-}: {
-  order: IntakeOrderDetail
-  amend?: IntakeAmendEditing | undefined
-}): ReactElement | null {
-  if (amend === undefined) {
-    if (order.equipmentNote === null) {
-      return null
-    }
-    return <p className="mt-3.5 text-[13.5px] italic text-mri-text2">{order.equipmentNote}</p>
+/** Its own component rather than a branch inline: read mode hides an empty note entirely. */
+function EquipmentNote({ order }: { order: IntakeOrderDetail }): ReactElement | null {
+  if (order.equipmentNote === null) {
+    return null
   }
-
-  return (
-    <label className="mt-3.5 block">
-      <span className={cn(FIELD_KEY, 'mb-[5px] block')}>{m.intake_field_equipment_note()}</span>
-      <input
-        type="text"
-        value={amend.buffer.equipmentNote}
-        onChange={(event) => amend.patch({ equipmentNote: event.target.value })}
-        placeholder={m.intake_field_equipment_note_placeholder()}
-        className="mri-input h-11 w-full rounded-[9px] px-3 text-sm"
-      />
-    </label>
-  )
+  return <p className="mt-3.5 text-[13.5px] italic text-mri-text2">{order.equipmentNote}</p>
 }

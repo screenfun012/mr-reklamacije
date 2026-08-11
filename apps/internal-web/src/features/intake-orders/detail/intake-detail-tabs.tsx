@@ -52,17 +52,9 @@ function tabLabel(tab: IntakeDetailTab, photoCount: number): string {
 export function IntakeDetailTabs({
   order,
   activeTab,
-  locked = false,
 }: {
   order: IntakeOrderDetail
   activeTab: IntakeDetailTab
-  /**
-   * Edit mode is open. The buffer lives in the route component but the tab BODY is remounted on
-   * every tab change, and the amend buffer is only editable from Pregled — so the strip goes
-   * inert rather than letting a tap strand an unsaved correction. Spans, not links that swallow
-   * the click: a middle click must not open a locked tab in another window either.
-   */
-  locked?: boolean
 }): ReactElement {
   const tabs = order.signedAt === null ? DRAFT_TABS : SIGNED_TABS
 
@@ -72,37 +64,24 @@ export function IntakeDetailTabs({
       tab === activeTab
         ? 'border-mri-red font-bold text-mri-text'
         : 'border-transparent font-semibold text-mri-text2',
-      locked && 'cursor-not-allowed opacity-50',
-      !locked && tab !== activeTab && 'hover:text-mri-text',
+      tab !== activeTab && 'hover:text-mri-text',
     )
 
   return (
     <nav className="flex gap-6 border-b border-mri-border" aria-label={m.intake_detail_title()}>
-      {tabs.map((tab) =>
-        locked ? (
-          <span
-            key={tab}
-            aria-disabled="true"
-            aria-current={tab === activeTab ? 'page' : undefined}
-            title={m.intake_amend_locked()}
-            className={classesFor(tab)}
-          >
-            {tabLabel(tab, order.photos.length)}
-          </span>
-        ) : (
-          <Link
-            key={tab}
-            to="/prijem/$id"
-            params={{ id: order.id }}
-            search={{ tab }}
-            replace
-            aria-current={tab === activeTab ? 'page' : undefined}
-            className={classesFor(tab)}
-          >
-            {tabLabel(tab, order.photos.length)}
-          </Link>
-        ),
-      )}
+      {tabs.map((tab) => (
+        <Link
+          key={tab}
+          to="/prijem/$id"
+          params={{ id: order.id }}
+          search={{ tab }}
+          replace
+          aria-current={tab === activeTab ? 'page' : undefined}
+          className={classesFor(tab)}
+        >
+          {tabLabel(tab, order.photos.length)}
+        </Link>
+      ))}
     </nav>
   )
 }

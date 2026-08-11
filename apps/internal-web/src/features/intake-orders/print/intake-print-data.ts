@@ -71,7 +71,6 @@ export interface IntakePrintModel {
   damagesOverflow: number
   services: string[]
   materials: string[]
-  amended: { at: string; by: string } | null
   technicianName: string
   technicianSignature: string | null
   ownerSignature: string | null
@@ -143,13 +142,6 @@ export function buildIntakePrintModel(
     damagesOverflow: order.damages.length - damages.length,
     services: order.services.slice(0, PRINT_MAX_LIST_ITEMS),
     materials: order.materials.slice(0, PRINT_MAX_LIST_ITEMS),
-    amended:
-      order.amendedAt === null
-        ? null
-        : {
-            at: formatIntakeReceivedAtLong(order.amendedAt, locale),
-            by: order.amendedByName ?? m.intake_detail_amended_by_unknown({}, { locale }),
-          },
     technicianName: order.technicianName,
     technicianSignature: order.technicianSignature,
     ownerSignature: order.ownerSignature,

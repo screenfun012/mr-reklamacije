@@ -1,12 +1,11 @@
 import { m } from '@mr/i18n'
 import { IntakeDetailSearchSchema, IntakeDetailTab, intakeOrderDetailOptions } from '@mr/shared'
-import { ConfirmDialog, Skeleton } from '@mr/ui'
+import { Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useState, type ReactElement } from 'react'
 
 import { InternalPage } from '~/components/layout/internal-page'
-import { IntakeAmendBar } from '~/features/intake-orders/detail/intake-amend-bar'
 import { IntakeDetailHeader } from '~/features/intake-orders/detail/intake-detail-header'
 import {
   IntakeDetailTabs,
@@ -22,7 +21,6 @@ import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
 import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
 import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
 import { useConsumePrintFlag } from '~/features/intake-orders/detail/use-consume-print-flag'
-import { useIntakeAmend } from '~/features/intake-orders/detail/use-intake-amend'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { useIntakePhotoQueue } from '~/features/intake-orders/wizard/use-intake-photo-queue'
 import { authClient } from '~/lib/auth-client'
@@ -63,7 +61,6 @@ function IntakeDetailPage(): ReactElement {
   const activeTab = visibleIntakeDetailTab(tab, order.signedAt)
 
   const navigate = useNavigate()
-  const amend = useIntakeAmend(order)
   const [printOpen, setPrintOpen] = useState(false)
 
   useConsumePrintFlag({
@@ -89,44 +86,14 @@ function IntakeDetailPage(): ReactElement {
     onFailure: () => showInternalToast(m.intake_photo_upload_failed()),
   })
 
-  const canAmend = permissions.includes('intake_orders.amend')
-  const canAddPhotos = canAmend && permissions.includes('intake_orders.update') && isLive
-
-  /**
-   * The mode is entered from a button that every tab can see, but the buffer only has a body to
-   * live in on Pregled — so the move is explicit. `replace`, like the tab strip itself, so Back
-   * still leaves the order rather than walking through modes.
-   */
-  const startAmend = (): void => {
-    void navigate({
-      to: '/prijem/$id',
-      params: { id },
-      search: { tab: IntakeDetailTab.Pregled },
-      replace: true,
-    })
-    amend.start()
-  }
-
   return (
     <InternalPage className="flex flex-col gap-[15px]">
       <IntakeDetailHeader
         order={order}
         canAdvance={permissions.includes('intake_orders.advance')}
-        canDelete={permissions.includes('intake_orders.delete')}
         canChangeStatus={permissions.includes('intake_orders.change_status')}
-        canAmend={canAmend}
-        amendActive={amend.active}
-        onStartAmend={startAmend}
         onPrint={() => setPrintOpen(true)}
       />
-
-      {amend.active ? (
-        <IntakeAmendBar
-          onCancel={amend.cancel}
-          onSave={amend.requestSave}
-          pending={amend.pending}
-        />
-      ) : null}
 
       {order.deletedAt !== null ? (
         <IntakeRemovedBar order={order} canDelete={permissions.includes('intake_orders.delete')} />
@@ -148,13 +115,11 @@ function IntakeDetailPage(): ReactElement {
         <IntakePhotosPendingNote order={order} />
       ) : null}
 
-      {/* Hidden while the mode is open, not disabled: every segment fires immediately and would
-          leave the unsaved buffer behind a status the operator did not mean to move. */}
-      {isLive && !amend.active && permissions.includes('intake_orders.change_status') ? (
+      {isLive && permissions.includes('intake_orders.change_status') ? (
         <IntakeStatusBar order={order} />
       ) : null}
 
-      <IntakeDetailTabs order={order} activeTab={activeTab} locked={amend.active} />
+      <IntakeDetailTabs order={order} activeTab={activeTab} />
 
       {/* A map, not a ternary chain — `visibleIntakeDetailTab` has already reduced `tab` to one a
           draft is allowed to show, so every key here is reachable and none is a fallthrough. Only
@@ -162,23 +127,9 @@ function IntakeDetailPage(): ReactElement {
       {
         {
           [IntakeDetailTab.Pregled]: (
-            <TabOverview
-              order={order}
-              amend={
-                amend.active
-                  ? { buffer: amend.buffer, patch: amend.patch, phoneValid: amend.phoneValid }
-                  : undefined
-              }
-            />
+            <TabOverview order={order} canUpdate={permissions.includes('intake_orders.update')} />
           ),
-          [IntakeDetailTab.Fotografije]: (
-            <TabPhotos
-              order={order}
-              queue={photoQueue}
-              canAddPhotos={canAddPhotos}
-              isOrderTechnician={session?.user?.id === order.technicianId}
-            />
-          ),
+          [IntakeDetailTab.Fotografije]: <TabPhotos order={order} queue={photoQueue} />,
           [IntakeDetailTab.Spec]: (
             <TabSpec order={order} canUpdate={permissions.includes('intake_orders.update')} />
           ),
@@ -187,23 +138,6 @@ function IntakeDetailPage(): ReactElement {
       }
 
       <IntakePrintDialog order={order} open={printOpen} onClose={() => setPrintOpen(false)} />
-
-      {/* Asked once, on Sačuvaj (decision ②), and it says what the mark means — the operator is
-          about to change a document a customer signed and holds a printed copy of. */}
-      <ConfirmDialog
-        open={amend.confirmOpen}
-        onOpenChange={amend.setConfirmOpen}
-        variant="default"
-        title={m.intake_amend_confirm_title({ number: order.orderNumber })}
-        description={
-          amend.losesPhotoNumbers
-            ? `${m.intake_amend_confirm_description()} ${m.intake_amend_confirm_photos()}`
-            : m.intake_amend_confirm_description()
-        }
-        confirmLabel={m.intake_amend_confirm_button()}
-        pending={amend.pending}
-        onConfirm={amend.save}
-      />
     </InternalPage>
   )
 }

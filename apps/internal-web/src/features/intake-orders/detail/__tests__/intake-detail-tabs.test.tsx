@@ -58,19 +58,4 @@ describe('IntakeDetailTabs', () => {
     expect(screen.queryByRole('link', { name: m.intake_tab_spec() })).toBeNull()
     expect(screen.queryByRole('link', { name: m.intake_tab_istorija() })).toBeNull()
   })
-
-  it('turns the strip inert while edit mode is open — a tab change unmounts the buffer', async () => {
-    await renderDetailUi(
-      <IntakeDetailTabs
-        order={intakeOrderDetailFixture()}
-        activeTab={IntakeDetailTab.Pregled}
-        locked
-      />,
-    )
-
-    // Not links at all, rather than links that swallow the click: a middle click on a locked tab
-    // must not open it in another window either.
-    expect(screen.queryAllByRole('link')).toHaveLength(0)
-    expect(screen.queryByText(m.intake_tab_istorija())).not.toBeNull()
-  })
 })

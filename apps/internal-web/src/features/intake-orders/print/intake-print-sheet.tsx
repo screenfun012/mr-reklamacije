@@ -135,17 +135,6 @@ export function IntakePrintSheet({
 
         {/* Pinned to the bottom whatever the blocks above did. */}
         <footer className="mt-auto border-t-[2.5px] border-[#ed1c24] pt-[14px]">
-          {model.amended === null ? null : (
-            <div className="mb-[11px] flex items-center gap-2.5 border-[1.5px] border-[#ed1c24] bg-[rgba(237,28,36,0.06)] px-[11px] py-[7px]">
-              <span className="flex-none font-mono text-[8.5px] font-bold uppercase tracking-[0.14em] text-[#ed1c24]">
-                {m.intake_print_amended({}, { locale })}
-              </span>
-              <span className="ml-auto font-mono text-[9px]">
-                {model.amended.at} · {model.amended.by}
-              </span>
-            </div>
-          )}
-
           <div className="mb-[14px] max-w-[600px] text-[9.5px] leading-[1.5] text-[#54555b]">
             {m.intake_print_legal(
               { count: model.photoCount, number: model.orderNumber },

@@ -9,21 +9,7 @@ import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './
 
 const NO_PERMS = {
   canAdvance: false,
-  canDelete: false,
   canChangeStatus: false,
-  canAmend: false,
-  amendActive: false,
-  onStartAmend: () => {},
-  onPrint: () => {},
-}
-
-const ALL_PERMS = {
-  canAdvance: true,
-  canDelete: true,
-  canChangeStatus: true,
-  canAmend: true,
-  amendActive: false,
-  onStartAmend: () => {},
   onPrint: () => {},
 }
 
@@ -48,46 +34,40 @@ describe('IntakeDetailHeader', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the amended pill only on an amended order', async () => {
-    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
-    expect(screen.queryByText(m.intake_detail_amended_badge())).toBeNull()
-  })
-
-  it('shows the amended pill once the condition was corrected after signing', async () => {
-    const order = intakeOrderDetailFixture({
-      amendedAt: '2026-07-28T10:00:00.000Z',
-      amendedByName: 'Jelena Petrović',
-    })
-
-    await renderDetailUi(<IntakeDetailHeader order={order} {...NO_PERMS} />)
-    expect(screen.queryByText(m.intake_detail_amended_badge())).not.toBeNull()
-  })
-
-  it('offers the next status only with the advance permission, and never past Preuzeto', async () => {
+  it('offers no edit and no removal on a signed order', async () => {
     await renderDetailUi(
       <IntakeDetailHeader
         order={intakeOrderDetailFixture()}
         canAdvance
-        canDelete={false}
-        canChangeStatus={false}
+        canChangeStatus
+        onPrint={vi.fn()}
       />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'Ispravi zatečeno stanje' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ukloni nalog' })).not.toBeInTheDocument()
+    // Nothing can set the stamp any more, so the badge must not exist either.
+    expect(screen.queryByText(/Menjano posle potpisa/)).not.toBeInTheDocument()
+  })
+
+  it('offers the next status only with the advance permission, and never past Preuzeto', async () => {
+    await renderDetailUi(
+      <IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance canChangeStatus={false} />,
     )
 
     // Primljeno → U radu.
     expect(
       screen.queryByRole('button', { name: m.intake_detail_advance({ status: 'U radu' }) }),
     ).not.toBeNull()
-    expect(screen.queryByRole('button', { name: m.intake_detail_remove() })).toBeNull()
   })
 
-  it('draws no action but print on a removed order, whatever the caller may do', async () => {
+  it('draws no advance action on a removed order, whatever the caller may do', async () => {
     const order = intakeOrderDetailFixture({ deletedAt: '2026-07-29T08:00:00.000Z' })
 
-    await renderDetailUi(
-      <IntakeDetailHeader order={order} canAdvance canDelete canChangeStatus={false} />,
-    )
+    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance canChangeStatus={false} />)
 
-    expect(screen.queryByRole('button', { name: m.intake_detail_remove() })).toBeNull()
     expect(
       screen.queryByRole('button', { name: m.intake_detail_advance({ status: 'U radu' }) }),
     ).toBeNull()
@@ -101,9 +81,7 @@ describe('IntakeDetailHeader', () => {
     const fetchSpy = stubAdvanceOk()
     const order = intakeOrderDetailFixture({ status: IntakeOrderStatus.Done })
 
-    await renderDetailUi(
-      <IntakeDetailHeader order={order} canAdvance canDelete={false} canChangeStatus={false} />,
-    )
+    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance canChangeStatus={false} />)
     fireEvent.click(
       screen.getByRole('button', { name: m.intake_detail_advance({ status: 'Preuzeto' }) }),
     )
@@ -131,12 +109,7 @@ describe('IntakeDetailHeader', () => {
     const fetchSpy = stubAdvanceOk()
 
     await renderDetailUi(
-      <IntakeDetailHeader
-        order={intakeOrderDetailFixture()}
-        canAdvance
-        canDelete={false}
-        canChangeStatus={false}
-      />,
+      <IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance canChangeStatus={false} />,
     )
     fireEvent.click(
       screen.getByRole('button', { name: m.intake_detail_advance({ status: 'U radu' }) }),
@@ -149,9 +122,7 @@ describe('IntakeDetailHeader', () => {
     const fetchSpy = stubAdvanceOk()
     const order = intakeOrderDetailFixture({ status: IntakeOrderStatus.Done })
 
-    await renderDetailUi(
-      <IntakeDetailHeader order={order} canAdvance canDelete={false} canChangeStatus />,
-    )
+    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance canChangeStatus />)
     fireEvent.click(
       screen.getByRole('button', { name: m.intake_detail_advance({ status: 'Preuzeto' }) }),
     )
@@ -183,47 +154,6 @@ describe('IntakeDetailHeader', () => {
     await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
 
     expect(screen.queryByText('Primljeno')).not.toBeNull()
-  })
-
-  it('offers the correction to somebody who may amend a live signed order', async () => {
-    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...ALL_PERMS} />)
-
-    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).not.toBeNull()
-  })
-
-  it('offers it to nobody without the permission', async () => {
-    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} {...NO_PERMS} />)
-
-    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
-  })
-
-  it('offers no correction on an unfinished intake, which the wizard still owns', async () => {
-    await renderDetailUi(<IntakeDetailHeader order={intakeDraftFixture()} {...ALL_PERMS} />)
-
-    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
-  })
-
-  it('offers no correction on a removed order, which the server refuses anyway', async () => {
-    const order = intakeOrderDetailFixture({ deletedAt: '2026-07-29T08:00:00.000Z' })
-
-    await renderDetailUi(<IntakeDetailHeader order={order} {...ALL_PERMS} />)
-
-    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
-  })
-
-  it('locks advance and remove while the mode is open, so one edit is one edit', async () => {
-    await renderDetailUi(
-      <IntakeDetailHeader order={intakeOrderDetailFixture()} {...ALL_PERMS} amendActive />,
-    )
-
-    expect(screen.getByRole('button', { name: m.intake_detail_remove() })).toBeDisabled()
-    expect(
-      screen.getByRole('button', {
-        name: m.intake_detail_advance({ status: m.intake_status_u_radu() }),
-      }),
-    ).toBeDisabled()
-    // And the button that opened the mode is gone: the bar below owns the way out.
-    expect(screen.queryByRole('button', { name: m.intake_amend_start() })).toBeNull()
   })
 })
 

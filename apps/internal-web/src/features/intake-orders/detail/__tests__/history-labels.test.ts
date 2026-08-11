@@ -29,15 +29,10 @@ function entry(overrides: Partial<IntakeOrderHistoryEntry>): IntakeOrderHistoryE
 
 /**
  * Every row the server can write, so deleting any single entry from the lookup map fails here.
- * Three of these are reachable today and the rest arrive with the amend and restore flows; a table
- * is the only shape that keeps the map honest as they land.
+ * A table is the only shape that keeps the map honest as more transitions land.
  */
 const EVERY_TRANSITION: readonly [string, () => string][] = [
   ['sign', m.intake_history_signed],
-  ['amend_after_signing', m.intake_history_amended],
-  ['amend_contact_after_signing', m.intake_history_amended_contact],
-  ['amend_photo_added', m.intake_history_photo_added],
-  ['amend_photo_removed', m.intake_history_photo_removed],
   ['spec_updated', m.intake_history_spec_updated],
   ['soft_delete', m.intake_history_removed],
   ['restore', m.intake_history_restored],

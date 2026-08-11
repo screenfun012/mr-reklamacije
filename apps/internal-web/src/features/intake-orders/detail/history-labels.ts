@@ -8,18 +8,9 @@ import { INTAKE_STATUS_LABELS, INTAKE_STATUS_ORDER } from '../intake-status'
  * `change_status` and `action = 'create'`, while `photo_uploaded`, `photo_removed` and
  * transition-less updates are filtered out in SQL (`intake-orders.repository.ts:677-680`) and
  * `discard_draft` belongs to a row that no longer exists.
- *
- * This map is also the ONLY surface that may name what an amendment changed. The stamp is one
- * unnamed pair of columns read by four surfaces (badge, signature note, list marker, this row),
- * and only the audit row carries the transition — so the other three say "the order was changed"
- * and the precision lives here (spec 2026-08-09 §2.2).
  */
 const TRANSITION_LABELS: Record<string, () => string> = {
   sign: m.intake_history_signed,
-  amend_after_signing: m.intake_history_amended,
-  amend_contact_after_signing: m.intake_history_amended_contact,
-  amend_photo_added: m.intake_history_photo_added,
-  amend_photo_removed: m.intake_history_photo_removed,
   spec_updated: m.intake_history_spec_updated,
   soft_delete: m.intake_history_removed,
   restore: m.intake_history_restored,

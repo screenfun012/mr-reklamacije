@@ -111,21 +111,6 @@ describe('buildIntakePrintModel', () => {
     expect(buildIntakePrintModel(order, 'sr').ownerRemarks.length).toBeGreaterThan(0)
   })
 
-  it('carries the amendment stamp only when the order was amended', () => {
-    expect(buildIntakePrintModel(intakeOrderDetailFixture(), 'sr').amended).toBeNull()
-
-    const amended = buildIntakePrintModel(
-      intakeOrderDetailFixture({
-        amendedAt: '2026-07-28T10:00:00.000Z',
-        amendedByName: 'Jelena Petrović',
-      }),
-      'sr',
-    ).amended
-
-    expect(amended?.by).toBe('Jelena Petrović')
-    expect(amended?.at.length).toBeGreaterThan(0)
-  })
-
   it('takes the silhouette from the order vehicle type, not from a default', () => {
     const car = buildIntakePrintModel(intakeOrderDetailFixture(), 'sr').silhouette
     const van = buildIntakePrintModel(

@@ -113,14 +113,6 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                 </span>
               ) : null
 
-            const amendedMarker =
-              item.amendedAt !== null ? (
-                <span title={m.intake_amended_hint()} className="flex items-center">
-                  <FileWarning className="size-4 text-mri-warn" aria-hidden="true" />
-                  <span className="sr-only">{m.intake_amended_hint()}</span>
-                </span>
-              ) : null
-
             const received = formatIntakeReceivedAt(item.receivedAt, locale)
 
             return (
@@ -160,10 +152,7 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
 
                     <span className="font-mono text-[12.5px] text-mri-text2">{received}</span>
 
-                    <span className="flex items-center gap-1.5">
-                      {statusCell}
-                      {amendedMarker}
-                    </span>
+                    <span className="flex items-center gap-1.5">{statusCell}</span>
                   </div>
 
                   {/* Narrow: the order number and its status on top, then what the car is, then
@@ -193,7 +182,6 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                         {m.intake_col_photos()} {item.photoCount}
                         {pendingMarker}
                       </span>
-                      {amendedMarker}
                     </div>
                   </div>
                 </Link>

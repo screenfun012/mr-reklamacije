@@ -1,14 +1,13 @@
 import { m } from '@mr/i18n'
 import {
   advanceIntakeOrder,
-  deleteIntakeOrder,
   intakeOrderKeys,
   IntakeOrderStatus,
   type IntakeOrderDetail,
 } from '@mr/shared'
 import { cn, ConfirmDialog } from '@mr/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useState, type ReactElement } from 'react'
 
 import { InternalButton } from '~/components/internal-button'
@@ -23,22 +22,14 @@ const ACTION_CLASSES = 'h-[46px] w-auto px-[18px] text-[13px]'
 export interface IntakeDetailHeaderProps {
   order: IntakeOrderDetail
   canAdvance: boolean
-  canDelete: boolean
   /**
    * Not used to render anything — it decides whether the last status step needs confirming.
    * Whoever may change the status has the strip right below this header and moves it back in one
    * tap; whoever may only advance has no way back at all once the order is picked up.
    */
   canChangeStatus: boolean
-  canAmend: boolean
   /** The page owns the preview, because it is also the thing the wizard's flag lands on. */
   onPrint: () => void
-  /**
-   * While edit mode is open every other action here is locked: one mode at a time, so nothing can
-   * throw away an unsaved buffer behind the operator's back or stack a second dialog on the first.
-   */
-  amendActive: boolean
-  onStartAmend: () => void
 }
 
 const STATUS_PILL_CLASSES = 'px-[11px] py-[5px] text-[10.5px] tracking-[0.08em]'
@@ -64,16 +55,10 @@ const ADVANCE_CLASSES: Record<IntakeOrderStatus, string> = {
 export function IntakeDetailHeader({
   order,
   canAdvance,
-  canDelete,
   canChangeStatus,
-  canAmend,
-  amendActive,
-  onStartAmend,
   onPrint,
 }: IntakeDetailHeaderProps): ReactElement {
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const [confirmRemove, setConfirmRemove] = useState(false)
   const [confirmPickup, setConfirmPickup] = useState(false)
 
   // Every intake mutation touches the detail, the list, the KPI row AND the history tab, and
@@ -106,17 +91,6 @@ export function IntakeDetailHeader({
           status: INTAKE_STATUS_LABELS[updated.status](),
         }),
       )
-    },
-    onError: () => showInternalToast(m.intake_detail_action_failed()),
-  })
-
-  const remove = useMutation({
-    mutationFn: () => deleteIntakeOrder(order.id),
-    onSuccess: async () => {
-      setConfirmRemove(false)
-      await invalidate()
-      showInternalToast(m.intake_detail_removed_toast({ number: order.orderNumber }))
-      await navigate({ to: '/prijem' })
     },
     onError: () => showInternalToast(m.intake_detail_action_failed()),
   })
@@ -159,15 +133,6 @@ export function IntakeDetailHeader({
           <InternalPill tone="neutral" className="border border-mri-border2 px-[9px] py-1">
             {INTAKE_VEHICLE_TYPE_LABELS[order.vehicleType]()}
           </InternalPill>
-
-          {order.amendedAt !== null ? (
-            <InternalPill
-              tone="warn"
-              className="border border-[rgba(245,166,35,0.45)] px-[10px] py-1 font-bold"
-            >
-              {m.intake_detail_amended_badge()}
-            </InternalPill>
-          ) : null}
         </div>
 
         <p className="mt-2 text-[14.5px] text-mri-text2">
@@ -189,45 +154,15 @@ export function IntakeDetailHeader({
           </InternalButton>
         )}
 
-        {/* Amber, like every other "this order is not in its resting state" surface. The action
-            is neither the happy path nor a destruction, and the brandbook forbids a red primary. */}
-        {canAmend && isLive && !amendActive ? (
-          <InternalButton
-            type="button"
-            variant="ghost"
-            onClick={onStartAmend}
-            className={cn(
-              ACTION_CLASSES,
-              'border border-[rgba(245,165,36,0.45)] bg-[rgba(245,165,36,0.12)] font-extrabold tracking-[0.06em] text-mri-amb hover:bg-[rgba(245,165,36,0.2)]',
-            )}
-          >
-            {m.intake_amend_start()}
-          </InternalButton>
-        ) : null}
-
         {canAdvance && isLive && next !== null ? (
           <InternalButton
             type="button"
             variant="ghost"
-            disabled={advance.isPending || amendActive}
-            title={amendActive ? m.intake_amend_locked() : undefined}
+            disabled={advance.isPending}
             onClick={() => (needsPickupConfirm ? setConfirmPickup(true) : advance.mutate())}
             className={cn(ACTION_CLASSES, ADVANCE_CLASSES[next])}
           >
             {m.intake_detail_advance({ status: INTAKE_STATUS_LABELS[next]() })}
-          </InternalButton>
-        ) : null}
-
-        {canDelete && isLive ? (
-          <InternalButton
-            type="button"
-            variant="outline-red"
-            disabled={amendActive}
-            title={amendActive ? m.intake_amend_locked() : undefined}
-            onClick={() => setConfirmRemove(true)}
-            className={ACTION_CLASSES}
-          >
-            {m.intake_detail_remove()}
           </InternalButton>
         ) : null}
       </div>
@@ -245,16 +180,6 @@ export function IntakeDetailHeader({
         confirmLabel={m.intake_detail_pickup_confirm()}
         pending={advance.isPending}
         onConfirm={() => advance.mutate()}
-      />
-
-      <ConfirmDialog
-        open={confirmRemove}
-        onOpenChange={setConfirmRemove}
-        title={m.intake_detail_remove_title({ number: order.orderNumber })}
-        description={m.intake_detail_remove_description()}
-        confirmLabel={m.intake_detail_remove_confirm()}
-        pending={remove.isPending}
-        onConfirm={() => remove.mutate()}
       />
     </header>
   )
