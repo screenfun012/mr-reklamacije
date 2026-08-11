@@ -84,6 +84,24 @@ export class IntakeChecklistItemsRepository {
     return { items: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore }
   }
 
+  /**
+   * Every code the catalog holds, and deliberately WITHOUT the `is_active` and `deleted_at` filters
+   * every other read here applies: this is what the intake guard checks a submitted checklist
+   * against, and an order may already carry a code the shop retired since — refusing a correction to
+   * such an order would make a signed document uncorrectable (plan D3). Only a code that exists
+   * nowhere is unknown.
+   *
+   * Its own query rather than `list(...)`: it runs on every checklist-bearing patch, and one column
+   * is materially cheaper than materialising full rows through the keyset pager.
+   */
+  async listKnownCodes(): Promise<string[]> {
+    const rows = await this.db
+      .select({ code: intakeChecklistItems.code })
+      .from(intakeChecklistItems)
+
+    return rows.map((row) => row.code)
+  }
+
   async findById(id: string): Promise<IntakeChecklistItemListItem | null> {
     const [row] = await this.db
       .select(ITEM_COLUMNS)

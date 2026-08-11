@@ -348,6 +348,8 @@ export function buildContainer(
     auditService,
     eventBus,
     storageService,
+    // The catalog is what decides which checklist codes an order may store (spec ⑭).
+    intakeChecklistItemsRepository,
   )
   const attachmentsRepository = new AttachmentsRepository(db)
   const claimContextService = new ClaimContextService(

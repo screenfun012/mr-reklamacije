@@ -1,7 +1,6 @@
 import {
   IntakeArrivalMode,
   IntakeVehicleType,
-  type IntakeChecklist,
   type IntakeChecklistItemListItem,
   type IntakeDamage,
   type IntakeOrderCreateInput,
@@ -151,14 +150,13 @@ export function toUpdateInput(
      * wins over it. A row nobody touched has to be recorded, because that is what prints as `—`; a
      * row simply absent from the map prints as nothing and the document loses a line (docs/25 §4.4).
      *
-     * The assertion is the ONE place a code-keyed map crosses into the wire type, which is still the
-     * closed eight-key object until the schema opens (task 4). Every code in it comes from the
-     * catalog the API validates against, and the catalog holds exactly those eight today.
+     * No cast any more: the wire type is an open `{code: DA/NE}` map since task 4, so this spread IS
+     * the wire type. Every code in it comes from the catalog the API validates against.
      */
     checklist: {
       ...untouchedIntakeChecklist(checklistItems),
       ...values.checklist,
-    } as IntakeChecklist,
+    },
     equipmentNote: optionalText(values.equipmentNote) ?? null,
     damages: values.damages,
     services: values.services,

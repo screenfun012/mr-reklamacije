@@ -1,13 +1,13 @@
 import type { Locale } from '@mr/i18n'
-import type { IntakeChecklistItemListItem } from '@mr/shared'
+import type { IntakeChecklist, IntakeChecklistItemListItem } from '@mr/shared'
 
 /**
- * The checklist as its readers see it: a map keyed by the CATALOG CODE the order recorded. The wire
- * type `IntakeChecklist` is still the closed eight-key object until the schema opens (task 4), and no
- * reader may depend on that shape any more — the shop owns the list now. This alias goes away the day
- * `IntakeChecklist` becomes exactly this.
+ * The checklist as its readers see it: the wire type, read-only. Derived from `IntakeChecklist`
+ * rather than restated, so there is one definition of the shape now that the wire itself is an open
+ * `{code: DA/NE}` map (task 4). The name survives because it says what the keys ARE — catalog codes,
+ * not the eight fixed fields these screens were written against.
  */
-export type IntakeChecklistByCode = Readonly<Record<string, boolean | null>>
+export type IntakeChecklistByCode = Readonly<IntakeChecklist>
 
 export interface IntakeChecklistRow {
   code: string

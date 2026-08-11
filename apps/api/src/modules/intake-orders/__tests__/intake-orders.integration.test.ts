@@ -23,6 +23,8 @@ import {
   ValidationError,
 } from '../../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../../core/http/actor-context.js'
+import type { IntakeChecklistItemsService } from '../../intake-checklist-items/intake-checklist-items.service.js'
+import type { IntakeChecklistItemListItem } from '../../intake-checklist-items/intake-checklist-items.validators.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
@@ -73,6 +75,8 @@ describe('Intake orders integration', () => {
   let container: Container
   let events: RecordingEventBus
   let service: IntakeOrdersService
+  /** The admin's side of the catalog — the checklist guard reads what this writes. */
+  let checklistService: IntakeChecklistItemsService
 
   async function createUser(name: string): Promise<string> {
     const id = crypto.randomUUID()
@@ -142,6 +146,7 @@ describe('Intake orders integration', () => {
     events = new RecordingEventBus()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, events)
     service = container.intakeOrdersService
+    checklistService = container.intakeChecklistItemsService
   })
 
   afterEach(async () => {
@@ -582,6 +587,118 @@ describe('Intake orders integration', () => {
         actorContext(serviser.id),
       )
       expect(updated.fuelLevel).toBe(4)
+    })
+  })
+
+  /**
+   * The wire accepts any well-formed code and the CATALOG decides which ones exist (spec ⑭). Until
+   * this landed the eight keys were hardcoded in the schema, so an item the shop added in admin was
+   * either 422'd out of the wizard or silently stripped from the order.
+   */
+  describe('the checklist is judged against the catalog', () => {
+    /** The catalog's own list read, the way the admin screen does it. */
+    async function catalogItem(code: string): Promise<IntakeChecklistItemListItem> {
+      const { items } = await checklistService.list({
+        activeOnly: false,
+        includeDeleted: false,
+        limit: 50,
+      })
+      const found = items.find((item) => item.code === code)
+      if (found === undefined) {
+        throw new Error(`seed missing: ${code}`)
+      }
+      return found
+    }
+
+    it('accepts a checklist key the admin added to the catalog', async () => {
+      const serviser = await floorActor()
+      const admin = await createUser('Admin')
+      await checklistService.create(
+        { code: 'patosnici', nameSr: 'Gumeni patosnici', nameEn: 'Rubber mats', sortOrder: 90 },
+        actorContext(admin),
+      )
+
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      const updated = await service.update(
+        created.id,
+        { checklist: { rezervna: true, patosnici: false } },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      expect(updated.checklist['patosnici']).toBe(false)
+    })
+
+    it('refuses a checklist key that is not in the catalog', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      // Otherwise any caller writes whatever it likes into a document that is evidence (spec ⑭).
+      await expect(
+        service.update(
+          created.id,
+          { checklist: { izmisljeno: true } },
+          serviser,
+          actorContext(serviser.id),
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('still accepts a code whose catalog item was deactivated', async () => {
+      const serviser = await floorActor()
+      const admin = await createUser('Admin')
+      const chains = await catalogItem('lanci')
+      await checklistService.update(chains.id, { isActive: false }, actorContext(admin))
+
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      const updated = await service.update(
+        created.id,
+        { checklist: { lanci: true } },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      // Deactivated hides it from the PICKER; a correction to an order that already holds it must
+      // still land (plan D3).
+      expect(updated.checklist['lanci']).toBe(true)
+    })
+
+    it('still accepts a code whose catalog item was removed', async () => {
+      const serviser = await floorActor()
+      const admin = await createUser('Admin')
+      const chains = await catalogItem('lanci')
+      await checklistService.softDelete(chains.id, actorContext(admin))
+
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      const updated = await service.update(
+        created.id,
+        { checklist: { lanci: false } },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      expect(updated.checklist['lanci']).toBe(false)
+    })
+
+    /**
+     * A fresh database with no `db:seed` has an empty catalog, and the wizard then sends `{}` on the
+     * way out of step 1. Before this task that was a 422 with nothing on the screen to fix — the
+     * intake could not be filled in at all (plan D5).
+     */
+    it('accepts an empty checklist and records exactly that', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      expect(created.checklist).toEqual({})
+
+      const updated = await service.update(
+        created.id,
+        { checklist: {}, draftStep: 2 },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      expect(updated.checklist).toEqual({})
+      expect(updated.draftStep).toBe(2)
     })
   })
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { IntakeChecklistCodeSchema } from './intake-order.schema.js'
 import { ReferenceListQuerySchema } from './reference-data.schema.js'
 
 /**
@@ -23,18 +24,15 @@ export type IntakeChecklistItemsListQuery = z.infer<typeof IntakeChecklistItemsL
  * The code is what an intake order STORES (`checklist` is a `{code: DA/NE}` map), so it is the
  * stable identity and it is never edited after creation — changing it would orphan every order that
  * used it (spec ⑫/⑬). Names are editable and the rename is retroactive by design.
+ *
+ * Its shape comes from `IntakeChecklistCodeSchema`, shared with the order's checklist map on
+ * purpose: a code this form accepts must be a code that map can carry, and two copies of the rule
+ * would eventually disagree.
  */
-export const INTAKE_CHECKLIST_CODE_MAX = 40
 export const INTAKE_CHECKLIST_NAME_MAX = 80
 
 export const IntakeChecklistItemCreateInputSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(1)
-    .max(INTAKE_CHECKLIST_CODE_MAX)
-    // Same alphabet the seeded codes use, so a code is safe as a jsonb key and readable in a diff.
-    .regex(/^[a-zA-Z][a-zA-Z0-9_]*$/),
+  code: IntakeChecklistCodeSchema,
   nameSr: z.string().trim().min(1).max(INTAKE_CHECKLIST_NAME_MAX),
   // Required, not optional: the work order prints in both languages (V-7 ⑪), so an item without an
   // English name prints Serbian on the English sheet.

@@ -3,30 +3,45 @@ import { z } from 'zod'
 import { intakeDamageTypeValues } from '../enums.js'
 
 /**
- * The eight equipment items a serviser ticks off at intake, in the order they
- * appear on the paper form. `null` means "not checked either way" — a serviser
- * who never touched the row must not read as "missing", because the printed
- * document is evidence.
+ * A checklist item's code: the catalog's stable identity, and literally a jsonb key on every order
+ * that recorded it. It lives HERE, in the file `@mr/db` imports, because both halves need the same
+ * alphabet — the catalog's create form and the order's checklist map. Two copies of this rule is
+ * how an admin ends up able to create an item the order schema then refuses to store.
  */
-export const INTAKE_CHECKLIST_KEYS = [
-  'rezervna',
-  'dizalica',
-  'komplet',
-  'saobracajna',
-  'vozacka',
-  'prvaPomoc',
-  'prsluk',
-  'lanci',
-] as const
+export const INTAKE_CHECKLIST_CODE_MAX = 40
 
-export type IntakeChecklistKey = (typeof INTAKE_CHECKLIST_KEYS)[number]
+export const IntakeChecklistCodeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(INTAKE_CHECKLIST_CODE_MAX)
+  // Readable in a diff and safe as a jsonb key.
+  .regex(/^[a-zA-Z][a-zA-Z0-9_]*$/)
 
-export const IntakeChecklistSchema = z.object(
-  Object.fromEntries(INTAKE_CHECKLIST_KEYS.map((key) => [key, z.boolean().nullable()])) as Record<
-    IntakeChecklistKey,
-    z.ZodNullable<z.ZodBoolean>
-  >,
-)
+/**
+ * A ceiling, not a rule: this map goes into a jsonb column, so an uncapped one is a caller writing
+ * as much as it likes into a row. Far above any equipment list a shop would keep.
+ */
+export const INTAKE_CHECKLIST_MAX_ITEMS = 200
+
+/**
+ * The equipment checklist an order records — `{code: DA/NE/untouched}`, keyed by the codes the
+ * `intake_checklist_items` catalog holds.
+ *
+ * The WIRE deliberately does not judge WHICH codes are allowed; the service does, against the
+ * catalog (spec ⑭). It cannot: the shop adds and retires items at runtime, so a schema naming the
+ * codes would either 422 a wizard patch carrying a newly added item or silently strip it — and a
+ * stripped row is a line missing from a document a customer signed.
+ *
+ * `null` is a value, not an absence: nobody touched that row. An untouched row prints `—`, while a
+ * row missing from the map prints as nothing at all and the sheet quietly loses a line.
+ */
+export const IntakeChecklistSchema = z
+  .record(IntakeChecklistCodeSchema, z.boolean().nullable())
+  // A `refine`, because zod 4's `ZodRecord` has no `.max()` — only `ZodMap` and `ZodSet` do.
+  .refine((checklist) => Object.keys(checklist).length <= INTAKE_CHECKLIST_MAX_ITEMS, {
+    message: `A checklist carries at most ${INTAKE_CHECKLIST_MAX_ITEMS} items`,
+  })
 
 export type IntakeChecklist = z.infer<typeof IntakeChecklistSchema>
 

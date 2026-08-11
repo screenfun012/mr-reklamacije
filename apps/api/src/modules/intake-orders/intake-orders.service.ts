@@ -3,6 +3,7 @@ import {
   ResourceChangedKey,
   intakeDamageZoneOf,
   intakeOrderStatusValues,
+  type IntakeChecklist,
 } from '@mr/shared'
 
 import type { HttpActorContext } from '../../core/http/actor-context.js'
@@ -14,6 +15,7 @@ import {
 } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { IntakeChecklistCatalogPort } from '../../core/ports/intake-checklist-catalog-port.js'
 import {
   processUploadFile,
   writeStoredFile,
@@ -114,6 +116,7 @@ export class IntakeOrdersService {
     private readonly audit: AuditPort,
     private readonly events: EventBus,
     private readonly storage: StorageService,
+    private readonly checklistCatalog: IntakeChecklistCatalogPort,
   ) {}
 
   private signalChanged(): void {
@@ -299,6 +302,13 @@ export class IntakeOrdersService {
       await this.assertNumberFree(normalizeOrderNumberKey(patch.orderNumber), id)
     }
 
+    // Only when the patch actually carries one: the wizard patches on every step (`create` cannot
+    // carry a checklist at all), and a step that never touched the equipment list must not pay for
+    // a query.
+    if (patch.checklist !== undefined) {
+      await this.assertChecklistCodesKnown(patch.checklist)
+    }
+
     const effective = this.withDerivedZones(patch, before)
     const updated = await this.repo.update(id, effective)
     if (updated === null) {
@@ -347,6 +357,28 @@ export class IntakeOrdersService {
         ...damage,
         zone: intakeDamageZoneOf(vehicleType, damage.x, damage.y),
       })),
+    }
+  }
+
+  /**
+   * The wire accepts any well-formed code; the CATALOG decides which ones exist, and this is where
+   * that judgement happens (spec ⑭). A schema cannot make it: the shop adds and retires items at
+   * runtime, so a closed list would refuse a patch carrying an item admin added this morning.
+   *
+   * Deactivated and soft-deleted codes pass — see `listKnownCodes`. An empty map costs no query at
+   * all, which is also what lets a shop whose catalog is still empty walk out of step 1.
+   */
+  private async assertChecklistCodesKnown(checklist: IntakeChecklist): Promise<void> {
+    const codes = Object.keys(checklist)
+    if (codes.length === 0) {
+      return
+    }
+
+    const known = new Set(await this.checklistCatalog.listKnownCodes())
+    const unknown = codes.filter((code) => !known.has(code))
+
+    if (unknown.length > 0) {
+      throw new ValidationError(`Unknown checklist item: ${unknown.join(', ')}`)
     }
   }
 

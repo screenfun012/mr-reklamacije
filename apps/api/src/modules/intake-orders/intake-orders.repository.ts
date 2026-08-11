@@ -52,16 +52,14 @@ export function normalizePlateKey(value: string): string {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
-const EMPTY_CHECKLIST: IntakeChecklist = {
-  rezervna: null,
-  dizalica: null,
-  komplet: null,
-  saobracajna: null,
-  vozacka: null,
-  prvaPomoc: null,
-  prsluk: null,
-  lanci: null,
-}
+/**
+ * A fresh intake has recorded NOTHING yet, and that is what it stores. It used to store the eight
+ * codes the checklist was hardcoded to, which the catalog made into a lie in two directions: a shop
+ * that retired an item still got it written into new evidence, and an item admin added was missing
+ * from an order created after it. The rows appear when the serviser leaves step 2, which is when the
+ * wizard sends the catalog's own list.
+ */
+const EMPTY_CHECKLIST: IntakeChecklist = {}
 
 interface OrderRow {
   id: string
