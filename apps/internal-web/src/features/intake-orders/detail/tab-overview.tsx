@@ -11,6 +11,7 @@ import { buildPhotoCells, type IntakePhotoCell } from '../wizard/intake-photo-gr
 import { IntakePhotoLightbox } from '../wizard/intake-photo-lightbox'
 import { INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
+import { IntakeContactPhone } from './card-contact-phone'
 import { CardCondition } from './card-condition'
 import { CardDamages } from './card-damages'
 import { CAPTION, CARD, DASH, FIELD_KEY } from './detail-styles'
@@ -69,13 +70,10 @@ function SignatureBox({ path, caption }: { path: string | null; caption: string 
  */
 export function TabOverview({
   order,
+  canUpdate,
 }: {
   order: IntakeOrderDetail
-  /**
-   * Unused here — task 5 mounts `IntakeContactPhone` in this tab and reads it there to gate that
-   * card's own edit affordance. Threaded through now so `$id.tsx` gets one call site to update,
-   * not two, once that card exists.
-   */
+  /** Gates `IntakeContactPhone`'s own edit affordance below the owner-phone fact. */
   canUpdate: boolean
 }): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
@@ -124,8 +122,15 @@ export function TabOverview({
     { label: m.intake_fact_vin(), value: order.vin ?? DASH, className: 'font-mono font-medium' },
     {
       label: m.intake_field_owner_phone(),
-      value: order.ownerPhone,
-      className: 'font-mono font-medium',
+      // The signed number keeps its own mono styling; `IntakeContactPhone` sets its own below it,
+      // so the fact's shared wrapper className stays neutral rather than forcing mono onto the card.
+      value: (
+        <>
+          <span className="font-mono font-medium">{order.ownerPhone}</span>
+          <IntakeContactPhone order={order} canUpdate={canUpdate} />
+        </>
+      ),
+      className: '',
     },
     {
       label: m.intake_fact_fuel(),

@@ -155,4 +155,14 @@ describe('buildIntakePrintModel', () => {
       buildIntakePrintModel(order, 'sr').receivedAt,
     )
   })
+
+  it('never carries the added contact number onto the sheet', () => {
+    const model = buildIntakePrintModel(
+      intakeOrderDetailFixture({ ownerPhone: '+381 11 111', contactPhone: '+381 64 999' }),
+      'sr',
+    )
+
+    // The paper is the signed record. The working note has no business on it (docs/25 §5).
+    expect(JSON.stringify(model)).not.toContain('+381 64 999')
+  })
 })

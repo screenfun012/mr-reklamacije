@@ -34,6 +34,7 @@ function entry(overrides: Partial<IntakeOrderHistoryEntry>): IntakeOrderHistoryE
 const EVERY_TRANSITION: readonly [string, () => string][] = [
   ['sign', m.intake_history_signed],
   ['spec_updated', m.intake_history_spec_updated],
+  ['contact_added', m.intake_history_contact_added],
   ['soft_delete', m.intake_history_removed],
   ['restore', m.intake_history_restored],
 ]

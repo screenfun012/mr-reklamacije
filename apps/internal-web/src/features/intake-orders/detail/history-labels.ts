@@ -9,14 +9,14 @@ import { INTAKE_STATUS_LABELS, INTAKE_STATUS_ORDER } from '../intake-status'
  * filtered out in SQL (`intake-orders.repository.ts`) and `discard_draft` belongs to a row that no
  * longer exists.
  *
- * Two deliberate gaps since the freeze (2026-08-11): `contact_added` is written by the server but
- * gets its label with the contact-number field, and until then falls back to the neutral clause;
- * `soft_delete` is no longer written by anything — a signed order cannot be removed — and is kept
- * only for rows recorded before that, for as long as the removed view exists at all.
+ * One deliberate gap since the freeze (2026-08-11): `soft_delete` is no longer written by
+ * anything — a signed order cannot be removed — and is kept only for rows recorded before that,
+ * for as long as the removed view exists at all.
  */
 const TRANSITION_LABELS: Record<string, () => string> = {
   sign: m.intake_history_signed,
   spec_updated: m.intake_history_spec_updated,
+  contact_added: m.intake_history_contact_added,
   soft_delete: m.intake_history_removed,
   restore: m.intake_history_restored,
 }
