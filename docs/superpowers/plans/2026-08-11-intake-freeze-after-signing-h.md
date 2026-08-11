@@ -14,6 +14,7 @@
 - **Grana:** `feat/vehicle-intake`, osnova `ec352a3`. Nije na `main`, nije u produkciji.
 - **Pun gejt pre SVAKOG komita, i svaki zadatak završava komitom:**
   `pnpm format:check && pnpm exec turbo run build typecheck lint test --force --concurrency=4 && pnpm --filter api depcruise && pnpm test:integration`
+- ⚠⚠ **RED ZADATAKA JE OBAVEZAN I NIJE PROIZVOLJAN: ekran (2) ide PRE servera (3).** Brisanje niske `intake_orders.amend` iz unije dozvola obara **svako** njeno čitanje na tipu, a menjanje arnosti `repo.update` obara svaki poziv sa tri argumenta — pa bi server-prvi ostavio `apps/internal-web` bez `typecheck`-a i komit ne bi mogao da bude gate-green. Ekran-prvi briše samo **čitaoce**, što je zeleno samo po sebi, i onda server nema kome da pokvari. **Ne preuređivati zadatke 2 i 3.**
 - **`--concurrency=4` je obavezan** ako Nikolin `pnpm dev:all` radi. **Nikad ne pokretati ni gasiti razvojne servere.**
 - **Nikad dva gejta istovremeno** (`@mr/auth` padne bez razloga).
 - **Migracije:** `drizzle-kit` ih generiše, nikad se ne pišu rukom. Zadaci 1 i 6 **STAJU i traže Nikolino izričito odobrenje** pre primene.
@@ -69,7 +70,7 @@
 
 **Interfaces:**
 
-- Produces: kolona `intake_orders.contact_phone text` (bez `NOT NULL`), u TS-u `contactPhone: string | null`. Zadaci 3 i 5 je čitaju.
+- Produces: kolona `intake_orders.contact_phone text` (bez `NOT NULL`), u TS-u `contactPhone: string | null`. Zadaci 4 i 5 je čitaju.
 
 - [ ] **Korak 1: dodaj kolonu u šemu**
 
@@ -126,7 +127,121 @@ git commit -m "feat(db): the shop gets a second phone number to write down, besi
 
 ---
 
-## Zadatak 2: server — zamrzavanje, i mašinerija žiga izlazi (H-2)
+## Zadatak 2: internal-web — režim izmene izlazi sa ekrana (H-3, ide PRVI)
+
+**Files:**
+
+- Modify: `apps/internal-web/src/routes/_shell/prijem/$id.tsx`
+- Modify: `.../detail/intake-detail-header.tsx:33,40-41,69-71,163-168,194-204,212-213,220-232`
+- Modify: `.../detail/tab-overview.tsx:17,117,121,132,163,194-220,243-251,284-286`
+- Modify: `.../detail/card-condition.tsx`, `.../detail/card-damages.tsx`, `.../detail/tab-photos.tsx`, `.../detail/intake-detail-tabs.tsx:61,87`, `.../detail/history-labels.ts:19-22`
+- Modify: `.../intake-orders-table.tsx:116-120,165,196`
+- Modify: `.../print/intake-print-data.ts:74,146-151`, `.../print/intake-print-sheet.tsx:138-144`
+- Delete: `.../detail/intake-amend-bar.tsx`, `.../detail/use-intake-amend.ts`, `.../detail/__tests__/use-intake-amend.test.ts`
+- Test: `.../detail/__tests__/intake-detail-header.test.tsx`, `tab-photos.test.tsx`, `tab-overview.test.tsx`, `history-labels.test.ts`, `.../__tests__/intake-orders-table.test.tsx`, `.../print/__tests__/intake-print-{data,sheet}.test.{ts,tsx}`
+
+⚠⚠ **OVAJ ZADATAK IDE PRVI, PRE SERVERA, I TO JE JEDINI RED U KOM SVAKI KOMIT MOŽE DA IMA ZELEN GEJT.** Ovde se brišu samo **čitaoci** — server, žica i dozvola `intake_orders.amend` ostaju netaknuti, pa ništa ne puca. Da je server išao prvi, `apps/internal-web` ne bi prolazio `typecheck` dok se ekran ne očisti (brisanje niske iz unije dozvola obara svako njeno čitanje **na tipu**), pa komit zadatka 3 ne bi mogao da bude gate-green.
+
+⚠ Zato: **ništa u ovom zadatku ne dira `packages/shared` ni `apps/api`.** Polje `amendedAt` i dalje postoji na žici i **mora da ostane** u fiksturi `render-detail.tsx` — ono je `nullable()`, dakle obavezno, i briše se u zadatku 3 zajedno sa šemom.
+
+**Interfaces:**
+
+- Consumes: ništa. Zadatak 2 je prvi.
+- Produces: `IntakeDetailHeader` bez `canAmend`/`amendActive`/`onStartAmend`/`canDelete` · `TabOverview`/`CardCondition`/`CardDamages` bez propa `amend`, a `TabOverview` **dobija** `canUpdate: boolean` · `TabPhotos` bez `canAddPhotos`/`isOrderTechnician` · `IntakeDetailTabs` bez `locked`. Zadatak 5 se naslanja na `canUpdate`.
+
+- [ ] **Korak 1: napiši padajuće testove**
+
+⚠ `renderDetailUi` je **async** i vraća `RenderResult`; fiksture su `intakeOrderDetailFixture(overrides)` (potpisan nalog), `intakeDraftFixture(overrides)` (nacrt), `emptyQueueStub()`, `intakePhotoFixture()` — sve iz `render-detail.tsx`. Prati potpise propova iz postojećih testova u istim fajlovima.
+
+U `.../detail/__tests__/intake-detail-header.test.tsx`:
+
+```tsx
+it('offers no edit and no removal on a signed order', async () => {
+  await renderDetailUi(
+    <IntakeDetailHeader
+      order={intakeOrderDetailFixture()}
+      canAdvance
+      canChangeStatus
+      onPrint={vi.fn()}
+    />,
+  )
+
+  expect(screen.queryByRole('button', { name: 'Ispravi zatečeno stanje' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Ukloni nalog' })).not.toBeInTheDocument()
+  // Nothing can set the stamp any more, so the badge must not exist either.
+  expect(screen.queryByText(/Menjano posle potpisa/)).not.toBeInTheDocument()
+})
+```
+
+U `.../detail/__tests__/tab-photos.test.tsx`:
+
+```tsx
+it('offers no + cell and no delete on a signed order', async () => {
+  await renderDetailUi(
+    <TabPhotos
+      order={intakeOrderDetailFixture({ photos: [intakePhotoFixture()] })}
+      queue={emptyQueueStub()}
+    />,
+  )
+
+  expect(screen.queryByRole('button', { name: 'Dodaj fotografiju' })).not.toBeInTheDocument()
+})
+```
+
+Natpisi su prepisani iz `sr.json`: `intake_amend_start` = „Ispravi zatečeno stanje", `intake_detail_remove` = „Ukloni nalog", `intake_photo_add` = „Dodaj fotografiju", `intake_detail_amended_badge` = „⚠ Menjano posle potpisa".
+
+- [ ] **Korak 2: pokreni i potvrdi da PADA**
+
+Run: `pnpm --filter internal-web test -- intake-detail-header tab-photos --run`
+Expected: FAIL — oba dugmeta i `+` ćelija danas postoje.
+
+- [ ] **Korak 3: obriši tri fajla**
+
+```bash
+rm apps/internal-web/src/features/intake-orders/detail/intake-amend-bar.tsx
+rm apps/internal-web/src/features/intake-orders/detail/use-intake-amend.ts
+rm apps/internal-web/src/features/intake-orders/detail/__tests__/use-intake-amend.test.ts
+```
+
+- [ ] **Korak 4: pusti prevodilac da nabroji ostatak, pa čisti po redu**
+
+Run: `pnpm --filter internal-web typecheck`
+
+- **`$id.tsx`** — obriši uvoze `IntakeAmendBar` i `useIntakeAmend`, `const amend = useIntakeAmend(order)`, `startAmend`, `canAmend`, `canAddPhotos`, blok `{amend.active ? <IntakeAmendBar … /> : null}` (:123-129), `ConfirmDialog` za izmenu (:193-206), propove `canAmend`/`amendActive`/`onStartAmend`/`canDelete` na zaglavlju, `locked` na traci tabova, `amend={…}` na `TabOverview`, `canAddPhotos`/`isOrderTechnician` na `TabPhotos`. Uslov na `IntakeStatusBar` (:153) postaje `isLive && permissions.includes('intake_orders.change_status')`. **`useIntakePhotoQueue` i prop `queue` OSTAJU** — nose ćelije u letu iz istog mounta.
+  Dodaj prop koji zadatak 5 traži: `<TabOverview order={order} canUpdate={permissions.includes('intake_orders.update')} />`.
+- **`intake-detail-header.tsx`** — obriši propove `canAmend`/`amendActive`/`onStartAmend`/`canDelete`, bedž (:163-168), dugme „Ispravi" (:194-204), `disabled`/`title` vezane za `amendActive` (:212-213), **i celo dugme „Ukloni" (:220-232) sa njegovim `ConfirmDialog`-om** — prikazivalo se samo uz `isLive`, a potpisan nalog se po ㉗ ne briše, pa je mrtvo.
+- **`tab-overview.tsx`** — obriši prop `amend` i sve njegove grane (telefon i merač goriva vraćaju se na čisto čitanje), napomenu uz potpise (:243-251) i `controlCell` (:163).
+- **`card-condition.tsx`, `card-damages.tsx`** — obriši prop `amend` i grane; ostaje samo čitanje.
+- **`tab-photos.tsx`** — obriši propove `canAddPhotos`/`isOrderTechnician`, `+` ćeliju (:137-146), oba `ConfirmDialog`-a (:155-188), `remove()`, `picker`, i stanja `confirmAdd`/`deleting`/`removing`, plus `onDelete` na svetlosniku (:195). Ostaju mreža, natpisi i pregled.
+- **`intake-detail-tabs.tsx`** — obriši prop `locked` i `title` (:87).
+- **`history-labels.ts`** — obriši `amend_after_signing`, `amend_contact_after_signing`, `amend_photo_added`, `amend_photo_removed`; dodaj `contact_added: m.intake_history_contact_added,` (natpis dolazi u zadatku 5 — do tada `typecheck` pada, pa ovaj red dodaj u zadatku 5, a u ovom samo obriši četiri).
+- **`intake-orders-table.tsx`** — obriši `amendedMarker` (:116-120) i oba mesta gde se prikazuje (:165, :196).
+- **`intake-print-data.ts` / `intake-print-sheet.tsx`** — obriši polje `amended` iz modela (:74), njegovo punjenje (:146-151) i blok koji ga štampa (:138-144).
+⚠ **`.../detail/__tests__/render-detail.tsx` se u ovom zadatku NE DIRA.** `amendedAt`/`amendedByName` su još na žici i još obavezni (`nullable()`), pa bi ih brisanje iz fiksture oborilo `IntakeOrderDetailSchema.parse`. Idu u zadatku 3, sa šemom.
+
+- [ ] **Korak 5: pokreni testove i potvrdi da PROLAZE**
+
+Run: `pnpm --filter internal-web test -- intake --run`
+Expected: PASS. Testove koji dokazuju žig, traku izmene, oznaku na papiru ili marker u listi **obriši u celini** — ne prepravljaj ih u „ne postoji", to pokrivaju testovi iz koraka 1.
+
+- [ ] **Korak 6: mutacije**
+
+| Mutacija | Mora da obori |
+|---|---|
+| vrati dugme „Ukloni" u zaglavlje (bez uslova) | „offers no edit and no removal" |
+| vrati `+` ćeliju u `tab-photos` (bez uslova) | „offers no + cell" |
+
+- [ ] **Korak 7: pun gejt i komit**
+
+```bash
+pnpm format:check && pnpm exec turbo run build typecheck lint test --force --concurrency=4 \
+  && pnpm --filter api depcruise && pnpm test:integration
+git add apps/internal-web
+git commit -m "refactor(intake): the signed order stops offering an edit it is no longer allowed to make"
+```
+
+---
+## Zadatak 3: server — zamrzavanje, i mašinerija žiga izlazi (H-2)
 
 ⚠ **Ovaj zadatak je veliki i NE MOŽE da se podeli.** Brisanje niske `intake_orders.amend` iz unije dozvola u `@mr/shared` obara **svako** njeno čitanje na tipu (`actor.permissions.includes('intake_orders.amend')` prestaje da se tipizuje), a menjanje potpisa `repo.update` obara svaki poziv sa tri argumenta. Polovično stanje ne prolazi `typecheck`, pa ne može da se komituje. Sve što zavisi od tih dva potpisa ide zajedno.
 
@@ -144,7 +259,7 @@ git commit -m "feat(db): the shop gets a second phone number to write down, besi
 **Interfaces:**
 
 - Consumes: ništa iz zadatka 1 (kolona postoji, još se ne čita).
-- Produces: `IntakeOrdersRepository.update(id, patch)` — **dva** argumenta · niska `intake_orders.amend` više ne postoji nigde · `FREE_AFTER_SIGNING = ['services', 'materials', 'contactPhone']` · `updateTransition(signedAt, patch)` vraća `'contact_added' | 'spec_updated' | null`. Zadatak 3 se naslanja na poslednja dva.
+- Produces: `IntakeOrdersRepository.update(id, patch)` — **dva** argumenta · niska `intake_orders.amend` više ne postoji nigde · `FREE_AFTER_SIGNING = ['services', 'materials', 'contactPhone']` · `updateTransition(signedAt, patch)` vraća `'contact_added' | 'spec_updated' | null`. Zadatak 4 se naslanja na poslednja dva.
 
 - [ ] **Korak 1: napiši padajuće testove (zamrzavanje)**
 
@@ -525,6 +640,8 @@ rm packages/shared/src/utils/intake-condition-equal.ts
 ls packages/shared/src/utils/__tests__/ | grep intake-condition   # obriši i taj fajl ako postoji
 ```
 
+⚠ I sada, kad šema više ne poznaje ta dva polja, obriši `amendedAt: null,` i `amendedByName: null,` iz `SIGNED_ORDER` u `apps/internal-web/src/features/intake-orders/detail/__tests__/render-detail.tsx`. `parse` ih ionako tiho odbacuje, pa ne pucaju — ali imenuju polje kojeg nema, a to je zamka za sledećeg čitaoca.
+
 - [ ] **Korak 14: pokreni testove i potvrdi da PROLAZE**
 
 Run: `pnpm --filter api test -- intake-orders.integration --run`
@@ -564,15 +681,14 @@ U `docs/25-vehicle-service-intake-design.md` §3.0.1 i §5 zameni opis režima i
 ```bash
 pnpm format:check && pnpm exec turbo run build typecheck lint test --force --concurrency=4 \
   && pnpm --filter api depcruise && pnpm test:integration
-git add apps/api packages/shared docs/25-vehicle-service-intake-design.md CLAUDE.md
+git add apps/api packages/shared apps/internal-web docs/25-vehicle-service-intake-design.md CLAUDE.md
 git commit -m "feat(api): the signature closes the record, and the stamped edit path goes with it"
 ```
 
-⚠ `pnpm exec turbo run typecheck` će prijaviti i greške u `apps/internal-web` (čita `amendedAt` i `intake_orders.amend`). **Zadatak 2 ih NE ćuti** — one su spisak posla za zadatak 4. Ako gejt zbog njih nije zelen, komituj **redom zadatak 2 pa odmah zadatak 4** i pusti gejt jednom, na kraju zadatka 4. Zabeleži u komit poruci da je gejt pušten na paru.
+⚠ Gejt **mora** da bude zelen ovde. Ako `apps/internal-web` ne prolazi `typecheck` zbog `amendedAt` ili `intake_orders.amend`, **zadatak 2 nije završen do kraja** — vrati se na njega, ne ćuti grešku i ne komituj.
 
 ---
-
-## Zadatak 3: server — dopisani broj za kontakt (H-2)
+## Zadatak 4: server — dopisani broj za kontakt (H-2)
 
 **Files:**
 
@@ -582,7 +698,7 @@ git commit -m "feat(api): the signature closes the record, and the stamped edit 
 
 **Interfaces:**
 
-- Consumes: `FREE_AFTER_SIGNING` (već sadrži `contactPhone`) i `updateTransition` (već vraća `contact_added`) iz zadatka 2 · kolona iz zadatka 1.
+- Consumes: `FREE_AFTER_SIGNING` (već sadrži `contactPhone`) i `updateTransition` (već vraća `contact_added`) iz zadatka 3 · kolona iz zadatka 1.
 - Produces: `IntakeOrderUpdateInput.contactPhone?: string | null` · `IntakeOrderDetail.contactPhone: string | null` i `IntakeOrderListItem.contactPhone: string | null` na žici. Zadatak 5 ih čita.
 
 - [ ] **Korak 1: napiši padajuće testove**
@@ -716,118 +832,6 @@ git commit -m "feat(api): a second number can be written beside the signed one, 
 ```
 
 ---
-
-## Zadatak 4: internal-web — režim izmene izlazi sa ekrana (H-3)
-
-**Files:**
-
-- Modify: `apps/internal-web/src/routes/_shell/prijem/$id.tsx`
-- Modify: `.../detail/intake-detail-header.tsx:33,40-41,69-71,163-168,194-204,212-213,220-232`
-- Modify: `.../detail/tab-overview.tsx:17,117,121,132,163,194-220,243-251,284-286`
-- Modify: `.../detail/card-condition.tsx`, `.../detail/card-damages.tsx`, `.../detail/tab-photos.tsx`, `.../detail/intake-detail-tabs.tsx:61,87`, `.../detail/history-labels.ts:19-22`
-- Modify: `.../intake-orders-table.tsx:116-120,165,196`
-- Modify: `.../print/intake-print-data.ts:74,146-151`, `.../print/intake-print-sheet.tsx:138-144`
-- Delete: `.../detail/intake-amend-bar.tsx`, `.../detail/use-intake-amend.ts`, `.../detail/__tests__/use-intake-amend.test.ts`
-- Test: `.../detail/__tests__/intake-detail-header.test.tsx`, `tab-photos.test.tsx`, `tab-overview.test.tsx`, `history-labels.test.ts`, `.../__tests__/intake-orders-table.test.tsx`, `.../print/__tests__/intake-print-{data,sheet}.test.{ts,tsx}`
-
-**Interfaces:**
-
-- Consumes: žica bez `amendedAt`/`amendedByName` i bez dozvole `intake_orders.amend` (zadatak 2). Svaka greška `typecheck`-a je jedno mesto na spisku.
-- Produces: `IntakeDetailHeader` bez `canAmend`/`amendActive`/`onStartAmend`/`canDelete` · `TabOverview`/`CardCondition`/`CardDamages` bez propa `amend` · `TabPhotos` bez `canAddPhotos`/`isOrderTechnician` · `IntakeDetailTabs` bez `locked`.
-
-- [ ] **Korak 1: napiši padajuće testove**
-
-⚠ `renderDetailUi` je **async** i vraća `RenderResult`; fiksture su `intakeOrderDetailFixture(overrides)` (potpisan nalog), `intakeDraftFixture(overrides)` (nacrt), `emptyQueueStub()`, `intakePhotoFixture()` — sve iz `render-detail.tsx`. Prati potpise propova iz postojećih testova u istim fajlovima.
-
-U `.../detail/__tests__/intake-detail-header.test.tsx`:
-
-```tsx
-it('offers no edit and no removal on a signed order', async () => {
-  await renderDetailUi(
-    <IntakeDetailHeader
-      order={intakeOrderDetailFixture()}
-      canAdvance
-      canChangeStatus
-      onPrint={vi.fn()}
-    />,
-  )
-
-  expect(screen.queryByRole('button', { name: 'Ispravi zatečeno stanje' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Ukloni nalog' })).not.toBeInTheDocument()
-  // Nothing can set the stamp any more, so the badge must not exist either.
-  expect(screen.queryByText(/Menjano posle potpisa/)).not.toBeInTheDocument()
-})
-```
-
-U `.../detail/__tests__/tab-photos.test.tsx`:
-
-```tsx
-it('offers no + cell and no delete on a signed order', async () => {
-  await renderDetailUi(
-    <TabPhotos
-      order={intakeOrderDetailFixture({ photos: [intakePhotoFixture()] })}
-      queue={emptyQueueStub()}
-    />,
-  )
-
-  expect(screen.queryByRole('button', { name: 'Dodaj fotografiju' })).not.toBeInTheDocument()
-})
-```
-
-Natpisi su prepisani iz `sr.json`: `intake_amend_start` = „Ispravi zatečeno stanje", `intake_detail_remove` = „Ukloni nalog", `intake_photo_add` = „Dodaj fotografiju", `intake_detail_amended_badge` = „⚠ Menjano posle potpisa".
-
-- [ ] **Korak 2: pokreni i potvrdi da PADA**
-
-Run: `pnpm --filter internal-web test -- intake-detail-header tab-photos --run`
-Expected: FAIL — oba dugmeta i `+` ćelija danas postoje.
-
-- [ ] **Korak 3: obriši tri fajla**
-
-```bash
-rm apps/internal-web/src/features/intake-orders/detail/intake-amend-bar.tsx
-rm apps/internal-web/src/features/intake-orders/detail/use-intake-amend.ts
-rm apps/internal-web/src/features/intake-orders/detail/__tests__/use-intake-amend.test.ts
-```
-
-- [ ] **Korak 4: pusti prevodilac da nabroji ostatak, pa čisti po redu**
-
-Run: `pnpm --filter internal-web typecheck`
-
-- **`$id.tsx`** — obriši uvoze `IntakeAmendBar` i `useIntakeAmend`, `const amend = useIntakeAmend(order)`, `startAmend`, `canAmend`, `canAddPhotos`, blok `{amend.active ? <IntakeAmendBar … /> : null}` (:123-129), `ConfirmDialog` za izmenu (:193-206), propove `canAmend`/`amendActive`/`onStartAmend`/`canDelete` na zaglavlju, `locked` na traci tabova, `amend={…}` na `TabOverview`, `canAddPhotos`/`isOrderTechnician` na `TabPhotos`. Uslov na `IntakeStatusBar` (:153) postaje `isLive && permissions.includes('intake_orders.change_status')`. **`useIntakePhotoQueue` i prop `queue` OSTAJU** — nose ćelije u letu iz istog mounta.
-  Dodaj prop koji zadatak 5 traži: `<TabOverview order={order} canUpdate={permissions.includes('intake_orders.update')} />`.
-- **`intake-detail-header.tsx`** — obriši propove `canAmend`/`amendActive`/`onStartAmend`/`canDelete`, bedž (:163-168), dugme „Ispravi" (:194-204), `disabled`/`title` vezane za `amendActive` (:212-213), **i celo dugme „Ukloni" (:220-232) sa njegovim `ConfirmDialog`-om** — prikazivalo se samo uz `isLive`, a potpisan nalog se po ㉗ ne briše, pa je mrtvo.
-- **`tab-overview.tsx`** — obriši prop `amend` i sve njegove grane (telefon i merač goriva vraćaju se na čisto čitanje), napomenu uz potpise (:243-251) i `controlCell` (:163).
-- **`card-condition.tsx`, `card-damages.tsx`** — obriši prop `amend` i grane; ostaje samo čitanje.
-- **`tab-photos.tsx`** — obriši propove `canAddPhotos`/`isOrderTechnician`, `+` ćeliju (:137-146), oba `ConfirmDialog`-a (:155-188), `remove()`, `picker`, i stanja `confirmAdd`/`deleting`/`removing`, plus `onDelete` na svetlosniku (:195). Ostaju mreža, natpisi i pregled.
-- **`intake-detail-tabs.tsx`** — obriši prop `locked` i `title` (:87).
-- **`history-labels.ts`** — obriši `amend_after_signing`, `amend_contact_after_signing`, `amend_photo_added`, `amend_photo_removed`; dodaj `contact_added: m.intake_history_contact_added,` (natpis dolazi u zadatku 5 — do tada `typecheck` pada, pa ovaj red dodaj u zadatku 5, a u ovom samo obriši četiri).
-- **`intake-orders-table.tsx`** — obriši `amendedMarker` (:116-120) i oba mesta gde se prikazuje (:165, :196).
-- **`intake-print-data.ts` / `intake-print-sheet.tsx`** — obriši polje `amended` iz modela (:74), njegovo punjenje (:146-151) i blok koji ga štampa (:138-144).
-- **`.../detail/__tests__/render-detail.tsx:64-65`** — obriši `amendedAt: null,` i `amendedByName: null,` iz `SIGNED_ORDER`. Šema ih od zadatka 2 ne poznaje pa ih `parse` tiho odbaci — dakle ne pucaju, ali imenuju polje kojeg nema i to je zamka za sledećeg čitaoca.
-
-- [ ] **Korak 5: pokreni testove i potvrdi da PROLAZE**
-
-Run: `pnpm --filter internal-web test -- intake --run`
-Expected: PASS. Testove koji dokazuju žig, traku izmene, oznaku na papiru ili marker u listi **obriši u celini** — ne prepravljaj ih u „ne postoji", to pokrivaju testovi iz koraka 1.
-
-- [ ] **Korak 6: mutacije**
-
-| Mutacija | Mora da obori |
-|---|---|
-| vrati dugme „Ukloni" u zaglavlje (bez uslova) | „offers no edit and no removal" |
-| vrati `+` ćeliju u `tab-photos` (bez uslova) | „offers no + cell" |
-
-- [ ] **Korak 7: pun gejt i komit**
-
-```bash
-pnpm format:check && pnpm exec turbo run build typecheck lint test --force --concurrency=4 \
-  && pnpm --filter api depcruise && pnpm test:integration
-git add apps/internal-web
-git commit -m "refactor(intake): the signed order stops offering an edit it is no longer allowed to make"
-```
-
----
-
 ## Zadatak 5: internal-web — polje „Broj za kontakt" i čišćenje natpisa (H-3)
 
 **Files:**
@@ -839,7 +843,7 @@ git commit -m "refactor(intake): the signed order stops offering an edit it is n
 
 **Interfaces:**
 
-- Consumes: `IntakeOrderDetail.contactPhone` (zadatak 3) · `updateIntakeOrder(id, { contactPhone })` iz `@mr/shared` · `canUpdate` prop koji `$id.tsx` prosleđuje od zadatka 4.
+- Consumes: `IntakeOrderDetail.contactPhone` (zadatak 4) · `updateIntakeOrder(id, { contactPhone })` iz `@mr/shared` · `canUpdate` prop koji `$id.tsx` prosleđuje od zadatka 2.
 - Produces: `<IntakeContactPhone order={order} canUpdate={boolean} />`.
 
 - [ ] **Korak 1: dodaj natpise u OBA jezika**
@@ -1036,7 +1040,7 @@ export function IntakeContactPhone({
 
 - [ ] **Korak 7: montiraj je u kartici osnovnih podataka**
 
-U `tab-overview.tsx` dodaj prop `canUpdate: boolean` (prosleđuje ga `$id.tsx` iz zadatka 4) i u ćeliju ispod telefona vlasnika:
+U `tab-overview.tsx` dodaj prop `canUpdate: boolean` (prosleđuje ga `$id.tsx` iz zadatka 2) i u ćeliju ispod telefona vlasnika:
 
 ```tsx
         <IntakeContactPhone order={order} canUpdate={canUpdate} />
@@ -1101,7 +1105,6 @@ git commit -m "feat(intake): the office can write a second number down, with the
 ```
 
 ---
-
 ## Zadatak 6: migracija briše `amended_at` i `amended_by` (H-4)
 
 **Files:**
