@@ -12,7 +12,7 @@ import {
   UserAccountStatus,
 } from '@mr/shared'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AttachmentUploadFileInput } from '../../../core/attachments/attachment-upload-pipeline.js'
 import type { Container } from '../../../core/container.js'
@@ -681,12 +681,58 @@ describe('Intake orders integration', () => {
     })
 
     /**
+     * The read is CONDITIONAL, and that is a requirement rather than a detail: the wizard patches on
+     * every step, so an unconditional read would put a query on each of them for nothing.
+     *
+     * Counted on the real port instead of faking the service's four collaborators around one `if`:
+     * `spyOn` wraps the concrete repository and still calls through, so this mocks nothing — which
+     * the house rule for integration tests requires anyway.
+     */
+    it('reads the catalog only when the patch carries a checklist', async () => {
+      const serviser = await floorActor()
+      const reads = vi.spyOn(container.intakeChecklistItemsRepository, 'listKnownCodes')
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      await service.update(created.id, { fuelLevel: 4 }, serviser, actorContext(serviser.id))
+      expect(reads).not.toHaveBeenCalled()
+
+      await service.update(
+        created.id,
+        { checklist: { rezervna: true } },
+        serviser,
+        actorContext(serviser.id),
+      )
+      expect(reads).toHaveBeenCalledTimes(1)
+    })
+
+    /** An error listing two hundred codes is one nobody reads; a bare count would not say which. */
+    it('names the first five unknown codes and counts the rest', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      const checklist = Object.fromEntries(
+        Array.from({ length: 7 }, (_, index) => [`izmisljeno_${index}`, true]),
+      )
+
+      const thrown = await service
+        .update(created.id, { checklist }, serviser, actorContext(serviser.id))
+        .catch((error: unknown) => error)
+
+      if (!(thrown instanceof ValidationError)) {
+        throw new Error('expected the checklist guard to refuse')
+      }
+      expect(thrown.message).toBe(
+        'Unknown checklist item: izmisljeno_0, izmisljeno_1, izmisljeno_2, izmisljeno_3, izmisljeno_4 (+2 more)',
+      )
+    })
+
+    /**
      * A fresh database with no `db:seed` has an empty catalog, and the wizard then sends `{}` on the
      * way out of step 1. Before this task that was a 422 with nothing on the screen to fix — the
      * intake could not be filled in at all (plan D5).
      */
-    it('accepts an empty checklist and records exactly that', async () => {
+    it('accepts an empty checklist and records exactly that, without asking the catalog', async () => {
       const serviser = await floorActor()
+      const reads = vi.spyOn(container.intakeChecklistItemsRepository, 'listKnownCodes')
       const created = await service.create(createInput(), actorContext(serviser.id))
       expect(created.checklist).toEqual({})
 
@@ -699,6 +745,9 @@ describe('Intake orders integration', () => {
 
       expect(updated.checklist).toEqual({})
       expect(updated.draftStep).toBe(2)
+      // An empty map HAS no codes to check, and this is the patch every step-2 save of an
+      // empty-catalog shop sends — it must not cost a query either.
+      expect(reads).not.toHaveBeenCalled()
     })
   })
 

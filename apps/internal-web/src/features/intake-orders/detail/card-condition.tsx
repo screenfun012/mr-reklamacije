@@ -47,23 +47,40 @@ export function CardCondition({ order }: { order: IntakeOrderDetail }): ReactEle
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
-        {rows.map((row) => {
-          const state = conditionMark(row.value)
-          return (
-            <div
-              key={row.code}
-              data-testid={`condition-${row.code}`}
-              className="flex min-w-0 items-center gap-2"
-            >
-              <span className={cn('flex-none font-mono text-sm font-bold', state.className)}>
-                {state.mark}
-              </span>
-              <span className="min-w-0 flex-1 text-[13px] text-mri-text">{row.name}</span>
-            </div>
-          )
-        })}
-      </div>
+      {rows.length === 0 ? (
+        /*
+         * An order that has recorded no rows yet — a draft stopped before step 2, or an intake taken
+         * while the catalog itself was empty. Without this the card was a heading over an empty
+         * grid: the badge is suppressed at zero and the note is hidden, so it read as broken
+         * (docs/25 §3.0). Factual, not instructional: this is a read-only view of somebody else's
+         * order, so there is nothing here for the reader to do.
+         *
+         * `break-words`, no `truncate`: 90 % of the traffic is a tablet or a phone (Nikola,
+         * 2026-08-11), and a caption that clips or widens its cell breaks the two-column grid this
+         * card sits in at 390–430 px.
+         */
+        <p className="break-words text-[13.5px] italic text-mri-text2">
+          {m.intake_condition_empty()}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
+          {rows.map((row) => {
+            const state = conditionMark(row.value)
+            return (
+              <div
+                key={row.code}
+                data-testid={`condition-${row.code}`}
+                className="flex min-w-0 items-center gap-2"
+              >
+                <span className={cn('flex-none font-mono text-sm font-bold', state.className)}>
+                  {state.mark}
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] text-mri-text">{row.name}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <EquipmentNote order={order} />
     </section>

@@ -1249,6 +1249,7 @@
   "intake_fact_mileage_value": "{km} km",
   "intake_fact_damages": "Defects",
   "intake_condition_unchecked": "Unchecked: {count}",
+  "intake_condition_empty": "The checklist has not been filled in yet.",
   "intake_detail_damage_pending": "The damage walkaround has not been done yet.",
   "intake_detail_no_damage": "No defects were found at intake.",
   "intake_detail_no_remarks": "No remarks.",

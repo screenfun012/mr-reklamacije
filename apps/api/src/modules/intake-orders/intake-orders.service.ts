@@ -89,6 +89,20 @@ function updateTransition(
   return 'spec_updated'
 }
 
+/**
+ * How many unknown codes an error message names before it starts counting instead. A caller may
+ * legitimately send up to `INTAKE_CHECKLIST_MAX_ITEMS` of them, and a message listing two hundred is
+ * one nobody reads — but a bare count would not say WHICH item to fix, so the names come first.
+ */
+const NAMED_UNKNOWN_CODES = 5
+
+function describeUnknownCodes(unknown: readonly string[]): string {
+  const named = unknown.slice(0, NAMED_UNKNOWN_CODES).join(', ')
+  const rest = unknown.length - NAMED_UNKNOWN_CODES
+
+  return rest > 0 ? `${named} (+${rest} more)` : named
+}
+
 function resolveScope(actor: IntakeOrdersActor): IntakeOrdersListScope {
   if (actor.permissions.includes('intake_orders.view')) {
     return { type: 'all' }
@@ -378,7 +392,7 @@ export class IntakeOrdersService {
     const unknown = codes.filter((code) => !known.has(code))
 
     if (unknown.length > 0) {
-      throw new ValidationError(`Unknown checklist item: ${unknown.join(', ')}`)
+      throw new ValidationError(`Unknown checklist item: ${describeUnknownCodes(unknown)}`)
     }
   }
 

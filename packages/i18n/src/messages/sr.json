@@ -1249,6 +1249,7 @@
   "intake_fact_mileage_value": "{km} km",
   "intake_fact_damages": "Nedostaci",
   "intake_condition_unchecked": "Neprovereno: {count}",
+  "intake_condition_empty": "Ček-lista još nije popunjena.",
   "intake_detail_damage_pending": "Pregled oštećenja još nije urađen.",
   "intake_detail_no_damage": "Nema uočenih nedostataka pri prijemu.",
   "intake_detail_no_remarks": "Bez primedbi.",

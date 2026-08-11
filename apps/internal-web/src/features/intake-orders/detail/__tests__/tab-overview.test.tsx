@@ -103,6 +103,35 @@ describe('TabOverview', () => {
     expect(screen.getByText(m.intake_condition_unchecked({ count: 2 }))).toBeDefined()
   })
 
+  /**
+   * A draft stopped before step 2 has recorded no rows, and an intake taken while the catalog itself
+   * was empty never will. The card used to be a heading over an empty grid — the badge is suppressed
+   * at zero and the note is hidden, so it read as broken (docs/25 §3.0).
+   */
+  it('says the checklist is not filled in yet when the order recorded no rows', async () => {
+    await renderDetailUi(
+      <TabOverview order={intakeDraftFixture({ checklist: {}, draftStep: 1 })} canUpdate={false} />,
+    )
+
+    const caption = screen.getByText(m.intake_condition_empty())
+    expect(caption).toBeDefined()
+    /*
+     * Wrapping, not clipping. jsdom has no layout, so this pins the CLASSES that make the sentence
+     * wrap inside a 390–430 px card instead of widening it — the pixels themselves need a device
+     * (90 % of use is tablet and phone, Nikola 2026-08-11).
+     */
+    expect(caption.className).toContain('break-words')
+    expect(caption.className).not.toContain('truncate')
+    expect(caption.className).not.toContain('whitespace-nowrap')
+  })
+
+  it('shows the recorded rows instead of that caption once there are any', async () => {
+    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+
+    expect(screen.queryByText(m.intake_condition_empty())).toBeNull()
+    expect(screen.getByTestId('condition-rezervna')).toBeDefined()
+  })
+
   it('draws no signature block on an unsigned draft', async () => {
     await renderDetailUi(<TabOverview order={intakeDraftFixture()} canUpdate={false} />)
 
