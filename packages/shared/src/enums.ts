@@ -210,6 +210,21 @@ export const intakeArrivalModeValues = [
   IntakeArrivalMode.Dragged,
 ] as const
 
+/**
+ * Who is handing the vehicle over. It exists because the identifier below it means a different thing
+ * for each — an ID card for a person, a tax number for a company — and because only the person's is
+ * required: a company has no ID card, so demanding one would stop an intake over a document that
+ * does not exist.
+ */
+export const IntakeOwnerType = {
+  Person: 'fizicko_lice',
+  Company: 'firma',
+} as const
+
+export type IntakeOwnerType = (typeof IntakeOwnerType)[keyof typeof IntakeOwnerType]
+
+export const intakeOwnerTypeValues = [IntakeOwnerType.Person, IntakeOwnerType.Company] as const
+
 export const IntakeDamageType = {
   Scratch: 'ogrebotina',
   Dent: 'udubljenje',

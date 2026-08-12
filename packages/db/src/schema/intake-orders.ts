@@ -4,6 +4,7 @@ import type {
   IntakeDamage,
   IntakeExtraChecklistItem,
   IntakeOrderStatus,
+  IntakeOwnerType,
   IntakeVehicleType,
 } from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
@@ -61,8 +62,22 @@ export const intakeOrders = pgTable(
     vin: text('vin'),
     mileage: integer('mileage'),
     arrivalMode: text('arrival_mode').notNull().$type<IntakeArrivalMode>(),
-    /** A person or a firm — intake does not care which. */
     ownerName: text('owner_name').notNull(),
+    /**
+     * A person or a firm — and since 2026-08-12 the intake DOES care, because the identifier below
+     * means a different document for each, and only the person's is required.
+     */
+    ownerType: text('owner_type').notNull().default('fizicko_lice').$type<IntakeOwnerType>(),
+    /**
+     * ID card for a person, tax number for a firm — ONE column, with `owner_type` giving it meaning.
+     * Two nullable columns of which exactly one is ever filled are two states that can disagree.
+     *
+     * Nullable on purpose: a firm's number is optional, and every order taken before this column
+     * existed has none. Requiring the person's is step 1's rule, not the schema's.
+     */
+    ownerIdNumber: text('owner_id_number'),
+    /** Where the signed sheet is emailed. Empty means nothing is sent — the owner gets paper only. */
+    ownerEmail: text('owner_email'),
     ownerAddress: text('owner_address'),
     ownerPhone: text('owner_phone').notNull(),
     /**
@@ -135,6 +150,7 @@ export const intakeOrders = pgTable(
       'intake_orders_arrival_mode_check',
       sql`${t.arrivalMode} IN ('dovezeno', 'doslepano', 'dovuceno')`,
     ),
+    check('intake_orders_owner_type_check', sql`${t.ownerType} IN ('fizicko_lice', 'firma')`),
     check('intake_orders_fuel_level_check', sql`${t.fuelLevel} BETWEEN 0 AND 8`),
     check('intake_orders_draft_step_check', sql`${t.draftStep} BETWEEN 1 AND 5`),
     check('intake_orders_photos_expected_check', sql`${t.photosExpected} >= 0`),
