@@ -72,7 +72,6 @@ describe('IntakeContactPhone', () => {
     expect(screen.getByRole('button', { name: m.intake_contact_phone_save() })).toHaveClass(
       'h-10',
       'w-fit',
-      'px-4',
     )
   })
 

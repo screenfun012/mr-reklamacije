@@ -65,10 +65,14 @@ export function IntakeContactPhone({
           />
           <InternalButton
             type="button"
-            variant="ghost"
-            // `ghost` carries no sizing of its own by design — it is passed here, or the control
-            // renders as bare text and reads as a caption rather than something you can press.
-            className="h-10 w-fit px-4"
+            // Filled, not `ghost`: this is the button that commits what was typed, and ghost is
+            // borderless and transparent — it rendered as bare text and read as a caption
+            // (Nikola, 2026-08-12: „nema smisla, samo tekst stoji"). `primary` is the neutral fill;
+            // the brandbook forbids a red one.
+            variant="primary"
+            // `ghost` and `primary` both carry no sizing of their own — the defaults suit 52px form
+            // CTAs, and this one sits inline beside a 40px field.
+            className="h-10 w-fit px-5 text-[12.5px] shadow-none"
             // The server has no no-op guard on this PATCH — it writes and audits whatever arrives —
             // so a second press on an unchanged value would append a second `contact_added` row to
             // Istorija for nothing. Comparing against the stored value keeps that write meaningful.
@@ -84,8 +88,10 @@ export function IntakeContactPhone({
           {order.contactPhone === null ? null : (
             <InternalButton
               type="button"
-              variant="ghost"
-              className="h-10 w-fit px-4"
+              // Outlined, one step quieter than SAČUVAJ: two filled buttons side by side would ask
+              // the reader which one is the action.
+              variant="outline"
+              className="h-10 w-fit px-4 text-[12.5px]"
               disabled={save.isPending}
               onClick={() => {
                 setDraft('')
