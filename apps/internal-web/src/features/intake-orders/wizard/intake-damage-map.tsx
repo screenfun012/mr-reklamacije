@@ -8,7 +8,7 @@ import {
 } from '@mr/shared'
 import type { MouseEvent, ReactElement } from 'react'
 
-import { INTAKE_SILHOUETTES, INTAKE_SILHOUETTE_VIEWBOX } from './intake-silhouettes'
+import { INTAKE_SILHOUETTES, INTAKE_SILHOUETTE_VIEWBOX } from '@mr/intake-document'
 
 /**
  * Marker colours, from the prototype: a dent is amber with dark digits, rust is grey, a scratch

@@ -1,9 +1,8 @@
 import { m } from '@mr/i18n'
-import { cn } from '@mr/ui'
 import type { ReactElement } from 'react'
 
-import type { IntakePrintModel } from './intake-print-data'
-import { PRINT_BAND, PRINT_FIGURE, PRINT_FIGURE_LABEL } from './intake-print-styles'
+import type { IntakePrintModel } from './intake-print-data.js'
+import { PRINT_BAND, PRINT_FIGURE, PRINT_FIGURE_LABEL } from './intake-print-styles.js'
 
 /**
  * The recorded condition. The equipment rows — as many as the order recorded, in four columns — and a
@@ -33,13 +32,14 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
             <div
               key={row.key}
               data-testid={`print-check-${row.key}`}
-              className={cn('flex gap-2', row.muted && 'text-[#54555b]')}
+              className={row.muted ? 'flex gap-2 text-[#54555b]' : 'flex gap-2'}
             >
               <span
-                className={cn(
-                  'font-mono font-bold',
-                  row.mark === '✗' ? 'text-[#ed1c24]' : 'text-[#17171a]',
-                )}
+                className={
+                  row.mark === '✗'
+                    ? 'font-mono font-bold text-[#ed1c24]'
+                    : 'font-mono font-bold text-[#17171a]'
+                }
               >
                 {row.mark}
               </span>
@@ -64,7 +64,7 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
         </div>
         <div>
           <div className={PRINT_FIGURE_LABEL}>{m.intake_print_defects({}, { locale })}</div>
-          <div className={cn(PRINT_FIGURE, 'text-[#ed1c24]')}>{model.damageCount}</div>
+          <div className={`${PRINT_FIGURE} text-[#ed1c24]`}>{model.damageCount}</div>
         </div>
         <div>
           <div className={PRINT_FIGURE_LABEL}>{m.intake_print_photos({}, { locale })}</div>

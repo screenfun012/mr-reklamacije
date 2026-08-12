@@ -19,6 +19,7 @@
     "@fontsource/jetbrains-mono": "5.2.8",
     "@mr/auth": "workspace:*",
     "@mr/i18n": "workspace:*",
+    "@mr/intake-document": "workspace:*",
     "@mr/shared": "workspace:*",
     "@mr/tailwind-preset": "workspace:*",
     "@mr/ui": "workspace:*",

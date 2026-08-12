@@ -17,7 +17,7 @@ import {
   INTAKE_ARRIVAL_MODE_LABELS,
   INTAKE_OWNER_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
-} from '../intake-labels'
+} from '@mr/intake-document'
 import { IntakeChoiceButtons } from './intake-choice-buttons'
 import { IntakePanel } from './intake-panel'
 import type { IntakeWizardValues } from './intake-wizard-state'

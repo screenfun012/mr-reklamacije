@@ -14,7 +14,7 @@ import { InternalButton } from '~/components/internal-button'
 import { InternalPill } from '~/components/internal-pill'
 import { showInternalToast } from '~/lib/internal-toast'
 
-import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
+import { INTAKE_VEHICLE_TYPE_LABELS } from '@mr/intake-document'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, nextIntakeStatus } from '../intake-status'
 
 const ACTION_CLASSES = 'h-[46px] w-auto px-[18px] text-[13px]'

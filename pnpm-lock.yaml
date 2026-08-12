@@ -292,6 +292,9 @@ importers:
       '@mr/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@mr/intake-document':
+        specifier: workspace:*
+        version: link:../../packages/intake-document
       '@mr/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -776,6 +779,55 @@ importers:
       eslint:
         specifier: ^9.39.1
         version: 9.39.4(jiti@2.7.0)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@24.13.3)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+
+  packages/intake-document:
+    dependencies:
+      '@mr/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@mr/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@mr/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@mr/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@testing-library/jest-dom':
+        specifier: ^6.9.1
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      '@vitejs/plugin-react':
+        specifier: ^5.2.0
+        version: 5.2.0(vite@8.0.16(@types/node@24.13.3)(esbuild@0.28.0)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.4(jiti@2.7.0)
+      jsdom:
+        specifier: ^29.0.2
+        version: 29.1.1(@noble/hashes@2.2.0)
+      react:
+        specifier: 19.2.5
+        version: 19.2.5
+      react-dom:
+        specifier: 19.2.5
+        version: 19.2.5(react@19.2.5)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

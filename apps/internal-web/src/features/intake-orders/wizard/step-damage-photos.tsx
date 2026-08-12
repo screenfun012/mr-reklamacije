@@ -10,7 +10,7 @@ import { ConfirmDialog, cn } from '@mr/ui'
 import { Camera } from 'lucide-react'
 import { useRef, useState, type ReactElement } from 'react'
 
-import { INTAKE_DAMAGE_TYPE_LABELS, INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
+import { INTAKE_DAMAGE_TYPE_LABELS, INTAKE_VEHICLE_TYPE_LABELS } from '@mr/intake-document'
 import { IntakeDamageMap, intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakeExtraRowAdder } from './intake-extra-row-adder'
 import { IntakePanel } from './intake-panel'

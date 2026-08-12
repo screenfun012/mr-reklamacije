@@ -4,7 +4,7 @@ import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
-import { resolveIntakeChecklistRows } from '../intake-checklist-catalog'
+import { resolveIntakeChecklistRows } from '@mr/intake-document'
 import { CAPTION, CARD, DASH } from './detail-styles'
 
 /**

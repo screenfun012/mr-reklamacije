@@ -2,13 +2,9 @@ import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
 import { useRef, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 
-/**
- * The signature is stored as an SVG path in this space and printed from it, so it stays sharp on
- * A4 (docs/25 §4.1). Never a raster: a JPEG of a signature is both heavier and worse on paper.
- */
-export const SIGNATURE_PAD_WIDTH = 460
-export const SIGNATURE_PAD_HEIGHT = 200
-export const SIGNATURE_VIEW_BOX = `0 0 ${SIGNATURE_PAD_WIDTH} ${SIGNATURE_PAD_HEIGHT}`
+/** The space the pad captures in and the sheet prints from — one definition, in the package. */
+export { SIGNATURE_PAD_HEIGHT, SIGNATURE_PAD_WIDTH, SIGNATURE_VIEW_BOX } from '@mr/intake-document'
+import { SIGNATURE_PAD_HEIGHT, SIGNATURE_PAD_WIDTH, SIGNATURE_VIEW_BOX } from '@mr/intake-document'
 
 /** Strokes of `[x, y]` points, already normalized into the 460×200 space. */
 export type SignatureStrokes = readonly (readonly [number, number][])[]

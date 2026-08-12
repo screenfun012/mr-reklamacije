@@ -2,15 +2,15 @@ import { m } from '@mr/i18n'
 import type { IntakeChecklistItemListItem, IntakeOrderDetail } from '@mr/shared'
 import { memo, type ReactElement } from 'react'
 
-import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
-import { IntakePrintCondition } from './intake-print-condition'
-import { IntakePrintDamages } from './intake-print-damages'
+import { SIGNATURE_VIEW_BOX } from './intake-signature-space.js'
+import { IntakePrintCondition } from './intake-print-condition.js'
+import { IntakePrintDamages } from './intake-print-damages.js'
 import {
   buildIntakePrintModel,
   type IntakePrintLocale,
   type IntakePrintModel,
-} from './intake-print-data'
-import { PRINT_EYEBROW, PRINT_RULE } from './intake-print-styles'
+} from './intake-print-data.js'
+import { PRINT_EYEBROW, PRINT_RULE } from './intake-print-styles.js'
 
 /**
  * A4 at 96dpi. A FIXED height, never `min-height`: the page must not be allowed to grow into a

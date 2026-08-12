@@ -5,14 +5,14 @@ import {
   type IntakeOrderDetail,
 } from '@mr/shared'
 
-import { resolveIntakeChecklistRows, type IntakeChecklistRow } from '../intake-checklist-catalog'
+import { resolveIntakeChecklistRows, type IntakeChecklistRow } from './intake-checklist-catalog.js'
 import {
   INTAKE_ARRIVAL_MODE_LABELS,
   INTAKE_DAMAGE_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
-} from '../intake-labels'
-import { formatIntakeReceivedAtLong } from '../intake-status'
-import { INTAKE_SILHOUETTES, type IntakeSilhouettePath } from '../wizard/intake-silhouettes'
+} from './intake-labels.js'
+import { formatIntakeReceivedAtLong } from './intake-document-locale.js'
+import { INTAKE_SILHOUETTES, type IntakeSilhouettePath } from './intake-silhouettes.js'
 
 /**
  * One A4 page is a rule, not a preference. These are the cuts, and they live here rather than

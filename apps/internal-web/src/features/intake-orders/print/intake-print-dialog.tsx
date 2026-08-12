@@ -4,10 +4,10 @@ import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, type CSSProperties, type ReactElement } from 'react'
 
-import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
-import type { IntakePrintLocale } from './intake-print-data'
+import { INTAKE_VEHICLE_TYPE_LABELS } from '@mr/intake-document'
+import type { IntakePrintLocale } from '@mr/intake-document'
 import { useIntakePrintScale } from './intake-print-scale'
-import { IntakePrintSheet } from './intake-print-sheet'
+import { IntakePrintSheet } from '@mr/intake-document'
 import { useIntakePrintZoom } from './use-intake-print-zoom'
 import './intake-print.css'
 

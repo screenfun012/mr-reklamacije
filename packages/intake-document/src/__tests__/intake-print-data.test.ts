@@ -6,7 +6,7 @@ import {
   intakeChecklistCatalogFixture,
   intakeOrderDetailFixture,
   intakePhotoFixture,
-} from '../../detail/__tests__/render-detail.js'
+} from '../testing/index.js'
 import {
   buildIntakePrintModel,
   PRINT_MAX_DAMAGES,

@@ -62,16 +62,8 @@ export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
   return `${day} · ${timeOfDay(date, intl)}`
 }
 
-/**
- * `25.07.2026 · 09:14` — the detail's format. The list's short one drops the year, which is
- * fine for a work list and wrong for an archival read that is reachable from a direct link and
- * later from the print.
- */
-export function formatIntakeReceivedAtLong(iso: string, locale: Locale): string {
-  const date = new Date(iso)
-  const intl = internalIntlLocale(locale)
-  return `${fullDate(date, intl)} · ${timeOfDay(date, intl)}`
-}
+/** The archival format lives with the document that prints it. */
+export { formatIntakeReceivedAtLong } from '@mr/intake-document'
 
 /**
  * `25.07.2026. 09:14` in sr — a history row's stamp, space-joined as the prototype writes it

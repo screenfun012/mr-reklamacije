@@ -3,7 +3,7 @@ import { type IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
 import type { ReactElement } from 'react'
 
-import { INTAKE_DAMAGE_TYPE_LABELS } from '../intake-labels'
+import { INTAKE_DAMAGE_TYPE_LABELS } from '@mr/intake-document'
 import { IntakeDamageMap, intakeDamageMarkerColour } from '../wizard/intake-damage-map'
 import { CAPTION, CARD, FIELD_KEY } from './detail-styles'
 

@@ -1,19 +1,17 @@
+import { intakeIntlLocale } from '@mr/intake-document'
 import type { Locale } from '@mr/i18n'
 
 /**
- * Neither bare tag is ever what this app wants, and each fails in its own direction: plain `sr`
- * resolves to CYRILLIC (this once printed "ЧЕТВРТАК" while every other word on the screen was
- * Latin), and plain `en` is US English, which writes `07/25/2026` — a serviser reading a work
- * order in a hurry cannot tell that from `25.07`. Every `Intl` call in internal-web goes through
- * here, so the two halves cannot be got right one at a time.
+ * Re-exported, not defined: the printed work order formats a date too, and the API renders that
+ * document now — so the one definition lives in `@mr/intake-document` where both sides can reach it.
+ * Every `Intl` call in internal-web still goes through this module, so the two halves cannot be got
+ * right one at a time.
  */
-export function internalIntlLocale(locale: Locale): string {
-  return locale === 'sr' ? 'sr-Latn-RS' : 'en-GB'
-}
+export { intakeIntlLocale as internalIntlLocale } from '@mr/intake-document'
 
 /** "PETAK · 04.07.2026" — mono caps date eyebrow above a screen's H1. */
 export function formatInternalDateEyebrow(now: Date, locale: Locale): string {
-  const weekday = new Intl.DateTimeFormat(internalIntlLocale(locale), {
+  const weekday = new Intl.DateTimeFormat(intakeIntlLocale(locale), {
     weekday: 'long',
   }).format(now)
   const day = String(now.getDate()).padStart(2, '0')
@@ -28,7 +26,7 @@ export function formatInternalChartMonth(isoMonth: string, locale: Locale): stri
     return isoMonth
   }
   const date = new Date(Number(year), Number(month) - 1, 1)
-  return new Intl.DateTimeFormat(internalIntlLocale(locale), { month: 'short' })
+  return new Intl.DateTimeFormat(intakeIntlLocale(locale), { month: 'short' })
     .format(date)
     .replace('.', '')
     .toUpperCase()

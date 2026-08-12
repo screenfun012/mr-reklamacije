@@ -5,7 +5,7 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 
 import { internalIntlLocale } from '~/lib/internal-format'
 
-import { INTAKE_ARRIVAL_MODE_LABELS } from '../intake-labels'
+import { INTAKE_ARRIVAL_MODE_LABELS } from '@mr/intake-document'
 import { formatIntakeReceivedAtLong } from '../intake-status'
 import { buildPhotoCells, type IntakePhotoCell } from '../wizard/intake-photo-grid'
 import { IntakePhotoLightbox } from '../wizard/intake-photo-lightbox'

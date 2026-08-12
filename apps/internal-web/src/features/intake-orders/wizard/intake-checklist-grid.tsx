@@ -3,7 +3,7 @@ import type { IntakeChecklistItemListItem, IntakeExtraChecklist } from '@mr/shar
 import { cn } from '@mr/ui'
 import type { ReactElement } from 'react'
 
-import { intakeChecklistItemName, type IntakeChecklistByCode } from '../intake-checklist-catalog'
+import { intakeChecklistItemName, type IntakeChecklistByCode } from '@mr/intake-document'
 
 /**
  * Confirmed = the serviser actually said DA or NE. Counted over the CODES the caller names, not over

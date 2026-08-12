@@ -1,32 +1,33 @@
-import { m } from '@mr/i18n'
+import { m, setLocale } from '@mr/i18n'
 import {
   IntakeDamageType,
   IntakeOwnerType,
   IntakeVehicleType,
   type IntakeOrderDetail,
 } from '@mr/shared'
-import { screen, type RenderResult } from '@testing-library/react'
+import { render, screen, type RenderResult } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import {
   intakeChecklistCatalogFixture,
   intakeOrderDetailFixture,
   intakePhotoFixture,
-  renderDetailUi,
-} from '../../detail/__tests__/render-detail.js'
-import { INTAKE_SILHOUETTES } from '../../wizard/intake-silhouettes.js'
+} from '../testing/index.js'
+import { INTAKE_SILHOUETTES } from '../intake-silhouettes.js'
 import type { IntakePrintLocale } from '../intake-print-data.js'
 import { IntakePrintSheet } from '../intake-print-sheet.js'
 
 /**
  * The catalog travels as a prop, not as a hook: the sheet is a pure render of paper and the dialog
  * is what fetches (its own test covers that it fetches the DISPLAY read).
+ *
+ * A plain `render`, with no router and no query client. It used to go through internal-web's detail
+ * harness; moving the sheet into this package made it obvious it never needed one — the component
+ * calls no hook at all.
  */
-function renderSheet(
-  order: IntakeOrderDetail,
-  locale: IntakePrintLocale = 'sr',
-): Promise<RenderResult> {
-  return renderDetailUi(
+function renderSheet(order: IntakeOrderDetail, locale: IntakePrintLocale = 'sr'): RenderResult {
+  setLocale('sr', { reload: false })
+  return render(
     <IntakePrintSheet
       order={order}
       checklistItems={intakeChecklistCatalogFixture()}
@@ -39,7 +40,7 @@ describe('IntakePrintSheet', () => {
   it('names the order and the two parties', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderSheet(order)
+    renderSheet(order)
 
     expect(screen.getByText(order.orderNumber)).toBeDefined()
     expect(screen.getAllByText(order.ownerName).length).toBeGreaterThan(0)
@@ -61,7 +62,7 @@ describe('IntakePrintSheet', () => {
       },
     })
 
-    await renderSheet(order)
+    renderSheet(order)
 
     expect(screen.getByTestId('print-check-rezervna')).toHaveTextContent('—')
     expect(screen.getByTestId('print-check-dizalica')).toHaveTextContent('✓')
@@ -72,20 +73,20 @@ describe('IntakePrintSheet', () => {
    * print with nothing under it — a heading over a void on the document the customer signs.
    */
   it('says the checklist was not filled in rather than banding an empty space', async () => {
-    await renderSheet(intakeOrderDetailFixture({ checklist: {} }))
+    renderSheet(intakeOrderDetailFixture({ checklist: {} }))
 
     expect(screen.getByText(m.intake_print_section_condition({}, { locale: 'sr' }))).toBeDefined()
     expect(screen.getByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeDefined()
   })
 
   it('keeps the empty line off the paper when there are rows to print', async () => {
-    await renderSheet(intakeOrderDetailFixture())
+    renderSheet(intakeOrderDetailFixture())
 
     expect(screen.queryByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeNull()
   })
 
   it('prints the equipment note inside the condition band', async () => {
-    await renderSheet(intakeOrderDetailFixture({ equipmentNote: 'Gepek pun alata' }))
+    renderSheet(intakeOrderDetailFixture({ equipmentNote: 'Gepek pun alata' }))
 
     expect(screen.getByText('Gepek pun alata')).toBeDefined()
   })
@@ -93,7 +94,7 @@ describe('IntakePrintSheet', () => {
   it('drops the empty-checklist line once a note says something instead', async () => {
     // The note alone satisfies the recording rule, so a sheet carrying one is not an unrecorded
     // intake — saying it was would call the serviser a liar on the customer's own copy.
-    await renderSheet(intakeOrderDetailFixture({ checklist: {}, equipmentNote: 'Gepek pun alata' }))
+    renderSheet(intakeOrderDetailFixture({ checklist: {}, equipmentNote: 'Gepek pun alata' }))
 
     expect(screen.queryByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeNull()
     expect(screen.getByText('Gepek pun alata')).toBeDefined()
@@ -102,7 +103,7 @@ describe('IntakePrintSheet', () => {
   it('draws both signatures as vector paths, not images', async () => {
     const order = intakeOrderDetailFixture()
 
-    const { container } = await renderSheet(order)
+    const { container } = renderSheet(order)
 
     const paths = container.querySelectorAll('[data-testid="print-signature"] path')
     expect(paths).toHaveLength(2)
@@ -112,7 +113,7 @@ describe('IntakePrintSheet', () => {
   it('counts the photos in the legal sentence, because that is what is being signed for', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderSheet(order)
+    renderSheet(order)
 
     expect(
       screen.getByText(
@@ -124,7 +125,7 @@ describe('IntakePrintSheet', () => {
   it('renders in the language it was handed, not the app one', async () => {
     const order = intakeOrderDetailFixture()
 
-    await renderSheet(order, 'en')
+    renderSheet(order, 'en')
 
     expect(screen.getByText(m.intake_print_title({}, { locale: 'en' }))).toBeDefined()
     expect(screen.queryByText(m.intake_print_title({}, { locale: 'sr' }))).toBeNull()
@@ -137,7 +138,7 @@ describe('IntakePrintSheet — evidence', () => {
   }
 
   it('draws the silhouette of the order vehicle type, not a car by default', async () => {
-    const { container } = await renderSheet(
+    const { container } = renderSheet(
       intakeOrderDetailFixture({ vehicleType: IntakeVehicleType.Van }),
     )
 
@@ -152,14 +153,14 @@ describe('IntakePrintSheet — evidence', () => {
       photos: [intakePhotoFixture({ id: '44444444-4444-4444-8444-444444444444', damageId: 'd2' })],
     })
 
-    const { container } = await renderSheet(order)
+    const { container } = renderSheet(order)
 
     expect(container.querySelector('[data-testid="print-marker-2"]')).not.toBeNull()
     expect(screen.getByTestId('print-damage-2')).toHaveTextContent('Zona 2')
   })
 
   it('says there were none rather than leaving the defect list blank', async () => {
-    await renderSheet(intakeOrderDetailFixture({ damages: [] }))
+    renderSheet(intakeOrderDetailFixture({ damages: [] }))
 
     expect(screen.getByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeDefined()
   })
@@ -169,7 +170,7 @@ describe('IntakePrintSheet — evidence', () => {
       damages: Array.from({ length: 15 }, (_, i) => damage(i + 1)),
     })
 
-    await renderSheet(order)
+    renderSheet(order)
 
     expect(
       screen.getByText(
@@ -184,7 +185,7 @@ describe('IntakePrintSheet — evidence', () => {
       damages: [{ ...damage(1), type: IntakeDamageType.Rust }],
     })
 
-    const { container } = await renderSheet(order)
+    const { container } = renderSheet(order)
 
     expect(
       container.querySelector('[data-testid="print-marker-1"] circle')?.getAttribute('fill'),
@@ -207,7 +208,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
       damages: Array.from({ length: 12 }, (_, i) => damage(i + 1)),
     })
 
-    await renderSheet(order)
+    renderSheet(order)
 
     expect(screen.getByTestId('print-damage-1').parentElement).toHaveClass('columns-2')
   })
@@ -215,7 +216,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
   it('keeps a short list in one column, where it reads better', async () => {
     const order = intakeOrderDetailFixture({ damages: [damage(1), damage(2)] })
 
-    await renderSheet(order)
+    renderSheet(order)
 
     expect(screen.getByTestId('print-damage-1').parentElement).not.toHaveClass('columns-2')
   })
@@ -223,7 +224,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
 
 describe('IntakePrintSheet — the rows the serviser wrote in', () => {
   it('prints a written-in equipment row inside the condition band', async () => {
-    await renderSheet(
+    renderSheet(
       intakeOrderDetailFixture({ extraChecklist: [{ name: 'Gumeni patosnici', value: true }] }),
     )
 
@@ -231,7 +232,7 @@ describe('IntakePrintSheet — the rows the serviser wrote in', () => {
   })
 
   it('prints the defects with no place on the drawing under their own heading, without numbers', async () => {
-    await renderSheet(intakeOrderDetailFixture({ extraDamages: ['felne izgrebane'] }))
+    renderSheet(intakeOrderDetailFixture({ extraDamages: ['felne izgrebane'] }))
 
     expect(
       screen.getByText(m.intake_print_section_other_damages({}, { locale: 'sr' })),
@@ -242,7 +243,7 @@ describe('IntakePrintSheet — the rows the serviser wrote in', () => {
   })
 
   it('keeps the heading off the paper when there is nothing under it', async () => {
-    await renderSheet(intakeOrderDetailFixture({ extraDamages: [] }))
+    renderSheet(intakeOrderDetailFixture({ extraDamages: [] }))
 
     expect(
       screen.queryByText(m.intake_print_section_other_damages({}, { locale: 'sr' })),
@@ -252,7 +253,7 @@ describe('IntakePrintSheet — the rows the serviser wrote in', () => {
   it('does not say there were no defects when the only ones have no place on the drawing', async () => {
     // The old branch keyed on `damages.length === 0` alone, which would have printed "nema
     // nedostataka" directly above a list of them.
-    await renderSheet(intakeOrderDetailFixture({ damages: [], extraDamages: ['felne izgrebane'] }))
+    renderSheet(intakeOrderDetailFixture({ damages: [], extraDamages: ['felne izgrebane'] }))
 
     expect(screen.queryByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeNull()
   })
@@ -260,7 +261,7 @@ describe('IntakePrintSheet — the rows the serviser wrote in', () => {
 
 describe('IntakePrintSheet — who the owner is', () => {
   it('prints the ID card under the name, with the caption the type gives it', async () => {
-    await renderSheet(
+    renderSheet(
       intakeOrderDetailFixture({ ownerType: IntakeOwnerType.Person, ownerIdNumber: '008123456' }),
     )
 
@@ -270,7 +271,7 @@ describe('IntakePrintSheet — who the owner is', () => {
 
   it('calls the same number a tax number when the owner is a firm', async () => {
     // One column, two claims — the caption is the only thing that says which, so it must follow.
-    await renderSheet(
+    renderSheet(
       intakeOrderDetailFixture({ ownerType: IntakeOwnerType.Company, ownerIdNumber: '101234567' }),
     )
 
@@ -281,14 +282,14 @@ describe('IntakePrintSheet — who the owner is', () => {
   it('leaves the row off entirely when there is no number', async () => {
     // An empty caption on a signed document is worse than a missing row: it claims a document was
     // shown and read.
-    await renderSheet(intakeOrderDetailFixture({ ownerIdNumber: null }))
+    renderSheet(intakeOrderDetailFixture({ ownerIdNumber: null }))
 
     expect(screen.queryByText(m.intake_print_owner_id_card({}, { locale: 'sr' }))).toBeNull()
     expect(screen.queryByText(m.intake_print_owner_tax_id({}, { locale: 'sr' }))).toBeNull()
   })
 
   it('never prints the email — that is our address for sending, not a fact about the handover', async () => {
-    await renderSheet(intakeOrderDetailFixture({ ownerEmail: 'vlasnik@primer.rs' }))
+    renderSheet(intakeOrderDetailFixture({ ownerEmail: 'vlasnik@primer.rs' }))
 
     expect(screen.queryByText(/vlasnik@primer\.rs/)).toBeNull()
   })

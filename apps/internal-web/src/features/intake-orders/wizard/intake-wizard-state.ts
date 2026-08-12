@@ -11,7 +11,7 @@ import {
   type IntakeOrderUpdateInput,
 } from '@mr/shared'
 
-import { untouchedIntakeChecklist, type IntakeChecklistByCode } from '../intake-checklist-catalog'
+import { untouchedIntakeChecklist, type IntakeChecklistByCode } from '@mr/intake-document'
 
 /**
  * The steps, by name. They were bare numbers scattered through the wizard until 2026-08-10, when

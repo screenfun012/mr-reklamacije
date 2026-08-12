@@ -1,9 +1,9 @@
 import { m } from '@mr/i18n'
 import type { ReactElement } from 'react'
 
-import { INTAKE_SILHOUETTE_VIEWBOX } from '../wizard/intake-silhouettes'
-import type { IntakePrintModel } from './intake-print-data'
-import { PRINT_BAND, PRINT_EYEBROW } from './intake-print-styles'
+import { INTAKE_SILHOUETTE_VIEWBOX } from './intake-silhouettes.js'
+import type { IntakePrintModel } from './intake-print-data.js'
+import { PRINT_BAND, PRINT_EYEBROW } from './intake-print-styles.js'
 
 /** Past this many the list flows in two columns — see the comment at the list itself. */
 const DEFECTS_PER_COLUMN = 6

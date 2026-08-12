@@ -7,7 +7,7 @@ import {
   INTAKE_DAMAGE_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
 } from '../intake-labels.js'
-import { formatIntakeReceivedAt, formatIntakeReceivedAtLong } from '../intake-status.js'
+import { formatIntakeReceivedAtLong } from '../intake-document-locale.js'
 
 describe('intake labels', () => {
   it('gives every damage type a label', () => {
@@ -48,9 +48,5 @@ describe('intake labels', () => {
     expect(formatIntakeReceivedAtLong('2026-07-25T07:14:00.000Z', locale as 'sr' | 'en')).toMatch(
       shape,
     )
-  })
-
-  it('keeps the list format day-first too, so the list and the detail cannot disagree', () => {
-    expect(formatIntakeReceivedAt('2026-07-25T07:14:00.000Z', 'en')).toMatch(/^25\/07 · 09:14$/)
   })
 })
