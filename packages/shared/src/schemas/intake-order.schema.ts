@@ -45,6 +45,38 @@ export const IntakeChecklistSchema = z
 
 export type IntakeChecklist = z.infer<typeof IntakeChecklistSchema>
 
+/**
+ * A row the serviser wrote in because the catalog does not offer it — the same DA/NE/untouched as a
+ * catalog row, but living on this order alone.
+ *
+ * Deliberately NOT a `checklist` entry: that map is keyed by the admin's catalog codes and the
+ * service refuses a code the catalog does not know, so a written-in row would have to be given a
+ * code — and the moment it has one, the catalog has stopped being the admin's.
+ *
+ * 80 characters is what fits one line on the printed sheet. There is no `id` per row on purpose:
+ * nothing points at one, since a photo links through a damage marker and after signing these lists
+ * cannot change at all.
+ */
+export const IntakeExtraChecklistItemSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  value: z.boolean().nullable(),
+})
+
+export type IntakeExtraChecklistItem = z.infer<typeof IntakeExtraChecklistItemSchema>
+
+export const IntakeExtraChecklistSchema = z.array(IntakeExtraChecklistItemSchema).max(100)
+
+export type IntakeExtraChecklist = z.infer<typeof IntakeExtraChecklistSchema>
+
+/**
+ * Defects with no place on the silhouette — wheels, interior, exhaust. A bare `string[]` because that
+ * is not a new shape in this table: `services` and `materials` already are one, with these same two
+ * ceilings, so there is nothing new to explain.
+ */
+export const IntakeExtraDamagesSchema = z.array(z.string().trim().min(1).max(200)).max(100)
+
+export type IntakeExtraDamages = z.infer<typeof IntakeExtraDamagesSchema>
+
 /** The damage map's coordinate space — the silhouette's own viewBox, never screen pixels. */
 export const INTAKE_DAMAGE_MAP_WIDTH = 340
 export const INTAKE_DAMAGE_MAP_HEIGHT = 556
@@ -62,7 +94,6 @@ export const IntakeDamageSchema = z.object({
   x: z.number().min(0).max(INTAKE_DAMAGE_MAP_WIDTH),
   y: z.number().min(0).max(INTAKE_DAMAGE_MAP_HEIGHT),
   zone: z.string().trim().min(1).max(80),
-  note: z.string().trim().max(500).optional(),
 })
 
 export type IntakeDamage = z.infer<typeof IntakeDamageSchema>

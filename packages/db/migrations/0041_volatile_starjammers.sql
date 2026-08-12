@@ -1,0 +1,2 @@
+ALTER TABLE "intake_orders" ADD COLUMN "extra_checklist" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "intake_orders" ADD COLUMN "extra_damages" jsonb DEFAULT '[]'::jsonb NOT NULL;

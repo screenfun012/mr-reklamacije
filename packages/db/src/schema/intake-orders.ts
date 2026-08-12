@@ -2,6 +2,7 @@ import type {
   IntakeArrivalMode,
   IntakeChecklist,
   IntakeDamage,
+  IntakeExtraChecklistItem,
   IntakeOrderStatus,
   IntakeVehicleType,
 } from '@mr/shared'
@@ -75,9 +76,26 @@ export const intakeOrders = pgTable(
     /** Fuel gauge in eighths, as the paper form draws it. */
     fuelLevel: integer('fuel_level').notNull().default(4),
     checklist: jsonb('checklist').notNull().$type<IntakeChecklist>(),
+    /**
+     * Equipment rows the serviser wrote in because the catalog does not offer them. NOT folded into
+     * `checklist`: that map is keyed by the admin's catalog codes and the service refuses a code the
+     * catalog does not know, so a written-in row would have to be given one — and the moment it has
+     * a code, the catalog has stopped being the admin's.
+     */
+    extraChecklist: jsonb('extra_checklist')
+      .notNull()
+      .default([])
+      .$type<IntakeExtraChecklistItem[]>(),
     equipmentNote: text('equipment_note'),
     /** Array order IS the ①②③ numbering on map, defect list and print. */
     damages: jsonb('damages').notNull().$type<IntakeDamage[]>(),
+    /**
+     * Defects with no place on the silhouette — wheels, interior, exhaust. Not in `damages`, which
+     * needs `x`, `y`, `zone` and `type`: letting those be empty would mean an empty-value guard in
+     * five places (the drawing, the ①②③ numbering, the printed markers, photo linking, and the
+     * server's zone re-derivation) instead of one column here.
+     */
+    extraDamages: jsonb('extra_damages').notNull().default([]).$type<string[]>(),
     services: jsonb('services').notNull().$type<string[]>(),
     materials: jsonb('materials').notNull().$type<string[]>(),
     /**
