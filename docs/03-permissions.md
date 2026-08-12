@@ -476,3 +476,43 @@ Even though the API enforces permissions, we apply **redundant checks**:
 - **Audit log:** every denied action is logged for forensic review
 
 This layered approach means a bug at any single layer does not compromise security.
+
+---
+
+## OPEN — roles must be reorganised once vehicle intake is finished (Nikola, 2026-08-12)
+
+**Deferred by Nikola until the intake module is done.** Recorded here in his own words, so the
+conversation starts from what he actually said rather than from a paraphrase:
+
+> „Kada završimo servis vozila moramo da popričamo o rolovima kao i time kako ćemo da sredimo taj
+> deo jer ovako stvari polako gube smisla. Najgora stvar koja mi je kliknula tu što se tiče rolova
+> jeste što možda neki rolovi se poklapaju — u smislu možda mora da radi prijemno ali vidi
+> reklamacije, ili radi reklamacije ali vidi prijemno, ili da edituje i jedno i drugo. Što znači da
+> admin panel u ovom slučaju moramo da sredimo, jer hoću odatle da regulišem ovo i da nameštam
+> rolove korisnicima kako treba."
+
+### What he is describing, in this system's terms
+
+The intake module added a **third axis of work** (prijem / servis) beside the two claim families, and
+the role names stopped describing what a person actually does. Someone may need to _do_ intake while
+only _seeing_ claims, or the reverse, or edit both. Today that combination has no name.
+
+### What already exists and must not be re-invented
+
+- **Permissions are atomic and defined in code** (`@mr/shared` `permissions.ts`); **roles live in the
+  database**, and effective permissions are the union of a user's roles. That model already supports
+  the overlap he describes — a user may hold several roles at once.
+- **Custom roles are already a documented case** — see "Senior operator (custom)" in the table above.
+- Admin already has a roles surface. What is unproven is whether it can express these combinations
+  comfortably, and whether the intake permissions are grouped legibly there.
+
+So the likely work is **not a new permission model**. It is: naming the intake axis properly,
+auditing which permissions exist for it, and making the admin screen good enough to compose them —
+`docs/13` ("admin is the control plane") applied to a module that grew after it was written.
+
+### Why this is written down instead of started
+
+His own reason, from the same message: information arriving in pieces and the direction changing
+mid-build is what he is tired of. Roles touch every module, so they get their own conversation with
+the whole picture in view — after intake, and before the engine-without-a-car work (`docs/25` §9.4),
+which will add a fourth kind of thing a person can be allowed to see.
