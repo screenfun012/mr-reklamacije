@@ -669,6 +669,7 @@
   "intake_fuel_less": "Manje goriva",
   "intake_fuel_more": "Više goriva",
   "intake_fuel_percent": "≈ {percent}% rezervoara",
+  "intake_hint_condition_empty": "Označi bar jednu stavku ili upiši napomenu — vlasnik potpisuje ovaj papir.",
   "intake_hint_last_photo": "Čeka se poslednja fotka — u toku: {pending}",
   "intake_hint_no_network": "Nema mreže — nalog se čuva, fotke odlaze kad se mreža vrati",
   "intake_hint_no_number": "Upiši broj naloga sa bloka",
@@ -1286,5 +1287,6 @@
   "intake_print_no_damage": "Nema uočenih nedostataka pri prijemu.",
   "intake_print_damages_more": "…i još {count} — vidi digitalni nalog {number}",
   "intake_print_preview": "PREGLED ŠTAMPE · A4 · {type}",
-  "intake_print_language": "Jezik naloga"
+  "intake_print_language": "Jezik naloga",
+  "intake_print_zoom_hint": "Dva prsta zumiraju, dvostruki dodir uklapa celu stranu"
 }

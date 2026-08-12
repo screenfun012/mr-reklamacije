@@ -5,6 +5,7 @@ import {
   deleteIntakeOrderPhoto,
   intakeChecklistItemsReferenceOptions,
   intakeOrderDetailOptions,
+  isIntakeConditionRecorded,
   signIntakeOrder,
   intakeOrderKeys,
   updateIntakeOrder,
@@ -344,12 +345,25 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
 
   const canLeaveStep1 = step1Complete(values) && !numberTaken
   /**
+   * The condition is what the owner signs for, and it is filled in while he is standing at the car —
+   * so it cannot be left for later. The server holds the same line at signing; this is the half that
+   * tells the serviser in time, while he can still walk around the vehicle.
+   */
+  const conditionRecorded = isIntakeConditionRecorded(
+    values.checklist,
+    values.equipmentNote,
+    checklistItems.length,
+  )
+  /**
    * `numberTaken` blocks on EVERY step, not just the first. A resumed intake whose number was
    * signed on another tablet meanwhile still had DALJE live, and every patch it sent dead-ended
    * on a 422 the serviser could do nothing with.
    */
   const forwardDisabled =
-    saving || numberTaken || (step === INTAKE_WIZARD_STEPS.Vehicle && !canLeaveStep1)
+    saving ||
+    numberTaken ||
+    (step === INTAKE_WIZARD_STEPS.Vehicle && !canLeaveStep1) ||
+    (step === INTAKE_WIZARD_STEPS.Checklist && !conditionRecorded)
 
   const bothSigned = isSignatureFilled(technicianStrokes) && isSignatureFilled(ownerStrokes)
   /**
@@ -452,6 +466,11 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
     // reads as broken. (Empty number cannot reach here — the check query needs one to answer.)
     if (numberTaken) {
       return { text: m.intake_hint_number_taken(), tone: 'bad' }
+    }
+    // A dead DALJE without a reason reads as a broken screen, and this is the one step where the
+    // reason is not on the button's own row — the empty rows are up in the card.
+    if (step === INTAKE_WIZARD_STEPS.Checklist && !conditionRecorded) {
+      return { text: m.intake_hint_condition_empty(), tone: 'warn' }
     }
     if (step !== 1) {
       return { text: m.intake_hint_step({ step, total: INTAKE_WIZARD_STEP_COUNT }), tone: 'muted' }

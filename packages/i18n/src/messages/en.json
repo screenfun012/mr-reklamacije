@@ -669,6 +669,7 @@
   "intake_fuel_less": "Less fuel",
   "intake_fuel_more": "More fuel",
   "intake_fuel_percent": "≈ {percent}% of the tank",
+  "intake_hint_condition_empty": "Tick at least one item or write a note — the owner signs this sheet.",
   "intake_hint_last_photo": "Waiting for the last photo — in progress: {pending}",
   "intake_hint_no_network": "No network — the order is saved and the photos go when it returns",
   "intake_hint_no_number": "Type the order number off the pad",
@@ -1286,5 +1287,6 @@
   "intake_print_no_damage": "No defects were found at intake.",
   "intake_print_damages_more": "…and {count} more — see digital order {number}",
   "intake_print_preview": "PRINT PREVIEW · A4 · {type}",
-  "intake_print_language": "Work order language"
+  "intake_print_language": "Work order language",
+  "intake_print_zoom_hint": "Pinch to zoom, double-tap for the whole page"
 }
