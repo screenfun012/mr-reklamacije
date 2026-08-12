@@ -1232,6 +1232,101 @@ describe('Intake orders integration', () => {
     })
   })
 
+  /**
+   * The two lists a serviser fills in himself, because the shop's own lists do not offer what he is
+   * looking at — scratched wheels, a missing cover, rubber mats.
+   */
+  describe('the rows a serviser writes in himself', () => {
+    const SIGNATURES = {
+      technicianSignature: 'M 0 0 L 10 10',
+      ownerSignature: 'M 5 5 L 20 20',
+      photosExpected: 0,
+    }
+
+    it('starts both lists empty rather than null, so nothing downstream has to guard', async () => {
+      const serviser = await floorActor()
+
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      expect(created.extraChecklist).toEqual([])
+      expect(created.extraDamages).toEqual([])
+    })
+
+    it('stores and returns both written-in lists', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      const updated = await service.update(
+        created.id,
+        {
+          extraChecklist: [{ name: 'Gumeni patosnici', value: true }],
+          extraDamages: ['felne izgrebane', 'nedostaje poklopac'],
+        },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      expect(updated.extraChecklist).toEqual([{ name: 'Gumeni patosnici', value: true }])
+      expect(updated.extraDamages).toEqual(['felne izgrebane', 'nedostaje poklopac'])
+    })
+
+    it('refuses both lists once the order is signed, the office included', async () => {
+      // Part H freezes by field NAME, and these two are frozen by not being on FREE_AFTER_SIGNING —
+      // an absence. This test exists because an absence is exactly what a later edit undoes without
+      // noticing it has undone anything.
+      const serviser = await floorActor()
+      const office = await officeActor()
+      const orderId = await signedOrder(serviser)
+
+      await expect(
+        service.update(
+          orderId,
+          { extraDamages: ['felne izgrebane'] },
+          serviser,
+          actorContext(serviser.id),
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+      await expect(
+        service.update(
+          orderId,
+          { extraChecklist: [{ name: 'Patosnici', value: true }] },
+          office,
+          actorContext(office.id),
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('lets a written-in row alone satisfy the signing rule', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      await service.update(
+        created.id,
+        { extraChecklist: [{ name: 'Gumeni patosnici', value: false }] },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      const signed = await service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id))
+
+      expect(signed.signedAt).not.toBeNull()
+    })
+
+    it('does not let a written-in row nobody answered satisfy it', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      await service.update(
+        created.id,
+        { extraChecklist: [{ name: 'Gumeni patosnici', value: null }] },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      await expect(
+        service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id)),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+  })
+
   describe('realtime + audit', () => {
     it('signals the list to refresh on every change, carrying no row data', async () => {
       const floor = await floorActor()

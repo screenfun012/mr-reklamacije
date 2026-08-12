@@ -2,6 +2,7 @@ import {
   IntakeOrderStatus,
   type IntakeChecklist,
   type IntakeDamage,
+  type IntakeExtraChecklistItem,
   type IntakeOrderListView,
 } from '@mr/shared'
 import {
@@ -81,8 +82,10 @@ interface OrderRow {
   ownerRemarks: string | null
   fuelLevel: number
   checklist: IntakeChecklist | null
+  extraChecklist: IntakeExtraChecklistItem[] | null
   equipmentNote: string | null
   damages: IntakeDamage[] | null
+  extraDamages: string[] | null
   services: string[] | null
   materials: string[] | null
   draftStep: number | null
@@ -149,8 +152,10 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     ownerRemarks: row.ownerRemarks,
     fuelLevel: row.fuelLevel,
     checklist: row.checklist ?? EMPTY_CHECKLIST,
+    extraChecklist: row.extraChecklist ?? [],
     equipmentNote: row.equipmentNote,
     damages: row.damages ?? [],
+    extraDamages: row.extraDamages ?? [],
     services: row.services ?? [],
     materials: row.materials ?? [],
     draftStep: row.draftStep,
@@ -188,8 +193,10 @@ export class IntakeOrdersRepository {
       ownerRemarks: intakeOrders.ownerRemarks,
       fuelLevel: intakeOrders.fuelLevel,
       checklist: intakeOrders.checklist,
+      extraChecklist: intakeOrders.extraChecklist,
       equipmentNote: intakeOrders.equipmentNote,
       damages: intakeOrders.damages,
+      extraDamages: intakeOrders.extraDamages,
       services: intakeOrders.services,
       materials: intakeOrders.materials,
       draftStep: intakeOrders.draftStep,
@@ -417,6 +424,8 @@ export class IntakeOrdersRepository {
     if (patch.ownerRemarks !== undefined) values['ownerRemarks'] = patch.ownerRemarks
     if (patch.fuelLevel !== undefined) values['fuelLevel'] = patch.fuelLevel
     if (patch.checklist !== undefined) values['checklist'] = patch.checklist
+    if (patch.extraChecklist !== undefined) values['extraChecklist'] = patch.extraChecklist
+    if (patch.extraDamages !== undefined) values['extraDamages'] = patch.extraDamages
     if (patch.equipmentNote !== undefined) values['equipmentNote'] = patch.equipmentNote
     if (patch.damages !== undefined) values['damages'] = patch.damages
     if (patch.services !== undefined) values['services'] = patch.services

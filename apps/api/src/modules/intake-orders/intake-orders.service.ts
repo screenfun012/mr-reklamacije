@@ -438,6 +438,7 @@ export class IntakeOrdersService {
     if (
       !isIntakeConditionRecorded(
         before.checklist,
+        before.extraChecklist,
         before.equipmentNote,
         await this.checklistCatalog.countActiveItems(),
       )
