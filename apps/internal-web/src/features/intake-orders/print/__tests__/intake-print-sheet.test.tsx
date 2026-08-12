@@ -79,6 +79,21 @@ describe('IntakePrintSheet', () => {
     expect(screen.queryByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeNull()
   })
 
+  it('prints the equipment note inside the condition band', async () => {
+    await renderSheet(intakeOrderDetailFixture({ equipmentNote: 'Gepek pun alata' }))
+
+    expect(screen.getByText('Gepek pun alata')).toBeDefined()
+  })
+
+  it('drops the empty-checklist line once a note says something instead', async () => {
+    // The note alone satisfies the recording rule, so a sheet carrying one is not an unrecorded
+    // intake — saying it was would call the serviser a liar on the customer's own copy.
+    await renderSheet(intakeOrderDetailFixture({ checklist: {}, equipmentNote: 'Gepek pun alata' }))
+
+    expect(screen.queryByText(m.intake_print_condition_empty({}, { locale: 'sr' }))).toBeNull()
+    expect(screen.getByText('Gepek pun alata')).toBeDefined()
+  })
+
   it('draws both signatures as vector paths, not images', async () => {
     const order = intakeOrderDetailFixture()
 

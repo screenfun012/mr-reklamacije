@@ -62,6 +62,8 @@ export interface IntakePrintModel {
   mileage: string
   arrivalMode: string
   checklist: IntakePrintChecklistRow[]
+  /** Null when the serviser wrote nothing — the band then shows only its rows. */
+  equipmentNote: string | null
   fuelLevel: number
   damageCount: number
   photoCount: number
@@ -93,6 +95,18 @@ function printChecklistRow(row: IntakeChecklistRow): IntakePrintChecklistRow {
     return { ...shared, mark: '✗', muted: true }
   }
   return { ...shared, mark: DASH, muted: true }
+}
+
+/**
+ * Same length ceiling as the remarks, but empty stays EMPTY rather than becoming a placeholder: an
+ * absent note prints nothing at all, while "no remarks" is a statement the remarks box has to make.
+ */
+function clipEquipmentNote(value: string | null): string | null {
+  if (value === null || value.trim().length === 0) {
+    return null
+  }
+  const trimmed = value.trim()
+  return trimmed.length <= PRINT_MAX_REMARKS ? trimmed : `${trimmed.slice(0, PRINT_MAX_REMARKS)}…`
 }
 
 function clipRemarks(value: string | null, locale: IntakePrintLocale): string {
@@ -143,6 +157,7 @@ export function buildIntakePrintModel(
     checklist: resolveIntakeChecklistRows(order.checklist, checklistItems, locale).map(
       printChecklistRow,
     ),
+    equipmentNote: clipEquipmentNote(order.equipmentNote),
     fuelLevel: order.fuelLevel,
     damageCount: order.damages.length,
     photoCount: order.photos.length,

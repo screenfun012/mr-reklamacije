@@ -18,10 +18,12 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
       <div className={PRINT_BAND}>{m.intake_print_section_condition({}, { locale })}</div>
 
       {/* A band with nothing under it is a heading over a void on a document the customer signs, so
-          the absence is stated instead of hidden — reachable only when the catalog was still empty at
-          the moment the order was taken. Same reasoning as the third state above: what nobody
-          recorded must read as unrecorded, not as blank paper. */}
-      {model.checklist.length === 0 ? (
+          the absence is stated instead of hidden. Since 2026-08-12 an intake cannot be signed without
+          recording SOMETHING, so this sentence is no longer a normal outcome: it is reachable only
+          when the catalog was empty at the moment the order was taken, and it must not appear when a
+          note is carrying the record instead — saying nothing was recorded over a written note calls
+          the serviser a liar on the customer's own copy. */}
+      {model.checklist.length === 0 && model.equipmentNote === null ? (
         <div className="mt-[9px] text-[11.5px] text-[#54555b]">
           {m.intake_print_condition_empty({}, { locale })}
         </div>
@@ -44,6 +46,14 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
               {row.label}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Under the rows, because it is about the same equipment — and on the paper at all because a
+          note alone can be the whole record of what was in the car. */}
+      {model.equipmentNote === null ? null : (
+        <div className="mt-[7px] text-[11.5px] leading-[1.5] text-[#54555b]">
+          {model.equipmentNote}
         </div>
       )}
 

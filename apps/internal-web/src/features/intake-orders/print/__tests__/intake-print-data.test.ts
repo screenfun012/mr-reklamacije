@@ -31,6 +31,20 @@ describe('buildIntakePrintModel', () => {
     setLocale('sr', { reload: false })
   })
 
+  it('carries the equipment note onto the sheet', () => {
+    // Since 2026-08-12 the note on its own satisfies the rule that an intake must record SOMETHING,
+    // so a note that stops at the screen would let a serviser hand over a sheet asserting nothing.
+    const order = intakeOrderDetailFixture({ equipmentNote: 'Gepek pun alata' })
+
+    expect(buildIntakePrintModel(order, CATALOG, 'sr').equipmentNote).toBe('Gepek pun alata')
+  })
+
+  it('keeps an empty note out of the model rather than printing a blank line', () => {
+    const order = intakeOrderDetailFixture({ equipmentNote: '   ' })
+
+    expect(buildIntakePrintModel(order, CATALOG, 'sr').equipmentNote).toBeNull()
+  })
+
   it('prints an untouched checklist row as a dash, never as "no"', () => {
     // The paper is what the customer signs. A row nobody checked printed as ✕ is a statement
     // nobody made (docs/25 §4.4).
