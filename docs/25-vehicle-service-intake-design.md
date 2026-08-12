@@ -779,3 +779,14 @@ only when asked; Nikola pushes.
 3. Placement of the vehicle-type buttons (step 1, below "Način dolaska") and of the order-number
    field (in the stepper strip, unchanged look) are **Nikola's decisions**, not suggestions — but
    Claude Design may report back if they break the composition, and then Nikola decides what gives.
+4. **An engine arriving without a car (raised by Nikola, 2026-08-12) — DEFERRED, direction recorded.**
+   He asked for it to be kept in mind, not designed: _„daj da završimo za auto pa ćemo posle o
+   motoru… suština je da ga vežemo za reklamacije, što nije loše jer kada dodamo reklamacije za
+   mašinsku obradu onda ćemo sve da imamo, sve će biti povezano u jedno."_ So the direction is
+   **tie it to the claim families, not to this module's vehicle shape**, and let machining claims
+   (`docs/16`) join the same structure. Nothing is designed yet, and this note deliberately adds no
+   decisions of its own. What makes it non-trivial when it is picked up: this table requires
+   `plate`, `vehicle` and `arrival_mode` NOT NULL, `fuel_level` and the damage map assume a car
+   silhouette, and the checklist catalog is car equipment — so an engine cannot simply be a fifth
+   `vehicle_type`. One thing already helps it: part C's second list, defects with no place on the
+   drawing, is exactly the shape an engine needs.
