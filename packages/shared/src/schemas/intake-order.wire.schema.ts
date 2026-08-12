@@ -5,7 +5,12 @@ import {
   intakeOrderStatusValues,
   intakeVehicleTypeValues,
 } from '../enums.js'
-import { IntakeChecklistSchema, IntakeDamagesSchema } from './intake-order.schema.js'
+import {
+  IntakeChecklistSchema,
+  IntakeDamagesSchema,
+  IntakeExtraChecklistSchema,
+  IntakeExtraDamagesSchema,
+} from './intake-order.schema.js'
 
 /**
  * Vehicle service intake — the HTTP boundary (docs/25).
@@ -69,8 +74,10 @@ export const IntakeOrderUpdateInputSchema = z
     ownerRemarks: z.string().trim().max(2000).nullable().optional(),
     fuelLevel: z.number().int().min(0).max(8).optional(),
     checklist: IntakeChecklistSchema.optional(),
+    extraChecklist: IntakeExtraChecklistSchema.optional(),
     equipmentNote: z.string().trim().max(2000).nullable().optional(),
     damages: IntakeDamagesSchema.optional(),
+    extraDamages: IntakeExtraDamagesSchema.optional(),
     services: z.array(z.string().trim().min(1).max(200)).max(100).optional(),
     materials: z.array(z.string().trim().min(1).max(200)).max(100).optional(),
     draftStep: z.number().int().min(1).max(4).optional(),
@@ -265,8 +272,10 @@ export const IntakeOrderDetailSchema = z.object({
   ownerRemarks: z.string().nullable(),
   fuelLevel: z.number().int(),
   checklist: IntakeChecklistSchema,
+  extraChecklist: IntakeExtraChecklistSchema,
   equipmentNote: z.string().nullable(),
   damages: IntakeDamagesSchema,
+  extraDamages: IntakeExtraDamagesSchema,
   services: z.array(z.string()),
   materials: z.array(z.string()),
   draftStep: z.number().int().nullable(),

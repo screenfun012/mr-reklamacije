@@ -1,4 +1,4 @@
-import type { IntakeChecklist } from '../schemas/intake-order.schema.js'
+import type { IntakeChecklist, IntakeExtraChecklist } from '../schemas/intake-order.schema.js'
 
 /**
  * Did the intake record anything at all about the vehicle's condition?
@@ -9,13 +9,15 @@ import type { IntakeChecklist } from '../schemas/intake-order.schema.js'
  * serviser who cannot get past a screen learns to stop filling it in (docs/25 §3.0).
  *
  * An answer on a code the shop has since retired counts: the order still prints that row under its
- * own name, so the paper asserts something.
+ * own name, so the paper asserts something. A row the serviser wrote in himself counts for the same
+ * reason — it prints in the same band, in the same shape.
  *
  * Shared by the wizard (which kills DALJE) and the API service (which refuses to sign), kept here so
  * the two can never drift.
  */
 export function isIntakeConditionRecorded(
   checklist: IntakeChecklist,
+  extraChecklist: IntakeExtraChecklist,
   equipmentNote: string | null,
   activeCatalogItemCount: number,
 ): boolean {
@@ -27,5 +29,10 @@ export function isIntakeConditionRecorded(
   if (equipmentNote !== null && equipmentNote.trim().length > 0) {
     return true
   }
-  return Object.values(checklist).some((value) => value === true || value === false)
+
+  const answered = (value: boolean | null): boolean => value === true || value === false
+
+  return (
+    Object.values(checklist).some(answered) || extraChecklist.some((row) => answered(row.value))
+  )
 }
