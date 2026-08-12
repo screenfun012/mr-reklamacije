@@ -21,6 +21,25 @@ import { INTAKE_SILHOUETTES, type IntakeSilhouettePath } from '../wizard/intake-
  */
 export const PRINT_MAX_LIST_ITEMS = 5
 export const PRINT_MAX_DAMAGES = 12
+/**
+ * How many written-in defects the sheet carries.
+ *
+ * MEASURED in print media, 2026-08-12, against the fullest page this sheet can hold — 12 markers,
+ * 4 written-in equipment rows, a maximal owner remark, 5 services, 5 materials — with every row at
+ * the field's own 80-character ceiling: three rows fit, and the footer with both signatures stayed
+ * on page one.
+ *
+ * Two things were tried first and killed by measurement, both worth not repeating:
+ *   · a CHARACTER budget — 20 rows of 35 characters is the same 700 characters as 4 rows of 200,
+ *     and only 8 of them fit. The page's cost is wrapped lines, which no simple formula predicts.
+ *   · rows at 200 characters (what the schema allowed until this measurement) — only two fit, so
+ *     the field itself was cut to 80. See `IntakeExtraDamagesSchema`.
+ *
+ * ⚠ The footer is `mt-auto`, so `scrollHeight === offsetHeight` holds WHENEVER the page fits: the
+ * comparison is binary and can never report headroom. A ceiling here can only be found by walking
+ * to the edge, never read off a margin.
+ */
+export const PRINT_MAX_OTHER_DAMAGES = 3
 export const PRINT_MAX_REMARKS = 180
 
 /**
@@ -64,6 +83,8 @@ export interface IntakePrintModel {
   checklist: IntakePrintChecklistRow[]
   /** Null when the serviser wrote nothing — the band then shows only its rows. */
   equipmentNote: string | null
+  /** Defects with no place on the drawing, already cut to what the page holds. */
+  otherDamages: string[]
   fuelLevel: number
   damageCount: number
   photoCount: number
@@ -130,6 +151,7 @@ export function buildIntakePrintModel(
   checklistItems: readonly IntakeChecklistItemListItem[],
   locale: IntakePrintLocale,
 ): IntakePrintModel {
+  const otherDamages = order.extraDamages.slice(0, PRINT_MAX_OTHER_DAMAGES)
   const damages = order.damages.slice(0, PRINT_MAX_DAMAGES).map((damage, index) => ({
     id: damage.id,
     number: index + 1,
@@ -154,16 +176,34 @@ export function buildIntakePrintModel(
     arrivalMode: INTAKE_ARRIVAL_MODE_LABELS[order.arrivalMode]({}, { locale }).toLowerCase(),
     // The ORDER's own rows, never the catalog's (plan D4): an item added since must not appear on a
     // sheet somebody already signed, and it never had that row.
-    checklist: resolveIntakeChecklistRows(order.checklist, checklistItems, locale).map(
-      printChecklistRow,
-    ),
+    /**
+     * Catalog rows first, then the ones the serviser wrote in — the same order step 2 and the
+     * detail show, so the paper in the customer's hand matches the screen it came from. A
+     * written-in row prints through the SAME three-state map: untouched is `—`, never `✗`.
+     */
+    checklist: [
+      ...resolveIntakeChecklistRows(order.checklist, checklistItems, locale),
+      ...order.extraChecklist.map((row, index) => ({
+        code: `extra-${index}`,
+        name: row.name,
+        value: row.value,
+      })),
+    ].map(printChecklistRow),
     equipmentNote: clipEquipmentNote(order.equipmentNote),
+    otherDamages: otherDamages,
     fuelLevel: order.fuelLevel,
-    damageCount: order.damages.length,
+    // Markers PLUS the ones with no place on the drawing: the figure the customer reads first must
+    // never disagree with the list under it.
+    damageCount: order.damages.length + order.extraDamages.length,
     photoCount: order.photos.length,
     ownerRemarks: clipRemarks(order.ownerRemarks, locale),
     damages,
-    damagesOverflow: order.damages.length - damages.length,
+    /**
+     * ONE number for both lists. The sentence tells the customer how many defects did not fit on
+     * the page, not which of our two lists they were in — that distinction is ours, not his.
+     */
+    damagesOverflow:
+      order.damages.length - damages.length + (order.extraDamages.length - otherDamages.length),
     services: order.services.slice(0, PRINT_MAX_LIST_ITEMS),
     materials: order.materials.slice(0, PRINT_MAX_LIST_ITEMS),
     technicianName: order.technicianName,

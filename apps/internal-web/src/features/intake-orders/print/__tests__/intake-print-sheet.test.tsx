@@ -215,3 +215,40 @@ describe('IntakePrintSheet — the one-page rule', () => {
     expect(screen.getByTestId('print-damage-1').parentElement).not.toHaveClass('columns-2')
   })
 })
+
+describe('IntakePrintSheet — the rows the serviser wrote in', () => {
+  it('prints a written-in equipment row inside the condition band', async () => {
+    await renderSheet(
+      intakeOrderDetailFixture({ extraChecklist: [{ name: 'Gumeni patosnici', value: true }] }),
+    )
+
+    expect(screen.getByText('Gumeni patosnici')).toBeDefined()
+  })
+
+  it('prints the defects with no place on the drawing under their own heading, without numbers', async () => {
+    await renderSheet(intakeOrderDetailFixture({ extraDamages: ['felne izgrebane'] }))
+
+    expect(
+      screen.getByText(m.intake_print_section_other_damages({}, { locale: 'sr' })),
+    ).toBeDefined()
+    expect(screen.getByText('felne izgrebane')).toBeDefined()
+    // A number points at the silhouette, and this defect is not on it.
+    expect(screen.queryByTestId('print-other-1')).toBeNull()
+  })
+
+  it('keeps the heading off the paper when there is nothing under it', async () => {
+    await renderSheet(intakeOrderDetailFixture({ extraDamages: [] }))
+
+    expect(
+      screen.queryByText(m.intake_print_section_other_damages({}, { locale: 'sr' })),
+    ).toBeNull()
+  })
+
+  it('does not say there were no defects when the only ones have no place on the drawing', async () => {
+    // The old branch keyed on `damages.length === 0` alone, which would have printed "nema
+    // nedostataka" directly above a list of them.
+    await renderSheet(intakeOrderDetailFixture({ damages: [], extraDamages: ['felne izgrebane'] }))
+
+    expect(screen.queryByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeNull()
+  })
+})

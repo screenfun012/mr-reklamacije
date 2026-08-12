@@ -69,11 +69,17 @@ export const IntakeExtraChecklistSchema = z.array(IntakeExtraChecklistItemSchema
 export type IntakeExtraChecklist = z.infer<typeof IntakeExtraChecklistSchema>
 
 /**
- * Defects with no place on the silhouette — wheels, interior, exhaust. A bare `string[]` because that
- * is not a new shape in this table: `services` and `materials` already are one, with these same two
- * ceilings, so there is nothing new to explain.
+ * Defects with no place on the silhouette — wheels, interior, exhaust. A bare `string[]`, because
+ * that is not a new shape in this table: `services` and `materials` already are one.
+ *
+ * 80 characters, NOT the 200 those two carry, and the same ceiling as an extra checklist name for
+ * the same reason: this one PRINTS, in a half-page column, and 80 is what fits a line there.
+ * Measured 2026-08-12 against the fullest page the sheet can hold — at 200 characters only two rows
+ * fit before the footer with both signatures walked onto a second page, which would have made the
+ * field a trap: a serviser types what he sees and the paper silently drops it. `services` and
+ * `materials` keep 200 because nothing caps them on paper at all — a separate, reported danger.
  */
-export const IntakeExtraDamagesSchema = z.array(z.string().trim().min(1).max(200)).max(100)
+export const IntakeExtraDamagesSchema = z.array(z.string().trim().min(1).max(80)).max(100)
 
 export type IntakeExtraDamages = z.infer<typeof IntakeExtraDamagesSchema>
 

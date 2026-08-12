@@ -8,6 +8,9 @@ import { PRINT_BAND, PRINT_EYEBROW } from './intake-print-styles'
 /** Past this many the list flows in two columns — see the comment at the list itself. */
 const DEFECTS_PER_COLUMN = 6
 
+/** The written-in list is capped at three, so it needs its own, lower threshold (see below). */
+const OTHER_DEFECTS_PER_COLUMN = 2
+
 /**
  * The drawing and what it means. Every marker prints solid red with a white digit, whatever the
  * defect type: the screen's amber and grey do not survive a printer, and a marker nobody can see
@@ -85,11 +88,41 @@ export function IntakePrintDamages({ model }: { model: IntakePrintModel }): Reac
                 </div>
               ))}
             </div>
-            {model.damages.length === 0 ? (
+            {model.damages.length === 0 && model.otherDamages.length === 0 ? (
               <p className="text-[11.5px] italic text-[#54555b]">
                 {m.intake_print_no_damage({}, { locale })}
               </p>
             ) : null}
+
+            {/* Wheels, interior, exhaust — nothing the silhouette can show. No number, because a
+                number on this paper points at the drawing. */}
+            {model.otherDamages.length === 0 ? null : (
+              <div className="mt-[7px]">
+                <div className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-[#54555b]">
+                  {m.intake_print_section_other_damages({}, { locale })}
+                </div>
+                {/* Two columns from the third row on — NOT the markers' threshold of six, because
+                    this list is capped at three and would never reach it. Measured: three rows at
+                    the schema's 200-character ceiling need 1154 px in one column against the A4
+                    box's 1123, and fit in two. `break-inside-avoid` keeps a wrapped row whole. */}
+                <div
+                  className={
+                    model.otherDamages.length > OTHER_DEFECTS_PER_COLUMN
+                      ? 'columns-2 gap-[18px]'
+                      : ''
+                  }
+                >
+                  {model.otherDamages.map((text, index) => (
+                    <div
+                      key={`${text}-${index}`}
+                      className="break-inside-avoid overflow-hidden border-b border-[#e6e7e9] py-[5px] text-[12px] break-words"
+                    >
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {model.damagesOverflow > 0 ? (
               <p className="mt-[5px] text-[9.5px] text-[#54555b]">
                 {m.intake_print_damages_more(

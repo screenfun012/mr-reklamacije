@@ -7,7 +7,11 @@ import {
   intakeOrderDetailFixture,
   intakePhotoFixture,
 } from '../../detail/__tests__/render-detail.js'
-import { buildIntakePrintModel, PRINT_MAX_DAMAGES } from '../intake-print-data.js'
+import {
+  buildIntakePrintModel,
+  PRINT_MAX_DAMAGES,
+  PRINT_MAX_OTHER_DAMAGES,
+} from '../intake-print-data.js'
 
 function damage(n: number) {
   return {
@@ -240,5 +244,64 @@ describe('buildIntakePrintModel', () => {
     expect(JSON.stringify(model)).toContain('+381 11 111')
     // The paper is the signed record. The working note has no business on it (docs/25 §5).
     expect(JSON.stringify(model)).not.toContain('+381 64 999')
+  })
+})
+
+/**
+ * Rows the serviser wrote in because the shop's lists do not offer them. On paper they are not a
+ * separate idea — an equipment row prints among the equipment, and a defect with no place on the
+ * drawing gets its own sub-block because it has no number to print.
+ */
+describe('buildIntakePrintModel — the rows the serviser wrote in', () => {
+  beforeAll(() => {
+    setLocale('sr', { reload: false })
+  })
+
+  it('prints a written-in equipment row like any other, and an unanswered one as a dash', () => {
+    const order = intakeOrderDetailFixture({
+      checklist: {},
+      extraChecklist: [
+        { name: 'Gumeni patosnici', value: true },
+        { name: 'Kanister', value: null },
+      ],
+    })
+
+    const rows = buildIntakePrintModel(order, CATALOG, 'sr').checklist
+
+    expect(rows.map((row) => [row.label, row.mark])).toEqual([
+      ['Gumeni patosnici', '✓'],
+      ['Kanister', '—'],
+    ])
+  })
+
+  it('keeps the written-in rows after the catalog ones, the order the screens use', () => {
+    const order = intakeOrderDetailFixture({
+      checklist: { rezervna: true },
+      extraChecklist: [{ name: 'Gumeni patosnici', value: false }],
+    })
+
+    const labels = buildIntakePrintModel(order, CATALOG, 'sr').checklist.map((row) => row.label)
+
+    expect(labels[labels.length - 1]).toBe('Gumeni patosnici')
+  })
+
+  it('counts the unmarked defects in the printed figure', () => {
+    // The figure is what the customer reads first. "1" over a list of three is a lie on evidence.
+    const order = intakeOrderDetailFixture({ damages: [], extraDamages: ['felne izgrebane'] })
+
+    expect(buildIntakePrintModel(order, CATALOG, 'sr').damageCount).toBe(1)
+  })
+
+  it('folds both overflows into one number, because the customer asks how many did not fit', () => {
+    const order = intakeOrderDetailFixture({
+      damages: Array.from({ length: PRINT_MAX_DAMAGES + 2 }, (_, i) => damage(i + 1)),
+      extraDamages: Array.from({ length: PRINT_MAX_OTHER_DAMAGES + 3 }, (_, i) => `stavka ${i}`),
+    })
+
+    const model = buildIntakePrintModel(order, CATALOG, 'sr')
+
+    // Two markers plus three written-in rows left off the page — one sentence, not two.
+    expect(model.damagesOverflow).toBe(5)
+    expect(model.otherDamages).toHaveLength(PRINT_MAX_OTHER_DAMAGES)
   })
 })
