@@ -8,6 +8,7 @@ import { INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import type { IntakePrintLocale } from './intake-print-data'
 import { useIntakePrintScale } from './intake-print-scale'
 import { IntakePrintSheet } from './intake-print-sheet'
+import { useIntakePrintZoom } from './use-intake-print-zoom'
 import './intake-print.css'
 
 const PRINT_LOCALES: readonly IntakePrintLocale[] = ['sr', 'en']
@@ -48,7 +49,13 @@ export function IntakePrintDialog({
    * The room the paper has, measured. Everything the dialog lays out sits inside that element, so its
    * content width IS the available width — the dialog's own padding is already out of it.
    */
-  const { measureRef, scale } = useIntakePrintScale()
+  const { measureRef, viewport, scale: fitScale } = useIntakePrintScale()
+
+  /**
+   * …and what the operator's fingers did to it. The fit scale is the floor and the default, so with no
+   * gesture in play this is exactly the number the measurement produced.
+   */
+  const { scale, toggle, handlers } = useIntakePrintZoom({ fitScale, viewport })
 
   useEffect(() => {
     if (!open) {
@@ -69,17 +76,27 @@ export function IntakePrintDialog({
 
   const vehicleType = INTAKE_VEHICLE_TYPE_LABELS[order.vehicleType]()
 
+  /*
+   * The scroll box, and therefore the pan: `touch-action: none` on the paper leaves it no native
+   * scrolling, and the one-pointer drag drives these offsets instead. `intake-print-viewport` carries
+   * the `overflow` rather than a Tailwind utility because print has to be able to take it away — see
+   * the stylesheet for what a scrolled preview printed before it could.
+   */
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={m.intake_print_preview({ type: vehicleType })}
       ref={measureRef}
-      className="fixed inset-0 z-50 flex flex-col items-center overflow-auto bg-[rgba(11,11,13,0.92)] p-6"
+      className="intake-print-viewport fixed inset-0 z-50 flex flex-col items-center bg-[rgba(11,11,13,0.92)] p-6"
     >
-      {/* `items-center` stays: every child below is now at most as wide as this box, so centring
-          them is what puts the paper in the middle of a desktop screen instead of what pushed its
-          left edge out of reach on a phone. */}
+      {/* `items-center` stays for the toolbar, which is never wider than this box. The paper can now
+          be magnified past it, which is why the scaler below centres itself with `mx-auto` instead:
+          an auto margin resolves to ZERO when the free space is negative (CSS Flexbox §9.6), so an
+          overflowing sheet starts at the left edge and every pixel of it is scrollable, while
+          `align-items: center` would centre the overflow and put the left edge at a coordinate
+          `scrollLeft` cannot reach. Measured at 390px, both engines, at 2×: -599px with the left edge
+          unreachable, exactly the bug the fit-to-width change fixed at 1×. */}
       <div
         data-testid="intake-print-toolbar"
         className="mb-[14px] flex w-full max-w-[794px] flex-none flex-wrap items-center gap-3"
@@ -87,6 +104,20 @@ export function IntakePrintDialog({
         <span className="font-mono text-[10.5px] font-semibold tracking-[0.18em] text-white">
           {m.intake_print_preview({ type: vehicleType })}
         </span>
+        {/* Only where there is something to zoom: on a desktop the paper is already at 1:1 and both
+            ends of the toggle are the same size. The gestures stay, but nobody has to know them —
+            the workers are not computer literate and will not go looking for a gesture nobody named
+            (docs/25 §3.0 — the screen leads), and a mouse cannot pinch at all. The label names WHERE
+            THE PRESS GOES rather than what to do with your fingers. */}
+        {fitScale < 1 ? (
+          <button
+            type="button"
+            onClick={toggle}
+            className="min-h-11 cursor-pointer rounded-[9px] border border-white/25 bg-white/10 px-5 text-[12.5px] font-bold uppercase tracking-[0.06em] text-white"
+          >
+            {scale > fitScale ? m.intake_print_zoom_whole() : m.intake_print_zoom_actual()}
+          </button>
+        ) : null}
         {/* The paper's language, not the app's. Two segments rather than a question before the
             preview: the operator SEES what he is about to hand over. */}
         <div
@@ -135,10 +166,15 @@ export function IntakePrintDialog({
       {/* The shadow rides the reserved box rather than the sheet, so it stays a crisp 24px drop at
           every scale instead of shrinking with the paper. `intake-print.css` owns the arithmetic and
           the print reset; the only thing React contributes is the measured number. */}
+      {/* `touch-none` is what makes the pinch ours: without it the pointers are taken by the engine
+          for its own panning and zooming half way through the gesture. It also means this surface has
+          no native scroll left, so the one-pointer drag IS the scroll — see `panBy`. `select-none`
+          keeps a mouse drag from selecting the paper's text instead of panning it. */}
       <div
         data-testid="intake-print-scaler"
-        className="intake-print-scaler flex-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+        className="intake-print-scaler mx-auto flex-none touch-none select-none shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
         style={{ '--intake-print-scale': scale } as CSSProperties}
+        {...handlers}
       >
         <IntakePrintSheet
           key={printLocale}

@@ -1,4 +1,4 @@
-import { useCallback, useState, type RefCallback } from 'react'
+import { useCallback, useRef, useState, type RefCallback, type RefObject } from 'react'
 
 /**
  * A4 at 96dpi — the paper's real width, and the only number the preview scales against. The sheet's
@@ -43,21 +43,32 @@ export function intakePrintScale(availableWidthPx: number): number {
  */
 export function useIntakePrintScale(): {
   measureRef: RefCallback<HTMLElement>
+  /**
+   * The measured element itself. It is also the preview's scroll box, which is what the user zoom
+   * pans by scrolling — the same element, so the room the paper is fitted into and the room it is
+   * panned inside can never disagree.
+   */
+  viewport: RefObject<HTMLElement | null>
   scale: number
 } {
   const [scale, setScale] = useState(1)
+  const viewport = useRef<HTMLElement | null>(null)
 
   const measureRef = useCallback<RefCallback<HTMLElement>>((element) => {
     if (element === null) {
       return
     }
+    viewport.current = element
     const observer = new ResizeObserver((entries) => {
       // `contentRect` already excludes the padding, so it is exactly the room the sheet may use.
       setScale(intakePrintScale(entries[0]?.contentRect.width ?? 0))
     })
     observer.observe(element)
-    return () => observer.disconnect()
+    return () => {
+      viewport.current = null
+      observer.disconnect()
+    }
   }, [])
 
-  return { measureRef, scale }
+  return { measureRef, viewport, scale }
 }

@@ -1288,5 +1288,6 @@
   "intake_print_damages_more": "…and {count} more — see digital order {number}",
   "intake_print_preview": "PRINT PREVIEW · A4 · {type}",
   "intake_print_language": "Work order language",
-  "intake_print_zoom_hint": "Pinch to zoom, double-tap for the whole page"
+  "intake_print_zoom_actual": "Actual size",
+  "intake_print_zoom_whole": "Whole page"
 }

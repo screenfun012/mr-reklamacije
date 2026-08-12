@@ -1,6 +1,9 @@
 /*
  * The preview scales down to whatever width it was given, and the scale arrives as a custom property
- * from the dialog, which is the only thing that can measure the room. 90% of intake happens on a
+ * from the dialog, which is the only thing that can measure the room. Since 2026-08-12 that property
+ * carries the EFFECTIVE scale — the fit-to-width measurement is its floor and its default, and the
+ * operator's pinch raises it up to `INTAKE_PRINT_MAX_SCALE`. Nothing here has to know which of the two
+ * it is looking at, and the print reset at the bottom of the file wipes both. 90% of intake happens on a
  * tablet or a phone, where A4's real 794px is about twice the viewport — and a flex child wider than
  * its container is CENTRED, so its left edge lands at a negative coordinate that no scroll can
  * reach. Measured 2026-08-11 at 390px in Chromium and WebKit both: the sheet sat at -202px with
@@ -13,6 +16,19 @@
  *
  * The numbers are A4 at 96dpi, the same literals the sheet's own class carries.
  */
+/*
+ * The preview's scroll box — and the pan, since `touch-action: none` on the paper takes native
+ * scrolling away and the one-pointer drag drives these offsets instead.
+ *
+ * The overflow lives here rather than as a Tailwind `overflow-auto` class so that the print rule at the
+ * bottom of the file can win it with nothing but source order, the way the scale reset does. Through
+ * the utility class it would depend on unlayered CSS beating `@layer utilities` — true today, and
+ * exactly the kind of invisible dependency that killed every transition in this app once already.
+ */
+.intake-print-viewport {
+  overflow: auto;
+}
+
 .intake-print-scaler {
   /*
    * A transform does not change layout size, so the box has to reserve what the transform paints.
@@ -57,6 +73,18 @@
     top: 0;
     margin: 0;
     box-shadow: none;
+  }
+
+  /*
+   * A preview the operator scrolled must not print the paper where he left it. The sheet is positioned
+   * inside the scroll box, so its offsets translate the sheet — and an element that is not a scroll
+   * container has no offsets, which resets them with no listener and covers the browser's own Cmd+P as
+   * well as our button. Measured 2026-08-12, zoomed to 2× and scrolled to (400,600): the printed sheet
+   * sat at (-400,-279) before this rule and at (0,0) after it, in Chromium and WebKit both — the
+   * signature block was sliding off the page.
+   */
+  .intake-print-viewport {
+    overflow: visible;
   }
 
   /*

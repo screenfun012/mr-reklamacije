@@ -1288,5 +1288,6 @@
   "intake_print_damages_more": "…i još {count} — vidi digitalni nalog {number}",
   "intake_print_preview": "PREGLED ŠTAMPE · A4 · {type}",
   "intake_print_language": "Jezik naloga",
-  "intake_print_zoom_hint": "Dva prsta zumiraju, dvostruki dodir uklapa celu stranu"
+  "intake_print_zoom_actual": "Prava veličina",
+  "intake_print_zoom_whole": "Cela strana"
 }

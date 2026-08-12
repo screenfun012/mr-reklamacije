@@ -1,6 +1,6 @@
 import { m } from '@mr/i18n'
 import type { IntakeChecklistItemListItem, IntakeOrderDetail } from '@mr/shared'
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 
 import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
 import { IntakePrintCondition } from './intake-print-condition'
@@ -59,8 +59,13 @@ function SignatureBox({
  *
  * `print-color-adjust: exact` is not decoration — without it the printer drops the red bands and
  * the defect markers, and the sheet loses the two things a reader navigates by.
+ *
+ * Memoised because a pinch re-renders the dialog around it on every pointer move: none of these three
+ * props change while fingers are on the glass, and rebuilding the whole print model sixty times a
+ * second is the difference between a gesture that tracks and one that stutters on the shop's oldest
+ * iPad. The zoom itself is one custom property on the box outside — it needs no re-render at all.
  */
-export function IntakePrintSheet({
+export const IntakePrintSheet = memo(function IntakePrintSheet({
   order,
   checklistItems,
   locale,
@@ -164,4 +169,4 @@ export function IntakePrintSheet({
       </div>
     </div>
   )
-}
+})
