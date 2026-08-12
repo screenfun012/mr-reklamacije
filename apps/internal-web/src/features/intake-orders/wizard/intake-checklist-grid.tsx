@@ -131,8 +131,17 @@ export function IntakeChecklistGrid({
         )
       })}
 
+      {/*
+        Full width, not half like the catalog rows: a written-in row carries a ✕ the others do not,
+        and in a half column that button ate enough room to truncate the name — measured in the
+        browser, "Gumeni patosnici" came out as "Gumeni …". A worker who has just typed a name and
+        cannot read it back has no way to tell a typo from a correct entry.
+      */}
       {extra.map((row, index) => (
-        <div key={`${row.name}-${index}`} className="flex items-center justify-between gap-3">
+        <div
+          key={`${row.name}-${index}`}
+          className="flex items-center justify-between gap-3 sm:col-span-2"
+        >
           <span className="min-w-0 flex-1 truncate text-[15px] text-mri-text">{row.name}</span>
           <button
             type="button"

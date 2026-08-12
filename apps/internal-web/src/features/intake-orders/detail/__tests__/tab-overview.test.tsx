@@ -1,4 +1,5 @@
 import { m } from '@mr/i18n'
+import { IntakeDamageType } from '@mr/shared'
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
@@ -233,5 +234,26 @@ describe('TabOverview', () => {
     expect(screen.queryByLabelText(m.intake_field_equipment_note())).toBeNull()
     expect(screen.queryByRole('group', { name: m.intake_damage_type_pick() })).toBeNull()
     expect(screen.queryByRole('button', { name: m.intake_map_aria() })).toBeNull()
+  })
+})
+
+describe('TabOverview — the defect figure', () => {
+  it('counts the defects with no place on the drawing, like the paper does', async () => {
+    // Caught in the browser: this card read "2" directly above a list of four, on a screen whose
+    // whole job is to look like the sheet the customer is holding.
+    await renderDetailUi(
+      <TabOverview
+        order={intakeOrderDetailFixture({
+          damages: [
+            { id: 'd1', type: IntakeDamageType.Scratch, x: 100, y: 60, zone: 'krov' },
+            { id: 'd2', type: IntakeDamageType.Scratch, x: 120, y: 80, zone: 'vetrobran' },
+          ],
+          extraDamages: ['felne izgrebane', 'nedostaje poklopac'],
+          draftStep: null,
+        })}
+      />,
+    )
+
+    expect(screen.getByText('4')).toBeInTheDocument()
   })
 })

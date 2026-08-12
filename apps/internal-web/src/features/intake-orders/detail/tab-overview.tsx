@@ -81,6 +81,8 @@ export function TabOverview({
   const locale = getLocale()
   const cells = buildPhotoCells(order.id, order.photos, [], order.damages)
   const damageRecorded = recordedThroughStep(order) >= STEP_DAMAGE
+  /** Both lists, always together: the paper prints one figure and so must every screen. */
+  const damageCount = order.damages.length + order.extraDamages.length
   /*
    * Fuel gates on the SIGNATURE while damage above gates on the step, and the difference is not an
    * oversight. `fuel_level` is the only intake column that is NOT NULL with a default (schema:69),
@@ -145,15 +147,13 @@ export function TabOverview({
     },
     {
       label: m.intake_fact_damages(),
-      // A dash, and no green, until somebody has actually walked around the car.
-      value: damageRecorded ? String(order.damages.length) : DASH,
+      // A dash, and no green, until somebody has actually walked around the car. The count is
+      // markers PLUS the ones with no place on the drawing — this card sits directly above a list
+      // that shows both, and the browser caught it reading "2" over four of them.
+      value: damageRecorded ? String(damageCount) : DASH,
       className: cn(
         'font-mono font-semibold',
-        !damageRecorded
-          ? 'text-mri-text2'
-          : order.damages.length > 0
-            ? 'text-mri-redh'
-            : 'text-mri-grn',
+        !damageRecorded ? 'text-mri-text2' : damageCount > 0 ? 'text-mri-redh' : 'text-mri-grn',
       ),
     },
     { label: m.intake_field_owner_address(), value: order.ownerAddress ?? DASH, className: '' },
