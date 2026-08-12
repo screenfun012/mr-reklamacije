@@ -3,6 +3,7 @@ import {
   type IntakeChecklist,
   type IntakeDamage,
   type IntakeExtraChecklistItem,
+  type IntakeOwnerType,
   type IntakeOrderListView,
 } from '@mr/shared'
 import {
@@ -76,6 +77,9 @@ interface OrderRow {
   mileage: number | null
   arrivalMode: string
   ownerName: string
+  ownerType: IntakeOwnerType
+  ownerIdNumber: string | null
+  ownerEmail: string | null
   ownerAddress: string | null
   ownerPhone: string
   contactPhone: string | null
@@ -146,6 +150,9 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     mileage: row.mileage,
     arrivalMode: row.arrivalMode as IntakeOrderDetail['arrivalMode'],
     ownerName: row.ownerName,
+    ownerType: row.ownerType,
+    ownerIdNumber: row.ownerIdNumber,
+    ownerEmail: row.ownerEmail,
     ownerAddress: row.ownerAddress,
     ownerPhone: row.ownerPhone,
     contactPhone: row.contactPhone,
@@ -187,6 +194,9 @@ export class IntakeOrdersRepository {
       mileage: intakeOrders.mileage,
       arrivalMode: intakeOrders.arrivalMode,
       ownerName: intakeOrders.ownerName,
+      ownerType: intakeOrders.ownerType,
+      ownerIdNumber: intakeOrders.ownerIdNumber,
+      ownerEmail: intakeOrders.ownerEmail,
       ownerAddress: intakeOrders.ownerAddress,
       ownerPhone: intakeOrders.ownerPhone,
       contactPhone: intakeOrders.contactPhone,
@@ -379,6 +389,9 @@ export class IntakeOrdersRepository {
         mileage: input.mileage ?? null,
         arrivalMode: input.arrivalMode,
         ownerName: input.ownerName,
+        ...(input.ownerType === undefined ? {} : { ownerType: input.ownerType }),
+        ownerIdNumber: input.ownerIdNumber ?? null,
+        ownerEmail: input.ownerEmail ?? null,
         ownerAddress: input.ownerAddress ?? null,
         ownerPhone: input.ownerPhone,
         ownerRemarks: input.ownerRemarks ?? null,
@@ -423,6 +436,9 @@ export class IntakeOrdersRepository {
     if (patch.contactPhone !== undefined) values['contactPhone'] = patch.contactPhone
     if (patch.ownerRemarks !== undefined) values['ownerRemarks'] = patch.ownerRemarks
     if (patch.fuelLevel !== undefined) values['fuelLevel'] = patch.fuelLevel
+    if (patch.ownerType !== undefined) values['ownerType'] = patch.ownerType
+    if (patch.ownerIdNumber !== undefined) values['ownerIdNumber'] = patch.ownerIdNumber
+    if (patch.ownerEmail !== undefined) values['ownerEmail'] = patch.ownerEmail
     if (patch.checklist !== undefined) values['checklist'] = patch.checklist
     if (patch.extraChecklist !== undefined) values['extraChecklist'] = patch.extraChecklist
     if (patch.extraDamages !== undefined) values['extraDamages'] = patch.extraDamages

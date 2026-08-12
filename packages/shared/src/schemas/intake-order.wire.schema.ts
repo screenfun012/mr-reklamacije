@@ -4,6 +4,7 @@ import {
   intakeArrivalModeValues,
   intakeOrderStatusValues,
   intakeVehicleTypeValues,
+  intakeOwnerTypeValues,
 } from '../enums.js'
 import {
   IntakeChecklistSchema,
@@ -37,6 +38,10 @@ export const IntakeOrderCreateInputSchema = z.object({
   mileage: z.number().int().min(0).max(10_000_000).optional(),
   arrivalMode: z.enum(intakeArrivalModeValues),
   ownerName: z.string().trim().min(1).max(160),
+  ownerType: z.enum(intakeOwnerTypeValues).optional(),
+  /** ID card for a person, tax number for a firm — `ownerType` is what says which. */
+  ownerIdNumber: z.string().trim().max(40).optional(),
+  ownerEmail: z.string().trim().email().max(160).optional(),
   ownerAddress: z.string().trim().max(240).optional(),
   ownerPhone: z.string().trim().min(3).max(40),
   ownerRemarks: z.string().trim().max(2000).optional(),
@@ -61,6 +66,9 @@ export const IntakeOrderUpdateInputSchema = z
     mileage: z.number().int().min(0).max(10_000_000).nullable().optional(),
     arrivalMode: z.enum(intakeArrivalModeValues).optional(),
     ownerName: z.string().trim().min(1).max(160).optional(),
+    ownerType: z.enum(intakeOwnerTypeValues).optional(),
+    ownerIdNumber: z.string().trim().max(40).nullable().optional(),
+    ownerEmail: z.string().trim().email().max(160).nullable().optional(),
     ownerAddress: z.string().trim().max(240).nullable().optional(),
     ownerPhone: z.string().trim().min(3).max(40).optional(),
     /**
@@ -265,6 +273,9 @@ export const IntakeOrderDetailSchema = z.object({
   mileage: z.number().int().nullable(),
   arrivalMode: z.enum(intakeArrivalModeValues),
   ownerName: z.string(),
+  ownerType: z.enum(intakeOwnerTypeValues),
+  ownerIdNumber: z.string().nullable(),
+  ownerEmail: z.string().nullable(),
   ownerAddress: z.string().nullable(),
   ownerPhone: z.string(),
   /** The shop's working note beside the signed number — null until someone writes one (docs/25 §5). */

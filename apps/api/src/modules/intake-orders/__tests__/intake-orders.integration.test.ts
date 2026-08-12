@@ -5,6 +5,8 @@ import {
   IntakeDamageType,
   IntakeNumberCheckStatus,
   IntakeOrderStatus,
+  IntakeOwnerType,
+  IntakeOrderUpdateInputSchema,
   IntakeVehicleType,
   ResourceChangedKey,
   SERVISER_PERMISSIONS,
@@ -1323,6 +1325,85 @@ describe('Intake orders integration', () => {
 
       await expect(
         service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id)),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+  })
+
+  /**
+   * Who handed the vehicle over, and where his copy goes. The identifier is one column whose meaning
+   * the type gives it; the email is optional, and empty means the owner leaves with paper only.
+   */
+  describe('the owner identity', () => {
+    it('defaults to a private person, so an order taken before this existed reads honestly', async () => {
+      const serviser = await floorActor()
+
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      expect(created.ownerType).toBe(IntakeOwnerType.Person)
+      expect(created.ownerIdNumber).toBeNull()
+      expect(created.ownerEmail).toBeNull()
+    })
+
+    it('stores the identifier and the email', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      const updated = await service.update(
+        created.id,
+        {
+          ownerType: IntakeOwnerType.Company,
+          ownerIdNumber: '101234567',
+          ownerEmail: 'firma@primer.rs',
+        },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      expect(updated.ownerType).toBe(IntakeOwnerType.Company)
+      expect(updated.ownerIdNumber).toBe('101234567')
+      expect(updated.ownerEmail).toBe('firma@primer.rs')
+    })
+
+    it('refuses an address that is not an email, so nothing is sent into the void', () => {
+      // Asserted against the SCHEMA, not through the service: the parse happens at the HTTP
+      // boundary, so a service-level call would be handed an already-valid object and prove nothing.
+      expect(IntakeOrderUpdateInputSchema.safeParse({ ownerEmail: 'nije-mejl' }).success).toBe(
+        false,
+      )
+      expect(
+        IntakeOrderUpdateInputSchema.safeParse({ ownerEmail: 'vlasnik@primer.rs' }).success,
+      ).toBe(true)
+    })
+
+    it('freezes all three once the order is signed', async () => {
+      // Frozen by an ABSENCE — they are simply not on FREE_AFTER_SIGNING — which is exactly what a
+      // later edit undoes without noticing it has undone anything.
+      const serviser = await floorActor()
+      const orderId = await signedOrder(serviser)
+
+      await expect(
+        service.update(
+          orderId,
+          { ownerIdNumber: '123456789' },
+          serviser,
+          actorContext(serviser.id),
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+      await expect(
+        service.update(
+          orderId,
+          { ownerEmail: 'novi@primer.rs' },
+          serviser,
+          actorContext(serviser.id),
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+      await expect(
+        service.update(
+          orderId,
+          { ownerType: IntakeOwnerType.Company },
+          serviser,
+          actorContext(serviser.id),
+        ),
       ).rejects.toBeInstanceOf(ValidationError)
     })
   })
