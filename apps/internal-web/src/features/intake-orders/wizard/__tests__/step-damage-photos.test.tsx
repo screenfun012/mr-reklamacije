@@ -1,4 +1,4 @@
-import { setLocale } from '@mr/i18n'
+import { m, setLocale } from '@mr/i18n'
 import { IntakeDamageType, IntakeVehicleType } from '@mr/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -184,6 +184,60 @@ describe('StepDamagePhotos — the photo preview', () => {
 
     expect(onDeletePhoto).not.toHaveBeenCalled()
     expect(queue.discard).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * Defects with no place on the silhouette — wheels, interior, exhaust. They carry no ①②③ because a
+ * number points at the drawing, and these are not on it.
+ */
+describe('StepDamagePhotos — the defects with no place on the drawing', () => {
+  it('counts them in the card total, so the number never disagrees with the list', () => {
+    renderStep({
+      ...valuesWithDamages(),
+      extraDamages: ['felne izgrebane', 'nedostaje poklopac'],
+    })
+
+    // Three markers plus two written in. A card reading "3" over a list of five is a lie on a
+    // document that is evidence.
+    expect(screen.getByText('5')).toBeInTheDocument()
+  })
+
+  it('shows the heading only once there is a row under it, and the adder always', () => {
+    renderStep(emptyIntakeWizardValues())
+
+    expect(screen.queryByText(m.intake_section_other_damages())).toBeNull()
+    // Always — otherwise the serviser has nowhere to tap the first time.
+    expect(screen.getByRole('button', { name: m.intake_extra_add_defect() })).toBeInTheDocument()
+  })
+
+  it('adds one and keeps the field open for the next', async () => {
+    const user = userEvent.setup()
+    const onPatch = vi.fn()
+    renderStep(emptyIntakeWizardValues(), onPatch)
+
+    await user.click(screen.getByRole('button', { name: m.intake_extra_add_defect() }))
+    const field = screen.getByPlaceholderText(m.intake_extra_defect_placeholder())
+    await user.type(field, 'felne izgrebane{Enter}')
+
+    expect(onPatch).toHaveBeenCalledWith({ extraDamages: ['felne izgrebane'] })
+    expect((field as HTMLInputElement).value).toBe('')
+  })
+
+  it('removes one with a single tap and no dialog, unlike a marker', async () => {
+    // A marker asks first, because removing it renumbers every photo taken after it. A line of text
+    // points at nothing, so a confirmation would be ceremony.
+    const user = userEvent.setup()
+    const onPatch = vi.fn()
+    renderStep(
+      { ...emptyIntakeWizardValues(), extraDamages: ['felne izgrebane', 'nedostaje poklopac'] },
+      onPatch,
+    )
+
+    await user.click(screen.getAllByRole('button', { name: m.intake_extra_remove() })[0]!)
+
+    expect(onPatch).toHaveBeenCalledWith({ extraDamages: ['nedostaje poklopac'] })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

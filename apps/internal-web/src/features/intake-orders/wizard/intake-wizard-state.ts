@@ -3,6 +3,8 @@ import {
   IntakeVehicleType,
   type IntakeChecklistItemListItem,
   type IntakeDamage,
+  type IntakeExtraChecklist,
+  type IntakeExtraDamages,
   type IntakeOrderCreateInput,
   type IntakeOrderDetail,
   type IntakeOrderUpdateInput,
@@ -47,6 +49,9 @@ export interface IntakeWizardValues {
   equipmentNote: string
   /** Array order IS the ①②③ numbering on the map, in the list and on the print. */
   damages: IntakeDamage[]
+  /** Rows the shop's lists do not offer, written in on this order alone. */
+  extraChecklist: IntakeExtraChecklist
+  extraDamages: IntakeExtraDamages
   /** Plain lines, no catalogue, no quantities, no prices — the work order carries none. */
   services: string[]
   materials: string[]
@@ -71,6 +76,8 @@ export function emptyIntakeWizardValues(): IntakeWizardValues {
     checklist: {},
     equipmentNote: '',
     damages: [],
+    extraChecklist: [],
+    extraDamages: [],
     services: [],
     materials: [],
   }
@@ -159,6 +166,8 @@ export function toUpdateInput(
     },
     equipmentNote: optionalText(values.equipmentNote) ?? null,
     damages: values.damages,
+    extraChecklist: values.extraChecklist,
+    extraDamages: values.extraDamages,
     services: values.services,
     materials: values.materials,
     draftStep: Math.min(INTAKE_WIZARD_STEP_COUNT, Math.max(1, step)),
@@ -193,6 +202,8 @@ export function valuesFromOrder(order: IntakeOrderDetail): IntakeWizardValues {
     checklist: order.checklist,
     equipmentNote: order.equipmentNote ?? '',
     damages: [...order.damages],
+    extraChecklist: [...order.extraChecklist],
+    extraDamages: [...order.extraDamages],
     services: [...order.services],
     materials: [...order.materials],
   }

@@ -1,6 +1,6 @@
 import { m, setLocale } from '@mr/i18n'
 import type { IntakeChecklistItemListItem } from '@mr/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -97,5 +97,93 @@ describe('StepChecklist', () => {
     expect(screen.queryByText(m.intake_checklist_confirmed({ confirmed: 0, total: 0 }))).toBeNull()
     // The equipment note still works: it is the serviser's own words and does not need a catalog.
     expect(screen.getByLabelText(m.intake_field_equipment_note())).toBeInTheDocument()
+  })
+})
+
+/**
+ * Rows the serviser writes in because the shop's list does not offer them. They live on this order
+ * alone — the catalog stays the admin's (docs/13).
+ */
+describe('StepChecklist — the rows the serviser writes in', () => {
+  beforeEach(() => {
+    setLocale('sr', { reload: false })
+  })
+
+  it('counts them in the total, which is never a literal', () => {
+    // Same class of bug the browser caught in part B ("Korak 2 / 5" over four steps): a total that
+    // does not move when the list under it does.
+    const values: IntakeWizardValues = {
+      ...emptyIntakeWizardValues(),
+      extraChecklist: [{ name: 'Gumeni patosnici', value: true }],
+    }
+
+    renderStepChecklist(catalogOf(8), values)
+
+    expect(screen.getByText(m.intake_checklist_confirmed({ confirmed: 1, total: 9 }))).toBeDefined()
+  })
+
+  it('gives a written-in row the same DA/NE pair as a catalog row', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = renderStepChecklist(catalogOf(2), {
+      ...emptyIntakeWizardValues(),
+      extraChecklist: [{ name: 'Gumeni patosnici', value: null }],
+    })
+
+    const group = screen.getByRole('group', { name: 'Gumeni patosnici' })
+    await user.click(within(group).getByRole('button', { name: m.intake_checklist_no() }))
+
+    expect(onPatch).toHaveBeenCalledWith({
+      extraChecklist: [{ name: 'Gumeni patosnici', value: false }],
+    })
+  })
+
+  it('adds on Enter and clears the field, because a serviser adds two or three at once', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = renderStepChecklist(catalogOf(2))
+
+    await user.click(screen.getByRole('button', { name: m.intake_extra_add_item() }))
+    const field = screen.getByPlaceholderText(m.intake_extra_item_placeholder())
+    await user.type(field, 'Gumeni patosnici{Enter}')
+
+    expect(onPatch).toHaveBeenCalledWith({
+      extraChecklist: [{ name: 'Gumeni patosnici', value: null }],
+    })
+    expect((field as HTMLInputElement).value).toBe('')
+  })
+
+  it('will not add a blank name, and says nothing about it', async () => {
+    // Nothing to explain, so nothing is said — an error message here would be noise on a screen a
+    // worker is using while a customer waits.
+    const user = userEvent.setup()
+    const { onPatch } = renderStepChecklist(catalogOf(2))
+
+    await user.click(screen.getByRole('button', { name: m.intake_extra_add_item() }))
+    await user.type(screen.getByPlaceholderText(m.intake_extra_item_placeholder()), '   ')
+
+    expect(screen.getByRole('button', { name: m.intake_extra_confirm() })).toBeDisabled()
+    expect(onPatch).not.toHaveBeenCalled()
+  })
+
+  it('removes one with a single tap, no dialog', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = renderStepChecklist(catalogOf(2), {
+      ...emptyIntakeWizardValues(),
+      extraChecklist: [
+        { name: 'Gumeni patosnici', value: true },
+        { name: 'Kanister', value: null },
+      ],
+    })
+
+    await user.click(screen.getAllByRole('button', { name: m.intake_extra_remove() })[0]!)
+
+    expect(onPatch).toHaveBeenCalledWith({ extraChecklist: [{ name: 'Kanister', value: null }] })
+  })
+
+  it('offers the adder even when the catalog is empty', () => {
+    // The catalog being empty is the office's mistake; the serviser must still be able to record
+    // what he sees (docs/25 §3.0).
+    renderStepChecklist([])
+
+    expect(screen.getByRole('button', { name: m.intake_extra_add_item() })).toBeInTheDocument()
   })
 })

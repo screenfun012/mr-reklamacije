@@ -351,6 +351,7 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
    */
   const conditionRecorded = isIntakeConditionRecorded(
     values.checklist,
+    values.extraChecklist,
     values.equipmentNote,
     checklistItems.length,
   )

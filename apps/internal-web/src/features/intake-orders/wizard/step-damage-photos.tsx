@@ -12,6 +12,7 @@ import { useRef, useState, type ReactElement } from 'react'
 
 import { INTAKE_DAMAGE_TYPE_LABELS, INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
 import { IntakeDamageMap, intakeDamageMarkerColour } from './intake-damage-map'
+import { IntakeExtraRowAdder } from './intake-extra-row-adder'
 import { IntakePanel } from './intake-panel'
 import { buildPhotoCells, IntakePhotoGrid, type IntakePhotoCell } from './intake-photo-grid'
 import { IntakePhotoLightbox } from './intake-photo-lightbox'
@@ -143,7 +144,9 @@ export function StepDamagePhotos({
           title={m.intake_card_damage_list()}
           action={
             <span className="rounded-full bg-[rgba(237,28,36,0.13)] px-2.5 py-[3px] font-mono text-[13px] font-bold text-mri-redh">
-              {values.damages.length}
+              {/* Markers PLUS the ones with no place on the drawing: a card reading "3" over a list
+                  of five is a lie on a document that is evidence. */}
+              {values.damages.length + values.extraDamages.length}
             </span>
           }
           className="flex-none gap-[9px] px-[18px] py-4"
@@ -194,11 +197,46 @@ export function StepDamagePhotos({
             )
           })}
 
-          {values.damages.length === 0 ? (
+          {values.damages.length === 0 && values.extraDamages.length === 0 ? (
             <p className="px-2.5 py-3 text-[13.5px] italic text-mri-text2">
               {m.intake_damage_empty()}
             </p>
           ) : null}
+
+          {/* Wheels, interior, exhaust — nothing a finger can touch on the silhouette. No ①②③ here
+              on purpose: a number points at the drawing, and these are not on it. The heading waits
+              for its first row, but the button never does, or there is nowhere to tap the first
+              time. */}
+          {values.extraDamages.length === 0 ? null : (
+            <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.06em] text-mri-text2">
+              {m.intake_section_other_damages()}
+            </div>
+          )}
+
+          {values.extraDamages.map((text, index) => (
+            <div
+              key={`${text}-${index}`}
+              className="flex items-center gap-[11px] rounded-[10px] bg-mri-inbg px-2.5 py-2"
+            >
+              <span className="min-w-0 flex-1 text-sm">{text}</span>
+              <button
+                type="button"
+                aria-label={m.intake_extra_remove()}
+                onClick={() =>
+                  onPatch({ extraDamages: values.extraDamages.filter((_, i) => i !== index) })
+                }
+                className="h-11 w-9 flex-none cursor-pointer text-base text-mri-text2"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+
+          <IntakeExtraRowAdder
+            label={m.intake_extra_add_defect()}
+            placeholder={m.intake_extra_defect_placeholder()}
+            onAdd={(text) => onPatch({ extraDamages: [...values.extraDamages, text] })}
+          />
         </IntakePanel>
 
         <IntakePhotoGrid

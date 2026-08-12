@@ -33,7 +33,19 @@ function conditionMark(value: boolean | null): { mark: string; className: string
  */
 export function CardCondition({ order }: { order: IntakeOrderDetail }): ReactElement {
   const { data: items = [] } = useQuery(intakeChecklistItemsDisplayOptions())
-  const rows = resolveIntakeChecklistRows(order.checklist, items, getLocale())
+  /**
+   * Catalog rows first, then the ones the serviser wrote in — the same order the paper prints and
+   * the wizard shows, so a signed order on screen looks like the sheet in the customer's hand.
+   * Read only: after signing the record is frozen (part H), and this card never offered an edit.
+   */
+  const rows = [
+    ...resolveIntakeChecklistRows(order.checklist, items, getLocale()),
+    ...order.extraChecklist.map((row, index) => ({
+      code: `extra-${index}`,
+      name: row.name,
+      value: row.value,
+    })),
+  ]
   const unchecked = rows.filter((row) => row.value === null).length
 
   return (

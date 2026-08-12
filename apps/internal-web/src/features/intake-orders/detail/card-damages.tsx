@@ -58,11 +58,24 @@ export function CardDamages({
           )
         })}
 
-        {order.damages.length === 0 ? (
+        {order.damages.length === 0 && order.extraDamages.length === 0 ? (
           <p className="text-[13.5px] italic text-mri-text2">
             {damageRecorded ? m.intake_detail_no_damage() : m.intake_detail_damage_pending()}
           </p>
         ) : null}
+
+        {/* Defects with no place on the drawing, read only. No number: a number points at the
+            silhouette, and these are not on it. */}
+        {order.extraDamages.length === 0 ? null : (
+          <>
+            <div className={cn(FIELD_KEY, 'mt-1')}>{m.intake_section_other_damages()}</div>
+            {order.extraDamages.map((text, index) => (
+              <div key={`${text}-${index}`} className="text-[13.5px] text-mri-text">
+                {text}
+              </div>
+            ))}
+          </>
+        )}
 
         <div className={cn(FIELD_KEY, 'mt-1')}>{m.intake_field_owner_remarks()}</div>
         <p className="text-[13.5px] italic leading-[1.6] text-mri-text2">
