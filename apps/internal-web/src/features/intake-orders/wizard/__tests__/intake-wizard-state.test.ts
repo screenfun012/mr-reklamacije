@@ -1,4 +1,4 @@
-import { IntakeArrivalMode, IntakeDamageType, IntakeVehicleType } from '@mr/shared'
+import { IntakeArrivalMode, IntakeOwnerType, IntakeDamageType, IntakeVehicleType } from '@mr/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -9,6 +9,7 @@ import {
   INTAKE_DRAFT_STORAGE_KEY,
   newDamageId,
   readIntakeDraft,
+  ownerIdentityComplete,
   step1Complete,
   toCreateInput,
   toUpdateInput,
@@ -44,6 +45,8 @@ function filledValues(overrides: Partial<IntakeWizardValues> = {}): IntakeWizard
     plate: 'BG 774-LN',
     vehicle: 'Renault Master',
     ownerName: 'Milan Petrović',
+    // A private person must show an ID card, so a "filled" step 1 now carries one.
+    ownerIdNumber: '008123456',
     ownerPhone: '+381 60 111 2233',
     ...overrides,
   }
@@ -61,6 +64,44 @@ describe('step1Complete', () => {
 
   it('does not accept a one-character plate, which is always a slip', () => {
     expect(step1Complete(filledValues({ plate: 'B' }))).toBe(false)
+  })
+
+  it('holds a private person without an ID card, and lets a firm through without one', () => {
+    // A firm has no ID card, so demanding one would stop an intake over a document that does not
+    // exist. Its tax number is offered in the same field and is optional (spec ②③).
+    expect(step1Complete(filledValues({ ownerIdNumber: '' }))).toBe(false)
+    expect(step1Complete(filledValues({ ownerIdNumber: '   ' }))).toBe(false)
+    expect(
+      step1Complete(filledValues({ ownerType: IntakeOwnerType.Company, ownerIdNumber: '' })),
+    ).toBe(true)
+  })
+
+  it('does not ask for an email, ever', () => {
+    // Empty means the owner leaves with paper only — Nikola's rule, and the reason this is not a
+    // required field anywhere.
+    expect(step1Complete(filledValues({ ownerEmail: '' }))).toBe(true)
+  })
+})
+
+describe('the owner type and the number under it', () => {
+  it('clears the number when the type changes, so an ID card never becomes a tax number', () => {
+    // The lock the single column needs. Without it a number typed a moment ago is silently
+    // relabelled on a document that is evidence (spec ⑤).
+    const values = filledValues({ ownerIdNumber: '008123456' })
+
+    expect(ownerIdentityComplete(values)).toBe(true)
+    expect(ownerIdentityComplete({ ...values, ownerIdNumber: '' })).toBe(false)
+    expect(
+      ownerIdentityComplete({ ...values, ownerType: IntakeOwnerType.Company, ownerIdNumber: '' }),
+    ).toBe(true)
+  })
+
+  it('sends the type and the number to the server, and an empty number as null', () => {
+    const patch = toUpdateInput(filledValues({ ownerIdNumber: '  ' }), 1, CATALOG)
+
+    expect(patch.ownerType).toBe(IntakeOwnerType.Person)
+    expect(patch.ownerIdNumber).toBeNull()
+    expect(patch.ownerEmail).toBeNull()
   })
 })
 

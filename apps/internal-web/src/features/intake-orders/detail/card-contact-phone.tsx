@@ -52,12 +52,15 @@ export function IntakeContactPhone({
           {/* `w-full`, not a fixed min-width: a floor in px fights a grid column that cannot grow
               past it, and the loser is invisible — no scrollbar, just clipped digits (V-6-2). A
               percentage width can never overflow its own row, whatever that row's cell turns out
-              to be. */}
+              to be.
+              A CEILING is a different thing and does not undo that: the cell spans the whole card,
+              so `w-full` alone drew a phone box the width of the page and read as a mistake
+              (Nikola, 2026-08-12). It still shrinks freely; it just stops growing. */}
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={m.intake_contact_phone_placeholder()}
-            className="mri-input w-full rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-2 font-sans text-[13.5px] text-mri-text outline-none"
+            className="mri-input w-full max-w-[280px] rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-2 font-sans text-[13.5px] text-mri-text outline-none"
           />
           <InternalButton
             type="button"

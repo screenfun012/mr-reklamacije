@@ -1,5 +1,10 @@
 import { m, type Locale } from '@mr/i18n'
-import { IntakeDamageType, type IntakeArrivalMode, type IntakeVehicleType } from '@mr/shared'
+import {
+  IntakeDamageType,
+  type IntakeArrivalMode,
+  type IntakeOwnerType,
+  type IntakeVehicleType,
+} from '@mr/shared'
 
 /**
  * A message as Paraglide compiles it: callable bare for the screen, or with an explicit locale for
@@ -29,6 +34,11 @@ export const INTAKE_ARRIVAL_MODE_LABELS: Record<IntakeArrivalMode, IntakeLabel> 
   dovezeno: m.intake_arrival_dovezeno,
   doslepano: m.intake_arrival_doslepano,
   dovuceno: m.intake_arrival_dovuceno,
+}
+
+export const INTAKE_OWNER_TYPE_LABELS: Record<IntakeOwnerType, IntakeLabel> = {
+  fizicko_lice: m.intake_owner_type_fizicko_lice,
+  firma: m.intake_owner_type_firma,
 }
 
 export const INTAKE_DAMAGE_TYPE_LABELS: Record<IntakeDamageType, IntakeLabel> = {

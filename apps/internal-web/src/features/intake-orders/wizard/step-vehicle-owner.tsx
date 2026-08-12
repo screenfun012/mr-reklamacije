@@ -1,6 +1,8 @@
 import { m } from '@mr/i18n'
 import {
+  IntakeOwnerType,
   intakeArrivalModeValues,
+  intakeOwnerTypeValues,
   intakePlateLookupOptions,
   intakeVehicleTypeValues,
   type IntakePlateLookupResponse,
@@ -11,7 +13,11 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { InternalFieldGroup } from '~/components/internal-field-group'
 import { InternalInput } from '~/components/internal-field'
 import { InternalNote } from '~/components/internal-note'
-import { INTAKE_ARRIVAL_MODE_LABELS, INTAKE_VEHICLE_TYPE_LABELS } from '../intake-labels'
+import {
+  INTAKE_ARRIVAL_MODE_LABELS,
+  INTAKE_OWNER_TYPE_LABELS,
+  INTAKE_VEHICLE_TYPE_LABELS,
+} from '../intake-labels'
 import { IntakeChoiceButtons } from './intake-choice-buttons'
 import { IntakePanel } from './intake-panel'
 import type { IntakeWizardValues } from './intake-wizard-state'
@@ -160,6 +166,60 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
             value={values.ownerName}
             onChange={(event) => onPatch({ ownerName: event.target.value })}
             className="h-12"
+            autoComplete="off"
+          />
+        </InternalFieldGroup>
+
+        {/* Two buttons, the same control as "Način dolaska" and "Tip vozila", so the serviser
+            learns nothing new. It exists because the field under it means a different document for
+            each — an ID card for a person, a tax number for a firm — and only the person's is
+            required (spec ②③). */}
+        <IntakeChoiceButtons
+          legend={m.intake_field_owner_type()}
+          options={intakeOwnerTypeValues.map((type) => ({
+            value: type,
+            label: INTAKE_OWNER_TYPE_LABELS[type](),
+          }))}
+          value={values.ownerType}
+          onChange={(ownerType) =>
+            // Changing the type CLEARS the number. Without this, an ID card typed a moment ago
+            // silently becomes a tax number on a document that is evidence (spec ⑤).
+            onPatch(
+              ownerType === values.ownerType ? { ownerType } : { ownerType, ownerIdNumber: '' },
+            )
+          }
+          labelSize={14.5}
+        />
+
+        <InternalFieldGroup
+          id="intake-owner-id-number"
+          label={
+            values.ownerType === IntakeOwnerType.Company
+              ? m.intake_field_owner_tax_id()
+              : m.intake_field_owner_id_card()
+          }
+          required={values.ownerType === IntakeOwnerType.Person}
+        >
+          <InternalInput
+            id="intake-owner-id-number"
+            placeholder={values.ownerType === IntakeOwnerType.Company ? '10xxxxxxx' : '00xxxxxxx'}
+            value={values.ownerIdNumber}
+            onChange={(event) => onPatch({ ownerIdNumber: event.target.value })}
+            className="h-12 font-mono"
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </InternalFieldGroup>
+
+        <InternalFieldGroup id="intake-owner-email" label={m.intake_field_owner_email()}>
+          <InternalInput
+            id="intake-owner-email"
+            type="email"
+            placeholder={m.intake_field_owner_email_placeholder()}
+            value={values.ownerEmail}
+            onChange={(event) => onPatch({ ownerEmail: event.target.value })}
+            className="h-12"
+            inputMode="email"
             autoComplete="off"
           />
         </InternalFieldGroup>

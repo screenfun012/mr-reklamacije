@@ -1,5 +1,9 @@
 import { m, type Locale } from '@mr/i18n'
-import type { IntakeChecklistItemListItem, IntakeOrderDetail } from '@mr/shared'
+import {
+  IntakeOwnerType,
+  type IntakeChecklistItemListItem,
+  type IntakeOrderDetail,
+} from '@mr/shared'
 
 import { resolveIntakeChecklistRows, type IntakeChecklistRow } from '../intake-checklist-catalog'
 import {
@@ -72,6 +76,10 @@ export interface IntakePrintModel {
   orderNumber: string
   receivedAt: string
   ownerName: string
+  /** The label the identifier prints under — an ID card and a tax number are not the same claim. */
+  ownerIdLabel: string
+  /** Null when nothing was recorded: an empty caption on a signed document is worse than no row. */
+  ownerIdNumber: string | null
   ownerAddress: string
   ownerPhone: string
   vehicle: string
@@ -102,6 +110,12 @@ export interface IntakePrintModel {
 }
 
 const DASH = '—'
+
+/** Empty stays empty: a caption with nothing under it is a claim the sheet cannot make. */
+function optionalPrintText(value: string | null): string | null {
+  const trimmed = value?.trim() ?? ''
+  return trimmed.length > 0 ? trimmed : null
+}
 
 /**
  * The name is already resolved against the catalog by the time it gets here, in the language the
@@ -166,6 +180,11 @@ export function buildIntakePrintModel(
     orderNumber: order.orderNumber,
     receivedAt: formatIntakeReceivedAtLong(order.receivedAt, locale),
     ownerName: order.ownerName,
+    ownerIdLabel:
+      order.ownerType === IntakeOwnerType.Company
+        ? m.intake_print_owner_tax_id({}, { locale })
+        : m.intake_print_owner_id_card({}, { locale }),
+    ownerIdNumber: optionalPrintText(order.ownerIdNumber),
     ownerAddress: order.ownerAddress ?? DASH,
     ownerPhone: order.ownerPhone,
     vehicle: order.vehicle,

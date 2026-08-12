@@ -117,6 +117,15 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
           <div>
             <div className={PRINT_EYEBROW}>{m.intake_print_section_owner({}, { locale })}</div>
             <div className="mt-[7px] text-[15px] font-extrabold">{model.ownerName}</div>
+            {/* Under the name and above the address: it identifies the person, not the place. Left
+                off entirely when there is none — a firm's number is optional and every order taken
+                before 2026-08-12 has none. */}
+            {model.ownerIdNumber === null ? null : (
+              <div className="mt-[3px] text-[11.5px] text-[#54555b]">
+                <span className="font-mono font-semibold uppercase">{model.ownerIdLabel}</span>{' '}
+                <span className="font-mono">{model.ownerIdNumber}</span>
+              </div>
+            )}
             <div className="mt-[3px] text-[11.5px] leading-[1.6] text-[#54555b]">
               {model.ownerAddress}
               <br />

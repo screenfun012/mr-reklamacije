@@ -1,5 +1,10 @@
 import { m } from '@mr/i18n'
-import { IntakeDamageType, IntakeVehicleType, type IntakeOrderDetail } from '@mr/shared'
+import {
+  IntakeDamageType,
+  IntakeOwnerType,
+  IntakeVehicleType,
+  type IntakeOrderDetail,
+} from '@mr/shared'
 import { screen, type RenderResult } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
@@ -250,5 +255,41 @@ describe('IntakePrintSheet — the rows the serviser wrote in', () => {
     await renderSheet(intakeOrderDetailFixture({ damages: [], extraDamages: ['felne izgrebane'] }))
 
     expect(screen.queryByText(m.intake_print_no_damage({}, { locale: 'sr' }))).toBeNull()
+  })
+})
+
+describe('IntakePrintSheet — who the owner is', () => {
+  it('prints the ID card under the name, with the caption the type gives it', async () => {
+    await renderSheet(
+      intakeOrderDetailFixture({ ownerType: IntakeOwnerType.Person, ownerIdNumber: '008123456' }),
+    )
+
+    expect(screen.getByText(m.intake_print_owner_id_card({}, { locale: 'sr' }))).toBeDefined()
+    expect(screen.getByText('008123456')).toBeDefined()
+  })
+
+  it('calls the same number a tax number when the owner is a firm', async () => {
+    // One column, two claims — the caption is the only thing that says which, so it must follow.
+    await renderSheet(
+      intakeOrderDetailFixture({ ownerType: IntakeOwnerType.Company, ownerIdNumber: '101234567' }),
+    )
+
+    expect(screen.getByText(m.intake_print_owner_tax_id({}, { locale: 'sr' }))).toBeDefined()
+    expect(screen.queryByText(m.intake_print_owner_id_card({}, { locale: 'sr' }))).toBeNull()
+  })
+
+  it('leaves the row off entirely when there is no number', async () => {
+    // An empty caption on a signed document is worse than a missing row: it claims a document was
+    // shown and read.
+    await renderSheet(intakeOrderDetailFixture({ ownerIdNumber: null }))
+
+    expect(screen.queryByText(m.intake_print_owner_id_card({}, { locale: 'sr' }))).toBeNull()
+    expect(screen.queryByText(m.intake_print_owner_tax_id({}, { locale: 'sr' }))).toBeNull()
+  })
+
+  it('never prints the email — that is our address for sending, not a fact about the handover', async () => {
+    await renderSheet(intakeOrderDetailFixture({ ownerEmail: 'vlasnik@primer.rs' }))
+
+    expect(screen.queryByText(/vlasnik@primer\.rs/)).toBeNull()
   })
 })

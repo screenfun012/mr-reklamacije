@@ -1,5 +1,6 @@
 import {
   IntakeArrivalMode,
+  IntakeOwnerType,
   IntakeVehicleType,
   type IntakeChecklistItemListItem,
   type IntakeDamage,
@@ -40,6 +41,11 @@ export interface IntakeWizardValues {
   mileage: string
   arrivalMode: IntakeArrivalMode
   ownerName: string
+  /** Who is handing the vehicle over — it decides what the identifier below means. */
+  ownerType: IntakeOwnerType
+  /** ID card for a person, tax number for a firm. Cleared whenever the type changes. */
+  ownerIdNumber: string
+  ownerEmail: string
   ownerAddress: string
   ownerPhone: string
   ownerRemarks: string
@@ -67,6 +73,9 @@ export function emptyIntakeWizardValues(): IntakeWizardValues {
     mileage: '',
     arrivalMode: IntakeArrivalMode.Driven,
     ownerName: '',
+    ownerType: IntakeOwnerType.Person,
+    ownerIdNumber: '',
+    ownerEmail: '',
     ownerAddress: '',
     ownerPhone: '',
     ownerRemarks: '',
@@ -90,8 +99,20 @@ export function step1Complete(values: IntakeWizardValues): boolean {
     values.plate.trim().length >= 2 &&
     values.vehicle.trim().length > 0 &&
     values.ownerName.trim().length > 0 &&
-    values.ownerPhone.trim().length >= 3
+    values.ownerPhone.trim().length >= 3 &&
+    ownerIdentityComplete(values)
   )
+}
+
+/**
+ * A private person must show an ID card; a firm's tax number is optional.
+ *
+ * Deliberately a rule of THIS screen and not of the schema: the column is nullable because a firm
+ * legitimately has no number and every order taken before 2026-08-12 has none, so a check in the
+ * database would have to know the type — which the serviser can change.
+ */
+export function ownerIdentityComplete(values: IntakeWizardValues): boolean {
+  return values.ownerType !== IntakeOwnerType.Person || values.ownerIdNumber.trim().length > 0
 }
 
 /** Trims a form field to `undefined` when empty, so an untouched optional field patches as absent. */
@@ -121,7 +142,14 @@ export function toCreateInput(values: IntakeWizardValues): IntakeOrderCreateInpu
     vehicle: values.vehicle.trim(),
     arrivalMode: values.arrivalMode,
     ownerName: values.ownerName.trim(),
+    ownerType: values.ownerType,
     ownerPhone: values.ownerPhone.trim(),
+    ...(optionalText(values.ownerIdNumber) === undefined
+      ? {}
+      : { ownerIdNumber: optionalText(values.ownerIdNumber) as string }),
+    ...(optionalText(values.ownerEmail) === undefined
+      ? {}
+      : { ownerEmail: optionalText(values.ownerEmail) as string }),
     ...(vin !== undefined ? { vin } : {}),
     ...(mileage !== undefined ? { mileage } : {}),
     ...(address !== undefined ? { ownerAddress: address } : {}),
@@ -148,6 +176,9 @@ export function toUpdateInput(
     mileage: parsedMileage(values.mileage) ?? null,
     arrivalMode: values.arrivalMode,
     ownerName: values.ownerName.trim(),
+    ownerType: values.ownerType,
+    ownerIdNumber: optionalText(values.ownerIdNumber) ?? null,
+    ownerEmail: optionalText(values.ownerEmail) ?? null,
     ownerAddress: optionalText(values.ownerAddress) ?? null,
     ownerPhone: values.ownerPhone.trim(),
     ownerRemarks: optionalText(values.ownerRemarks) ?? null,
@@ -195,6 +226,9 @@ export function valuesFromOrder(order: IntakeOrderDetail): IntakeWizardValues {
     mileage: order.mileage === null ? '' : String(order.mileage),
     arrivalMode: order.arrivalMode,
     ownerName: order.ownerName,
+    ownerType: order.ownerType,
+    ownerIdNumber: order.ownerIdNumber ?? '',
+    ownerEmail: order.ownerEmail ?? '',
     ownerAddress: order.ownerAddress ?? '',
     ownerPhone: order.ownerPhone,
     ownerRemarks: order.ownerRemarks ?? '',
