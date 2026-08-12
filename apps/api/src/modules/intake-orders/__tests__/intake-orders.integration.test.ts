@@ -98,12 +98,24 @@ describe('Intake orders integration', () => {
     return { id: await createUser(name), permissions: OFFICE_PERMISSIONS }
   }
 
-  /** A finished intake: created, filled in, both signatures. */
+  /**
+   * A finished intake: created, filled in, both signatures.
+   *
+   * The checklist row is not decoration — signing refuses an order that recorded nothing about the
+   * vehicle's condition, and one answered item is what the serviser would have tapped standing at
+   * the car.
+   */
   async function signedOrder(
     actor: IntakeOrdersActor,
     overrides: Partial<IntakeOrderCreateInput> = {},
   ): Promise<string> {
     const created = await service.create(createInput(overrides), actorContext(actor.id))
+    await service.update(
+      created.id,
+      { checklist: { rezervna: true } },
+      actor,
+      actorContext(actor.id),
+    )
     await service.sign(
       created.id,
       {
@@ -123,6 +135,12 @@ describe('Intake orders integration', () => {
     photosExpected: number,
   ): Promise<string> {
     const created = await service.create(createInput(), actorContext(actor.id))
+    await service.update(
+      created.id,
+      { checklist: { rezervna: true } },
+      actor,
+      actorContext(actor.id),
+    )
     await service.sign(
       created.id,
       { technicianSignature: 'M 0 0 L 10 10', ownerSignature: 'M 5 5 L 20 20', photosExpected },
@@ -1108,6 +1126,109 @@ describe('Intake orders integration', () => {
       // An image too small to be worth a thumbnail has none; the grid must still get a picture.
       expect(thumb.storagePath).toBe(original.storagePath)
       expect(thumb.etag).toBe(original.etag)
+    })
+  })
+
+  /**
+   * The owner signs the printed sheet standing at the car, and that sheet is the only evidence if he
+   * later says a jack was in the boot. The wizard holds this line too, but a tablet reloads and
+   * `?resume=` is a URL — the paper must not depend on which browser produced it.
+   */
+  describe('an order cannot be signed with nothing recorded about its condition', () => {
+    const SIGNATURES = {
+      technicianSignature: 'M 0 0 L 10 10',
+      ownerSignature: 'M 5 5 L 20 20',
+      photosExpected: 0,
+    }
+
+    it('refuses the signature while the checklist and the note are both empty', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+
+      await expect(
+        service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id)),
+      ).rejects.toBeInstanceOf(ValidationError)
+
+      // Refused means refused: the order is still a draft the serviser can go back and finish.
+      const after = await service.findById(created.id, serviser)
+      expect(after.signedAt).toBeNull()
+    })
+
+    it('accepts the signature once a single item is answered', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      // NE is a statement too — "there was no spare in this car" is exactly what the paper is for.
+      await service.update(
+        created.id,
+        { checklist: { rezervna: false } },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      const signed = await service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id))
+
+      expect(signed.signedAt).not.toBeNull()
+    })
+
+    it('accepts the signature on the equipment note alone', async () => {
+      const serviser = await floorActor()
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      await service.update(
+        created.id,
+        { equipmentNote: 'Gepek pun alata' },
+        serviser,
+        actorContext(serviser.id),
+      )
+
+      const signed = await service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id))
+
+      expect(signed.signedAt).not.toBeNull()
+    })
+
+    /**
+     * Nikola's decision, and the one this guard could most easily get wrong: if the office turns
+     * every item off, the car is still in the yard and the serviser cannot fix a catalog — so the
+     * signature must go through. Reading the catalog with `listKnownCodes` instead (which keeps
+     * retired codes on purpose) would make a fully retired shop look full and lock the floor, and
+     * nothing else in this suite can tell the two reads apart.
+     */
+    it('signs without anything recorded once the office has retired every item', async () => {
+      const serviser = await floorActor()
+      const admin = await createUser('Admin')
+      const { items } = await checklistService.list({
+        activeOnly: true,
+        includeDeleted: false,
+        limit: 100,
+      })
+      expect(items.length).toBeGreaterThan(0)
+      for (const item of items) {
+        await checklistService.update(item.id, { isActive: false }, actorContext(admin))
+      }
+
+      const created = await service.create(createInput(), actorContext(serviser.id))
+      const signed = await service.sign(created.id, SIGNATURES, serviser, actorContext(serviser.id))
+
+      expect(signed.signedAt).not.toBeNull()
+    })
+
+    it('counts only what a serviser can actually tick', async () => {
+      const admin = await createUser('Admin')
+      const before = await container.intakeChecklistItemsRepository.countActiveItems()
+
+      const added = await checklistService.create(
+        { code: 'privremena', nameSr: 'Privremena', nameEn: 'Temporary', sortOrder: 900 },
+        actorContext(admin),
+      )
+      expect(await container.intakeChecklistItemsRepository.countActiveItems()).toBe(before + 1)
+
+      // Retired and removed items still answer `listKnownCodes` on purpose — they must NOT answer
+      // here, or a fully retired catalog would read as full and lock the shop floor over a mistake
+      // nobody on the floor can fix.
+      await checklistService.update(added.id, { isActive: false }, actorContext(admin))
+      expect(await container.intakeChecklistItemsRepository.countActiveItems()).toBe(before)
+
+      await checklistService.softDelete(added.id, actorContext(admin))
+      expect(await container.intakeChecklistItemsRepository.countActiveItems()).toBe(before)
     })
   })
 

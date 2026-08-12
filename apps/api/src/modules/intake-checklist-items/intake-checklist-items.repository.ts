@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
+import { and, count, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
@@ -100,6 +100,20 @@ export class IntakeChecklistItemsRepository {
       .from(intakeChecklistItems)
 
     return rows.map((row) => row.code)
+  }
+
+  /**
+   * How many items a serviser can actually tick right now — the opposite read from `listKnownCodes`
+   * above, and deliberately so: the signing guard asks whether there was anything to fill in at all,
+   * and a catalog whose every item is retired must answer zero or it would lock the shop floor.
+   */
+  async countActiveItems(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: count() })
+      .from(intakeChecklistItems)
+      .where(and(eq(intakeChecklistItems.isActive, true), isNull(intakeChecklistItems.deletedAt)))
+
+    return row?.count ?? 0
   }
 
   async findById(id: string): Promise<IntakeChecklistItemListItem | null> {

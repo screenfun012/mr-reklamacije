@@ -3,6 +3,7 @@ import {
   ResourceChangedKey,
   intakeDamageZoneOf,
   intakeOrderStatusValues,
+  isIntakeConditionRecorded,
   type IntakeChecklist,
 } from '@mr/shared'
 
@@ -425,6 +426,23 @@ export class IntakeOrdersService {
 
     if (before.signedAt !== null) {
       throw new ConflictError('Intake order is already signed')
+    }
+
+    /**
+     * The owner signs the printed sheet standing at the car, and that sheet is the only evidence if
+     * he later says a jack was in the boot — so it must assert SOMETHING. The wizard holds this line
+     * too, but a tablet reloads and `?resume=` is a URL: the paper must not depend on which browser
+     * produced it. An empty catalog passes, because that is the office's mistake and it must not
+     * strand a car in the yard.
+     */
+    if (
+      !isIntakeConditionRecorded(
+        before.checklist,
+        before.equipmentNote,
+        await this.checklistCatalog.countActiveItems(),
+      )
+    ) {
+      throw new ValidationError('Intake order: the recorded condition is empty')
     }
 
     const signed = await this.repo.sign(id, input)

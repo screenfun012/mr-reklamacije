@@ -10,4 +10,13 @@ export interface IntakeChecklistCatalogPort {
    * to such an order would make a signed document uncorrectable (plan D3).
    */
   listKnownCodes(): Promise<string[]>
+
+  /**
+   * How many items a serviser can actually tick right now — active, not soft-deleted.
+   *
+   * Deliberately NOT `listKnownCodes().length`: that read keeps retired codes on purpose, so a shop
+   * that turned every item off would still look full and the signing guard would lock the floor over
+   * a mistake nobody on the floor can fix.
+   */
+  countActiveItems(): Promise<number>
 }
