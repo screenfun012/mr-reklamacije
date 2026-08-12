@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { IntakeDamageType } from '@mr/shared'
+import { IntakeDamageType, IntakeOwnerType } from '@mr/shared'
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
@@ -210,17 +210,70 @@ describe('TabOverview', () => {
   })
 
   /*
-   * The one deliberate exception to the row above. V-6-2 already lost the last four digits of a
-   * phone number to a plain 1/4-width grid cell that could not grow past a control's fixed width,
-   * with no scrollbar to hint anything was wrong — this cell spans the row instead of repeating
-   * that. jsdom does no layout, so this only proves the class survives, not that the pixels fit;
-   * see the task-5 report for the widths (1180 / 1440 / 430) a human still has to check.
+   * V-6-2 lost the last four digits of a phone number to a 1/4-width grid cell that could not grow
+   * past a control's fixed width, with no scrollbar to hint anything was wrong. The fix used to be a
+   * cell spanning the whole row — which is what made the card read as thrown together (Nikola,
+   * 2026-08-12), because a form was wearing a fact's clothes and breaking the rhythm of the rest.
+   *
+   * The control is out of the grid entirely now. That keeps the room it needs AND leaves every cell
+   * the same kind of thing, so neither problem can come back by fixing the other.
    */
-  it('spans the owner-phone cell across the row so its added-contact control has room', async () => {
+  it('keeps the editable contact field out of the facts grid', async () => {
+    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={true} />)
+
+    const phoneCell = screen.getByText(m.intake_field_owner_phone()).parentElement
+    expect(phoneCell).not.toHaveClass('col-span-2')
+    // The phone fact and the editable contact field are no longer the same element.
+    expect(phoneCell?.textContent).not.toContain(m.intake_contact_phone_label())
+    expect(screen.getByPlaceholderText(m.intake_contact_phone_placeholder())).toBeInTheDocument()
+  })
+
+  it('groups the card so the owner reads before the vehicle, and the numbers after both', async () => {
+    // The order was arbitrary until 2026-08-12 — intake date, worker, mileage, arrival, VIN, phone,
+    // fuel, defects, address — with the owner's facts and the vehicle's interleaved.
     await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
 
-    const cell = screen.getByText(m.intake_field_owner_phone()).parentElement
-    expect(cell).toHaveClass('min-w-0', 'col-span-2', '@min-[860px]:col-span-4')
+    const captions = screen
+      .getAllByText(
+        new RegExp(
+          `^(${[
+            m.intake_field_owner_name(),
+            m.intake_field_owner_phone(),
+            m.intake_field_plate(),
+            m.intake_fact_vin(),
+            m.intake_fact_fuel(),
+            m.intake_col_technician(),
+          ].join('|')})$`,
+        ),
+      )
+      .map((el) => el.textContent)
+
+    expect(captions).toEqual([
+      m.intake_field_owner_name(),
+      m.intake_field_owner_phone(),
+      m.intake_field_plate(),
+      m.intake_fact_vin(),
+      m.intake_fact_fuel(),
+      m.intake_col_technician(),
+    ])
+  })
+
+  it('shows the owner identity the sheet prints, with the caption its type gives it', async () => {
+    await renderDetailUi(
+      <TabOverview
+        order={intakeOrderDetailFixture({
+          ownerType: IntakeOwnerType.Company,
+          ownerIdNumber: '101234567',
+          ownerEmail: 'firma@primer.rs',
+        })}
+        canUpdate={false}
+      />,
+    )
+
+    expect(screen.getByText(m.intake_field_owner_tax_id())).toBeInTheDocument()
+    expect(screen.getByText('101234567')).toBeInTheDocument()
+    expect(screen.getByText('firma@primer.rs')).toBeInTheDocument()
+    expect(screen.queryByText(m.intake_field_owner_id_card())).toBeNull()
   })
 
   // H retired the whole editing mode this tab used to grow (docs/25 §3.0): the checklist grid, the

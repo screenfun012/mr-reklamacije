@@ -43,18 +43,37 @@ describe('IntakeContactPhone', () => {
   })
 
   /*
-   * jsdom performs no layout, so a real overflow can't be reproduced here — this only proves the
-   * fixed floor from the V-6-2-style regression (min-w-[200px] fighting a grid column that cannot
-   * grow) hasn't crept back in. See the task-5 report for the widths a human must still check in a
-   * browser (1180 / 1440 / 430).
+   * jsdom performs no layout, so a real overflow cannot be reproduced here — this pins the INTENT
+   * the V-6-2 regression left behind: the input must always be able to shrink, never held open by a
+   * floor in pixels that a narrow container cannot argue with.
+   *
+   * It used to assert `w-full`, which was the implementation rather than the intent, and `w-full`
+   * stopped being right the day this control moved out of the facts grid: as wide as the card meant
+   * the buttons wrapped onto their own line with SAČUVAJ floating in the middle of nothing. A width
+   * with `max-w-full` shrinks exactly as freely; a `min-w-` is what must never come back.
    */
-  it('sizes the input by percentage, never by a fixed floor', async () => {
+  it('lets the input shrink, and never holds it open with a floor in pixels', async () => {
     await renderDetailUi(
       <IntakeContactPhone order={intakeOrderDetailFixture({ contactPhone: null })} canUpdate />,
     )
 
-    expect(screen.getByRole('textbox')).toHaveClass('w-full')
-    expect(screen.getByRole('textbox')).not.toHaveClass('min-w-[200px]')
+    const input = screen.getByRole('textbox')
+    expect(input).toHaveClass('max-w-full')
+    expect(input.className).not.toMatch(/\bmin-w-/)
+  })
+
+  it('gives the buttons a size, so they read as something you can press', async () => {
+    // `ghost` carries no sizing of its own; without one passed, SAČUVAJ rendered as bare text and
+    // read as a caption (Nikola, 2026-08-12).
+    await renderDetailUi(
+      <IntakeContactPhone order={intakeOrderDetailFixture({ contactPhone: null })} canUpdate />,
+    )
+
+    expect(screen.getByRole('button', { name: m.intake_contact_phone_save() })).toHaveClass(
+      'h-10',
+      'w-fit',
+      'px-4',
+    )
   })
 
   it('disables Save once the draft matches what is already stored', async () => {

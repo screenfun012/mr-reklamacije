@@ -49,22 +49,26 @@ export function IntakeContactPhone({
 
       {canUpdate ? (
         <div className="flex flex-wrap items-center gap-2">
-          {/* `w-full`, not a fixed min-width: a floor in px fights a grid column that cannot grow
-              past it, and the loser is invisible — no scrollbar, just clipped digits (V-6-2). A
-              percentage width can never overflow its own row, whatever that row's cell turns out
-              to be.
-              A CEILING is a different thing and does not undo that: the cell spans the whole card,
-              so `w-full` alone drew a phone box the width of the page and read as a mistake
-              (Nikola, 2026-08-12). It still shrinks freely; it just stops growing. */}
+          {/*
+            A plain width, at last. `w-full` was V-6-2's answer to a 1/4-width grid cell that could
+            not grow past a fixed control and clipped digits with no scrollbar — but this control is
+            no longer in that grid, it sits under it in a block as wide as the card. Against that,
+            `w-full` only meant "as wide as the page", which is what pushed the buttons onto their
+            own line and left SAČUVAJ floating in the middle of nothing (Nikola, 2026-08-12).
+            `max-w-full` keeps the old protection where it still matters: it can always shrink.
+          */}
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={m.intake_contact_phone_placeholder()}
-            className="mri-input w-full max-w-[280px] rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-2 font-sans text-[13.5px] text-mri-text outline-none"
+            className="mri-input h-10 w-[260px] max-w-full rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 font-sans text-[13.5px] text-mri-text outline-none"
           />
           <InternalButton
             type="button"
             variant="ghost"
+            // `ghost` carries no sizing of its own by design — it is passed here, or the control
+            // renders as bare text and reads as a caption rather than something you can press.
+            className="h-10 w-fit px-4"
             // The server has no no-op guard on this PATCH — it writes and audits whatever arrives —
             // so a second press on an unchanged value would append a second `contact_added` row to
             // Istorija for nothing. Comparing against the stored value keeps that write meaningful.
@@ -81,6 +85,7 @@ export function IntakeContactPhone({
             <InternalButton
               type="button"
               variant="ghost"
+              className="h-10 w-fit px-4"
               disabled={save.isPending}
               onClick={() => {
                 setDraft('')

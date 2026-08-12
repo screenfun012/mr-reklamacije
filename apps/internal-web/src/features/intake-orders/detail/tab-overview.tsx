@@ -1,5 +1,5 @@
 import { getLocale, m } from '@mr/i18n'
-import type { IntakeOrderDetail } from '@mr/shared'
+import { IntakeOwnerType, type IntakeOrderDetail } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useState, type ReactElement, type ReactNode } from 'react'
 
@@ -99,13 +99,42 @@ export function TabOverview({
   const fuelReadValue =
     order.signedAt === null ? DASH : m.intake_fact_fuel_value({ level: order.fuelLevel })
 
-  const facts: { label: string; value: ReactNode; className: string; cellClassName?: string }[] = [
+  /**
+   * Fourteen read facts, grouped and in an order the reader can follow: the owner, then the vehicle,
+   * then the numbers, then who took it in and when.
+   *
+   * It used to be nine in the order they were added — intake date, worker, mileage, arrival, VIN,
+   * phone, fuel, defects, address — with the owner's facts and the vehicle's interleaved, one cell
+   * spanning the whole row and a form inside it. Nikola, 2026-08-12: „izgleda kao da su delovi samo
+   * nabačani". Measured on that screenshot: the rows ran 4 / 1 / 4-as-one / 3, so nothing lined up
+   * down the card.
+   *
+   * Every cell is now the SAME kind of thing — a caption and a value. The one editable field lives
+   * below the grid (see `IntakeContactPhone`), because a form wearing a fact's clothes is what made
+   * the card read as thrown together.
+   */
+  const facts: { label: string; value: ReactNode; className: string }[] = [
+    { label: m.intake_field_owner_name(), value: order.ownerName, className: 'font-medium' },
     {
-      label: m.intake_fact_received(),
-      value: formatIntakeReceivedAtLong(order.receivedAt, locale),
+      // The caption follows the type: one column carries two different claims, and this word is the
+      // only thing that says which — exactly as it prints.
+      label:
+        order.ownerType === IntakeOwnerType.Company
+          ? m.intake_field_owner_tax_id()
+          : m.intake_field_owner_id_card(),
+      value: order.ownerIdNumber ?? DASH,
       className: 'font-mono font-medium',
     },
-    { label: m.intake_col_technician(), value: order.technicianName, className: '' },
+    {
+      label: m.intake_field_owner_phone(),
+      value: order.ownerPhone,
+      className: 'font-mono font-medium',
+    },
+    { label: m.intake_field_owner_email(), value: order.ownerEmail ?? DASH, className: '' },
+    { label: m.intake_field_owner_address(), value: order.ownerAddress ?? DASH, className: '' },
+    { label: m.intake_field_plate(), value: order.plate, className: 'font-mono font-medium' },
+    { label: m.intake_field_vehicle(), value: order.vehicle, className: 'font-medium' },
+    { label: m.intake_fact_vin(), value: order.vin ?? DASH, className: 'font-mono font-medium' },
     {
       label: m.intake_field_mileage(),
       value:
@@ -121,30 +150,7 @@ export function TabOverview({
       value: INTAKE_ARRIVAL_MODE_LABELS[order.arrivalMode](),
       className: '',
     },
-    { label: m.intake_fact_vin(), value: order.vin ?? DASH, className: 'font-mono font-medium' },
-    {
-      label: m.intake_field_owner_phone(),
-      // The signed number keeps its own mono styling; `IntakeContactPhone` sets its own below it,
-      // so the fact's shared wrapper className stays neutral rather than forcing mono onto the card.
-      value: (
-        <>
-          <span className="font-mono font-medium">{order.ownerPhone}</span>
-          <IntakeContactPhone order={order} canUpdate={canUpdate} />
-        </>
-      ),
-      className: '',
-      // This cell alone carries a live control, not just a read value. At the 1180px iPad-landscape
-      // width the serviser actually holds, an even 1/4 grid column here is ~114px — a repeat of the
-      // V-6-2 bug where a narrower-than-needed cell silently clipped digits off the phone it was
-      // correcting, with no scrollbar to hint anything was wrong. Spanning the row gives the input
-      // room instead of fighting a fixed min-width against a column that cannot grow.
-      cellClassName: 'col-span-2 @min-[860px]:col-span-4',
-    },
-    {
-      label: m.intake_fact_fuel(),
-      value: fuelReadValue,
-      className: 'font-mono font-semibold',
-    },
+    { label: m.intake_fact_fuel(), value: fuelReadValue, className: 'font-mono font-semibold' },
     {
       label: m.intake_fact_damages(),
       // A dash, and no green, until somebody has actually walked around the car. The count is
@@ -156,7 +162,12 @@ export function TabOverview({
         !damageRecorded ? 'text-mri-text2' : damageCount > 0 ? 'text-mri-redh' : 'text-mri-grn',
       ),
     },
-    { label: m.intake_field_owner_address(), value: order.ownerAddress ?? DASH, className: '' },
+    {
+      label: m.intake_fact_received(),
+      value: formatIntakeReceivedAtLong(order.receivedAt, locale),
+      className: 'font-mono font-medium',
+    },
+    { label: m.intake_col_technician(), value: order.technicianName, className: '' },
   ]
 
   return (
@@ -175,15 +186,22 @@ export function TabOverview({
           <div className="flex min-w-0 flex-1 flex-col gap-[14px]">
             <section className={cn(CARD, 'px-5 py-[18px]')}>
               <h2 className={cn(CAPTION, 'mb-3.5')}>{m.intake_detail_card_basics()}</h2>
-              <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-[18px] @min-[860px]:grid-cols-4">
                 {facts.map((fact) => (
-                  <div key={fact.label} className={cn('min-w-0', fact.cellClassName)}>
+                  <div key={fact.label} className="min-w-0">
                     <div className={cn(FIELD_KEY, 'mb-[5px]')}>{fact.label}</div>
                     <div className={cn('break-words text-sm text-mri-text', fact.className)}>
                       {fact.value}
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Below the grid, behind its own rule: this is the one thing on the card somebody can
+                  CHANGE, and while it sat among the facts it both broke their rhythm and read as one
+                  of them. */}
+              <div className="mt-[18px] border-t border-mri-border pt-[14px]">
+                <IntakeContactPhone order={order} canUpdate={canUpdate} />
               </div>
             </section>
 
