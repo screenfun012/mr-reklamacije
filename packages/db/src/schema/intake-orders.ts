@@ -131,6 +131,26 @@ export const intakeOrders = pgTable(
     ownerSignature: text('owner_signature'),
     /** NULL = draft. Set once both signatures are in and the intake is finished. */
     signedAt: timestamp('signed_at', { withTimezone: true, mode: 'date' }),
+    /**
+     * The signed sheet as ONE sealed file, produced once when the intake is signed.
+     *
+     * It is not re-rendered per consumer: the email attaches this object, the office downloads this
+     * object, a reprint shows this object. Screen, printer and email share no rendering contract —
+     * a printer driver set to "fit to page" rescales an A4 sheet, and interactive and headless
+     * Chromium disagree about page size — so "the same document everywhere" can only mean one file.
+     *
+     * NULL means it has not been produced. Every order taken before 2026-08-13 has none, and that is
+     * the truth about them rather than a hole to backfill.
+     */
+    documentStoragePath: text('document_storage_path'),
+    /**
+     * SHA-256 of that file's bytes. It proves THIS is the file, not that two renders would match:
+     * Chromium PDFs carry a creation date and an id, so no two renders are ever byte-identical.
+     * Same primitive the attachments table already uses for its own integrity.
+     */
+    documentSha256: text('document_sha256'),
+    /** When the sheet went to the owner. NULL = never sent, or he left no address to send it to. */
+    documentEmailedAt: timestamp('document_emailed_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
