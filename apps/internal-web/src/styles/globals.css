@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
-@source "../../../../packages/intake-document/src/**/*.{ts,tsx}";
+/* @mr/intake-document is deliberately absent: the printed work order carries its styles inline, so
+   it has no classes to scan and needs no Tailwind build to look right — which is what lets the API
+   render the same document. Adding it back would only generate dead CSS. */
 @source "../../../../packages/shared/src/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 @import '@mr/tailwind-preset';

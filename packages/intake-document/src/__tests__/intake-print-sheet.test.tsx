@@ -210,7 +210,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
 
     renderSheet(order)
 
-    expect(screen.getByTestId('print-damage-1').parentElement).toHaveClass('columns-2')
+    expect(screen.getByTestId('print-damage-1').parentElement?.style.columnCount).toBe('2')
   })
 
   it('keeps a short list in one column, where it reads better', async () => {
@@ -218,7 +218,7 @@ describe('IntakePrintSheet — the one-page rule', () => {
 
     renderSheet(order)
 
-    expect(screen.getByTestId('print-damage-1').parentElement).not.toHaveClass('columns-2')
+    expect(screen.getByTestId('print-damage-1').parentElement?.style.columnCount).toBe('')
   })
 })
 

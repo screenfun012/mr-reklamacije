@@ -29,13 +29,12 @@ export {
   type IntakePrintLocale,
   type IntakePrintModel,
 } from './intake-print-data.js'
-export {
-  PRINT_BAND,
-  PRINT_EYEBROW,
-  PRINT_FIGURE,
-  PRINT_FIGURE_LABEL,
-  PRINT_RULE,
-} from './intake-print-styles.js'
+/**
+ * The two families the document names on itself, so whoever renders it can embed the font files
+ * under exactly those names. The block styles behind them stay internal — they are how this
+ * document draws, not something a caller composes with.
+ */
+export { DOCUMENT_FONT_MONO, DOCUMENT_FONT_SANS } from './intake-print-styles.js'
 export {
   INTAKE_SILHOUETTES,
   INTAKE_SILHOUETTE_VIEWBOX,

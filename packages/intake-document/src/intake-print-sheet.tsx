@@ -1,6 +1,6 @@
 import { m } from '@mr/i18n'
 import type { IntakeChecklistItemListItem, IntakeOrderDetail } from '@mr/shared'
-import { memo, type ReactElement } from 'react'
+import { memo, type CSSProperties, type ReactElement } from 'react'
 
 import { SIGNATURE_VIEW_BOX } from './intake-signature-space.js'
 import { IntakePrintCondition } from './intake-print-condition.js'
@@ -10,14 +10,167 @@ import {
   type IntakePrintLocale,
   type IntakePrintModel,
 } from './intake-print-data.js'
-import { PRINT_EYEBROW, PRINT_RULE } from './intake-print-styles.js'
+import {
+  DOCUMENT_FONT_MONO,
+  DOCUMENT_FONT_SANS,
+  PRINT_EYEBROW,
+  PRINT_RULE,
+} from './intake-print-styles.js'
 
-/**
- * A4 at 96dpi. A FIXED height, never `min-height`: the page must not be allowed to grow into a
- * second one — when the content is too tall it is the rules in `intake-print-data.ts` that give,
- * not the paper.
- */
-const SHEET = 'flex h-[1123px] w-[794px] flex-none flex-col bg-white text-[#17171a]'
+const SHEET_STYLE = {
+  /**
+   * A4 at 96dpi. A FIXED height, never `min-height`: the page must not be allowed to grow into a
+   * second one — when the content is too tall it is the rules in `intake-print-data.ts` that give,
+   * not the paper.
+   *
+   * The font, the size and the line height are declared here rather than inherited, and that is the
+   * whole point of this document being a package: it used to take all three from internal-web's
+   * `<html>` and `body`, which the API does not have. `lineHeight: 1.6` in particular is the number
+   * every unlabelled block on this page is measured against — the defect rows were counted at 30px
+   * each against a hard 1123px ceiling, and 1.5 instead of 1.6 moves every one of them.
+   *
+   * `print-color-adjust: exact` is not decoration — without it the printer drops the red bands and
+   * the defect markers, and the sheet loses the two things a reader navigates by.
+   */
+  page: {
+    display: 'flex',
+    height: '1123px',
+    width: '794px',
+    flex: 'none',
+    flexDirection: 'column',
+    backgroundColor: '#fff',
+    color: '#17171a',
+    fontFamily: DOCUMENT_FONT_SANS,
+    fontSize: '16px',
+    lineHeight: 1.6,
+    /**
+     * Inherited until now — and from a place nobody would look. All three come from the vendored
+     * Tiptap `_variables.scss` internal-web imports, the same file that once put
+     * `transition-property: none` on every element in the app (CLAUDE.md §5). Accidental or not, it
+     * is what this paper has looked like, and `overflow-wrap` is not cosmetic: without it an
+     * unbroken 40-character owner name runs out of its column instead of wrapping inside it. The
+     * server renders with no Tiptap and no app, so the document has to say them itself.
+     */
+    overflowWrap: 'break-word',
+    textRendering: 'optimizeLegibility',
+    WebkitFontSmoothing: 'antialiased',
+    printColorAdjust: 'exact',
+    WebkitPrintColorAdjust: 'exact',
+  },
+
+  /** The black band, edge to edge, as "Obaveze kupca" carries it. */
+  header: {
+    display: 'flex',
+    flex: 'none',
+    alignItems: 'center',
+    gap: '16px',
+    backgroundColor: '#17171a',
+    paddingLeft: '54px',
+    paddingRight: '54px',
+    paddingTop: '18px',
+    paddingBottom: '18px',
+    color: '#fff',
+  },
+  /**
+   * `display: block` is stated because an image is inline by default, and the browsers this renders
+   * in only agree that it is a block because a CSS reset told them so. This document carries its
+   * own.
+   */
+  emblem: { display: 'block', height: '46px', width: 'auto' },
+  headerTitleBlock: { marginLeft: '8px' },
+  headerTitle: {
+    fontSize: '22px',
+    fontWeight: 900,
+    textTransform: 'uppercase',
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+  },
+  headerSubtitle: { marginTop: '4px', fontSize: '10.5px', color: '#b9babd' },
+  headerNumberBlock: { marginLeft: 'auto', textAlign: 'right' },
+  headerNumber: { fontFamily: DOCUMENT_FONT_MONO, fontSize: '20px', fontWeight: 700 },
+  headerReceivedAt: {
+    fontFamily: DOCUMENT_FONT_MONO,
+    fontSize: '9.5px',
+    letterSpacing: '0.08em',
+    color: '#b9babd',
+  },
+
+  /**
+   * `flex: 1` with `min-height: 0` rather than a calc against the band's height: the band is
+   * content-sized, and a hard-coded number here would silently push the footer off the page the day
+   * its padding changes.
+   */
+  body: {
+    display: 'flex',
+    minHeight: 0,
+    flex: 1,
+    flexDirection: 'column',
+    gap: '16px',
+    paddingLeft: '54px',
+    paddingRight: '54px',
+    paddingBottom: '50px',
+    paddingTop: '18px',
+  },
+
+  /**
+   * `minmax(0, 1fr)` and not a bare `1fr`: a bare one has a min-content floor, so a long VIN or an
+   * unbroken plate would push its column past half the page instead of wrapping.
+   */
+  basicsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '34px',
+  },
+  basicsHeadline: { marginTop: '7px', fontSize: '15px', fontWeight: 800 },
+  basicsIdRow: { marginTop: '3px', fontSize: '11.5px', color: '#54555b' },
+  basicsIdLabel: { fontFamily: DOCUMENT_FONT_MONO, fontWeight: 600, textTransform: 'uppercase' },
+  basicsDetails: {
+    marginTop: '3px',
+    fontSize: '11.5px',
+    lineHeight: 1.6,
+    color: '#54555b',
+  },
+  mono: { fontFamily: DOCUMENT_FONT_MONO },
+
+  /** Pinned to the bottom whatever the blocks above did. */
+  footer: {
+    marginTop: 'auto',
+    borderColor: '#ed1c24',
+    borderTopStyle: 'solid',
+    borderTopWidth: '2.5px',
+    paddingTop: '14px',
+  },
+  footerLegal: {
+    marginBottom: '14px',
+    maxWidth: '600px',
+    fontSize: '9.5px',
+    lineHeight: 1.5,
+    color: '#54555b',
+  },
+  signatures: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '40px',
+  },
+
+  signatureSpace: { height: '50px' },
+  /**
+   * Load-bearing. Inside a fixed 50px box an inline SVG would sit on the baseline of a line box
+   * taller than the box itself, and the signature would drop off its own rule.
+   */
+  signatureDrawing: { display: 'block' },
+  signatureRule: { height: '1px', backgroundColor: '#17171a' },
+  signatureCaption: { marginTop: '5px', display: 'flex', justifyContent: 'space-between' },
+  signatureRole: {
+    fontFamily: DOCUMENT_FONT_MONO,
+    fontSize: '8.5px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.16em',
+    color: '#54555b',
+  },
+  signatureName: { fontSize: '11px', fontWeight: 700 },
+} satisfies Record<string, CSSProperties>
 
 function SignatureBox({
   path,
@@ -30,24 +183,23 @@ function SignatureBox({
 }): ReactElement {
   return (
     <div>
-      <div className="h-[50px]" data-testid="print-signature">
+      <div style={SHEET_STYLE.signatureSpace} data-testid="print-signature">
         {path === null ? null : (
           <svg
             viewBox={SIGNATURE_VIEW_BOX}
             width="100%"
             height="100%"
             preserveAspectRatio="xMidYMax meet"
+            style={SHEET_STYLE.signatureDrawing}
           >
             <path d={path} stroke="#17171a" strokeWidth={4} fill="none" strokeLinecap="round" />
           </svg>
         )}
       </div>
-      <div className="h-px bg-[#17171a]" />
-      <div className="mt-[5px] flex justify-between">
-        <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.16em] text-[#54555b]">
-          {role}
-        </span>
-        <span className="text-[11px] font-bold">{name}</span>
+      <div style={SHEET_STYLE.signatureRule} />
+      <div style={SHEET_STYLE.signatureCaption}>
+        <span style={SHEET_STYLE.signatureRole}>{role}</span>
+        <span style={SHEET_STYLE.signatureName}>{name}</span>
       </div>
     </div>
   )
@@ -56,9 +208,6 @@ function SignatureBox({
 /**
  * The printed work order. Rendered from the order's data, never from the screen's components: the
  * paper has its own typographic scale, a white background and no theme.
- *
- * `print-color-adjust: exact` is not decoration — without it the printer drops the red bands and
- * the defect markers, and the sheet loses the two things a reader navigates by.
  *
  * Memoised because a pinch re-renders the dialog around it on every pointer move: none of these three
  * props change while fingers are on the glass, and rebuilding the whole print model sixty times a
@@ -82,87 +231,72 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
   const model: IntakePrintModel = buildIntakePrintModel(order, checklistItems, locale)
 
   return (
-    <div
-      id="intake-print-sheet"
-      className={SHEET}
-      style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
-    >
-      {/* The black band, edge to edge, as "Obaveze kupca" carries it. */}
-      <header className="flex flex-none items-center gap-4 bg-[#17171a] px-[54px] py-[18px] text-white">
+    <div id="intake-print-sheet" style={SHEET_STYLE.page}>
+      <header style={SHEET_STYLE.header}>
         {/* The full emblem — red MR, white script, white "MADE IN SERBIA" ring — because that is
             what the black band on "Obaveze kupca" carries. The plain wordmark is the app's own
             chrome and reads as a different mark beside it. */}
-        <img src="/internal/logo-emblem-white.png" alt="MR Engines" className="h-[46px] w-auto" />
-        <div className="ml-2">
-          <div className="text-[22px] font-black uppercase leading-none tracking-[-0.02em]">
-            {m.intake_print_title({}, { locale })}
-          </div>
-          <div className="mt-1 text-[10.5px] text-[#b9babd]">
-            {m.intake_print_subtitle({}, { locale })}
-          </div>
+        <img src="/internal/logo-emblem-white.png" alt="MR Engines" style={SHEET_STYLE.emblem} />
+        <div style={SHEET_STYLE.headerTitleBlock}>
+          <div style={SHEET_STYLE.headerTitle}>{m.intake_print_title({}, { locale })}</div>
+          <div style={SHEET_STYLE.headerSubtitle}>{m.intake_print_subtitle({}, { locale })}</div>
         </div>
-        <div className="ml-auto text-right">
-          <div className="font-mono text-[20px] font-bold">{model.orderNumber}</div>
-          <div className="font-mono text-[9.5px] tracking-[0.08em] text-[#b9babd]">
-            {model.receivedAt}
-          </div>
+        <div style={SHEET_STYLE.headerNumberBlock}>
+          <div style={SHEET_STYLE.headerNumber}>{model.orderNumber}</div>
+          <div style={SHEET_STYLE.headerReceivedAt}>{model.receivedAt}</div>
         </div>
       </header>
 
-      {/* `flex-1 min-h-0` rather than a calc against the band's height: the band is content-sized,
-          and a hard-coded number here would silently push the footer off the page the day its
-          padding changes. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 px-[54px] pb-[50px] pt-[18px]">
-        <div className="grid grid-cols-2 gap-[34px]">
+      <div style={SHEET_STYLE.body}>
+        <div style={SHEET_STYLE.basicsGrid}>
           <div>
-            <div className={PRINT_EYEBROW}>{m.intake_print_section_owner({}, { locale })}</div>
-            <div className="mt-[7px] text-[15px] font-extrabold">{model.ownerName}</div>
+            <div style={PRINT_EYEBROW}>{m.intake_print_section_owner({}, { locale })}</div>
+            <div style={SHEET_STYLE.basicsHeadline}>{model.ownerName}</div>
             {/* Under the name and above the address: it identifies the person, not the place. Left
                 off entirely when there is none — a firm's number is optional and every order taken
                 before 2026-08-12 has none. */}
             {model.ownerIdNumber === null ? null : (
-              <div className="mt-[3px] text-[11.5px] text-[#54555b]">
-                <span className="font-mono font-semibold uppercase">{model.ownerIdLabel}</span>{' '}
-                <span className="font-mono">{model.ownerIdNumber}</span>
+              <div style={SHEET_STYLE.basicsIdRow}>
+                <span style={SHEET_STYLE.basicsIdLabel}>{model.ownerIdLabel}</span>{' '}
+                <span style={SHEET_STYLE.mono}>{model.ownerIdNumber}</span>
               </div>
             )}
-            <div className="mt-[3px] text-[11.5px] leading-[1.6] text-[#54555b]">
+            <div style={SHEET_STYLE.basicsDetails}>
               {model.ownerAddress}
               <br />
-              <span className="font-mono">{model.ownerPhone}</span>
+              <span style={SHEET_STYLE.mono}>{model.ownerPhone}</span>
             </div>
           </div>
           <div>
-            <div className={PRINT_EYEBROW}>
+            <div style={PRINT_EYEBROW}>
               {m.intake_print_section_vehicle({ type: model.vehicleTypeLabel }, { locale })}
             </div>
-            <div className="mt-[7px] text-[15px] font-extrabold">
-              {model.vehicle} · <span className="font-mono">{model.plate}</span>
+            <div style={SHEET_STYLE.basicsHeadline}>
+              {model.vehicle} · <span style={SHEET_STYLE.mono}>{model.plate}</span>
             </div>
-            <div className="mt-[3px] text-[11.5px] leading-[1.6] text-[#54555b]">
-              <span className="font-mono">{model.vin}</span>
+            <div style={SHEET_STYLE.basicsDetails}>
+              <span style={SHEET_STYLE.mono}>{model.vin}</span>
               <br />
-              <span className="font-mono">{model.mileage}</span> · {model.arrivalMode}
+              <span style={SHEET_STYLE.mono}>{model.mileage}</span> · {model.arrivalMode}
             </div>
           </div>
         </div>
 
-        <div className={PRINT_RULE} />
+        <div style={PRINT_RULE} />
 
         <IntakePrintCondition model={model} />
 
         <IntakePrintDamages model={model} />
 
-        {/* Pinned to the bottom whatever the blocks above did. */}
-        <footer className="mt-auto border-t-[2.5px] border-[#ed1c24] pt-[14px]">
-          <div className="mb-[14px] max-w-[600px] text-[9.5px] leading-[1.5] text-[#54555b]">
+        <footer style={SHEET_STYLE.footer}>
+          <div style={SHEET_STYLE.footerLegal}>
             {m.intake_print_legal(
               { count: model.photoCount, number: model.orderNumber },
               { locale },
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-10">
+          <div style={SHEET_STYLE.signatures}>
             <SignatureBox
               path={model.technicianSignature}
               role={m.intake_print_role_technician({}, { locale })}
