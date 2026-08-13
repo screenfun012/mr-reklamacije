@@ -5,9 +5,11 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "assets"
   ],
   "exports": {
+    "./assets/logo-emblem-white.png": "./assets/logo-emblem-white.png",
     ".": {
       "development": "./src/index.ts",
       "types": "./dist/index.d.ts",

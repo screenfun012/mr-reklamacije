@@ -14,6 +14,14 @@ import './intake-print.css'
 const PRINT_LOCALES: readonly IntakePrintLocale[] = ['sr', 'en']
 
 /**
+ * This app's own copy, served from `public/` the way every other brand asset in every other app is —
+ * the three front ends are physically isolated and each carries its own (CLAUDE.md §1). The master
+ * lives beside the document in `@mr/intake-document/assets`, which is where the API reads it from,
+ * and a test pins the two to the same bytes so neither can quietly become the other's past.
+ */
+const EMBLEM_URL = '/internal/logo-emblem-white.png'
+
+/**
  * The preview, at the paper's real size, with the only two ways out. Its own overlay rather than
  * the shared `ConfirmDialog`: a Radix dialog portals its content under a positioned, scroll-locked
  * wrapper, and the print stylesheet would then have to undo all of it. The photo lightbox next
@@ -181,6 +189,7 @@ export function IntakePrintDialog({
           order={order}
           checklistItems={checklistItems}
           locale={printLocale}
+          logoSrc={EMBLEM_URL}
         />
       </div>
     </div>

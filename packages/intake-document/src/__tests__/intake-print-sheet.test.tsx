@@ -32,6 +32,7 @@ function renderSheet(order: IntakeOrderDetail, locale: IntakePrintLocale = 'sr')
       order={order}
       checklistItems={intakeChecklistCatalogFixture()}
       locale={locale}
+      logoSrc="/emblem.png"
     />,
   )
 }

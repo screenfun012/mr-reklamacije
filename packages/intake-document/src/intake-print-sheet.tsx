@@ -218,6 +218,7 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
   order,
   checklistItems,
   locale,
+  logoSrc,
 }: {
   order: IntakeOrderDetail
   /**
@@ -227,6 +228,13 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
   checklistItems: readonly IntakeChecklistItemListItem[]
   /** Chosen in the preview, never read from the app: the paper speaks the customer's language. */
   locale: IntakePrintLocale
+  /**
+   * Where the emblem comes from — the same contract as the fonts, and required for the same reason.
+   * A browser wants a URL its own server answers; the API has no server to ask and hands over the
+   * bytes as a `data:` URI. A default here would be one of those two, and would print a broken
+   * image for the other with nothing to say why.
+   */
+  logoSrc: string
 }): ReactElement {
   const model: IntakePrintModel = buildIntakePrintModel(order, checklistItems, locale)
 
@@ -236,7 +244,7 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
         {/* The full emblem — red MR, white script, white "MADE IN SERBIA" ring — because that is
             what the black band on "Obaveze kupca" carries. The plain wordmark is the app's own
             chrome and reads as a different mark beside it. */}
-        <img src="/internal/logo-emblem-white.png" alt="MR Engines" style={SHEET_STYLE.emblem} />
+        <img src={logoSrc} alt="MR Engines" style={SHEET_STYLE.emblem} />
         <div style={SHEET_STYLE.headerTitleBlock}>
           <div style={SHEET_STYLE.headerTitle}>{m.intake_print_title({}, { locale })}</div>
           <div style={SHEET_STYLE.headerSubtitle}>{m.intake_print_subtitle({}, { locale })}</div>
