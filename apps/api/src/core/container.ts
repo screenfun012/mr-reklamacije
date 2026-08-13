@@ -15,6 +15,7 @@ import { createDb } from '../infrastructure/db.js'
 import type { AuditPort } from './ports/audit-port.js'
 import type { EventBus } from './ports/event-bus-port.js'
 import { ClaimContextService } from './claims/claim-context.service.js'
+import { PdfRenderer } from './pdf/pdf-renderer.js'
 import { AuditLogRepository, AuditLogService, AuditService } from '../modules/audit/index.js'
 import { NotificationsRepository, NotificationsService } from '../modules/notifications/index.js'
 import { IntakeOrdersRepository, IntakeOrdersService } from '../modules/intake-orders/index.js'
@@ -58,11 +59,7 @@ import {
   SubmissionAttachmentsService,
 } from '../modules/attachments/index.js'
 import { ReportImageReadAdapter } from '../modules/attachments/report-image-read.adapter.js'
-import {
-  ClaimReportPdfRenderer,
-  ClaimReportsRepository,
-  ClaimReportsService,
-} from '../modules/claim-reports/index.js'
+import { ClaimReportsRepository, ClaimReportsService } from '../modules/claim-reports/index.js'
 import { ExcelRepository, ExcelService } from '../modules/excel/index.js'
 import { InProcessEventBus, PostgresEventBus } from '../modules/events/index.js'
 import { createBetterAuthUserPassword } from '../infrastructure/auth/better-auth-user-password.js'
@@ -141,7 +138,7 @@ export interface Container {
   attachmentsService: AttachmentsService
   submissionAttachmentsService: SubmissionAttachmentsService
   claimReportsRepository: ClaimReportsRepository
-  claimReportPdfRenderer: ClaimReportPdfRenderer
+  pdfRenderer: PdfRenderer
   claimReportsService: ClaimReportsService
   excelRepository: ExcelRepository
   excelService: ExcelService
@@ -375,13 +372,13 @@ export function buildContainer(
   )
 
   const claimReportsRepository = new ClaimReportsRepository(db)
-  const claimReportPdfRenderer = new ClaimReportPdfRenderer()
+  const pdfRenderer = new PdfRenderer()
   const claimReportsService = new ClaimReportsService(
     claimReportsRepository,
     claimContextService,
     reportImageRead,
     auditService,
-    claimReportPdfRenderer,
+    pdfRenderer,
     env.CLAIM_REPORT_PDF_ENABLED,
   )
 
@@ -445,7 +442,7 @@ export function buildContainer(
     attachmentsService,
     submissionAttachmentsService,
     claimReportsRepository,
-    claimReportPdfRenderer,
+    pdfRenderer,
     claimReportsService,
     excelRepository,
     excelService,

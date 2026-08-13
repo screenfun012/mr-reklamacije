@@ -108,7 +108,7 @@ describe('ClaimReportsService integration', () => {
   })
 
   afterEach(async () => {
-    await container.claimReportPdfRenderer.dispose()
+    await container.pdfRenderer.dispose()
     await ctx.cleanup()
   })
 
@@ -290,7 +290,7 @@ describe('ClaimReports HTTP integration', () => {
   })
 
   afterEach(async () => {
-    await container.claimReportPdfRenderer.dispose()
+    await container.pdfRenderer.dispose()
     await rm(container.env.UPLOAD_DIR, { recursive: true, force: true })
     await ctx.cleanup()
   })
@@ -485,7 +485,7 @@ describe('ClaimReports export integration', () => {
   })
 
   afterEach(async () => {
-    await container.claimReportPdfRenderer.dispose()
+    await container.pdfRenderer.dispose()
     await rm(container.env.UPLOAD_DIR, { recursive: true, force: true })
     await ctx.cleanup()
   })

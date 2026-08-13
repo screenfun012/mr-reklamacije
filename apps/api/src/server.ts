@@ -90,7 +90,7 @@ function shutdown(signal: string): void {
 
   httpServer.close(() => {
     clearTimeout(forceTimer)
-    void container.claimReportPdfRenderer
+    void container.pdfRenderer
       .dispose()
       .catch(() => {
         // Browser already gone — nothing to release.

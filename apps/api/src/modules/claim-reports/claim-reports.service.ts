@@ -16,7 +16,8 @@ import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
 import type { ReportImageReadPort } from '../../core/ports/report-image-read-port.js'
 import { renderClaimReportDocx } from './claim-report-export-docx.js'
-import { ClaimReportPdfRenderer } from './claim-report-export-pdf.js'
+import type { PdfRenderer } from '../../core/pdf/pdf-renderer.js'
+import { renderClaimReportPdf } from './claim-report-export-pdf.js'
 import { hydrateClaimReportImages } from './hydrate-claim-report-images.js'
 import { ClaimReportsRepository } from './claim-reports.repository.js'
 import { sanitizeClaimReportHtml } from './sanitize-claim-report-html.js'
@@ -69,7 +70,7 @@ export class ClaimReportsService {
     private readonly claimContext: ClaimContextPort,
     private readonly reportImageRead: ReportImageReadPort,
     private readonly audit: AuditPort,
-    private readonly pdfRenderer: ClaimReportPdfRenderer,
+    private readonly pdfRenderer: PdfRenderer,
     private readonly claimReportPdfEnabled: boolean,
   ) {}
 
@@ -195,7 +196,7 @@ export class ClaimReportsService {
     }
 
     const prepared = await this.buildExportHtml(query, actor)
-    const buffer = await this.pdfRenderer.render(prepared.html)
+    const buffer = await renderClaimReportPdf(this.pdfRenderer, prepared.html)
 
     await this.audit.log({
       entityType: 'claim_report',
