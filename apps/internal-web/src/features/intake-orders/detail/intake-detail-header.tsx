@@ -22,6 +22,14 @@ const ACTION_CLASSES = 'h-[46px] w-auto px-[18px] text-[13px]'
 export interface IntakeDetailHeaderProps {
   order: IntakeOrderDetail
   canAdvance: boolean
+  /**
+   * `intake_orders.change_status`. Not a second way to nudge the status — it is the OTHER half of
+   * the handover screen: the escape there is his, and the signed handover is the `advance` holder's.
+   * Whoever holds either must be able to reach the screen, or the person who owns the escape has no
+   * door to it. (Today the operator role holds both; the whole point of the split is that it need
+   * not stay that way.)
+   */
+  canChangeStatus: boolean
   /** The page owns the preview, because it is also the thing the wizard's flag lands on. */
   onPrint: () => void
 }
@@ -49,6 +57,7 @@ const ADVANCE_CLASSES: Record<IntakeOrderStatus, string> = {
 export function IntakeDetailHeader({
   order,
   canAdvance,
+  canChangeStatus,
   onPrint,
 }: IntakeDetailHeaderProps): ReactElement {
   const queryClient = useQueryClient()
@@ -59,6 +68,18 @@ export function IntakeDetailHeader({
     queryClient.invalidateQueries({ queryKey: intakeOrderKeys.all })
 
   const next = nextIntakeStatus(order.status)
+  /** The status the button moves to, or `null` when there is nothing for it to do. */
+  const nudge =
+    canAdvance && order.signedAt !== null && next !== null && next !== IntakeOrderStatus.PickedUp
+      ? next
+      : null
+  /**
+   * Signed, and no handover signed yet — which is the normal end of the job AND the vehicle that
+   * left without signatures. The screen itself gates on exactly this, so the link and the screen
+   * cannot disagree.
+   */
+  const handoverOpen =
+    (canAdvance || canChangeStatus) && order.signedAt !== null && order.handoverSignedAt === null
 
   const advance = useMutation({
     mutationFn: () => advanceIntakeOrder(order.id),
@@ -133,35 +154,39 @@ export function IntakeDetailHeader({
           </InternalButton>
         )}
 
-        {/*
-          The last rung is not a status nudge and no longer pretends to be one: `preuzeto` is a
-          physical fact — two people standing at the car — so the button opens the screen where they
-          sign for it instead of moving the status from here. The escape for a vehicle that left
-          with nothing signed lives on that screen, in the open, behind `change_status`.
-        */}
-        {canAdvance && order.signedAt !== null && next !== null ? (
-          next === IntakeOrderStatus.PickedUp ? (
-            <Link
-              to="/prijem/$id/primopredaja"
-              params={{ id: order.id }}
-              className={internalButtonClasses(
-                'ghost',
-                cn(ACTION_CLASSES, ADVANCE_CLASSES[IntakeOrderStatus.PickedUp]),
-              )}
-            >
-              {m.intake_handover_open()}
-            </Link>
-          ) : (
-            <InternalButton
-              type="button"
-              variant="ghost"
-              disabled={advance.isPending}
-              onClick={() => advance.mutate()}
-              className={cn(ACTION_CLASSES, ADVANCE_CLASSES[next])}
-            >
-              {m.intake_detail_advance({ status: INTAKE_STATUS_LABELS[next]() })}
-            </InternalButton>
-          )
+        {/* The status nudge, and it stops one rung short: `preuzeto` belongs to the handover, and
+            the server refuses it here (`IntakeOrdersService.advance`). */}
+        {nudge === null ? null : (
+          <InternalButton
+            type="button"
+            variant="ghost"
+            disabled={advance.isPending}
+            onClick={() => advance.mutate()}
+            className={cn(ACTION_CLASSES, ADVANCE_CLASSES[nudge])}
+          >
+            {m.intake_detail_advance({ status: INTAKE_STATUS_LABELS[nudge]() })}
+          </InternalButton>
+        )}
+
+        {/* The way to the handover screen, and the ONLY one — so it also has to be there for the
+            vehicle that was already released without signatures. That repair is deliberate (the
+            owner turns up at 19:00, the office lets him go, the two of them sign the next morning),
+            the service allows it by keying on the signature rather than the status, and without
+            this link it would exist only for someone who types the URL. It is a different act, so
+            it says so: nothing is being handed over any more, the missing record is being made. */}
+        {handoverOpen ? (
+          <Link
+            to="/prijem/$id/primopredaja"
+            params={{ id: order.id }}
+            className={internalButtonClasses(
+              'ghost',
+              cn(ACTION_CLASSES, ADVANCE_CLASSES[IntakeOrderStatus.PickedUp]),
+            )}
+          >
+            {order.status === IntakeOrderStatus.PickedUp
+              ? m.intake_handover_open_late()
+              : m.intake_handover_open()}
+          </Link>
         ) : null}
       </div>
     </header>

@@ -9,6 +9,7 @@ import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './
 
 const NO_PERMS = {
   canAdvance: false,
+  canChangeStatus: false,
   onPrint: () => {},
 }
 
@@ -73,6 +74,42 @@ describe('IntakeDetailHeader', () => {
 
     fireEvent.click(link)
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The repair path, which the service allows on purpose (it keys `handOver` on the signature, not
+   * on the status): the owner turns up at 19:00, the office releases the car without signatures, and
+   * the next morning the two of them sign the record that was missing. This link is the ONLY way to
+   * that screen — without it the capability exists in the code and not in the product.
+   */
+  it('keeps the way in open for a vehicle that was released without signatures', async () => {
+    const released = intakeOrderDetailFixture({ status: IntakeOrderStatus.PickedUp })
+    const { unmount } = await renderDetailUi(
+      // The escape's OWN permission, and no `advance`: whoever let the car go is who has to be able
+      // to repair the record, and he is not necessarily the one who may walk the status ladder.
+      <IntakeDetailHeader order={released} canAdvance={false} canChangeStatus onPrint={vi.fn()} />,
+    )
+
+    // Its own words — nothing is being handed over any more, the missing record is being made.
+    const link = screen.getByRole('link', { name: m.intake_handover_open_late() })
+    expect(link.getAttribute('href')).toBe(`/prijem/${released.id}/primopredaja`)
+    unmount()
+
+    // And once it IS signed there is nothing left to reach.
+    await renderDetailUi(
+      <IntakeDetailHeader
+        order={intakeOrderDetailFixture({
+          status: IntakeOrderStatus.PickedUp,
+          handoverSignedAt: '2026-08-15T10:00:00.000Z',
+        })}
+        canAdvance
+        canChangeStatus
+        onPrint={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('link', { name: m.intake_handover_open_late() })).toBeNull()
+    expect(screen.queryByRole('link', { name: m.intake_handover_open() })).toBeNull()
   })
 
   it('lets the earlier steps through in one tap', async () => {

@@ -1,16 +1,19 @@
-import { m } from '@mr/i18n'
 import {
   intakeChecklistItemsDisplayOptions,
   IntakeDetailSearchSchema,
   IntakeDetailTab,
   intakeOrderDetailOptions,
 } from '@mr/shared'
-import { Skeleton } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
 import { useState, type ReactElement } from 'react'
 
 import { InternalPage } from '~/components/layout/internal-page'
+import {
+  IntakeDetailError,
+  IntakeDetailNotFound,
+  IntakeDetailPending,
+} from '~/features/intake-orders/detail/intake-detail-boundaries'
 import { IntakeDetailHeader } from '~/features/intake-orders/detail/intake-detail-header'
 import {
   IntakeDetailTabs,
@@ -25,7 +28,6 @@ import { TabOverview } from '~/features/intake-orders/detail/tab-overview'
 import { TabPhotos } from '~/features/intake-orders/detail/tab-photos'
 import { TabSpec } from '~/features/intake-orders/detail/tab-spec'
 import { useConsumePrintFlag } from '~/features/intake-orders/detail/use-consume-print-flag'
-import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { authClient } from '~/lib/auth-client'
 import { ensureFound } from '~/lib/ensure-found'
 
@@ -88,6 +90,7 @@ function IntakeDetailPage(): ReactElement {
       <IntakeDetailHeader
         order={order}
         canAdvance={permissions.includes('intake_orders.advance')}
+        canChangeStatus={permissions.includes('intake_orders.change_status')}
         onPrint={() => setPrintOpen(true)}
       />
 
@@ -130,67 +133,6 @@ function IntakeDetailPage(): ReactElement {
       }
 
       <IntakePrintDialog order={order} open={printOpen} onClose={() => setPrintOpen(false)} />
-    </InternalPage>
-  )
-}
-
-function BackLink(): ReactElement {
-  return (
-    <Link to="/prijem" className="font-mono text-[11px] text-mri-text2 hover:text-mri-text">
-      {m.intake_detail_back()}
-    </Link>
-  )
-}
-
-function IntakeDetailPending(): ReactElement {
-  return (
-    <InternalPage className="flex flex-col gap-[15px]">
-      <div className="flex flex-wrap items-start gap-4" aria-busy="true">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-3 w-28" />
-          <Skeleton className="h-8 w-52" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <div className="ml-auto flex gap-2.5">
-          <Skeleton className="h-[46px] w-28" />
-          <Skeleton className="h-[46px] w-36" />
-        </div>
-      </div>
-      <div className="flex gap-6 border-b border-mri-border pb-3">
-        <Skeleton className="h-5 w-20" />
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-5 w-20" />
-      </div>
-    </InternalPage>
-  )
-}
-
-/**
- * A missing order is a NOT-FOUND, not an error, and the loader turns it into one (`ensureFound`) so
- * this screen is reached identically on a hard load and on a client-side navigation. It used to be
- * decided in `IntakeDetailError` from the error's status, which is gone by the time SSR hands it
- * over — so a pasted link answered "could not be loaded" and offered a retry that could not work.
- */
-function IntakeDetailNotFound(): ReactElement {
-  return (
-    <InternalPage className="flex flex-col gap-[15px]">
-      <BackLink />
-      {/* No retry: the order is not there, and asking again cannot change that. */}
-      <IntakeErrorState
-        title={m.intake_detail_not_found_title()}
-        description={m.intake_detail_not_found_body()}
-        canRetry={false}
-      />
-    </InternalPage>
-  )
-}
-
-function IntakeDetailError(): ReactElement {
-  return (
-    <InternalPage className="flex flex-col gap-[15px]">
-      <BackLink />
-      <IntakeErrorState title={m.intake_detail_error_title()} description={null} canRetry />
     </InternalPage>
   )
 }

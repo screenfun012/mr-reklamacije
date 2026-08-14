@@ -243,6 +243,12 @@ describe('handing the vehicle back', () => {
     // Still reachable by the two that own the transition — a closed rung, not a closed road.
     const handed = await service.handOver(id, SIGNATURES, office, actorContext(office.id))
     expect(handed.status).toBe(IntakeOrderStatus.PickedUp)
+
+    // And the ladder's own end-of-line guard still answers past the last status, which nothing else
+    // exercises now that advance no longer walks onto it.
+    await expect(service.advance(id, floor, actorContext(floor.id))).rejects.toBeInstanceOf(
+      ConflictError,
+    )
   })
 
   it('lets the office record a pickup with no signature, and makes no document for it', async () => {

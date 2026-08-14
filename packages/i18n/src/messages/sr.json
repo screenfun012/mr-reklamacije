@@ -797,6 +797,7 @@
   "intake_handover_needs_signed_intake": "Prijem nije potpisan — primopredaja je moguća tek kad je nalog zaključen.",
   "intake_handover_no_work": "Radovi i materijal nisu zabeleženi na ovom nalogu.",
   "intake_handover_open": "Primopredaja",
+  "intake_handover_open_late": "Potpiši primopredaju",
   "intake_handover_section_materials": "MATERIJAL",
   "intake_handover_section_received": "PRIMLJENO",
   "intake_handover_section_services": "IZVEDENI RADOVI",

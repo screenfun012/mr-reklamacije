@@ -4,6 +4,11 @@ import { createFileRoute, getRouteApi } from '@tanstack/react-router'
 import type { ReactElement } from 'react'
 
 import { InternalPage } from '~/components/layout/internal-page'
+import {
+  IntakeDetailError,
+  IntakeDetailNotFound,
+  IntakeDetailPending,
+} from '~/features/intake-orders/detail/intake-detail-boundaries'
 import { IntakeHandoverScreen } from '~/features/intake-orders/handover/handover-screen'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { ensureFound } from '~/lib/ensure-found'
@@ -26,6 +31,11 @@ export const Route = createFileRoute('/_shell/prijem/$id_/primopredaja')({
     ])
   },
   component: IntakeHandoverPage,
+  // The same three the detail carries, from the same file: a pasted id must answer "that order is
+  // not there, here is the way back" on this URL exactly as it does one level up.
+  pendingComponent: IntakeDetailPending,
+  errorComponent: IntakeDetailError,
+  notFoundComponent: IntakeDetailNotFound,
 })
 
 const rootRoute = getRouteApi('__root__')

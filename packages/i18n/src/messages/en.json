@@ -797,6 +797,7 @@
   "intake_handover_needs_signed_intake": "The intake is not signed — the handover is possible only once the order is closed.",
   "intake_handover_no_work": "No work or materials were recorded on this order.",
   "intake_handover_open": "Handover",
+  "intake_handover_open_late": "Sign the handover",
   "intake_handover_section_materials": "MATERIALS",
   "intake_handover_section_received": "AS RECEIVED",
   "intake_handover_section_services": "WORK CARRIED OUT",
