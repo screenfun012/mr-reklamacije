@@ -739,7 +739,7 @@
   "intake_hint_photos_uploading": "Photos are uploading in the background — remaining: {pending}",
   "intake_hint_ready": "Required fields are filled in",
   "intake_hint_ready_to_finish": "The order is ready to be closed",
-  "intake_hint_required": "Fill in the plate, vehicle, owner and phone",
+  "intake_hint_required": "Missing: {fields}",
   "intake_hint_sign_missing": "Both signatures are required",
   "intake_hint_step": "Step {step} / {total}",
   "intake_history_contact_added": "Contact number added",

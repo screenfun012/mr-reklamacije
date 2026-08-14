@@ -209,12 +209,12 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 ## 8a. Known issues (real bugs, fix later — don't trip over)
 
-- **Intake wizard, step 1: NEXT is dead and the sentence does not say why.** For a private person the
-  ID card number is required, but the footer hint reads "Fill in the plate, vehicle, owner and phone"
-  — all of which can be filled while the button stays disabled. Measured in the browser 2026-08-14:
-  the button enables the moment the ID number is typed. A worker stands and looks at it, which is
-  exactly what `docs/25` §3.0 exists to prevent. Fix = the hint names the field that is actually
-  missing.
+- ~~Intake wizard, step 1: NEXT is dead and the sentence does not say why~~ **FIXED 2026-08-15**: the
+  footer recited a fixed list of four fields while the button waited on six. `step1Missing()`
+  (`intake-wizard-state.ts`) is now the whole rule and `step1Complete()` is derived from it, so the
+  sentence and the button cannot drift again; `step1MissingLabels()` names the empty fields with the
+  labels printed on their own rows ("Fali: Broj lične karte"). Regression tests in
+  `intake-step1-hint.test.ts`; both mutations (the ID rule, the label map) verified red.
 - **Claim-report PDF prints Serbian letters in the wrong typeface.**
   `apps/api/src/modules/claim-reports/claim-report-export-font.ts` embeds only Figtree's `latin`
   subset; `č ć ž š đ` live in `latin-ext`, so in the container they are drawn by Liberation Sans

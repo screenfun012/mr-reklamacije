@@ -11,6 +11,7 @@ import {
   readIntakeDraft,
   ownerIdentityComplete,
   step1Complete,
+  step1Missing,
   toCreateInput,
   toUpdateInput,
   valuesFromOrder,
@@ -80,6 +81,49 @@ describe('step1Complete', () => {
     // Empty means the owner leaves with paper only — Nikola's rule, and the reason this is not a
     // required field anywhere.
     expect(step1Complete(filledValues({ ownerEmail: '' }))).toBe(true)
+  })
+})
+
+describe('step1Missing', () => {
+  it('names nothing when the step is done', () => {
+    expect(step1Missing(filledValues())).toEqual([])
+  })
+
+  it('names the one field that is actually empty, not a fixed list', () => {
+    // The whole point: the footer used to recite the same four fields whatever was missing, so a
+    // serviser with only the ID card left stood in front of a dead DALJE reading about the plate.
+    expect(step1Missing(filledValues({ ownerIdNumber: '' }))).toEqual(['ownerIdNumber'])
+    expect(step1Missing(filledValues({ ownerPhone: '' }))).toEqual(['ownerPhone'])
+    expect(step1Missing(filledValues({ plate: 'B' }))).toEqual(['plate'])
+  })
+
+  it('names every empty field, in the order the form shows them', () => {
+    expect(
+      step1Missing(
+        filledValues({ orderNumber: '', plate: '', vehicle: '', ownerName: '', ownerPhone: '' }),
+      ),
+    ).toEqual(['orderNumber', 'plate', 'vehicle', 'ownerName', 'ownerPhone'])
+  })
+
+  it('does not ask a firm for an ID card', () => {
+    expect(
+      step1Missing(filledValues({ ownerType: IntakeOwnerType.Company, ownerIdNumber: '' })),
+    ).toEqual([])
+  })
+
+  it('agrees with the button, because the button is derived from it', () => {
+    // One rule, one place. Two independent computations were free to drift, and did — that drift
+    // IS the bug this replaces.
+    const cases = [
+      filledValues(),
+      filledValues({ ownerIdNumber: '' }),
+      filledValues({ plate: 'B' }),
+      filledValues({ orderNumber: '  ' }),
+      filledValues({ ownerType: IntakeOwnerType.Company, ownerIdNumber: '' }),
+    ]
+    for (const values of cases) {
+      expect(step1Complete(values)).toBe(step1Missing(values).length === 0)
+    }
   })
 })
 

@@ -92,16 +92,48 @@ export function emptyIntakeWizardValues(): IntakeWizardValues {
   }
 }
 
-/** Step 1 cannot be left without these — the four the handoff marks plus the order number. */
+/** The step-1 fields DALJE waits for, in the order the form shows them. */
+export const INTAKE_STEP1_FIELDS = [
+  'orderNumber',
+  'plate',
+  'vehicle',
+  'ownerName',
+  'ownerIdNumber',
+  'ownerPhone',
+] as const
+
+export type IntakeStep1Field = (typeof INTAKE_STEP1_FIELDS)[number]
+
+/**
+ * Which of them are still empty — the whole rule, in one place.
+ *
+ * The footer used to recite a fixed list of four while the button waited on six, so a serviser who
+ * had only the ID card left read about the plate and the phone he had already typed. The sentence
+ * and the button now read the same answer, which is the only way they cannot drift again.
+ */
+export function step1Missing(values: IntakeWizardValues): IntakeStep1Field[] {
+  return INTAKE_STEP1_FIELDS.filter((field) => {
+    switch (field) {
+      case 'orderNumber':
+        return values.orderNumber.trim().length === 0
+      // Two characters, not one: a single letter is always a slip, never a plate.
+      case 'plate':
+        return values.plate.trim().length < 2
+      case 'vehicle':
+        return values.vehicle.trim().length === 0
+      case 'ownerName':
+        return values.ownerName.trim().length === 0
+      case 'ownerIdNumber':
+        return !ownerIdentityComplete(values)
+      case 'ownerPhone':
+        return values.ownerPhone.trim().length < 3
+    }
+  })
+}
+
+/** Step 1 cannot be left while anything is missing. */
 export function step1Complete(values: IntakeWizardValues): boolean {
-  return (
-    values.orderNumber.trim().length > 0 &&
-    values.plate.trim().length >= 2 &&
-    values.vehicle.trim().length > 0 &&
-    values.ownerName.trim().length > 0 &&
-    values.ownerPhone.trim().length >= 3 &&
-    ownerIdentityComplete(values)
-  )
+  return step1Missing(values).length === 0
 }
 
 /**

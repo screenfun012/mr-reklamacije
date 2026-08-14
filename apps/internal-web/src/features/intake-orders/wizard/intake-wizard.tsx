@@ -25,6 +25,7 @@ import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { IntakeOrderNumberField } from './intake-order-number-field'
 import { IntakeStepperStrip } from './intake-stepper-strip'
 import { IntakeWizardFooter, type IntakeHintTone } from './intake-wizard-footer'
+import { step1MissingLabels } from './intake-step1-hint'
 import { IntakeWizardNote } from './intake-wizard-note'
 import {
   INTAKE_WIZARD_STEP_COUNT,
@@ -479,8 +480,10 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
     if (values.orderNumber.trim().length === 0) {
       return { text: m.intake_hint_no_number(), tone: 'warn' }
     }
-    if (!step1Complete(values)) {
-      return { text: m.intake_hint_required(), tone: 'warn' }
+    // Named, not recited: the serviser reads the labels that are on the card in front of him.
+    const missingLabels = step1MissingLabels(values)
+    if (missingLabels.length > 0) {
+      return { text: m.intake_hint_required({ fields: missingLabels }), tone: 'warn' }
     }
     return { text: m.intake_hint_ready(), tone: 'muted' }
   })()
