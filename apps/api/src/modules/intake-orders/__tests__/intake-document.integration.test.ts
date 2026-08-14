@@ -94,7 +94,7 @@ describe('the sealed intake document', () => {
   ): Promise<Awaited<ReturnType<typeof container.intakeOrdersRepository.findDocument>>> {
     const deadline = Date.now() + 20_000
     for (;;) {
-      const document = await container.intakeOrdersRepository.findDocument(id)
+      const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
       if (document?.storagePath != null) {
         return document
       }
@@ -108,9 +108,9 @@ describe('the sealed intake document', () => {
   it('seals the signed sheet, and the seal is of the bytes that were stored', async () => {
     const id = await signedOrder()
 
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
-    const document = await container.intakeOrdersRepository.findDocument(id)
+    const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(document?.storagePath).toBe(`intake/${id}/document.pdf`)
 
     // Read back from storage rather than trusting what was uploaded: the point of the seal is to
@@ -137,8 +137,8 @@ describe('the sealed intake document', () => {
   it('is made once — a second call does not touch the file at all', async () => {
     const id = await signedOrder()
 
-    await service.produceDocument(id)
-    const first = await container.intakeOrdersRepository.findDocument(id)
+    await service.produceDocument(id, 'intake')
+    const first = await container.intakeOrdersRepository.findDocument(id, 'intake')
     const storagePath = first?.storagePath as string
 
     /**
@@ -156,12 +156,12 @@ describe('the sealed intake document', () => {
       mimeType: 'application/pdf',
     })
 
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     // A re-render is a DIFFERENT file for a paper that was signed once — different bytes, different
     // seal, same signatures. Whatever is in the bucket is what the owner will be handed.
     expect(await container.storageService.read(storagePath)).toEqual(sentinel)
-    const second = await container.intakeOrdersRepository.findDocument(id)
+    const second = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(second?.sha256).toBe(first?.sha256)
     expect(second?.storagePath).toBe(storagePath)
   })
@@ -180,17 +180,19 @@ describe('the sealed intake document', () => {
       actorContext(FLOOR.id),
     )
 
-    await expect(service.produceDocument(created.id)).rejects.toBeInstanceOf(ValidationError)
+    await expect(service.produceDocument(created.id, 'intake')).rejects.toBeInstanceOf(
+      ValidationError,
+    )
 
-    const document = await container.intakeOrdersRepository.findDocument(created.id)
+    const document = await container.intakeOrdersRepository.findDocument(created.id, 'intake')
     expect(document?.storagePath).toBeNull()
   })
 
   it('hands the office the file under the number written on the paper', async () => {
     const id = await signedOrder()
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
-    const meta = await service.getDocumentDownloadMeta(id, OFFICE)
+    const meta = await service.getDocumentDownloadMeta(id, OFFICE, 'intake')
 
     expect(meta.mimeType).toBe('application/pdf')
     expect(meta.fileName).toMatch(/^RN-DOC-[0-9a-f]{8}\.pdf$/)
@@ -201,19 +203,21 @@ describe('the sealed intake document', () => {
   it('has nothing to hand over before the document is made', async () => {
     const id = await signedOrder()
 
-    await expect(service.getDocumentDownloadMeta(id, OFFICE)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(service.getDocumentDownloadMeta(id, OFFICE, 'intake')).rejects.toBeInstanceOf(
+      NotFoundError,
+    )
   })
 
   it('answers 404 for a serviser asking about somebody else order', async () => {
     const id = await signedOrder(FLOOR)
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     const otherServiser = await createActor('Drugi serviser', SERVISER_PERMISSIONS)
 
     // 404 and not 403, so a colleague's order cannot be discovered by asking for its paper.
-    await expect(service.getDocumentDownloadMeta(id, otherServiser)).rejects.toBeInstanceOf(
-      NotFoundError,
-    )
+    await expect(
+      service.getDocumentDownloadMeta(id, otherServiser, 'intake'),
+    ).rejects.toBeInstanceOf(NotFoundError)
   })
 
   it('carries the number of the paper into the file, slash and all', async () => {
@@ -241,11 +245,11 @@ describe('the sealed intake document', () => {
       FLOOR,
       actorContext(FLOOR.id),
     )
-    await service.produceDocument(created.id)
+    await service.produceDocument(created.id, 'intake')
 
     // A work order number carries a slash, and a slash is a path separator in every download the
     // browser will save.
-    expect((await service.getDocumentDownloadMeta(created.id, OFFICE)).fileName).toBe(
+    expect((await service.getDocumentDownloadMeta(created.id, OFFICE, 'intake')).fileName).toBe(
       'RN-0950-26.pdf',
     )
   })

@@ -519,7 +519,7 @@ export class IntakeOrdersService {
    * fails leaves the ones before it standing: an order with a document and no email is a true record
    * of where it got to.
    */
-  async produceDocument(id: string, kind: IntakeDocumentKind = 'intake'): Promise<void> {
+  async produceDocument(id: string, kind: IntakeDocumentKind): Promise<void> {
     const key = `${id}:${kind}`
     const running = this.documentsBeingSealed.get(key)
     if (running !== undefined) {
@@ -634,7 +634,7 @@ export class IntakeOrdersService {
     id: string,
     actor: IntakeOrdersActor,
     auditContext: HttpActorContext,
-    kind: IntakeDocumentKind = 'intake',
+    kind: IntakeDocumentKind,
   ): Promise<void> {
     await this.loadVisible(id, actor)
 
@@ -682,7 +682,7 @@ export class IntakeOrdersService {
   async getDocumentDownloadMeta(
     id: string,
     actor: IntakeOrdersActor,
-    kind: IntakeDocumentKind = 'intake',
+    kind: IntakeDocumentKind,
   ): Promise<{ storagePath: string; mimeType: string; fileName: string; etag: string | null }> {
     await this.loadVisible(id, actor)
 

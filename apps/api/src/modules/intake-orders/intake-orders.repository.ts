@@ -507,6 +507,13 @@ export class IntakeOrdersRepository {
   }
 
   /**
+   * `setDocument` and `setDocumentEmailedAt` below cannot read `DOCUMENT_COLUMNS` the way
+   * `findDocument` does: Drizzle's `.set()` only accepts an object literal keyed by the table's own
+   * TS field names, and Postgres itself rejects a table-qualified column in an UPDATE ... SET target
+   * — so a column reference pulled out of the map has nowhere valid to go on the write side. Two
+   * literal branches, kept side by side, is the boring and type-safe answer; do not "fix" this into
+   * a map read.
+   *
    * What the sealed document is and where it lives. A row of its own rather than a field on the
    * patch path: `update` refuses everything but `FREE_AFTER_SIGNING` on a signed order, and this is
    * written precisely BECAUSE the order was signed. Routing it through the patch would mean either
@@ -517,10 +524,6 @@ export class IntakeOrdersRepository {
     kind: IntakeDocumentKind,
     document: { storagePath: string; sha256: string },
   ): Promise<void> {
-    // Drizzle's `.set()` targets known TS field names, and Postgres itself refuses a
-    // table-qualified column in a SET target — so the shared `documentColumns` map (built for
-    // reading, where a column reference is exactly what `select()` wants) cannot drive the write
-    // side too. Two literal branches, kept side by side, is the boring and type-safe answer.
     await this.db
       .update(intakeOrders)
       .set(
@@ -534,7 +537,10 @@ export class IntakeOrdersRepository {
       .where(eq(intakeOrders.id, id))
   }
 
-  /** When the sealed sheet reached the owner. Its own write, like the seal beside it. */
+  /**
+   * When the sealed sheet reached the owner. Its own write, like the seal beside it. Same reason as
+   * `setDocument` above for the literal branch instead of a `DOCUMENT_COLUMNS` read.
+   */
   async setDocumentEmailedAt(id: string, kind: IntakeDocumentKind, at: Date): Promise<void> {
     await this.db
       .update(intakeOrders)
@@ -546,12 +552,11 @@ export class IntakeOrdersRepository {
    * The document's own row, read without the actor's scope — the caller has already established who
    * may see this order. `signedAt` travels with it because an unsigned order has no document to
    * make (it is now the signature of the SAME kind), and `orderNumber` because the file the office
-   * downloads is named after the paper. Defaults to `intake` so every caller written before the
-   * handover document existed keeps asking about the one it always meant.
+   * downloads is named after the paper.
    */
   async findDocument(
     id: string,
-    kind: IntakeDocumentKind = 'intake',
+    kind: IntakeDocumentKind,
   ): Promise<{
     orderNumber: string
     signedAt: Date | null

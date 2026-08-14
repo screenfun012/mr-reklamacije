@@ -206,7 +206,11 @@ export function createIntakeOrdersController(container: Container) {
       const user = requireUser(c)
       const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
 
-      const meta = await container.intakeOrdersService.getDocumentDownloadMeta(id, actorOf(user))
+      const meta = await container.intakeOrdersService.getDocumentDownloadMeta(
+        id,
+        actorOf(user),
+        'intake',
+      )
 
       return serveCachedAttachmentDownload(c, meta, {
         disposition: 'attachment',
@@ -219,7 +223,12 @@ export function createIntakeOrdersController(container: Container) {
       const user = requireUser(c)
       const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
 
-      await container.intakeOrdersService.sendDocument(id, actorOf(user), getActorContext(c, user))
+      await container.intakeOrdersService.sendDocument(
+        id,
+        actorOf(user),
+        getActorContext(c, user),
+        'intake',
+      )
 
       return c.body(null, 204)
     },

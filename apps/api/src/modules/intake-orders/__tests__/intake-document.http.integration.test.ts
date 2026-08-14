@@ -103,7 +103,7 @@ describe('the document routes', () => {
       actor,
       actorContext(),
     )
-    await service.produceDocument(created.id)
+    await service.produceDocument(created.id, 'intake')
     return created.id
   }
 

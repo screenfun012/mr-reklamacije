@@ -102,7 +102,7 @@ describe('the sealed sheet on its way to the owner', () => {
   it('sends the owner his own sheet, as a file he can open', async () => {
     const id = await signedOrder()
 
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     expect(email.sent).toHaveLength(1)
     const message = email.sent[0]
@@ -114,12 +114,12 @@ describe('the sealed sheet on its way to the owner', () => {
     const stored = await container.storageService.read(`intake/${id}/document.pdf`)
     expect(attachment?.content).toEqual(stored)
 
-    const document = await container.intakeOrdersRepository.findDocument(id)
+    const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(document?.emailedAt).toBeInstanceOf(Date)
   })
 
   it('speaks both languages, because nobody knows which one this owner reads', async () => {
-    await service.produceDocument(await signedOrder())
+    await service.produceDocument(await signedOrder(), 'intake')
 
     const message = email.sent[0]
     expect(message?.subject).toContain('Radni nalog')
@@ -131,11 +131,11 @@ describe('the sealed sheet on its way to the owner', () => {
   it('sends nothing when the owner left no address, and still makes the document', async () => {
     const id = await signedOrder(null)
 
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     // Nikola, 13.08.: "ako klijent nema mail onda ništa, ne šalje se nego samo dobije fizičku kopiju."
     expect(email.sent).toHaveLength(0)
-    const document = await container.intakeOrdersRepository.findDocument(id)
+    const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(document?.storagePath).not.toBeNull()
     expect(document?.emailedAt).toBeNull()
   })
@@ -144,9 +144,9 @@ describe('the sealed sheet on its way to the owner', () => {
     await useEmailPort({ enabled: false, send: async () => undefined })
     const id = await signedOrder()
 
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
-    const document = await container.intakeOrdersRepository.findDocument(id)
+    const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(document?.storagePath).not.toBeNull()
     expect(document?.emailedAt).toBeNull()
   })
@@ -155,16 +155,16 @@ describe('the sealed sheet on its way to the owner', () => {
     await useEmailPort(new RecordingEmailPort(true))
     const id = await signedOrder()
 
-    await expect(service.produceDocument(id)).rejects.toThrow('simulated send failure')
+    await expect(service.produceDocument(id, 'intake')).rejects.toThrow('simulated send failure')
 
     // The seal survived the failure — it is a fact about the paper, not about the mail server.
-    const afterFailure = await container.intakeOrdersRepository.findDocument(id)
+    const afterFailure = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(afterFailure?.storagePath).not.toBeNull()
     expect(afterFailure?.emailedAt).toBeNull()
 
     const working = new RecordingEmailPort()
     await useEmailPort(working)
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     // Sent, and NOT re-rendered: the same object it sealed the first time.
     expect(working.sent).toHaveLength(1)
@@ -175,7 +175,7 @@ describe('the sealed sheet on its way to the owner', () => {
 
   it('sends the existing file again when the office asks, and records who asked', async () => {
     const id = await signedOrder()
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     /**
      * The stored object is replaced with something unmistakable before asking for the resend.
@@ -190,7 +190,7 @@ describe('the sealed sheet on its way to the owner', () => {
       mimeType: 'application/pdf',
     })
 
-    await service.sendDocument(id, office, actorContext(office.id))
+    await service.sendDocument(id, office, actorContext(office.id), 'intake')
 
     expect(email.sent).toHaveLength(2)
     expect(email.sent[1]?.attachments?.[0]?.content).toEqual(sentinel)
@@ -211,8 +211,8 @@ describe('the sealed sheet on its way to the owner', () => {
   it('sends once, however many times the sealing runs', async () => {
     const id = await signedOrder()
 
-    await service.produceDocument(id)
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
+    await service.produceDocument(id, 'intake')
 
     // The stamp is the guard: a retry of the background job must not put the same paper in the
     // owner's inbox twice.
@@ -222,18 +222,18 @@ describe('the sealed sheet on its way to the owner', () => {
   it('refuses to send an order that has no document yet', async () => {
     const id = await signedOrder()
 
-    await expect(service.sendDocument(id, office, actorContext(office.id))).rejects.toBeInstanceOf(
-      NotFoundError,
-    )
+    await expect(
+      service.sendDocument(id, office, actorContext(office.id), 'intake'),
+    ).rejects.toBeInstanceOf(NotFoundError)
   })
 
   it('refuses to send to an owner who left no address', async () => {
     const id = await signedOrder(null)
-    await service.produceDocument(id)
+    await service.produceDocument(id, 'intake')
 
     // 422 rather than silence: the operator pressed a button and deserves to know why nothing left.
-    await expect(service.sendDocument(id, office, actorContext(office.id))).rejects.toBeInstanceOf(
-      UnprocessableEntityError,
-    )
+    await expect(
+      service.sendDocument(id, office, actorContext(office.id), 'intake'),
+    ).rejects.toBeInstanceOf(UnprocessableEntityError)
   })
 })
