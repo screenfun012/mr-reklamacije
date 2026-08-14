@@ -104,7 +104,7 @@ interface OrderRow {
   handoverTechnicianSignature: string | null
   handoverOwnerSignature: string | null
   handoverSignedAt: Date | null
-  handoverDocumentStoragePath: string | null
+  handoverDocumentReady: boolean
   handoverDocumentEmailedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -183,7 +183,7 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     handoverTechnicianSignature: row.handoverTechnicianSignature,
     handoverOwnerSignature: row.handoverOwnerSignature,
     handoverSignedAt: row.handoverSignedAt === null ? null : row.handoverSignedAt.toISOString(),
-    handoverDocumentReady: row.handoverDocumentStoragePath !== null,
+    handoverDocumentReady: row.handoverDocumentReady,
     handoverDocumentEmailedAt:
       row.handoverDocumentEmailedAt === null ? null : row.handoverDocumentEmailedAt.toISOString(),
     photosPending: pendingPhotoCount(row.photosExpected, photos.length),
@@ -256,7 +256,9 @@ export class IntakeOrdersRepository {
       handoverTechnicianSignature: intakeOrders.handoverTechnicianSignature,
       handoverOwnerSignature: intakeOrders.handoverOwnerSignature,
       handoverSignedAt: intakeOrders.handoverSignedAt,
-      handoverDocumentStoragePath: intakeOrders.handoverDocumentStoragePath,
+      // Same rule as `documentReady`, applied to the handover: the presence of the file, not its
+      // key, and never selected in a form that could later be spread onto the wire by mistake.
+      handoverDocumentReady: sql<boolean>`${intakeOrders.handoverDocumentStoragePath} IS NOT NULL`,
       handoverDocumentEmailedAt: intakeOrders.handoverDocumentEmailedAt,
       createdAt: intakeOrders.createdAt,
       updatedAt: intakeOrders.updatedAt,
