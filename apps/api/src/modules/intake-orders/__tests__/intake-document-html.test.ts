@@ -115,5 +115,9 @@ describe('the intake document Chromium is handed', () => {
 
     expect(sent[0]?.printBackground).toBe(true)
     expect(sent[0]?.margin).toEqual({ top: '0', right: '0', bottom: '0', left: '0' })
+    // And NO footer. Supplying a template is what turns Chromium's page numbering on, and this
+    // sheet is exactly one page by rule — "1 / 1" stamped on it would be noise on a signed document.
+    // The handover record is the one that paginates and the one that asks for it.
+    expect(sent[0]?.footerTemplate).toBeUndefined()
   })
 })

@@ -165,7 +165,10 @@ export class PdfRenderer {
       const page = await context.newPage()
       await page.setContent(htmlDocument, { waitUntil: 'load' })
       await page.waitForFunction('document.fonts.ready')
-      // The derived block last is belt-and-braces only: `options` cannot carry these keys.
+      // The derived block goes LAST and must stay there. The declared type has no header/footer
+      // fields, but TypeScript only excess-property-checks an object LITERAL — a caller passing a
+      // pre-declared variable can carry them in at runtime, and then this position is the only
+      // thing that stops a document from overriding what `headerFooterFor` decided.
       const pdf = await page.pdf({ ...options, ...headerFooterFor(options.footerTemplate) })
 
       return Buffer.from(pdf)

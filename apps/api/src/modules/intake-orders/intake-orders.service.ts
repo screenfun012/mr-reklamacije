@@ -797,6 +797,13 @@ export class IntakeOrdersService {
     if (before.signedAt === null) {
       throw new ConflictError('An unsigned intake has nothing to hand over — sign it first')
     }
+    /**
+     * Keyed on the SIGNATURE, while its unsigned twin below keys on the STATUS. Deliberate, and not
+     * to be "aligned": an order released without a signature is `preuzeto` with nothing signed for
+     * it, and this guard lets a proper handover still be signed afterwards. That is the repair path
+     * for the owner who turns up at 19:00 once the serviser has gone home — the next morning turns a
+     * visible gap in the evidence into a real record. What may never happen twice is the signing.
+     */
     if (before.handoverSignedAt !== null) {
       throw new ConflictError('This vehicle has already been handed over')
     }
@@ -839,6 +846,12 @@ export class IntakeOrdersService {
     if (before.signedAt === null) {
       throw new ConflictError('An unsigned intake has nothing to hand over — sign it first')
     }
+    /**
+     * Keyed on the STATUS, not on `handoverSignedAt` like its signed twin above — the two guards
+     * ask different questions on purpose. All this one has to refuse is recording a second "he
+     * already took it" over a vehicle that has left, whichever way it left. Reading the signature
+     * here instead would let an already-signed handover be overwritten by a blank one.
+     */
     if (before.status === IntakeOrderStatus.PickedUp) {
       throw new ConflictError('This vehicle has already been handed over')
     }

@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AppVariables } from '../../../app.js'
 import type { Container } from '../../../core/container.js'
-import { ConflictError } from '../../../core/errors/domain-errors.js'
+import { ConflictError, NotFoundError } from '../../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../../core/http/actor-context.js'
 import { registerGlobalErrorHandler } from '../../../core/middleware/error-handler.js'
 import { ensureTestUser } from '../../../test-helpers/fixtures.js'
@@ -209,6 +209,21 @@ describe('handing the vehicle back', () => {
     await expect(
       service.handOver(id, SIGNATURES, office, actorContext(office.id)),
     ).rejects.toBeInstanceOf(ConflictError)
+  })
+
+  it("answers 404 for a serviser reaching for a colleague's order, never 403", async () => {
+    // The order belongs to `floor`. 404 and not 403 is the house rule — a serviser must not learn
+    // that a colleague's order exists — and it is asserted HERE, on top of `loadVisible`'s own
+    // tests, because this is the endpoint that mails a document out of the company.
+    const id = await signedOrder()
+    const otherServiser = await createActor('Drugi serviser', SERVISER_PERMISSIONS)
+
+    await expect(
+      service.handOver(id, SIGNATURES, otherServiser, actorContext(otherServiser.id)),
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      service.handOverWithoutSignature(id, otherServiser, actorContext(otherServiser.id)),
+    ).rejects.toBeInstanceOf(NotFoundError)
   })
 
   it('lets the office record a pickup with no signature, and makes no document for it', async () => {
