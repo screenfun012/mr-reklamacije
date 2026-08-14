@@ -1,6 +1,7 @@
 import {
   AuditAction,
   ResourceChangedKey,
+  freeFieldsFor,
   intakeDamageZoneOf,
   intakeOrderStatusValues,
   isIntakeConditionRecorded,
@@ -70,20 +71,6 @@ import type {
  * `change-status` instead, which can set any value.
  */
 const STATUS_ORDER = intakeOrderStatusValues
-
-/**
- * What may still be edited once the customer has signed — and it is the WHOLE list.
- *
- * The signature closes the record (Nikola, 2026-08-11): the owner walks out holding a printed
- * sheet, so anything that can still move on our side is a conflict with a document he signed —
- * and grounds for a complaint against his own evidence. Services and materials are the shop's
- * running record of work that happens AFTER the intake; `contactPhone` is a working note that
- * never overwrites the signed number (docs/25 §5).
- *
- * This replaced the amend mode, which allowed the correction and announced it with a permanent
- * stamp. Do not reintroduce a stamped edit path: the announcement WAS the divergence.
- */
-const FREE_AFTER_SIGNING = ['services', 'materials', 'contactPhone'] as const
 
 const DOCUMENT_MIME_TYPE = 'application/pdf'
 
@@ -332,10 +319,9 @@ export class IntakeOrdersService {
     this.assertDraftOwner(before, actor)
 
     // Asserted on the RAW patch, before zones are derived: a `vehicleType` patch pulls `damages`
-    // in below, and the refusal must name what the caller actually sent.
-    if (before.signedAt !== null) {
-      this.assertPostSigningPatchAllowed(patch)
-    }
+    // in below, and the refusal must name what the caller actually sent. Unsigned orders pass
+    // straight through — `freeFieldsFor` returns null for those and the assertion is a no-op.
+    this.assertPostSigningPatchAllowed(before.signedAt, before.handoverSignedAt, patch)
 
     // The added number exists only because the signed one is frozen. On a draft there is nothing
     // to work around: the real field is still editable, and a second place to type the same thing
@@ -431,13 +417,26 @@ export class IntakeOrdersService {
   }
 
   /**
-   * A signed order accepts only `FREE_AFTER_SIGNING`. Refused on the field's NAME, never on its
-   * value: pruning a key because it happens to equal what is stored would make "send it again with
-   * the same value" a way past the freeze. Enforced HERE and not only on the route — a serviser
-   * holds `update`, and there is no second gate left to catch him.
+   * A signed order accepts only what `freeFieldsFor` still allows, and that narrows a second time
+   * once the handover is signed too. Refused on the field's NAME, never on its value: pruning a key
+   * because it happens to equal what is stored would make "send it again with the same value" a way
+   * past the freeze. Enforced HERE and not only on the route — a serviser holds `update`, and there
+   * is no second gate left to catch him.
    */
-  private assertPostSigningPatchAllowed(patch: IntakeOrderUpdateInput): void {
-    const free = new Set<string>(FREE_AFTER_SIGNING)
+  private assertPostSigningPatchAllowed(
+    signedAt: string | null,
+    handoverSignedAt: string | null,
+    patch: IntakeOrderUpdateInput,
+  ): void {
+    const allowed = freeFieldsFor(
+      signedAt === null ? null : new Date(signedAt),
+      handoverSignedAt === null ? null : new Date(handoverSignedAt),
+    )
+    if (allowed === null) {
+      return
+    }
+
+    const free = new Set<string>(allowed)
     const frozen = Object.keys(patch).filter((field) => !free.has(field))
 
     if (frozen.length > 0) {

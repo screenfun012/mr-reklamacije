@@ -101,6 +101,11 @@ interface OrderRow {
   signedAt: Date | null
   documentReady: boolean
   documentEmailedAt: Date | null
+  handoverTechnicianSignature: string | null
+  handoverOwnerSignature: string | null
+  handoverSignedAt: Date | null
+  handoverDocumentStoragePath: string | null
+  handoverDocumentEmailedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -175,6 +180,12 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
     documentReady: row.documentReady,
     documentEmailedAt: row.documentEmailedAt === null ? null : row.documentEmailedAt.toISOString(),
+    handoverTechnicianSignature: row.handoverTechnicianSignature,
+    handoverOwnerSignature: row.handoverOwnerSignature,
+    handoverSignedAt: row.handoverSignedAt === null ? null : row.handoverSignedAt.toISOString(),
+    handoverDocumentReady: row.handoverDocumentStoragePath !== null,
+    handoverDocumentEmailedAt:
+      row.handoverDocumentEmailedAt === null ? null : row.handoverDocumentEmailedAt.toISOString(),
     photosPending: pendingPhotoCount(row.photosExpected, photos.length),
     photos,
     createdAt: row.createdAt.toISOString(),
@@ -242,6 +253,11 @@ export class IntakeOrdersRepository {
       // The presence of the file, not its key: the screen decides whether to offer a download.
       documentReady: sql<boolean>`${intakeOrders.documentStoragePath} IS NOT NULL`,
       documentEmailedAt: intakeOrders.documentEmailedAt,
+      handoverTechnicianSignature: intakeOrders.handoverTechnicianSignature,
+      handoverOwnerSignature: intakeOrders.handoverOwnerSignature,
+      handoverSignedAt: intakeOrders.handoverSignedAt,
+      handoverDocumentStoragePath: intakeOrders.handoverDocumentStoragePath,
+      handoverDocumentEmailedAt: intakeOrders.handoverDocumentEmailedAt,
       createdAt: intakeOrders.createdAt,
       updatedAt: intakeOrders.updatedAt,
     }
@@ -515,9 +531,9 @@ export class IntakeOrdersRepository {
    * a map read.
    *
    * What the sealed document is and where it lives. A row of its own rather than a field on the
-   * patch path: `update` refuses everything but `FREE_AFTER_SIGNING` on a signed order, and this is
-   * written precisely BECAUSE the order was signed. Routing it through the patch would mean either
-   * an exception in that guard or a hole in it.
+   * patch path: `update` refuses everything `freeFieldsFor` does not name on a signed order, and
+   * this is written precisely BECAUSE the order was signed. Routing it through the patch would mean
+   * either an exception in that guard or a hole in it.
    */
   async setDocument(
     id: string,

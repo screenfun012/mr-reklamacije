@@ -300,6 +300,13 @@ export const IntakeOrderDetailSchema = z.object({
   documentReady: z.boolean(),
   /** When it reached the owner. NULL = never, or he left no address to reach. */
   documentEmailedAt: z.string().nullable(),
+  /** Whether the handover is signed. The signatures themselves ride beside it, like the intake's. */
+  handoverTechnicianSignature: z.string().nullable(),
+  handoverOwnerSignature: z.string().nullable(),
+  handoverSignedAt: z.string().nullable(),
+  /** Whether the sealed handover exists. The storage path never leaves the server. */
+  handoverDocumentReady: z.boolean(),
+  handoverDocumentEmailedAt: z.string().nullable(),
   photosPending: z.number().int().nonnegative(),
   photos: z.array(IntakeOrderPhotoSchema),
   createdAt: z.string(),
