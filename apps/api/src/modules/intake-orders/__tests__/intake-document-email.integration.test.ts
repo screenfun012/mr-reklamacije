@@ -11,7 +11,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { NotFoundError, ValidationError } from '../../../core/errors/domain-errors.js'
+import { NotFoundError, UnprocessableEntityError } from '../../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../../core/http/actor-context.js'
 import type { EmailPort } from '../../../core/ports/email-port.js'
 import { RecordingEmailPort } from '../../../test-helpers/recording-email-port.js'
@@ -233,7 +233,7 @@ describe('the sealed sheet on its way to the owner', () => {
 
     // 422 rather than silence: the operator pressed a button and deserves to know why nothing left.
     await expect(service.sendDocument(id, office, actorContext(office.id))).rejects.toBeInstanceOf(
-      ValidationError,
+      UnprocessableEntityError,
     )
   })
 })

@@ -17,6 +17,7 @@ import {
   ForbiddenError,
   NotFoundError,
   ServiceUnavailableError,
+  UnprocessableEntityError,
   ValidationError,
 } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
@@ -636,7 +637,8 @@ export class IntakeOrdersService {
       throw new NotFoundError('Intake order document', id)
     }
     if (document.ownerEmail === null) {
-      throw new ValidationError('The owner left no email address for this order')
+      // 422, not 400: the request is perfectly well formed, the ORDER is what cannot answer it.
+      throw new UnprocessableEntityError('The owner left no email address for this order')
     }
     if (!this.email.enabled) {
       throw new ServiceUnavailableError('Slanje e-pošte trenutno nije podešeno.')
