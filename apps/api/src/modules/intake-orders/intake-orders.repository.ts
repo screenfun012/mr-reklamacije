@@ -478,6 +478,46 @@ export class IntakeOrdersRepository {
     return this.findById(id)
   }
 
+  /**
+   * What the sealed document is and where it lives. A row of its own rather than a field on the
+   * patch path: `update` refuses everything but `FREE_AFTER_SIGNING` on a signed order, and this is
+   * written precisely BECAUSE the order was signed. Routing it through the patch would mean either
+   * an exception in that guard or a hole in it.
+   */
+  async setDocument(id: string, document: { storagePath: string; sha256: string }): Promise<void> {
+    await this.db
+      .update(intakeOrders)
+      .set({ documentStoragePath: document.storagePath, documentSha256: document.sha256 })
+      .where(eq(intakeOrders.id, id))
+  }
+
+  /**
+   * The document's own row, read without the actor's scope — the caller has already established who
+   * may see this order. `signedAt` travels with it because an unsigned order has no document to
+   * make, and `orderNumber` because the file the office downloads is named after the paper.
+   */
+  async findDocument(id: string): Promise<{
+    orderNumber: string
+    signedAt: Date | null
+    storagePath: string | null
+    sha256: string | null
+    emailedAt: Date | null
+  } | null> {
+    const [row] = await this.db
+      .select({
+        orderNumber: intakeOrders.orderNumber,
+        signedAt: intakeOrders.signedAt,
+        storagePath: intakeOrders.documentStoragePath,
+        sha256: intakeOrders.documentSha256,
+        emailedAt: intakeOrders.documentEmailedAt,
+      })
+      .from(intakeOrders)
+      .where(eq(intakeOrders.id, id))
+      .limit(1)
+
+    return row ?? null
+  }
+
   async sign(id: string, input: IntakeOrderSignInput): Promise<IntakeOrderDetail | null> {
     await this.db
       .update(intakeOrders)

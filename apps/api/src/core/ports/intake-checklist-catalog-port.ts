@@ -1,7 +1,10 @@
+import type { IntakeChecklistItemListItem } from '@mr/shared'
+
 /**
  * The slice of the intake checklist catalog the intake-orders service needs: which codes exist at
- * all. A core port so that module depends on core rather than a sibling module (depcruise
- * `no-sibling-modules`); the container injects the concrete `IntakeChecklistItemsRepository`.
+ * all, how many can still be ticked, and the rows the printed document names. A core port so that
+ * module depends on core rather than a sibling module (depcruise `no-sibling-modules`); the
+ * container injects the concrete `IntakeChecklistItemsRepository`.
  */
 export interface IntakeChecklistCatalogPort {
   /**
@@ -19,4 +22,13 @@ export interface IntakeChecklistCatalogPort {
    * a mistake nobody on the floor can fix.
    */
   countActiveItems(): Promise<number>
+
+  /**
+   * Every row the catalog has ever held, in the shop's own order, with both names.
+   *
+   * The same DISPLAY read the print preview fetches, and unfiltered for the same reason
+   * `listKnownCodes` is: an order may carry a code the shop retired months ago, and the sheet must
+   * still print the name the owner answered it by rather than a bare code.
+   */
+  listForDocument(): Promise<IntakeChecklistItemListItem[]>
 }

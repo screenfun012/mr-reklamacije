@@ -39,6 +39,19 @@ export function buildAttachmentStoragePath(input: AttachmentPathInput): string {
   return `${input.claimKind}/${input.claimYear}/${input.claimId}/${input.attachmentId}.${input.extension}`
 }
 
+/**
+ * Storage key for the signed work order itself. Beside the order's photos and deliberately NOT an
+ * `attachments` row: intake photos are recognised solely by `intake_order_id IS NOT NULL`, and five
+ * places count them that way — a PDF among them would be counted as a photograph.
+ *
+ * One key per order, so re-producing a document that failed half way overwrites rather than
+ * accumulating orphans. A produced document is never re-rendered (the seal would change), so the
+ * only writer that can reach this key twice is a retry of a produce that left no row behind.
+ */
+export function buildIntakeDocumentStoragePath(orderId: string): string {
+  return `intake/${orderId}/document.pdf`
+}
+
 export interface SubmissionAttachmentPathInput {
   readonly submissionId: string
   readonly attachmentId: string

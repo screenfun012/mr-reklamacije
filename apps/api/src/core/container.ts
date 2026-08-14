@@ -340,13 +340,20 @@ export function buildContainer(
 
   // Built after the storage service because intake photos go through it (docs/25 V-4).
   const intakeOrdersRepository = new IntakeOrdersRepository(db)
+  // Declared before its first consumer: the intake document and the claim report share ONE browser.
+  const pdfRenderer = new PdfRenderer()
+
   const intakeOrdersService = new IntakeOrdersService(
     intakeOrdersRepository,
     auditService,
     eventBus,
     storageService,
-    // The catalog is what decides which checklist codes an order may store (spec ⑭).
+    // The catalog is what decides which checklist codes an order may store (spec ⑭), and it names
+    // the rows the sealed document prints.
     intakeChecklistItemsRepository,
+    // The same browser the claim report uses — one instance, two slots, released when idle.
+    pdfRenderer,
+    logger,
   )
   const attachmentsRepository = new AttachmentsRepository(db)
   const claimContextService = new ClaimContextService(
@@ -372,7 +379,6 @@ export function buildContainer(
   )
 
   const claimReportsRepository = new ClaimReportsRepository(db)
-  const pdfRenderer = new PdfRenderer()
   const claimReportsService = new ClaimReportsService(
     claimReportsRepository,
     claimContextService,

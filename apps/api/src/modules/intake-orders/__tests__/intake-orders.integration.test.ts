@@ -170,6 +170,10 @@ describe('Intake orders integration', () => {
   })
 
   afterEach(async () => {
+    // Signing seals the document in the background, and that runs a browser. Left alone it holds a
+    // few hundred MB for ten minutes per container this suite builds — and this suite builds one per
+    // test.
+    await container.pdfRenderer.dispose()
     await ctx.cleanup()
   })
 

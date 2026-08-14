@@ -94,6 +94,19 @@ export class IntakeChecklistItemsRepository {
    * Its own query rather than `list(...)`: it runs on every checklist-bearing patch, and one column
    * is materially cheaper than materialising full rows through the keyset pager.
    */
+  /**
+   * The whole catalog, unpaged and unfiltered, for the printed work order.
+   *
+   * Its own query rather than `list(...)`: that one pages, and a document must not depend on a page
+   * size. Catalogs here are shop equipment lists — tens of rows, not thousands.
+   */
+  async listForDocument(): Promise<IntakeChecklistItemListItem[]> {
+    return this.db
+      .select(ITEM_COLUMNS)
+      .from(intakeChecklistItems)
+      .orderBy(intakeChecklistItems.sortOrder, intakeChecklistItems.id)
+  }
+
   async listKnownCodes(): Promise<string[]> {
     const rows = await this.db
       .select({ code: intakeChecklistItems.code })

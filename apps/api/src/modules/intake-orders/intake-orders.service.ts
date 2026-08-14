@@ -7,6 +7,10 @@ import {
   type IntakeChecklist,
 } from '@mr/shared'
 
+import { createHash } from 'node:crypto'
+
+import type { Logger } from '@mr/logger'
+
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import {
   ConflictError,
@@ -22,10 +26,14 @@ import {
   writeStoredFile,
   type AttachmentUploadFileInput,
 } from '../../core/attachments/attachment-upload-pipeline.js'
+import type { PdfRenderer } from '../../core/pdf/pdf-renderer.js'
 import {
   buildIntakeAttachmentStoragePath,
+  buildIntakeDocumentStoragePath,
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
+import { renderIntakeDocumentPdf } from './intake-document-pdf.js'
+import type { IntakePrintLocale } from '@mr/intake-document'
 import { extensionForMimeType } from '@mr/shared'
 import {
   normalizeOrderNumberKey,
@@ -68,6 +76,8 @@ const STATUS_ORDER = intakeOrderStatusValues
  * stamp. Do not reintroduce a stamped edit path: the announcement WAS the divergence.
  */
 const FREE_AFTER_SIGNING = ['services', 'materials', 'contactPhone'] as const
+
+const DOCUMENT_MIME_TYPE = 'application/pdf'
 
 /**
  * A signed order allows exactly two changes, and each gets its own name in Istorija. A patch that
@@ -132,7 +142,20 @@ export class IntakeOrdersService {
     private readonly events: EventBus,
     private readonly storage: StorageService,
     private readonly checklistCatalog: IntakeChecklistCatalogPort,
+    private readonly pdfRenderer: PdfRenderer,
+    private readonly logger: Logger,
   ) {}
+
+  /**
+   * The sealings currently running, one entry per order.
+   *
+   * Signing starts one in the background and the office can start another by hand — a retry after a
+   * failure — and without this both render and both write the same key. Measured while writing the
+   * test for it: the second write truncated the file the first had just finished, and the download
+   * that followed streamed zero bytes. Instance state, not module state: the container builds one
+   * service, and a second replica is not a thing this repository has yet (CLAUDE.md §9).
+   */
+  private readonly documentsBeingSealed = new Map<string, Promise<void>>()
 
   private signalChanged(): void {
     this.events.publishResourceChanged(ResourceChangedKey.IntakeOrders)
@@ -462,7 +485,110 @@ export class IntakeOrdersService {
     })
 
     this.signalChanged()
+    this.produceDocumentInBackground(id)
     return signed
+  }
+
+  /**
+   * The signed sheet, sealed once.
+   *
+   * Made AFTER the signature is a fact and never as part of it: a failure here — Chromium gone, the
+   * bucket unreachable — must not undo a signature the owner has already given, standing at his car.
+   * So the caller starts it and walks away (`void`), and an order whose document failed simply has
+   * none, which is a true statement about it. The office runs it again.
+   *
+   * Idempotent by the column rather than by a lock: a produced document is never re-rendered,
+   * because a second render is a different file with a different seal for the same signed paper.
+   *
+   * ⚠ The language is Serbian, and that is a DEFAULT rather than a decision. The paper's language is
+   * chosen at the preview, which the operator opens after signing — so at this moment nobody has
+   * chosen one yet. Reported to Nikola 2026-08-14: if a foreign owner should receive the sheet in
+   * the language he was handed on paper, the choice has to be captured at signing, and this argument
+   * is where it would arrive.
+   */
+  async produceDocument(id: string, locale: IntakePrintLocale = 'sr'): Promise<void> {
+    const running = this.documentsBeingSealed.get(id)
+    if (running !== undefined) {
+      return running
+    }
+
+    const sealing = this.sealDocument(id, locale).finally(() => {
+      this.documentsBeingSealed.delete(id)
+    })
+    this.documentsBeingSealed.set(id, sealing)
+    return sealing
+  }
+
+  private async sealDocument(id: string, locale: IntakePrintLocale): Promise<void> {
+    const existing = await this.repo.findDocument(id)
+    if (existing === null) {
+      throw new NotFoundError('Intake order', id)
+    }
+    if (existing.signedAt === null) {
+      throw new ValidationError('An unsigned intake has no document to produce')
+    }
+    if (existing.storagePath !== null) {
+      return
+    }
+
+    const order = await this.repo.findById(id)
+    if (order === null) {
+      throw new NotFoundError('Intake order', id)
+    }
+
+    const pdf = await renderIntakeDocumentPdf(this.pdfRenderer, {
+      order,
+      // The DISPLAY read: an item the shop retired since keeps the name the owner answered it by.
+      checklistItems: await this.checklistCatalog.listForDocument(),
+      locale,
+    })
+
+    const storagePath = buildIntakeDocumentStoragePath(id)
+    await this.storage.upload({ path: storagePath, data: pdf, mimeType: DOCUMENT_MIME_TYPE })
+    // The seal is taken from the bytes that were STORED, not from the ones that were meant to be:
+    // the whole point of it is to answer "is this that file".
+    await this.repo.setDocument(id, {
+      storagePath,
+      sha256: createHash('sha256').update(pdf).digest('hex'),
+    })
+  }
+
+  /** Starts the sealing and returns immediately, leaving the failure in the log rather than in the
+   * caller's hands. Signing must not wait on a browser, and must not fail with one. */
+  private produceDocumentInBackground(id: string): void {
+    void this.produceDocument(id).catch((error: unknown) => {
+      this.logger.error({ err: error, intakeOrderId: id }, 'Failed to produce the intake document')
+    })
+  }
+
+  /**
+   * What the office downloads. `loadVisible` first, so an order outside the actor's scope answers
+   * 404 before anything about its document is known.
+   */
+  async getDocumentDownloadMeta(
+    id: string,
+    actor: IntakeOrdersActor,
+  ): Promise<{ storagePath: string; mimeType: string; fileName: string; etag: string | null }> {
+    await this.loadVisible(id, actor)
+
+    const document = await this.repo.findDocument(id)
+    if (document === null || document.storagePath === null) {
+      throw new NotFoundError('Intake order document', id)
+    }
+
+    return {
+      storagePath: document.storagePath,
+      mimeType: DOCUMENT_MIME_TYPE,
+      // The paper's own number, with the slash it cannot carry into a file name.
+      fileName: `${document.orderNumber.replace(/\//g, '-')}.pdf`,
+      etag: document.sha256,
+    }
+  }
+
+  openDocumentStream(
+    storagePath: string,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; size: number }> {
+    return this.storage.readStream(storagePath)
   }
 
   /** The serviser's one-way button. */

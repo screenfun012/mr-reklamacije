@@ -198,6 +198,22 @@ export function createIntakeOrdersController(container: Container) {
       })
     },
 
+    /**
+     * The sealed document. `attachment`, never `inline`: this is the paper the owner signed, and it
+     * is downloaded to be kept or printed rather than skimmed in a browser tab.
+     */
+    serveDocument: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+
+      const meta = await container.intakeOrdersService.getDocumentDownloadMeta(id, actorOf(user))
+
+      return serveCachedAttachmentDownload(c, meta, {
+        disposition: 'attachment',
+        openStream: (storagePath) => container.intakeOrdersService.openDocumentStream(storagePath),
+      })
+    },
+
     deletePhoto: async (c: Context) => {
       const user = requireUser(c)
       const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })

@@ -46,6 +46,8 @@ export function registerIntakeOrdersRoutes(
   )
   // Photos live under the order, never under /api/attachments: that route is gated by
   // `attachments.view_internal`, and a serviser holding it could read a claim's files.
+  // The same gate as the order it belongs to: whoever may open the order may take its paper.
+  routes.get('/:id/document', canRead, controller.serveDocument)
   routes.get('/:id/photos/:attachmentId', canRead, controller.servePhoto)
   routes.post('/:id/photos', requirePermission('intake_orders.update'), controller.uploadPhoto)
   // Freely while filling the intake in; once signed, refused to everyone — enforced in the
