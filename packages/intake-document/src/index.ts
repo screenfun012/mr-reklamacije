@@ -19,6 +19,12 @@ export { IntakeCheckMark } from './intake-check-mark.js'
 export { IntakePrintSheet } from './intake-print-sheet.js'
 export { IntakePrintCondition } from './intake-print-condition.js'
 export { IntakePrintDamages } from './intake-print-damages.js'
+/**
+ * Document 2 — the handover record. A sibling of the work order, not a taller copy of it: it
+ * paginates, so it ships its own `@page` rule for whoever wraps it into a document.
+ */
+export { IntakeHandoverSheet } from './intake-handover-sheet.js'
+export { INTAKE_HANDOVER_PAGE_CSS } from './intake-handover-styles.js'
 export {
   buildIntakePrintModel,
   PRINT_MAX_DAMAGES,
