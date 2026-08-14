@@ -17,6 +17,9 @@ import {
   PRINT_RULE,
 } from './intake-print-styles.js'
 
+/** What the preview's stylesheet targets; every caller but the multi-language document keeps it. */
+const DEFAULT_SHEET_ID = 'intake-print-sheet'
+
 const SHEET_STYLE = {
   /**
    * A4 at 96dpi. A FIXED height, never `min-height`: the page must not be allowed to grow into a
@@ -219,6 +222,7 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
   checklistItems,
   locale,
   logoSrc,
+  id = DEFAULT_SHEET_ID,
 }: {
   order: IntakeOrderDetail
   /**
@@ -235,11 +239,17 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
    * image for the other with nothing to say why.
    */
   logoSrc: string
+  /**
+   * The element's id, which the preview's stylesheet and its pinch-zoom both target by name. It is
+   * a prop only because one document can hold more than one sheet — the sealed PDF carries the same
+   * order in both languages — and two elements may not share an id.
+   */
+  id?: string
 }): ReactElement {
   const model: IntakePrintModel = buildIntakePrintModel(order, checklistItems, locale)
 
   return (
-    <div id="intake-print-sheet" style={SHEET_STYLE.page}>
+    <div id={id} style={SHEET_STYLE.page}>
       <header style={SHEET_STYLE.header}>
         {/* The full emblem — red MR, white script, white "MADE IN SERBIA" ring — because that is
             what the black band on "Obaveze kupca" carries. The plain wordmark is the app's own

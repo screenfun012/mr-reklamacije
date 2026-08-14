@@ -33,7 +33,6 @@ import {
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
 import { renderIntakeDocumentPdf } from './intake-document-pdf.js'
-import type { IntakePrintLocale } from '@mr/intake-document'
 import { extensionForMimeType } from '@mr/shared'
 import {
   normalizeOrderNumberKey,
@@ -500,26 +499,24 @@ export class IntakeOrdersService {
    * Idempotent by the column rather than by a lock: a produced document is never re-rendered,
    * because a second render is a different file with a different seal for the same signed paper.
    *
-   * ⚠ The language is Serbian, and that is a DEFAULT rather than a decision. The paper's language is
-   * chosen at the preview, which the operator opens after signing — so at this moment nobody has
-   * chosen one yet. Reported to Nikola 2026-08-14: if a foreign owner should receive the sheet in
-   * the language he was handed on paper, the choice has to be captured at signing, and this argument
-   * is where it would arrive.
+   * It carries BOTH languages, one sheet each — Nikola's decision, 2026-08-14, and the reason there
+   * is no locale argument here. There was no moment at which to choose one: the paper's language is
+   * picked in the preview, which the operator opens after signing.
    */
-  async produceDocument(id: string, locale: IntakePrintLocale = 'sr'): Promise<void> {
+  async produceDocument(id: string): Promise<void> {
     const running = this.documentsBeingSealed.get(id)
     if (running !== undefined) {
       return running
     }
 
-    const sealing = this.sealDocument(id, locale).finally(() => {
+    const sealing = this.sealDocument(id).finally(() => {
       this.documentsBeingSealed.delete(id)
     })
     this.documentsBeingSealed.set(id, sealing)
     return sealing
   }
 
-  private async sealDocument(id: string, locale: IntakePrintLocale): Promise<void> {
+  private async sealDocument(id: string): Promise<void> {
     const existing = await this.repo.findDocument(id)
     if (existing === null) {
       throw new NotFoundError('Intake order', id)
@@ -540,7 +537,6 @@ export class IntakeOrdersService {
       order,
       // The DISPLAY read: an item the shop retired since keeps the name the owner answered it by.
       checklistItems: await this.checklistCatalog.listForDocument(),
-      locale,
     })
 
     const storagePath = buildIntakeDocumentStoragePath(id)

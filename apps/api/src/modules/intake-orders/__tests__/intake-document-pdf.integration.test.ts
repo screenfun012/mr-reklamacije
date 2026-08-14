@@ -17,7 +17,6 @@ async function renderPdf(): Promise<Buffer> {
   return renderIntakeDocumentPdf(renderer, {
     order: intakeOrderDetailFixture(),
     checklistItems: intakeChecklistCatalogFixture(),
-    locale: 'sr',
   })
 }
 
@@ -27,15 +26,18 @@ async function renderPdf(): Promise<Buffer> {
  * font that never made it in.
  */
 describe('the signed work order as a PDF', () => {
-  it('is one page, and one page only', async () => {
+  it('is exactly two pages: the order in Serbian, then the same order in English', async () => {
     const pdf = await renderPdf()
     const raw = pdf.toString('latin1')
 
     expect(pdf.subarray(0, 5).toString('utf8')).toBe('%PDF-')
-    // The whole document is built on being a single sheet — the defect list flows into two columns
-    // rather than run over, and both signatures sit at its foot. A second page means something on it
-    // grew past the paper, and the half the customer signs is the half that would move.
-    expect(raw).toMatch(/\/Count\s+1\b/)
+    /**
+     * Two, and it is the sheets that make them: each one is built on being a SINGLE page — the defect
+     * list flows into two columns rather than run over, and both signatures sit at its foot. A third
+     * page would mean something on one of them grew past the paper, and the half the customer signs
+     * is the half that moves.
+     */
+    expect(raw).toMatch(/\/Count\s+2\b/)
   })
 
   it('is the page the sheet was drawn for, not a page it was fitted into', async () => {

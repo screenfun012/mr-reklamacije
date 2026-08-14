@@ -20,6 +20,20 @@ import { loadIntakeDocumentAssets } from './intake-document-assets.js'
  */
 const PAGE_SIZE_CSS = '794px 1123px'
 
+/**
+ * Both languages, Serbian first, in one file — Nikola's decision, 2026-08-14.
+ *
+ * The alternative was choosing one, and there is no moment at which to choose: the paper's language
+ * is picked in the preview, which the operator opens AFTER signing, and asking him to pick one more
+ * thing on the way there is exactly what `docs/25` §3.0 forbids. Carrying both removes the question
+ * instead of answering it — a foreign owner reads his page, a domestic one reads his, and nobody has
+ * to have decided anything.
+ *
+ * It costs a second page rather than a second file: the page box IS the sheet, so two sheets stacked
+ * break at exactly the seam with no library to merge anything.
+ */
+const DOCUMENT_LOCALES: readonly IntakePrintLocale[] = ['sr', 'en']
+
 export interface IntakeDocumentInput {
   readonly order: IntakeOrderDetail
   /**
@@ -27,8 +41,6 @@ export interface IntakeDocumentInput {
    * name it was answered by — the same list the preview draws from.
    */
   readonly checklistItems: readonly IntakeChecklistItemListItem[]
-  /** Chosen when the paper was signed, not read from anyone's session. */
-  readonly locale: IntakePrintLocale
 }
 
 /**
@@ -39,17 +51,22 @@ export interface IntakeDocumentInput {
 export async function buildIntakeDocumentHtml(input: IntakeDocumentInput): Promise<string> {
   const { fontFaceCss, emblemDataUri } = await loadIntakeDocumentAssets()
 
-  const markup = renderToStaticMarkup(
-    createElement(IntakePrintSheet, {
-      order: input.order,
-      checklistItems: input.checklistItems,
-      locale: input.locale,
-      logoSrc: emblemDataUri,
-    }),
-  )
+  const sheets = DOCUMENT_LOCALES.map((locale) =>
+    renderToStaticMarkup(
+      createElement(IntakePrintSheet, {
+        order: input.order,
+        checklistItems: input.checklistItems,
+        locale,
+        logoSrc: emblemDataUri,
+        // One id per sheet: two elements may not share one, and the preview's stylesheet is the
+        // only thing that ever needed the name.
+        id: `intake-print-sheet-${locale}`,
+      }),
+    ),
+  ).join('')
 
   return `<!doctype html>
-<html lang="${input.locale}">
+<html lang="${DOCUMENT_LOCALES[0] as string}">
 <head>
 <meta charset="utf-8">
 <style>${fontFaceCss}</style>
@@ -65,9 +82,15 @@ export async function buildIntakeDocumentHtml(input: IntakeDocumentInput): Promi
  */
 *, *::before, *::after { box-sizing: border-box }
 body { margin: 0 }
+/*
+ * Each sheet is exactly one page tall and the page box is exactly one sheet, so the seam falls where
+ * it should on its own. Stated anyway: "on its own" here means "as long as nobody ever adds a margin
+ * or a gap", and a page that slips by one pixel would put a blank sheet between the two languages.
+ */
+#intake-print-sheet-sr { break-after: page }
 </style>
 </head>
-<body>${markup}</body>
+<body>${sheets}</body>
 </html>`
 }
 

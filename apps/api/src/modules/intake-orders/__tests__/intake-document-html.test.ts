@@ -1,3 +1,4 @@
+import { m } from '@mr/i18n'
 import {
   intakeChecklistCatalogFixture,
   intakeOrderDetailFixture,
@@ -7,17 +8,12 @@ import { describe, expect, it } from 'vitest'
 import type { PdfPageOptions, PdfRenderer } from '../../../core/pdf/pdf-renderer.js'
 import { buildIntakeDocumentHtml, renderIntakeDocumentPdf } from '../intake-document-pdf.js'
 
-const document = async (locale: 'sr' | 'en' = 'sr'): Promise<string> =>
+const document = async (): Promise<string> =>
   buildIntakeDocumentHtml({
     order: intakeOrderDetailFixture(),
     checklistItems: intakeChecklistCatalogFixture(),
-    locale,
   })
 
-/**
- * The document Chromium is handed. Everything here is about what it must CARRY, because it renders
- * with no network: a rule that points outward does not fail loudly, it renders wrong and quietly.
- */
 /**
  * The `@font-face` rules only. Naming a family in a `font-family:` declaration proves nothing — the
  * sheet names both of them on every element it draws — so an assertion that merely finds the name
@@ -31,6 +27,10 @@ function embeddedFaces(html: string): { family: string; block: string }[] {
   })
 }
 
+/**
+ * The document Chromium is handed. Everything here is about what it must CARRY, because it renders
+ * with no network: a rule that points outward does not fail loudly, it renders wrong and quietly.
+ */
 describe('the intake document Chromium is handed', () => {
   it('carries every font as bytes, with nothing left pointing at a file', async () => {
     const html = await document()
@@ -72,9 +72,22 @@ describe('the intake document Chromium is handed', () => {
     expect(html).toContain('box-sizing: border-box')
   })
 
-  it('speaks the language the paper was signed in', async () => {
-    expect(await document('en')).toContain('<html lang="en">')
-    expect(await document('sr')).toContain('<html lang="sr">')
+  it('carries the order twice, once in each language, so nobody has to choose', async () => {
+    const html = await document()
+
+    // Serbian first: the shop's own language, and the page the overwhelming majority of owners read.
+    expect(html.indexOf('id="intake-print-sheet-sr"')).toBeGreaterThan(-1)
+    expect(html.indexOf('id="intake-print-sheet-en"')).toBeGreaterThan(
+      html.indexOf('id="intake-print-sheet-sr"'),
+    )
+    expect(html).toContain(m.intake_print_title({}, { locale: 'sr' }))
+    expect(html).toContain(m.intake_print_title({}, { locale: 'en' }))
+  })
+
+  it('breaks between the two languages rather than trusting them to land right', async () => {
+    // Each sheet is exactly one page tall, so the seam falls where it should on its own — until
+    // somebody adds a margin, and then a blank sheet appears between the two languages.
+    expect(await document()).toContain('#intake-print-sheet-sr { break-after: page }')
   })
 
   /**
@@ -98,7 +111,6 @@ describe('the intake document Chromium is handed', () => {
     await renderIntakeDocumentPdf(recorder, {
       order: intakeOrderDetailFixture(),
       checklistItems: intakeChecklistCatalogFixture(),
-      locale: 'sr',
     })
 
     expect(sent[0]?.printBackground).toBe(true)
