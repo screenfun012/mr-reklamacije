@@ -209,6 +209,19 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 ## 8a. Known issues (real bugs, fix later — don't trip over)
 
+- **Intake wizard, step 1: NEXT is dead and the sentence does not say why.** For a private person the
+  ID card number is required, but the footer hint reads "Fill in the plate, vehicle, owner and phone"
+  — all of which can be filled while the button stays disabled. Measured in the browser 2026-08-14:
+  the button enables the moment the ID number is typed. A worker stands and looks at it, which is
+  exactly what `docs/25` §3.0 exists to prevent. Fix = the hint names the field that is actually
+  missing.
+- **Claim-report PDF prints Serbian letters in the wrong typeface.**
+  `apps/api/src/modules/claim-reports/claim-report-export-font.ts` embeds only Figtree's `latin`
+  subset; `č ć ž š đ` live in `latin-ext`, so in the container they are drawn by Liberation Sans
+  while the screen shows Figtree. Never reported because it substitutes letters rather than leaving
+  holes. The intake document does NOT have this (it embeds fontsource's stylesheets whole) — the fix
+  here is to do the same.
+
 - ~~Users-list keyset pagination broken past page 1~~ **FIXED**: `users.repository.ts` now mirrors the audit-log pattern (`created_at::text` cursor compared via `::timestamptz`); regression test in `users.integration.test.ts` ("paginates past the first page"). All other keyset usages key on text/integer columns and were already fine.
 - ~~Portal claims list client-side pagination over ≤50 (latent cap)~~ **FIXED** in the portal v2 redesign: `clientClaimsListOptions(page)` is server-side paginated (10/page), no cap, no client-side slice; `portal_claims_capped` caption removed.
 - ~~`/api/dashboard/summary` leaked GLOBAL data to portal clients~~ **FIXED** (SEV-1): the gate accepted `view_own_customer` and the queries had no customer scoping, so a client could read other customers' names/MR numbers. Now `/summary` requires full `emotive_claims.view`/`domace_claims.view` (route + service, defense in depth); clients use the scoped `/api/dashboard/client-summary` projection. Regression tests in `dashboard.integration.test.ts`.
