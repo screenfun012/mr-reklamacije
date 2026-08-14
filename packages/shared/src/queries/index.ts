@@ -158,6 +158,7 @@ export {
   intakeOrderSummaryOptions,
   intakeOrdersListOptions,
   intakePlateLookupOptions,
+  produceIntakeOrderDocument,
   signIntakeOrder,
   skipIntakeOrderHandover,
   updateIntakeOrder,

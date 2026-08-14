@@ -8,6 +8,7 @@ import {
   SERVISER_PERMISSIONS,
   UserAccountStatus,
 } from '@mr/shared'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -164,6 +165,65 @@ describe('the sealed intake document', () => {
     const second = await container.intakeOrdersRepository.findDocument(id, 'intake')
     expect(second?.sha256).toBe(first?.sha256)
     expect(second?.storagePath).toBe(storagePath)
+  })
+
+  /**
+   * The office's way back from a seal that failed.
+   *
+   * Until 2026-08-15 there was none: `produceDocument` had two callers, both once-only and both
+   * guarded, so a Chromium crash or an unreachable bucket left an order signed, handed over and
+   * permanently without its paper — and the card said "being prepared" forever. The owner's copy is
+   * the point of the whole module, so it needs a door.
+   */
+  describe('producing it again, after a seal that failed', () => {
+    it('makes the paper an order was left without', async () => {
+      const id = await signedOrder()
+      await service.produceDocument(id, 'intake')
+
+      // What a failed seal leaves behind: the signatures are a fact, the columns are empty.
+      await ctx.db
+        .update(schema.intakeOrders)
+        .set({ documentStoragePath: null, documentSha256: null, documentEmailedAt: null })
+        .where(eq(schema.intakeOrders.id, id))
+
+      await service.produceDocumentAgain(id, OFFICE, actorContext(OFFICE.id), 'intake')
+
+      const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
+      expect(document?.storagePath).toBe(`intake/${id}/document.pdf`)
+      const stored = await container.storageService.read(document?.storagePath as string)
+      expect(stored.subarray(0, 5).toString('utf8')).toBe('%PDF-')
+      expect(document?.sha256).toBe(createHash('sha256').update(stored).digest('hex'))
+    })
+
+    it('leaves a document that already exists exactly as it is', async () => {
+      const id = await signedOrder()
+      await service.produceDocument(id, 'intake')
+      const storagePath = (await container.intakeOrdersRepository.findDocument(id, 'intake'))
+        ?.storagePath as string
+
+      // Same sentinel as above, and the same reason: two renders a second apart are byte-identical,
+      // so only "did anything write" is an honest question. A retry must not become a second file
+      // for a paper that was signed once.
+      const sentinel = Buffer.from('%PDF-1.4 sentinel')
+      await container.storageService.upload({
+        path: storagePath,
+        data: sentinel,
+        mimeType: 'application/pdf',
+      })
+
+      await service.produceDocumentAgain(id, OFFICE, actorContext(OFFICE.id), 'intake')
+
+      expect(await container.storageService.read(storagePath)).toEqual(sentinel)
+    })
+
+    it('answers 404 for a serviser reaching for a colleague order, never 403', async () => {
+      const colleague = await createActor('Drugi serviser', SERVISER_PERMISSIONS)
+      const id = await signedOrder(colleague)
+
+      await expect(
+        service.produceDocumentAgain(id, FLOOR, actorContext(FLOOR.id), 'intake'),
+      ).rejects.toThrow(NotFoundError)
+    })
   })
 
   it('refuses an unsigned order, which has no signed sheet to seal', async () => {

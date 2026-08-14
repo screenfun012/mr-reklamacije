@@ -21,6 +21,9 @@ const TRANSITION_LABELS: Record<string, () => string> = {
   // would read "Nalog izmenjen", and the gap the escape deliberately leaves would be invisible in
   // the only place anyone goes looking for it.
   handover_skipped: m.intake_history_handover_skipped,
+  // Its own line for the same reason: it means a seal failed and somebody made the paper by hand.
+  // Left neutral, a document dated three days after the signature would have no explanation anywhere.
+  produce_document: m.intake_history_document_produced,
 }
 
 /**

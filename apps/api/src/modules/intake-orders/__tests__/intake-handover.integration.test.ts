@@ -161,8 +161,18 @@ describe('handing the vehicle back', () => {
     const stored = await container.storageService.read(document?.storagePath as string)
     expect(stored.subarray(0, 5).toString('utf8')).toBe('%PDF-')
 
-    // The handover sheet, not a second copy of the work order: its own subject, its own file name.
-    const message = email.sent.at(-1)
+    /**
+     * Found by its attachment, NOT by being last.
+     *
+     * Two papers leave for this order: signing fires the work order's seal into the background, and
+     * the handover fires its own. Which lands first is a race, and `.at(-1)` quietly asserted the
+     * work order's seal always wins it. On a busy machine it does not — the full suite caught this
+     * exactly once, and only because another file's tests were sharing the Chromium.
+     */
+    const message = email.sent.find((sent) =>
+      sent.attachments?.some((file) => file.fileName.endsWith('-primopredaja.pdf')),
+    )
+    expect(message).toBeDefined()
     expect(message?.to).toBe(OWNER_EMAIL)
     expect(message?.subject).toContain('Primopredaja')
     expect(message?.subject).toContain('handover')

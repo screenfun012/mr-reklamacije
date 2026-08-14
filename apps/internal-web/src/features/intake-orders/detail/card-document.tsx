@@ -2,6 +2,7 @@ import { getLocale, m } from '@mr/i18n'
 import {
   buildIntakeDocumentUrl,
   intakeOrderKeys,
+  produceIntakeOrderDocument,
   sendIntakeOrderDocument,
   type IntakeDocumentKind,
   type IntakeOrderDetail,
@@ -36,6 +37,8 @@ function DocumentRow({
   ownerEmail,
   canSend,
   onSend,
+  onProduce,
+  producing,
 }: {
   orderId: string
   kind: IntakeDocumentKind
@@ -44,13 +47,33 @@ function DocumentRow({
   ownerEmail: string | null
   canSend: boolean
   onSend: (kind: IntakeDocumentKind) => void
+  onProduce: (kind: IntakeDocumentKind) => void
+  producing: boolean
 }): ReactElement {
   return (
     <div className="flex flex-col gap-[9px]">
       <div className={FIELD_KEY}>{DOCUMENT_LABELS[kind]()}</div>
 
       {!ready ? (
-        <p className="text-[13.5px] italic text-mri-text2">{m.intake_document_not_ready()}</p>
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-[13.5px] italic text-mri-text2">{m.intake_document_not_ready()}</p>
+
+          {/* The seal runs in the background behind a signature, so this window is normally seconds
+              long — but when it fails there is no second attempt of its own, and this sentence used
+              to sit here forever. Pressing early is harmless: the call joins the running seal rather
+              than starting a second one. */}
+          {canSend ? (
+            <InternalButton
+              type="button"
+              variant="outline"
+              disabled={producing}
+              onClick={() => onProduce(kind)}
+              className="h-9 px-3 text-[13px]"
+            >
+              {m.intake_document_produce()}
+            </InternalButton>
+          ) : null}
+        </div>
       ) : (
         <>
           <p className="text-[13px] text-mri-text2">
@@ -127,6 +150,22 @@ export function CardDocument({
     },
   })
 
+  /**
+   * The way back from a seal that failed. No confirmation: unlike sending, this reaches nobody
+   * outside the shop and cannot be got wrong — a document that exists is never re-rendered.
+   */
+  const produce = useMutation({
+    mutationFn: (kind: IntakeDocumentKind) => produceIntakeOrderDocument(order.id, kind),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: intakeOrderKeys.detail(order.id) }),
+        queryClient.invalidateQueries({ queryKey: intakeOrderKeys.history(order.id) }),
+      ])
+      showInternalToast(m.intake_document_produced())
+    },
+    onError: () => showInternalToast(m.intake_detail_action_failed()),
+  })
+
   if (order.signedAt === null) {
     return null
   }
@@ -143,6 +182,8 @@ export function CardDocument({
         ownerEmail={order.ownerEmail}
         canSend={canSend}
         onSend={setConfirmSend}
+        onProduce={produce.mutate}
+        producing={produce.isPending}
       />
 
       {order.handoverSignedAt === null ? null : (
@@ -155,6 +196,8 @@ export function CardDocument({
             ownerEmail={order.ownerEmail}
             canSend={canSend}
             onSend={setConfirmSend}
+            onProduce={produce.mutate}
+            producing={produce.isPending}
           />
         </div>
       )}

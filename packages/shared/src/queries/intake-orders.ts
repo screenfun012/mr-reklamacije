@@ -250,6 +250,17 @@ export function sendIntakeOrderDocument(id: string, kind: IntakeDocumentKind): P
 }
 
 /**
+ * Makes a paper the order was left without, after a seal that failed. Safe to call twice and safe to
+ * call early: a document that exists is never re-rendered, and a call landing while the first seal is
+ * still running joins it rather than starting a second.
+ */
+export function produceIntakeOrderDocument(id: string, kind: IntakeDocumentKind): Promise<void> {
+  return fetchNoContent(`/api/intake-orders/${id}/document/produce?kind=${kind}`, {
+    method: 'POST',
+  })
+}
+
+/**
  * Where the sealed sheet is downloaded from. A plain link rather than a fetch: the response is a
  * file with its own name, and the browser already knows what to do with one.
  */

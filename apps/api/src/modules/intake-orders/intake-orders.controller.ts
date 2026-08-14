@@ -265,6 +265,21 @@ export function createIntakeOrdersController(container: Container) {
       })
     },
 
+    /** The office making a paper the order was left without, when the seal failed. */
+    produceDocumentAgain: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+
+      await container.intakeOrdersService.produceDocumentAgain(
+        id,
+        actorOf(user),
+        getActorContext(c, user),
+        documentKindOf(c),
+      )
+
+      return c.body(null, 204)
+    },
+
     /** The office sending the sealed sheet to the owner again — the same file, never a new one. */
     sendDocument: async (c: Context) => {
       const user = requireUser(c)

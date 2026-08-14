@@ -546,11 +546,9 @@ export class IntakeOrdersService {
    * So the caller starts it and walks away (`void`), and an order whose document failed simply has
    * none, which is a true statement about it.
    *
-   * ⚠ There is currently NO way to run it again. Both callers fire once, behind a signature that can
-   * only be given once, and nothing else reaches this method: no endpoint, no script, no preview. A
-   * failed seal therefore leaves the order signed and permanently paperless — for the intake sheet
-   * the office can at least still print from `/prijem/:id`, for the handover there is nothing. A
-   * retry is its own task and is logged as one; until it lands, do not read this method as recoverable.
+   * Recoverable since 2026-08-15, through `produceDocumentAgain`. It has to be: both callers fire
+   * once, behind a signature that can only be given once, so without a way back a failed seal left
+   * the order signed and permanently paperless — and the owner's copy is what this module is for.
    *
    * Idempotent by the column rather than by a lock: a produced document is never re-rendered,
    * because a second render is a different file with a different seal for the same signed paper.
@@ -667,6 +665,42 @@ export class IntakeOrdersService {
     })
 
     await this.repo.setDocumentEmailedAt(id, kind, new Date())
+  }
+
+  /**
+   * The office's way back from a seal that failed: make the paper this order was left without.
+   *
+   * Awaited rather than fired into the background, unlike the signature's own call — somebody
+   * pressed a button and is standing in front of the screen, so a failure belongs in their hands
+   * and not only in the log.
+   *
+   * Idempotent by `produceDocument`'s own column guard: a document that exists is never re-rendered,
+   * because a second render is a different file with a different seal for a paper that was signed
+   * once. Pressed while the first seal is still running, the call joins that flight instead of
+   * starting a second one. So the button is safe to press twice, and safe to press early.
+   *
+   * `send_document` rather than a permission of its own: this exists so a document reaches the owner,
+   * which is the same act that permission already governs, and a new permission would need seeding in
+   * production before the button could work at all.
+   */
+  async produceDocumentAgain(
+    id: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+    kind: IntakeDocumentKind,
+  ): Promise<void> {
+    await this.loadVisible(id, actor)
+    await this.produceDocument(id, kind)
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { transition: 'produce_document', kind },
+    })
   }
 
   /**

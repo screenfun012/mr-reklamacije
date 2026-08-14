@@ -63,6 +63,14 @@ export function registerIntakeOrdersRoutes(
     requirePermission('intake_orders.send_document'),
     controller.sendDocument,
   )
+  // The way back from a seal that failed. Same permission as sending, because it exists for the same
+  // reason — the owner's copy — and a permission of its own would have to be seeded in production
+  // before the button could do anything.
+  routes.post(
+    '/:id/document/produce',
+    requirePermission('intake_orders.send_document'),
+    controller.produceDocumentAgain,
+  )
   routes.get('/:id/photos/:attachmentId', canRead, controller.servePhoto)
   routes.post('/:id/photos', requirePermission('intake_orders.update'), controller.uploadPhoto)
   // Freely while filling the intake in; once signed, refused to everyone — enforced in the
