@@ -745,7 +745,18 @@ export class IntakeOrdersService {
     return this.storage.readStream(storagePath)
   }
 
-  /** The serviser's one-way button. */
+  /**
+   * The serviser's one-way button — and it stops one rung short of the end.
+   *
+   * `gotovo → preuzeto` is not a status nudge: it is two people standing at the car, and it belongs
+   * to `handOver` and `handOverWithoutSignature` alone. Left on this ladder the permission split
+   * would not exist at all — a serviser holds `advance`, so he could put a vehicle in `preuzeto`
+   * with no handover, no signatures and no superior, which is exactly what `change_status` on the
+   * unsigned release is there to prevent.
+   *
+   * The message names where the transition lives, because a 409 that only says "no" leaves the
+   * operator with nothing to do next.
+   */
   async advance(
     id: string,
     actor: IntakeOrdersActor,
@@ -754,10 +765,24 @@ export class IntakeOrdersService {
     const before = await this.loadVisible(id, actor)
     this.assertSignedForStatusChange(before)
 
-    return this.applyStatus(id, nextStatus(before.status), before, 'advance', auditContext)
+    const next = nextStatus(before.status)
+    if (next === IntakeOrderStatus.PickedUp) {
+      throw new ConflictError(
+        'A vehicle is handed back through the handover, never through advance: POST /api/intake-orders/:id/handover with both signatures, or /handover/skip to release it without them',
+      )
+    }
+
+    return this.applyStatus(id, next, before, 'advance', auditContext)
   }
 
-  /** The office's correction: any status, always recorded. */
+  /**
+   * The office's correction: any status, always recorded — `preuzeto` included, deliberately.
+   *
+   * NOT to be narrowed the way `advance` was above. This is the same door with the same key: it
+   * requires `intake_orders.change_status`, which is the permission the unsigned release itself
+   * requires, so whoever can reach `preuzeto` here can already reach it through `/handover/skip`.
+   * Taking it away would only remove the office's way to undo a mis-tap.
+   */
   async changeStatus(
     id: string,
     input: IntakeOrderChangeStatusInput,

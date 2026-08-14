@@ -821,7 +821,12 @@ describe('Intake orders integration', () => {
   })
 
   describe('status', () => {
-    it('walks the ladder one notch at a time and stops at the end', async () => {
+    /**
+     * It stops at Gotovo, one rung short of the end: `preuzeto` is the handover's transition and
+     * nobody else's (see `advance` in the service). A serviser holds `advance`, so a ladder that ran
+     * to the top would hand every vehicle back without signatures and without a superior.
+     */
+    it('walks the ladder one notch at a time and stops before the handover', async () => {
       const floor = await floorActor()
       const orderId = await signedOrder(floor)
 
@@ -830,9 +835,6 @@ describe('Intake orders integration', () => {
       )
       expect((await service.advance(orderId, floor, actorContext(floor.id))).status).toBe(
         IntakeOrderStatus.Done,
-      )
-      expect((await service.advance(orderId, floor, actorContext(floor.id))).status).toBe(
-        IntakeOrderStatus.PickedUp,
       )
       await expect(service.advance(orderId, floor, actorContext(floor.id))).rejects.toBeInstanceOf(
         ConflictError,

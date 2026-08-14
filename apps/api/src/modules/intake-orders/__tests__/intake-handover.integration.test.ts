@@ -226,6 +226,25 @@ describe('handing the vehicle back', () => {
     ).rejects.toBeInstanceOf(NotFoundError)
   })
 
+  /**
+   * The permission split only exists if this rung is closed: a serviser holds `advance`, so while
+   * the ladder walked all the way to `preuzeto` he could release a vehicle with no handover and no
+   * superior — and the two endpoints below would be a formality anybody could route around.
+   */
+  it('refuses to walk the last rung — a vehicle leaves through the handover or not at all', async () => {
+    const id = await signedOrder()
+    await service.advance(id, floor, actorContext(floor.id))
+    const done = await service.advance(id, floor, actorContext(floor.id))
+    expect(done.status).toBe(IntakeOrderStatus.Done)
+
+    await expect(service.advance(id, floor, actorContext(floor.id))).rejects.toBeInstanceOf(
+      ConflictError,
+    )
+    // Still reachable by the two that own the transition — a closed rung, not a closed road.
+    const handed = await service.handOver(id, SIGNATURES, office, actorContext(office.id))
+    expect(handed.status).toBe(IntakeOrderStatus.PickedUp)
+  })
+
   it('lets the office record a pickup with no signature, and makes no document for it', async () => {
     const id = await signedOrder()
 
