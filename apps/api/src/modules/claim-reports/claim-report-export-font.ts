@@ -1,28 +1,17 @@
-import { readFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
+import { inlineFontStylesheet } from '../../core/pdf/inline-font-stylesheet.js'
 
-let cachedFontFaceCss: string | null = null
+/**
+ * Fontsource's own stylesheet, taken whole — see `inlineFontStylesheet` for why a hand-written
+ * `@font-face` is what put `č ć ž š đ` in a different typeface here for as long as this export has
+ * existed. The family it declares is `Figtree Variable`, which is what
+ * `CLAIM_REPORT_EXPORT_FONT_FAMILY` therefore has to ask for.
+ */
+const FONT_STYLESHEET = '@fontsource-variable/figtree/index.css'
 
-export async function getClaimReportExportFontFaceCss(): Promise<string> {
-  if (cachedFontFaceCss !== null) {
-    return cachedFontFaceCss
-  }
+/** Read once per process: the bytes never change, and an operator is waiting for the document. */
+let cached: Promise<string> | null = null
 
-  const require = createRequire(import.meta.url)
-  const fontPath =
-    require.resolve('@fontsource-variable/figtree/files/figtree-latin-wght-normal.woff2')
-  const fontData = await readFile(fontPath)
-  const base64 = fontData.toString('base64')
-
-  cachedFontFaceCss = `
-@font-face {
-  font-family: 'Figtree';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url(data:font/woff2;base64,${base64}) format('woff2');
-}
-`.trim()
-
-  return cachedFontFaceCss
+export function getClaimReportExportFontFaceCss(): Promise<string> {
+  cached ??= inlineFontStylesheet(FONT_STYLESHEET)
+  return cached
 }

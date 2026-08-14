@@ -215,12 +215,15 @@ Empty DB needs these extensions first (the app's integration setup installs them
   sentence and the button cannot drift again; `step1MissingLabels()` names the empty fields with the
   labels printed on their own rows ("Fali: Broj lične karte"). Regression tests in
   `intake-step1-hint.test.ts`; both mutations (the ID rule, the label map) verified red.
-- **Claim-report PDF prints Serbian letters in the wrong typeface.**
-  `apps/api/src/modules/claim-reports/claim-report-export-font.ts` embeds only Figtree's `latin`
-  subset; `č ć ž š đ` live in `latin-ext`, so in the container they are drawn by Liberation Sans
-  while the screen shows Figtree. Never reported because it substitutes letters rather than leaving
-  holes. The intake document does NOT have this (it embeds fontsource's stylesheets whole) — the fix
-  here is to do the same.
+- ~~Claim-report PDF prints Serbian letters in the wrong typeface~~ **FIXED 2026-08-15**: the
+  hand-written `@font-face` carried no `unicode-range`, so it claimed the whole alphabet while
+  embedding the `latin` subset alone and Chromium drew `č ć ž š đ` from the next family in the list.
+  Both PDF paths now share `core/pdf/inline-font-stylesheet.ts`, which takes fontsource's stylesheet
+  whole so every subset's range comes from upstream. ⚠ **The family name comes with it**: fontsource
+  declares `Figtree Variable`, so `CLAIM_REPORT_EXPORT_FONT_FAMILY` had to change too — swapping the
+  embedding alone would have left nothing matching and sent the WHOLE report to the fallback. Proven
+  by measurement, not reasoning: before the fix `ččč` measured exactly the fallback's width while
+  `ccc` measured Figtree's; after, both are Figtree's.
 
 - ~~Users-list keyset pagination broken past page 1~~ **FIXED**: `users.repository.ts` now mirrors the audit-log pattern (`created_at::text` cursor compared via `::timestamptz`); regression test in `users.integration.test.ts` ("paginates past the first page"). All other keyset usages key on text/integer columns and were already fine.
 - ~~Portal claims list client-side pagination over ≤50 (latent cap)~~ **FIXED** in the portal v2 redesign: `clientClaimsListOptions(page)` is server-side paginated (10/page), no cap, no client-side slice; `portal_claims_capped` caption removed.

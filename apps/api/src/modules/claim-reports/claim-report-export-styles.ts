@@ -1,4 +1,9 @@
-export const CLAIM_REPORT_EXPORT_FONT_FAMILY = "'Figtree', sans-serif"
+/**
+ * `Figtree Variable`, not `Figtree`: that is the family name in the stylesheet the document embeds
+ * (`claim-report-export-font.ts`). Asking for a name nothing declares sends the WHOLE report to the
+ * fallback, silently — the failure mode this constant is one half of.
+ */
+export const CLAIM_REPORT_EXPORT_FONT_FAMILY = "'Figtree Variable', sans-serif"
 
 export function buildClaimReportExportStyles(fontFaceCss: string): string {
   return `
