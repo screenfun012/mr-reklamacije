@@ -34,7 +34,7 @@ describe('TabOverview', () => {
       },
     })
 
-    await renderDetailUi(<TabOverview order={order} canUpdate={false} />)
+    await renderDetailUi(<TabOverview order={order} canUpdate={false} canSendDocument={false} />)
 
     const markOf = (testId: string): string | null | undefined =>
       screen.getByTestId(testId).querySelector('[data-mark]')?.getAttribute('data-mark')
@@ -52,7 +52,9 @@ describe('TabOverview', () => {
    * `lanci` inactive, and the card reads the DISPLAY key, so this goes red the moment it switches.
    */
   it('keeps naming an item the shop has retired since the order was signed', async () => {
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     expect(screen.getByTestId('condition-lanci')).toHaveTextContent('Lanci / alat')
   })
@@ -66,7 +68,7 @@ describe('TabOverview', () => {
     const catalog = intakeChecklistCatalogFixture().filter((item) => item.code !== 'rezervna')
 
     await renderDetailUi(
-      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />,
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
       catalog,
     )
 
@@ -101,7 +103,10 @@ describe('TabOverview', () => {
         })),
     ]
 
-    await renderDetailUi(<TabOverview order={order} canUpdate={false} />, catalog)
+    await renderDetailUi(
+      <TabOverview order={order} canUpdate={false} canSendDocument={false} />,
+      catalog,
+    )
 
     expect(screen.queryByTestId('condition-patosnici')).toBeNull()
     expect(screen.getByText(m.intake_condition_unchecked({ count: 2 }))).toBeDefined()
@@ -114,7 +119,11 @@ describe('TabOverview', () => {
    */
   it('says the checklist is not filled in yet when the order recorded no rows', async () => {
     await renderDetailUi(
-      <TabOverview order={intakeDraftFixture({ checklist: {}, draftStep: 1 })} canUpdate={false} />,
+      <TabOverview
+        order={intakeDraftFixture({ checklist: {}, draftStep: 1 })}
+        canUpdate={false}
+        canSendDocument={false}
+      />,
     )
 
     const caption = screen.getByText(m.intake_condition_empty())
@@ -130,14 +139,18 @@ describe('TabOverview', () => {
   })
 
   it('shows the recorded rows instead of that caption once there are any', async () => {
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     expect(screen.queryByText(m.intake_condition_empty())).toBeNull()
     expect(screen.getByTestId('condition-rezervna')).toBeDefined()
   })
 
   it('draws no signature block on an unsigned draft', async () => {
-    await renderDetailUi(<TabOverview order={intakeDraftFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeDraftFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     // The draft's own tab strip lands here (§4.8), and two empty boxes over "signed and locked"
     // would assert a signature nobody gave.
@@ -146,7 +159,9 @@ describe('TabOverview', () => {
   })
 
   it('says so when there is no damage and no remark, rather than leaving the card blank', async () => {
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     expect(screen.getByText(m.intake_detail_no_damage())).toBeDefined()
     expect(screen.getByText(m.intake_detail_no_remarks())).toBeDefined()
@@ -157,7 +172,11 @@ describe('TabOverview', () => {
     // Parked on step 2: damage is step 3, so there is nothing recorded to report. A green 0 and
     // "no damage found" would both be findings nobody made, on a document a customer signs.
     await renderDetailUi(
-      <TabOverview order={intakeDraftFixture({ draftStep: 2, fuelLevel: 6 })} canUpdate={false} />,
+      <TabOverview
+        order={intakeDraftFixture({ draftStep: 2, fuelLevel: 6 })}
+        canUpdate={false}
+        canSendDocument={false}
+      />,
     )
 
     expect(screen.queryByText(m.intake_detail_damage_pending())).not.toBeNull()
@@ -178,7 +197,11 @@ describe('TabOverview', () => {
    */
   it('still withholds the fuel reading on a draft that walked every step but was never signed', async () => {
     await renderDetailUi(
-      <TabOverview order={intakeDraftFixture({ draftStep: 5, fuelLevel: 6 })} canUpdate={false} />,
+      <TabOverview
+        order={intakeDraftFixture({ draftStep: 5, fuelLevel: 6 })}
+        canUpdate={false}
+        canSendDocument={false}
+      />,
     )
 
     expect(factValue(m.intake_fact_fuel())).toBe(DASH)
@@ -190,7 +213,11 @@ describe('TabOverview', () => {
 
   it('shows those same numbers on a signed intake', async () => {
     await renderDetailUi(
-      <TabOverview order={intakeOrderDetailFixture({ fuelLevel: 6 })} canUpdate={false} />,
+      <TabOverview
+        order={intakeOrderDetailFixture({ fuelLevel: 6 })}
+        canUpdate={false}
+        canSendDocument={false}
+      />,
     )
 
     expect(factValue(m.intake_fact_damages())).toBe('0')
@@ -198,14 +225,18 @@ describe('TabOverview', () => {
   })
 
   it('reports a clean car once somebody has', async () => {
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     expect(screen.queryByText(m.intake_detail_no_damage())).not.toBeNull()
     expect(screen.queryByText(m.intake_detail_damage_pending())).toBeNull()
   })
 
   it('gives the facts grid four even columns, with no cell singled out', async () => {
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     const cell = screen.getByText(m.intake_fact_vin()).parentElement
     expect(cell).toHaveClass('min-w-0')
@@ -234,7 +265,9 @@ describe('TabOverview', () => {
   it('groups the card so the owner reads before the vehicle, and the numbers after both', async () => {
     // The order was arbitrary until 2026-08-12 — intake date, worker, mileage, arrival, VIN, phone,
     // fuel, defects, address — with the owner's facts and the vehicle's interleaved.
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     const captions = screen
       .getAllByText(
@@ -283,7 +316,9 @@ describe('TabOverview', () => {
   // fuel stepper, the equipment-note input and the damage-type picker never render any more, on
   // any order, because nothing can hand this component a buffer to edit.
   it('never renders the retired editing controls', async () => {
-    await renderDetailUi(<TabOverview order={intakeOrderDetailFixture()} canUpdate={false} />)
+    await renderDetailUi(
+      <TabOverview order={intakeOrderDetailFixture()} canUpdate={false} canSendDocument={false} />,
+    )
 
     expect(screen.queryByRole('group', { name: 'Lanci / alat' })).toBeNull()
     expect(screen.queryByRole('button', { name: m.intake_fuel_more() })).toBeNull()

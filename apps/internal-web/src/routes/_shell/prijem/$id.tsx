@@ -116,7 +116,11 @@ function IntakeDetailPage(): ReactElement {
       {
         {
           [IntakeDetailTab.Pregled]: (
-            <TabOverview order={order} canUpdate={permissions.includes('intake_orders.update')} />
+            <TabOverview
+              order={order}
+              canUpdate={permissions.includes('intake_orders.update')}
+              canSendDocument={permissions.includes('intake_orders.send_document')}
+            />
           ),
           [IntakeDetailTab.Fotografije]: <TabPhotos order={order} />,
           [IntakeDetailTab.Spec]: (

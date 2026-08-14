@@ -65,6 +65,12 @@ export const PERMISSIONS = [
   'intake_orders.advance',
   'intake_orders.change_status',
   'intake_orders.delete',
+  /**
+   * Sending the sealed work order to the owner again — the same file, never a new one. Its own
+   * permission because it reaches OUT of the shop: it puts a document in a customer's inbox, which
+   * is not something every hand that may correct a specification should be able to do.
+   */
+  'intake_orders.send_document',
 
   // claim_reports
   'claim_reports.view',
@@ -196,6 +202,7 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'intake_orders.advance',
   'intake_orders.change_status',
   'intake_orders.delete',
+  'intake_orders.send_document',
   'claim_reports.view',
   'claim_reports.update',
   'customers.view',

@@ -9,7 +9,12 @@ export function createResendEmailPort(apiKey: string, from: string): EmailPort {
   return {
     enabled: true,
     async send(message: EmailMessage): Promise<void> {
-      await sender.send(message)
+      await sender.send({
+        to: message.to,
+        subject: message.subject,
+        html: message.html,
+        ...(message.attachments === undefined ? {} : { attachments: message.attachments }),
+      })
     },
   }
 }

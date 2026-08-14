@@ -1,9 +1,16 @@
 import { Resend } from 'resend'
 
+export interface EmailAttachmentParams {
+  fileName: string
+  content: Buffer
+  mimeType: string
+}
+
 export interface SendEmailParams {
   to: string
   subject: string
   html: string
+  attachments?: readonly EmailAttachmentParams[]
 }
 
 export interface EmailSender {
@@ -29,6 +36,17 @@ export function createEmailSender(config: EmailSenderConfig): EmailSender {
         to: params.to,
         subject: params.subject,
         html: params.html,
+        // Resend derives the type from the name when it is left out; it is stated because the one
+        // thing this carries is a document somebody has to be able to open.
+        ...(params.attachments === undefined
+          ? {}
+          : {
+              attachments: params.attachments.map((attachment) => ({
+                filename: attachment.fileName,
+                content: attachment.content,
+                contentType: attachment.mimeType,
+              })),
+            }),
       })
 
       if (error !== null) {

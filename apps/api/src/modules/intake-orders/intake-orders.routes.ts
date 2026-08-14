@@ -48,6 +48,12 @@ export function registerIntakeOrdersRoutes(
   // `attachments.view_internal`, and a serviser holding it could read a claim's files.
   // The same gate as the order it belongs to: whoever may open the order may take its paper.
   routes.get('/:id/document', canRead, controller.serveDocument)
+  // Its own permission: this one leaves the shop and lands in a customer's inbox.
+  routes.post(
+    '/:id/send-document',
+    requirePermission('intake_orders.send_document'),
+    controller.sendDocument,
+  )
   routes.get('/:id/photos/:attachmentId', canRead, controller.servePhoto)
   routes.post('/:id/photos', requirePermission('intake_orders.update'), controller.uploadPhoto)
   // Freely while filling the intake in; once signed, refused to everyone — enforced in the

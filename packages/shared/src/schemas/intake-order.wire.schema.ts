@@ -293,6 +293,13 @@ export const IntakeOrderDetailSchema = z.object({
   technicianSignature: z.string().nullable(),
   ownerSignature: z.string().nullable(),
   signedAt: z.string().nullable(),
+  /**
+   * Whether the sealed sheet exists, never where it is: the storage key is the server's business,
+   * and the screen only ever needs to know if there is something to download or send.
+   */
+  documentReady: z.boolean(),
+  /** When it reached the owner. NULL = never, or he left no address to reach. */
+  documentEmailedAt: z.string().nullable(),
   photosPending: z.number().int().nonnegative(),
   photos: z.array(IntakeOrderPhotoSchema),
   createdAt: z.string(),

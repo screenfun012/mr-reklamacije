@@ -14,6 +14,7 @@ import { SIGNATURE_VIEW_BOX } from '../wizard/intake-signature-pad'
 import { IntakeContactPhone } from './card-contact-phone'
 import { CardCondition } from './card-condition'
 import { CardDamages } from './card-damages'
+import { CardDocument } from './card-document'
 import { CAPTION, CARD, DASH, FIELD_KEY } from './detail-styles'
 
 /**
@@ -71,10 +72,13 @@ function SignatureBox({ path, caption }: { path: string | null; caption: string 
 export function TabOverview({
   order,
   canUpdate,
+  canSendDocument,
 }: {
   order: IntakeOrderDetail
   /** Gates `IntakeContactPhone`'s own edit affordance below the owner-phone fact. */
   canUpdate: boolean
+  /** `intake_orders.send_document` — the office only, because this one leaves the shop. */
+  canSendDocument: boolean
 }): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
 
@@ -211,6 +215,8 @@ export function TabOverview({
           </div>
 
           <div className="flex flex-col gap-[14px] @min-[860px]:w-[320px] @min-[860px]:flex-none">
+            <CardDocument order={order} canSend={canSendDocument} />
+
             <section className={cn(CARD, 'flex flex-col gap-[11px] px-[18px] py-4')}>
               <h2 className={CAPTION}>
                 {m.intake_card_photos()}

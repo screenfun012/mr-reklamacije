@@ -97,6 +97,8 @@ interface OrderRow {
   technicianSignature: string | null
   ownerSignature: string | null
   signedAt: Date | null
+  documentReady: boolean
+  documentEmailedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -169,6 +171,8 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     technicianSignature: row.technicianSignature,
     ownerSignature: row.ownerSignature,
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
+    documentReady: row.documentReady,
+    documentEmailedAt: row.documentEmailedAt === null ? null : row.documentEmailedAt.toISOString(),
     photosPending: pendingPhotoCount(row.photosExpected, photos.length),
     photos,
     createdAt: row.createdAt.toISOString(),
@@ -214,6 +218,9 @@ export class IntakeOrdersRepository {
       technicianSignature: intakeOrders.technicianSignature,
       ownerSignature: intakeOrders.ownerSignature,
       signedAt: intakeOrders.signedAt,
+      // The presence of the file, not its key: the screen decides whether to offer a download.
+      documentReady: sql<boolean>`${intakeOrders.documentStoragePath} IS NOT NULL`,
+      documentEmailedAt: intakeOrders.documentEmailedAt,
       createdAt: intakeOrders.createdAt,
       updatedAt: intakeOrders.updatedAt,
     }
@@ -491,6 +498,11 @@ export class IntakeOrdersRepository {
       .where(eq(intakeOrders.id, id))
   }
 
+  /** When the sealed sheet reached the owner. Its own write, like the seal beside it. */
+  async setDocumentEmailedAt(id: string, at: Date): Promise<void> {
+    await this.db.update(intakeOrders).set({ documentEmailedAt: at }).where(eq(intakeOrders.id, id))
+  }
+
   /**
    * The document's own row, read without the actor's scope — the caller has already established who
    * may see this order. `signedAt` travels with it because an unsigned order has no document to
@@ -499,6 +511,7 @@ export class IntakeOrdersRepository {
   async findDocument(id: string): Promise<{
     orderNumber: string
     signedAt: Date | null
+    ownerEmail: string | null
     storagePath: string | null
     sha256: string | null
     emailedAt: Date | null
@@ -507,6 +520,9 @@ export class IntakeOrdersRepository {
       .select({
         orderNumber: intakeOrders.orderNumber,
         signedAt: intakeOrders.signedAt,
+        // Where it goes. Deliberately absent from the printed sheet — an address is how to reach the
+        // owner, not a fact about the handover — but it is what this row exists to answer.
+        ownerEmail: intakeOrders.ownerEmail,
         storagePath: intakeOrders.documentStoragePath,
         sha256: intakeOrders.documentSha256,
         emailedAt: intakeOrders.documentEmailedAt,

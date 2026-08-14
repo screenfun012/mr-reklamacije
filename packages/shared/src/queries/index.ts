@@ -143,6 +143,7 @@ export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'
 export {
   INTAKE_ORDERS_PAGE_SIZE,
   advanceIntakeOrder,
+  buildIntakeDocumentUrl,
   buildIntakePhotoUrl,
   changeIntakeOrderStatus,
   createIntakeOrder,
@@ -159,4 +160,5 @@ export {
   signIntakeOrder,
   updateIntakeOrder,
   type IntakeOrderListFilters,
+  sendIntakeOrderDocument,
 } from './intake-orders.js'

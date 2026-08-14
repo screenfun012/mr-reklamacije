@@ -219,6 +219,19 @@ export function deleteIntakeOrderPhoto(id: string, attachmentId: string): Promis
   return fetchNoContent(`/api/intake-orders/${id}/photos/${attachmentId}`, { method: 'DELETE' })
 }
 
+/** Sends the sealed sheet to the owner again — the same file, never a new one. */
+export function sendIntakeOrderDocument(id: string): Promise<void> {
+  return fetchNoContent(`/api/intake-orders/${id}/send-document`, { method: 'POST' })
+}
+
+/**
+ * Where the sealed sheet is downloaded from. A plain link rather than a fetch: the response is a
+ * file with its own name, and the browser already knows what to do with one.
+ */
+export function buildIntakeDocumentUrl(id: string): string {
+  return `/api/intake-orders/${id}/document`
+}
+
 /**
  * Intake photos are served by the intake module, never by `/api/attachments` — a serviser
  * must not hold a permission that would also reach a claim's files.

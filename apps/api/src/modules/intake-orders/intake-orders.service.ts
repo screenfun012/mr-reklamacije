@@ -16,6 +16,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  ServiceUnavailableError,
   ValidationError,
 } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
@@ -26,6 +27,7 @@ import {
   writeStoredFile,
   type AttachmentUploadFileInput,
 } from '../../core/attachments/attachment-upload-pipeline.js'
+import type { EmailPort } from '../../core/ports/email-port.js'
 import type { PdfRenderer } from '../../core/pdf/pdf-renderer.js'
 import {
   buildIntakeAttachmentStoragePath,
@@ -33,6 +35,11 @@ import {
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
 import { renderIntakeDocumentPdf } from './intake-document-pdf.js'
+import {
+  intakeDocumentEmailSubject,
+  intakeDocumentFileName,
+  renderIntakeDocumentEmailHtml,
+} from './intake-orders.email.js'
 import { extensionForMimeType } from '@mr/shared'
 import {
   normalizeOrderNumberKey,
@@ -142,6 +149,7 @@ export class IntakeOrdersService {
     private readonly storage: StorageService,
     private readonly checklistCatalog: IntakeChecklistCatalogPort,
     private readonly pdfRenderer: PdfRenderer,
+    private readonly email: EmailPort,
     private readonly logger: Logger,
   ) {}
 
@@ -502,6 +510,11 @@ export class IntakeOrdersService {
    * It carries BOTH languages, one sheet each — Nikola's decision, 2026-08-14, and the reason there
    * is no locale argument here. There was no moment at which to choose one: the paper's language is
    * picked in the preview, which the operator opens after signing.
+   *
+   * Sending is part of the same job and guarded by its own column, so a run that sealed the file but
+   * failed to send it recovers on the next run instead of needing a different button. Each step that
+   * fails leaves the ones before it standing: an order with a document and no email is a true record
+   * of where it got to.
    */
   async produceDocument(id: string): Promise<void> {
     const running = this.documentsBeingSealed.get(id)
@@ -525,6 +538,10 @@ export class IntakeOrdersService {
       throw new ValidationError('An unsigned intake has no document to produce')
     }
     if (existing.storagePath !== null) {
+      // Already sealed — but possibly never sent, if the last run got that far and no further.
+      if (existing.emailedAt === null) {
+        await this.sendSealedDocument(id, existing)
+      }
       return
     }
 
@@ -546,6 +563,99 @@ export class IntakeOrdersService {
     await this.repo.setDocument(id, {
       storagePath,
       sha256: createHash('sha256').update(pdf).digest('hex'),
+    })
+
+    await this.sendSealedDocument(id, { ...existing, storagePath })
+  }
+
+  /**
+   * Sends the sealed sheet to the owner, once.
+   *
+   * Nothing happens when he left no address — Nikola, 13.08.: „ako klijent nema mail onda ništa, ne
+   * šalje se nego samo dobije fizičku kopiju." The document is made either way; it is his copy of it
+   * that is on paper.
+   */
+  private async sendSealedDocument(
+    id: string,
+    document: { orderNumber: string; ownerEmail: string | null; storagePath: string | null },
+  ): Promise<void> {
+    if (document.ownerEmail === null || document.storagePath === null || !this.email.enabled) {
+      return
+    }
+
+    await this.deliverDocument(id, {
+      orderNumber: document.orderNumber,
+      ownerEmail: document.ownerEmail,
+      storagePath: document.storagePath,
+    })
+  }
+
+  /**
+   * The file itself, read back out of storage and attached — never re-rendered. A second render is a
+   * different document for the same signed paper, so what the owner is sent again is byte for byte
+   * what he was sent the first time, and what the seal in the database answers for.
+   */
+  private async deliverDocument(
+    id: string,
+    document: { orderNumber: string; ownerEmail: string; storagePath: string },
+  ): Promise<void> {
+    const content = await this.storage.read(document.storagePath)
+
+    await this.email.send({
+      to: document.ownerEmail,
+      subject: intakeDocumentEmailSubject(document.orderNumber),
+      html: renderIntakeDocumentEmailHtml(document.orderNumber),
+      attachments: [
+        {
+          fileName: intakeDocumentFileName(document.orderNumber),
+          content,
+          mimeType: DOCUMENT_MIME_TYPE,
+        },
+      ],
+    })
+
+    await this.repo.setDocumentEmailedAt(id, new Date())
+  }
+
+  /**
+   * The office's "send it again" — the same file, to the address on the order.
+   *
+   * Its own permission because it reaches outside the shop, and its own audit row because somebody
+   * decided to do it. It refuses rather than improvises: no document is 404 (there is nothing to
+   * send), no address is a 422 the operator can act on by adding one.
+   */
+  async sendDocument(
+    id: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<void> {
+    await this.loadVisible(id, actor)
+
+    const document = await this.repo.findDocument(id)
+    if (document === null || document.storagePath === null) {
+      throw new NotFoundError('Intake order document', id)
+    }
+    if (document.ownerEmail === null) {
+      throw new ValidationError('The owner left no email address for this order')
+    }
+    if (!this.email.enabled) {
+      throw new ServiceUnavailableError('Slanje e-pošte trenutno nije podešeno.')
+    }
+
+    await this.deliverDocument(id, {
+      orderNumber: document.orderNumber,
+      ownerEmail: document.ownerEmail,
+      storagePath: document.storagePath,
+    })
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { transition: 'send_document' },
     })
   }
 
@@ -575,8 +685,7 @@ export class IntakeOrdersService {
     return {
       storagePath: document.storagePath,
       mimeType: DOCUMENT_MIME_TYPE,
-      // The paper's own number, with the slash it cannot carry into a file name.
-      fileName: `${document.orderNumber.replace(/\//g, '-')}.pdf`,
+      fileName: intakeDocumentFileName(document.orderNumber),
       etag: document.sha256,
     }
   }

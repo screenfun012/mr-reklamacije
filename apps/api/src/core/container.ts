@@ -353,6 +353,8 @@ export function buildContainer(
     intakeChecklistItemsRepository,
     // The same browser the claim report uses — one instance, two slots, released when idle.
     pdfRenderer,
+    // The sealed sheet goes to the owner as an attachment; disabled email simply skips the send.
+    emailPort,
     logger,
   )
   const attachmentsRepository = new AttachmentsRepository(db)
