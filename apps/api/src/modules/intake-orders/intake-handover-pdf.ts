@@ -29,16 +29,13 @@ const DOCUMENT_LOCALES: readonly IntakePrintLocale[] = ['sr', 'en']
  * render in a separate document that cannot see the page's `@font-face` rules, so naming Figtree here
  * would silently fall back to whatever the container has. An explicit `font-size` is load-bearing —
  * Chromium's default inside these templates is zero, and the footer would draw nothing at all.
+ *
+ * Supplying this is the WHOLE instruction: the renderer derives Chromium's three switches from it
+ * (`headerFooterFor`), so there is no flag here that could disagree with the template.
  */
 const FOOTER_TEMPLATE = `<div style="width:100%;padding:0 54px;font-family:Arial,sans-serif;font-size:8px;color:#54555b;text-align:center;">
   <span class="pageNumber"></span> / <span class="totalPages"></span>
 </div>`
-
-/**
- * Empty, and required. Turning the footer on turns the HEADER on with it, and Chromium's default
- * header is a date and the document's title stamped across the top of every page.
- */
-const EMPTY_HEADER_TEMPLATE = '<div></div>'
 
 /**
  * The handover record as one PDF — the work order's twin, drawn from the same component the screen
@@ -102,8 +99,6 @@ export async function renderIntakeHandoverPdf(
   return renderer.renderDocument(await buildIntakeHandoverHtml(input), {
     printBackground: true,
     preferCSSPageSize: true,
-    displayHeaderFooter: true,
-    headerTemplate: EMPTY_HEADER_TEMPLATE,
     footerTemplate: FOOTER_TEMPLATE,
   })
 }

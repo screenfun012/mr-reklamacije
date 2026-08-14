@@ -9,6 +9,7 @@ import { IntakePrintHeader } from './intake-print-header.js'
 import { IntakePrintSignatureBox } from './intake-print-signature-box.js'
 import {
   buildIntakePrintModel,
+  PRINT_MAX_REMARKS,
   type IntakePrintLocale,
   type IntakePrintModel,
 } from './intake-print-data.js'
@@ -135,7 +136,14 @@ export const IntakePrintSheet = memo(function IntakePrintSheet({
    */
   id?: string
 }): ReactElement {
-  const model: IntakePrintModel = buildIntakePrintModel(order, checklistItems, locale)
+  // `PRINT_MAX_REMARKS` stated rather than defaulted: this sheet keeps the cut because it is still
+  // one A4 page by rule, and its sibling does not. That difference should be visible at both sites.
+  const model: IntakePrintModel = buildIntakePrintModel(
+    order,
+    checklistItems,
+    locale,
+    PRINT_MAX_REMARKS,
+  )
 
   return (
     <div id={id} style={SHEET_STYLE.page}>

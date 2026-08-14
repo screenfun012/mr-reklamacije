@@ -11,6 +11,7 @@ import { IntakePrintHeader } from './intake-print-header.js'
 import { IntakePrintSignatureBox } from './intake-print-signature-box.js'
 import {
   buildIntakePrintModel,
+  PRINT_REMARKS_UNCUT,
   type IntakePrintLocale,
   type IntakePrintModel,
 } from './intake-print-data.js'
@@ -161,7 +162,19 @@ export function IntakeHandoverSheet({
   logoSrc: string
   id?: string
 }): ReactElement {
-  const model: IntakePrintModel = buildIntakePrintModel(order, checklistItems, locale)
+  /**
+   * `PRINT_REMARKS_UNCUT`, for the same reason the lists below read `order.*` rather than the
+   * model's cut copies: the 180-character ceiling on the owner's remark and the equipment note is
+   * the one-page work order's rule, and this paper has no page limit. A remark clipped at 180 with a
+   * trailing `…` on the sheet the owner signs when taking his car back is precisely what gets reached
+   * for in the dispute this document exists to settle.
+   */
+  const model: IntakePrintModel = buildIntakePrintModel(
+    order,
+    checklistItems,
+    locale,
+    PRINT_REMARKS_UNCUT,
+  )
 
   return (
     <div id={id} style={HANDOVER_STYLE.page}>

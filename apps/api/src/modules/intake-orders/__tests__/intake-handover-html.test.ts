@@ -53,12 +53,35 @@ describe('the handover document Chromium is handed', () => {
     expect(await document()).toContain('Marko Marković')
   })
 
+  it('prints the owner remark whole, however long he made it', async () => {
+    // The 180-character ceiling belongs to the one-page work order. Here it would put a `…` on the
+    // paper the owner signs when taking his car back — over his own words about what was wrong with
+    // it, which is the first thing reached for in a dispute.
+    const remark = `Kvačilo proklizava ${'x'.repeat(400)} kraj`
+    const note = `U gepeku ${'y'.repeat(400)} kraj`
+    const html = await buildIntakeHandoverHtml({
+      order: intakeOrderDetailFixture({
+        ...HANDED_OVER,
+        ownerRemarks: remark,
+        equipmentNote: note,
+      }),
+      checklistItems: intakeChecklistCatalogFixture(),
+    })
+
+    expect(html).toContain(remark)
+    expect(html).toContain(note)
+    expect(html).not.toContain('…')
+  })
+
   /**
    * Asserted on the instruction rather than on the artifact, like the work order's `printBackground`.
    * A real render was measured while this was written — 4 pages, A4 MediaBox, 9.3 KB larger with the
    * footer than without and not one page more — but reading a page number back out of a compressed
    * content stream in a subset font needs a PDF parser, and what can silently disappear here is the
    * instruction, not the drawing.
+   *
+   * Only the TEMPLATE is asserted, because it is now the only thing this document says: Chromium's
+   * three switches are derived from it inside `PdfRenderer` (`headerFooterFor`, tested there).
    */
   it('asks for the page number, without which a lost page is invisible', async () => {
     const sent: PdfPageOptions[] = []
@@ -76,12 +99,8 @@ describe('the handover document Chromium is handed', () => {
 
     expect(sent[0]?.printBackground).toBe(true)
     expect(sent[0]?.preferCSSPageSize).toBe(true)
-    expect(sent[0]?.displayHeaderFooter).toBe(true)
     expect(sent[0]?.footerTemplate).toContain('class="pageNumber"')
     expect(sent[0]?.footerTemplate).toContain('class="totalPages"')
-    // Turning the footer on turns the header on too; empty is what suppresses Chromium's default
-    // date-and-title stamp across the top of every page.
-    expect(sent[0]?.headerTemplate).toBe('<div></div>')
     // No margin option: it would override the 12mm the sheet asks for, and every continuation page
     // would start inside a desktop printer's unprintable strip.
     expect(sent[0]?.margin).toBeUndefined()

@@ -131,23 +131,28 @@ function printChecklistRow(row: IntakeChecklistRow): IntakePrintChecklistRow {
 }
 
 /**
+ * What a paper with no page limit passes for `maxRemarks`. The handover record is the only such
+ * paper: its whole premise is that nothing is missing, and the owner's own words about what is wrong
+ * with his car are the first thing reached for in the dispute it exists to settle.
+ */
+export const PRINT_REMARKS_UNCUT = Number.POSITIVE_INFINITY
+
+function clipTo(value: string, maxRemarks: number): string {
+  return value.length <= maxRemarks ? value : `${value.slice(0, maxRemarks)}…`
+}
+
+/**
  * Same length ceiling as the remarks, but empty stays EMPTY rather than becoming a placeholder: an
  * absent note prints nothing at all, while "no remarks" is a statement the remarks box has to make.
  */
-function clipEquipmentNote(value: string | null): string | null {
-  if (value === null || value.trim().length === 0) {
-    return null
-  }
-  const trimmed = value.trim()
-  return trimmed.length <= PRINT_MAX_REMARKS ? trimmed : `${trimmed.slice(0, PRINT_MAX_REMARKS)}…`
+function clipEquipmentNote(value: string | null, maxRemarks: number): string | null {
+  const trimmed = optionalPrintText(value)
+  return trimmed === null ? null : clipTo(trimmed, maxRemarks)
 }
 
-function clipRemarks(value: string | null, locale: IntakePrintLocale): string {
-  if (value === null || value.trim().length === 0) {
-    return m.intake_print_no_remarks({}, { locale })
-  }
-  const trimmed = value.trim()
-  return trimmed.length <= PRINT_MAX_REMARKS ? trimmed : `${trimmed.slice(0, PRINT_MAX_REMARKS)}…`
+function clipRemarks(value: string | null, locale: IntakePrintLocale, maxRemarks: number): string {
+  const trimmed = optionalPrintText(value)
+  return trimmed === null ? m.intake_print_no_remarks({}, { locale }) : clipTo(trimmed, maxRemarks)
 }
 
 /**
@@ -162,6 +167,13 @@ export function buildIntakePrintModel(
   order: IntakeOrderDetail,
   checklistItems: readonly IntakeChecklistItemListItem[],
   locale: IntakePrintLocale,
+  /**
+   * How long the two FREE-TEXT fields may print. Every other cut here is a fixed row count and
+   * belongs to the one-page work order for good; these two are the ones a paper that paginates has
+   * no reason to make, so they are the ones that move. Both production callers state their choice —
+   * the default is the page's rule, for the tests that do not care which paper they are describing.
+   */
+  maxRemarks: number = PRINT_MAX_REMARKS,
 ): IntakePrintModel {
   const otherDamages = order.extraDamages.slice(0, PRINT_MAX_OTHER_DAMAGES)
   const damages = order.damages.slice(0, PRINT_MAX_DAMAGES).map((damage, index) => ({
@@ -206,14 +218,14 @@ export function buildIntakePrintModel(
         value: row.value,
       })),
     ].map(printChecklistRow),
-    equipmentNote: clipEquipmentNote(order.equipmentNote),
+    equipmentNote: clipEquipmentNote(order.equipmentNote, maxRemarks),
     otherDamages: otherDamages,
     fuelLevel: order.fuelLevel,
     // Markers PLUS the ones with no place on the drawing: the figure the customer reads first must
     // never disagree with the list under it.
     damageCount: order.damages.length + order.extraDamages.length,
     photoCount: order.photos.length,
-    ownerRemarks: clipRemarks(order.ownerRemarks, locale),
+    ownerRemarks: clipRemarks(order.ownerRemarks, locale, maxRemarks),
     damages,
     /**
      * ONE number for both lists. The sentence tells the customer how many defects did not fit on

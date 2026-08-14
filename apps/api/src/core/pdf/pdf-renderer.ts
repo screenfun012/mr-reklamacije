@@ -33,17 +33,48 @@ export interface PdfPageOptions {
   readonly preferCSSPageSize?: boolean
   readonly margin?: { top: string; right: string; bottom: string; left: string }
   /**
-   * The three below exist for the one document that runs to several pages: without a page number a
-   * lost page is invisible, and a sheet cannot number itself because it cannot count its own pages.
-   * Chromium draws these INSIDE the page margins, so they push no content — measured 2026-08-14 on
-   * the handover record: identical content boxes, 5.1 KB larger.
+   * A running footer, for the one document that runs to several pages: without a page number a lost
+   * page is invisible, and a sheet cannot number itself because it cannot count its own pages.
+   * Chromium draws it INSIDE the bottom margin, so it pushes no content — measured 2026-08-14 on the
+   * handover record: same page count, same page box, 9.3 KB larger.
    *
-   * `displayHeaderFooter` turns BOTH on at once, so a caller that wants only a footer must pass an
-   * empty `headerTemplate` — otherwise Chromium stamps its own default date-and-title header.
+   * This is the ONLY switch a document gets, and deliberately so. See `headerFooterFor`.
    */
-  readonly displayHeaderFooter?: boolean
+  readonly footerTemplate?: string
+}
+
+/**
+ * Chromium's own footer, which Chromium will not draw unless a header is also enabled.
+ *
+ * Blank rather than absent: `displayHeaderFooter` turns BOTH on, and with no `headerTemplate` of our
+ * own Chromium stamps its default date-and-title across the top of every page.
+ */
+const BLANK_HEADER_TEMPLATE = '<div></div>'
+
+interface HeaderFooterOptions {
+  readonly displayHeaderFooter: boolean
   readonly headerTemplate?: string
   readonly footerTemplate?: string
+}
+
+/**
+ * Chromium needs three agreeing switches for what a document knows as one fact: either it supplied a
+ * running footer or it did not.
+ *
+ * Derived here instead of passed, because agreement between three fields is something that has to be
+ * maintained, and the way it was maintained before was the ORDER of a spread — `page.pdf({
+ * displayHeaderFooter: false, ...options })`. That works and reads as harmless, and a refactor
+ * writing the spread the other way round would have silently un-numbered a multi-page document that
+ * a customer signs, with every test still green. There is now nothing to get the wrong way round:
+ * "no footer template" and "footer disabled" are one fact with one source, and a caller cannot set
+ * the flags at all.
+ */
+export function headerFooterFor(footerTemplate: string | undefined): HeaderFooterOptions {
+  if (footerTemplate === undefined) {
+    return { displayHeaderFooter: false }
+  }
+
+  return { displayHeaderFooter: true, headerTemplate: BLANK_HEADER_TEMPLATE, footerTemplate }
 }
 
 /**
@@ -134,7 +165,8 @@ export class PdfRenderer {
       const page = await context.newPage()
       await page.setContent(htmlDocument, { waitUntil: 'load' })
       await page.waitForFunction('document.fonts.ready')
-      const pdf = await page.pdf({ displayHeaderFooter: false, ...options })
+      // The derived block last is belt-and-braces only: `options` cannot carry these keys.
+      const pdf = await page.pdf({ ...options, ...headerFooterFor(options.footerTemplate) })
 
       return Buffer.from(pdf)
     } finally {
