@@ -121,6 +121,15 @@ export const IntakeOrderHandoverInputSchema = z.object({
 
 export type IntakeOrderHandoverInput = z.infer<typeof IntakeOrderHandoverInputSchema>
 
+/**
+ * The two papers one order produces. Named here rather than on either side alone: the api seals and
+ * serves them by this value and the screen asks for them by it, so a third kind has to be added in
+ * one place or it is added in neither.
+ */
+export const IntakeDocumentKindSchema = z.enum(['intake', 'handover'])
+
+export type IntakeDocumentKind = z.infer<typeof IntakeDocumentKindSchema>
+
 /** Office-only correction of a mis-tapped status; a serviser uses `/advance` instead. */
 /**
  * One line of the order's history. Deliberately a PROJECTION, never the raw audit row: those carry

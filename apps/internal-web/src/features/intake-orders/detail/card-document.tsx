@@ -3,6 +3,7 @@ import {
   buildIntakeDocumentUrl,
   intakeOrderKeys,
   sendIntakeOrderDocument,
+  type IntakeDocumentKind,
   type IntakeOrderDetail,
 } from '@mr/shared'
 import { cn, ConfirmDialog } from '@mr/ui'
@@ -12,16 +13,90 @@ import { useState, type ReactElement } from 'react'
 import { InternalButton, internalButtonClasses } from '~/components/internal-button'
 import { formatIntakeReceivedAtLong } from '../intake-status'
 import { showInternalToast } from '~/lib/internal-toast'
-import { CAPTION, CARD } from './detail-styles'
+import { CAPTION, CARD, FIELD_KEY } from './detail-styles'
+
+const DOCUMENT_LABELS: Record<IntakeDocumentKind, () => string> = {
+  intake: m.intake_document_kind_intake,
+  handover: m.intake_document_kind_handover,
+}
 
 /**
- * The sealed sheet: whether it exists, whether the owner has it, and the two things the office can
+ * One sealed paper: whether it exists, whether the owner has it, and the two things the office can
  * do about it.
  *
- * Nothing for a draft — there is no signed sheet to seal — and a signed order whose file is not
- * there yet says so rather than showing a dead button: sealing happens in the background right after
- * signing, so this window is seconds long and only ever seen by someone standing on the page as it
- * happens.
+ * A document whose file is not there yet says so rather than showing a dead button: sealing happens
+ * in the background right after the signatures, so this window is seconds long and only ever seen by
+ * someone standing on the page as it happens.
+ */
+function DocumentRow({
+  orderId,
+  kind,
+  ready,
+  emailedAt,
+  ownerEmail,
+  canSend,
+  onSend,
+}: {
+  orderId: string
+  kind: IntakeDocumentKind
+  ready: boolean
+  emailedAt: string | null
+  ownerEmail: string | null
+  canSend: boolean
+  onSend: (kind: IntakeDocumentKind) => void
+}): ReactElement {
+  return (
+    <div className="flex flex-col gap-[9px]">
+      <div className={FIELD_KEY}>{DOCUMENT_LABELS[kind]()}</div>
+
+      {!ready ? (
+        <p className="text-[13.5px] italic text-mri-text2">{m.intake_document_not_ready()}</p>
+      ) : (
+        <>
+          <p className="text-[13px] text-mri-text2">
+            {emailedAt !== null
+              ? m.intake_document_sent_at({
+                  at: formatIntakeReceivedAtLong(emailedAt, getLocale()),
+                })
+              : ownerEmail === null
+                ? m.intake_document_no_email()
+                : m.intake_document_never_sent()}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {/* A link, not a fetch: the response is a file with its own name, and the browser
+                already knows what to do with one. Styled through the helper the design system
+                provides for exactly this — an anchor that has to look like a button. */}
+            <a
+              href={buildIntakeDocumentUrl(orderId, kind)}
+              className={internalButtonClasses('outline', 'h-9 w-auto px-3 text-[13px]')}
+            >
+              {m.intake_document_download()}
+            </a>
+
+            {canSend && ownerEmail !== null ? (
+              <InternalButton
+                type="button"
+                variant="ghost"
+                onClick={() => onSend(kind)}
+                className="h-9 px-3 text-[13px]"
+              >
+                {emailedAt !== null ? m.intake_document_resend() : m.intake_document_send()}
+              </InternalButton>
+            ) : null}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The order's papers. One row while the vehicle is in the shop, two once it has gone back — and the
+ * second one appears only where it exists: a vehicle released without signatures never gets a
+ * handover sheet, and a row promising one that is "being prepared" would wait forever.
+ *
+ * Nothing at all for a draft; there is no signed sheet to seal.
  */
 export function CardDocument({
   order,
@@ -32,12 +107,13 @@ export function CardDocument({
   canSend: boolean
 }): ReactElement | null {
   const queryClient = useQueryClient()
-  const [confirmSend, setConfirmSend] = useState(false)
+  /** Which paper is being confirmed — and `null` for "no dialog open". */
+  const [confirmSend, setConfirmSend] = useState<IntakeDocumentKind | null>(null)
 
   const send = useMutation({
-    mutationFn: () => sendIntakeOrderDocument(order.id),
+    mutationFn: (kind: IntakeDocumentKind) => sendIntakeOrderDocument(order.id, kind),
     onSuccess: async () => {
-      setConfirmSend(false)
+      setConfirmSend(null)
       // The stamp lives on the order, and Istorija learns of the send from its audit row.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: intakeOrderKeys.detail(order.id) }),
@@ -46,7 +122,7 @@ export function CardDocument({
       showInternalToast(m.intake_document_sent())
     },
     onError: () => {
-      setConfirmSend(false)
+      setConfirmSend(null)
       showInternalToast(m.intake_detail_action_failed())
     },
   })
@@ -55,59 +131,48 @@ export function CardDocument({
     return null
   }
 
-  const sentAt = order.documentEmailedAt
-
   return (
-    <section className={cn(CARD, 'flex flex-col gap-[11px] px-[18px] py-4')}>
+    <section className={cn(CARD, 'flex flex-col gap-[13px] px-[18px] py-4')}>
       <h2 className={CAPTION}>{m.intake_card_document()}</h2>
 
-      {!order.documentReady ? (
-        <p className="text-[13.5px] italic text-mri-text2">{m.intake_document_not_ready()}</p>
-      ) : (
-        <>
-          <p className="text-[13px] text-mri-text2">
-            {sentAt !== null
-              ? m.intake_document_sent_at({ at: formatIntakeReceivedAtLong(sentAt, getLocale()) })
-              : order.ownerEmail === null
-                ? m.intake_document_no_email()
-                : m.intake_document_never_sent()}
-          </p>
+      <DocumentRow
+        orderId={order.id}
+        kind="intake"
+        ready={order.documentReady}
+        emailedAt={order.documentEmailedAt}
+        ownerEmail={order.ownerEmail}
+        canSend={canSend}
+        onSend={setConfirmSend}
+      />
 
-          <div className="flex flex-wrap gap-2">
-            {/* A link, not a fetch: the response is a file with its own name, and the browser
-                already knows what to do with one. Styled through the helper the design system
-                provides for exactly this — an anchor that has to look like a button. */}
-            <a
-              href={buildIntakeDocumentUrl(order.id)}
-              className={internalButtonClasses('outline', 'h-9 w-auto px-3 text-[13px]')}
-            >
-              {m.intake_document_download()}
-            </a>
-
-            {canSend && order.ownerEmail !== null ? (
-              <InternalButton
-                type="button"
-                variant="ghost"
-                disabled={send.isPending}
-                onClick={() => setConfirmSend(true)}
-                className="h-9 px-3 text-[13px]"
-              >
-                {sentAt !== null ? m.intake_document_resend() : m.intake_document_send()}
-              </InternalButton>
-            ) : null}
-          </div>
-        </>
+      {order.handoverSignedAt === null ? null : (
+        <div className="border-t border-mri-border pt-[13px]">
+          <DocumentRow
+            orderId={order.id}
+            kind="handover"
+            ready={order.handoverDocumentReady}
+            emailedAt={order.handoverDocumentEmailedAt}
+            ownerEmail={order.ownerEmail}
+            canSend={canSend}
+            onSend={setConfirmSend}
+          />
+        </div>
       )}
 
       {/* Confirmed because it leaves the building: an email cannot be recalled, and the office is
-          usually pressing this because something already went wrong once. */}
+          usually pressing this because something already went wrong once. The dialog names WHICH
+          paper — with two of them on the card, "the document" is no longer an answer. */}
       <ConfirmDialog
-        open={confirmSend}
-        onOpenChange={setConfirmSend}
+        open={confirmSend !== null}
+        onOpenChange={(open) => (open ? undefined : setConfirmSend(null))}
         title={m.intake_document_send_confirm_title()}
-        description={m.intake_document_send_confirm_body({ email: order.ownerEmail ?? '' })}
+        description={m.intake_document_send_confirm_body({
+          document: confirmSend === null ? '' : DOCUMENT_LABELS[confirmSend](),
+          email: order.ownerEmail ?? '',
+        })}
         confirmLabel={m.intake_document_send()}
-        onConfirm={() => send.mutate()}
+        pending={send.isPending}
+        onConfirm={() => (confirmSend === null ? undefined : send.mutate(confirmSend))}
       />
     </section>
   )

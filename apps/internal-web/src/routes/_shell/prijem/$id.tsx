@@ -88,7 +88,6 @@ function IntakeDetailPage(): ReactElement {
       <IntakeDetailHeader
         order={order}
         canAdvance={permissions.includes('intake_orders.advance')}
-        canChangeStatus={permissions.includes('intake_orders.change_status')}
         onPrint={() => setPrintOpen(true)}
       />
 

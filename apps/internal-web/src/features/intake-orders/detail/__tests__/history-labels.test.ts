@@ -34,6 +34,11 @@ const EVERY_TRANSITION: readonly [string, () => string][] = [
   ['sign', m.intake_history_signed],
   ['spec_updated', m.intake_history_spec_updated],
   ['contact_added', m.intake_history_contact_added],
+  ['handover', m.intake_history_handover],
+  // The row that says a vehicle went back with nothing signed. It arrives as a STATUS move
+  // (gotovo → preuzeto) and must still read as the release it is, not as "Status: …" — the missing
+  // signatures are the only record of it, and this line is where anyone looks for them.
+  ['handover_skipped', m.intake_history_handover_skipped],
 ]
 
 describe('historyLabel', () => {

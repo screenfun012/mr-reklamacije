@@ -39,9 +39,9 @@ export async function renderDetailUi(
   const rootRoute = createRootRoute({
     component: () => <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
   })
-  const children = (['/prijem', '/prijem/novi', '/prijem/$id'] as const).map((path) =>
-    createRoute({ getParentRoute: () => rootRoute, path, component: () => null }),
-  )
+  const children = (
+    ['/prijem', '/prijem/novi', '/prijem/$id', '/prijem/$id/primopredaja'] as const
+  ).map((path) => createRoute({ getParentRoute: () => rootRoute, path, component: () => null }))
   const router = createRouter({
     routeTree: rootRoute.addChildren(children),
     history: createMemoryHistory({ initialEntries: ['/'] }),

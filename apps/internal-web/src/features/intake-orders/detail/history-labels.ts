@@ -16,6 +16,11 @@ const TRANSITION_LABELS: Record<string, () => string> = {
   sign: m.intake_history_signed,
   spec_updated: m.intake_history_spec_updated,
   contact_added: m.intake_history_contact_added,
+  handover: m.intake_history_handover,
+  // The one line that says a vehicle went back with nothing signed. Left to the neutral clause it
+  // would read "Nalog izmenjen", and the gap the escape deliberately leaves would be invisible in
+  // the only place anyone goes looking for it.
+  handover_skipped: m.intake_history_handover_skipped,
 }
 
 /**

@@ -14,6 +14,7 @@ import type { Container } from '../../core/container.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import type { IntakeOrdersActor } from './intake-orders.types.js'
 import {
+  IntakeDocumentKindSchema,
   IntakeNumberCheckQuerySchema,
   IntakeOrderChangeStatusInputSchema,
   IntakeOrderCreateInputSchema,
@@ -24,6 +25,7 @@ import {
   IntakeOrderSignInputSchema,
   IntakeOrderUpdateInputSchema,
   IntakePlateLookupQuerySchema,
+  type IntakeDocumentKind,
 } from './intake-orders.validators.js'
 
 function requireUser(c: Context): MRSessionUser {
@@ -36,6 +38,18 @@ function requireUser(c: Context): MRSessionUser {
 
 function actorOf(user: MRSessionUser): IntakeOrdersActor {
   return { id: user.id, permissions: user.permissions }
+}
+
+/**
+ * Which of the order's two papers the caller means.
+ *
+ * The default is the work order, and it is the ONLY default in the pipeline — inside the service a
+ * kind is always stated (`DOCUMENT_FLAVOURS`). It exists because this path meant the work order
+ * before there were two documents, so a link somebody bookmarked or forwarded still resolves to the
+ * paper it pointed at. An unknown value is refused rather than folded into it.
+ */
+function documentKindOf(c: Context): IntakeDocumentKind {
+  return IntakeDocumentKindSchema.default('intake').parse(c.req.query('kind'))
 }
 
 export function createIntakeOrdersController(container: Container) {
@@ -242,7 +256,7 @@ export function createIntakeOrdersController(container: Container) {
       const meta = await container.intakeOrdersService.getDocumentDownloadMeta(
         id,
         actorOf(user),
-        'intake',
+        documentKindOf(c),
       )
 
       return serveCachedAttachmentDownload(c, meta, {
@@ -260,7 +274,7 @@ export function createIntakeOrdersController(container: Container) {
         id,
         actorOf(user),
         getActorContext(c, user),
-        'intake',
+        documentKindOf(c),
       )
 
       return c.body(null, 204)

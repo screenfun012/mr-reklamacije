@@ -10,7 +10,10 @@ const sendDocument = vi.fn()
 
 vi.mock('@mr/shared', async () => {
   const actual = await vi.importActual<typeof import('@mr/shared')>('@mr/shared')
-  return { ...actual, sendIntakeOrderDocument: (id: string) => sendDocument(id) }
+  return {
+    ...actual,
+    sendIntakeOrderDocument: (id: string, kind: string) => sendDocument(id, kind),
+  }
 })
 
 describe('the document card on a signed order', () => {
@@ -63,7 +66,7 @@ describe('the document card on a signed order', () => {
       screen.getAllByRole('button', { name: m.intake_document_send() }).at(-1) as HTMLElement,
     )
 
-    await waitFor(() => expect(sendDocument).toHaveBeenCalledWith(order.id))
+    await waitFor(() => expect(sendDocument).toHaveBeenCalledWith(order.id, 'intake'))
   })
 
   it('does not offer to send to an owner who left no address', async () => {
@@ -87,6 +90,48 @@ describe('the document card on a signed order', () => {
 
     expect(screen.queryByRole('button', { name: m.intake_document_send() })).toBeNull()
     expect(screen.getByRole('link', { name: m.intake_document_download() })).toBeDefined()
+  })
+
+  /*
+   * The handover row appears only where a handover sheet exists. A vehicle released without
+   * signatures never gets one, so a row saying "being prepared" would sit there forever — and the
+   * two rows must reach two different files, which is the whole point of the `kind` on the wire.
+   */
+  it('shows nothing about a handover on an order that has not been handed over', async () => {
+    await renderDetailUi(<CardDocument order={intakeOrderDetailFixture()} canSend />)
+
+    expect(screen.queryByText(m.intake_document_kind_handover())).toBeNull()
+  })
+
+  it('offers the handover sheet as its own paper once both signed for it', async () => {
+    const order = intakeOrderDetailFixture({
+      ownerEmail: 'vlasnik@example.com',
+      handoverSignedAt: '2026-08-15T10:00:00.000Z',
+      handoverDocumentReady: true,
+      handoverDocumentEmailedAt: null,
+    })
+    await renderDetailUi(<CardDocument order={order} canSend />)
+
+    expect(screen.getByText(m.intake_document_kind_intake())).toBeDefined()
+    expect(screen.getByText(m.intake_document_kind_handover())).toBeDefined()
+
+    const hrefs = screen
+      .getAllByRole('link', { name: m.intake_document_download() })
+      .map((link) => link.getAttribute('href'))
+    expect(hrefs).toEqual([
+      `/api/intake-orders/${order.id}/document?kind=intake`,
+      `/api/intake-orders/${order.id}/document?kind=handover`,
+    ])
+
+    // And the send goes for the paper whose row was pressed, not for the first one on the card.
+    await userEvent.click(
+      screen.getAllByRole('button', { name: m.intake_document_send() }).at(-1) as HTMLElement,
+    )
+    await userEvent.click(
+      screen.getAllByRole('button', { name: m.intake_document_send() }).at(-1) as HTMLElement,
+    )
+
+    await waitFor(() => expect(sendDocument).toHaveBeenCalledWith(order.id, 'handover'))
   })
 
   it('says when it was sent, and offers to send it again', async () => {

@@ -1,4 +1,4 @@
-import type { ClaimKind } from '@mr/shared'
+import type { ClaimKind, IntakeDocumentKind } from '@mr/shared'
 
 export interface UploadOpts {
   readonly path: string
@@ -39,8 +39,13 @@ export function buildAttachmentStoragePath(input: AttachmentPathInput): string {
   return `${input.claimKind}/${input.claimYear}/${input.claimId}/${input.attachmentId}.${input.extension}`
 }
 
-/** The two documents an intake order can carry — the reception sheet and the handover sheet. */
-export type IntakeDocumentKind = 'intake' | 'handover'
+/**
+ * The two documents an intake order can carry — the reception sheet and the handover sheet.
+ *
+ * Re-exported from the wire rather than declared twice: the screen asks for a paper by this same
+ * value, and two lists of kinds would let one side learn about a third one the other never heard of.
+ */
+export type { IntakeDocumentKind } from '@mr/shared'
 
 /** The intake keeps `document.pdf` it has always had — renaming it would orphan every sealed file. */
 const INTAKE_DOCUMENT_FILE_NAME: Record<IntakeDocumentKind, string> = {

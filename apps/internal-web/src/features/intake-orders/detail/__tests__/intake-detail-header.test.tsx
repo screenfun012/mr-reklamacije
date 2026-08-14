@@ -9,7 +9,6 @@ import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './
 
 const NO_PERMS = {
   canAdvance: false,
-  canChangeStatus: false,
   onPrint: () => {},
 }
 
@@ -36,12 +35,7 @@ describe('IntakeDetailHeader', () => {
 
   it('offers no edit and no removal on a signed order', async () => {
     await renderDetailUi(
-      <IntakeDetailHeader
-        order={intakeOrderDetailFixture()}
-        canAdvance
-        canChangeStatus
-        onPrint={vi.fn()}
-      />,
+      <IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance onPrint={vi.fn()} />,
     )
 
     expect(
@@ -51,9 +45,7 @@ describe('IntakeDetailHeader', () => {
   })
 
   it('offers the next status only with the advance permission, and never past Preuzeto', async () => {
-    await renderDetailUi(
-      <IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance canChangeStatus={false} />,
-    )
+    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance />)
 
     // Primljeno → U radu.
     expect(
@@ -62,63 +54,36 @@ describe('IntakeDetailHeader', () => {
   })
 
   /*
-   * These three pin the whole rule, and they assert WHICH request fired rather than which sentence
-   * appeared: a dialog that renders but does not hold the request back protects nothing.
+   * These two pin the whole rule, and they assert WHICH request fired rather than which sentence
+   * appeared.
    */
-  it('holds the last step behind a confirmation for someone who cannot move it back', async () => {
+  it('sends the last step to the handover screen instead of moving the status from here', async () => {
     const fetchSpy = stubAdvanceOk()
     const order = intakeOrderDetailFixture({ status: IntakeOrderStatus.Done })
 
-    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance canChangeStatus={false} />)
-    fireEvent.click(
-      screen.getByRole('button', { name: m.intake_detail_advance({ status: 'Preuzeto' }) }),
-    )
+    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance />)
 
+    // Not a status nudge any more: `preuzeto` is two people signing at the car, and this rung has
+    // to reach that screen rather than assert the fact on their behalf.
     expect(
-      screen.queryByText(m.intake_detail_pickup_title({ number: order.orderNumber })),
-    ).not.toBeNull()
+      screen.queryByRole('button', { name: m.intake_detail_advance({ status: 'Preuzeto' }) }),
+    ).toBeNull()
+    const link = screen.getByRole('link', { name: m.intake_handover_open() })
+    expect(link.getAttribute('href')).toBe(`/prijem/${order.id}/primopredaja`)
+
+    fireEvent.click(link)
     expect(fetchSpy).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: m.intake_detail_pickup_confirm() }))
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(`/api/intake-orders/${order.id}/advance`)
-
-    // And it closes. ConfirmDialog never closes itself, so a caller that forgets leaves a live
-    // confirm button over a finished job — the second press gets the server's 409 and the serviser
-    // is told his successful action failed.
-    await waitFor(() =>
-      expect(
-        screen.queryByText(m.intake_detail_pickup_title({ number: order.orderNumber })),
-      ).toBeNull(),
-    )
   })
 
   it('lets the earlier steps through in one tap', async () => {
     const fetchSpy = stubAdvanceOk()
 
-    await renderDetailUi(
-      <IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance canChangeStatus={false} />,
-    )
+    await renderDetailUi(<IntakeDetailHeader order={intakeOrderDetailFixture()} canAdvance />)
     fireEvent.click(
       screen.getByRole('button', { name: m.intake_detail_advance({ status: 'U radu' }) }),
     )
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-  })
-
-  it('does not stop someone who has the status strip below and can move it back', async () => {
-    const fetchSpy = stubAdvanceOk()
-    const order = intakeOrderDetailFixture({ status: IntakeOrderStatus.Done })
-
-    await renderDetailUi(<IntakeDetailHeader order={order} canAdvance canChangeStatus />)
-    fireEvent.click(
-      screen.getByRole('button', { name: m.intake_detail_advance({ status: 'Preuzeto' }) }),
-    )
-
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-    expect(
-      screen.queryByText(m.intake_detail_pickup_title({ number: order.orderNumber })),
-    ).toBeNull()
   })
 
   it('marks an unfinished intake as unfinished, not as Primljeno', async () => {

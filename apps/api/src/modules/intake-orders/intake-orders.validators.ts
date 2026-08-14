@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export {
+  IntakeDocumentKindSchema,
   IntakeNumberCheckQuerySchema,
   IntakeNumberCheckResponseSchema,
   IntakeNumberCheckStatus,
@@ -15,6 +16,7 @@ export {
   IntakeOrderUpdateInputSchema,
   IntakePlateLookupQuerySchema,
   IntakePlateLookupResponseSchema,
+  type IntakeDocumentKind,
   type IntakeNumberCheckQuery,
   type IntakeNumberCheckResponse,
   type IntakeOrderChangeStatusInput,

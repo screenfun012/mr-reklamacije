@@ -3,10 +3,12 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 import { fetchJson, fetchParsed } from '../api/fetch-json.js'
 import { fetchNoContent } from '../api/fetch-no-content.js'
 import type {
+  IntakeDocumentKind,
   IntakeOrdersSearch,
   IntakeOrderChangeStatusInput,
   IntakeOrderCreateInput,
   IntakeOrderDetail,
+  IntakeOrderHandoverInput,
   IntakeOrderListQuery,
   IntakeOrderListView,
   IntakeOrderSignInput,
@@ -190,6 +192,29 @@ export function signIntakeOrder(
   })
 }
 
+/**
+ * The vehicle goes back, and both people sign for it. Who hands it over is read off the session on
+ * the server — this body carries the two signatures and nothing else.
+ */
+export function handOverIntakeOrder(
+  id: string,
+  input: IntakeOrderHandoverInput,
+): Promise<IntakeOrderDetail> {
+  return fetchJson<IntakeOrderDetail>(`/api/intake-orders/${id}/handover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+/**
+ * The office's „he already drove away": the status moves and no document is made. The order left
+ * without a signed handover record IS the record of that — there is no separate flag for it.
+ */
+export function skipIntakeOrderHandover(id: string): Promise<IntakeOrderDetail> {
+  return fetchJson<IntakeOrderDetail>(`/api/intake-orders/${id}/handover/skip`, { method: 'POST' })
+}
+
 /** The serviser's one-way button: next status, never back. */
 export function advanceIntakeOrder(id: string): Promise<IntakeOrderDetail> {
   return fetchJson<IntakeOrderDetail>(`/api/intake-orders/${id}/advance`, { method: 'POST' })
@@ -220,16 +245,16 @@ export function deleteIntakeOrderPhoto(id: string, attachmentId: string): Promis
 }
 
 /** Sends the sealed sheet to the owner again — the same file, never a new one. */
-export function sendIntakeOrderDocument(id: string): Promise<void> {
-  return fetchNoContent(`/api/intake-orders/${id}/send-document`, { method: 'POST' })
+export function sendIntakeOrderDocument(id: string, kind: IntakeDocumentKind): Promise<void> {
+  return fetchNoContent(`/api/intake-orders/${id}/send-document?kind=${kind}`, { method: 'POST' })
 }
 
 /**
  * Where the sealed sheet is downloaded from. A plain link rather than a fetch: the response is a
  * file with its own name, and the browser already knows what to do with one.
  */
-export function buildIntakeDocumentUrl(id: string): string {
-  return `/api/intake-orders/${id}/document`
+export function buildIntakeDocumentUrl(id: string, kind: IntakeDocumentKind): string {
+  return `/api/intake-orders/${id}/document?kind=${kind}`
 }
 
 /**
