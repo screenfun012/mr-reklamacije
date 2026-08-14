@@ -149,9 +149,16 @@ popravka od 15.08. na koraku 1 — rečenica imenuje ono što FALI, ne fiksni sp
 
 ---
 
-## 8. Otvoreno, čeka Nikolu
+## 8. Odluke donete bez Nikole, obe obeležene
 
-1. **Odluka ① — tvrda brava ili vidljiv izlaz.** Sve ostalo u ovom specu stoji i u jednom i u drugom
-   slučaju; menja se samo §6 (da li „Predato bez potpisa" uopšte postoji) i odluka ③.
-2. **Da li dokument 2 nosi i „Obaveze kupca"** — pravni blok koji dokument 1 ima u podnožju. Nije
-   pitanje izgleda nego šta vlasnik potpisuje drugi put.
+Nikola je 15.08. rekao „kreni" bez odgovora na dva pitanja koja su ovde stajala. Gradi se po
+sledećem; **jedna njegova reč menja bilo koje, i to pre koda ništa ne košta.**
+
+1. **Odluka ① — vidljiv izlaz, ne tvrda brava.** Razlog je u tabeli. Sve ostalo u specu stoji i u
+   jednom i u drugom slučaju; menja se samo §6 (da li „Predato bez potpisa" postoji) i odluka ③.
+2. **Dokument 2 NE nosi „Obaveze kupca" sa prijema, nego svoju završnu rečenicu.** Obaveze kupca su
+   uslovi ostavljanja vozila i vlasnik ih je već jednom potpisao; ono što potpisuje drugi put je
+   Nikolina sopstvena rečenica — *„da vlasnik je upoznat sa svime i potpisao da je saglasan i da uzima
+   vozilo."* Dakle: upoznat sa izvedenim radovima, saglasan, preuzima vozilo. Tekst se piše u
+   `@mr/i18n`, oba jezika, i **prolazi kroz Nikolu pre nego što se odštampa** — ovo je jedina
+   rečenica na papiru koja je pravna izjava, a ne opis.
