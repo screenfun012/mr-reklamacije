@@ -39,17 +39,26 @@ export function buildAttachmentStoragePath(input: AttachmentPathInput): string {
   return `${input.claimKind}/${input.claimYear}/${input.claimId}/${input.attachmentId}.${input.extension}`
 }
 
+/** The two documents an intake order can carry — the reception sheet and the handover sheet. */
+export type IntakeDocumentKind = 'intake' | 'handover'
+
+/** The intake keeps `document.pdf` it has always had — renaming it would orphan every sealed file. */
+const INTAKE_DOCUMENT_FILE_NAME: Record<IntakeDocumentKind, string> = {
+  intake: 'document.pdf',
+  handover: 'handover.pdf',
+}
+
 /**
- * Storage key for the signed work order itself. Beside the order's photos and deliberately NOT an
+ * Storage key for a signed order document. Beside the order's photos and deliberately NOT an
  * `attachments` row: intake photos are recognised solely by `intake_order_id IS NOT NULL`, and five
  * places count them that way — a PDF among them would be counted as a photograph.
  *
- * One key per order, so re-producing a document that failed half way overwrites rather than
- * accumulating orphans. A produced document is never re-rendered (the seal would change), so the
- * only writer that can reach this key twice is a retry of a produce that left no row behind.
+ * One key per order AND kind, so re-producing a document that failed half way overwrites rather
+ * than accumulating orphans. A produced document is never re-rendered (the seal would change), so
+ * the only writer that can reach a given key twice is a retry of a produce that left no row behind.
  */
-export function buildIntakeDocumentStoragePath(orderId: string): string {
-  return `intake/${orderId}/document.pdf`
+export function buildIntakeDocumentStoragePath(orderId: string, kind: IntakeDocumentKind): string {
+  return `intake/${orderId}/${INTAKE_DOCUMENT_FILE_NAME[kind]}`
 }
 
 export interface SubmissionAttachmentPathInput {

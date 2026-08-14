@@ -33,6 +33,7 @@ import type { PdfRenderer } from '../../core/pdf/pdf-renderer.js'
 import {
   buildIntakeAttachmentStoragePath,
   buildIntakeDocumentStoragePath,
+  type IntakeDocumentKind,
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
 import { renderIntakeDocumentPdf } from './intake-document-pdf.js'
@@ -155,7 +156,8 @@ export class IntakeOrdersService {
   ) {}
 
   /**
-   * The sealings currently running, one entry per order.
+   * The sealings currently running, one entry per order AND kind — the two documents of one order
+   * may seal at once.
    *
    * Signing starts one in the background and the office can start another by hand — a retry after a
    * failure — and without this both render and both write the same key. Measured while writing the
@@ -493,7 +495,7 @@ export class IntakeOrdersService {
     })
 
     this.signalChanged()
-    this.produceDocumentInBackground(id)
+    this.produceDocumentInBackground(id, 'intake')
     return signed
   }
 
@@ -517,21 +519,22 @@ export class IntakeOrdersService {
    * fails leaves the ones before it standing: an order with a document and no email is a true record
    * of where it got to.
    */
-  async produceDocument(id: string): Promise<void> {
-    const running = this.documentsBeingSealed.get(id)
+  async produceDocument(id: string, kind: IntakeDocumentKind = 'intake'): Promise<void> {
+    const key = `${id}:${kind}`
+    const running = this.documentsBeingSealed.get(key)
     if (running !== undefined) {
       return running
     }
 
-    const sealing = this.sealDocument(id).finally(() => {
-      this.documentsBeingSealed.delete(id)
+    const sealing = this.sealDocument(id, kind).finally(() => {
+      this.documentsBeingSealed.delete(key)
     })
-    this.documentsBeingSealed.set(id, sealing)
+    this.documentsBeingSealed.set(key, sealing)
     return sealing
   }
 
-  private async sealDocument(id: string): Promise<void> {
-    const existing = await this.repo.findDocument(id)
+  private async sealDocument(id: string, kind: IntakeDocumentKind): Promise<void> {
+    const existing = await this.repo.findDocument(id, kind)
     if (existing === null) {
       throw new NotFoundError('Intake order', id)
     }
@@ -541,7 +544,7 @@ export class IntakeOrdersService {
     if (existing.storagePath !== null) {
       // Already sealed — but possibly never sent, if the last run got that far and no further.
       if (existing.emailedAt === null) {
-        await this.sendSealedDocument(id, existing)
+        await this.sendSealedDocument(id, kind, existing)
       }
       return
     }
@@ -557,16 +560,16 @@ export class IntakeOrdersService {
       checklistItems: await this.checklistCatalog.listForDocument(),
     })
 
-    const storagePath = buildIntakeDocumentStoragePath(id)
+    const storagePath = buildIntakeDocumentStoragePath(id, kind)
     await this.storage.upload({ path: storagePath, data: pdf, mimeType: DOCUMENT_MIME_TYPE })
     // The seal is taken from the bytes that were STORED, not from the ones that were meant to be:
     // the whole point of it is to answer "is this that file".
-    await this.repo.setDocument(id, {
+    await this.repo.setDocument(id, kind, {
       storagePath,
       sha256: createHash('sha256').update(pdf).digest('hex'),
     })
 
-    await this.sendSealedDocument(id, { ...existing, storagePath })
+    await this.sendSealedDocument(id, kind, { ...existing, storagePath })
   }
 
   /**
@@ -578,13 +581,14 @@ export class IntakeOrdersService {
    */
   private async sendSealedDocument(
     id: string,
+    kind: IntakeDocumentKind,
     document: { orderNumber: string; ownerEmail: string | null; storagePath: string | null },
   ): Promise<void> {
     if (document.ownerEmail === null || document.storagePath === null || !this.email.enabled) {
       return
     }
 
-    await this.deliverDocument(id, {
+    await this.deliverDocument(id, kind, {
       orderNumber: document.orderNumber,
       ownerEmail: document.ownerEmail,
       storagePath: document.storagePath,
@@ -598,6 +602,7 @@ export class IntakeOrdersService {
    */
   private async deliverDocument(
     id: string,
+    kind: IntakeDocumentKind,
     document: { orderNumber: string; ownerEmail: string; storagePath: string },
   ): Promise<void> {
     const content = await this.storage.read(document.storagePath)
@@ -615,7 +620,7 @@ export class IntakeOrdersService {
       ],
     })
 
-    await this.repo.setDocumentEmailedAt(id, new Date())
+    await this.repo.setDocumentEmailedAt(id, kind, new Date())
   }
 
   /**
@@ -629,10 +634,11 @@ export class IntakeOrdersService {
     id: string,
     actor: IntakeOrdersActor,
     auditContext: HttpActorContext,
+    kind: IntakeDocumentKind = 'intake',
   ): Promise<void> {
     await this.loadVisible(id, actor)
 
-    const document = await this.repo.findDocument(id)
+    const document = await this.repo.findDocument(id, kind)
     if (document === null || document.storagePath === null) {
       throw new NotFoundError('Intake order document', id)
     }
@@ -644,7 +650,7 @@ export class IntakeOrdersService {
       throw new ServiceUnavailableError('Slanje e-pošte trenutno nije podešeno.')
     }
 
-    await this.deliverDocument(id, {
+    await this.deliverDocument(id, kind, {
       orderNumber: document.orderNumber,
       ownerEmail: document.ownerEmail,
       storagePath: document.storagePath,
@@ -663,8 +669,8 @@ export class IntakeOrdersService {
 
   /** Starts the sealing and returns immediately, leaving the failure in the log rather than in the
    * caller's hands. Signing must not wait on a browser, and must not fail with one. */
-  private produceDocumentInBackground(id: string): void {
-    void this.produceDocument(id).catch((error: unknown) => {
+  private produceDocumentInBackground(id: string, kind: IntakeDocumentKind): void {
+    void this.produceDocument(id, kind).catch((error: unknown) => {
       this.logger.error({ err: error, intakeOrderId: id }, 'Failed to produce the intake document')
     })
   }
@@ -676,10 +682,11 @@ export class IntakeOrdersService {
   async getDocumentDownloadMeta(
     id: string,
     actor: IntakeOrdersActor,
+    kind: IntakeDocumentKind = 'intake',
   ): Promise<{ storagePath: string; mimeType: string; fileName: string; etag: string | null }> {
     await this.loadVisible(id, actor)
 
-    const document = await this.repo.findDocument(id)
+    const document = await this.repo.findDocument(id, kind)
     if (document === null || document.storagePath === null) {
       throw new NotFoundError('Intake order document', id)
     }

@@ -19,8 +19,10 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 
 import type { ApiDatabase } from '../../core/database.js'
+import type { IntakeDocumentKind } from '../../infrastructure/storage/storage.interface.js'
 import { attachments, auditLog, intakeOrders, users } from './intake-orders.schema.js'
 import type { IntakeOrdersListScope } from './intake-orders.types.js'
 import type {
@@ -179,6 +181,25 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     updatedAt: row.updatedAt.toISOString(),
   }
 }
+
+/**
+ * Which six columns a document kind lives in. A map and not a branch per method: three methods
+ * each carrying their own `if` is three places for the two kinds to drift apart.
+ */
+const DOCUMENT_COLUMNS = {
+  intake: {
+    storagePath: intakeOrders.documentStoragePath,
+    sha256: intakeOrders.documentSha256,
+    emailedAt: intakeOrders.documentEmailedAt,
+    signedAt: intakeOrders.signedAt,
+  },
+  handover: {
+    storagePath: intakeOrders.handoverDocumentStoragePath,
+    sha256: intakeOrders.handoverDocumentSha256,
+    emailedAt: intakeOrders.handoverDocumentEmailedAt,
+    signedAt: intakeOrders.handoverSignedAt,
+  },
+} as const satisfies Record<IntakeDocumentKind, Record<string, AnyPgColumn>>
 
 export class IntakeOrdersRepository {
   constructor(private readonly db: ApiDatabase) {}
@@ -491,24 +512,47 @@ export class IntakeOrdersRepository {
    * written precisely BECAUSE the order was signed. Routing it through the patch would mean either
    * an exception in that guard or a hole in it.
    */
-  async setDocument(id: string, document: { storagePath: string; sha256: string }): Promise<void> {
+  async setDocument(
+    id: string,
+    kind: IntakeDocumentKind,
+    document: { storagePath: string; sha256: string },
+  ): Promise<void> {
+    // Drizzle's `.set()` targets known TS field names, and Postgres itself refuses a
+    // table-qualified column in a SET target — so the shared `documentColumns` map (built for
+    // reading, where a column reference is exactly what `select()` wants) cannot drive the write
+    // side too. Two literal branches, kept side by side, is the boring and type-safe answer.
     await this.db
       .update(intakeOrders)
-      .set({ documentStoragePath: document.storagePath, documentSha256: document.sha256 })
+      .set(
+        kind === 'intake'
+          ? { documentStoragePath: document.storagePath, documentSha256: document.sha256 }
+          : {
+              handoverDocumentStoragePath: document.storagePath,
+              handoverDocumentSha256: document.sha256,
+            },
+      )
       .where(eq(intakeOrders.id, id))
   }
 
   /** When the sealed sheet reached the owner. Its own write, like the seal beside it. */
-  async setDocumentEmailedAt(id: string, at: Date): Promise<void> {
-    await this.db.update(intakeOrders).set({ documentEmailedAt: at }).where(eq(intakeOrders.id, id))
+  async setDocumentEmailedAt(id: string, kind: IntakeDocumentKind, at: Date): Promise<void> {
+    await this.db
+      .update(intakeOrders)
+      .set(kind === 'intake' ? { documentEmailedAt: at } : { handoverDocumentEmailedAt: at })
+      .where(eq(intakeOrders.id, id))
   }
 
   /**
    * The document's own row, read without the actor's scope — the caller has already established who
    * may see this order. `signedAt` travels with it because an unsigned order has no document to
-   * make, and `orderNumber` because the file the office downloads is named after the paper.
+   * make (it is now the signature of the SAME kind), and `orderNumber` because the file the office
+   * downloads is named after the paper. Defaults to `intake` so every caller written before the
+   * handover document existed keeps asking about the one it always meant.
    */
-  async findDocument(id: string): Promise<{
+  async findDocument(
+    id: string,
+    kind: IntakeDocumentKind = 'intake',
+  ): Promise<{
     orderNumber: string
     signedAt: Date | null
     ownerEmail: string | null
@@ -516,16 +560,17 @@ export class IntakeOrdersRepository {
     sha256: string | null
     emailedAt: Date | null
   } | null> {
+    const columns = DOCUMENT_COLUMNS[kind]
     const [row] = await this.db
       .select({
         orderNumber: intakeOrders.orderNumber,
-        signedAt: intakeOrders.signedAt,
+        signedAt: columns.signedAt,
         // Where it goes. Deliberately absent from the printed sheet — an address is how to reach the
         // owner, not a fact about the handover — but it is what this row exists to answer.
         ownerEmail: intakeOrders.ownerEmail,
-        storagePath: intakeOrders.documentStoragePath,
-        sha256: intakeOrders.documentSha256,
-        emailedAt: intakeOrders.documentEmailedAt,
+        storagePath: columns.storagePath,
+        sha256: columns.sha256,
+        emailedAt: columns.emailedAt,
       })
       .from(intakeOrders)
       .where(eq(intakeOrders.id, id))
