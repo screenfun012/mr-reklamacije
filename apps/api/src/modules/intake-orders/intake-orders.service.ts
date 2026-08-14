@@ -4,6 +4,7 @@ import {
   freeFieldsFor,
   intakeDamageZoneOf,
   intakeOrderStatusValues,
+  IntakeOrderStatus,
   isIntakeConditionRecorded,
   type IntakeChecklist,
 } from '@mr/shared'
@@ -37,7 +38,13 @@ import {
   type IntakeDocumentKind,
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
-import { renderIntakeDocumentPdf } from './intake-document-pdf.js'
+import { renderIntakeDocumentPdf, type IntakeDocumentInput } from './intake-document-pdf.js'
+import { renderIntakeHandoverPdf } from './intake-handover-pdf.js'
+import {
+  intakeHandoverEmailSubject,
+  intakeHandoverFileName,
+  renderIntakeHandoverEmailHtml,
+} from './intake-handover.email.js'
 import {
   intakeDocumentEmailSubject,
   intakeDocumentFileName,
@@ -57,6 +64,7 @@ import type {
   IntakeOrderChangeStatusInput,
   IntakeOrderCreateInput,
   IntakeOrderDetail,
+  IntakeOrderHandoverInput,
   IntakeOrderHistoryEntry,
   IntakeOrderListQuery,
   IntakeOrderListResponse,
@@ -73,6 +81,38 @@ import type {
 const STATUS_ORDER = intakeOrderStatusValues
 
 const DOCUMENT_MIME_TYPE = 'application/pdf'
+
+/** Everything that differs between the two papers an order produces. */
+interface IntakeDocumentFlavour {
+  readonly render: (renderer: PdfRenderer, input: IntakeDocumentInput) => Promise<Buffer>
+  readonly subject: (orderNumber: string) => string
+  readonly html: (orderNumber: string) => string
+  /**
+   * Deliberately per kind. Both papers carry the same order number, so one naming rule would have
+   * the second download quietly overwrite the first in the owner's folder.
+   */
+  readonly fileName: (orderNumber: string) => string
+}
+
+/**
+ * Which drawing and which message a kind gets. One exhaustive map, and `satisfies Record<...>` is
+ * the whole point of it: a third document kind becomes a compile error here instead of falling
+ * through to the work order's renderer and mailing the wrong paper to a customer.
+ */
+const DOCUMENT_FLAVOURS = {
+  intake: {
+    render: renderIntakeDocumentPdf,
+    subject: intakeDocumentEmailSubject,
+    html: renderIntakeDocumentEmailHtml,
+    fileName: intakeDocumentFileName,
+  },
+  handover: {
+    render: renderIntakeHandoverPdf,
+    subject: intakeHandoverEmailSubject,
+    html: renderIntakeHandoverEmailHtml,
+    fileName: intakeHandoverFileName,
+  },
+} as const satisfies Record<IntakeDocumentKind, IntakeDocumentFlavour>
 
 /**
  * A signed order allows exactly two changes, and each gets its own name in Istorija. A patch that
@@ -553,7 +593,7 @@ export class IntakeOrdersService {
       throw new NotFoundError('Intake order', id)
     }
 
-    const pdf = await renderIntakeDocumentPdf(this.pdfRenderer, {
+    const pdf = await DOCUMENT_FLAVOURS[kind].render(this.pdfRenderer, {
       order,
       // The DISPLAY read: an item the shop retired since keeps the name the owner answered it by.
       checklistItems: await this.checklistCatalog.listForDocument(),
@@ -605,14 +645,15 @@ export class IntakeOrdersService {
     document: { orderNumber: string; ownerEmail: string; storagePath: string },
   ): Promise<void> {
     const content = await this.storage.read(document.storagePath)
+    const flavour = DOCUMENT_FLAVOURS[kind]
 
     await this.email.send({
       to: document.ownerEmail,
-      subject: intakeDocumentEmailSubject(document.orderNumber),
-      html: renderIntakeDocumentEmailHtml(document.orderNumber),
+      subject: flavour.subject(document.orderNumber),
+      html: flavour.html(document.orderNumber),
       attachments: [
         {
-          fileName: intakeDocumentFileName(document.orderNumber),
+          fileName: flavour.fileName(document.orderNumber),
           content,
           mimeType: DOCUMENT_MIME_TYPE,
         },
@@ -693,7 +734,7 @@ export class IntakeOrdersService {
     return {
       storagePath: document.storagePath,
       mimeType: DOCUMENT_MIME_TYPE,
-      fileName: intakeDocumentFileName(document.orderNumber),
+      fileName: DOCUMENT_FLAVOURS[kind].fileName(document.orderNumber),
       etag: document.sha256,
     }
   }
@@ -733,6 +774,84 @@ export class IntakeOrdersService {
     return this.applyStatus(id, input.status, before, 'change_status', auditContext)
   }
 
+  /**
+   * The vehicle goes back, and both people sign for it.
+   *
+   * Who handed it over is the CALLER (`actor.id`), never a value from the body: the whole worth of
+   * this paper is that the name under the signature is the person who actually stood there.
+   *
+   * The sealing runs AFTER the signature is a fact and never as part of it — same rule as the
+   * intake's. Chromium falling over must not undo a signature the owner has already given standing
+   * beside his car; an order whose sheet failed simply has none, and the office runs it again.
+   */
+  async handOver(
+    id: string,
+    input: IntakeOrderHandoverInput,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderDetail> {
+    const before = await this.loadVisible(id, actor)
+
+    // 409 rather than 422: nothing is wrong with the request, the ORDER is in the wrong state for
+    // it. A vehicle that was never taken in on paper cannot be given back on paper.
+    if (before.signedAt === null) {
+      throw new ConflictError('An unsigned intake has nothing to hand over — sign it first')
+    }
+    if (before.handoverSignedAt !== null) {
+      throw new ConflictError('This vehicle has already been handed over')
+    }
+
+    const handed = await this.repo.handOver(id, input, actor.id)
+    if (handed === null) {
+      throw new NotFoundError('Intake order', id)
+    }
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { before, after: handed, transition: 'handover' },
+    })
+
+    this.signalChanged()
+    this.produceDocumentInBackground(id, 'handover')
+    return handed
+  }
+
+  /**
+   * The office recording a pickup nobody signed for — the owner took the car while the tablet was
+   * flat, or a colleague released it and said so afterwards.
+   *
+   * `handover_signed_at` stays NULL, and that emptiness IS the record: this order is `preuzeto` with
+   * nothing signed for it. NO document is made — there is no signature to seal, and a handover sheet
+   * with two blank rules would look exactly like one somebody forgot to sign.
+   */
+  async handOverWithoutSignature(
+    id: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderDetail> {
+    const before = await this.loadVisible(id, actor)
+
+    if (before.signedAt === null) {
+      throw new ConflictError('An unsigned intake has nothing to hand over — sign it first')
+    }
+    if (before.status === IntakeOrderStatus.PickedUp) {
+      throw new ConflictError('This vehicle has already been handed over')
+    }
+
+    return this.applyStatus(
+      id,
+      IntakeOrderStatus.PickedUp,
+      before,
+      'handover_skipped',
+      auditContext,
+    )
+  }
+
   private assertSignedForStatusChange(order: IntakeOrderDetail): void {
     if (order.signedAt === null) {
       throw new ValidationError('An unfinished intake has no status to move — sign it first')
@@ -743,7 +862,7 @@ export class IntakeOrdersService {
     id: string,
     status: string,
     before: IntakeOrderDetail,
-    transition: 'advance' | 'change_status',
+    transition: 'advance' | 'change_status' | 'handover_skipped',
     auditContext: HttpActorContext,
   ): Promise<IntakeOrderDetail> {
     const updated = await this.repo.setStatus(id, status)

@@ -187,13 +187,14 @@ export function IntakeHandoverSheet({
           <p style={HANDOVER_STYLE.statement}>{m.intake_handover_statement({}, { locale })}</p>
           <div style={HANDOVER_STYLE.signatures}>
             {/* The person handing the vehicle over is whoever is standing there, not the order's
-                serviser (decision ④) — the server records him as `handover_technician_id`. His NAME
-                is not on the wire yet, so the paper prints his signature over the role alone rather
-                than somebody else's name. */}
+                serviser (decision ④) — the server records him as `handover_technician_id` from the
+                CALLER and puts his name on the wire. Still nullable: an unsigned sheet, and every
+                order handed over before the name was carried, print the role alone rather than
+                somebody else's name. */}
             <IntakePrintSignatureBox
               path={order.handoverTechnicianSignature}
               role={m.intake_handover_signature_technician({}, { locale })}
-              name={null}
+              name={order.handoverTechnicianName}
             />
             <IntakePrintSignatureBox
               path={order.handoverOwnerSignature}

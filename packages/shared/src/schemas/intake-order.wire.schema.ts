@@ -107,6 +107,20 @@ export const IntakeOrderSignInputSchema = z.object({
 
 export type IntakeOrderSignInput = z.infer<typeof IntakeOrderSignInputSchema>
 
+/**
+ * Handing the vehicle back: the same two signatures, and NOTHING else.
+ *
+ * No `handoverTechnicianId` — who signed is taken from the caller's session, never from the body. A
+ * signature under somebody else's name is precisely what this document exists to make impossible.
+ * No `photosExpected` either: the photographs belong to the intake, and this paper adds none.
+ */
+export const IntakeOrderHandoverInputSchema = z.object({
+  technicianSignature: z.string().trim().min(1).max(100_000),
+  ownerSignature: z.string().trim().min(1).max(100_000),
+})
+
+export type IntakeOrderHandoverInput = z.infer<typeof IntakeOrderHandoverInputSchema>
+
 /** Office-only correction of a mis-tapped status; a serviser uses `/advance` instead. */
 /**
  * One line of the order's history. Deliberately a PROJECTION, never the raw audit row: those carry
@@ -300,6 +314,12 @@ export const IntakeOrderDetailSchema = z.object({
   documentReady: z.boolean(),
   /** When it reached the owner. NULL = never, or he left no address to reach. */
   documentEmailedAt: z.string().nullable(),
+  /**
+   * Who handed the vehicle over — whoever was standing there when the owner came, not the order's
+   * serviser. It is on the wire because the handover sheet PRINTS it under his signature, and a
+   * signature over an empty caption says nothing about who gave the car back.
+   */
+  handoverTechnicianName: z.string().nullable(),
   /** Whether the handover is signed. The signatures themselves ride beside it, like the intake's. */
   handoverTechnicianSignature: z.string().nullable(),
   handoverOwnerSignature: z.string().nullable(),

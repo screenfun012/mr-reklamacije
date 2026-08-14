@@ -428,6 +428,8 @@
   "email_intake_document_footer": "Ovo je automatska poruka — na nju nije potrebno odgovarati.",
   "email_intake_document_greeting": "Poštovani/a,",
   "email_intake_document_subject": "Radni nalog {number} — MR Engines",
+  "email_intake_handover_body": "U prilogu je zapisnik o primopredaji vozila po nalogu {number}, koji ste potpisali prilikom preuzimanja vozila. Dokument sadrži izvedene radove, ugrađeni materijal i zatečeno stanje vozila zabeleženo pri prijemu.",
+  "email_intake_handover_subject": "Primopredaja vozila {number} — MR Engines",
   "email_outcome_changed_body": "Status vaše reklamacije {mrNumber} je promenjen. Prijavite se na portal da vidite detalje.",
   "email_outcome_changed_button": "Otvori portal",
   "email_outcome_changed_greeting": "Pozdrav {name},",

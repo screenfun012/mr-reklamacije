@@ -63,6 +63,7 @@ const SIGNED_ORDER = {
   signedAt: '2026-07-27T19:10:00.000Z',
   documentReady: true,
   documentEmailedAt: null,
+  handoverTechnicianName: null,
   handoverTechnicianSignature: null,
   handoverOwnerSignature: null,
   handoverSignedAt: null,

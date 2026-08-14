@@ -19,7 +19,7 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
-import type { AnyPgColumn } from 'drizzle-orm/pg-core'
+import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core'
 
 import type { ApiDatabase } from '../../core/database.js'
 import type { IntakeDocumentKind } from '../../infrastructure/storage/storage.interface.js'
@@ -28,6 +28,7 @@ import type { IntakeOrdersListScope } from './intake-orders.types.js'
 import type {
   IntakeOrderCreateInput,
   IntakeOrderDetail,
+  IntakeOrderHandoverInput,
   IntakeOrderHistoryEntry,
   IntakeOrderListItem,
   IntakeOrderListQuery,
@@ -37,6 +38,13 @@ import type {
   IntakeOrderUpdateInput,
   IntakePlateLookupResponse,
 } from './intake-orders.validators.js'
+
+/**
+ * The SECOND `users` join of the detail read. Two different people appear on one order — the
+ * serviser who took the vehicle in and whoever handed it back — so one join cannot answer both, and
+ * without an alias Postgres has no way to tell the two `users` rows apart.
+ */
+const handoverTechnician = alias(users, 'handover_technician')
 
 /**
  * Uniqueness key for a typed order number. Pads vary, so the format is never validated —
@@ -101,6 +109,7 @@ interface OrderRow {
   signedAt: Date | null
   documentReady: boolean
   documentEmailedAt: Date | null
+  handoverTechnicianName: string | null
   handoverTechnicianSignature: string | null
   handoverOwnerSignature: string | null
   handoverSignedAt: Date | null
@@ -180,6 +189,10 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
     documentReady: row.documentReady,
     documentEmailedAt: row.documentEmailedAt === null ? null : row.documentEmailedAt.toISOString(),
+    // Null and NOT `?? ''` like the intake's, because null is a real answer here: an order handed
+    // over without a signature has nobody to name, and the sheet prints the role alone rather than
+    // an empty line where a name belongs.
+    handoverTechnicianName: row.handoverTechnicianName,
     handoverTechnicianSignature: row.handoverTechnicianSignature,
     handoverOwnerSignature: row.handoverOwnerSignature,
     handoverSignedAt: row.handoverSignedAt === null ? null : row.handoverSignedAt.toISOString(),
@@ -253,6 +266,7 @@ export class IntakeOrdersRepository {
       // The presence of the file, not its key: the screen decides whether to offer a download.
       documentReady: sql<boolean>`${intakeOrders.documentStoragePath} IS NOT NULL`,
       documentEmailedAt: intakeOrders.documentEmailedAt,
+      handoverTechnicianName: handoverTechnician.name,
       handoverTechnicianSignature: intakeOrders.handoverTechnicianSignature,
       handoverOwnerSignature: intakeOrders.handoverOwnerSignature,
       handoverSignedAt: intakeOrders.handoverSignedAt,
@@ -270,6 +284,7 @@ export class IntakeOrdersRepository {
       .select(this.detailSelection())
       .from(intakeOrders)
       .leftJoin(users, eq(users.id, intakeOrders.technicianId))
+      .leftJoin(handoverTechnician, eq(handoverTechnician.id, intakeOrders.handoverTechnicianId))
       .where(eq(intakeOrders.id, id))
       .limit(1)
 
@@ -611,6 +626,35 @@ export class IntakeOrdersRepository {
         photosExpected: input.photosExpected,
         signedAt: new Date(),
         draftStep: null,
+      })
+      .where(eq(intakeOrders.id, id))
+
+    return this.findById(id)
+  }
+
+  /**
+   * The vehicle leaves: both signatures, who gave it back, when, and the status — one `UPDATE`.
+   *
+   * One statement and not four, because these five facts are one event. Written separately, a
+   * failure between them would leave an order signed for by an owner who is standing outside with
+   * his car while the record still says it is in the shop.
+   *
+   * `technicianId` is the CALLER's, handed down by the service from the session. It is a parameter
+   * rather than part of `input` so that no request body can ever reach this column.
+   */
+  async handOver(
+    id: string,
+    input: IntakeOrderHandoverInput,
+    technicianId: string,
+  ): Promise<IntakeOrderDetail | null> {
+    await this.db
+      .update(intakeOrders)
+      .set({
+        handoverTechnicianSignature: input.technicianSignature,
+        handoverOwnerSignature: input.ownerSignature,
+        handoverTechnicianId: technicianId,
+        handoverSignedAt: new Date(),
+        status: IntakeOrderStatus.PickedUp,
       })
       .where(eq(intakeOrders.id, id))
 

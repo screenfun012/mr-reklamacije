@@ -428,6 +428,8 @@
   "email_intake_document_footer": "This is an automated message — there is no need to reply to it.",
   "email_intake_document_greeting": "Dear customer,",
   "email_intake_document_subject": "Work order {number} — MR Engines",
+  "email_intake_handover_body": "Attached is the handover record for work order {number}, which you signed when you collected your vehicle. The document lists the work carried out, the materials used, and the condition of the vehicle as it was noted at intake.",
+  "email_intake_handover_subject": "Vehicle handover {number} — MR Engines",
   "email_outcome_changed_body": "The status of your claim {mrNumber} has changed. Sign in to the portal to see the details.",
   "email_outcome_changed_button": "Open the portal",
   "email_outcome_changed_greeting": "Hello {name},",

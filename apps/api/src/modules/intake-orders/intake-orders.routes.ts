@@ -39,6 +39,15 @@ export function registerIntakeOrdersRoutes(
   routes.patch('/:id', requirePermission('intake_orders.update'), controller.update)
   routes.post('/:id/sign', requirePermission('intake_orders.update'), controller.sign)
   routes.post('/:id/advance', requirePermission('intake_orders.advance'), controller.advance)
+  // Handing the vehicle back is the last rung of the serviser's own ladder, so it costs what the
+  // rungs before it cost. Releasing a car with NOTHING signed is the office's correction instead —
+  // it leaves a gap in the evidence, and `change_status` is the permission that owns those.
+  routes.post('/:id/handover', requirePermission('intake_orders.advance'), controller.handOver)
+  routes.post(
+    '/:id/handover/skip',
+    requirePermission('intake_orders.change_status'),
+    controller.handOverWithoutSignature,
+  )
   routes.post(
     '/:id/change-status',
     requirePermission('intake_orders.change_status'),

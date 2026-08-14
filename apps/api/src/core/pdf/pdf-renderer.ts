@@ -22,8 +22,9 @@ const IDLE_SHUTDOWN_MS = 10 * 60_000
 
 /**
  * What the caller decides about the page itself. Deliberately a subset of Playwright's options,
- * because these four are the ones two documents disagree about: the claim report is A4 with
- * millimetre margins, the intake work order is its own pixel-exact box with none.
+ * because these are the ones the documents disagree about: the claim report is A4 with millimetre
+ * margins, the intake work order is its own pixel-exact box with none, and the handover record is
+ * the only one that paginates.
  */
 export interface PdfPageOptions {
   readonly format?: 'A4'
@@ -31,6 +32,18 @@ export interface PdfPageOptions {
   /** Makes the document's own `@page` rule the single source of the page size. */
   readonly preferCSSPageSize?: boolean
   readonly margin?: { top: string; right: string; bottom: string; left: string }
+  /**
+   * The three below exist for the one document that runs to several pages: without a page number a
+   * lost page is invisible, and a sheet cannot number itself because it cannot count its own pages.
+   * Chromium draws these INSIDE the page margins, so they push no content — measured 2026-08-14 on
+   * the handover record: identical content boxes, 5.1 KB larger.
+   *
+   * `displayHeaderFooter` turns BOTH on at once, so a caller that wants only a footer must pass an
+   * empty `headerTemplate` — otherwise Chromium stamps its own default date-and-title header.
+   */
+  readonly displayHeaderFooter?: boolean
+  readonly headerTemplate?: string
+  readonly footerTemplate?: string
 }
 
 /**

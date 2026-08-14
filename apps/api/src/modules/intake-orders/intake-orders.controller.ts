@@ -17,6 +17,7 @@ import {
   IntakeNumberCheckQuerySchema,
   IntakeOrderChangeStatusInputSchema,
   IntakeOrderCreateInputSchema,
+  IntakeOrderHandoverInputSchema,
   IntakeOrderIdParamSchema,
   IntakeOrderListQuerySchema,
   IntakePhotoParamSchema,
@@ -107,6 +108,38 @@ export function createIntakeOrdersController(container: Container) {
         await container.intakeOrdersService.sign(
           id,
           input,
+          actorOf(user),
+          getActorContext(c, user),
+        ),
+      )
+    },
+
+    /**
+     * The vehicle goes back. The body carries the two signatures and nothing else — who signed is
+     * read off the session, so no request can put another person's name on the paper.
+     */
+    handOver: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const body: unknown = await c.req.json()
+      const input = IntakeOrderHandoverInputSchema.parse(body)
+      return c.json(
+        await container.intakeOrdersService.handOver(
+          id,
+          input,
+          actorOf(user),
+          getActorContext(c, user),
+        ),
+      )
+    },
+
+    /** The office's "he already took it": no body, because there is nothing signed to carry. */
+    handOverWithoutSignature: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      return c.json(
+        await container.intakeOrdersService.handOverWithoutSignature(
+          id,
           actorOf(user),
           getActorContext(c, user),
         ),
