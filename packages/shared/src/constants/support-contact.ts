@@ -14,4 +14,4 @@ export const PORTAL_SUPPORT_EMAIL = SUPPORT_EMAIL_BY_KIND[ClaimKind.Emotive]
 
 // Static workshop contact shown in the portal technician/support card. The
 // phone deliberately does NOT come from the internal app (per design handoff).
-export const PORTAL_SUPPORT_PHONE = '+381 11 344 5566'
+export const PORTAL_SUPPORT_PHONE = '062/1144888'

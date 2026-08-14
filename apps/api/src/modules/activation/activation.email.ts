@@ -1,14 +1,14 @@
 import { m } from '@mr/i18n'
 import type { Locale } from '@mr/i18n'
+import { PORTAL_SUPPORT_EMAIL } from '@mr/shared'
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
+import {
+  emailButton,
+  emailMutedParagraph,
+  emailParagraph,
+  escapeHtml,
+  renderEmailDocument,
+} from '../../core/email/email-layout.js'
 
 export function activationEmailSubject(locale: Locale): string {
   return m.email_activation_subject({}, { locale })
@@ -21,20 +21,17 @@ export function renderActivationEmailHtml(params: {
 }): string {
   const { name, url, locale } = params
   const safeName = escapeHtml(name)
-  const safeUrl = escapeHtml(url)
 
-  return `<!doctype html>
-<html lang="${locale}">
-  <body style="font-family: Arial, sans-serif; color: #1a1a1a; line-height: 1.5;">
-    <p>${m.email_activation_greeting({ name: safeName }, { locale })}</p>
-    <p>${m.email_activation_body({}, { locale })}</p>
-    <p>
-      <a href="${safeUrl}" style="display: inline-block; padding: 12px 20px; background: #ED1C24; color: #ffffff; text-decoration: none; border-radius: 6px;">
-        ${m.email_activation_button({}, { locale })}
-      </a>
-    </p>
-    <p style="color: #667085; font-size: 13px;">${m.email_activation_expiry({}, { locale })}</p>
-    <p style="color: #667085; font-size: 13px;">${m.email_activation_ignore({}, { locale })}</p>
-  </body>
-</html>`
+  return renderEmailDocument({
+    lang: locale,
+    preheader: m.email_activation_subject({}, { locale }),
+    contactEmail: PORTAL_SUPPORT_EMAIL,
+    bodyHtml: [
+      emailParagraph(m.email_activation_greeting({ name: safeName }, { locale })),
+      emailParagraph(m.email_activation_body({}, { locale })),
+      emailButton(url, m.email_activation_button({}, { locale })),
+      emailMutedParagraph(m.email_activation_expiry({}, { locale })),
+      emailMutedParagraph(m.email_activation_ignore({}, { locale })),
+    ].join(''),
+  })
 }

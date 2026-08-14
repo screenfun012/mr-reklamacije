@@ -244,6 +244,27 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 ## 9. Current state / recent work (this collaboration)
 
+- **Every email arrives in one frame (2026-08-15):** the four messages this system sends — intake
+  document, activation, EMOTIVE outcome change, new client submission — all render through
+  `apps/api/src/core/email/email-layout.ts`. **A fifth email must use it too; do not hand-roll one.**
+  It is in `core/` because four modules consume it and a module may not import a module. The frame is
+  the intake document at inbox width: black `#17171a` band with the emblem, white 600px sheet, red
+  `#ed1c24` rule above a footer carrying `PORTAL_SUPPORT_PHONE` (+ a contact email when the recipient
+  has an inbox that answers — portal-facing messages only). Four constraints are load-bearing and were
+  each chosen against an alternative: **tables and inline styles only** (Outlook renders mail with
+  Word's engine — no flex, no grid, and `<style>` is dropped on some Gmail accounts), **no Figtree**
+  (Outlook blocks web fonts, Gmail ignores `@font-face` — the system stack is what actually arrives),
+  **the emblem is a remote image** from `https://mrclaims.live/portal/logo-white.png` with white bold
+  `alt="MR ENGINES"` so the band still reads when a client blocks images, and **`color-scheme: light`**
+  or Apple Mail and Outlook invert the palette themselves and the band turns to mud. `escapeHtml` lives
+  here too — it had been copy-pasted into all four. The red button is Nikola's call (2026-08-15) over
+  the band's black: the brandbook keeps red off primary buttons _inside_ the apps, an email is not one.
+  `client-submissions` was the one message with hardcoded Serbian outside Paraglide; it now uses
+  `email_submission_*` keys, rendered at a fixed `sr` because it goes to ONE shared office address with
+  no recipient whose language could be looked up. `PORTAL_SUPPORT_PHONE` = `062/1144888` since
+  2026-08-15 (it feeds the portal support card as well as every email footer — one constant, two
+  places). No migration, no permission, no wire change.
+
 - **DOMACE claims → full business Excel (2026-07-24, docs/23, branch `feat/domace-full-fields`):** brought the DOMACE model + export up to the real 15-column `Domaće reklamacije.xlsx`. **Migration `0035`** adds four nullable `domace_claims` columns: `invoice_number` (BROJ RAČUNA H), `original_invoice_amount` (G), `parts_amount` (K), `labor_amount` (L). **Money model:** UKUPNO (M) stays `total_amount` but is **computed = parts + labor, ex-VAT** (shared `computeDomaceTotal`, written on every create/update so statistics/dashboard read one column). Amounts are **editable in any outcome state** — the accepted-only guard (`core/claims/claim-lock.ts`) and the `PATCH /:id/amount` endpoint are **retired**; amounts flow through the normal create/update. **Field identities:** RADNI NALOG (E) = `mr_number`; **STARI R/N (F) = the existing `claim_number`** (relabelled "Stari radni nalog"); BROJ RAČUNA (H) = the new `invoice_number`; OPIS PROBLEMA (I) = `warranty_report`; VOZILO (D) = **composed** from manufacturer + engine type + engine code (no new column). **In-app labels renamed to match the sheet** (DOMACE only; DATUM kept "Datum prijema" by Nikola). **ZAPOSLENI (N)** now lists **every active employee** (not assembly-only) via a **searchable** select — DOMACE-specific override of the assembly-only assigned-worker rule. ⚠️ **NAPOMENA (O) = the claim's findings, composed `text (type); …` — this REVERSES the earlier invariant** "Excel must NOT export findings / findings→NAPOMENA rejected" (was CLAUDE.md §9 / docs internal-web-backlog #4). Reversed deliberately with Nikola: DOMACE has no portal, so the client-leak reason was moot. The findings SECTION is titled "Napomena" in the DOMACE detail (EMOTIVE keeps "Nalazi"). Excel export helpers `formatVehicle` + `formatFindingsNote` live in `@mr/excel`; the DOMACE sheet went 9→15 columns. **Portal: zero impact** (DOMACE has no customer FK); **EMOTIVE untouched**. Built phase by phase (M-0 migration → M-1 api/shared → M-2 form+labels → M-3 excel), each gate-green.
 
 - **PITR enabled + attachment-integrity check (2026-07-23):** point-in-time recovery is now **on** for the production Postgres (Railway → Postgres → Backups). Restore creates a **new** Postgres service and leaves the running one untouched — so, unlike a volume "Restore" (which overwrites in place and deletes newer snapshots), it is the only safe way to rehearse a database restore. Reversible via "Stage disable". The one-time redeploy was verified non-destructive (`/api/claims` → 200, 134 rows, right after). New read-only script `apps/api/scripts/check-attachment-integrity.ts` (`pnpm --filter api check-attachment-integrity`, no flags) walks every `attachments` row and asserts its object exists in storage via the SAME backend the runtime picks (`createStorageService`), exiting 1 when any file is missing — so it doubles as a **post-restore gate**. This answers the real fear behind the DB/bucket split (docs/22 §1.3): a row pointing at an object the restored bucket never held is silent (the claim opens, the photo is blank). The full restore _drill_ still needs a throwaway environment for the bucket half (deferred with staging); PITR unblocks the database half. ⚠️ Watch for `*/` inside a block comment — `S3_*/UPLOAD_DIR` closed the JSDoc early and broke the esbuild transform.

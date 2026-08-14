@@ -1,13 +1,12 @@
 import { m } from '@mr/i18n'
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
+import {
+  emailDivider,
+  emailMutedParagraph,
+  emailParagraph,
+  escapeHtml,
+  renderEmailDocument,
+} from '../../core/email/email-layout.js'
 
 /**
  * Both languages, in the subject and in the body, for the same reason the document itself carries
@@ -21,25 +20,27 @@ export function intakeDocumentEmailSubject(orderNumber: string): string {
 
 /**
  * The message around the file, and deliberately thin: the document is the point, and everything
- * worth saying is already printed on it and signed. No link — the owner has nothing to sign in to.
+ * worth saying is already printed on it and signed. No button — the owner has nothing to sign in to,
+ * and no contact email in the footer for the same reason; the workshop's phone is what answers him.
  */
 export function renderIntakeDocumentEmailHtml(orderNumber: string): string {
   const number = escapeHtml(orderNumber)
-  const paragraphs = (['sr', 'en'] as const).map(
-    (locale) => `    <p>${m.email_intake_document_greeting({}, { locale })}</p>
-    <p>${m.email_intake_document_body({ number }, { locale })}</p>`,
-  )
+  const bodyHtml = [
+    ...(['sr', 'en'] as const).flatMap((locale, index) => [
+      index === 0 ? '' : emailDivider(),
+      emailParagraph(m.email_intake_document_greeting({}, { locale })),
+      emailParagraph(m.email_intake_document_body({ number }, { locale })),
+    ]),
+    emailDivider(),
+    emailMutedParagraph(m.email_intake_document_footer({}, { locale: 'sr' })),
+    emailMutedParagraph(m.email_intake_document_footer({}, { locale: 'en' })),
+  ].join('')
 
-  return `<!doctype html>
-<html lang="sr">
-  <body style="font-family: Arial, sans-serif; color: #1a1a1a; line-height: 1.5;">
-${paragraphs.join('\n    <hr style="border: none; border-top: 1px solid #e6e7e9; margin: 20px 0;">\n')}
-    <p style="color: #54555b; font-size: 12px;">
-      ${m.email_intake_document_footer({}, { locale: 'sr' })}<br>
-      ${m.email_intake_document_footer({}, { locale: 'en' })}
-    </p>
-  </body>
-</html>`
+  return renderEmailDocument({
+    lang: 'sr',
+    preheader: m.email_intake_document_subject({ number: orderNumber }, { locale: 'sr' }),
+    bodyHtml,
+  })
 }
 
 /** What the file is called in the owner's inbox: the number written on his paper. */
