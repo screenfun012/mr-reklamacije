@@ -122,6 +122,24 @@ Dev resolves workspace packages from **`src/`** (the package `"development"` exp
 1. kill ports 3000–3003 (`lsof`/the dev runner) → 2. `pnpm --filter @mr/ui build` → 3. `pnpm dev:all` → 4. **hard refresh** (Cmd+Shift+R).
    Symptom of staleness: Vite logs `page reload packages/ui/dist/...`, or 504/login flicker (API starved by dist watchers). `pnpm dev:check` then `pnpm dev:all`.
 
+### The API's dev runtime and JSX in a package (`tsconfig.dev.json`)
+
+`apps/api` runs in dev as `tsx watch --conditions=development`, so workspace packages resolve to
+their **source**. The moment one of them contains `.tsx` — `@mr/intake-document` does, it is the
+printed work order — that source has to be transformed by tsx, and **tsx applies the `jsx` option
+only to files its tsconfig INCLUDES**. `apps/api/tsconfig.json` includes `src` alone, so the
+package's components were compiled with the classic runtime and every render died on
+`ReferenceError: React is not defined` — in dev only, since production runs `node dist/server.js`
+where the package supplies its own compiled JS.
+
+Hence `apps/api/tsconfig.dev.json`: `jsx: react-jsx` with an include that reaches
+`../../packages/*/src`, passed to tsx by the `dev` script. Nothing else uses it — `build`,
+`typecheck` and the tests still use `tsconfig.json`, and none of them ever transform that source.
+
+⚠ The failure is SILENT: sealing the document runs in the background behind a signature, so the
+screen just goes on saying the document is being prepared. Found 2026-08-14 by walking a real intake
+through the browser, which is the only place it could have been found.
+
 ### After touching `packages/i18n/src/messages/*.json`
 
 **`pnpm --filter @mr/i18n run compile`, then refresh.** Paraglide generates
