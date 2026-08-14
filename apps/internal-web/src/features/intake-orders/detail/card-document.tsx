@@ -151,8 +151,16 @@ export function CardDocument({
   })
 
   /**
-   * The way back from a seal that failed. No confirmation: unlike sending, this reaches nobody
-   * outside the shop and cannot be got wrong — a document that exists is never re-rendered.
+   * The way back from a seal that failed — and it DOES reach the owner: producing the paper delivers
+   * it in the same job, exactly as the signature's own seal does. That is the point rather than a
+   * side effect, since the missing thing is the owner's copy.
+   *
+   * No confirmation even so, unlike the send button beside it. That one asks because it is a
+   * deliberate second delivery of a paper the owner already has; this one asks nothing because there
+   * is nothing to weigh — the document is missing, and the only reason to press it is to fix that.
+   * It cannot be got wrong either: a document that exists is never re-rendered, and a copy already
+   * delivered is never sent twice. What actually happened shows on this card a second later, in the
+   * row's own line — sent and when, or that the owner left no address.
    */
   const produce = useMutation({
     mutationFn: (kind: IntakeDocumentKind) => produceIntakeOrderDocument(order.id, kind),
@@ -183,7 +191,7 @@ export function CardDocument({
         canSend={canSend}
         onSend={setConfirmSend}
         onProduce={produce.mutate}
-        producing={produce.isPending}
+        producing={produce.isPending && produce.variables === 'intake'}
       />
 
       {order.handoverSignedAt === null ? null : (
@@ -197,7 +205,7 @@ export function CardDocument({
             canSend={canSend}
             onSend={setConfirmSend}
             onProduce={produce.mutate}
-            producing={produce.isPending}
+            producing={produce.isPending && produce.variables === 'handover'}
           />
         </div>
       )}

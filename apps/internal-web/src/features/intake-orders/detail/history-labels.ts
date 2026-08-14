@@ -24,6 +24,10 @@ const TRANSITION_LABELS: Record<string, () => string> = {
   // Its own line for the same reason: it means a seal failed and somebody made the paper by hand.
   // Left neutral, a document dated three days after the signature would have no explanation anywhere.
   produce_document: m.intake_history_document_produced,
+  // The service has written this row since the resend shipped, and it has been reading as
+  // "Nalog izmenjen" the whole time. Named now because the two buttons sit on one card, and one of
+  // them having a line while the other does not is the kind of gap that reads as a missing row.
+  send_document: m.intake_history_document_sent,
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   UserAccountStatus,
   type Permission,
 } from '@mr/shared'
+import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -137,6 +138,52 @@ describe('the document routes', () => {
 
     expect(response.status).toBe(204)
     expect(email.sent).toHaveLength(sentBefore + 1)
+  })
+
+  it('produces a paper the order was left without, and answers with no content', async () => {
+    const id = await orderWithDocument()
+    // What a failed seal leaves: the signatures are a fact, the columns are empty.
+    await ctx.db
+      .update(schema.intakeOrders)
+      .set({ documentStoragePath: null, documentSha256: null, documentEmailedAt: null })
+      .where(eq(schema.intakeOrders.id, id))
+    const app = createIntakeTestApp(container, testUser([...OPERATOR_PERMISSIONS]))
+
+    const response = await app.request(`/api/intake-orders/${id}/document/produce`, {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(204)
+    expect(
+      (await container.intakeOrdersRepository.findDocument(id, 'intake'))?.storagePath,
+    ).not.toBeNull()
+  })
+
+  it('refuses producing to a serviser, the same way it refuses him the send', async () => {
+    const id = await orderWithDocument()
+    const app = createIntakeTestApp(
+      container,
+      testUser([...SERVISER_PERMISSIONS], technicianId, ['serviser']),
+    )
+
+    // The gate in front of this one is the send's, not the order's: making the paper is how it
+    // reaches the owner, and that is the act `send_document` owns.
+    expect(
+      (await app.request(`/api/intake-orders/${id}/document/produce`, { method: 'POST' })).status,
+    ).toBe(403)
+  })
+
+  it('refuses a kind it does not know rather than guessing one', async () => {
+    const id = await orderWithDocument()
+    const app = createIntakeTestApp(container, testUser([...OPERATOR_PERMISSIONS]))
+
+    // `?kind=` decides WHICH file is made and mailed to a customer; an unknown value must not fall
+    // back to a default.
+    const response = await app.request(`/api/intake-orders/${id}/document/produce?kind=nonsense`, {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(400)
   })
 
   it('refuses the resend to a serviser, who has every other right over his own order', async () => {

@@ -690,17 +690,29 @@ export class IntakeOrdersService {
     kind: IntakeDocumentKind,
   ): Promise<void> {
     await this.loadVisible(id, actor)
+
+    const before = await this.repo.findDocument(id, kind)
     await this.produceDocument(id, kind)
 
-    await this.audit.log({
-      entityType: 'intake_order',
-      entityId: id,
-      action: AuditAction.Update,
-      actorUserId: auditContext.actorUserId,
-      actorIp: auditContext.actorIp,
-      actorUserAgent: auditContext.actorUserAgent,
-      changes: { transition: 'produce_document', kind },
-    })
+    // Only when something was actually made. Two tabs, or one operator pressing as the background
+    // seal lands, would otherwise write "Dokument napravljen ponovo" for a press that wrote nothing —
+    // and a history row that claims work nobody did is worse than no row, because somebody later
+    // reads it as the explanation for a document dated after its signature.
+    if (before?.storagePath === null || before === null) {
+      await this.audit.log({
+        entityType: 'intake_order',
+        entityId: id,
+        action: AuditAction.Update,
+        actorUserId: auditContext.actorUserId,
+        actorIp: auditContext.actorIp,
+        actorUserAgent: auditContext.actorUserAgent,
+        changes: { transition: 'produce_document', kind },
+      })
+    }
+
+    // The office may be watching from a second screen — this is the moment the card stops saying
+    // "being prepared", and the seal path itself has never signalled.
+    this.signalChanged()
   }
 
   /**

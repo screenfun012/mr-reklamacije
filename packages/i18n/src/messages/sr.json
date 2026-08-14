@@ -771,6 +771,7 @@
   "intake_history_contact_added": "Dopisan broj za kontakt",
   "intake_history_created": "Nalog otvoren",
   "intake_history_document_produced": "Dokument napravljen ponovo",
+  "intake_history_document_sent": "Dokument poslat vlasniku",
   "intake_history_generic": "Nalog izmenjen",
   "intake_history_handover": "Vozilo predato uz potpise",
   "intake_history_handover_skipped": "Vozilo izdato bez potpisa",

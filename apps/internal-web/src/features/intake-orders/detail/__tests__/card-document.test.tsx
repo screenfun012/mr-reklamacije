@@ -7,12 +7,14 @@ import { CardDocument } from '../card-document'
 import { intakeDraftFixture, intakeOrderDetailFixture, renderDetailUi } from './render-detail'
 
 const sendDocument = vi.fn()
+const produceDocument = vi.fn()
 
 vi.mock('@mr/shared', async () => {
   const actual = await vi.importActual<typeof import('@mr/shared')>('@mr/shared')
   return {
     ...actual,
     sendIntakeOrderDocument: (id: string, kind: string) => sendDocument(id, kind),
+    produceIntakeOrderDocument: (id: string, kind: string) => produceDocument(id, kind),
   }
 })
 
@@ -20,6 +22,8 @@ describe('the document card on a signed order', () => {
   beforeEach(() => {
     sendDocument.mockReset()
     sendDocument.mockResolvedValue(undefined)
+    produceDocument.mockReset()
+    produceDocument.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -32,13 +36,44 @@ describe('the document card on a signed order', () => {
     expect(screen.queryByText(m.intake_card_document())).toBeNull()
   })
 
-  it('says the file is still being made rather than offering a dead button', async () => {
+  it('says the file is not there, and offers to make it', async () => {
     await renderDetailUi(
       <CardDocument order={intakeOrderDetailFixture({ documentReady: false })} canSend />,
     )
 
     expect(screen.getByText(m.intake_document_not_ready())).toBeDefined()
     expect(screen.queryByRole('link', { name: m.intake_document_download() })).toBeNull()
+    // The sentence used to sit here alone and wait forever when the seal had failed.
+    expect(screen.getByRole('button', { name: m.intake_document_produce() })).toBeDefined()
+  })
+
+  it('offers nobody the way back who may not send the paper anyway', async () => {
+    await renderDetailUi(
+      <CardDocument order={intakeOrderDetailFixture({ documentReady: false })} canSend={false} />,
+    )
+
+    expect(screen.getByText(m.intake_document_not_ready())).toBeDefined()
+    expect(screen.queryByRole('button', { name: m.intake_document_produce() })).toBeNull()
+  })
+
+  it('makes the paper the pressed row is missing, not the other one', async () => {
+    // The kind-routing failure this guards is the one that matters: producing under the wrong kind
+    // mails the owner the wrong document as the record of the other act.
+    await renderDetailUi(
+      <CardDocument
+        order={intakeOrderDetailFixture({
+          documentReady: true,
+          handoverSignedAt: '2026-08-15T10:00:00.000Z',
+          handoverDocumentReady: false,
+        })}
+        canSend
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: m.intake_document_produce() }))
+
+    await waitFor(() => expect(produceDocument).toHaveBeenCalledTimes(1))
+    expect(produceDocument).toHaveBeenCalledWith(expect.any(String), 'handover')
   })
 
   it('offers the file, and says it has not reached the owner yet', async () => {

@@ -771,6 +771,7 @@
   "intake_history_contact_added": "Contact number added",
   "intake_history_created": "Order opened",
   "intake_history_document_produced": "Document produced again",
+  "intake_history_document_sent": "Document sent to the owner",
   "intake_history_generic": "Order changed",
   "intake_history_handover": "Vehicle handed over with signatures",
   "intake_history_handover_skipped": "Vehicle released without signatures",
