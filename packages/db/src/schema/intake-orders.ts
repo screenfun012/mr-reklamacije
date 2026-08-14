@@ -151,6 +151,31 @@ export const intakeOrders = pgTable(
     documentSha256: text('document_sha256'),
     /** When the sheet went to the owner. NULL = never sent, or he left no address to send it to. */
     documentEmailedAt: timestamp('document_emailed_at', { withTimezone: true, mode: 'date' }),
+    /**
+     * Primopredaja — ogledalo šest kolona iznad, i ta simetrija je namerna: isti oblik potpisa, isti
+     * oblik pečata, isti oblik „poslato". Dokument 2 nosi sve iz dokumenta 1 plus sve posle njega
+     * (docs/25 §3.5), pa mu i zapis mora izgledati isto.
+     *
+     * Sve nullable i bez popune postojećih redova: NULL je istina o nalogu koji nije predat, a
+     * `status = 'preuzeto'` uz `handover_signed_at IS NULL` JESTE zapis da je predat bez potpisa
+     * (odluka ② u specu) — zato za taj izlaz nema svoje kolone koja bi se s njim razišla.
+     */
+    /**
+     * WHO handed the vehicle over, and deliberately its own column rather than reusing
+     * `technician_id`: the intake's technician is whoever received the car, and the man standing at
+     * the counter at closing time is often somebody else. The paper has to name the person who was
+     * actually there, or it names the wrong one on a document two people sign.
+     */
+    handoverTechnicianId: uuid('handover_technician_id'),
+    handoverTechnicianSignature: text('handover_technician_signature'),
+    handoverOwnerSignature: text('handover_owner_signature'),
+    handoverSignedAt: timestamp('handover_signed_at', { withTimezone: true, mode: 'date' }),
+    handoverDocumentStoragePath: text('handover_document_storage_path'),
+    handoverDocumentSha256: text('handover_document_sha256'),
+    handoverDocumentEmailedAt: timestamp('handover_document_emailed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -178,6 +203,11 @@ export const intakeOrders = pgTable(
     foreignKey({
       name: 'intake_orders_technician_id_fkey',
       columns: [t.technicianId],
+      foreignColumns: [users.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'intake_orders_handover_technician_id_fkey',
+      columns: [t.handoverTechnicianId],
       foreignColumns: [users.id],
     }).onDelete('restrict'),
     // A number is taken by any existing row; hard-deleting a draft releases it,
