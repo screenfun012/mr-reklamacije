@@ -56,7 +56,12 @@ export type IntakePrintLocale = Locale
 export interface IntakePrintChecklistRow {
   key: string
   label: string
-  mark: '✓' | '✗' | '—'
+  /**
+   * The answer itself, not a glyph. The sheet draws the mark (`IntakeCheckMark`), because the two
+   * characters this used to carry exist in no font this document embeds and every machine drew them
+   * from its own — so the model would have been choosing a shape it had no way to guarantee.
+   */
+  value: boolean | null
   /** A "no" and an untouched row print their text grey; a "yes" prints it black. */
   muted: boolean
 }
@@ -122,14 +127,7 @@ function optionalPrintText(value: string | null): string | null {
  * paper was asked for — so nothing on this sheet calls a message key for an equipment name any more.
  */
 function printChecklistRow(row: IntakeChecklistRow): IntakePrintChecklistRow {
-  const shared = { key: row.code, label: row.name }
-  if (row.value === true) {
-    return { ...shared, mark: '✓', muted: false }
-  }
-  if (row.value === false) {
-    return { ...shared, mark: '✗', muted: true }
-  }
-  return { ...shared, mark: DASH, muted: true }
+  return { key: row.code, label: row.name, value: row.value, muted: row.value !== true }
 }
 
 /**
@@ -198,7 +196,7 @@ export function buildIntakePrintModel(
     /**
      * Catalog rows first, then the ones the serviser wrote in — the same order step 2 and the
      * detail show, so the paper in the customer's hand matches the screen it came from. A
-     * written-in row prints through the SAME three-state map: untouched is `—`, never `✗`.
+     * written-in row prints through the SAME three-state map: untouched is a dash, never a cross.
      */
     checklist: [
       ...resolveIntakeChecklistRows(order.checklist, checklistItems, locale),

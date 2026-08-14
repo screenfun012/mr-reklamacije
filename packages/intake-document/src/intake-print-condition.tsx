@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 import type { CSSProperties, ReactElement } from 'react'
 
+import { IntakeCheckMark } from './intake-check-mark.js'
 import type { IntakePrintModel } from './intake-print-data.js'
 import {
   DOCUMENT_FONT_MONO,
@@ -28,8 +29,18 @@ const CONDITION_STYLE = {
     rowGap: '6px',
     fontSize: '11.5px',
   },
-  row: { display: 'flex', gap: '8px' },
-  mark: { fontFamily: DOCUMENT_FONT_MONO, fontWeight: 700 },
+  /**
+   * `baseline`, not the default stretch: the mark is a block drawing with no text in it, so a flex
+   * row aligns its TOP with the label's — and it hung above the words it belongs to. Aligned on the
+   * baseline, the drawing's bottom edge lands where the character's feet used to.
+   */
+  row: { display: 'flex', alignItems: 'baseline', gap: '6px' },
+  /**
+   * `flex: none` because a drawing has no text to reflow: without it a long name squeezes it. The
+   * mark's WIDTH is the drawing's own business (`IntakeCheckMark`), sized to the character it
+   * replaced — these columns had about a pixel of slack and a wider mark wrapped four of the rows.
+   */
+  mark: { fontFamily: DOCUMENT_FONT_MONO, fontWeight: 700, flex: 'none' },
   note: { marginTop: '7px', fontSize: '11.5px', lineHeight: 1.5, color: '#54555b' },
   figures: {
     marginTop: '12px',
@@ -76,9 +87,12 @@ export function IntakePrintCondition({ model }: { model: IntakePrintModel }): Re
               style={row.muted ? MUTED_ROW : CONDITION_STYLE.row}
             >
               <span
-                style={{ ...CONDITION_STYLE.mark, color: row.mark === '✗' ? '#ed1c24' : '#17171a' }}
+                style={{
+                  ...CONDITION_STYLE.mark,
+                  color: row.value === false ? '#ed1c24' : '#17171a',
+                }}
               >
-                {row.mark}
+                <IntakeCheckMark value={row.value} />
               </span>
               {row.label}
             </div>

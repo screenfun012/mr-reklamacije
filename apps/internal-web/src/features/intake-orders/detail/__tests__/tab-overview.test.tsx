@@ -36,9 +36,12 @@ describe('TabOverview', () => {
 
     await renderDetailUi(<TabOverview order={order} canUpdate={false} />)
 
+    const markOf = (testId: string): string | null | undefined =>
+      screen.getByTestId(testId).querySelector('[data-mark]')?.getAttribute('data-mark')
+
     expect(screen.getByTestId('condition-rezervna')).toHaveTextContent('—')
-    expect(screen.getByTestId('condition-dizalica')).toHaveTextContent('✗')
-    expect(screen.getByTestId('condition-komplet')).toHaveTextContent('✓')
+    expect(markOf('condition-dizalica')).toBe('no')
+    expect(markOf('condition-komplet')).toBe('yes')
     expect(screen.getByText(m.intake_condition_unchecked({ count: 1 }))).toBeDefined()
   })
 

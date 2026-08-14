@@ -65,11 +65,11 @@ describe('buildIntakePrintModel', () => {
       },
     })
 
-    const marks = buildIntakePrintModel(order, CATALOG, 'sr').checklist.map((row) => row.mark)
+    const marks = buildIntakePrintModel(order, CATALOG, 'sr').checklist.map((row) => row.value)
 
-    expect(marks[0]).toBe('✓')
-    expect(marks[1]).toBe('✗')
-    expect(marks[2]).toBe('—')
+    expect(marks[0]).toBe(true)
+    expect(marks[1]).toBe(false)
+    expect(marks[2]).toBeNull()
   })
 
   it('names the rows from the catalog, in the catalog order', () => {
@@ -268,9 +268,9 @@ describe('buildIntakePrintModel — the rows the serviser wrote in', () => {
 
     const rows = buildIntakePrintModel(order, CATALOG, 'sr').checklist
 
-    expect(rows.map((row) => [row.label, row.mark])).toEqual([
-      ['Gumeni patosnici', '✓'],
-      ['Kanister', '—'],
+    expect(rows.map((row) => [row.label, row.value])).toEqual([
+      ['Gumeni patosnici', true],
+      ['Kanister', null],
     ])
   })
 

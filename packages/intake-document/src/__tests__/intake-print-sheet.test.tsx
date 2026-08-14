@@ -65,8 +65,15 @@ describe('IntakePrintSheet', () => {
 
     renderSheet(order)
 
+    // The answered row draws its mark and the untouched one prints a dash, so the assertion reads
+    // the drawing's state where there is one and the text where there is not.
     expect(screen.getByTestId('print-check-rezervna')).toHaveTextContent('—')
-    expect(screen.getByTestId('print-check-dizalica')).toHaveTextContent('✓')
+    expect(
+      screen
+        .getByTestId('print-check-dizalica')
+        .querySelector('[data-mark]')
+        ?.getAttribute('data-mark'),
+    ).toBe('yes')
   })
 
   /**

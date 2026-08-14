@@ -4,22 +4,27 @@ import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
-import { resolveIntakeChecklistRows } from '@mr/intake-document'
-import { CAPTION, CARD, DASH } from './detail-styles'
+import { IntakeCheckMark, resolveIntakeChecklistRows } from '@mr/intake-document'
+import { CAPTION, CARD } from './detail-styles'
 
 /**
  * The recorded condition, read back. The third state is the whole point: the checklist holds
  * `boolean | null` and the prototype's print collapses it to ✓/✕, which prints an item nobody
  * checked as "NE" — a false statement on a document the customer signed (`docs/25` §4.4).
  */
-function conditionMark(value: boolean | null): { mark: string; className: string } {
+/**
+ * The colour only. The mark itself is drawn by `IntakeCheckMark` — the same drawing the printed
+ * sheet uses, so the screen and the copy in the customer's hand cannot show different marks. It used
+ * to be the characters ✓ and ✗, which no font we ship contains (2026-08-14).
+ */
+function conditionColour(value: boolean | null): string {
   if (value === true) {
-    return { mark: '✓', className: 'text-mri-grn' }
+    return 'text-mri-grn'
   }
   if (value === false) {
-    return { mark: '✗', className: 'text-mri-redh' }
+    return 'text-mri-redh'
   }
-  return { mark: DASH, className: 'text-mri-text2' }
+  return 'text-mri-text2'
 }
 
 /**
@@ -77,15 +82,15 @@ export function CardCondition({ order }: { order: IntakeOrderDetail }): ReactEle
       ) : (
         <div className="grid grid-cols-2 gap-4 @min-[860px]:grid-cols-4">
           {rows.map((row) => {
-            const state = conditionMark(row.value)
+            const colour = conditionColour(row.value)
             return (
               <div
                 key={row.code}
                 data-testid={`condition-${row.code}`}
                 className="flex min-w-0 items-center gap-2"
               >
-                <span className={cn('flex-none font-mono text-sm font-bold', state.className)}>
-                  {state.mark}
+                <span className={cn('flex-none font-mono text-sm font-bold', colour)}>
+                  <IntakeCheckMark value={row.value} />
                 </span>
                 <span className="min-w-0 flex-1 text-[13px] text-mri-text">{row.name}</span>
               </div>

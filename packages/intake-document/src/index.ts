@@ -15,6 +15,7 @@
  * What deliberately did NOT come along is the preview: the dialog, the zoom, the fit-to-width
  * measurement and `intake-print.css` are equipment AROUND the document and stay in internal-web.
  */
+export { IntakeCheckMark } from './intake-check-mark.js'
 export { IntakePrintSheet } from './intake-print-sheet.js'
 export { IntakePrintCondition } from './intake-print-condition.js'
 export { IntakePrintDamages } from './intake-print-damages.js'
