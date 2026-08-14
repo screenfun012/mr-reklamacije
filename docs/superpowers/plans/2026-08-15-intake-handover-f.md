@@ -61,7 +61,7 @@ U `packages/db/src/schema/intake-orders.ts`, odmah posle `documentEmailedAt`:
      * the counter at closing time is often somebody else. The paper has to name the person who was
      * actually there, or it names the wrong one on a document two people sign.
      */
-    handoverTechnicianId: uuid('handover_technician_id').references(() => users.id),
+    handoverTechnicianId: uuid('handover_technician_id'),
     handoverTechnicianSignature: text('handover_technician_signature'),
     handoverOwnerSignature: text('handover_owner_signature'),
     handoverSignedAt: timestamp('handover_signed_at', { withTimezone: true, mode: 'date' }),
@@ -72,6 +72,11 @@ U `packages/db/src/schema/intake-orders.ts`, odmah posle `documentEmailedAt`:
       mode: 'date',
     }),
 ```
+
+⚠️ **Strani ključ ide u blok konfiguracije tabele, ne inline** — tako to radi `technician_id`
+(`intake-orders.ts:55` kolona, `:180` `foreignKey({ columns: [t.technicianId], … })`). Dopiši ga
+tamo, uz eksplicitno ime po konvenciji iz `docs/06`. **Bez indeksa** — po ovoj koloni se ne filtrira
+ni ne sortira, čita se samo kroz već učitan red.
 
 - [ ] **Step 2: Pročitaj poslednji broj migracije PRE generisanja**
 
@@ -111,9 +116,14 @@ git commit -m "feat(db): the order records its handover the way it records its i
 
 ---
 
-### Task 2: Jedna cev, dva dokumenta
+### Task 2: Skladište i kolone znaju koji je dokument
 
 Refaktor **bez promene ponašanja.** Dokaz da je bez promene su postojeći testovi, koji se ne diraju.
+
+⚠️ **Opseg je namerno uzak: putanja u skladištu, kolone u repou, ključ pečaćenja.** Uopštavanje
+`sealDocument`/`deliverDocument` po vrsti dokumenta ide u Zadatak 5, gde druga vrsta zaista postoji.
+Razlog: ovaj komit mora biti dokazivo bez promene ponašanja, a komit koji nosi granu „još nije
+napravljeno" nije ni bez promene ponašanja ni dozvoljen (tipizovane domenske greške, bez mrtvog koda).
 
 **Files:**
 - Modify: `apps/api/src/infrastructure/storage/storage.interface.ts:51`
@@ -209,9 +219,12 @@ const DOCUMENT_COLUMNS = {
 
 Zatim `setDocument`, `setDocumentEmailedAt` i `findDocument` uzimaju `kind` kao **drugi** argument i čitaju kolone iz mape. `findDocument` vraća isti oblik kao danas — `signedAt` je sada potpis TE vrste.
 
-- [ ] **Step 6: Parametrizuj servis**
+- [ ] **Step 6: Ključ pečaćenja po nalogu I vrsti**
 
-`documentsBeingSealed` se ključa po nalogu **i vrsti**, jer dva dokumenta istog naloga smeju paralelno:
+`documentsBeingSealed` se ključa po nalogu **i vrsti**, jer dva dokumenta istog naloga smeju paralelno.
+`produceDocument` i `sealDocument` uzimaju `kind` i prosleđuju ga repou i putanji; **crtanje i mejl
+ostaju netaknuti u ovom zadatku** — jedini pozivalac i dalje prosleđuje `'intake'`, i nema grane koja
+bi rekla šta bi bilo za `'handover'`. Ta grana sleće sa Zadatkom 5.
 
 ```ts
   /** One flight per document, not per order: the two documents of one order may seal at once. */
@@ -234,7 +247,7 @@ Zatim `setDocument`, `setDocumentEmailedAt` i `findDocument` uzimaju `kind` kao 
   }
 ```
 
-`sealDocument`, `sendSealedDocument`, `deliverDocument`, `produceDocumentInBackground`, `sendDocument` i `getDocumentDownloadMeta` svi dobijaju `kind`. **Crtanje i mejl još nemaju granu za `handover`** — dok Zadatak 4 i 5 ne stignu, `sealDocument` za `handover` baca `new Error('not built')`, i to je jedina privremena linija u planu. Svi postojeći pozivaoci prosleđuju `'intake'`.
+`sendSealedDocument`, `deliverDocument`, `produceDocumentInBackground`, `sendDocument` i `getDocumentDownloadMeta` takođe dobijaju `kind` i prosleđuju ga repou. Svi postojeći pozivaoci prosleđuju `'intake'`.
 
 - [ ] **Step 7: Pusti postojeće testove dokumenta — dokaz da se ponašanje nije pomerilo**
 
@@ -262,22 +275,28 @@ git commit -m "refactor(api): one document pipeline, told which document it is s
 ⚠️ **Šema i fikstura u ISTOM komitu.** Novo polje na `IntakeOrderDetailSchema` je obavezno polje i obara svaki test detalja i štampe dok fikstura ne ponese vrednost.
 
 **Files:**
+- Create: `packages/shared/src/utils/intake-free-fields.ts`
+- Create: `packages/shared/src/utils/__tests__/intake-free-fields.test.ts`
+- Modify: `packages/shared/src/utils/index.ts` (re-export)
 - Modify: `packages/shared/src/schemas/intake-order.wire.schema.ts:293-302`
-- Modify: `apps/api/src/modules/intake-orders/intake-orders.service.ts:85` (`FREE_AFTER_SIGNING`)
+- Modify: `apps/api/src/modules/intake-orders/intake-orders.service.ts:85` (briše `FREE_AFTER_SIGNING`, zove novu funkciju)
 - Modify: `packages/intake-document/src/testing/index.ts` (fikstura detalja)
-- Test: `apps/api/src/modules/intake-orders/__tests__/` — nov `handover-freeze.test.ts`
+
+⚠️ Funkcija ide u `@mr/shared/utils`, **ne** u servis — ogledalo `intake-condition-recorded.ts`, po
+istom razlogu: jedna funkcija je ceo propis, a ekran u Zadatku 6 mora da čita isti propis i ne može
+da uvozi ništa iz `apps/api`.
 
 **Interfaces:**
-- Produces: na `IntakeOrderDetail` — `handoverSignedAt: string | null`, `handoverDocumentReady: boolean`, `handoverDocumentEmailedAt: string | null`; funkcija `freeFieldsFor(signedAt: Date | null, handoverSignedAt: Date | null): readonly string[]`
+- Produces: na `IntakeOrderDetail` — `handoverTechnicianSignature: string | null`, `handoverOwnerSignature: string | null`, `handoverSignedAt: string | null`, `handoverDocumentReady: boolean`, `handoverDocumentEmailedAt: string | null`; funkcija `freeFieldsFor(signedAt: Date | null, handoverSignedAt: Date | null): readonly string[] | null`
 
 - [ ] **Step 1: Napiši test koji pada — dva zamrzavanja**
 
-Nov `apps/api/src/modules/intake-orders/__tests__/handover-freeze.test.ts`:
+Nov `packages/shared/src/utils/__tests__/intake-free-fields.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest'
 
-import { freeFieldsFor } from '../intake-orders.service.js'
+import { freeFieldsFor } from '../intake-free-fields.js'
 
 const T = new Date('2026-08-15T10:00:00Z')
 
@@ -301,12 +320,13 @@ describe('what a signed order still allows', () => {
 
 - [ ] **Step 2: Pusti test, potvrdi da pada**
 
-Run: `pnpm --filter api exec vitest run src/modules/intake-orders/__tests__/handover-freeze.test.ts`
-Expected: FAIL — `freeFieldsFor is not a function`.
+Run: `pnpm --filter @mr/shared exec vitest run src/utils/__tests__/intake-free-fields.test.ts`
+Expected: FAIL — modul ne postoji.
 
 - [ ] **Step 3: Zameni listu funkcijom stanja**
 
-U `intake-orders.service.ts`, umesto `const FREE_AFTER_SIGNING = [...]`:
+Nov `packages/shared/src/utils/intake-free-fields.ts`; `intake-orders.service.ts` briše
+`FREE_AFTER_SIGNING` i zove ovu funkciju:
 
 ```ts
 /**
@@ -337,7 +357,7 @@ export function freeFieldsFor(
 
 - [ ] **Step 4: Pusti test, potvrdi da prolazi**
 
-Run: `pnpm --filter api exec vitest run src/modules/intake-orders/__tests__/handover-freeze.test.ts`
+Run: `pnpm --filter @mr/shared exec vitest run src/utils/__tests__/intake-free-fields.test.ts`
 Expected: PASS (3 testa).
 
 - [ ] **Step 5: Dopiši žicu**
@@ -507,9 +527,11 @@ Expected: FAIL — ruta 404.
 
 - [ ] **Step 3: `handOver()` u servisu**
 
-Redom: `loadVisible` → 409 ako `signedAt === null` → 409 ako `handoverSignedAt !== null` → `repo.handOver(id, input, actor.userId)` (piše dva potpisa, **`handover_technician_id = actor.userId`**, `handover_signed_at = now()`, `status = 'preuzeto'`, sve u jednom `UPDATE`) → audit `{ transition: 'handover' }` → `signalChanged()` → `produceDocumentInBackground(id, 'handover')`.
+Redom: `loadVisible` → 409 ako `signedAt === null` → 409 ako `handoverSignedAt !== null` → `repo.handOver(id, input, actor.id)` (piše dva potpisa, **`handover_technician_id = actor.id`**, `handover_signed_at = now()`, `status = 'preuzeto'`, sve u jednom `UPDATE`) → audit `{ transition: 'handover' }` → `signalChanged()` → `produceDocumentInBackground(id, 'handover')`.
 
-⚠️ `handover_technician_id` je **onaj ko poziva**, nikad vrednost iz tela zahteva — potpis pod tuđim imenom je tačno ono što dokument treba da onemogući.
+⚠️ `handover_technician_id` je **onaj ko poziva** (`IntakeOrdersActor.id`), nikad vrednost iz tela zahteva — potpis pod tuđim imenom je tačno ono što dokument treba da onemogući.
+
+⚠️ **Ovaj zadatak nosi i uopštavanje crtanja po vrsti dokumenta**, koje je Zadatak 2 namerno ostavio: `sealDocument` bira crtača i graditelja mejla po `kind`, kroz iscrpnu mapu (`Record<IntakeDocumentKind, …>`) koja tek sada ima obe stavke.
 
 Pečaćenje ide **posle** što je potpis činjenica i nikad kao deo njega: pad Chromiuma ne sme da poništi potpis koji je vlasnik već dao stojeći kraj auta.
 
