@@ -23,13 +23,15 @@ import { DOCUMENT_FONT_MONO, DOCUMENT_FONT_SANS } from './intake-print-styles.js
  *     outcome a sheet can produce on its own, and it is accepted: page one is the one that says what
  *     the document is, the rest are its list. The alternative is `headerTemplate`, which draws in
  *     the margin band and would need `PdfPageOptions` to carry it.
- *   · THERE IS NO PAGE NUMBER, and the sheet cannot add one — a document cannot count its own pages.
- *     Measured that `footerTemplate` fills the gap without touching this sheet: the same document
- *     rendered with `displayHeaderFooter: true` and a `pageNumber / totalPages` footer kept the very
- *     same content boxes (y 0 h 1032, y 1032 h 414) and grew by 5.1 KB — the footer draws inside the
- *     12mm bottom margin and pushes nothing. It needs three optional fields on `PdfPageOptions`,
- *     which `PdfRenderer` does not have today; whoever wires the handover PDF should add them,
- *     because without a page number a lost page is invisible.
+ *   · THERE IS NO PAGE NUMBER IN THIS SHEET, and there cannot be — a document cannot count its own
+ *     pages. Measured that `footerTemplate` fills the gap without touching it: the same document
+ *     rendered with a `pageNumber / totalPages` footer kept the very same content boxes (y 0 h 1032,
+ *     y 1032 h 414) and grew by 5.1 KB — the footer draws inside the 12mm bottom margin and pushes
+ *     nothing. That is now WIRED, and with ONE field, not three: `PdfPageOptions.footerTemplate`,
+ *     from which `headerFooterFor` derives Chromium's `displayHeaderFooter` and a deliberately blank
+ *     `headerTemplate` (its default header stamps a date and title across every page). The
+ *     three-field shape this comment used to ask for was tried and rejected — a document that can set
+ *     those flags itself can silently turn the numbering off. Do not reintroduce it.
  */
 export const INTAKE_HANDOVER_PAGE_CSS = '@page { size: A4; margin: 12mm 0 }'
 

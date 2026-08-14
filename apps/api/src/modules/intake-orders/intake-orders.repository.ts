@@ -207,8 +207,20 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
 }
 
 /**
- * Which six columns a document kind lives in. A map and not a branch per method: three methods
- * each carrying their own `if` is three places for the two kinds to drift apart.
+ * The four columns one document lives in. Named explicitly rather than `Record<string, …>`: with an
+ * open key set a typo compiles and only fails inside `findDocument`, at runtime, on the one path
+ * that decides which file leaves the company.
+ */
+interface DocumentColumns {
+  readonly storagePath: AnyPgColumn
+  readonly sha256: AnyPgColumn
+  readonly emailedAt: AnyPgColumn
+  readonly signedAt: AnyPgColumn
+}
+
+/**
+ * Which columns a document kind lives in. A map and not a branch per method: three methods each
+ * carrying their own `if` is three places for the two kinds to drift apart.
  */
 const DOCUMENT_COLUMNS = {
   intake: {
@@ -223,7 +235,7 @@ const DOCUMENT_COLUMNS = {
     emailedAt: intakeOrders.handoverDocumentEmailedAt,
     signedAt: intakeOrders.handoverSignedAt,
   },
-} as const satisfies Record<IntakeDocumentKind, Record<string, AnyPgColumn>>
+} as const satisfies Record<IntakeDocumentKind, DocumentColumns>
 
 export class IntakeOrdersRepository {
   constructor(private readonly db: ApiDatabase) {}

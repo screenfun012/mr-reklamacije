@@ -8,8 +8,11 @@
  * `contactPhone` survives both deliberately — it is the shop's working note, it is NEVER printed,
  * and the need to correct a wrong number does not end when the car leaves.
  *
- * `null` means no freeze at all. Takes the two dates rather than two booleans so a swapped argument
- * at the call site is a type error.
+ * `null` means no freeze at all.
+ *
+ * Read by BOTH sides: the service refuses a patch by it, and the Spec tab decides by it whether to
+ * draw its add and ✕ controls at all. That is the whole reason it lives in `@mr/shared` — an enabled
+ * field where the server would refuse is an offer the screen cannot keep.
  */
 export function freeFieldsFor(
   signedAt: Date | null,

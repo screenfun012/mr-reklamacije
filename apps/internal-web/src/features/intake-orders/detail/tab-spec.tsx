@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import type { IntakeOrderDetail } from '@mr/shared'
+import { freeFieldsFor, type IntakeOrderDetail } from '@mr/shared'
 import type { ReactElement } from 'react'
 
 import { IntakeSpecList } from '../wizard/intake-spec-list'
@@ -26,6 +26,20 @@ export function TabSpec({
 }): ReactElement {
   const update = useUpdateIntakeSpec(order.id)
 
+  /**
+   * The SAME rule the server refuses by, not a second derivation of it: `freeFieldsFor` is in
+   * `@mr/shared` precisely so both sides read one sentence. The handover signatures are the second
+   * freeze — after them only the contact number moves — and until this was wired the ✕ and the add
+   * line stayed live, sent their optimistic write, and the operator watched the line he had just
+   * typed disappear behind a generic failure toast.
+   */
+  const free = freeFieldsFor(
+    order.signedAt === null ? null : new Date(order.signedAt),
+    order.handoverSignedAt === null ? null : new Date(order.handoverSignedAt),
+  )
+  // `null` is no freeze at all — an intake still being filled in, where everything is open.
+  const specStillOpen = free === null || free.includes('services')
+
   /*
    * `isPending` is the serialisation, and it is load-bearing. Both cards share one mutation, and
    * each PATCH sends a WHOLE array computed from what was on screen when it left. Two overlapping
@@ -38,35 +52,43 @@ export function TabSpec({
    * The permission is the state where the server would refuse anyway (403) — an enabled field there
    * is an offer the screen cannot keep.
    */
-  const frozen = !canUpdate || update.isPending
+  const frozen = !canUpdate || update.isPending || !specStillOpen
 
   return (
     // Two equal cards side by side at every width, as the prototype has it (`:616-631`). No
     // viewport breakpoint: the shell's sidebar collapses, so one viewport gives this body three
     // different widths — the reason `tab-overview.tsx` breaks on the container instead.
-    <div className="flex gap-4">
-      <IntakeSpecList
-        title={m.intake_card_services()}
-        items={order.services}
-        placeholder={m.intake_service_add()}
-        removeLabel={m.intake_service_remove()}
-        // `mutateAsync`, not `mutate`: the list clears the typed line only once the change is
-        // accepted, and a refusal can only reach it through a promise that actually rejects.
-        onChange={async (services) => {
-          await update.mutateAsync({ services })
-        }}
-        disabled={frozen}
-      />
-      <IntakeSpecList
-        title={m.intake_card_materials()}
-        items={order.materials}
-        placeholder={m.intake_material_add()}
-        removeLabel={m.intake_material_remove()}
-        onChange={async (materials) => {
-          await update.mutateAsync({ materials })
-        }}
-        disabled={frozen}
-      />
+    <div className="flex flex-col gap-2.5">
+      {/* Controls that vanish without a word read as a broken screen — the same rule the wizard's
+          footer follows. This one sentence is the whole difference between "closed" and "gone". */}
+      {specStillOpen ? null : (
+        <p className="text-[13px] italic text-mri-text2">{m.intake_spec_frozen_handover()}</p>
+      )}
+
+      <div className="flex gap-4">
+        <IntakeSpecList
+          title={m.intake_card_services()}
+          items={order.services}
+          placeholder={m.intake_service_add()}
+          removeLabel={m.intake_service_remove()}
+          // `mutateAsync`, not `mutate`: the list clears the typed line only once the change is
+          // accepted, and a refusal can only reach it through a promise that actually rejects.
+          onChange={async (services) => {
+            await update.mutateAsync({ services })
+          }}
+          disabled={frozen}
+        />
+        <IntakeSpecList
+          title={m.intake_card_materials()}
+          items={order.materials}
+          placeholder={m.intake_material_add()}
+          removeLabel={m.intake_material_remove()}
+          onChange={async (materials) => {
+            await update.mutateAsync({ materials })
+          }}
+          disabled={frozen}
+        />
+      </div>
     </div>
   )
 }

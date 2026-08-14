@@ -190,6 +190,44 @@ describe('TabSpec', () => {
     expect(detailGetCount()).toBe(0)
   })
 
+  /**
+   * The SECOND freeze, read off `freeFieldsFor` — the same function the server refuses by. Until it
+   * was wired the controls stayed live after a signed handover: the optimistic line appeared, the
+   * server answered ValidationError, and the operator watched what he had just typed disappear
+   * behind the generic toast. And it says why, because controls that vanish in silence read as a
+   * broken screen.
+   */
+  it('closes both cards once the handover is signed, and says why', async () => {
+    stubFetch(() => Promise.resolve(json({})))
+
+    await renderDetailUi(
+      <SpecUnderRoute
+        order={intakeOrderDetailFixture({
+          services: ['Pranje'],
+          materials: ['Filter'],
+          handoverSignedAt: '2026-08-15T10:00:00.000Z',
+        })}
+      />,
+    )
+
+    expect(screen.getByText(m.intake_spec_frozen_handover())).toBeInTheDocument()
+    expect(serviceInput()).toBeDisabled()
+    for (const remove of removeButtons()) {
+      expect(remove).toBeDisabled()
+    }
+  })
+
+  it('leaves both cards open while only the intake is signed', async () => {
+    stubFetch(() => Promise.resolve(json({})))
+
+    await renderDetailUi(
+      <SpecUnderRoute order={intakeOrderDetailFixture({ services: ['Pranje'] })} />,
+    )
+
+    expect(screen.queryByText(m.intake_spec_frozen_handover())).not.toBeInTheDocument()
+    expect(serviceInput()).toBeEnabled()
+  })
+
   it('lets nothing be edited without the update permission', async () => {
     // A custom role with `intake_orders.view` and no `update` can open this tab. Every attempt would
     // 403 with only the generic toast to show for it — the same shape as the header's

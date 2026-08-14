@@ -1,3 +1,4 @@
+import { IntakeDamageType } from '@mr/shared'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
@@ -20,6 +21,38 @@ describe('the handover sheet', () => {
 
     expect(screen.getByText('Usluga 1')).toBeInTheDocument()
     expect(screen.getByText('Usluga 40')).toBeInTheDocument()
+  })
+
+  /**
+   * The defects come from `order.*`, deliberately, and NOT from the print model — whose copies are
+   * cut at `PRINT_MAX_DAMAGES` (12) and `PRINT_MAX_OTHER_DAMAGES` (3) for the one-page work order.
+   * Nothing pinned that, so a tidy-up to `model.damages` would drop defect 13 off the paper whose
+   * whole premise is that nothing is cut, and the suite would stay green.
+   */
+  it('prints every defect too, past the ceilings the one-page work order lives by', () => {
+    const damages = Array.from({ length: 15 }, (_, i) => ({
+      id: `d${i + 1}`,
+      type: IntakeDamageType.Scratch,
+      x: 10 + i,
+      y: 20 + i,
+      zone: `zona ${i + 1}`,
+    }))
+    const extraDamages = Array.from({ length: 5 }, (_, i) => `Dopisano ${i + 1}`)
+
+    render(
+      <IntakeHandoverSheet
+        order={{ ...intakeOrderDetailFixture(), damages, extraDamages }}
+        checklistItems={intakeChecklistCatalogFixture()}
+        locale="sr"
+        logoSrc="/x.png"
+      />,
+    )
+
+    // 13 is past the marker ceiling, 5 past the written-in one — the two the model would have cut.
+    expect(screen.getByText('zona 13')).toBeInTheDocument()
+    expect(screen.getByText('zona 15')).toBeInTheDocument()
+    expect(screen.getByText('Dopisano 4')).toBeInTheDocument()
+    expect(screen.getByText('Dopisano 5')).toBeInTheDocument()
   })
 
   it('says so when no work was recorded, rather than printing an empty block', () => {

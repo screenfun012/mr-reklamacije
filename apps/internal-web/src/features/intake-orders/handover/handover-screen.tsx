@@ -71,11 +71,18 @@ function HandoverClosed({ orderId, reason }: { orderId: string; reason: string }
 export function IntakeHandoverScreen({
   order,
   technicianName,
+  canHandOver,
   canSkip,
 }: {
   order: IntakeOrderDetail
   /** Whoever is standing at the car right now — never the order's serviser (the server agrees). */
   technicianName: string
+  /**
+   * `intake_orders.advance`. Its own prop rather than an assumption, because the way IN to this
+   * screen opens for either permission: a `change_status`-only actor gets here legitimately, and
+   * without this he would sign both pads and collect a 403 behind a generic toast.
+   */
+  canHandOver: boolean
   /** `intake_orders.change_status`. The server is the judge; this only keeps it off the screen. */
   canSkip: boolean
 }): ReactElement {
@@ -185,47 +192,59 @@ export function IntakeHandoverScreen({
         </>
       )}
 
-      <p className="max-w-[760px] text-sm leading-[1.6] text-mri-text2">
-        {m.intake_handover_statement()}
-      </p>
+      {/* No pads for someone the server would refuse: he reached this screen legitimately (the way
+          in opens for either permission), and two signature pads over a button that answers 403 are
+          the same broken promise as any other dead control. He can still read what the vehicle
+          arrived with, and still record the release below. */}
+      {canHandOver ? null : (
+        <p className="text-[13.5px] italic text-mri-text2">{m.intake_handover_not_yours()}</p>
+      )}
 
-      <div className="flex flex-col gap-[18px] lg:flex-row lg:items-start">
-        <IntakeSignaturePad
-          title={m.intake_handover_signature_technician()}
-          name={technicianName}
-          strokes={technicianStrokes}
-          onChange={setTechnicianStrokes}
-        />
-        <IntakeSignaturePad
-          title={m.intake_handover_signature_owner()}
-          name={order.ownerName}
-          strokes={ownerStrokes}
-          onChange={setOwnerStrokes}
-        />
-      </div>
+      {canHandOver ? (
+        <>
+          <p className="max-w-[760px] text-sm leading-[1.6] text-mri-text2">
+            {m.intake_handover_statement()}
+          </p>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <span
-          className={cn(
-            'font-mono text-[11.5px] tracking-[0.05em]',
-            missing.length === 0 ? 'text-mri-text2' : 'text-mri-warn',
-          )}
-        >
-          {missing.length === 0
-            ? m.intake_signature_ready()
-            : m.intake_hint_required({ fields: missing.join(', ') })}
-        </span>
+          <div className="flex flex-col gap-[18px] lg:flex-row lg:items-start">
+            <IntakeSignaturePad
+              title={m.intake_handover_signature_technician()}
+              name={technicianName}
+              strokes={technicianStrokes}
+              onChange={setTechnicianStrokes}
+            />
+            <IntakeSignaturePad
+              title={m.intake_handover_signature_owner()}
+              name={order.ownerName}
+              strokes={ownerStrokes}
+              onChange={setOwnerStrokes}
+            />
+          </div>
 
-        <InternalButton
-          type="button"
-          variant="green"
-          disabled={missing.length > 0 || handOver.isPending}
-          onClick={() => handOver.mutate()}
-          className="ml-auto h-[52px] w-auto px-8"
-        >
-          {m.intake_handover_action()}
-        </InternalButton>
-      </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={cn(
+                'font-mono text-[11.5px] tracking-[0.05em]',
+                missing.length === 0 ? 'text-mri-text2' : 'text-mri-warn',
+              )}
+            >
+              {missing.length === 0
+                ? m.intake_signature_ready()
+                : m.intake_hint_required({ fields: missing.join(', ') })}
+            </span>
+
+            <InternalButton
+              type="button"
+              variant="green"
+              disabled={missing.length > 0 || handOver.isPending}
+              onClick={() => handOver.mutate()}
+              className="ml-auto h-[52px] w-auto px-8"
+            >
+              {m.intake_handover_action()}
+            </InternalButton>
+          </div>
+        </>
+      ) : null}
 
       {/*
         Quiet, below the rule, and only for the office: this is the door for the owner who turned up

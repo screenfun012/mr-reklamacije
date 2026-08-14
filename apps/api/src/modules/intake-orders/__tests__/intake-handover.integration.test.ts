@@ -14,7 +14,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AppVariables } from '../../../app.js'
 import type { Container } from '../../../core/container.js'
-import { ConflictError, NotFoundError } from '../../../core/errors/domain-errors.js'
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '../../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../../core/http/actor-context.js'
 import { registerGlobalErrorHandler } from '../../../core/middleware/error-handler.js'
 import { ensureTestUser } from '../../../test-helpers/fixtures.js'
@@ -251,6 +255,43 @@ describe('handing the vehicle back', () => {
     )
   })
 
+  /**
+   * The SECOND freeze, which had no test at all: the first one (the intake signatures) is pinned
+   * three times over, and this one — the handover signatures closing the Specification — could be
+   * deleted from `update` without a single suite going red. It is the rule the Spec tab reads to
+   * decide whether to draw its controls, so a hole here is a hole on the screen too.
+   */
+  it('closes the specification with the second signature, and leaves the contact number open', async () => {
+    const id = await signedOrder()
+
+    // Alive BETWEEN the two signatures — the serviser has to be able to drop material he did not use.
+    const working = await service.update(
+      id,
+      { services: ['zamena kvačila'] },
+      office,
+      actorContext(office.id),
+    )
+    expect(working.services).toEqual(['zamena kvačila'])
+
+    await service.handOver(id, SIGNATURES, office, actorContext(office.id))
+
+    for (const patch of [{ services: ['dopisano posle'] }, { materials: ['dopisano posle'] }]) {
+      await expect(
+        service.update(id, patch, office, actorContext(office.id)),
+      ).rejects.toBeInstanceOf(ValidationError)
+    }
+
+    // The one field that survives both freezes: it is the shop's working note and is never printed,
+    // so correcting a wrong number does not end when the car leaves.
+    const phoned = await service.update(
+      id,
+      { contactPhone: '+381 60 999 8877' },
+      office,
+      actorContext(office.id),
+    )
+    expect(phoned.contactPhone).toBe('+381 60 999 8877')
+  })
+
   it('lets the office record a pickup with no signature, and makes no document for it', async () => {
     const id = await signedOrder()
 
@@ -302,6 +343,30 @@ describe('handing the vehicle back', () => {
       expect(response.status).toBe(200)
       expect(((await response.json()) as { status: string }).status).toBe(
         IntakeOrderStatus.PickedUp,
+      )
+    })
+
+    /**
+     * `?kind=` is the only default left in the document pipeline, and it selects which file leaves
+     * the company. Both halves of it are worth one line: no parameter means the work order, which is
+     * what this path meant before there were two documents, and a value that is neither is refused
+     * rather than folded into that default.
+     */
+    it('serves the work order when no kind is given, and refuses a kind it does not know', async () => {
+      const id = await signedOrder()
+      await service.produceDocument(id, 'intake')
+      const client = app(testUser([...OPERATOR_PERMISSIONS], office.id))
+
+      const bare = await client.request(`/api/intake-orders/${id}/document`)
+      expect(bare.status).toBe(200)
+      expect(bare.headers.get('content-disposition')).toContain('.pdf')
+      // The handover has not been signed, so asking for THAT one is a 404 — proof the parameter
+      // chooses the file rather than being ignored.
+      expect((await client.request(`/api/intake-orders/${id}/document?kind=handover`)).status).toBe(
+        404,
+      )
+      expect((await client.request(`/api/intake-orders/${id}/document?kind=nonsense`)).status).toBe(
+        400,
       )
     })
 

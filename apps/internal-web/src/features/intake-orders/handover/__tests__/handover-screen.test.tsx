@@ -56,7 +56,7 @@ describe('the handover screen', () => {
    */
   it('keeps the vehicle here until both signatures are in, and names the one that is missing', async () => {
     await renderDetailUi(
-      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canSkip />,
+      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canHandOver canSkip />,
     )
 
     expect(handOverButton()).toBeDisabled()
@@ -91,16 +91,43 @@ describe('the handover screen', () => {
 
   it('offers the escape only to whoever may change the status', async () => {
     const { unmount } = await renderDetailUi(
-      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canSkip={false} />,
+      <IntakeHandoverScreen
+        order={ORDER}
+        technicianName="Miloš Jovanović"
+        canHandOver
+        canSkip={false}
+      />,
     )
 
     expect(screen.queryByRole('button', { name: m.intake_handover_skip() })).toBeNull()
     unmount()
 
     await renderDetailUi(
-      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canSkip />,
+      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canHandOver canSkip />,
     )
 
+    expect(screen.queryByRole('button', { name: m.intake_handover_skip() })).not.toBeNull()
+  })
+
+  /**
+   * The door into this screen opens for EITHER permission, so a `change_status`-only actor arrives
+   * here legitimately — and the signed handover is not his. Two pads over a button the server
+   * answers 403 is the same broken promise as any other dead control; he gets the sentence and the
+   * escape that IS his.
+   */
+  it('shows no pads to someone who may only release the vehicle, and says so', async () => {
+    await renderDetailUi(
+      <IntakeHandoverScreen
+        order={ORDER}
+        technicianName="Miloš Jovanović"
+        canHandOver={false}
+        canSkip
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: m.intake_handover_action() })).toBeNull()
+    expect(document.querySelectorAll('svg[viewBox="0 0 460 200"]')).toHaveLength(0)
+    expect(screen.getByText(m.intake_handover_not_yours())).toBeDefined()
     expect(screen.queryByRole('button', { name: m.intake_handover_skip() })).not.toBeNull()
   })
 
@@ -111,7 +138,7 @@ describe('the handover screen', () => {
    */
   it('releases a vehicle without signatures only through a dialog that names the consequence', async () => {
     await renderDetailUi(
-      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canSkip />,
+      <IntakeHandoverScreen order={ORDER} technicianName="Miloš Jovanović" canHandOver canSkip />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: m.intake_handover_skip() }))

@@ -46,13 +46,17 @@ function IntakeHandoverPage(): ReactElement {
   const { authSession } = rootRoute.useRouteContext()
   // Whoever is standing at the car, which is why it is the session and not `order.technicianName`.
   const { userName } = useInternalAuthUser()
+  // Both, separately: the screen's two actions belong to two permissions, and the door opens for
+  // either — so each action has to know for itself whether the server would honour it.
+  const permissions = authSession?.user?.permissions ?? []
 
   return (
     <InternalPage>
       <IntakeHandoverScreen
         order={order}
         technicianName={userName}
-        canSkip={(authSession?.user?.permissions ?? []).includes('intake_orders.change_status')}
+        canHandOver={permissions.includes('intake_orders.advance')}
+        canSkip={permissions.includes('intake_orders.change_status')}
       />
     </InternalPage>
   )

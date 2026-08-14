@@ -544,7 +544,13 @@ export class IntakeOrdersService {
    * Made AFTER the signature is a fact and never as part of it: a failure here — Chromium gone, the
    * bucket unreachable — must not undo a signature the owner has already given, standing at his car.
    * So the caller starts it and walks away (`void`), and an order whose document failed simply has
-   * none, which is a true statement about it. The office runs it again.
+   * none, which is a true statement about it.
+   *
+   * ⚠ There is currently NO way to run it again. Both callers fire once, behind a signature that can
+   * only be given once, and nothing else reaches this method: no endpoint, no script, no preview. A
+   * failed seal therefore leaves the order signed and permanently paperless — for the intake sheet
+   * the office can at least still print from `/prijem/:id`, for the handover there is nothing. A
+   * retry is its own task and is logged as one; until it lands, do not read this method as recoverable.
    *
    * Idempotent by the column rather than by a lock: a produced document is never re-rendered,
    * because a second render is a different file with a different seal for the same signed paper.
@@ -807,7 +813,14 @@ export class IntakeOrdersService {
    *
    * The sealing runs AFTER the signature is a fact and never as part of it — same rule as the
    * intake's. Chromium falling over must not undo a signature the owner has already given standing
-   * beside his car; an order whose sheet failed simply has none, and the office runs it again.
+   * beside his car; an order whose sheet failed simply has none. ⚠ And it keeps none: nothing can
+   * re-run the sealing today (see `produceDocument`), and unlike the intake this paper cannot even
+   * be printed from the screen. The retry is a task of its own, not something this method already has.
+   *
+   * The status is deliberately NOT checked — only the signatures are. A `primljeno` order can go
+   * straight to `preuzeto` here, because an owner who changes his mind before the work starts is
+   * taking the same car back with the same two signatures. The ladder `advance` is emphatic about is
+   * the SHOP's progress; this is the vehicle leaving, and it can happen from any rung.
    */
   async handOver(
     id: string,
