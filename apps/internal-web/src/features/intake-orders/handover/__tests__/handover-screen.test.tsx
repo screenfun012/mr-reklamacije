@@ -50,7 +50,7 @@ describe('the handover screen', () => {
   })
 
   /**
-   * The rule the wizard's step 1 was fixed by on 15.08.: a dead button has to name the field that
+   * The rule the wizard's step 1 was fixed by on 14.08.: a dead button has to name the field that
    * is actually missing. Reciting "both signatures are required" at a serviser who has already
    * collected one is the same screen he stood in front of and could not read.
    */

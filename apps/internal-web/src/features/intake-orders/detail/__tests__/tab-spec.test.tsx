@@ -205,7 +205,7 @@ describe('TabSpec', () => {
         order={intakeOrderDetailFixture({
           services: ['Pranje'],
           materials: ['Filter'],
-          handoverSignedAt: '2026-08-15T10:00:00.000Z',
+          handoverSignedAt: '2026-08-14T10:00:00.000Z',
         })}
       />,
     )

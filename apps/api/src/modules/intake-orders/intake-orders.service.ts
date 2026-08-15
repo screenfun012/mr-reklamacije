@@ -546,7 +546,7 @@ export class IntakeOrdersService {
    * So the caller starts it and walks away (`void`), and an order whose document failed simply has
    * none, which is a true statement about it.
    *
-   * Recoverable since 2026-08-15, through `produceDocumentAgain`. It has to be: both callers fire
+   * Recoverable since 2026-08-14, through `produceDocumentAgain`. It has to be: both callers fire
    * once, behind a signature that can only be given once, so without a way back a failed seal left
    * the order signed and permanently paperless — and the owner's copy is what this module is for.
    *

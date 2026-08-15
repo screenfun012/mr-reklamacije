@@ -170,7 +170,7 @@ describe('the sealed intake document', () => {
   /**
    * The office's way back from a seal that failed.
    *
-   * Until 2026-08-15 there was none: `produceDocument` had two callers, both once-only and both
+   * Until 2026-08-14 there was none: `produceDocument` had two callers, both once-only and both
    * guarded, so a Chromium crash or an unreachable bucket left an order signed, handed over and
    * permanently without its paper — and the card said "being prepared" forever. The owner's copy is
    * the point of the whole module, so it needs a door.

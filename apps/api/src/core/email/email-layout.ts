@@ -9,7 +9,7 @@ const INK = '#17171a'
 const MUTED = '#54555b'
 const RULE = '#ed1c24'
 /**
- * Brand red, chosen by Nikola 2026-08-15 over the band's black. The brandbook keeps red off primary
+ * Brand red, chosen by Nikola 2026-08-14 over the band's black. The brandbook keeps red off primary
  * buttons INSIDE the apps; an email is not one of them, and a red call to action is what an inbox
  * expects.
  */

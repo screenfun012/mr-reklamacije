@@ -139,7 +139,7 @@ export function IntakeHandoverScreen({
   /**
    * Named, not recited. A footer reading "both signatures are required" at a serviser who has
    * already collected one is the dead-button-with-no-reason the wizard's step 1 was fixed for on
-   * 15.08. — a list of nouns, so no grammatical form depends on how many there are.
+   * 14.08. — a list of nouns, so no grammatical form depends on how many there are.
    */
   const missing = [
     ...(isSignatureFilled(technicianStrokes) ? [] : [m.intake_handover_missing_technician()]),

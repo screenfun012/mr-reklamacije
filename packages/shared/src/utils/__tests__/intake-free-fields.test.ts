@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { freeFieldsFor } from '../intake-free-fields.js'
 
-const T = new Date('2026-08-15T10:00:00Z')
+const T = new Date('2026-08-14T10:00:00Z')
 
 describe('what a signed order still allows', () => {
   it('allows everything before the intake is signed', () => {

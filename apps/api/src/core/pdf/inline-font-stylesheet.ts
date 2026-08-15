@@ -18,7 +18,7 @@ const require = createRequire(import.meta.url)
  * and hands `č ć ž š đ` to whatever the machine has, because they live in `latin-ext` and the file
  * embedded under that rule does not carry them. On a slim Debian container that is Liberation Sans:
  * not a hole in the paper, a different letterform, which is why the claim-report PDF carried exactly
- * that defect from the day it shipped until 2026-08-15 and nobody reported it.
+ * that defect from the day it shipped until 2026-08-14 and nobody reported it.
  *
  * ⚠ The family name comes from the stylesheet too — `@fontsource-variable/figtree` declares
  * `Figtree Variable`, not `Figtree`. Whatever asks for the font has to ask for THAT name.
