@@ -89,7 +89,14 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 # Full gate (what we run before every commit — all must exit 0)
 # ⚠️ ALWAYS --force the cacheable tasks before a PUSH: turbo's local cache
 # masked 3 CI failures on 2026-07-17 (stale api build/lint + shared test hits
-# while their inputs had errors). CI runs cache-less and caught them one by one.
+# while their inputs had errors).
+# ⚠️ **CI CACHES TOO** — the old line here said "CI runs cache-less", and the run
+# that went red on 2026-08-17 reported `Cached: 13 cached, 26 total`. So a green CI
+# does NOT mean every suite ran. `@mr/intake-document`'s timezone test landed on
+# 08-13 and would have failed on any UTC machine from that day; CI only executed it
+# four days later, when an unrelated `@mr/i18n` edit changed the package's cache key.
+# The local `--force` run above is what actually covers everything — treat it as the
+# gate, not CI.
 # ⚠️ Add `--concurrency=4` when `pnpm dev:all` is running (or on any busy machine).
 # At the default (= core count) turbo runs three Vite builds AND every test suite at once;
 # with the dev servers also on the CPU, timing-sensitive component tests starve. Measured
