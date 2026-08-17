@@ -757,8 +757,26 @@ prettier. Keeping them apart also avoids two hands in `globals.css` in the same 
 | **V-4b** ✅ | Photo endpoints (upload / serve / delete) under the intake permissions — never `/api/attachments`, since a serviser must not hold `attachments.view_internal` | **DONE** 2026-07-27 |
 | **V-4c** ✅ | Step 3 in the UI: tap-to-mark damage map, defect list, photo grid with tablet-side compression and the four upload states | **DONE** 2026-07-27, gate green, driven end to end in a browser. Built in three passes — **V-4c-0** fixed three bugs already shipped in V-4a/V-4b before putting a screen on top of them (see §3.6a), **V-4c-1** the map and the defect list, **V-4c-2** the photos. Not verified because it needs the real device: a network drop mid-upload (`wait` → `online` → resume) and a HEIC straight off an iPad |
 | **V-5** ✅ | Step 4 + signature pad (step 5) + save/sign incl. the offline finish rules | **DONE** 2026-07-27, gate green, driven end to end in a browser (create → damage + photo → services and materials → both signatures → finish). Three decisions taken with Nikola that session: the confirmation sentence prints its counts on their own line (`Nedostataka: 1 · Fotografija: 2`) because Serbian declines them and this repo cannot use ICU plurals; the step-4 note drops the prototype's „dok je nalog U radu" clause, which described a restriction the server deliberately does not enforce; and the two spec lists get no empty state, as the prototype has none and the input's own placeholder already instructs. ⚠ The signature pad has NO prototype reference — its pads are empty divs and it cannot sign — so the capture is ours: pointer strokes normalized into the 460×200 space of §4.1, serialized to one `M…L…` run per stroke. `photos_expected` is sent as arrived + outstanding INCLUDING failures; counting only what is still in flight would silence the indicator for exactly the photos most likely lost |
-| **V-6** | Detail with 4 tabs, status correction — its amend affordances and soft delete are RETIRED by H (§3.0.1) | |
-| **V-7** | Print (A4, one page, per-type drawing, 6-photo cap; the amended marker is RETIRED by H) | **needs "Obaveze kupaca" first** |
+| **V-6** ✅ | Detail with 4 tabs, status correction — its amend affordances and soft delete are RETIRED by H (§3.0.1) | **DONE** 2026-07-29, spec `specs/2026-07-29-intake-detail-v6-design.md` |
+| **V-7** ✅ | Print (A4, one page, per-type drawing, 6-photo cap; the amended marker is RETIRED by H) | **DONE** 2026-08-10, spec `specs/2026-08-10-intake-print-v7-design.md`. The blocker in the old note ("needs Obaveze kupaca first") was resolved in §3.5 — Nikola described the document he meant, and it is TWO sheets, the second containing the first |
+
+### After V-7 — the lettered parts
+
+The phases above were the build order the module was specified with. What followed came in
+conversation and was tracked by letter, so the letters are recorded here rather than left in chat.
+Each has its own spec under `docs/superpowers/specs/`; those specs, not this table, are the detail.
+
+| Part | What | Status |
+| --- | --- | --- |
+| Admin catalogs (G) | The intake lists (checklist, damage types, arrival modes) move out of code into admin-managed catalogs | ✅ 2026-08-11 |
+| Freeze after signing (H) | Signatures close the record; only `services`, `materials`, `contactPhone` stay open. The amend mode (V-6-2) is RETIRED — do not reintroduce it | ✅ 2026-08-11 |
+| Extra items (C) | The two `+` affordances: rows the serviser writes in himself, on the checklist and on the damage list | ✅ 2026-08-12 |
+| Owner identity | Person vs. company, and the document number that goes with each | ✅ 2026-08-12 |
+| Condition is required | An order cannot be signed until something is recorded about the vehicle's state | ✅ 2026-08-12 |
+| Document to the owner | The signed sheet becomes ONE sealed bilingual PDF, stored with its SHA-256 and emailed to the owner | ✅ 2026-08-14 |
+| Handover (F) | The vehicle goes back only through Primopredaja: a second freeze, a second document, and "released without signatures" as a recorded outcome rather than a hidden one | ✅ 2026-08-14 |
+| **Roles (D)** | Overlapping roles — intake vs. claims — composed from the admin panel | **DEFERRED by Nikola**, see `docs/03-permissions.md` §OPEN |
+| **Quote on the order (E)** | The serviser attaches a quote produced in another program; it is a file, never line items — prices stay out of this module (Nikola, 2026-08-17) | **NOT BUILT** — two questions still open: who sees it, and whether it precedes or follows the work |
 
 Then, separately: notifications → statistics → Excel.
 
