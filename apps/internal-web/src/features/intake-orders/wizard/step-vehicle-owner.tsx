@@ -103,7 +103,7 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
           <InternalFieldGroup id="intake-vehicle" label={m.intake_field_vehicle()} required>
             <InternalInput
               id="intake-vehicle"
-              placeholder="npr. BMW 320d F30"
+              placeholder={m.intake_field_vehicle_placeholder()}
               value={values.vehicle}
               onChange={(event) => onPatch({ vehicle: event.target.value })}
               className="h-12"
@@ -114,7 +114,7 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
           <InternalFieldGroup id="intake-vin" label={m.intake_field_vin()}>
             <InternalInput
               id="intake-vin"
-              placeholder="17 znakova"
+              placeholder={m.intake_field_vin_placeholder()}
               value={values.vin}
               onChange={(event) => onPatch({ vin: event.target.value })}
               className="h-12 font-mono uppercase"
@@ -162,7 +162,7 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
         <InternalFieldGroup id="intake-owner-name" label={m.intake_field_owner_name()} required>
           <InternalInput
             id="intake-owner-name"
-            placeholder="Ime vlasnika"
+            placeholder={m.intake_field_owner_name_placeholder()}
             value={values.ownerName}
             onChange={(event) => onPatch({ ownerName: event.target.value })}
             className="h-12"
@@ -227,7 +227,7 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
         <InternalFieldGroup id="intake-owner-address" label={m.intake_field_owner_address()}>
           <InternalInput
             id="intake-owner-address"
-            placeholder="Ulica i grad"
+            placeholder={m.intake_field_owner_address_placeholder()}
             value={values.ownerAddress}
             onChange={(event) => onPatch({ ownerAddress: event.target.value })}
             className="h-12"
@@ -253,7 +253,7 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
             value={values.ownerRemarks}
             onChange={(event) => onPatch({ ownerRemarks: event.target.value })}
             rows={4}
-            placeholder="Šta vlasnik prijavljuje…"
+            placeholder={m.intake_field_owner_remarks_placeholder()}
             className="mri-input min-h-[104px] rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-2.5 font-sans text-[13.5px] text-mri-text outline-none"
           />
         </InternalFieldGroup>
