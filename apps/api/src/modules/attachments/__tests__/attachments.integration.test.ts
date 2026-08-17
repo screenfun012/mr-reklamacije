@@ -123,6 +123,57 @@ describe('AttachmentsService integration', () => {
     expect(await container.storageService.exists(raw?.storagePath ?? '')).toBe(true)
   })
 
+  /**
+   * Publishing to the partner's portal is the one upload decision that leaves the firm, and until
+   * 2026-08-17 it was an unchecked form field: `attachments.change_visibility` sat in the
+   * permission catalog and nothing read it, so `attachments.upload` alone was enough.
+   */
+  it('refuses to mark a file client-visible without the permission that governs it', async () => {
+    const claimId = await createDomaceClaim(container)
+    const uploader = { id: TEST_USER_ID, permissions: ['attachments.upload', 'domace_claims.view'] }
+
+    await expect(
+      container.attachmentsService.upload(
+        {
+          claimKind: ClaimKind.Domace,
+          claimId,
+          visibility: AttachmentVisibility.ClientVisible,
+          files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
+        },
+        uploader,
+        auditContext,
+      ),
+    ).rejects.toThrow(ForbiddenError)
+
+    // Refused outright, not quietly downgraded: nothing was stored under either visibility.
+    const list = await container.attachmentsService.list(
+      { claimKind: ClaimKind.Domace, claimId },
+      { id: TEST_USER_ID, permissions: ['attachments.view_internal', 'domace_claims.view'] },
+    )
+    expect(list.items).toHaveLength(0)
+  })
+
+  it('accepts the same upload from someone who does hold it', async () => {
+    const claimId = await createDomaceClaim(container)
+
+    const result = await container.attachmentsService.upload(
+      {
+        claimKind: ClaimKind.Domace,
+        claimId,
+        visibility: AttachmentVisibility.ClientVisible,
+        files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
+      },
+      {
+        id: TEST_USER_ID,
+        permissions: ['attachments.upload', 'attachments.change_visibility', 'domace_claims.view'],
+      },
+      auditContext,
+    )
+
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0]?.visibility).toBe(AttachmentVisibility.ClientVisible)
+  })
+
   it('client scope sees claim PHOTOS regardless of visibility, but never documents', async () => {
     const claimId = await createDomaceClaim(container)
     const uploader = { id: TEST_USER_ID, permissions: ['attachments.upload', 'domace_claims.view'] }
@@ -381,7 +432,15 @@ describe('AttachmentsService integration', () => {
           visibility: AttachmentVisibility.ClientVisible,
           files: [{ fileName: 'engine.jpg', data: MINIMAL_JPEG }],
         },
-        { id: TEST_USER_ID, permissions: ['attachments.upload', 'emotive_claims.view'] },
+        {
+          id: TEST_USER_ID,
+          // `change_visibility` since 2026-08-17: marking a file client-visible is gated now.
+          permissions: [
+            'attachments.upload',
+            'attachments.change_visibility',
+            'emotive_claims.view',
+          ],
+        },
         auditContext,
       )
 
@@ -401,7 +460,8 @@ describe('AttachmentsService integration', () => {
   describe('client_content_updated_at bump on client-visible attachment changes (Phase 3 freshness)', () => {
     const uploader = {
       id: TEST_USER_ID,
-      permissions: ['attachments.upload', 'emotive_claims.view'],
+      // `change_visibility` since 2026-08-17 — this block uploads client-visible files on purpose.
+      permissions: ['attachments.upload', 'attachments.change_visibility', 'emotive_claims.view'],
     }
     const deleter = {
       id: TEST_USER_ID,
@@ -528,7 +588,8 @@ describe('AttachmentsService integration', () => {
   describe('section_updated_at.photos bump on client-visible attachment changes (Phase 3.1)', () => {
     const uploader = {
       id: TEST_USER_ID,
-      permissions: ['attachments.upload', 'emotive_claims.view'],
+      // `change_visibility` since 2026-08-17 — this block uploads client-visible files on purpose.
+      permissions: ['attachments.upload', 'attachments.change_visibility', 'emotive_claims.view'],
     }
     const deleter = {
       id: TEST_USER_ID,

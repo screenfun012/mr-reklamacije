@@ -27,6 +27,9 @@ import {
   testUser,
 } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
+import type { RedisCache } from '../../../infrastructure/cache/redis-cache.js'
+import { SummaryCache } from '../../../infrastructure/cache/summary-cache.js'
+import { StatisticsService } from '../statistics.service.js'
 import type { StatisticsActor } from '../statistics.types.js'
 
 const FULL_STATISTICS: StatisticsActor = {
@@ -37,6 +40,21 @@ const FULL_STATISTICS: StatisticsActor = {
 const EMOTIVE_ONLY: StatisticsActor = {
   id: TEST_USER_ID,
   permissions: ['statistics.view_emotive'],
+}
+
+/**
+ * The two above deliberately do NOT hold `statistics.view_financial` — it is what everything else
+ * in this suite reads with, and it proves the amounts stay withheld by default. Only the tests that
+ * are ABOUT the amounts use this one.
+ */
+const WITH_MONEY: StatisticsActor = {
+  id: TEST_USER_ID,
+  permissions: ['statistics.view_emotive', 'statistics.view_domace', 'statistics.view_financial'],
+}
+
+const EMOTIVE_ONLY_WITH_MONEY: StatisticsActor = {
+  id: TEST_USER_ID,
+  permissions: ['statistics.view_emotive', 'statistics.view_financial'],
 }
 
 const DOMACE_ONLY: StatisticsActor = {
@@ -766,7 +784,7 @@ describe('Statistics module integration', () => {
       await createDomaceBvClaim(manufacturerId, `STAT-AMT-NONE/${runId}`, null)
       await createEmotiveBvClaim(manufacturerId, `STAT-AMT-EMO/${runId}`)
 
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+      const summary = await container.statisticsService.getSummary(WITH_MONEY, {
         manufacturerId,
       })
 
@@ -777,11 +795,74 @@ describe('Statistics module integration', () => {
       const manufacturerId = await createIsolatedManufacturer('AMTSC')
       await createDomaceBvClaim(manufacturerId, `STAT-AMT-SCOPE/${runId}`, 1000)
 
-      const summary = await container.statisticsService.getSummary(EMOTIVE_ONLY, {
+      const summary = await container.statisticsService.getSummary(EMOTIVE_ONLY_WITH_MONEY, {
         manufacturerId,
       })
 
       expect(summary.domaceAmounts).toEqual({ totalAmount: 0, claimCount: 0 })
+    })
+
+    /**
+     * `statistics.view_financial` sat in the catalog since day one with nothing reading it, so
+     * every operator and viewer saw the amounts. Withheld as `null`, never as zeros: zero is a
+     * statement about the business ("no amounts were entered") and this is a statement about the
+     * reader.
+     */
+    it('withholds the amounts from a reader without the financial permission', async () => {
+      const manufacturerId = await createIsolatedManufacturer('AMTNO')
+      await createDomaceBvClaim(manufacturerId, `STAT-AMT-NOFIN/${runId}`, 1234.5)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.domaceAmounts).toBeNull()
+      // Everything he is allowed to see still arrives.
+      expect(summary.outcomes.distribution.total).toBeGreaterThan(0)
+    })
+
+    /**
+     * The guard that pins WHERE the withholding happens, and it needs a LIVE cache to mean
+     * anything: `SummaryCache.read` short-circuits to `compute()` whenever Redis is disabled, which
+     * it is for the rest of this suite — so the same test written against `container.statisticsService`
+     * passes whether the amounts are stripped before or after the cache. (Measured: it did.)
+     *
+     * With a cache actually enabled, the placement is the whole game. The summary is keyed by scope
+     * and filters and deliberately NOT per user, so stripping inside `compute()` would let whoever
+     * read first decide what the second reader sees — in either direction.
+     */
+    it('does not let a permitted reader warm the amounts into an unpermitted one', async () => {
+      const manufacturerId = await createIsolatedManufacturer('AMTCACHE')
+      await createDomaceBvClaim(manufacturerId, `STAT-AMT-CACHE/${runId}`, 777.25)
+
+      const entries = new Map<string, unknown>()
+      const liveCache = {
+        enabled: true,
+        get: async (key: string) => entries.get(key) ?? null,
+        set: async (key: string, value: unknown) => {
+          entries.set(key, value)
+        },
+        incr: async () => 1,
+        getNumber: async () => 1,
+      } as unknown as RedisCache
+
+      const cached = new StatisticsService(
+        container.statisticsRepository,
+        new SummaryCache(liveCache),
+      )
+
+      const warmed = await cached.getSummary(WITH_MONEY, { manufacturerId })
+      expect(warmed.domaceAmounts).toEqual({ totalAmount: 777.25, claimCount: 1 })
+      expect(entries.size).toBe(1)
+
+      const second = await cached.getSummary(FULL_STATISTICS, { manufacturerId })
+      expect(second.domaceAmounts).toBeNull()
+      // Served from the very entry the first read wrote — not recomputed around the problem.
+      expect(entries.size).toBe(1)
+
+      // And the reverse: a withheld read must not poison the permitted one either.
+      const third = await cached.getSummary(WITH_MONEY, { manufacturerId })
+      expect(third.domaceAmounts).toEqual({ totalAmount: 777.25, claimCount: 1 })
     })
 
     it('groups emotive claims by customer with outcome counts', async () => {

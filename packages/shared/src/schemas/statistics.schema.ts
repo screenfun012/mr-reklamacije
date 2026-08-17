@@ -182,7 +182,12 @@ export const StatisticsSummarySchema = z.object({
   outcomes: StatisticsOutcomesSchema,
   byEmployee: StatisticsByEmployeeSchema,
   byEngineType: StatisticsByEngineTypeSchema,
-  domaceAmounts: StatisticsDomaceAmountsSchema,
+  /**
+   * `null` for a reader without `statistics.view_financial` — the money is the one section of this
+   * summary that is withheld rather than shown empty. An empty section would read as "there are no
+   * amounts", which is a different and false statement.
+   */
+  domaceAmounts: StatisticsDomaceAmountsSchema.nullable(),
   byCustomer: StatisticsByCustomerSchema,
   byFaults: StatisticsByFaultsSchema,
 })

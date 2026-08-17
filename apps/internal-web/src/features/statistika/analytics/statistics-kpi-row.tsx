@@ -45,16 +45,25 @@ export function StatisticsKpiRow({ summary }: { summary: StatisticsSummary }): R
       dot: 'bg-mri-domace',
       valueClass: 'text-mri-text',
     },
-    {
-      label: m.statistika_kpi_domace_amount(),
-      value:
-        summary.domaceAmounts.claimCount > 0
-          ? formatEuroAmount(summary.domaceAmounts.totalAmount)
-          : '—',
-      border: 'border-mri-border',
-      dot: 'bg-mri-domace',
-      valueClass: 'text-mri-text',
-    },
+    /**
+     * Hidden, not dashed, for a reader without `statistics.view_financial`. A `—` in this cell is
+     * the app's way of saying "no amounts were entered"; showing it to someone who simply may not
+     * see them would state something false about the business.
+     */
+    ...(summary.domaceAmounts === null
+      ? []
+      : [
+          {
+            label: m.statistika_kpi_domace_amount(),
+            value:
+              summary.domaceAmounts.claimCount > 0
+                ? formatEuroAmount(summary.domaceAmounts.totalAmount)
+                : '—',
+            border: 'border-mri-border',
+            dot: 'bg-mri-domace',
+            valueClass: 'text-mri-text',
+          },
+        ]),
     {
       label: m.outcome_accepted(),
       value: String(distribution.accepted),

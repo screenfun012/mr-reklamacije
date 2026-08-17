@@ -232,6 +232,24 @@ export class AttachmentsService {
       throw new ForbiddenError()
     }
 
+    /**
+     * Marking a file client-visible is the one thing an upload decides that reaches OUTSIDE the
+     * firm — onto the partner's portal — and until 2026-08-17 it was decided by an unchecked form
+     * field. `attachments.change_visibility` existed in the catalog and **nothing ever read it**,
+     * so whoever could upload could publish.
+     *
+     * No screen breaks: internal-web sends `internal` on every upload
+     * (`claim-attachments-tab.tsx`), so this refuses a request none of our own clients makes.
+     * Refused rather than quietly downgraded — a file the caller believes is going to the client
+     * and silently is not would be the worse of the two failures.
+     */
+    if (
+      input.visibility === AttachmentVisibility.ClientVisible &&
+      !actor.permissions.includes('attachments.change_visibility')
+    ) {
+      throw new ForbiddenError()
+    }
+
     const claim = await this.claimContext.loadClaimContext(input.claimKind, input.claimId, actor)
 
     const stats = await this.repo.countActiveForClaim(input.claimKind, input.claimId)
