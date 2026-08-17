@@ -28,14 +28,14 @@ export function intakeIntlLocale(locale: Locale): string {
  * Hardcoded rather than configured: there is one shop, it is in Belgrade, and a time zone that can
  * be set wrong is worse than one that cannot be set at all.
  */
-const SHOP_TIME_ZONE = 'Europe/Belgrade'
+export const INTAKE_SHOP_TIME_ZONE = 'Europe/Belgrade'
 
 function timeOfDay(date: Date, intl: string): string {
   return new Intl.DateTimeFormat(intl, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-    timeZone: SHOP_TIME_ZONE,
+    timeZone: INTAKE_SHOP_TIME_ZONE,
   }).format(date)
 }
 
@@ -44,7 +44,7 @@ function fullDate(date: Date, intl: string): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    timeZone: SHOP_TIME_ZONE,
+    timeZone: INTAKE_SHOP_TIME_ZONE,
   }).format(date)
 }
 
@@ -56,4 +56,44 @@ export function formatIntakeReceivedAtLong(iso: string, locale: Locale): string 
   const date = new Date(iso)
   const intl = intakeIntlLocale(locale)
   return `${fullDate(date, intl)} · ${timeOfDay(date, intl)}`
+}
+
+/**
+ * `25.07 · 09:14` — the handoff's list format.
+ *
+ * It lived in `apps/internal-web/.../intake-status.ts` with its own copies of the two helpers above,
+ * and that is precisely how the time zone got fixed in one half and stayed broken in the other: the
+ * package was corrected, CI went green on the package, and the list kept printing the server's
+ * clock. `internal-format.ts` had already written down the intent — "every `Intl` call in
+ * internal-web goes through this module, so the two halves cannot be got right one at a time" — and
+ * the code had drifted from it. One module owns intake date formatting; internal-web re-exports.
+ */
+export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
+  const date = new Date(iso)
+  const intl = intakeIntlLocale(locale)
+  const day = new Intl.DateTimeFormat(intl, {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: INTAKE_SHOP_TIME_ZONE,
+  }).format(date)
+  return `${day} · ${timeOfDay(date, intl)}`
+}
+
+/**
+ * `25.07.2026. 09:14` in sr — a history row's stamp, space-joined as the prototype writes it
+ * (`prijem-prototip-v2.dc.html:995`), because the ` · ` the two formats above use would fight the
+ * `·` already sitting inside the status label beside it.
+ *
+ * The trailing dot after the year is CLDR's `dd.MM.y.` for `sr-Latn` and is KEPT deliberately: the
+ * list and the Pregled card have shipped with it since day one, and making one screen disagree with
+ * two live ones to match an ad-hoc string in the prototype is the worse trade.
+ */
+export function formatIntakeHistoryAt(iso: string, locale: Locale): string {
+  const date = new Date(iso)
+  return `${fullDate(date, intakeIntlLocale(locale))} ${timeOfDay(date, intakeIntlLocale(locale))}`
+}
+
+/** Date with no time — the plate-lookup banner naming when this car was last here. */
+export function formatIntakeDateOnly(iso: string, locale: Locale): string {
+  return fullDate(new Date(iso), intakeIntlLocale(locale))
 }

@@ -97,6 +97,11 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 # four days later, when an unrelated `@mr/i18n` edit changed the package's cache key.
 # The local `--force` run above is what actually covers everything — treat it as the
 # gate, not CI.
+# ⚠️ **Run the test pass once with `TZ=UTC`** — that is what CI and Railway both are, and
+# this machine is Europe/Belgrade. On 2026-08-17 four date formatters read the machine's
+# clock instead of the shop's; every one was correct here and wrong in production, where
+# the API prints the owner's work order. Three of the four were found only after CI had
+# already failed twice, because the first fix was verified in the wrong zone.
 # ⚠️ Add `--concurrency=4` when `pnpm dev:all` is running (or on any busy machine).
 # At the default (= core count) turbo runs three Vite builds AND every test suite at once;
 # with the dev servers also on the CPU, timing-sensitive component tests starve. Measured

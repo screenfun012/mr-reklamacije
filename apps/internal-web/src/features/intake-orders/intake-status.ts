@@ -1,8 +1,7 @@
-import { m, type Locale } from '@mr/i18n'
+import { m } from '@mr/i18n'
 import { IntakeOrderStatus } from '@mr/shared'
 
 import type { InternalPillTone } from '~/components/internal-pill'
-import { internalIntlLocale } from '~/lib/internal-format'
 
 /**
  * Status → pill tone. Verified against the handoff's palette: Primljeno blue, U radu amber,
@@ -38,44 +37,16 @@ export function nextIntakeStatus(current: IntakeOrderStatus): IntakeOrderStatus 
   return INTAKE_STATUS_ORDER[INTAKE_STATUS_ORDER.indexOf(current) + 1] ?? null
 }
 
-function timeOfDay(date: Date, intl: string): string {
-  return new Intl.DateTimeFormat(intl, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function fullDate(date: Date, intl: string): string {
-  return new Intl.DateTimeFormat(intl, {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date)
-}
-
-/** `25.07 · 09:14` — the handoff's list format, localized digits via Intl. */
-export function formatIntakeReceivedAt(iso: string, locale: Locale): string {
-  const date = new Date(iso)
-  const intl = internalIntlLocale(locale)
-  const day = new Intl.DateTimeFormat(intl, { day: '2-digit', month: '2-digit' }).format(date)
-  return `${day} · ${timeOfDay(date, intl)}`
-}
-
-/** The archival format lives with the document that prints it. */
-export { formatIntakeReceivedAtLong } from '@mr/intake-document'
-
 /**
- * `25.07.2026. 09:14` in sr — a history row's stamp, space-joined as the prototype writes it
- * (`prijem-prototip-v2.dc.html:995`), because the ` · ` the two formats above use would fight the
- * `·` already sitting inside the status label beside it.
+ * All three date formats live with the document that prints them.
  *
- * The trailing dot after the year is CLDR's `dd.MM.y.` for `sr-Latn` and is KEPT deliberately: the
- * list and the Pregled card have shipped with it since day one, and making one screen disagree with
- * two live ones to match an ad-hoc string in the prototype is the worse trade.
+ * They used to be defined here, over private copies of the same two `Intl` helpers the package had
+ * — and that duplication is exactly how the time zone came to be fixed in one half while the other
+ * kept printing the server's clock (2026-08-17). Re-exported so every caller here is untouched and
+ * there is one definition.
  */
-export function formatIntakeHistoryAt(iso: string, locale: Locale): string {
-  const date = new Date(iso)
-  const intl = internalIntlLocale(locale)
-  return `${fullDate(date, intl)} ${timeOfDay(date, intl)}`
-}
+export {
+  formatIntakeHistoryAt,
+  formatIntakeReceivedAt,
+  formatIntakeReceivedAtLong,
+} from '@mr/intake-document'

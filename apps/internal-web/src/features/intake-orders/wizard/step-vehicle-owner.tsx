@@ -1,4 +1,4 @@
-import { m } from '@mr/i18n'
+import { getLocale, m } from '@mr/i18n'
 import {
   IntakeOwnerType,
   intakeArrivalModeValues,
@@ -17,6 +17,7 @@ import {
   INTAKE_ARRIVAL_MODE_LABELS,
   INTAKE_OWNER_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
+  formatIntakeDateOnly,
 } from '@mr/intake-document'
 import { IntakeChoiceButtons } from './intake-choice-buttons'
 import { IntakePanel } from './intake-panel'
@@ -75,7 +76,7 @@ export function StepVehicleOwner({ values, onPatch }: StepVehicleOwnerProps): Re
             <span className="flex flex-wrap items-center gap-2">
               {m.intake_plate_seen_before({
                 number: match.orderNumber,
-                date: new Date(match.receivedAt).toLocaleDateString(),
+                date: formatIntakeDateOnly(match.receivedAt, getLocale()),
               })}
               <button
                 type="button"

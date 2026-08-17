@@ -7,7 +7,12 @@ import {
   INTAKE_DAMAGE_TYPE_LABELS,
   INTAKE_VEHICLE_TYPE_LABELS,
 } from '../intake-labels.js'
-import { formatIntakeReceivedAtLong } from '../intake-document-locale.js'
+import {
+  formatIntakeDateOnly,
+  formatIntakeHistoryAt,
+  formatIntakeReceivedAt,
+  formatIntakeReceivedAtLong,
+} from '../intake-document-locale.js'
 
 describe('intake labels', () => {
   it('gives every damage type a label', () => {
@@ -66,6 +71,27 @@ describe('intake labels', () => {
     "writes %s times in the shop's zone, whatever the machine is set to",
     (_season, iso, shape) => {
       expect(formatIntakeReceivedAtLong(iso, 'sr')).toBe(shape)
+    },
+  )
+
+  /**
+   * The other three formats, on the same midnight. They were fixed a commit later than the archival
+   * one for a reason worth pinning: they lived in internal-web over private copies of the same two
+   * `Intl` helpers, so correcting the package left them wrong and CI went green on the package
+   * while the list still printed the server's clock. Now one module owns all four, and all four are
+   * asserted here — a fifth format added without a zone fails beside them.
+   */
+  it.each([
+    // The trailing dots are CLDR's for `sr-Latn` and are what these formats have always printed —
+    // `en-GB` writes `26/07` without one. Asserted exactly, so a locale swap cannot pass unnoticed.
+    ['summer', '2026-07-25T22:30:00.000Z', '26.07. · 00:30', '26.07.2026. 00:30', '26.07.2026.'],
+    ['winter', '2026-01-15T23:30:00.000Z', '16.01. · 00:30', '16.01.2026. 00:30', '16.01.2026.'],
+  ])(
+    'carries the shop zone into the %s list, history and date-only formats',
+    (_season, iso, list, history, dateOnly) => {
+      expect(formatIntakeReceivedAt(iso, 'sr')).toBe(list)
+      expect(formatIntakeHistoryAt(iso, 'sr')).toBe(history)
+      expect(formatIntakeDateOnly(iso, 'sr')).toBe(dateOnly)
     },
   )
 })

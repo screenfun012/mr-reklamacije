@@ -9,11 +9,19 @@ import { renderDetailUi } from './render-detail.js'
 const ORDER_ID = '11111111-1111-4111-8111-111111111111'
 
 /**
- * Built from a LOCAL wall time and converted, not written as a UTC literal: a hard-coded
- * `T09:14:00.000Z` is the 27th in every zone west of UTC-9, so the expected date would be a lie on
- * a machine in Honolulu and the suite would go red for a reason that has nothing to do with the code.
+ * A FIXED instant, and the expectation is what Belgrade makes of it — the reverse of how this was
+ * written until 2026-08-17.
+ *
+ * It used to be built from a local wall time on purpose, because the formatter followed the
+ * machine's zone and a UTC literal would have made the suite red in Honolulu for no reason. That
+ * formatter was the bug: the API renders these same stamps on Railway in UTC, so it printed the
+ * server's clock onto the owner's document. Now the zone is pinned to the shop's, which makes the
+ * old technique the wrong one — a local wall time is a different instant on every machine, so it
+ * would be the thing that fails in Honolulu.
+ *
+ * 09:14 UTC is 11:14 in Belgrade in July. The expected string below is unchanged.
  */
-const STAMPED_AT = new Date(2026, 6, 28, 11, 14)
+const STAMPED_AT = new Date('2026-07-28T09:14:00.000Z')
 /** CLDR's `dd.MM.y.` for `sr-Latn` — the trailing dot is real and is kept on purpose. */
 const EXPECTED_STAMP = '28.07.2026. 11:14'
 
