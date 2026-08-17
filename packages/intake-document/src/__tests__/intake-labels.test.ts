@@ -49,4 +49,23 @@ describe('intake labels', () => {
       shape,
     )
   })
+
+  /**
+   * The two above only caught this because CI runs in UTC; on a laptop set to Belgrade they passed
+   * while the API — which renders the same sheet, on Railway, in UTC — printed the wrong hour.
+   *
+   * These two are the case that costs more than an hour: a car received just before midnight local
+   * time is ALREADY the next day in Belgrade while UTC is still on the previous one, so an
+   * unpinned formatter dates the owner's document a day early. Summer and winter both, so the fix
+   * has to be the zone and not a hardcoded +2 — Belgrade is +1 in January.
+   */
+  it.each([
+    ['summer', '2026-07-25T22:30:00.000Z', '26.07.2026. · 00:30'],
+    ['winter', '2026-01-15T23:30:00.000Z', '16.01.2026. · 00:30'],
+  ])(
+    "writes %s times in the shop's zone, whatever the machine is set to",
+    (_season, iso, shape) => {
+      expect(formatIntakeReceivedAtLong(iso, 'sr')).toBe(shape)
+    },
+  )
 })
