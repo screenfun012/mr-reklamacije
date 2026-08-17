@@ -149,7 +149,7 @@ export function IntakeHandoverScreen({
   const nothingRecorded = order.services.length === 0 && order.materials.length === 0
 
   return (
-    <div className="flex flex-col gap-[15px]">
+    <div className="@container flex flex-col gap-[15px]">
       <header className="min-w-0">
         <Link
           to="/prijem/$id"
@@ -186,9 +186,24 @@ export function IntakeHandoverScreen({
         380 px on the left is where the two costs meet: the damage map's `detail` variant is 152 px
         wide, so the list beside it keeps ~170 px — the width it already has on a phone today — and
         every pixel taken from here comes straight off the pad.
+
+        ⚠ CONTAINER queries, not `lg:`. A viewport breakpoint does not know about the sidebar, and
+        measuring proved what that costs: at 1180 px the office, which has one, has 861 px of room
+        and `lg:grid` split it anyway — the pads came out 192×83, technically above the fold and
+        far too small to sign on. The serviser, who has no sidebar, has 1116 px in the same window.
+        So the split is asked of the room that actually exists: below 1050 px the screen stays one
+        column with full-size pads and one scroll, which is what the office had before this change.
       */}
-      <div className="flex flex-col gap-[15px] lg:grid lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-[15px]">
+      <div className="flex flex-col gap-[15px] @[1050px]:grid @[1050px]:grid-cols-[minmax(0,380px)_minmax(0,1fr)] @[1050px]:items-start">
+        {/*
+          Its own container, and not decoration. `CardCondition` asks `@min-[860px]` whether it has
+          room for four checklist columns; on this screen there was no container at all before, so
+          the query never matched and it correctly stayed at two. Adding one at the root made the
+          card measure the WHOLE page instead of the column it sits in — it went to four columns
+          inside 380 px and broke "Vehicle registration" across a line mid-word. A component's
+          query has to be answered by the box it actually occupies.
+        */}
+        <div className="@container flex min-w-0 flex-col gap-[15px]">
           <h2 className={CAPTION}>{m.intake_handover_section_received()}</h2>
           {/* Both cards are reads of a signed order, so the walk-around happened by definition —
               this screen refuses to open on an unsigned intake a few lines above. */}
@@ -217,7 +232,7 @@ export function IntakeHandoverScreen({
         {/* Capped, or a 27" office monitor stretches the pads so tall that the button they enable
             lands below the fold — the same bug this split exists to remove, arriving from the
             other end. */}
-        <div className="flex min-w-0 flex-col gap-[15px] lg:max-w-[860px]">
+        <div className="flex min-w-0 flex-col gap-[15px] @[1050px]:max-w-[860px]">
           {/* No pads for someone the server would refuse: he reached this screen legitimately (the
               way in opens for either permission), and two signature pads over a button that answers
               403 are the same broken promise as any other dead control. He can still read what the
@@ -232,7 +247,10 @@ export function IntakeHandoverScreen({
                 {m.intake_handover_statement()}
               </p>
 
-              <div className="flex flex-col gap-[18px] lg:flex-row lg:items-start">
+              {/* Side by side from 720 px of ROOM — below the split's own threshold on purpose, so
+                  the office's single column keeps the two pads beside each other exactly as it did
+                  before, instead of stacking them into a page twice as long. */}
+              <div className="flex flex-col gap-[18px] @[720px]:flex-row @[720px]:items-start">
                 <IntakeSignaturePad
                   title={m.intake_handover_signature_technician()}
                   name={technicianName}
