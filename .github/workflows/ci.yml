@@ -87,5 +87,13 @@ jobs:
       - name: Test (unit)
         run: pnpm test
 
+      # The intake work order and the claim report are PDFs drawn by a real headless Chromium, so
+      # the integration suite launches one. Production already installs it the same way
+      # (`apps/api/Dockerfile`); CI never did, which is why those tests had never actually run here
+      # — the two earlier steps failed first and nothing reached them. Placed after the unit tests
+      # so a lint or typecheck failure does not pay for the download.
+      - name: Install Chromium for PDF rendering
+        run: pnpm --filter api exec playwright install --with-deps chromium
+
       - name: Test (integration)
         run: pnpm test:integration
