@@ -1,5 +1,9 @@
 # 07 — Translation (OpenAI)
 
+> ⚠ **NOT BUILT.** No `translation` module exists in the API. This is a design document.
+> Its two permissions (`translation.request`, `translation.manage_cache`) were retired from the
+> catalog on 2026-08-17 — nothing checked them. Building this feature adds them back.
+
 Translation is used exclusively for the client portal, so international clients
 (e.g. MRT POLSKA) can read Serbian-language fields like problem descriptions,
 observations, and notes in English.

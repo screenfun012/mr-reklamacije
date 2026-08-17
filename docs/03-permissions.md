@@ -6,7 +6,9 @@ Better-Auth answers "who are you"; our RBAC layer answers "what may you do".
 ## Core principles
 
 1. **Permissions are atomic and defined in code.** They never change at runtime.
-   Adding a new permission requires a code change and a migration (trivial).
+   The catalog in `@mr/shared` is the truth: `db:seed` inserts what is new and prunes what is
+   gone (with the role grants that held it), so no migration is involved. A permission that no
+   code checks fails `permission-enforcement.test.ts` — the catalog cannot run ahead of the app.
 2. **Roles are defined in the database.** Admin can create, edit, and delete custom roles.
 3. **A user has one or more roles.** Effective permissions = union of all role permissions.
 4. **System roles cannot be deleted or renamed.** They can be edited only to the extent
@@ -36,7 +38,6 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `emotive_claims.delete` | Soft-delete an EMOTIVE claim |
 | `emotive_claims.restore` | Restore a soft-deleted EMOTIVE claim |
 | `emotive_claims.change_outcome` | Change the outcome (pending/accepted/rejected/archived) |
-| `emotive_claims.unarchive` | Move a claim out of `archived` into `pending` (admin/senior only) |
 | `emotive_claims.publish` | Publish a claim to the client portal — Gate B, reveals the real (masked) outcome (operator, admin) |
 
 ### Module: `domace_claims` — DOMACE claims
@@ -50,18 +51,6 @@ Actions standardized across modules: `view`, `create`, `update`, `delete`, `rest
 | `domace_claims.delete` | Soft-delete |
 | `domace_claims.restore` | Restore soft-deleted |
 | `domace_claims.change_outcome` | Change the outcome (pending/accepted/rejected/archived) |
-| `domace_claims.unarchive` | Move a claim out of `archived` into `pending` (admin/senior only) |
-
-### Module: `observations` — claim observations / internal notes
-
-| Permission | Description |
-|---|---|
-| `observations.view_internal` | See internal observations on any claim |
-| `observations.create_internal` | Add internal observations |
-| `observations.create_client_visible` | Add observations visible to the client |
-| `observations.edit_own` | Edit own observations (within 10 min of creation) |
-| `observations.delete_own` | Delete own observations |
-| `observations.delete_any` | Delete anyone's observations |
 
 ### Module: `attachments`
 
@@ -152,12 +141,6 @@ Intake photos are served by the intake module under these permissions, **not** b
 | `export.workbook_partial` | Export partial workbook (by year, by market, by customer) |
 | `export.own_claims` | Export only the claims the user has visibility into (for client portal) |
 
-### Module: `import`
-
-| Permission | Description |
-|---|---|
-| `import.legacy_excel` | Run the one-time historical Excel ETL import |
-
 ### Module: `users`
 
 | Permission | Description |
@@ -168,7 +151,6 @@ Intake photos are served by the intake module under these permissions, **not** b
 | `users.deactivate` | Deactivate user (disables login but preserves history) |
 | `users.delete` | Soft-delete |
 | `users.reset_password` | Trigger password reset for another user |
-| `users.manage_2fa` | Enable/disable 2FA for other users |
 | `users.approve_registration` | Approve client registration requests |
 | `users.reject_registration` | Reject client registration requests |
 
@@ -205,13 +187,6 @@ Intake photos are served by the intake module under these permissions, **not** b
 | `audit.view` | Access audit log |
 | `audit.export` | Export audit log entries |
 
-### Module: `translation`
-
-| Permission | Description |
-|---|---|
-| `translation.request` | Trigger OpenAI translation of a text block |
-| `translation.manage_cache` | Clear translation cache |
-
 ---
 
 ## System roles (seeded, immutable code field)
@@ -236,11 +211,6 @@ domace_claims.view
 domace_claims.create
 domace_claims.update
 domace_claims.change_outcome
-observations.view_internal
-observations.create_internal
-observations.create_client_visible
-observations.edit_own
-observations.delete_own
 attachments.view_internal
 attachments.upload
 attachments.delete_own
@@ -268,7 +238,6 @@ export.workbook_full
 export.workbook_partial
 settings.engine_types.create
 settings.external_parties.create
-translation.request
 ```
 
 ### `viewer`
@@ -279,7 +248,6 @@ Permissions:
 ```
 emotive_claims.view
 domace_claims.view
-observations.view_internal
 attachments.view_internal
 claim_reports.view
 customers.view
@@ -319,15 +287,13 @@ Permissions:
 ```
 emotive_claims.view_own_customer
 domace_claims.view_own_customer
-observations.view_client_visible   (implicit via view_own_customer; we do NOT grant view_internal)
 attachments.view_client_visible    (implicit)
 export.own_claims
-translation.request
 ```
 
-**Important:** `client` role does NOT have `observations.view_internal` or
-`attachments.view_internal`. The repository layer filters those by `visibility = 'client_visible'`
-when the requesting user's effective permissions do not include the internal-view variant.
+**Important:** `client` role does NOT have `attachments.view_internal`. The repository layer
+filters attachments by `visibility = 'client_visible'` when the requesting user's effective
+permissions do not include the internal-view variant.
 
 ---
 

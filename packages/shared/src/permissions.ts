@@ -1,14 +1,20 @@
 /**
  * Permission catalog. Single source of truth for all authorization codes.
- * Must match docs/03-permissions.md exactly. Adding a new permission requires:
+ * Adding a new permission requires:
  *   1. Add to PERMISSIONS array below
  *   2. Add to relevant system role(s) if applicable
- *   3. Add database migration to seed into permissions table
- *   4. Update docs/03-permissions.md
+ *   3. Update docs/03-permissions.md
  *
- * Note: `observations.view_client_visible` and `attachments.view_client_visible`
- * appear in the system `client` role list in the doc; they extend the module tables
- * so client portal access is representable as typed Permission strings.
+ * ⚠ **A permission may not exist without code that checks it.** `permission-enforcement.test.ts`
+ * reads every source file in the repo and fails on any entry below that appears nowhere else — so
+ * the catalog cannot drift ahead of the app again. It did: on 2026-08-17, **32 of 97 entries were
+ * checked by nothing**, written years ahead of features that were never built. A switch that
+ * controls nothing is worse than a missing one, because unticking it looks like forbidding
+ * something.
+ *
+ * 13 were retired that day, `observations.*` among them — that module was replaced by Nalazi
+ * (findings, migration 0031) and its table has stood empty since. `db:seed` prunes the leftovers
+ * from the database (`seedPermissions`), so removing an entry here is the whole job.
  */
 
 export const PERMISSIONS = [
@@ -20,7 +26,6 @@ export const PERMISSIONS = [
   'emotive_claims.delete',
   'emotive_claims.restore',
   'emotive_claims.change_outcome',
-  'emotive_claims.unarchive',
   'emotive_claims.publish',
 
   // domace_claims
@@ -31,16 +36,6 @@ export const PERMISSIONS = [
   'domace_claims.delete',
   'domace_claims.restore',
   'domace_claims.change_outcome',
-  'domace_claims.unarchive',
-
-  // observations
-  'observations.view_internal',
-  'observations.create_internal',
-  'observations.create_client_visible',
-  'observations.edit_own',
-  'observations.delete_own',
-  'observations.delete_any',
-  'observations.view_client_visible',
 
   // attachments
   'attachments.view_internal',
@@ -107,9 +102,6 @@ export const PERMISSIONS = [
   'export.workbook_partial',
   'export.own_claims',
 
-  // import
-  'import.legacy_excel',
-
   // users
   'users.view',
   'users.create',
@@ -117,7 +109,6 @@ export const PERMISSIONS = [
   'users.deactivate',
   'users.delete',
   'users.reset_password',
-  'users.manage_2fa',
   'users.approve_registration',
   'users.reject_registration',
 
@@ -150,10 +141,6 @@ export const PERMISSIONS = [
   // audit
   'audit.view',
   'audit.export',
-
-  // translation
-  'translation.request',
-  'translation.manage_cache',
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
@@ -181,11 +168,6 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'domace_claims.update',
   'domace_claims.delete',
   'domace_claims.change_outcome',
-  'observations.view_internal',
-  'observations.create_internal',
-  'observations.create_client_visible',
-  'observations.edit_own',
-  'observations.delete_own',
   'attachments.view_internal',
   'attachments.upload',
   'attachments.delete_own',
@@ -219,13 +201,11 @@ export const OPERATOR_PERMISSIONS: readonly Permission[] = [
   'export.workbook_partial',
   'settings.engine_types.create',
   'settings.external_parties.create',
-  'translation.request',
 ] as const
 
 export const VIEWER_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view',
   'domace_claims.view',
-  'observations.view_internal',
   'attachments.view_internal',
   'claim_reports.view',
   'customers.view',
@@ -290,9 +270,7 @@ export const STATISTICS_VIEW_PERMISSIONS = [
 export const CLIENT_PERMISSIONS: readonly Permission[] = [
   'emotive_claims.view_own_customer',
   'domace_claims.view_own_customer',
-  'observations.view_client_visible',
   'attachments.view_client_visible',
   'client_submissions.create',
   'export.own_claims',
-  'translation.request',
 ] as const
