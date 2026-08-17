@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Network,
   ScrollText,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -114,5 +115,11 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_intake_checklist,
     to: '/settings/intake-checklist',
     icon: ClipboardCheck,
+  },
+  {
+    key: 'app-settings',
+    label: m.nav_app_settings,
+    to: '/settings/app',
+    icon: SlidersHorizontal,
   },
 ]

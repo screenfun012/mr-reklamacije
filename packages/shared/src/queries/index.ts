@@ -26,6 +26,7 @@ export { domaceClaimKeys } from './domace-claim-keys.js'
 export { domaceClaimDetailOptions } from './domace-claims.js'
 export { claimKeys } from './claim-keys.js'
 export { dashboardSummaryOptions, invalidateDashboardSummary } from './dashboard.js'
+export { appSettingsOptions, appSettingsQueryKey, patchAppSettings } from './app-settings.js'
 export {
   statisticsKeys,
   statisticsSummaryOptions,
