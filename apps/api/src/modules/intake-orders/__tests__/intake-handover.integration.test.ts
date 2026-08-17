@@ -28,6 +28,7 @@ import { createTestDbContext, type TestDbContext } from '../../../test-helpers/t
 import { registerIntakeOrdersRoutes } from '../index.js'
 import type { IntakeOrdersService } from '../intake-orders.service.js'
 import type { IntakeOrdersActor } from '../intake-orders.types.js'
+import { waitForSealedDocument } from './sealing-helpers.js'
 
 const OWNER_EMAIL = 'vlasnik@example.com'
 
@@ -109,6 +110,13 @@ describe('handing the vehicle back', () => {
       floor,
       actorContext(floor.id),
     )
+    /**
+     * Signing fires the work order's sealing into the background, and every test below then does
+     * its own work on top of that. Settling it HERE rather than in the one assertion that noticed
+     * is the point: on CI the render lost the race and "the intake's own document is untouched"
+     * read `null`, but the same race sat under all twelve callers.
+     */
+    await waitForSealedDocument(container.intakeOrdersRepository, created.id, 'intake')
     return created.id
   }
 
@@ -311,7 +319,18 @@ describe('handing the vehicle back', () => {
     // The empty column IS the record that nobody signed — there is no sheet to seal.
     expect(handed.handoverSignedAt).toBeNull()
     expect(handed.handoverDocumentReady).toBe(false)
-    expect(email.sent).toHaveLength(0)
+    /**
+     * No HANDOVER sheet left the building — named by its attachment, not by counting messages.
+     *
+     * This read `toHaveLength(0)` and passed only because the work order's own sealing had not
+     * finished yet: signing mails the owner his work order, so an empty outbox here was never the
+     * truth, just a slower race. Settling that seal in `signedOrder()` made the accident visible.
+     */
+    expect(
+      email.sent.filter((sent) =>
+        sent.attachments?.some((file) => file.fileName.endsWith('-primopredaja.pdf')),
+      ),
+    ).toHaveLength(0)
 
     const audit = await ctx.db
       .select()

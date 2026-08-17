@@ -18,6 +18,7 @@ import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { IntakeOrdersService } from '../intake-orders.service.js'
 import type { IntakeOrdersActor } from '../intake-orders.types.js'
+import { waitForSealedDocument } from './sealing-helpers.js'
 
 function actorContext(userId: string): HttpActorContext {
   return { actorUserId: userId, actorIp: '203.0.113.9', actorUserAgent: 'vitest-agent' }
@@ -90,21 +91,10 @@ describe('the sealed intake document', () => {
   }
 
   /** Waits for the background sealing, and gives up rather than hanging the suite. */
-  async function waitForDocument(
+  const waitForDocument = (
     id: string,
-  ): Promise<Awaited<ReturnType<typeof container.intakeOrdersRepository.findDocument>>> {
-    const deadline = Date.now() + 20_000
-    for (;;) {
-      const document = await container.intakeOrdersRepository.findDocument(id, 'intake')
-      if (document?.storagePath != null) {
-        return document
-      }
-      if (Date.now() > deadline) {
-        throw new Error(`the document for ${id} was never sealed`)
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50))
-    }
-  }
+  ): Promise<Awaited<ReturnType<typeof container.intakeOrdersRepository.findDocument>>> =>
+    waitForSealedDocument(container.intakeOrdersRepository, id, 'intake')
 
   it('seals the signed sheet, and the seal is of the bytes that were stored', async () => {
     const id = await signedOrder()
