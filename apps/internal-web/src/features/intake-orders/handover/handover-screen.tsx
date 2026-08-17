@@ -168,83 +168,111 @@ export function IntakeHandoverScreen({
         </p>
       </header>
 
-      <h2 className={CAPTION}>{m.intake_handover_section_received()}</h2>
-      {/* Both cards are reads of a signed order, so the walk-around happened by definition — this
-          screen refuses to open on an unsigned intake a few lines above. */}
-      <CardDamages order={order} damageRecorded />
-      <CardCondition order={order} />
+      {/*
+        Two columns from `lg` up, and the reason is measured rather than aesthetic. Stacked,
+        everything the owner reads — header, damages, checklist, both work lists, the statement —
+        comes to roughly 855 px before the pads begin, on a tablet 820 px tall. That is not a near
+        miss that tighter spacing recovers, and it gets worse with every extra damage: the pads are
+        pushed further down by the very orders that take longest to hand over.
 
-      {nothingRecorded ? (
-        /* ONE sentence for both lists, as the paper prints it: two headings over two voids read as
-           two different absences, and there is only one — nothing was recorded as done. */
-        <section className={cn(CARD, 'px-5 py-[18px]')}>
-          <h2 className={cn(CAPTION, 'mb-2')}>{m.intake_handover_section_services()}</h2>
-          <p className="text-[13.5px] italic text-mri-text2">{m.intake_handover_no_work()}</p>
-        </section>
-      ) : (
-        <>
-          {order.services.length === 0 ? null : (
-            <WorkList caption={m.intake_handover_section_services()} items={order.services} />
-          )}
-          {order.materials.length === 0 ? null : (
-            <WorkList caption={m.intake_handover_section_materials()} items={order.materials} />
-          )}
-        </>
-      )}
+        Side by side, the signing column starts at the top of the screen, so the pads are above the
+        fold no matter how long the left column grows. The cost is paid knowingly (Nikola,
+        2026-08-17): the pad keeps the 460:200 of the printed sheet — squash it and the signature
+        comes out stretched on paper — so a narrower column is a shorter pad. On the serviser's
+        1180 px tablet, which has no sidebar, the page is 1116 px wide and the drawing surface goes
+        from ~509×221 to ~311×135. Still finger-sized, and the alternative was a scroll before
+        every signature.
 
-      {/* No pads for someone the server would refuse: he reached this screen legitimately (the way
-          in opens for either permission), and two signature pads over a button that answers 403 are
-          the same broken promise as any other dead control. He can still read what the vehicle
-          arrived with, and still record the release below. */}
-      {canHandOver ? null : (
-        <p className="text-[13.5px] italic text-mri-text2">{m.intake_handover_not_yours()}</p>
-      )}
+        380 px on the left is where the two costs meet: the damage map's `detail` variant is 152 px
+        wide, so the list beside it keeps ~170 px — the width it already has on a phone today — and
+        every pixel taken from here comes straight off the pad.
+      */}
+      <div className="flex flex-col gap-[15px] lg:grid lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-[15px]">
+          <h2 className={CAPTION}>{m.intake_handover_section_received()}</h2>
+          {/* Both cards are reads of a signed order, so the walk-around happened by definition —
+              this screen refuses to open on an unsigned intake a few lines above. */}
+          <CardDamages order={order} damageRecorded />
+          <CardCondition order={order} />
 
-      {canHandOver ? (
-        <>
-          <p className="max-w-[760px] text-sm leading-[1.6] text-mri-text2">
-            {m.intake_handover_statement()}
-          </p>
-
-          <div className="flex flex-col gap-[18px] lg:flex-row lg:items-start">
-            <IntakeSignaturePad
-              title={m.intake_handover_signature_technician()}
-              name={technicianName}
-              strokes={technicianStrokes}
-              onChange={setTechnicianStrokes}
-            />
-            <IntakeSignaturePad
-              title={m.intake_handover_signature_owner()}
-              name={order.ownerName}
-              strokes={ownerStrokes}
-              onChange={setOwnerStrokes}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={cn(
-                'font-mono text-[11.5px] tracking-[0.05em]',
-                missing.length === 0 ? 'text-mri-text2' : 'text-mri-warn',
+          {nothingRecorded ? (
+            /* ONE sentence for both lists, as the paper prints it: two headings over two voids read
+               as two different absences, and there is only one — nothing was recorded as done. */
+            <section className={cn(CARD, 'px-5 py-[18px]')}>
+              <h2 className={cn(CAPTION, 'mb-2')}>{m.intake_handover_section_services()}</h2>
+              <p className="text-[13.5px] italic text-mri-text2">{m.intake_handover_no_work()}</p>
+            </section>
+          ) : (
+            <>
+              {order.services.length === 0 ? null : (
+                <WorkList caption={m.intake_handover_section_services()} items={order.services} />
               )}
-            >
-              {missing.length === 0
-                ? m.intake_signature_ready()
-                : m.intake_hint_required({ fields: missing.join(', ') })}
-            </span>
+              {order.materials.length === 0 ? null : (
+                <WorkList caption={m.intake_handover_section_materials()} items={order.materials} />
+              )}
+            </>
+          )}
+        </div>
 
-            <InternalButton
-              type="button"
-              variant="green"
-              disabled={missing.length > 0 || handOver.isPending}
-              onClick={() => handOver.mutate()}
-              className="ml-auto h-[52px] w-auto px-8"
-            >
-              {m.intake_handover_action()}
-            </InternalButton>
-          </div>
-        </>
-      ) : null}
+        {/* Capped, or a 27" office monitor stretches the pads so tall that the button they enable
+            lands below the fold — the same bug this split exists to remove, arriving from the
+            other end. */}
+        <div className="flex min-w-0 flex-col gap-[15px] lg:max-w-[860px]">
+          {/* No pads for someone the server would refuse: he reached this screen legitimately (the
+              way in opens for either permission), and two signature pads over a button that answers
+              403 are the same broken promise as any other dead control. He can still read what the
+              vehicle arrived with, and still record the release below. */}
+          {canHandOver ? null : (
+            <p className="text-[13.5px] italic text-mri-text2">{m.intake_handover_not_yours()}</p>
+          )}
+
+          {canHandOver ? (
+            <>
+              <p className="max-w-[760px] text-sm leading-[1.6] text-mri-text2">
+                {m.intake_handover_statement()}
+              </p>
+
+              <div className="flex flex-col gap-[18px] lg:flex-row lg:items-start">
+                <IntakeSignaturePad
+                  title={m.intake_handover_signature_technician()}
+                  name={technicianName}
+                  strokes={technicianStrokes}
+                  onChange={setTechnicianStrokes}
+                />
+                <IntakeSignaturePad
+                  title={m.intake_handover_signature_owner()}
+                  name={order.ownerName}
+                  strokes={ownerStrokes}
+                  onChange={setOwnerStrokes}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className={cn(
+                    'font-mono text-[11.5px] tracking-[0.05em]',
+                    missing.length === 0 ? 'text-mri-text2' : 'text-mri-warn',
+                  )}
+                >
+                  {missing.length === 0
+                    ? m.intake_signature_ready()
+                    : m.intake_hint_required({ fields: missing.join(', ') })}
+                </span>
+
+                <InternalButton
+                  type="button"
+                  variant="green"
+                  disabled={missing.length > 0 || handOver.isPending}
+                  onClick={() => handOver.mutate()}
+                  className="ml-auto h-[52px] w-auto px-8"
+                >
+                  {m.intake_handover_action()}
+                </InternalButton>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
 
       {/*
         Quiet, below the rule, and only for the office: this is the door for the owner who turned up
