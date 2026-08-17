@@ -31,6 +31,7 @@ import {
   type AttachmentUploadFileInput,
 } from '../../core/attachments/attachment-upload-pipeline.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
+import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
 import type { PdfRenderer } from '../../core/pdf/pdf-renderer.js'
 import {
   buildIntakeAttachmentStoragePath,
@@ -86,7 +87,7 @@ const DOCUMENT_MIME_TYPE = 'application/pdf'
 interface IntakeDocumentFlavour {
   readonly render: (renderer: PdfRenderer, input: IntakeDocumentInput) => Promise<Buffer>
   readonly subject: (orderNumber: string) => string
-  readonly html: (orderNumber: string) => string
+  readonly html: (orderNumber: string, supportPhone: string) => string
   /**
    * Deliberately per kind. Both papers carry the same order number, so one naming rule would have
    * the second download quietly overwrite the first in the owner's folder.
@@ -179,6 +180,7 @@ export class IntakeOrdersService {
     private readonly checklistCatalog: IntakeChecklistCatalogPort,
     private readonly pdfRenderer: PdfRenderer,
     private readonly email: EmailPort,
+    private readonly appSettings: AppSettingsReader,
     private readonly logger: Logger,
   ) {}
 
@@ -650,11 +652,12 @@ export class IntakeOrdersService {
   ): Promise<void> {
     const content = await this.storage.read(document.storagePath)
     const flavour = DOCUMENT_FLAVOURS[kind]
+    const { supportPhone } = await this.appSettings.resolveAll()
 
     await this.email.send({
       to: document.ownerEmail,
       subject: flavour.subject(document.orderNumber),
-      html: flavour.html(document.orderNumber),
+      html: flavour.html(document.orderNumber, supportPhone),
       attachments: [
         {
           fileName: flavour.fileName(document.orderNumber),

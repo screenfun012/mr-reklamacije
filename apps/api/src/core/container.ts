@@ -20,6 +20,7 @@ import { AuditLogRepository, AuditLogService, AuditService } from '../modules/au
 import { NotificationsRepository, NotificationsService } from '../modules/notifications/index.js'
 import { IntakeOrdersRepository, IntakeOrdersService } from '../modules/intake-orders/index.js'
 import { ClaimPresenceStore, PresenceService } from '../modules/presence/index.js'
+import { AppSettingsRepository, AppSettingsService } from '../modules/app-settings/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
@@ -114,6 +115,8 @@ export interface Container {
   emailPort: EmailPort
   activationRepository: ActivationRepository
   activationService: ActivationService
+  appSettingsRepository: AppSettingsRepository
+  appSettingsService: AppSettingsService
   claimSourcesRepository: ClaimSourcesRepository
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
@@ -239,11 +242,16 @@ export function buildContainer(
 
   const activationRepository = new ActivationRepository(db)
   const portalBaseUrl = env.CLIENT_SIGNUP_ORIGINS[0] ?? 'http://localhost:3003'
+  // One reader for every consumer: the settings it resolves are global, and two instances would
+  // only mean two identical queries.
+  const appSettingsReader = new DbAppSettingsReader(db)
+
   const activationService = new ActivationService(
     activationRepository,
     emailPort,
     auth,
     portalBaseUrl,
+    appSettingsReader,
     logger,
   )
 
@@ -258,6 +266,9 @@ export function buildContainer(
   )
 
   const registrationService = new RegistrationService(db, auth)
+
+  const appSettingsRepository = new AppSettingsRepository(db)
+  const appSettingsService = new AppSettingsService(appSettingsRepository, auditService)
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
   const claimSourcesService = new ClaimSourcesService(
@@ -289,7 +300,7 @@ export function buildContainer(
     auditService,
     eventBus,
     emailPort,
-    new DbAppSettingsReader(db),
+    appSettingsReader,
     portalBaseUrl,
     logger,
     notificationsService,
@@ -305,7 +316,7 @@ export function buildContainer(
     emailPort,
     eventBus,
     auditService,
-    new DbAppSettingsReader(db),
+    appSettingsReader,
     logger,
     internalBaseUrl,
     notificationsService,
@@ -331,7 +342,11 @@ export function buildContainer(
   const summaryCache = new SummaryCache(cache)
 
   const dashboardRepository = new DashboardRepository(db)
-  const dashboardService = new DashboardService(dashboardRepository, summaryCache)
+  const dashboardService = new DashboardService(
+    dashboardRepository,
+    summaryCache,
+    appSettingsReader,
+  )
 
   const statisticsRepository = new StatisticsRepository(db)
   const statisticsService = new StatisticsService(statisticsRepository, summaryCache)
@@ -355,6 +370,7 @@ export function buildContainer(
     pdfRenderer,
     // The sealed sheet goes to the owner as an attachment; disabled email simply skips the send.
     emailPort,
+    appSettingsReader,
     logger,
   )
   const attachmentsRepository = new AttachmentsRepository(db)
@@ -427,6 +443,8 @@ export function buildContainer(
     activationRepository,
     activationService,
     claimSourcesRepository,
+    appSettingsRepository,
+    appSettingsService,
     claimSourcesService,
     departmentsRepository,
     departmentsService,

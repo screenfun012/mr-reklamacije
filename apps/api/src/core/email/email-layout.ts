@@ -1,5 +1,3 @@
-import { PORTAL_SUPPORT_PHONE } from '@mr/shared'
-
 /** Where the emblem is served from. Email clients fetch it; nothing else in an email may be linked. */
 const EMBLEM_URL = 'https://mrclaims.live/portal/logo-white.png'
 
@@ -68,6 +66,12 @@ export interface EmailDocumentParams {
   readonly bodyHtml: string
   /** Shown in the footer beside the phone, when the recipient has an inbox that answers them. */
   readonly contactEmail?: string
+  /**
+   * The shop's number, from `app_settings` — passed in rather than imported, because the frame
+   * lives in `core/` and may not read the database, and a footer that quietly kept the compiled
+   * default would disagree with the same number on the portal the moment it was changed.
+   */
+  readonly supportPhone: string
 }
 
 /**
@@ -79,11 +83,11 @@ export interface EmailDocumentParams {
  * horizontal scrolling.
  */
 export function renderEmailDocument(params: EmailDocumentParams): string {
-  const { lang, preheader, bodyHtml, contactEmail } = params
+  const { lang, preheader, bodyHtml, contactEmail, supportPhone } = params
   const contact =
     contactEmail === undefined
-      ? escapeHtml(PORTAL_SUPPORT_PHONE)
-      : `${escapeHtml(PORTAL_SUPPORT_PHONE)} &nbsp;·&nbsp; <a href="mailto:${escapeHtml(contactEmail)}" style="color:${MUTED};">${escapeHtml(contactEmail)}</a>`
+      ? escapeHtml(supportPhone)
+      : `${escapeHtml(supportPhone)} &nbsp;·&nbsp; <a href="mailto:${escapeHtml(contactEmail)}" style="color:${MUTED};">${escapeHtml(contactEmail)}</a>`
 
   return `<!doctype html>
 <html lang="${escapeHtml(lang)}">

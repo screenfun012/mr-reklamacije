@@ -61,10 +61,6 @@ function notificationContext(claim: EmotiveClaimDetail): ClaimNotificationContex
   }
 }
 
-// Admin hook (docs/13): setting the value to the string 'false' turns the
-// client outcome-change email off; anything else (including unset) leaves it on.
-const NOTIFY_CLIENT_SETTING_KEY = 'emotive_claims.notify_client_on_outcome'
-
 export class EmotiveClaimsService {
   constructor(
     private readonly repo: EmotiveClaimsRepository,
@@ -411,8 +407,8 @@ export class EmotiveClaimsService {
       return
     }
 
-    const toggle = await this.appSettings.getString(NOTIFY_CLIENT_SETTING_KEY)
-    if (toggle === 'false') {
+    const settings = await this.appSettings.resolveAll()
+    if (!settings.notifyClientOnOutcome) {
       return
     }
 
@@ -428,6 +424,8 @@ export class EmotiveClaimsService {
             mrNumber: claim.mrNumber,
             url: this.portalBaseUrl,
             locale: recipient.preferredLanguage,
+            supportPhone: settings.supportPhone,
+            supportEmail: settings.supportEmail,
           }),
         })
       } catch (error) {

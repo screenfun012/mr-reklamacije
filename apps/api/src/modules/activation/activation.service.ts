@@ -7,6 +7,7 @@ import type {
   ClientActivationPort,
 } from '../../core/ports/client-activation-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
+import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
 import { activationEmailSubject, renderActivationEmailHtml } from './activation.email.js'
 import type { ActivationRepository } from './activation.repository.js'
 import type { ActivationCompleteInput } from './activation.validators.js'
@@ -17,6 +18,7 @@ export class ActivationService implements ClientActivationPort {
     private readonly email: EmailPort,
     private readonly auth: Auth,
     private readonly portalBaseUrl: string,
+    private readonly appSettings: AppSettingsReader,
     private readonly logger: Logger,
   ) {}
 
@@ -33,11 +35,18 @@ export class ActivationService implements ClientActivationPort {
       const rawToken = await this.repo.mint(user.id)
       const url = `${this.portalBaseUrl}/activate?token=${encodeURIComponent(rawToken)}`
       const locale = user.preferredLanguage
+      const settings = await this.appSettings.resolveAll()
 
       await this.email.send({
         to: user.email,
         subject: activationEmailSubject(locale),
-        html: renderActivationEmailHtml({ name: user.name, url, locale }),
+        html: renderActivationEmailHtml({
+          name: user.name,
+          url,
+          locale,
+          supportPhone: settings.supportPhone,
+          supportEmail: settings.supportEmail,
+        }),
       })
 
       return true

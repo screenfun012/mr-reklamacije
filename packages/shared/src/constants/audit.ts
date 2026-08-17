@@ -16,6 +16,7 @@ export const AUDIT_ENTITY_TYPES = [
   'engine_manufacturer',
   'external_party',
   'excel_workbook',
+  'app_settings',
 ] as const
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]

@@ -1,27 +1,55 @@
 import { schema } from '@mr/db'
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { AppSettingKey, findAppSettingDefinition, parseAppSettingBoolean } from '@mr/shared'
+import { isNotNull } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../database.js'
 
 /**
- * Read-only access to admin key-value settings (`app_settings`). Values are stored as
- * serialized text; a NULL value means the setting was cleared without deleting the row.
+ * Every admin-configurable setting, already resolved: an override from `app_settings` when there is
+ * one, the registry default otherwise. Callers get a value, never a decision — before this, each
+ * one re-implemented its own `?? DEFAULT` and its own idea of what `'false'` meant.
  */
+export interface ResolvedAppSettings {
+  readonly notifyClientOnOutcome: boolean
+  readonly clientSubmissionsNotifyEmail: string
+  readonly supportPhone: string
+  readonly supportEmail: string
+}
+
 export interface AppSettingsReader {
-  /** The raw string value for `key`, or null when unset/cleared. */
-  getString(key: string): Promise<string | null>
+  resolveAll(): Promise<ResolvedAppSettings>
+}
+
+function defaultOf(key: AppSettingKey): string {
+  const definition = findAppSettingDefinition(key)
+  if (definition === null) {
+    throw new Error(`No app setting definition for ${key}`)
+  }
+  return definition.defaultValue
 }
 
 export class DbAppSettingsReader implements AppSettingsReader {
   constructor(private readonly db: ApiDatabase) {}
 
-  async getString(key: string): Promise<string | null> {
-    const [row] = await this.db
-      .select({ value: schema.appSettings.value })
+  /**
+   * One query for all of them: there are a handful of rows, and an email send needs two of them.
+   * A NULL value means the setting was cleared without deleting the row — same as absent.
+   */
+  async resolveAll(): Promise<ResolvedAppSettings> {
+    const rows = await this.db
+      .select({ key: schema.appSettings.key, value: schema.appSettings.value })
       .from(schema.appSettings)
-      .where(and(eq(schema.appSettings.key, key), isNotNull(schema.appSettings.value)))
-      .limit(1)
+      .where(isNotNull(schema.appSettings.value))
 
-    return row?.value ?? null
+    const stored = new Map(rows.map((row) => [row.key, row.value]))
+    const raw = (key: AppSettingKey): string | null => stored.get(key) ?? null
+    const resolved = (key: AppSettingKey): string => raw(key) ?? defaultOf(key)
+
+    return {
+      notifyClientOnOutcome: parseAppSettingBoolean(raw(AppSettingKey.NotifyClientOnOutcome), true),
+      clientSubmissionsNotifyEmail: resolved(AppSettingKey.ClientSubmissionsNotifyEmail),
+      supportPhone: resolved(AppSettingKey.SupportPhone),
+      supportEmail: resolved(AppSettingKey.SupportEmail),
+    }
   }
 }

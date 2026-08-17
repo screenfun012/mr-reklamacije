@@ -1,6 +1,5 @@
 import { m } from '@mr/i18n'
 import type { Locale } from '@mr/i18n'
-import { PORTAL_SUPPORT_EMAIL } from '@mr/shared'
 
 import {
   emailButton,
@@ -18,14 +17,17 @@ export function renderActivationEmailHtml(params: {
   name: string
   url: string
   locale: Locale
+  supportPhone: string
+  supportEmail: string
 }): string {
-  const { name, url, locale } = params
+  const { name, url, locale, supportPhone, supportEmail } = params
   const safeName = escapeHtml(name)
 
   return renderEmailDocument({
     lang: locale,
     preheader: m.email_activation_subject({}, { locale }),
-    contactEmail: PORTAL_SUPPORT_EMAIL,
+    contactEmail: supportEmail,
+    supportPhone,
     bodyHtml: [
       emailParagraph(m.email_activation_greeting({ name: safeName }, { locale })),
       emailParagraph(m.email_activation_body({}, { locale })),

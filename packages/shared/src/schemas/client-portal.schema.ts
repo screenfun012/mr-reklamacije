@@ -33,6 +33,17 @@ export const ClientPortalStatsSchema = z.object({
 
 export type ClientPortalStats = z.infer<typeof ClientPortalStatsSchema>
 
+/**
+ * Who the client calls. Resolved on the server from `app_settings`, because the portal bundle would
+ * otherwise keep whatever was compiled into it while the same number in every email had changed.
+ */
+export const ClientPortalSupportSchema = z.object({
+  phone: z.string(),
+  email: z.string(),
+})
+
+export type ClientPortalSupport = z.infer<typeof ClientPortalSupportSchema>
+
 export const ClientPortalSummarySchema = z.object({
   stats: ClientPortalStatsSchema,
   activity: z.array(ClientPortalActivityItemSchema),
@@ -43,6 +54,7 @@ export const ClientPortalSummarySchema = z.object({
    * A list because one account may hold several links; the norm is one (§5.3).
    */
   firmNames: z.array(z.string()),
+  support: ClientPortalSupportSchema,
 })
 
 export type ClientPortalSummary = z.infer<typeof ClientPortalSummarySchema>

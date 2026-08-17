@@ -30,6 +30,7 @@ const ENTITY_LABELS: Record<string, () => string> = {
   engine_manufacturer: () => m.audit_entity_engine_manufacturer(),
   external_party: () => m.audit_entity_external_party(),
   excel_workbook: () => m.audit_entity_excel_workbook(),
+  app_settings: () => m.audit_entity_app_settings(),
 }
 
 export function auditEntityTypeLabel(entityType: string): string {

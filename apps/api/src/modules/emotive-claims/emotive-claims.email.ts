@@ -1,6 +1,5 @@
 import { m } from '@mr/i18n'
 import type { Locale } from '@mr/i18n'
-import { PORTAL_SUPPORT_EMAIL } from '@mr/shared'
 
 import {
   emailButton,
@@ -23,15 +22,18 @@ export function renderOutcomeChangedEmailHtml(params: {
   mrNumber: string
   url: string
   locale: Locale
+  supportPhone: string
+  supportEmail: string
 }): string {
-  const { name, mrNumber, url, locale } = params
+  const { name, mrNumber, url, locale, supportPhone, supportEmail } = params
   const safeName = escapeHtml(name)
   const safeMrNumber = escapeHtml(mrNumber)
 
   return renderEmailDocument({
     lang: locale,
     preheader: m.email_outcome_changed_subject({ mrNumber }, { locale }),
-    contactEmail: PORTAL_SUPPORT_EMAIL,
+    contactEmail: supportEmail,
+    supportPhone,
     bodyHtml: [
       emailParagraph(m.email_outcome_changed_greeting({ name: safeName }, { locale })),
       emailParagraph(m.email_outcome_changed_body({ mrNumber: safeMrNumber }, { locale })),

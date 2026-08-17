@@ -37,6 +37,9 @@ import { Route } from '~/routes/claims/$id'
 const CLAIM_ID = 'c1111111-1111-1111-1111-111111111111'
 const DETAIL_URL = `/api/emotive-claims/${CLAIM_ID}`
 const MARK_SEEN_URL = `/api/emotive-claims/${CLAIM_ID}/mark-seen`
+// The detail screen reads the support contact from here — it is set in the admin panel, so it may
+// not be a constant compiled into the portal.
+const SUMMARY_URL = '/api/dashboard/client-summary'
 
 const ALL_FRESH_FALSE: ClientClaimDetail['sectionFreshness'] = {
   photos: false,
@@ -90,13 +93,24 @@ function fixturePhoto(claimId: string): AttachmentListItem {
   }
 }
 
-/** Fakes just the two endpoints this route hits: the loader's detail GET and
- * the mount-time mark-seen POST. */
+/** Fakes just the endpoints this route hits: the loader's detail GET, the portal summary that
+ * carries the support contact, and the mount-time mark-seen POST. */
 function stubFetch(): ReturnType<typeof vi.fn> {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (url === MARK_SEEN_URL && init?.method === 'POST') {
       return new Response(null, { status: 204 })
+    }
+    if (url === SUMMARY_URL) {
+      return new Response(
+        JSON.stringify({
+          stats: { received: 0, inProgress: 1, resolved: 0, total: 1 },
+          activity: [],
+          firmNames: ['Autoprevoz Šabac d.o.o.'],
+          support: { phone: '011/222-3344', email: 'podrska@example.test' },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
     }
     if (url.startsWith(DETAIL_URL)) {
       return new Response(JSON.stringify(fixtureDetail()), {
@@ -180,6 +194,7 @@ describe('claim detail mark-seen on open', () => {
       stats: { received: 0, inProgress: 0, resolved: 0, total: 0 },
       activity: [],
       firmNames: [],
+      support: { phone: '011/222-3344', email: 'podrska@example.test' },
     })
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 

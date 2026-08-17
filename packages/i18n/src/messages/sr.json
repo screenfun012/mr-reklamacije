@@ -198,6 +198,7 @@
   "audit_detail_none": "Nema podataka",
   "audit_detail_user_agent": "Pregledač (User-Agent)",
   "audit_empty": "Nema zapisa u reviziji.",
+  "audit_entity_app_settings": "Podešavanja aplikacije",
   "audit_entity_attachment": "Prilog",
   "audit_entity_claim_report": "Izveštaj reklamacije",
   "audit_entity_customer": "Firma",

@@ -4,7 +4,6 @@ import {
   ClaimKind,
   ClientSubmissionStatus,
   CustomerKind,
-  SUPPORT_EMAIL_BY_KIND,
   type ClientSubmissionCreateInput,
   type EmotiveClaimCreateInput,
   type EmotiveClaimDetail,
@@ -36,9 +35,6 @@ import type {
   ClientSubmissionListItem,
 } from './client-submissions.validators.js'
 
-/** Admin-configurable recipient for new-submission notifications (docs/18 §10). */
-const NOTIFY_EMAIL_SETTING_KEY = 'client_submissions.notify_email'
-const DEFAULT_NOTIFY_EMAIL = SUPPORT_EMAIL_BY_KIND[ClaimKind.Emotive]
 const ENTITY_TYPE = 'client_submission'
 /** Internal all-scope read of the claim the operator just created (they own the conversion). */
 const EMOTIVE_VIEW_PERMISSION = 'emotive_claims.view'
@@ -271,15 +267,15 @@ export class ClientSubmissionsService {
     }
 
     try {
-      const to =
-        (await this.appSettings.getString(NOTIFY_EMAIL_SETTING_KEY)) ?? DEFAULT_NOTIFY_EMAIL
+      const settings = await this.appSettings.resolveAll()
       await this.emailPort.send({
-        to,
+        to: settings.clientSubmissionsNotifyEmail,
         subject: submissionNotificationSubject(firmName),
         html: renderSubmissionNotificationHtml({
           firmName,
           message,
           inboxUrl: `${this.internalBaseUrl}/pristiglo`,
+          supportPhone: settings.supportPhone,
         }),
       })
     } catch (error) {

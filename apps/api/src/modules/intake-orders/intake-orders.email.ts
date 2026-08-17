@@ -23,7 +23,7 @@ export function intakeDocumentEmailSubject(orderNumber: string): string {
  * worth saying is already printed on it and signed. No button — the owner has nothing to sign in to,
  * and no contact email in the footer for the same reason; the workshop's phone is what answers him.
  */
-export function renderIntakeDocumentEmailHtml(orderNumber: string): string {
+export function renderIntakeDocumentEmailHtml(orderNumber: string, supportPhone: string): string {
   const number = escapeHtml(orderNumber)
   const bodyHtml = [
     ...(['sr', 'en'] as const).flatMap((locale, index) => [
@@ -40,6 +40,7 @@ export function renderIntakeDocumentEmailHtml(orderNumber: string): string {
     lang: 'sr',
     preheader: m.email_intake_document_subject({ number: orderNumber }, { locale: 'sr' }),
     bodyHtml,
+    supportPhone,
   })
 }
 

@@ -7,8 +7,15 @@ import { renderOutcomeChangedEmailHtml } from '../../../modules/emotive-claims/e
 import { renderIntakeDocumentEmailHtml } from '../../../modules/intake-orders/intake-orders.email.js'
 import { emailButton, emailParagraph, renderEmailDocument } from '../email-layout.js'
 
+/**
+ * Deliberately NOT the compiled default: the number an admin sets has to travel from `app_settings`
+ * all the way into the footer, and asserting the default would pass even if nothing was threaded.
+ */
+const CONFIGURED_PHONE = '011/222-3344'
+const CONFIGURED_EMAIL = 'podrska@example.test'
+
 const EVERY_MESSAGE_THIS_SYSTEM_SENDS: readonly [string, () => string][] = [
-  ['intake document', () => renderIntakeDocumentEmailHtml('RN-6137/26')],
+  ['intake document', () => renderIntakeDocumentEmailHtml('RN-6137/26', CONFIGURED_PHONE)],
   [
     'activation',
     () =>
@@ -16,6 +23,8 @@ const EVERY_MESSAGE_THIS_SYSTEM_SENDS: readonly [string, () => string][] = [
         name: 'Milan Petrović',
         url: 'https://mrclaims.live/activate?token=abc',
         locale: 'sr',
+        supportPhone: CONFIGURED_PHONE,
+        supportEmail: CONFIGURED_EMAIL,
       }),
   ],
   [
@@ -26,6 +35,8 @@ const EVERY_MESSAGE_THIS_SYSTEM_SENDS: readonly [string, () => string][] = [
         mrNumber: 'MR-7167',
         url: 'https://mrclaims.live/claims/1',
         locale: 'en',
+        supportPhone: CONFIGURED_PHONE,
+        supportEmail: CONFIGURED_EMAIL,
       }),
   ],
   [
@@ -35,6 +46,7 @@ const EVERY_MESSAGE_THIS_SYSTEM_SENDS: readonly [string, () => string][] = [
         firmName: 'Autoprevoz Šabac d.o.o.',
         message: 'Motor kuca na hladno.',
         inboxUrl: 'https://internal.mrclaims.live/pristiglo',
+        supportPhone: CONFIGURED_PHONE,
       }),
   ],
 ]
@@ -46,7 +58,10 @@ describe('every message this system sends', () => {
     // The band, the red rule and the phone — the three things that make it recognisably from MR.
     expect(html).toContain('#17171a')
     expect(html).toContain('border-top:2.5px solid #ed1c24')
-    expect(html).toContain(PORTAL_SUPPORT_PHONE)
+    // The configured number, and NOT the one compiled into the code: a message still carrying the
+    // default would disagree with the same number on the portal the moment an admin changed it.
+    expect(html).toContain(CONFIGURED_PHONE)
+    expect(html).not.toContain(PORTAL_SUPPORT_PHONE)
   })
 
   it.each(EVERY_MESSAGE_THIS_SYSTEM_SENDS)(
@@ -75,6 +90,7 @@ describe('the layout', () => {
       firmName: '<script>alert(1)</script>',
       message: '<img src=x onerror=alert(1)>',
       inboxUrl: 'https://internal.mrclaims.live/pristiglo',
+      supportPhone: CONFIGURED_PHONE,
     })
 
     expect(html).not.toContain('<script>')
@@ -94,9 +110,10 @@ describe('the layout', () => {
       lang: 'sr',
       preheader: 'Test',
       bodyHtml: emailParagraph('Test'),
+      supportPhone: CONFIGURED_PHONE,
     })
 
-    expect(html).toContain(PORTAL_SUPPORT_PHONE)
+    expect(html).toContain(CONFIGURED_PHONE)
     expect(html).not.toContain('mailto:')
   })
 })

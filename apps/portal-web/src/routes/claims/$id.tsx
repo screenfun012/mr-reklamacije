@@ -8,7 +8,6 @@ import {
   clientEmotiveClaimDetailOptions,
   clientPortalSummaryOptions,
   fetchNoContent,
-  SUPPORT_EMAIL_BY_KIND,
 } from '@mr/shared'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, Link, useRouter } from '@tanstack/react-router'
@@ -54,6 +53,8 @@ const detailRoute = getRouteApi('/claims/$id')
 function ClaimDetailComponent() {
   const { id } = detailRoute.useParams()
   const { data: claim } = useSuspenseQuery(clientEmotiveClaimDetailOptions(id))
+  // Warmed by the route loader; carries the support contact the admin panel sets.
+  const { data: summary } = useSuspenseQuery(clientPortalSummaryOptions())
   const queryClient = useQueryClient()
 
   const { mutate: markSeen } = useMutation({
@@ -96,7 +97,6 @@ function ClaimDetailComponent() {
   const chip = statusChipConfig(claim)
   const claimLabel = formatPortalClaimId(claim.mrNumber, claim.claimNumber)
   const technicianName = claim.employeeName
-  const supportEmail = SUPPORT_EMAIL_BY_KIND[claim.kind]
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-mrp-bg">
@@ -153,7 +153,8 @@ function ClaimDetailComponent() {
               title={m.portal_detail_tech_title()}
               name={technicianName ?? m.portal_support_team()}
               initials={technicianName !== null ? companyInitials(technicianName) : 'MR'}
-              email={supportEmail}
+              email={summary.support.email}
+              phone={summary.support.phone}
               delay="0.28s"
             />
           </div>

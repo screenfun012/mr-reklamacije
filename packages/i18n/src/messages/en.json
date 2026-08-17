@@ -198,6 +198,7 @@
   "audit_detail_none": "No data",
   "audit_detail_user_agent": "Browser (User-Agent)",
   "audit_empty": "No audit entries.",
+  "audit_entity_app_settings": "App settings",
   "audit_entity_attachment": "Attachment",
   "audit_entity_claim_report": "Claim report",
   "audit_entity_customer": "Customer",

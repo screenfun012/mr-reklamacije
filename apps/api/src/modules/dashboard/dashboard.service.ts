@@ -12,6 +12,7 @@ import {
   SummaryCache,
   SUMMARY_CACHE_TTL_SECONDS,
 } from '../../infrastructure/cache/summary-cache.js'
+import type { AppSettingsReader } from '../../core/settings/app-settings.reader.js'
 import type { ClientClaimAuditRow, DashboardRepository } from './dashboard.repository.js'
 import type { DashboardActor, DashboardScope } from './dashboard.types.js'
 import type { DashboardSummaryResponse } from './dashboard.validators.js'
@@ -103,6 +104,7 @@ export class DashboardService {
   constructor(
     private readonly repo: DashboardRepository,
     private readonly summaryCache: SummaryCache,
+    private readonly appSettings: AppSettingsReader,
   ) {}
 
   async getSummary(actor: DashboardActor): Promise<DashboardSummaryResponse> {
@@ -132,6 +134,9 @@ export class DashboardService {
     // Always the ACTOR'S OWN links, never the unscoped set: an internal full-view
     // actor also reaches this handler, and their firm names must stay empty rather
     // than following the unscoped stats branch. (This endpoint's twin leaked once.)
+    const settings = await this.appSettings.resolveAll()
+    const support = { phone: settings.supportPhone, email: settings.supportEmail }
+
     const firms = await this.repo.getUserFirms(actor.id)
     const firmNames = firms.map((firm) => firm.name)
     const customerIds = hasFullView ? null : firms.map((firm) => firm.id)
@@ -141,6 +146,7 @@ export class DashboardService {
         stats: { received: 0, inProgress: 0, resolved: 0, total: 0 },
         activity: [],
         firmNames,
+        support,
       }
     }
 
@@ -154,6 +160,6 @@ export class DashboardService {
       .filter((event): event is ClientPortalActivityItem => event !== null)
       .slice(0, CLIENT_ACTIVITY_FEED_LIMIT)
 
-    return { stats, activity, firmNames }
+    return { stats, activity, firmNames, support }
   }
 }

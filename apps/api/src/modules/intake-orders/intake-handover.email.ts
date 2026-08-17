@@ -21,7 +21,7 @@ export function intakeHandoverEmailSubject(orderNumber: string): string {
 }
 
 /** Thin, like its sibling: everything worth saying is printed on the sheet the owner signed. */
-export function renderIntakeHandoverEmailHtml(orderNumber: string): string {
+export function renderIntakeHandoverEmailHtml(orderNumber: string, supportPhone: string): string {
   const number = escapeHtml(orderNumber)
   const bodyHtml = [
     ...(['sr', 'en'] as const).flatMap((locale, index) => [
@@ -38,6 +38,7 @@ export function renderIntakeHandoverEmailHtml(orderNumber: string): string {
     lang: 'sr',
     preheader: m.email_intake_handover_subject({ number: orderNumber }, { locale: 'sr' }),
     bodyHtml,
+    supportPhone,
   })
 }
 

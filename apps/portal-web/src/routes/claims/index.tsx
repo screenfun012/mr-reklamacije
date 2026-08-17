@@ -173,6 +173,8 @@ function DashboardComponent() {
               title={m.portal_support_heading()}
               name={m.portal_support_team()}
               initials="MR"
+              email={summary.support.email}
+              phone={summary.support.phone}
               withTopHairline
             />
           </div>

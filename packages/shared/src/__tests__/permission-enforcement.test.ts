@@ -39,9 +39,7 @@ const PENDING: readonly string[] = [
   // Two of the three intake catalogs have no admin screen; only the checklist does.
   'settings.intake_damage_types.manage',
   'settings.intake_arrival_modes.manage',
-  // App settings are READ from the database and cannot be changed anywhere.
-  'settings.app_settings.view',
-  'settings.app_settings.update',
+  // No setting is marked secret, so nothing gates on this yet.
   'settings.app_settings.manage_secrets',
   // The audit screen exists; exporting it does not.
   'audit.export',
@@ -60,6 +58,18 @@ async function collectSources(dir: string, into: string[]): Promise<void> {
     if (/\.test\.tsx?$/.test(entry.name) || full === CATALOG) continue
     into.push(full)
   }
+}
+
+/**
+ * Prose is not enforcement. A permission named in a comment — including this repository's habit of
+ * quoting one in backticks while explaining why it is NOT built yet — must still count as unchecked,
+ * or the guard congratulates itself on the very entries it exists to find.
+ *
+ * The `[^:]` keeps `https://` out of the line-comment rule; a mangled line can only ever cause a
+ * loud failure here, never a quiet pass.
+ */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
 /**
@@ -100,9 +110,9 @@ describe('the permission catalog', () => {
     expect(files.length).toBeGreaterThan(500)
 
     const sources = await Promise.all(files.map((file) => readFile(file, 'utf8')))
-    const haystack = [...sources, enforcementPartOfCatalog(await readFile(CATALOG, 'utf8'))].join(
-      '\n',
-    )
+    const haystack = [...sources, enforcementPartOfCatalog(await readFile(CATALOG, 'utf8'))]
+      .map(withoutComments)
+      .join('\n')
 
     const isChecked = (permission: string): boolean =>
       haystack.includes(`'${permission}'`) ||

@@ -33,6 +33,7 @@ export function renderSubmissionNotificationHtml(params: {
   firmName: string
   message: string
   inboxUrl: string
+  supportPhone: string
 }): string {
   const firm = escapeHtml(params.firmName)
   const body = escapeHtml(excerpt(params.message))
@@ -40,6 +41,7 @@ export function renderSubmissionNotificationHtml(params: {
   return renderEmailDocument({
     lang: OFFICE_LOCALE,
     preheader: m.email_submission_subject({ firm: params.firmName }, { locale: OFFICE_LOCALE }),
+    supportPhone: params.supportPhone,
     bodyHtml: [
       // No full stop after the firm: half of them end in "d.o.o." and the sentence would close with
       // two.

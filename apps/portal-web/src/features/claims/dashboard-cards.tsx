@@ -2,8 +2,6 @@ import { m } from '@mr/i18n'
 import {
   ClaimOutcome,
   ClientClaimPhase,
-  PORTAL_SUPPORT_EMAIL,
-  PORTAL_SUPPORT_PHONE,
   type ClientPortalActivityItem,
   type ClientPortalStats,
 } from '@mr/shared'
@@ -148,14 +146,17 @@ export function SupportCard({
   title,
   name,
   initials,
-  email = PORTAL_SUPPORT_EMAIL,
+  email,
+  phone,
   withTopHairline = false,
   delay = '0.35s',
 }: {
   title: string
   name: string
   initials: string
-  email?: string
+  /** From the server (`app_settings`), never a compiled constant — an admin may change both. */
+  email: string
+  phone: string
   withTopHairline?: boolean
   delay?: string
 }) {
@@ -183,7 +184,7 @@ export function SupportCard({
       >
         {email}
       </a>
-      <div className="font-mono text-[13px]">{PORTAL_SUPPORT_PHONE}</div>
+      <div className="font-mono text-[13px]">{phone}</div>
       <div className="mt-[9px] font-mono text-[10.5px] tracking-[0.06em] text-mrp-text2">
         {m.portal_support_hours()}
       </div>
