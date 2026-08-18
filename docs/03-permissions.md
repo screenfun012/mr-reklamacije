@@ -111,7 +111,7 @@ Intake photos are served by the intake module under these permissions, **not** b
 | Permission | Description |
 |---|---|
 | `employees.view` | View employees list and profile |
-| `employees.view_analytics` | See the figures that measure a **named person** — claims per assigned worker, and faults blamed on him. Withheld as `null` from the statistics summary without it; departments and external parties are not withheld, because they are places and not people |
+| `employees.view_analytics` | See the figures that measure a **named person** — claims per assigned worker, and faults blamed on him. Withheld as `null` from the statistics summary without it; departments and external parties are not withheld, because they are places and not people. ⚠ **It guards the SCREEN only** — see the note below |
 | `employees.create` | Create new employee records |
 | `employees.update` | Edit employee records |
 | `employees.deactivate` | Mark employee as terminated |
@@ -296,6 +296,22 @@ filters attachments by `visibility = 'client_visible'` when the requesting user'
 permissions do not include the internal-view variant.
 
 ---
+
+### ⚠ `employees.view_analytics` guards the screen, not the Excel export
+
+The workbook carries a sheet **`REKLAMACIJE PO ZAPOSLENOM`** — named workers, claim counts and
+PROCENAT — added whenever the export includes EMOTIVE rows, behind `export.workbook_partial` alone.
+It measures the same named people the statistics summary now withholds.
+
+**Left open deliberately (Nikola, 2026-08-18)**, when this gap was found right after the gate was
+built. His reason is a direction, not an oversight: the Excel export is meant to grow into
+"export whatever we want about whatever we want" from the statistics screen, and gating individual
+sheets on individual permissions would fight that the whole way. Machining will make the shape of it
+concrete.
+
+So the honest statement is: **a person given only the export actions can read per-worker figures the
+screen would refuse them.** Written down here so nobody later reads the gate as complete and builds
+on a wrong assumption. If the export is ever split by permission, this sheet is the first case.
 
 ## Standard privilege sets (seeded, `is_system = true`)
 

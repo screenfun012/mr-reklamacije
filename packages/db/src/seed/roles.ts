@@ -10,7 +10,7 @@ import {
   SYSTEM_ROLE_VIEWER,
   VIEWER_PERMISSIONS,
 } from '@mr/shared'
-import { and, eq, notInArray, sql } from 'drizzle-orm'
+import { and, eq, isNull, notInArray, sql } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import * as schema from '../schema/index.js'
@@ -96,13 +96,52 @@ async function syncRolePermissions(
   return inserted.length
 }
 
+/**
+ * Stops the seed from taking a code that belongs to somebody's own set.
+ *
+ * `roles.code` is unique and the upsert below targets it, so without this a custom set whose code
+ * happens to match a standard one is RENAMED, flipped to `is_system` and has its actions replaced —
+ * and its author can then neither edit nor delete it, because a system set is read-only. Silent,
+ * and on the next deploy after the standard set is introduced.
+ *
+ * Only one direction is reachable: a set made BEFORE the standard set with that code existed.
+ * `RolesService.freeCodeFor` already prevents the other one. Which is exactly why it needs a guard —
+ * nothing in the app would warn you, and the seed would look like it worked.
+ *
+ * It throws rather than skipping: a collision over identity is a decision for a person (rename the
+ * custom set, then seed again), and a seed that quietly diverges from the code is the thing this
+ * whole file exists to prevent.
+ */
+async function assertCodeIsFree(db: NodePgDatabase<typeof schema>, code: string): Promise<void> {
+  const [existing] = await db
+    .select({ isSystem: schema.roles.isSystem, nameSr: schema.roles.nameSr })
+    .from(schema.roles)
+    // ⚠ Live sets only. A DELETED set still occupies its code — the unique index is not partial —
+    // and a deleted set is not on the panel's list, so refusing for it would make `db:seed` fail on
+    // every deploy from then on with no way to rename it through the app. Taking that row costs
+    // nothing: a set can only be deleted when nobody holds it.
+    .where(and(eq(schema.roles.code, code), isNull(schema.roles.deletedAt)))
+    .limit(1)
+
+  if (existing !== undefined && !existing.isSystem) {
+    throw new Error(
+      `[seed:roles] The code "${code}" belongs to a set built in the panel ("${existing.nameSr}"). ` +
+        'Seeding would rename it and take it over. Rename that set in the admin panel, then run the seed again.',
+    )
+  }
+}
+
 export async function seedRoles(db: NodePgDatabase<typeof schema>): Promise<void> {
   let rolesInserted = 0
   let junctionsInserted = 0
 
   for (const roleSeed of SYSTEM_ROLES) {
+    await assertCodeIsFree(db, roleSeed.code)
+
     // Names are written over, for the same reason permission labels are: a reworded package has to
     // reach an install that already has the row, and nobody can edit these from the panel anyway.
+    // `deleted_at` is cleared with them: the seed's promise is that a standard set IS what the code
+    // says, and a hand-deleted row that stays hidden would break that quietly.
     const insertedRows = await db
       .insert(schema.roles)
       .values({
@@ -117,6 +156,7 @@ export async function seedRoles(db: NodePgDatabase<typeof schema>): Promise<void
           nameSr: sql`excluded.name_sr`,
           nameEn: sql`excluded.name_en`,
           isSystem: sql`excluded.is_system`,
+          deletedAt: sql`NULL`,
         },
       })
       .returning({ id: schema.roles.id, createdAt: schema.roles.createdAt })

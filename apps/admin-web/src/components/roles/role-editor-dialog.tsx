@@ -82,16 +82,32 @@ export function RoleEditorDialog({
   const [nameSr, setNameSr] = useState('')
   const [nameEn, setNameEn] = useState('')
   const [description, setDescription] = useState('')
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const [selected, setSelected] = useState<ReadonlySet<Permission>>(new Set())
+
+  /**
+   * Which row this form was filled from — `null` until the row arrives.
+   *
+   * ⚠ It exists so the form is filled **once per set**, not on every answer. React Query keeps a
+   * 30 s stale time and refetches on window focus, and ticking through a matrix of 84 boxes takes
+   * longer than that; an effect that re-seeds on `detail.data` throws the person's work away the
+   * moment anything about the row changes underneath — another admin assigning the set moves
+   * `userCount`, and every tick since the dialog opened is gone with no message. A form is a
+   * snapshot of the row as it was opened; the server has the last word at save time, not before.
+   *
+   * It doubles as the guard on Save: an empty form is not the set, and sending it would mean
+   * "no actions at all".
+   */
+  const [seededFrom, setSeededFrom] = useState<string | null>(null)
 
   const loaded = detail.data
   useEffect(() => {
-    if (loaded === undefined) return
+    if (loaded === undefined || seededFrom === loaded.id) return
     setNameSr(loaded.nameSr)
     setNameEn(loaded.nameEn)
     setDescription(loaded.description ?? '')
     setSelected(new Set(loaded.permissions))
-  }, [loaded])
+    setSeededFrom(loaded.id)
+  }, [loaded, seededFrom])
 
   const held = useMemo(() => new Set(heldPermissions), [heldPermissions])
   const groups = useMemo(() => groupByModule(catalog.data ?? [], english), [catalog.data, english])
@@ -104,10 +120,10 @@ export function RoleEditorDialog({
    * what is being ADDED). Forbidding it here would leave a set nobody can shrink once its author
    * lost the action.
    */
-  const isDead = (permission: string): boolean =>
+  const isDead = (permission: Permission): boolean =>
     readOnly || (!selected.has(permission) && !held.has(permission))
 
-  const toggle = (permission: string): void => {
+  const toggle = (permission: Permission): void => {
     setSelected((previous) => {
       const next = new Set(previous)
       if (next.has(permission)) next.delete(permission)
@@ -137,7 +153,7 @@ export function RoleEditorDialog({
         nameSr,
         nameEn,
         description: description.trim() === '' ? null : description.trim(),
-        permissions: [...selected] as Permission[],
+        permissions: [...selected],
       })
     },
     onSuccess: async () => {
@@ -149,6 +165,8 @@ export function RoleEditorDialog({
       toast.error(m.roles_save_error())
     },
   })
+
+  const holderCount = loaded?.userCount ?? role?.userCount ?? 0
 
   const title = readOnly ? m.roles_editor_title_view() : m.roles_editor_title_edit()
 
@@ -189,9 +207,17 @@ export function RoleEditorDialog({
           </label>
         </div>
 
-        {role !== null && role.userCount > 0 && !readOnly ? (
+        {/*
+          The count comes from the row itself, NOT from the list entry that opened this dialog. The
+          list entry is a snapshot of the moment somebody clicked "Izmeni"; if a person is assigned
+          the set while it is being edited, that snapshot still says nobody holds it — and saving
+          would sign three people out having promised it affects no one. The form deliberately does
+          not follow the server (see `seededFrom`); this sentence deliberately does, because it is a
+          statement about the world and not about what is being typed.
+        */}
+        {holderCount > 0 && !readOnly ? (
           <p className="rounded-md border border-mr-warning bg-mr-warning-subtle px-3 py-2 text-sm text-mr-warning-strong">
-            {m.roles_holders_warning({ count: role.userCount })}
+            {m.roles_holders_warning({ count: holderCount })}
           </p>
         ) : null}
 
@@ -267,7 +293,11 @@ export function RoleEditorDialog({
             {m.action_cancel()}
           </Button>
           {readOnly ? null : (
-            <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
+            <Button
+              type="button"
+              disabled={save.isPending || seededFrom === null}
+              onClick={() => save.mutate()}
+            >
               {m.action_save()}
             </Button>
           )}

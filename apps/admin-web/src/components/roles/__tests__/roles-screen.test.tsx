@@ -76,8 +76,16 @@ const DETAIL: Record<string, { permissions: string[] }> = {
   [HELD_ID]: { permissions: ['audit.view'] },
 }
 
-function stubFetch(): { patches: { url: string; body: unknown }[] } {
+function stubFetch(): {
+  patches: { url: string; body: unknown }[]
+  /** Changes what the NEXT detail read answers, the way another admin's edit would. */
+  bumpHolders: () => void
+  /** How many times the detail row has been read — the proof a refetch actually landed. */
+  detailReads: () => number
+} {
   const patches: { url: string; body: unknown }[] = []
+  let holderBump = 0
+  let reads = 0
 
   vi.stubGlobal(
     'fetch',
@@ -103,17 +111,24 @@ function stubFetch(): { patches: { url: string; body: unknown }[] } {
           return json({ ...item, ...DETAIL[id] })
         }
 
-        return json({ ...item, ...DETAIL[id] })
+        reads += 1
+        return json({ ...item, userCount: item.userCount + holderBump, ...DETAIL[id] })
       }
 
       throw new Error(`unexpected fetch: ${String(init?.method ?? 'GET')} ${url}`)
     }),
   )
 
-  return { patches }
+  return {
+    patches,
+    bumpHolders: () => {
+      holderBump += 1
+    },
+    detailReads: () => reads,
+  }
 }
 
-function renderScreen(held: readonly string[]): void {
+function renderScreen(held: readonly string[]): QueryClient {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -123,6 +138,8 @@ function renderScreen(held: readonly string[]): void {
       <RolesScreen heldPermissions={held} />
     </QueryClientProvider>,
   )
+
+  return queryClient
 }
 
 const ALL_HELD = CATALOG.map((item) => item.id)
@@ -210,5 +227,124 @@ describe('the privileges screen', () => {
     expect((patches[0]?.body as { permissions: string[] }).permissions).toEqual(
       expect.arrayContaining(['audit.view', 'intake_orders.view']),
     )
+  })
+
+  /**
+   * The editor fills its form from the server answer. React Query keeps a 30 s stale time and
+   * refetches on window focus, and ticking through a matrix of 84 boxes takes longer than that — so
+   * a refetch lands mid-edit and a form that re-seeds itself on every answer throws the work away
+   * without a word.
+   *
+   * ⚠ The first version of this test passed against the broken code and proved nothing: React
+   * Query hands back the SAME object when the refetched row is deeply equal, so the effect never
+   * re-ran. It only bites when something actually changed — another admin assigning the set to
+   * somebody moves `userCount` — which is exactly the moment a person is mid-edit on a busy day.
+   */
+  it('keeps what the user ticked when the row changes underneath mid-edit', async () => {
+    const { bumpHolders, detailReads } = stubFetch()
+    const queryClient = renderScreen(ALL_HELD)
+
+    const row = await screen.findByRole('row', { name: /Moje ovlašćenje/ })
+    await userEvent.click(within(row).getByRole('button', { name: 'Izmeni' }))
+
+    const box = await screen.findByRole('checkbox', { name: /Vidi sve naloge prijema/ })
+    await userEvent.click(box)
+    expect(box).toBeChecked()
+
+    const before = detailReads()
+    bumpHolders()
+    await queryClient.refetchQueries({ queryKey: ['roles'] })
+
+    // Prove the second answer actually arrived AND reached the cache the dialog subscribes to;
+    // otherwise the assertion below would pass on a render that never saw it, which is how the
+    // first version of this test lied. It cannot be proven through the form itself — the whole
+    // point of the fix is that the form stops following the cache.
+    await waitFor(() => {
+      expect(detailReads()).toBeGreaterThan(before)
+    })
+    await waitFor(() => {
+      expect(
+        (queryClient.getQueryData(['roles', 'detail', CUSTOM_ID]) as { userCount: number })
+          .userCount,
+      ).toBe(1)
+    })
+
+    expect(screen.getByRole('checkbox', { name: /Vidi sve naloge prijema/ })).toBeChecked()
+  })
+
+  /**
+   * The sentence exists to name the consequence, so it has to be about the set as it is NOW. Read
+   * from the list row it would be frozen at the moment the dialog opened: somebody assigned while
+   * you were ticking, and you sign three people out having been told nobody holds it.
+   */
+  it('warns about holders that appeared after the dialog was opened', async () => {
+    const { bumpHolders, detailReads } = stubFetch()
+    const queryClient = renderScreen(ALL_HELD)
+
+    const row = await screen.findByRole('row', { name: /Moje ovlašćenje/ })
+    await userEvent.click(within(row).getByRole('button', { name: 'Izmeni' }))
+    await screen.findByRole('checkbox', { name: /Vidi sve naloge prijema/ })
+
+    // Nobody held it when it was opened, so there is nothing to warn about yet.
+    expect(screen.queryByText(/Broj korisnika koji drže ovo ovlašćenje/)).not.toBeInTheDocument()
+
+    const before = detailReads()
+    bumpHolders()
+    await queryClient.refetchQueries({ queryKey: ['roles'] })
+    await waitFor(() => {
+      expect(detailReads()).toBeGreaterThan(before)
+    })
+
+    expect(
+      await screen.findByText(/Broj korisnika koji drže ovo ovlašćenje: 1/),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * Before the row arrives the form is empty, and an empty form is not the set — saving it would
+   * send "no actions at all". The server's name rule happens to refuse it today, which makes this a
+   * confusing error rather than a wipe; neither is an answer.
+   */
+  it('does not let the form be saved before the row it edits has arrived', async () => {
+    let releaseDetail: (() => void) | null = null
+    const held = new Promise<void>((resolve) => {
+      releaseDetail = resolve
+    })
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const json = (value: unknown): Response =>
+          new Response(JSON.stringify(value), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+
+        if (url === '/api/roles' && (init?.method ?? 'GET') === 'GET') return json({ items: LIST })
+        if (url === '/api/permissions') return json({ items: CATALOG })
+
+        const match = /^\/api\/roles\/([0-9a-f-]+)$/.exec(url)
+        if (match?.[1] !== undefined) {
+          if (init?.method === 'PATCH') throw new Error('saved before the row arrived')
+          await held
+          return json({ ...LIST[1], ...DETAIL[CUSTOM_ID] })
+        }
+
+        throw new Error(`unexpected fetch: ${url}`)
+      }),
+    )
+
+    renderScreen(ALL_HELD)
+
+    const row = await screen.findByRole('row', { name: /Moje ovlašćenje/ })
+    await userEvent.click(within(row).getByRole('button', { name: 'Izmeni' }))
+
+    expect(await screen.findByRole('button', { name: 'Sačuvaj' })).toBeDisabled()
+
+    releaseDetail?.()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sačuvaj' })).toBeEnabled()
+    })
   })
 })
