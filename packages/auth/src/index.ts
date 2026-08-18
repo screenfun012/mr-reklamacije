@@ -1,6 +1,6 @@
 export { createAuth } from './better-auth.config.js'
 export type { Auth } from './better-auth.config.js'
-export { createCachedPermissionResolver } from './server/permission-cache.js'
+export { clearPermissionCache, createCachedPermissionResolver } from './server/permission-cache.js'
 export type { RolesPermissionSource } from './server/permission-cache.js'
 export { createDeletedAtCheckHook } from './hooks/deleted-at-check.js'
 export { createLoginAuditHook } from './hooks/login-audit.js'

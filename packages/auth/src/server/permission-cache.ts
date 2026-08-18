@@ -47,6 +47,18 @@ export function createCachedPermissionResolver(
 }
 
 /**
+ * Drops every cached answer. The roles panel calls this the moment a set changes: the cache is
+ * keyed by the sorted role codes, so a change to what one set allows would otherwise keep being
+ * answered from memory for up to five minutes — for everybody holding it.
+ *
+ * The Map is module-level, so this reaches the instance `createAuth` built without having to thread
+ * a handle through the container.
+ */
+export function clearPermissionCache(): void {
+  cache.clear()
+}
+
+/**
  * Test-only helper to inspect cache state.
  */
 export function getPermissionCacheEntryCount(): number {

@@ -1,7 +1,7 @@
 import { schema } from '@mr/db'
 import type { Permission } from '@mr/shared'
 import { ADMIN_PERMISSIONS, SYSTEM_ROLE_ADMIN } from '@mr/shared'
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 /**
@@ -36,10 +36,12 @@ export function createPermissionResolver(db: NodePgDatabase<typeof schema>): Per
       return []
     }
 
+    // ⚠ `deleted_at IS NULL` is load-bearing, not tidiness: without it a set deleted in the panel
+    // keeps handing out its actions to everyone still carrying its code in a live session.
     const roleRows = await db
       .select({ id: schema.roles.id })
       .from(schema.roles)
-      .where(inArray(schema.roles.code, distinctCodes))
+      .where(and(inArray(schema.roles.code, distinctCodes), isNull(schema.roles.deletedAt)))
 
     if (roleRows.length === 0) {
       return []
@@ -60,7 +62,7 @@ export function createPermissionResolver(db: NodePgDatabase<typeof schema>): Per
       .select({ code: schema.roles.code })
       .from(schema.userRoles)
       .innerJoin(schema.roles, eq(schema.roles.id, schema.userRoles.roleId))
-      .where(eq(schema.userRoles.userId, userId))
+      .where(and(eq(schema.userRoles.userId, userId), isNull(schema.roles.deletedAt)))
 
     const effective = await getEffectiveForRoleCodes(codes.map((r) => r.code))
     return new Set(effective)

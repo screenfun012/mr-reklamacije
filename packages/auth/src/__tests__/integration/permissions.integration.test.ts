@@ -2,7 +2,7 @@ import { createDb, createPool, getIntegrationDatabaseUrl, schema } from '@mr/db'
 import { ADMIN_PERMISSIONS, SYSTEM_ROLE_ADMIN, SYSTEM_ROLE_OPERATOR } from '@mr/shared'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -171,5 +171,48 @@ describe('PermissionResolver (integration)', () => {
     const result = await resolver.hasPermission(user!.id, 'emotive_claims.delete')
 
     expect(result).toBe(false)
+  })
+
+  it('stops granting anything the moment its set is deleted', async () => {
+    // The panel deletes softly. Until 2026-08-18 neither query filtered `deleted_at`, so a deleted
+    // set kept answering for everyone still carrying its code — harmless only because nothing could
+    // delete a set. The panel is exactly what changes that.
+    const [user] = await db
+      .insert(schema.users)
+      .values({ email: 'deleted-role@test.com', name: 'Holder' })
+      .returning()
+
+    await db.insert(schema.permissions).values({
+      id: 'emotive_claims.view',
+      module: 'emotive_claims',
+      action: 'view',
+      nameSr: 'Vidi',
+      nameEn: 'Sees',
+      descriptionSr: '',
+      descriptionEn: '',
+    })
+
+    const [role] = await db
+      .insert(schema.roles)
+      .values({ code: 'privremeno', nameSr: 'Privremeno', nameEn: 'Temporary' })
+      .returning()
+
+    await db
+      .insert(schema.rolePermissions)
+      .values({ roleId: role!.id, permissionId: 'emotive_claims.view' })
+    await db
+      .insert(schema.userRoles)
+      .values({ userId: user!.id, roleId: role!.id, assignedBy: user!.id })
+
+    expect(await resolver.hasPermission(user!.id, 'emotive_claims.view')).toBe(true)
+
+    await db
+      .update(schema.roles)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.roles.id, role!.id))
+
+    expect(await resolver.hasPermission(user!.id, 'emotive_claims.view')).toBe(false)
+    // Also by code, which is the path a live session takes.
+    expect(await resolver.getEffectiveForRoleCodes(['privremeno'])).toEqual([])
   })
 })

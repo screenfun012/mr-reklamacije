@@ -43,11 +43,6 @@ const PENDING: readonly string[] = [
   'users.create',
   'users.update',
   'users.delete',
-  // Built by the roles panel itself.
-  'roles.view',
-  'roles.create',
-  'roles.update',
-  'roles.delete',
   // Two of the three intake catalogs have no admin screen; only the checklist does.
   'settings.intake_damage_types.manage',
   'settings.intake_arrival_modes.manage',

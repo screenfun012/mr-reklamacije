@@ -14,6 +14,7 @@ import { registerPresenceRoutes } from './modules/presence/index.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerAuditLogRoutes } from './modules/audit/index.js'
 import { registerAppSettingsRoutes } from './modules/app-settings/index.js'
+import { registerRolesRoutes } from './modules/roles/index.js'
 import { registerClaimSourcesRoutes } from './modules/claim-sources/index.js'
 import { registerCustomersRoutes } from './modules/customers/index.js'
 import { registerUsersRoutes } from './modules/users/index.js'
@@ -150,6 +151,7 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerAuditLogRoutes(app, container)
   registerClaimSourcesRoutes(app, container)
   registerAppSettingsRoutes(app, container)
+  registerRolesRoutes(app, container)
   registerDepartmentsRoutes(app, container)
   registerEmotiveClaimsRoutes(app, container)
   registerClientSubmissionsRoutes(app, container)

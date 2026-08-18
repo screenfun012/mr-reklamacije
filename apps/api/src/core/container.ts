@@ -22,6 +22,7 @@ import { IntakeOrdersRepository, IntakeOrdersService } from '../modules/intake-o
 import { ClaimPresenceStore, PresenceService } from '../modules/presence/index.js'
 import { AppSettingsRepository, AppSettingsService } from '../modules/app-settings/index.js'
 import { ClaimSourcesRepository, ClaimSourcesService } from '../modules/claim-sources/index.js'
+import { RolesRepository, RolesService } from '../modules/roles/index.js'
 import { CustomersRepository, CustomersService } from '../modules/customers/index.js'
 import { UsersRepository, UsersService } from '../modules/users/index.js'
 import { RegistrationService } from '../modules/registration/index.js'
@@ -117,6 +118,8 @@ export interface Container {
   activationService: ActivationService
   appSettingsRepository: AppSettingsRepository
   appSettingsService: AppSettingsService
+  rolesRepository: RolesRepository
+  rolesService: RolesService
   claimSourcesRepository: ClaimSourcesRepository
   claimSourcesService: ClaimSourcesService
   departmentsRepository: DepartmentsRepository
@@ -269,6 +272,9 @@ export function buildContainer(
 
   const appSettingsRepository = new AppSettingsRepository(db)
   const appSettingsService = new AppSettingsService(appSettingsRepository, auditService)
+
+  const rolesRepository = new RolesRepository(db)
+  const rolesService = new RolesService(rolesRepository, auditService, auth)
 
   const claimSourcesRepository = new ClaimSourcesRepository(db)
   const claimSourcesService = new ClaimSourcesService(
@@ -445,6 +451,8 @@ export function buildContainer(
     claimSourcesRepository,
     appSettingsRepository,
     appSettingsService,
+    rolesRepository,
+    rolesService,
     claimSourcesService,
     departmentsRepository,
     departmentsService,
