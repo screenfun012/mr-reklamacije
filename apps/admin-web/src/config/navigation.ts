@@ -1,11 +1,9 @@
 import { m } from '@mr/i18n'
 import {
-  Briefcase,
   Building2,
   ClipboardCheck,
   Cog,
   Cpu,
-  Globe,
   Handshake,
   HardHat,
   Inbox,
@@ -44,18 +42,6 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_dashboard,
     to: '/',
     icon: LayoutDashboard,
-  },
-  {
-    key: 'emotive-claims',
-    label: m.nav_emotive_claims,
-    to: '/emotive-claims',
-    icon: Globe,
-  },
-  {
-    key: 'domace-claims',
-    label: m.nav_domace_claims,
-    to: '/domace-claims',
-    icon: Briefcase,
   },
   {
     key: 'users',

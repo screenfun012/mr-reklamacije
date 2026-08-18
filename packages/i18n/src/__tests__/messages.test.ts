@@ -56,15 +56,6 @@ describe('@mr/i18n messages', () => {
     expect(m.nav_pristiglo()).toBe('Inbox')
   })
 
-  it('returns translated emotive/domace nav labels per locale', () => {
-    setLocale('sr')
-    expect(m.nav_emotive_claims()).toBe('Inostrane reklamacije')
-    expect(m.nav_domace_claims()).toBe('Domaće reklamacije')
-    setLocale('en')
-    expect(m.nav_emotive_claims()).toBe('International claims')
-    expect(m.nav_domace_claims()).toBe('Domestic claims')
-  })
-
   it('exports common_loading for pending UI strings', () => {
     setLocale('sr')
     expect(m.common_loading()).toContain('itavanje')
