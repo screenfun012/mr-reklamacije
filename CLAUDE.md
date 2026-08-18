@@ -131,6 +131,13 @@ pnpm dev:audit-deps     # after bumping better-auth / nitro / @tanstack/react-st
 pnpm --filter @mr/db run db:migrate     # apply migrations (drizzle-kit, local dev)
 pnpm --filter @mr/db run db:migrate:deploy  # prod migrator (Railway pre-deploy): required extensions + all migrations, idempotent, works from-zero
 pnpm --filter @mr/db run db:seed        # idempotent SYSTEM seeds only (prod-safe: permissions, roles, departments, claim_sources, engine_manufacturers)
+# ⚠️ Since 2026-08-18 the seed also DELETES: a permission gone from the catalog is pruned with the
+# role grants that held it, and a system role's actions are synced to the code. It runs in ONE
+# transaction, and it REFUSES (rolling everything back, printing each code + the sets holding it)
+# when the prune would take an action away from a live role. Confirm with `-- --prune`. An orphan
+# nobody holds still goes silently, so an ordinary seed needs no flag. Not run by any deploy —
+# `preDeployCommand` is `db:migrate:deploy` only, so this is always a person typing it.
+pnpm --filter @mr/db run db:seed -- --prune   # same, allowing the deletion of grants a live role holds
 pnpm --filter @mr/db run db:seed:demo   # system + DEMO data (sample claims/employees/customers) — dev/test only, NEVER prod
 pnpm --filter @mr/db run db:generate    # generate a migration from schema diff
 pnpm create-admin                       # once per fresh DB

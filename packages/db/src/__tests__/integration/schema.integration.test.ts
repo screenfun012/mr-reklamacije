@@ -81,6 +81,14 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  // This suite TRUNCATEs before itself, never after, so its fixtures used to outlive it in the
+  // shared integration database. `test.permission` is not in the catalog, and from 2026-08-18 a
+  // seed refuses to prune a permission a live role still grants — so the leftover made every LATER
+  // suite that seeds fail with a message about production safety. Its own rows go here; the tables
+  // themselves are deliberately left seeded for whatever runs next.
+  await db.delete(rolePermissions).where(eq(rolePermissions.permissionId, 'test.permission'))
+  await db.delete(permissions).where(eq(permissions.id, 'test.permission'))
+  await db.delete(roles).where(eq(roles.code, 'test_role'))
   await pool.end()
 })
 

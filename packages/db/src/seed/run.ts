@@ -18,10 +18,12 @@ async function main(): Promise<void> {
   const db = createDb(pool) as unknown as NodePgDatabase<typeof schema>
 
   const withDemo = process.argv.includes('--demo')
+  // Off by default. `seedPermissions` refuses to delete a grant somebody still holds without it.
+  const prune = process.argv.includes('--prune')
 
   try {
     console.log('[seed] Starting system seeds...')
-    await runSystemSeeds(db)
+    await runSystemSeeds(db, { prune })
     if (withDemo) {
       console.log('[seed] Starting demo seeds (sample claims/employees/customers)...')
       await runDemoSeeds(db)

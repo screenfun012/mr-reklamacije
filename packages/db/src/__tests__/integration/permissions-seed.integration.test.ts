@@ -71,7 +71,7 @@ describe('seedPermissions (integration)', () => {
     })
     await db.insert(schema.rolePermissions).values({ roleId: operator.id, permissionId: RETIRED })
 
-    await seedPermissions(db)
+    await seedPermissions(db, { prune: true })
 
     const survivingPermission = await db
       .select()
@@ -99,5 +99,69 @@ describe('seedPermissions (integration)', () => {
 
     expect(live).toHaveLength(1)
     expect(liveGrant).toHaveLength(1)
+  })
+
+  it('refuses to prune a permission a live role still grants, and writes nothing', async () => {
+    // The seed cannot tell a genuine retirement from a rollback to an older image or a renamed
+    // code — all three look like "missing from the catalog". So it stops and names what would go.
+    const [operator] = await db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, SYSTEM_ROLE_OPERATOR))
+      .limit(1)
+
+    if (operator === undefined) throw new Error('operator role missing — seedRoles did not run')
+
+    await db.insert(schema.permissions).values({
+      id: RETIRED,
+      module: 'retired_module',
+      action: 'gone',
+      nameSr: 'retired_module.gone',
+      nameEn: 'retired_module.gone',
+      descriptionSr: 'retired_module.gone',
+      descriptionEn: 'retired_module.gone',
+    })
+    await db.insert(schema.rolePermissions).values({ roleId: operator.id, permissionId: RETIRED })
+
+    await expect(seedPermissions(db)).rejects.toThrow(/Refusing to prune/)
+
+    // The message has to be actionable: the code and the set that holds it, or a person cannot
+    // decide whether the deletion is the one they meant.
+    await expect(seedPermissions(db)).rejects.toThrow(new RegExp(RETIRED))
+
+    const survivingPermission = await db
+      .select()
+      .from(schema.permissions)
+      .where(eq(schema.permissions.id, RETIRED))
+    const survivingGrant = await db
+      .select()
+      .from(schema.rolePermissions)
+      .where(eq(schema.rolePermissions.permissionId, RETIRED))
+
+    expect(survivingPermission).toHaveLength(1)
+    expect(survivingGrant).toHaveLength(1)
+  })
+
+  it('prunes an orphan nobody holds without asking', async () => {
+    // Flag-free is what keeps the ordinary seed ordinary: no live set grants this, so no access
+    // can be lost, so there is nothing for a person to decide.
+    await db.insert(schema.permissions).values({
+      id: RETIRED,
+      module: 'retired_module',
+      action: 'gone',
+      nameSr: 'retired_module.gone',
+      nameEn: 'retired_module.gone',
+      descriptionSr: 'retired_module.gone',
+      descriptionEn: 'retired_module.gone',
+    })
+
+    await seedPermissions(db)
+
+    const surviving = await db
+      .select()
+      .from(schema.permissions)
+      .where(eq(schema.permissions.id, RETIRED))
+
+    expect(surviving).toHaveLength(0)
   })
 })

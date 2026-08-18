@@ -203,6 +203,13 @@ The `api` service's `railway.json` sets `preDeployCommand: pnpm --filter @mr/db 
 1. **Postgres** service created; **api** env vars set (list above); volume mounted at `/data`.
 2. **Deploy `api`** — pre-deploy migrates the empty DB automatically. Check `/health`.
 3. **System seed** (one-off shell on the api service): `pnpm --filter @mr/db run db:seed` — prod-safe reference data only (permissions, roles, departments, claim sources, engine manufacturers), idempotent. **Never** `db:seed:demo` in production.
+
+   ⚠ It also deletes. If the run stops with `Refusing to prune`, it has written **nothing** (one
+   transaction) and is showing you every permission that would lose its grants, with the roles
+   that hold them. Read the list: it is a genuine retirement only if those codes really did leave
+   the catalog in this deploy. If you are running an OLDER build than the database expects, or a
+   permission was renamed, the list is the damage — deploy the right build instead. To confirm the
+   deletion: `pnpm --filter @mr/db run db:seed -- --prune`.
 4. **First admin** (same one-off shell): `ADMIN_EMAIL=… ADMIN_PASSWORD=… ADMIN_NAME=… pnpm create-admin` — idempotent bootstrap; every later admin is created through the UI. Change the password on first login.
 5. **Legacy import** — needs `.legacy-import/legacy-data.json` (kept out of git, so it is never in the image). Put it on the volume first — from the one-off shell: `curl -o /data/legacy-data.json <temporary-signed-URL>` (or paste via `railway ssh`). Then dry-run: `pnpm --filter api import-legacy -- --file /data/legacy-data.json`, review the report, then add `--apply`. Done **together with Nikola** as a supervised one-off on the api service (never from a local machine against prod); delete `/data/legacy-data.json` afterwards.
 6. **Deploy the 3 web apps** with `API_INTERNAL_URL` set; health check is `/login`.

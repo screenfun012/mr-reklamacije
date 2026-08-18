@@ -39,7 +39,8 @@ export default async function integrationGlobalSetup(): Promise<void> {
       await migrate(db, {
         migrationsFolder: resolve(__dirname, '../../migrations'),
       })
-      await runSystemSeeds(db)
+      // Disposable database, rebuilt from zero — a leftover retired permission must never block a run.
+      await runSystemSeeds(db, { prune: true })
       await runDemoSeeds(db)
     } finally {
       await pool.end()

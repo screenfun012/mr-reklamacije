@@ -9,6 +9,16 @@ Better-Auth answers "who are you"; our RBAC layer answers "what may you do".
    The catalog in `@mr/shared` is the truth: `db:seed` inserts what is new and prunes what is
    gone (with the role grants that held it), so no migration is involved. A permission that no
    code checks fails `permission-enforcement.test.ts` — the catalog cannot run ahead of the app.
+
+   ⚠ **The prune stops rather than guesses.** It compares the database against the catalog of the
+   build that is RUNNING, and three different things look identical from there: a genuine
+   retirement, a rollback to an older image, and a renamed permission id. When the deletion would
+   remove a grant a **live** role still holds, the seed refuses, prints each code with the sets
+   that hold it, and rolls everything back — `pnpm --filter @mr/db run db:seed -- --prune` is the
+   confirmation. An orphan row no live set grants is deleted without asking, so an ordinary seed
+   still needs no flag. `runSystemSeeds` runs in **one transaction** for exactly this reason: two
+   of its steps delete and two throw, and step-by-step a refusal would commit the deletions and
+   abandon the rest.
 2. **Roles are defined in the database.** Admin can create, edit, and delete custom roles.
 3. **A user has one or more roles.** Effective permissions = union of all role permissions.
 4. **System roles cannot be deleted or renamed.** They can be edited only to the extent
