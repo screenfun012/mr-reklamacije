@@ -101,8 +101,13 @@ se ne zna ko je prijavio.
    zatvara penjanje uz lestvicu u korenu: ko nema slanje dokumenata **ne može da napravi rolu koja
    ga daje**, ni sebi ni drugom.
 3. **Niko ne menja role sopstvenog naloga** — ni admin. Server odbija.
-4. **Izmena dejstvuje odmah:** obara keš i **gasi sesije svih koji rolu drže.** Bez toga čovek
-   zadržava oduzeto pravo do sedam dana.
+4. **Izmena dejstvuje odmah:** obara keš i **gasi sesije svih koji rolu drže.**
+   ⚠ *Ispravka 18.08., posle čitanja koda:* obrazloženje „bez toga čovek zadržava oduzeto pravo do
+   sedam dana" **nije tačno**. Dozvole se ne čuvaju u sesiji — `customSession` ih računa iznova na
+   svaki zahtev, pa **obaranje keša samo po sebi** oduzima pravo već na sledećem zahtevu. Sedam dana
+   je vek sesije, ne vek dozvole. Gašenje sesija ostaje (tako je odlučeno, i čovek kome su se prava
+   promenila treba da uđe na nova vrata), ali nije ono što izmenu čini trenutnom. Mehanizam je
+   opisan u `docs/03-permissions.md` §Permission cache and invalidation.
 5. **Zaštićeni super-admin nalog** ostaje netaknut.
 
 ⚠ **Pošteno do kraja:** ako neko provali admin nalog, ništa od ovoga ga ne zaustavlja — to ne

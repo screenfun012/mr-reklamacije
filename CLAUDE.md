@@ -107,8 +107,19 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 # with the dev servers also on the CPU, timing-sensitive component tests starve. Measured
 # 2026-07-26: packages/auth's two-factor suite takes 94 ms alone and 14.7 s under that load,
 # blowing a 5 s testTimeout. The tests are fine — the machine was oversubscribed.
-pnpm format:check && pnpm exec turbo run build typecheck lint test --force \
+# ⚠️ **On this MacBook Air, run the tests in their OWN turbo pass.** `--concurrency=4` was not
+# enough on 2026-08-18: two consecutive full gates went red on different packages
+# (`internal-web#test`, then `portal-web#test`), and BOTH suites passed when run alone. Three Vite
+# builds and the test suites at 4-wide starve the timing-sensitive component tests — the neighbours
+# of the failure took 7.8 s for what normally costs under a second. A red like that is a lie about
+# the code, and chasing it burns an hour. Split it:
+pnpm format:check \
+  && TZ=UTC pnpm exec turbo run build typecheck lint --force --concurrency=4 \
+  && TZ=UTC pnpm exec turbo run test --force --concurrency=2 \
   && pnpm --filter api depcruise && pnpm test:integration
+# (One pass is still fine on a bigger machine:)
+# pnpm format:check && pnpm exec turbo run build typecheck lint test --force \
+#   && pnpm --filter api depcruise && pnpm test:integration
 # (CONTRIBUTING's pre-commit order: format:write, typecheck, test, test:integration, lint, depcruise, format:check)
 
 # Dev (NIKOLA runs these — not you)

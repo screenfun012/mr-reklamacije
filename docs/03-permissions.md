@@ -436,15 +436,47 @@ and redirect to `/403` if the user lacks access.
 
 ## Permission cache and invalidation
 
-1. On login, user's effective permissions are computed and stored in Better-Auth session.
-2. Cookie cache is valid 5 minutes; during that time API avoids DB query for permissions.
-3. When admin modifies `role_permissions` or `user_roles`:
-   - API writes to DB
-   - API calls `permissions.invalidateFor(userIds)` — clears Redis/memory cache (none; we use per-request refetch)
-   - API emits SSE event `{ type: 'permissions_changed' }` to every affected user's SSE channel
-4. Affected users' browsers receive SSE → invalidate TanStack Query `['me']` → refetch → UI updates
+> Rewritten 2026-08-18 after tracing the code. What stood here described machinery that does not
+> exist — `permissions.invalidateFor(userIds)`, an SSE event `permissions_changed`, and a UI that
+> refetches `['me']` on it. None of those are real: the two event names appear once, inside a
+> **comment** in `packages/shared/src/constants/app-events.ts`, and nothing defines, emits or
+> listens to them. Believing that section would lead someone to skip a cache clear on the grounds
+> that "the SSE will fix it".
 
-See `docs/05-auth-realtime.md` for the complete SSE architecture.
+**Permissions are not stored in a session.** `customSession`
+(`packages/auth/src/better-auth.config.ts`) recomputes them on **every** `getSession`: it reads
+`user_roles` fresh, then asks `cachedByRoles.resolveForRoles(roleCodes)`. Better-Auth's cookie cache
+is deliberately **off** (`packages/auth/src/options.ts`), so every request really does reach the
+database for the session row.
+
+That resolver cache (`packages/auth/src/server/permission-cache.ts`) is a **module-level Map**, TTL
+5 minutes, keyed by the caller's sorted role codes — not by user. So two people holding the same
+combination share one entry.
+
+When a set changes, `RolesService.applyImmediately` does two things:
+
+1. **`clearPermissionCache()`** — empties that Map. This is what makes the change immediate: the
+   very next request from anybody re-reads `role_permissions` from the database, and the
+   `user.permissions` handed to the browser is rebuilt with it.
+2. **`revokeUserSessions()`** for every holder — deletes their session rows, so their next request
+   is a 401 and they are sent to the login screen.
+
+⚠ **The spec's stated reason for step 2 is wrong** and the design doc has been corrected: it said
+that without it "a person keeps a removed right for up to seven days". Seven days is the session
+lifetime, not the permission lifetime — step 1 alone already takes the right away on their next
+request, in both the server's check and the browser's copy. Step 2 ships because the spec asks for
+it and because a person whose rights changed under them should come back through the door; it is
+not what makes the change take effect. State it truthfully, or somebody eventually skips the cache
+clear believing the session holds the answer.
+
+Its cost is real and worth remembering: everyone holding the set is signed out mid-work. Revisit if
+that ever bites; do not remove it in passing.
+
+⚠ **Neither step crosses a replica.** The Map is per process, so with more than one API instance a
+change reaches only the instance that served the PATCH; the others keep answering from their own
+cache for up to 5 minutes, and a fresh login does not help because it lands on that instance's cache
+too. `numReplicas` is 1 today and CLAUDE.md already lists this cache among the multi-replica
+blockers — this is the concrete shape of that blocker.
 
 ### Forcing logout on role change
 
@@ -454,21 +486,52 @@ which forces a redirect to login. Client-side it's a `window.location.href = '/l
 
 ---
 
-## Custom role workflow (admin UI)
+## Custom privilege workflow (admin UI)
 
-1. Admin opens "Role" page, clicks "New role"
-2. Modal: role code (slug), name (sr/en), description
-3. Permission tree: expandable by module, checkbox per permission
-4. "Copy from existing role" button: pre-fills checkboxes based on a chosen role
-5. Save → writes `roles` + `role_permissions` rows + audit log entry
-6. Edit: same tree with pre-filled state. Diff is computed for audit log.
-7. Delete: only for `is_system = false` roles; cascade detaches `user_roles`.
+> Rewritten 2026-08-18 against the screen that shipped (R-5). What stood here described a different
+> product: a "New role" button, a typed role code, a "copy from existing" button that pre-fills
+> checkboxes, and a delete that detaches `user_roles`. None of that is what exists.
 
-### Validation
+**Admin → Ovlašćenja** (`apps/admin-web/src/components/roles/`).
 
-- Role `code` must match `^[a-z][a-z0-9_]{2,32}$`
-- Cannot delete a role that still has users assigned (admin must re-assign first; UI warns)
-- Cannot create a role named with reserved system codes: `admin`, `operator`, `viewer`, `client`
+1. The list shows every set: name, **STANDARDNO / TVOJE**, how many actions it carries, how many
+   people hold it.
+2. **There is no "start from nothing".** Every set begins as a copy — `Umnoži` on any row, standard
+   or custom. With 21 standard packages on the list, a copy is a shorter road to something sensible
+   than an empty matrix of 84 checkboxes. `POST /api/roles/:id/duplicate` creates the copy
+   immediately; it does not pre-fill a form.
+3. **The code is never typed.** `RolesService.roleCodeFrom` derives it from the English name
+   (transliterating `č ć ž š đ`, non-alphanumerics to `_`, capped at 40 chars), and `freeCodeFor`
+   appends `_2`, `_3`… until it is free. So a name colliding with a reserved code is **not refused**
+   — it simply gets a different code. Only the two names are validated: trimmed, 2–80 characters.
+   Two sets may share a display name.
+4. **Edit** opens the same dialog: names, description, and the action matrix grouped by `module`
+   with "Sve"/"Ništa" per group. A standard set opens **read-only** with the line that says to copy
+   it — `assertEditable` refuses the PATCH regardless.
+5. **Save** writes `roles` + `role_permissions` in one transaction, audits the before/after, clears
+   the permission cache and revokes the holders' sessions (see §Permission cache and invalidation).
+6. **Delete is refused while anybody holds the set** — the button is dead and the count stands
+   beside it. It is a **soft** delete (`deleted_at`); nothing is detached and no cascade runs,
+   because a set can only be deleted when no `user_roles` row points at it. The resolver filters
+   `deleted_at IS NULL`, so a deleted set stops granting immediately even to a live session.
+
+### What the screen refuses, and where it is judged
+
+Every refusal below is drawn on the screen **and** judged again on the server — the screen is
+courtesy.
+
+| Refusal | Server |
+|---|---|
+| A standard set cannot be edited | `RolesService.assertEditable` → 422 |
+| A set somebody holds cannot be deleted | `RolesService.softDelete` → 409 with the count |
+| An action the actor does not hold cannot be **added** | `RolesService.assertActorHolds` → 403 |
+
+⚠ That last one is about **adding** only. An action already in a set may always be taken away —
+removing is never an escalation, and forbidding it would leave a set nobody can shrink once its
+author lost the action. The checkbox is dead only when it is OFF and unheld.
+
+⚠ Today **no checkbox is ever dead**: admin-web is admin-only and `admin` holds every action from
+the resolver's bypass. The rule is built for the day part of this is delegated.
 
 ---
 
