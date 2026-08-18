@@ -185,3 +185,33 @@ Run `pnpm create-admin` after migrate + seed on a fresh database.
 **Protected pages visible before login on first load (SSR flash):**
 
 Fixed by SSR session check in `requireRoles` + `createServerSessionLoader`. Each web app uses `internalRequireRoles` / `adminRequireRoles` / `portalRequireRoles` from `src/lib/auth-guard.ts`. Restart dev servers after pulling auth changes.
+
+**Intake document never seals / 39 integration tests fail after a pull:**
+
+`playwright` is a dependency of `apps/api` (claim report, intake work order, handover sheet). It
+pins a browser revision, and `pnpm install` does **not** download it — so a pull that bumps
+Playwright leaves the old build on disk and every render dies:
+
+```bash
+cd apps/api && pnpm exec playwright install chromium
+```
+
+Recognise it two ways, because the same gap shows up very differently:
+
+- `pnpm test:integration` fails 39 tests across the five `intake-document*` / `intake-handover`
+  suites. Twelve of them burn a **20 s** timeout each (`waitForSealedDocument` polls the database
+  for a render that can never finish), so the run looks *hung* rather than failed, and the real
+  cause — `browserType.launch: Executable doesn't exist at .../chromium_headless_shell-<n>` — is
+  buried far below.
+- In the running app it is **silent**: sealing is fire-and-forget (`void
+  produceDocumentInBackground(id)`), so signing an intake order just leaves the screen saying the
+  document is being prepared, forever.
+
+**First `pnpm dev:all` after a pull looks dead for ~10 s:**
+
+Two transients overlap, both self-healing. The Paraglide compile runs immediately before the API
+starts, and its filesystem events land *after* `tsx watch` attaches, so the API restarts ~4×
+(`[tsx] unlink in .../paraglide/messages/... Restarting...`). At the same time Vite logs
+`Re-optimizing dependencies because lockfile has changed` and drops its client entry
+(`Failed to fetch dynamically imported module: virtual:tanstack-start-client-entry`). Wait for the
+API line `Server listening`, then hard-refresh (Cmd+Shift+R). A clean boot is ~6 s.
