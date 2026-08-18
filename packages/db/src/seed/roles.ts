@@ -10,19 +10,18 @@ import {
   SYSTEM_ROLE_VIEWER,
   VIEWER_PERMISSIONS,
 } from '@mr/shared'
-import { eq } from 'drizzle-orm'
+import { and, eq, notInArray, sql } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import * as schema from '../schema/index.js'
+import { STANDARD_ROLES, type StandardRoleSeed } from './standard-roles.js'
 
-interface RoleSeed {
-  code: string
-  nameSr: string
-  nameEn: string
-  permissions: readonly string[]
-}
-
-const SYSTEM_ROLES: RoleSeed[] = [
+/**
+ * The five coarse roles that predate the panel. They stay: `admin` and `client` are load-bearing
+ * (the resolver hands `admin` every action from code, and `client` is only ever assigned through
+ * approval, together with a firm), and the other three are what people hold today.
+ */
+const LEGACY_ROLES: readonly StandardRoleSeed[] = [
   {
     code: SYSTEM_ROLE_ADMIN,
     nameSr: 'Administrator',
@@ -55,11 +54,55 @@ const SYSTEM_ROLES: RoleSeed[] = [
   },
 ]
 
+const SYSTEM_ROLES: readonly StandardRoleSeed[] = [...LEGACY_ROLES, ...STANDARD_ROLES]
+
+/**
+ * Makes the set's actions equal to what the code says — inserting what is missing and **removing
+ * what code never granted**.
+ *
+ * Add-only was the old behaviour and it cannot express a set: an action taken out of a package here
+ * would keep being handed out by every database that had already seen it, invisibly, because
+ * nothing in the repository would name it any more. Only `is_system` rows go through this; a set
+ * composed in the panel belongs to its author and the seed must never reach into it.
+ */
+async function syncRolePermissions(
+  db: NodePgDatabase<typeof schema>,
+  roleId: string,
+  permissions: readonly string[],
+): Promise<number> {
+  await db.delete(schema.rolePermissions).where(
+    and(
+      eq(schema.rolePermissions.roleId, roleId),
+      // An empty package would mean "no actions", so the guard keeps `notInArray` from turning
+      // that into "delete nothing" — the one case where the two differ.
+      permissions.length > 0
+        ? notInArray(schema.rolePermissions.permissionId, [...permissions])
+        : undefined,
+    ),
+  )
+
+  if (permissions.length === 0) {
+    return 0
+  }
+
+  const inserted = await db
+    .insert(schema.rolePermissions)
+    .values(permissions.map((permissionId) => ({ roleId, permissionId })))
+    .onConflictDoNothing({
+      target: [schema.rolePermissions.roleId, schema.rolePermissions.permissionId],
+    })
+    .returning({ permissionId: schema.rolePermissions.permissionId })
+
+  return inserted.length
+}
+
 export async function seedRoles(db: NodePgDatabase<typeof schema>): Promise<void> {
   let rolesInserted = 0
   let junctionsInserted = 0
 
   for (const roleSeed of SYSTEM_ROLES) {
+    // Names are written over, for the same reason permission labels are: a reworded package has to
+    // reach an install that already has the row, and nobody can edit these from the panel anyway.
     const insertedRows = await db
       .insert(schema.roles)
       .values({
@@ -68,42 +111,27 @@ export async function seedRoles(db: NodePgDatabase<typeof schema>): Promise<void
         nameEn: roleSeed.nameEn,
         isSystem: true,
       })
-      .onConflictDoNothing({ target: schema.roles.code })
-      .returning({ id: schema.roles.id })
+      .onConflictDoUpdate({
+        target: schema.roles.code,
+        set: {
+          nameSr: sql`excluded.name_sr`,
+          nameEn: sql`excluded.name_en`,
+          isSystem: sql`excluded.is_system`,
+        },
+      })
+      .returning({ id: schema.roles.id, createdAt: schema.roles.createdAt })
 
-    if (insertedRows.length > 0) {
-      rolesInserted++
-    }
-
-    const [role] = await db
-      .select({ id: schema.roles.id })
-      .from(schema.roles)
-      .where(eq(schema.roles.code, roleSeed.code))
-      .limit(1)
+    const [role] = insertedRows
 
     if (!role) {
-      throw new Error(`[seed:roles] Role ${roleSeed.code} not found after insert`)
+      throw new Error(`[seed:roles] Role ${roleSeed.code} not found after upsert`)
     }
 
-    const permissionValues = roleSeed.permissions.map((permissionId) => ({
-      roleId: role.id,
-      permissionId,
-    }))
-
-    if (permissionValues.length > 0) {
-      const insertedJunctions = await db
-        .insert(schema.rolePermissions)
-        .values(permissionValues)
-        .onConflictDoNothing({
-          target: [schema.rolePermissions.roleId, schema.rolePermissions.permissionId],
-        })
-        .returning({ permissionId: schema.rolePermissions.permissionId })
-
-      junctionsInserted += insertedJunctions.length
-    }
+    rolesInserted += 1
+    junctionsInserted += await syncRolePermissions(db, role.id, roleSeed.permissions)
   }
 
   console.log(
-    `[seed:roles] Inserted ${rolesInserted} / ${SYSTEM_ROLES.length} roles, ${junctionsInserted} role_permissions`,
+    `[seed:roles] Wrote ${String(rolesInserted)} / ${String(SYSTEM_ROLES.length)} roles, ${String(junctionsInserted)} new role_permissions`,
   )
 }

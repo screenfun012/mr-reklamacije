@@ -19,6 +19,8 @@ const CATALOG = join(REPO_ROOT, 'packages', 'shared', 'src', 'permissions.ts')
 const DECLARATION_FILES = [
   // Human names for the roles panel: data for the seed, not a check.
   join(REPO_ROOT, 'packages', 'db', 'src', 'seed', 'permission-labels.ts'),
+  // The 21 standard privilege sets: they HAND OUT actions, they never ask for one.
+  join(REPO_ROOT, 'packages', 'db', 'src', 'seed', 'standard-roles.ts'),
 ]
 
 const SEARCH_ROOTS = ['apps', 'packages']
@@ -32,8 +34,6 @@ const SKIP_DIRECTORIES = new Set(['node_modules', 'dist', '.output', '.nitro', '
  * implementing one of these without striking it off. The list can only shrink, and it cannot rot.
  */
 const PENDING: readonly string[] = [
-  // Gate the fault-per-employee figures — measuring named people is its own permission.
-  'employees.view_analytics',
   // No route deactivates an employee yet; the admin screen only soft-deletes.
   'employees.deactivate',
   // Waiting on the "engines assembled per month" counter. Excel already READS the table.

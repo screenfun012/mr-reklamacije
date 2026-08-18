@@ -161,7 +161,13 @@ export const StatisticsFaultPartyRowSchema = z.object({
 export type StatisticsFaultPartyRow = z.infer<typeof StatisticsFaultPartyRowSchema>
 
 export const StatisticsByFaultsSchema = z.object({
-  byEmployee: z.array(StatisticsFaultPartyRowSchema),
+  /**
+   * `null` for a reader without `employees.view_analytics` — how many faults a NAMED person was
+   * blamed for is the thing that permission protects. An empty array would say "nobody was blamed
+   * for anything", which is a statement about the shop and not about the reader.
+   */
+  byEmployee: z.array(StatisticsFaultPartyRowSchema).nullable(),
+  // Not withheld: a department is a place, not a person, and the permission is named after people.
   byDepartment: z.array(StatisticsFaultPartyRowSchema),
   byExternalParty: z.array(StatisticsFaultPartyRowSchema),
 })
@@ -180,7 +186,8 @@ export const StatisticsSummarySchema = z.object({
   trends: StatisticsTrendsSchema,
   byManufacturer: StatisticsByManufacturerSchema,
   outcomes: StatisticsOutcomesSchema,
-  byEmployee: StatisticsByEmployeeSchema,
+  /** `null` for a reader without `employees.view_analytics` — see `StatisticsByFaultsSchema`. */
+  byEmployee: StatisticsByEmployeeSchema.nullable(),
   byEngineType: StatisticsByEngineTypeSchema,
   /**
    * `null` for a reader without `statistics.view_financial` — the money is the one section of this

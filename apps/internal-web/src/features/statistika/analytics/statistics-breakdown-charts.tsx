@@ -16,7 +16,8 @@ import { resolveBreakdownDisplayName } from './statistics-breakdown-formatters.j
 import { StatisticsManufacturerRankTooltip } from './statistics-manufacturer-chart-tooltip.js'
 
 export interface StatisticsBreakdownChartsProps {
-  byEmployee: StatisticsByEmployee
+  /** `null` when the reader may not see `employees.view_analytics` figures. */
+  byEmployee: StatisticsByEmployee | null
   byEngineType: StatisticsByEngineType
   byCustomer: StatisticsByCustomer
   byFaults: StatisticsByFaults
@@ -167,11 +168,18 @@ export function StatisticsBreakdownCharts({
   byCustomer,
   byFaults,
 }: StatisticsBreakdownChartsProps): React.ReactElement | null {
-  const showEmployee = byEmployee.items.length > 0
+  /**
+   * Withheld and empty are different things and must look different. A reader without
+   * `employees.view_analytics` gets `null` and the section simply is not there; an empty list means
+   * the filters matched no work, and the section is equally absent — but for a reason the rest of
+   * the screen already tells him.
+   */
+  const showEmployee = byEmployee !== null && byEmployee.items.length > 0
+  const faultsByEmployee = byFaults.byEmployee
   const showEngineType = byEngineType.items.length > 0
   const showCustomer = byCustomer.items.length > 0
   const showFaults =
-    byFaults.byEmployee.length > 0 ||
+    (faultsByEmployee?.length ?? 0) > 0 ||
     byFaults.byDepartment.length > 0 ||
     byFaults.byExternalParty.length > 0
 
@@ -251,14 +259,20 @@ export function StatisticsBreakdownCharts({
               {m.statistika_analytics_faults_section_description()}
             </p>
           </div>
-          <div className="grid gap-4 xl:grid-cols-3">
-            <BreakdownRankCard
-              prefix="fault-employee"
-              title={m.statistika_analytics_faults_by_employee()}
-              items={byFaults.byEmployee}
-              gradient={STATISTICS_MONO_GRADIENTS.red}
-              rollupOthers
-            />
+          <div
+            className={
+              faultsByEmployee === null ? 'grid gap-4 xl:grid-cols-2' : 'grid gap-4 xl:grid-cols-3'
+            }
+          >
+            {faultsByEmployee === null ? null : (
+              <BreakdownRankCard
+                prefix="fault-employee"
+                title={m.statistika_analytics_faults_by_employee()}
+                items={faultsByEmployee}
+                gradient={STATISTICS_MONO_GRADIENTS.red}
+                rollupOthers
+              />
+            )}
             <BreakdownRankCard
               prefix="fault-department"
               title={m.statistika_analytics_faults_by_department()}

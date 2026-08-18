@@ -113,22 +113,36 @@ export class StatisticsService {
     )
 
     /**
-     * The money is withheld AFTER the cache read, never before it.
+     * Both withholdings happen AFTER the cache read, never before it.
      *
      * The summary is cached by scope and filters and deliberately NOT per user, so a permitted
      * reader and an unpermitted one share one entry — stripping before the cache would mean
      * whoever asked first decided what the other sees. Withholding on the way out is the only
      * placement that cannot leak in either direction, and it costs one object spread.
      *
-     * `statistics.view_financial` has been in the catalog since day one and **nothing ever read
-     * it** (measured 2026-08-17: 27 of 97 permissions were in that state). Both `operator` and
-     * `viewer` hold it, so the effect of this gate is not to take the figures away from anyone who
-     * has them today — it is that the switch finally means something.
+     * Both permissions sat in the catalog with nothing reading them (measured 2026-08-17: 27 of 97
+     * were in that state). `statistics.view_financial` guards the DOMACE amounts;
+     * `employees.view_analytics` guards the two places this screen measures a NAMED person — how
+     * many claims sit on a worker, and how many faults he was blamed for. Departments and external
+     * parties are not withheld: a department is a place, and the permission is named after people.
+     *
+     * Each section is withheld as `null` rather than emptied. An empty list is a statement about
+     * the business ("no amounts were entered", "nobody was blamed"); this is a statement about the
+     * reader, and the screen has to be able to tell them apart.
      */
-    if (actor.permissions.includes('statistics.view_financial')) {
+    const withMoney = actor.permissions.includes('statistics.view_financial')
+    const withPeople = actor.permissions.includes('employees.view_analytics')
+
+    if (withMoney && withPeople) {
       return summary
     }
-    return { ...summary, domaceAmounts: null }
+
+    return {
+      ...summary,
+      domaceAmounts: withMoney ? summary.domaceAmounts : null,
+      byEmployee: withPeople ? summary.byEmployee : null,
+      byFaults: withPeople ? summary.byFaults : { ...summary.byFaults, byEmployee: null },
+    }
   }
 
   private async computeSummary(

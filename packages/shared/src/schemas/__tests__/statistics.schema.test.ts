@@ -114,11 +114,45 @@ describe('StatisticsSummarySchema', () => {
     expect(parsed.trends.volumeTrend.direction).toBe('rising')
     expect(parsed.byManufacturer.items[1]?.code).toBe(STATISTICS_UNKNOWN_MANUFACTURER_CODE)
     expect(parsed.outcomes.processingTime.sampleSize).toBe(6)
-    expect(parsed.byEmployee.items[0]?.name).toBe('Marko Marković')
+    expect(parsed.byEmployee?.items[0]?.name).toBe('Marko Marković')
     expect(parsed.byEngineType.items[0]?.code).toBe(STATISTICS_UNKNOWN_CODE)
     expect(parsed.domaceAmounts).toEqual({ totalAmount: 3999.75, claimCount: 2 })
     expect(parsed.byCustomer.items[0]?.name).toBe('Auto Stanić')
-    expect(parsed.byFaults.byEmployee[0]?.total).toBe(2)
+    expect(parsed.byFaults.byEmployee?.[0]?.total).toBe(2)
+  })
+
+  /**
+   * The withheld shape is a real answer from the server, not an edge case: a reader without
+   * `employees.view_analytics` gets `null` for both per-person sections and `null` for the money
+   * without `statistics.view_financial`. If any of the three loses `.nullable()`, the client fails
+   * to parse a response the API legitimately sends.
+   */
+  it('parses a summary with the withheld sections set to null', () => {
+    const parsed = StatisticsSummarySchema.parse({
+      trends: {
+        byMonth: [],
+        byYear: [],
+        volumeTrend: {
+          direction: StatisticsVolumeTrendDirection.Stable,
+          currentPeriodTotal: 0,
+          previousPeriodTotal: 0,
+          delta: 0,
+          deltaPercent: null,
+        },
+      },
+      byManufacturer: { items: [] },
+      outcomes: emptyOutcomes,
+      ...emptyBreakdowns,
+      byEmployee: null,
+      domaceAmounts: null,
+      byFaults: { byEmployee: null, byDepartment: [], byExternalParty: [] },
+    })
+
+    expect(parsed.byEmployee).toBeNull()
+    expect(parsed.domaceAmounts).toBeNull()
+    expect(parsed.byFaults.byEmployee).toBeNull()
+    // Not everything goes: what is not about a named person still parses as a list.
+    expect(parsed.byFaults.byDepartment).toEqual([])
   })
 
   it('parses catalog OSTALO separately from UI others roll-up code', () => {

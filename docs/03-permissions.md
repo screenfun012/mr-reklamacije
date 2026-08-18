@@ -111,7 +111,7 @@ Intake photos are served by the intake module under these permissions, **not** b
 | Permission | Description |
 |---|---|
 | `employees.view` | View employees list and profile |
-| `employees.view_analytics` | See trading-style employee analytics (ratios, trends) |
+| `employees.view_analytics` | See the figures that measure a **named person** — claims per assigned worker, and faults blamed on him. Withheld as `null` from the statistics summary without it; departments and external parties are not withheld, because they are places and not people |
 | `employees.create` | Create new employee records |
 | `employees.update` | Edit employee records |
 | `employees.deactivate` | Mark employee as terminated |
@@ -296,6 +296,45 @@ filters attachments by `visibility = 'client_visible'` when the requesting user'
 permissions do not include the internal-view variant.
 
 ---
+
+## Standard privilege sets (seeded, `is_system = true`)
+
+Beside the five coarse roles above the seed maintains **21 small, independent sets**
+(`packages/db/src/seed/standard-roles.ts`). A person holds several and their actions add up —
+`[Prijem — rad na terenu] + [Prijem — kancelarija] + [Slanje dokumenta]` instead of a role named
+"Operater bez slanja". Three sets give eight combinations while three things are maintained; the
+alternative (clone a role, remove one action) is how a system ends up with fifty roles nobody can
+tell apart.
+
+| Area | Sets |
+|---|---|
+| Prijem vozila | Prijem — rad na terenu · Prijem — kancelarija · Prijem — slanje dokumenta · Prijem — samo pregled |
+| Reklamacije | Reklamacije — pregled · obrada · odluka o ishodu · šta klijent vidi · brisanje i arhiva |
+| Kupci i radnici | Kupci — vođenje · Radnici — vođenje · Radnici — učinak |
+| Brojke | Statistika · Statistika — novac · Izvoz u Excel |
+| Portal i sanduče | Pristiglo — prijave klijenata · Obaveštenja |
+| Kontrolna tabla | Korisnici — pregled · Šifarnici — reklamacije · Šifarnici — prijem · Istorija |
+
+Two rules govern them, and both are under test
+(`packages/db/src/__tests__/integration/standard-roles-seed.integration.test.ts`):
+
+- **The seed keeps a standard set equal to what the code says.** It inserts what is missing and
+  **removes what code never granted** — add-only could not express a set, and an action taken out of
+  a package here would keep being handed out by every database that had already seen it.
+- **The seed never touches a set built in the panel** (`is_system = false`). That one belongs to its
+  author; syncing it would silently undo his work on every deploy.
+
+Because they are `is_system`, the panel offers **copying** rather than editing (`RolesService.assertEditable`).
+
+**Deliberately not sets — admin only** (Nikola, 2026-08-17, after the demo: handing out rights stays
+with the super-admin account): `users.reset_password` (it sets somebody else's password outright),
+`users.create`/`delete`, every `roles.*`, `roles.assign`, `users.approve_registration` /
+`reject_registration` + `customers.link_users` (approving a person gives him a role, so it gives him
+rights), `users.deactivate`, and `settings.app_settings.view`/`update`/`manage_secrets`. The seven
+portal actions are not sets either — `view_own_customer` is not "sees less" but "sees the rows of his
+own firm", and a person from the firm has no firm.
+
+Full design: `docs/superpowers/specs/2026-08-17-roles-admin-panel-design.md`.
 
 ## Permission check flow
 

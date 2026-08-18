@@ -57,6 +57,26 @@ const EMOTIVE_ONLY_WITH_MONEY: StatisticsActor = {
   permissions: ['statistics.view_emotive', 'statistics.view_financial'],
 }
 
+/**
+ * Same arrangement as the money above, for the same reason: the actors this suite reads with by
+ * default do NOT hold `employees.view_analytics`, so the withholding is what has to be asked for.
+ * Only the tests that are ABOUT the per-person figures use these.
+ */
+const WITH_ANALYTICS: StatisticsActor = {
+  id: TEST_USER_ID,
+  permissions: ['statistics.view_emotive', 'statistics.view_domace', 'employees.view_analytics'],
+}
+
+const EMOTIVE_ONLY_WITH_ANALYTICS: StatisticsActor = {
+  id: TEST_USER_ID,
+  permissions: ['statistics.view_emotive', 'employees.view_analytics'],
+}
+
+const DOMACE_ONLY_WITH_ANALYTICS: StatisticsActor = {
+  id: TEST_USER_ID,
+  permissions: ['statistics.view_domace', 'employees.view_analytics'],
+}
+
 const DOMACE_ONLY: StatisticsActor = {
   id: TEST_USER_ID,
   permissions: ['statistics.view_domace'],
@@ -366,7 +386,9 @@ describe('Statistics module integration', () => {
     it('returns summary JSON for authorized users', async () => {
       const app = createStatisticsTestApp(
         container,
-        testUser(['statistics.view_emotive', 'statistics.view_domace']),
+        // Holds the analytics action too: this asserts the SHAPE of the whole body, and the
+        // per-person sections are `null` without it (their own tests cover that).
+        testUser(['statistics.view_emotive', 'statistics.view_domace', 'employees.view_analytics']),
       )
       await createEmotiveClaim('STAT-HTTP/26')
 
@@ -531,8 +553,8 @@ describe('Statistics module integration', () => {
         employeeId,
       )
 
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const employee = summary.byEmployee.items.find((row) => row.employeeId === employeeId)
+      const summary = await container.statisticsService.getSummary(WITH_ANALYTICS)
+      const employee = summary.byEmployee?.items.find((row) => row.employeeId === employeeId)
 
       expect(employee?.total).toBeGreaterThanOrEqual(2)
     })
@@ -547,8 +569,8 @@ describe('Statistics module integration', () => {
         undefined,
       )
 
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const unknown = summary.byEmployee.items.find(
+      const summary = await container.statisticsService.getSummary(WITH_ANALYTICS)
+      const unknown = summary.byEmployee?.items.find(
         (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
       )
 
@@ -578,9 +600,9 @@ describe('Statistics module integration', () => {
         ctx.db,
         normalizeName('Dejan Milovanović'),
       )
-      const before = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const before = await container.statisticsService.getSummary(WITH_ANALYTICS)
       const beforeCount =
-        before.byEmployee.items.find((row) => row.employeeId === employeeId)?.total ?? 0
+        before.byEmployee?.items.find((row) => row.employeeId === employeeId)?.total ?? 0
 
       const activeId = await createEmotiveClaim('STAT-BRK-ACTIVE/26')
       const archivedId = await createEmotiveClaim('STAT-BRK-ARCH/26')
@@ -590,8 +612,8 @@ describe('Statistics module integration', () => {
         .set({ outcome: ClaimOutcome.Archived })
         .where(eq(schema.emotiveClaims.id, archivedId))
 
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const after = summary.byEmployee.items.find((row) => row.employeeId === employeeId)
+      const summary = await container.statisticsService.getSummary(WITH_ANALYTICS)
+      const after = summary.byEmployee?.items.find((row) => row.employeeId === employeeId)
 
       expect(after?.total).toBe(beforeCount + 1)
       expect(activeId).toBeDefined()
@@ -602,12 +624,14 @@ describe('Statistics module integration', () => {
         ctx.db,
         normalizeName('Dejan Milovanović'),
       )
-      const beforeEmotive = await container.statisticsService.getSummary(EMOTIVE_ONLY)
-      const beforeFull = await container.statisticsService.getSummary(FULL_STATISTICS)
+      const beforeEmotive = await container.statisticsService.getSummary(
+        EMOTIVE_ONLY_WITH_ANALYTICS,
+      )
+      const beforeFull = await container.statisticsService.getSummary(WITH_ANALYTICS)
       const beforeEmotiveCount =
-        beforeEmotive.byEmployee.items.find((row) => row.employeeId === employeeId)?.total ?? 0
+        beforeEmotive.byEmployee?.items.find((row) => row.employeeId === employeeId)?.total ?? 0
       const beforeFullCount =
-        beforeFull.byEmployee.items.find((row) => row.employeeId === employeeId)?.total ?? 0
+        beforeFull.byEmployee?.items.find((row) => row.employeeId === employeeId)?.total ?? 0
 
       await createEmotiveClaim('STAT-EMP-SCOPE-1/26')
       await createDomaceClaim(
@@ -619,10 +643,10 @@ describe('Statistics module integration', () => {
         employeeId,
       )
 
-      const emotiveOnly = await container.statisticsService.getSummary(EMOTIVE_ONLY)
-      const full = await container.statisticsService.getSummary(FULL_STATISTICS)
-      const emotiveRow = emotiveOnly.byEmployee.items.find((row) => row.employeeId === employeeId)
-      const fullRow = full.byEmployee.items.find((row) => row.employeeId === employeeId)
+      const emotiveOnly = await container.statisticsService.getSummary(EMOTIVE_ONLY_WITH_ANALYTICS)
+      const full = await container.statisticsService.getSummary(WITH_ANALYTICS)
+      const emotiveRow = emotiveOnly.byEmployee?.items.find((row) => row.employeeId === employeeId)
+      const fullRow = full.byEmployee?.items.find((row) => row.employeeId === employeeId)
 
       expect(emotiveRow?.total).toBe(beforeEmotiveCount + 1)
       expect(fullRow?.total).toBe(beforeFullCount + 2)
@@ -682,12 +706,12 @@ describe('Statistics module integration', () => {
     })
 
     it('returns empty aggregates for filters with no matching claims', async () => {
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, { year: 2010 })
+      const summary = await container.statisticsService.getSummary(WITH_ANALYTICS, { year: 2010 })
 
       expect(summary.trends.byMonth.every((row) => row.total === 0)).toBe(true)
       expect(summary.byManufacturer.items).toEqual([])
       expect(summary.outcomes.distribution.total).toBe(0)
-      expect(summary.byEmployee.items).toEqual([])
+      expect(summary.byEmployee?.items).toEqual([])
       expect(summary.byEngineType.items).toEqual([])
     })
 
@@ -941,7 +965,7 @@ describe('Statistics module integration', () => {
         { faultType: FaultType.Employee, employeeId },
       ])
 
-      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+      const summary = await container.statisticsService.getSummary(WITH_ANALYTICS, {
         manufacturerId,
       })
 
@@ -971,13 +995,105 @@ describe('Statistics module integration', () => {
         faults: [{ faultType: FaultType.Employee, employeeId }],
       })
 
-      const summary = await container.statisticsService.getSummary(DOMACE_ONLY, {
+      const summary = await container.statisticsService.getSummary(DOMACE_ONLY_WITH_ANALYTICS, {
         manufacturerId,
       })
 
       expect(summary.byFaults.byEmployee).toEqual([])
       expect(summary.byFaults.byDepartment).toEqual([])
       expect(summary.byFaults.byExternalParty).toEqual([])
+    })
+
+    /**
+     * `employees.view_analytics` sat in the catalog with nothing reading it, so anyone who could
+     * open Statistika could read how many faults each named worker was blamed for.
+     *
+     * Withheld as `null`, never as an empty list — for the reason the money is: an empty list is a
+     * statement about the shop ("nobody was blamed for anything"), and this is a statement about
+     * the reader.
+     *
+     * Departments and external parties stay: a department is not a person, and the permission is
+     * named after the thing it protects.
+     */
+    it('withholds the per-person figures from a reader without the analytics permission', async () => {
+      const manufacturerId = await createIsolatedManufacturer('ANANO')
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+      const departmentId = await getDepartmentIdByCode(ctx.db, 'BLOKOVI')
+
+      await createEmotiveBvClaim(manufacturerId, `STAT-ANA-NO/${runId}`, {
+        faults: [
+          { faultType: FaultType.Employee, employeeId },
+          { faultType: FaultType.Department, departmentId },
+        ],
+      })
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.byFaults.byEmployee).toBeNull()
+      expect(summary.byEmployee).toBeNull()
+
+      // What is not about a named person still arrives, and so does the rest of the screen.
+      expect(summary.byFaults.byDepartment).toEqual([
+        { id: departmentId, code: departmentId, name: 'Blokovi', total: 1 },
+      ])
+      expect(summary.outcomes.distribution.total).toBeGreaterThan(0)
+    })
+
+    /**
+     * The placement guard, and it needs a LIVE cache to mean anything — `SummaryCache.read`
+     * short-circuits to `compute()` while Redis is off, which it is everywhere else in this suite,
+     * so the same test against `container.statisticsService` would pass with the withholding on
+     * either side of the cache. The summary is keyed by scope and filters and deliberately NOT per
+     * user, so stripping inside `compute()` would let whoever read first decide what the second
+     * reader sees.
+     */
+    it('does not let a permitted reader warm the per-person figures into an unpermitted one', async () => {
+      const manufacturerId = await createIsolatedManufacturer('ANACACHE')
+      const employeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Dejan Milovanović'),
+      )
+
+      await createEmotiveBvClaim(manufacturerId, `STAT-ANA-CACHE/${runId}`, {
+        faults: [{ faultType: FaultType.Employee, employeeId }],
+      })
+
+      const entries = new Map<string, unknown>()
+      const liveCache = {
+        enabled: true,
+        get: async (key: string) => entries.get(key) ?? null,
+        set: async (key: string, value: unknown) => {
+          entries.set(key, value)
+        },
+        incr: async () => 1,
+        getNumber: async () => 1,
+      } as unknown as RedisCache
+
+      const cached = new StatisticsService(
+        container.statisticsRepository,
+        new SummaryCache(liveCache),
+      )
+
+      const warmed = await cached.getSummary(WITH_ANALYTICS, { manufacturerId })
+      expect(warmed.byFaults.byEmployee).toEqual([
+        { id: employeeId, code: employeeId, name: 'Dejan Milovanović', total: 1 },
+      ])
+      expect(entries.size).toBe(1)
+
+      const second = await cached.getSummary(FULL_STATISTICS, { manufacturerId })
+      expect(second.byFaults.byEmployee).toBeNull()
+      expect(second.byEmployee).toBeNull()
+      // Served from the very entry the first read wrote — not recomputed around the problem.
+      expect(entries.size).toBe(1)
+
+      // And the reverse: a withheld read must not poison the permitted one either.
+      const third = await cached.getSummary(WITH_ANALYTICS, { manufacturerId })
+      expect(third.byFaults.byEmployee).toHaveLength(1)
     })
   })
 })
