@@ -69,6 +69,27 @@ describe('AppSettings module', () => {
       expect(settings.supportPhone).toBe('011/222-3344')
     })
 
+    /**
+     * `app_settings.is_secret` and the `settings.app_settings.manage_secrets` permission both exist
+     * and no setting uses either yet — which is exactly why the read has to refuse now. The day a
+     * service key is put in this table, nothing breaks and nothing warns: the value simply travels
+     * to everyone holding `settings.app_settings.view`, which is a weaker gate than the one written
+     * for it. `.cursor/rules/05` names secret `app_settings` among the things that must never leak.
+     */
+    it('never hands out a value marked secret', async () => {
+      await ctx.db.insert(schema.appSettings).values({
+        key: 'integration.secret_probe',
+        value: 'super-secret-token',
+        valueType: 'string',
+        isSecret: true,
+      })
+
+      const overrides = await container.appSettingsService.getOverrides()
+
+      expect(Object.values(overrides)).not.toContain('super-secret-token')
+      expect(overrides).not.toHaveProperty('integration.secret_probe')
+    })
+
     it('treats a cleared value as no override at all', async () => {
       await container.appSettingsService.update(
         { values: { [AppSettingKey.SupportPhone]: '011/222-3344' } },

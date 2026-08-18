@@ -106,6 +106,12 @@ function enforcementPartOfCatalog(source: string): string {
  * ⚠ Matched as a QUOTED literal, never as a bare substring. `roles.create` is a prefix of
  * `roles.createdBy`, and the first draft of this test called it enforced because of that one Drizzle
  * column. The dead permission it was meant to catch would have shipped.
+ *
+ * ⚠ The corollary, and the direction that would actually hurt: a permission code ASSEMBLED at
+ * runtime (`` requirePermission(`settings.${name}.manage`) ``) is invisible to this sweep, so a LIVE
+ * permission would read as dead and `db:seed` would delete it together with every role that held
+ * it. Verified 2026-08-18: nothing in the repository builds a permission code that way — every one
+ * is written out. Keep it so, or this guard has to learn to resolve them.
  */
 describe('the permission catalog', () => {
   it('has no entry that nothing in the codebase ever checks', async () => {
