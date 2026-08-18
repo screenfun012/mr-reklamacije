@@ -189,15 +189,19 @@ predati nekome; naknadno ga je nemoguće dodati bez prepravke.
 
 ## 6. Ekran
 
-**Admin → Rolovi.** Spisak: naziv, broj ljudi koji je drže, značka **UGRAĐENA** / **VLASTITA**, broj
-dozvola. `Umnoži` na svakoj; `Izmeni`/`Obriši` samo na vlastitim.
+**Admin → Ovlašćenja.** Spisak: naziv, broj ljudi koji je drže, značka **STANDARDNO** / **TVOJE**, broj
+radnji. *(Reči su iz §0. Ovaj odeljak je do 18.08. pisao „UGRAĐENA / VLASTITA", što §0 izričito
+zabranjuje — rečnik je jači, pa je ekran napravljen po njemu.)* `Umnoži` na svakoj; `Izmeni`/`Obriši` samo na vlastitim.
 
 **Izmena** = ime (sr/en), opis, pa **matrica po modulima** (kolona `module` daje grupe): po grupi
 „sve / ništa", pa kvačice sa ljudskim imenom i opisom ispod. Dole rečenica koja imenuje posledicu:
 **„Ovo drži 3 osobe — biće im prekinuta prijava."** Kvačica koju sam aktor nema je **mrtva**, sa
 objašnjenjem — to je pravilo br. 2 iz §4, vidljivo na ekranu a suđeno na serveru.
 
-Ugrađena rola se otvara u istom ekranu, bez izmene, sa trakom „umnoži je da bi menjao".
+Standardno ovlašćenje se otvara u istom ekranu, bez izmene, sa trakom „umnoži ga pa menjaj kopiju".
+
+**Nema „napravi od nule"** (odluka pri gradnji, 18.08.): §6 traži samo `Umnoži`, a sa 21 standardnim
+paketom na spisku kopija je uvek kraći put do skupa koji ima smisla nego prazna matrica od 84 kvačice.
 
 **Rola u upotrebi se ne briše** — dugme mrtvo dok je drži bar jedan čovek, uz broj. Brisanje je meko.
 

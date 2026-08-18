@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Network,
   ScrollText,
+  ShieldCheck,
   SlidersHorizontal,
   Users,
 } from 'lucide-react'
@@ -61,6 +62,12 @@ export const adminNavItems: NavItem[] = [
     label: m.nav_users,
     to: '/users',
     icon: Users,
+  },
+  {
+    key: 'roles',
+    label: m.nav_roles,
+    to: '/settings/roles',
+    icon: ShieldCheck,
   },
   {
     key: 'audit',

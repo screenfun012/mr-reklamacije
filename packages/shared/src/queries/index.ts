@@ -28,6 +28,16 @@ export { claimKeys } from './claim-keys.js'
 export { dashboardSummaryOptions, invalidateDashboardSummary } from './dashboard.js'
 export { appSettingsOptions, appSettingsQueryKey, patchAppSettings } from './app-settings.js'
 export {
+  createRole,
+  deleteRole,
+  duplicateRole,
+  permissionCatalogOptions,
+  roleDetailOptions,
+  rolesListOptions,
+  rolesQueryKeys,
+  updateRole,
+} from './roles.js'
+export {
   statisticsKeys,
   statisticsSummaryOptions,
   statisticsSummaryQueryKeyFromSearch,
