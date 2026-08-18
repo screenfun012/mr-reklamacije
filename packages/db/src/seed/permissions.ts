@@ -1,8 +1,9 @@
 import { PERMISSIONS } from '@mr/shared'
-import { notInArray } from 'drizzle-orm'
+import { notInArray, sql } from 'drizzle-orm'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import * as schema from '../schema/index.js'
+import { PERMISSION_LABELS } from './permission-labels.js'
 
 /**
  * The catalog in code is the truth, so this seed also PRUNES: a permission removed from
@@ -39,24 +40,35 @@ export async function seedPermissions(db: NodePgDatabase<typeof schema>): Promis
   const values = PERMISSIONS.map((code) => {
     const [module, ...actionParts] = code.split('.')
     const action = actionParts.join('.')
-    return {
-      id: code,
-      module: module!,
-      action,
-      nameSr: code,
-      nameEn: code,
-      descriptionSr: '',
-      descriptionEn: '',
+    const label = PERMISSION_LABELS[code]
+
+    if (module === undefined) {
+      throw new Error(`Permission code without a module: ${code}`)
     }
+
+    return { id: code, module, action, ...label }
   })
 
+  // Names are UPSERTED, not left alone. `onConflictDoNothing` would have frozen whatever the row
+  // was first seeded with — and until 2026-08-18 that was the bare code, which is exactly what the
+  // roles panel must never show. A reworded action now reaches every install on the next seed.
   const inserted = await db
     .insert(schema.permissions)
     .values(values)
-    .onConflictDoNothing({ target: schema.permissions.id })
+    .onConflictDoUpdate({
+      target: schema.permissions.id,
+      set: {
+        module: sql`excluded.module`,
+        action: sql`excluded.action`,
+        nameSr: sql`excluded.name_sr`,
+        nameEn: sql`excluded.name_en`,
+        descriptionSr: sql`excluded.description_sr`,
+        descriptionEn: sql`excluded.description_en`,
+      },
+    })
     .returning({ id: schema.permissions.id })
 
-  console.log(`[seed:permissions] Inserted ${inserted.length} / ${values.length} permissions`)
+  console.log(`[seed:permissions] Wrote ${inserted.length} / ${values.length} permissions`)
 
   await prunePermissions(db)
 }

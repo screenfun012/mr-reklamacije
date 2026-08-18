@@ -9,6 +9,18 @@ import { PERMISSIONS } from '../permissions.js'
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
 const CATALOG = join(REPO_ROOT, 'packages', 'shared', 'src', 'permissions.ts')
 
+/**
+ * Files whose job is to NAME or GRANT every permission, never to enforce one. They are cut from the
+ * sweep entirely, because a file that lists all 84 codes would otherwise declare all 84 enforced.
+ *
+ * ⚠ Every future list of this kind belongs here — the seed's role packages are the next one. Miss
+ * one and this guard goes quiet about exactly the dead switch it exists to find.
+ */
+const DECLARATION_FILES = [
+  // Human names for the roles panel: data for the seed, not a check.
+  join(REPO_ROOT, 'packages', 'db', 'src', 'seed', 'permission-labels.ts'),
+]
+
 const SEARCH_ROOTS = ['apps', 'packages']
 const SKIP_DIRECTORIES = new Set(['node_modules', 'dist', '.output', '.nitro', 'paraglide', '.git'])
 
@@ -56,6 +68,7 @@ async function collectSources(dir: string, into: string[]): Promise<void> {
     }
     if (!/\.tsx?$/.test(entry.name) || entry.name.endsWith('.d.ts')) continue
     if (/\.test\.tsx?$/.test(entry.name) || full === CATALOG) continue
+    if (DECLARATION_FILES.includes(full)) continue
     into.push(full)
   }
 }
