@@ -131,7 +131,6 @@ export * from './constants/resource-query-map.js'
 export * from './constants/app-events.js'
 export {
   buildThemeBootstrapScript,
-  THEME_BOOTSTRAP_SCRIPT,
   THEME_STORAGE_KEY,
   type ThemeBootstrapDefault,
 } from './theme/theme-bootstrap-script.js'

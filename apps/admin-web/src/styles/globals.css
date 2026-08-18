@@ -9,3 +9,39 @@
   --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
+
+/* ---------- Palette: the same one internal-web wears ----------
+ * Admin was the one app that never got a redesign — an 11-line stylesheet on the shared preset,
+ * against internal-web's 545 lines. Both are staff-facing and people move between them all day, so
+ * they are one product and had stopped looking like it (Nikola, 2026-08-18).
+ *
+ * Only the SEVEN role tokens are restated. Everything else in the preset — shadcn's `--background`,
+ * `--muted-foreground`, `--border`, the sidebar set, the badge hues — is already routed through
+ * these, so every admin screen moves at once and not one screen file is touched.
+ *
+ * Deliberately NOT edited in `tooling/tailwind/index.css`: that preset is shared with internal-web
+ * and portal-web, and portal is a client-facing design of its own. An override here is the only
+ * shape of this change that cannot reach a screen it was not meant for.
+ *
+ * Values are internal-web's `--mri-*`, taken whole rather than approximated. `--mr-primary` stays
+ * `#ed1c24` — it was already the brandbook red on both sides.
+ */
+:root {
+  --mr-bg: #f4f4f5; /* --mri-bg */
+  --mr-surface: #ffffff; /* --mri-surface */
+  --mr-surface-raised: #fafafa; /* --mri-raised */
+  --mr-text-primary: #17171a; /* --mri-text */
+  --mr-text-secondary: #5c5d63; /* --mri-text2 */
+  --mr-border: rgba(20, 20, 25, 0.1); /* --mri-border */
+  --mr-list-item-hover: rgba(20, 20, 25, 0.03); /* --mri-rowhv */
+}
+
+.dark {
+  --mr-bg: #0b0b0d; /* --mri-bg */
+  --mr-surface: #131316; /* --mri-surface */
+  --mr-surface-raised: #1a1a1f; /* --mri-raised */
+  --mr-text-primary: #f2f2f3; /* --mri-text */
+  --mr-text-secondary: #9c9da3; /* --mri-text2 */
+  --mr-border: rgba(255, 255, 255, 0.09); /* --mri-border */
+  --mr-list-item-hover: rgba(255, 255, 255, 0.03); /* --mri-rowhv */
+}

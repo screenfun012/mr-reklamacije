@@ -8,7 +8,7 @@ import {
   SESSION_ROUTE_STALE_MS,
 } from '@mr/auth/route-guards'
 import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
-import { THEME_BOOTSTRAP_SCRIPT } from '@mr/shared'
+import { buildThemeBootstrapScript } from '@mr/shared'
 import { Toaster } from '@mr/ui'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -56,7 +56,7 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang={locale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOTSTRAP_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: buildThemeBootstrapScript('dark') }} />
         <HeadContent />
       </head>
       <body suppressHydrationWarning className="antialiased">
