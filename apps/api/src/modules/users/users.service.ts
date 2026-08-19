@@ -123,23 +123,22 @@ export class UsersService {
 
     // Approving a client also links the user to customer(s); that is a separate,
     // named capability (docs/13) — require it on top of the approval permission.
-    if (
-      input.status === UserAccountStatus.Approved &&
-      input.roleCode === SYSTEM_ROLE_CLIENT &&
-      !actor.permissions.includes('customers.link_users')
-    ) {
+    const approvesAsClient =
+      input.status === UserAccountStatus.Approved && input.roleCodes.includes(SYSTEM_ROLE_CLIENT)
+
+    if (approvesAsClient && !actor.permissions.includes('customers.link_users')) {
       throw new ForbiddenError()
     }
 
-    if (input.status === UserAccountStatus.Approved && input.roleCode !== undefined) {
-      await this.assertActorMayGrant([input.roleCode], actor.permissions)
+    if (input.status === UserAccountStatus.Approved) {
+      await this.assertActorMayGrant(input.roleCodes, actor.permissions)
     }
 
     const updated =
       input.status === UserAccountStatus.Approved
         ? await this.repo.approvePendingUser(
             id,
-            input.roleCode,
+            input.roleCodes,
             actor.actorUserId,
             input.customerIds,
           )
@@ -161,9 +160,7 @@ export class UsersService {
               accountStatus: updated.accountStatus,
               roles: sortedRoles(updated.roles),
               requestedCompany: updated.requestedCompany,
-              ...(input.roleCode === SYSTEM_ROLE_CLIENT
-                ? { linkedCustomerIds: [...input.customerIds].sort() }
-                : {}),
+              ...(approvesAsClient ? { linkedCustomerIds: [...input.customerIds].sort() } : {}),
             },
           }
         : {
@@ -190,7 +187,7 @@ export class UsersService {
     // Best-effort activation email (clients only). Runs AFTER the approval has
     // committed and is audited — a failed send never breaks the approval.
     let activationEmailSent: boolean | null = null
-    if (input.status === UserAccountStatus.Approved && input.roleCode === SYSTEM_ROLE_CLIENT) {
+    if (approvesAsClient) {
       const activationUser = await this.repo.findActivationUserById(id)
       if (activationUser !== null) {
         activationEmailSent = await this.activation.sendActivationFor(activationUser)

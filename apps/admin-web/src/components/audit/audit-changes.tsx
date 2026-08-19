@@ -12,20 +12,31 @@ function DiffValue({
   before: string | null
   after: string | null
 }): ReactElement {
+  // Chips, not coloured words: a diff is two VALUES, and at 12px mono in a tinted box the eye finds
+  // the pair without reading the sentence around it (prototype's expanded audit row).
+  const beforeChip = (
+    <span className="rounded-md bg-mr-brand/10 px-2 py-0.5 font-mono text-adm-red-h line-through">
+      {before}
+    </span>
+  )
+  const afterChip = (
+    <span className="rounded-md bg-adm-grn/[0.13] px-2 py-0.5 font-mono text-adm-grn">{after}</span>
+  )
+
   if (before !== null && after !== null) {
     return (
-      <span>
-        <span className="text-mr-error-strong line-through">{before}</span>
-        {' → '}
-        <span className="text-mr-success-strong">{after}</span>
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        {beforeChip}
+        <span className="text-muted-foreground">→</span>
+        {afterChip}
       </span>
     )
   }
   if (after !== null) {
-    return <span>{after}</span>
+    return afterChip
   }
   if (before !== null) {
-    return <span className="text-mr-error-strong line-through">{before}</span>
+    return beforeChip
   }
   return <span className="text-muted-foreground">—</span>
 }
@@ -75,7 +86,7 @@ export function AuditJson({ value }: AuditJsonProps): ReactElement {
     return <p className="text-xs text-muted-foreground">{m.audit_detail_none()}</p>
   }
   return (
-    <pre className="max-h-64 overflow-auto rounded-md bg-muted/40 p-3 text-xs">
+    <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-card p-3 font-mono text-[11px]">
       {JSON.stringify(value, null, 2)}
     </pre>
   )

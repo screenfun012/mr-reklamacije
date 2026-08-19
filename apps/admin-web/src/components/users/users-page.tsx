@@ -15,24 +15,27 @@ import {
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
-  Button,
-  ConfirmDialog,
+  cn,
   dataTableCardClassName,
-  dataTableDestructiveActionClassName,
+  dataTableCellClassName,
+  dataTableEmptyClassName,
+  dataTableHeadCellClassName,
+  dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
-  dataTableTextActionClassName,
-  Heading,
   panelHeaderClassName,
-  panelMetaClassName,
   panelTitleClassName,
   Skeleton,
   toast,
 } from '@mr/ui'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { Search } from 'lucide-react'
 import { useState, type ReactElement } from 'react'
 
+import { AdmConfirmDialog } from '~/components/adm-confirm-dialog'
+import { rowActionClassName } from '~/lib/resource/resource-row-actions'
 import { authClient } from '~/lib/auth-client'
 
+import { PendingUsersCard } from './pending-users-card'
 import { UserAccountStatusBadge } from './user-account-status-badge'
 import { UserApproveDialog } from './user-approve-dialog'
 import { UserPasswordResetDialog } from './user-password-reset-dialog'
@@ -55,230 +58,181 @@ function canEditUserRoles(user: UserListItem, currentUserId: string | undefined)
   return true
 }
 
-function UsersTableHeader({
-  title,
-  titleId,
-  headerRight,
-}: {
-  title: string
-  titleId: string
-  headerRight?: React.ReactNode
-}): ReactElement {
-  return (
-    <div className={panelHeaderClassName}>
-      <h2 id={titleId} className={panelTitleClassName}>
-        {title}
-      </h2>
-      {headerRight}
-    </div>
-  )
-}
-
 function UsersTable({
   items,
   currentUserId,
-  onApprove,
-  onReject,
   onEditRoles,
   onResetPassword,
   onResendActivation,
   onDeactivate,
   onReactivate,
-  showActions,
-  showRoleEdit,
-  pending,
-  actionsDisabled,
   rolesEditDisabled,
   passwordResetDisabled,
   resendActivationDisabled,
   setActiveDisabled,
-  emptyMessage,
   title,
   titleId,
   headerRight,
 }: {
   items: readonly UserListItem[]
   currentUserId: string | undefined
-  onApprove: (user: UserListItem) => void
-  onReject: (user: UserListItem) => void
   onEditRoles: (user: UserListItem) => void
   onResetPassword: (user: UserListItem) => void
   onResendActivation: (user: UserListItem) => void
   onDeactivate: (user: UserListItem) => void
   onReactivate: (user: UserListItem) => void
-  showActions: boolean
-  showRoleEdit: boolean
-  pending: boolean
-  actionsDisabled: boolean
   rolesEditDisabled: boolean
   passwordResetDisabled: boolean
   resendActivationDisabled: boolean
   setActiveDisabled: boolean
-  emptyMessage?: string
-  /** The card's own name. The section above it no longer carries one — this replaces it. */
+  /** The card's own name. */
   title: string
-  /** Kept so the surrounding <section aria-labelledby> still resolves after the heading moved in. */
+  /** Kept so the surrounding <section aria-labelledby> still resolves. */
   titleId: string
-  /** Right of the title: a search box, or the count when there is nothing to put there. */
+  /** Right of the title: the search box. */
   headerRight?: React.ReactNode
 }): ReactElement {
-  if (items.length === 0) {
-    return (
-      <div className={dataTableCardClassName}>
-        <UsersTableHeader title={title} titleId={titleId} headerRight={headerRight} />
-        <div className="px-5 py-12 text-center" role="status">
-          <p className="text-sm text-muted-foreground">
-            {emptyMessage ?? (pending ? m.users_pending_empty() : m.users_all_empty())}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className={dataTableCardClassName}>
-      <UsersTableHeader title={title} titleId={titleId} headerRight={headerRight} />
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[880px] text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/20 text-left">
-              <th className="px-4 py-3 font-medium text-muted-foreground">{m.users_col_name()}</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">{m.users_col_email()}</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.users_col_status()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">{m.users_col_roles()}</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.users_col_registered()}
-              </th>
-              {showActions || showRoleEdit ? (
-                <th className="px-4 py-3 font-medium text-muted-foreground">
+      <div className={panelHeaderClassName}>
+        <h2 id={titleId} className={panelTitleClassName}>
+          {title}
+        </h2>
+        {headerRight}
+      </div>
+
+      {items.length === 0 ? (
+        <div className={dataTableEmptyClassName} role="status">
+          {m.users_all_empty()}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-sm">
+            <thead>
+              <tr className={dataTableHeadRowClassName}>
+                <th className={dataTableHeadCellClassName}>{m.users_col_name()}</th>
+                <th className={dataTableHeadCellClassName}>{m.users_col_email()}</th>
+                <th className={dataTableHeadCellClassName}>{m.users_col_status()}</th>
+                <th className={dataTableHeadCellClassName}>{m.users_col_roles()}</th>
+                <th className={dataTableHeadCellClassName}>{m.users_col_registered()}</th>
+                <th className={dataTableHeadCellClassName}>
                   <span className="sr-only">{m.users_col_actions()}</span>
                 </th>
-              ) : null}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((user) => {
-              const isSelf = currentUserId !== undefined && user.id === currentUserId
-              const canAct = showActions && !isSelf
-              const canEditRoles = showRoleEdit && canEditUserRoles(user, currentUserId)
-              // A client's role is bound to a linked customer; the generic role
-              // editor cannot express that, so it is hidden for clients (they keep
-              // the password reset action). Client roles are managed via approval.
-              const isClient = user.roles.includes(SYSTEM_ROLE_CLIENT)
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((user) => {
+                const isSelf = currentUserId !== undefined && user.id === currentUserId
+                const isProtected = isProtectedSuperAdminEmail(user.email)
+                const canEditRoles = canEditUserRoles(user, currentUserId)
+                // A client's role is bound to a linked customer; the generic role editor cannot
+                // express that, so it is hidden for clients (they keep the password reset action).
+                // Client roles are managed via approval.
+                const isClient = user.roles.includes(SYSTEM_ROLE_CLIENT)
 
-              return (
-                <tr key={user.id} className={dataTableRowHoverOnlyClassName}>
-                  <td className="px-4 py-3 font-medium">{user.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <UserAccountStatusBadge status={user.accountStatus} />
-                      {!user.isActive ? (
-                        <span className="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                          {m.users_status_inactive()}
+                return (
+                  <tr
+                    key={user.id}
+                    className={cn(dataTableRowHoverOnlyClassName, !user.isActive && 'opacity-60')}
+                  >
+                    <td className={`${dataTableCellClassName} text-[13.5px] font-bold`}>
+                      {user.name}
+                      {isSelf || isProtected ? (
+                        <span className="ml-1.5 text-[11px] font-semibold text-muted-foreground">
+                          · {isProtected ? m.users_tag_protected() : m.users_tag_you()}
                         </span>
                       ) : null}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <UserRolesBadges roles={user.roles} />
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatListDateTime(user.createdAt)}
-                  </td>
-                  {showActions || showRoleEdit ? (
-                    <td className="px-4 py-3">
-                      {canAct ? (
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={actionsDisabled}
-                            onClick={() => onApprove(user)}
-                          >
-                            {m.users_approve_button()}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            disabled={actionsDisabled}
-                            onClick={() => onReject(user)}
-                          >
-                            {m.users_reject_button()}
-                          </Button>
-                        </div>
-                      ) : canEditRoles ? (
-                        <div className="flex justify-end gap-2">
+                    </td>
+                    <td
+                      className={`${dataTableCellClassName} font-mono text-[11.5px] font-medium text-muted-foreground`}
+                    >
+                      {user.email}
+                    </td>
+                    <td className={dataTableCellClassName}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <UserAccountStatusBadge status={user.accountStatus} />
+                        {user.isActive ? null : (
+                          <span className="rounded-full bg-adm-gry/20 px-2.5 py-[3px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.06em] text-adm-gry">
+                            {m.users_status_inactive()}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className={dataTableCellClassName}>
+                      <UserRolesBadges roles={user.roles} />
+                    </td>
+                    <td
+                      className={`${dataTableCellClassName} font-mono text-[11px] font-medium text-muted-foreground`}
+                    >
+                      {formatListDateTime(user.createdAt)}
+                    </td>
+                    <td className={dataTableCellClassName}>
+                      {canEditRoles ? (
+                        <div className="flex flex-wrap justify-end gap-1.5">
                           {isClient ? (
-                            <Button
+                            <button
                               type="button"
-                              size="sm"
-                              variant="ghost"
-                              className={dataTableTextActionClassName}
+                              className={`${rowActionClassName} bg-transparent`}
                               disabled={resendActivationDisabled}
                               onClick={() => onResendActivation(user)}
                             >
                               {m.users_resend_activation_button()}
-                            </Button>
+                            </button>
                           ) : null}
-                          <Button
+                          <button
                             type="button"
-                            size="sm"
-                            variant="ghost"
-                            className={dataTableTextActionClassName}
+                            className={`${rowActionClassName} bg-adm-inbg`}
                             disabled={passwordResetDisabled}
                             onClick={() => onResetPassword(user)}
                           >
                             {m.users_reset_password_button()}
-                          </Button>
+                          </button>
                           {isClient ? null : (
-                            <Button
+                            <button
                               type="button"
-                              size="sm"
-                              variant="ghost"
-                              className={dataTableTextActionClassName}
+                              className={`${rowActionClassName} bg-adm-inbg`}
                               disabled={rolesEditDisabled}
                               onClick={() => onEditRoles(user)}
                             >
                               {m.users_roles_edit_button()}
-                            </Button>
+                            </button>
                           )}
                           {user.isActive ? (
-                            <Button
+                            <button
                               type="button"
-                              size="sm"
-                              variant="ghost"
-                              className={dataTableDestructiveActionClassName}
+                              className={`${rowActionClassName} border-mr-brand/40 bg-transparent text-adm-red-h hover:text-adm-red-h`}
                               disabled={setActiveDisabled}
                               onClick={() => onDeactivate(user)}
                             >
                               {m.users_deactivate_button()}
-                            </Button>
+                            </button>
                           ) : (
-                            <Button
+                            <button
                               type="button"
-                              size="sm"
-                              variant="ghost"
-                              className={dataTableTextActionClassName}
+                              className={`${rowActionClassName} bg-transparent`}
                               disabled={setActiveDisabled}
                               onClick={() => onReactivate(user)}
                             >
                               {m.users_reactivate_button()}
-                            </Button>
+                            </button>
                           )}
                         </div>
+                      ) : isSelf || isProtected ? (
+                        // The two rows that deliberately have no actions say why. A rejected or
+                        // still-pending account has none either, but there the STATUS column
+                        // already explains it — a second sentence would be noise.
+                        <p className="text-right text-[11px] italic text-muted-foreground">
+                          {isSelf ? m.users_no_actions_self() : m.users_no_actions_protected()}
+                        </p>
                       ) : null}
                     </td>
-                  ) : null}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -314,19 +268,19 @@ export function UsersPageContent(): ReactElement {
     mutationFn: ({
       userId,
       status,
-      roleCode,
+      roleCodes,
       customerIds,
     }: {
       userId: string
       status: typeof UserAccountStatus.Approved | typeof UserAccountStatus.Rejected
-      roleCode?: string
+      roleCodes?: string[]
       customerIds?: string[]
     }) =>
       patchUserAccountStatus(
         userId,
-        buildAccountStatusPatchBody({ status, roleCode, customerIds }),
+        buildAccountStatusPatchBody({ status, roleCodes, customerIds }),
       ),
-    onMutate: async ({ userId, status, roleCode }) => {
+    onMutate: async ({ userId, status, roleCodes }) => {
       await queryClient.cancelQueries({ queryKey: usersListQueryKey() })
       const previous = queryClient.getQueryData<UserListItem[]>(usersListQueryKey())
 
@@ -337,8 +291,8 @@ export function UsersPageContent(): ReactElement {
                 ...user,
                 accountStatus: status,
                 roles:
-                  status === UserAccountStatus.Approved && roleCode !== undefined
-                    ? [roleCode]
+                  status === UserAccountStatus.Approved && roleCodes !== undefined
+                    ? roleCodes
                     : user.roles,
               }
             : user,
@@ -475,13 +429,13 @@ export function UsersPageContent(): ReactElement {
 
   const handleApproveConfirm = (
     user: UserListItem,
-    roleCode: string,
+    roleCodes: string[],
     customerIds: string[],
   ): void => {
     statusMutation.mutate({
       userId: user.id,
       status: UserAccountStatus.Approved,
-      roleCode,
+      roleCodes,
       customerIds,
     })
   }
@@ -502,12 +456,12 @@ export function UsersPageContent(): ReactElement {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-4">
       <div>
-        <Heading level="h1" className="mb-2">
+        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.nav_users()}
-        </Heading>
-        <p className="text-muted-foreground">{m.users_page_subtitle()}</p>
+        </h1>
+        <p className="mt-[5px] text-[13px] text-muted-foreground">{m.users_page_subtitle()}</p>
       </div>
 
       <UserApproveDialog
@@ -546,13 +500,14 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handlePasswordResetConfirm}
       />
 
-      <ConfirmDialog
+      <AdmConfirmDialog
         open={rejectTarget !== null}
         onOpenChange={(open) => {
           if (!open) {
             setRejectTarget(null)
           }
         }}
+        tag={m.users_reject_button()}
         title={m.users_reject_confirm_title()}
         description={
           rejectTarget !== null
@@ -567,13 +522,15 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handleRejectConfirm}
       />
 
-      <ConfirmDialog
+      <AdmConfirmDialog
         open={deactivateTarget !== null}
         onOpenChange={(open) => {
           if (!open) {
             setDeactivateTarget(null)
           }
         }}
+        tag={m.admin_confirm_tag_deactivate()}
+        tone="warning"
         title={m.users_deactivate_confirm_title()}
         description={
           deactivateTarget !== null
@@ -585,67 +542,41 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handleDeactivateConfirm}
       />
 
-      <section aria-labelledby="users-pending-heading">
-        <UsersTable
-          title={m.users_pending_section_title()}
-          titleId="users-pending-heading"
-          headerRight={
-            <span className={panelMetaClassName}>
-              {m.admin_catalog_count_total({ total: pendingUsers.length })}
-            </span>
-          }
-          items={pendingUsers}
-          currentUserId={currentUserId}
-          onApprove={handleApproveClick}
-          onReject={handleRejectClick}
-          onEditRoles={setRolesEditTarget}
-          onResetPassword={setPasswordResetTarget}
-          onResendActivation={handleResendActivation}
-          onDeactivate={handleDeactivateClick}
-          onReactivate={handleReactivate}
-          showActions
-          showRoleEdit={false}
-          pending
-          actionsDisabled={statusMutation.isPending}
-          rolesEditDisabled={rolesMutation.isPending}
-          passwordResetDisabled={passwordMutation.isPending}
-          resendActivationDisabled={resendActivationMutation.isPending}
-          setActiveDisabled={setActiveMutation.isPending}
-        />
-      </section>
+      <PendingUsersCard
+        users={pendingUsers}
+        disabled={statusMutation.isPending}
+        onApprove={handleApproveClick}
+        onReject={handleRejectClick}
+      />
 
       <section aria-labelledby="users-all-heading">
         <UsersTable
           title={m.users_all_section_title()}
           titleId="users-all-heading"
           headerRight={
-            <input
-              type="search"
-              value={allSearch}
-              onChange={(event) => setAllSearch(event.target.value)}
-              placeholder={m.users_search_placeholder()}
-              aria-label={m.users_search_placeholder()}
-              className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:w-72"
-            />
+            <label className="flex h-9 w-full max-w-[320px] items-center gap-2.5 rounded-[9px] border border-mr-border-strong bg-adm-inbg px-3 sm:w-72">
+              <Search className="size-3.5 flex-none text-muted-foreground" aria-hidden="true" />
+              <input
+                type="search"
+                value={allSearch}
+                onChange={(event) => setAllSearch(event.target.value)}
+                placeholder={m.users_search_placeholder()}
+                aria-label={m.users_search_placeholder()}
+                className="min-w-0 flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+              />
+            </label>
           }
           items={filteredOtherUsers}
           currentUserId={currentUserId}
-          onApprove={handleApproveClick}
-          onReject={handleRejectClick}
           onEditRoles={setRolesEditTarget}
           onResetPassword={setPasswordResetTarget}
           onResendActivation={handleResendActivation}
           onDeactivate={handleDeactivateClick}
           onReactivate={handleReactivate}
-          showActions={false}
-          showRoleEdit
-          pending={false}
-          actionsDisabled={statusMutation.isPending}
           rolesEditDisabled={rolesMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
           resendActivationDisabled={resendActivationMutation.isPending}
           setActiveDisabled={setActiveMutation.isPending}
-          emptyMessage={allQuery === '' ? m.users_all_empty() : m.users_search_no_matches()}
         />
       </section>
     </div>

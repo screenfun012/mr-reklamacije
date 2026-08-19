@@ -1,14 +1,6 @@
 import { auditLogListOptions, type AuditLogFilters } from '@mr/shared'
 import { m } from '@mr/i18n'
-import {
-  Button,
-  dataTableCardClassName,
-  Heading,
-  panelClassName,
-  panelHeaderClassName,
-  panelTitleClassName,
-  Skeleton,
-} from '@mr/ui'
+import { dataTableCardClassName, panelClassName, Skeleton } from '@mr/ui'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useState, type ReactElement } from 'react'
 
@@ -31,50 +23,46 @@ export function AuditPageContent(): ReactElement {
   const items = query.data?.pages.flatMap((page) => page.items) ?? []
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-4">
       <div>
-        <Heading level="h1" className="mb-2">
+        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.audit_page_title()}
-        </Heading>
-        <p className="text-muted-foreground">{m.audit_page_subtitle()}</p>
+        </h1>
+        <p className="mt-[5px] text-[13px] text-muted-foreground">{m.audit_page_subtitle()}</p>
       </div>
 
-      <div className={`${panelClassName} p-5`}>
+      <div className={`${panelClassName} px-4 py-3.5`}>
         <AuditLogFiltersBar filters={filters} onFiltersChange={setFilters} />
       </div>
 
+      {/* No name and no count on this card. It is an infinite query — it knows how many rows it has
+          PULLED, not how many exist — and the filter bar above it already says what it holds. */}
       <div className={dataTableCardClassName}>
-        {/* No count beside the title. This is an infinite query — it knows how many rows it has
-            PULLED, not how many exist, and a number that grows as you scroll is worse than none. */}
-        <div className={panelHeaderClassName}>
-          <h2 className={panelTitleClassName}>{m.admin_catalog_list_title()}</h2>
-        </div>
-
         {query.isPending ? (
           <div className="p-5">
             <AuditTableSkeleton />
           </div>
         ) : query.isError ? (
-          <div className="px-5 py-12 text-center" role="alert">
-            <p className="text-sm text-mr-error-strong dark:text-mr-error">{m.audit_error()}</p>
+          <div className="px-6 py-10 text-center" role="alert">
+            <p className="text-[13.5px] text-adm-red-h">{m.audit_error()}</p>
           </div>
         ) : items.length === 0 ? (
-          <div className="px-5 py-12 text-center" role="status">
-            <p className="text-sm text-muted-foreground">{m.audit_empty()}</p>
+          <div className="px-6 py-10 text-center" role="status">
+            <p className="text-[13.5px] italic text-muted-foreground">{m.audit_empty()}</p>
           </div>
         ) : (
           <>
             <AuditLogTable items={items} />
             {query.hasNextPage ? (
-              <div className="flex justify-center border-t border-border px-5 py-3">
-                <Button
+              <div className="flex justify-center px-5 py-3.5">
+                <button
                   type="button"
-                  variant="outline"
+                  className="h-10 cursor-pointer rounded-[9px] border border-mr-border-strong bg-adm-inbg px-6 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={query.isFetchingNextPage}
                   onClick={() => void query.fetchNextPage()}
                 >
                   {query.isFetchingNextPage ? m.audit_loading_more() : m.audit_load_more()}
-                </Button>
+                </button>
               </div>
             ) : null}
           </>

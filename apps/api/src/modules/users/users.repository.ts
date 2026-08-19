@@ -180,7 +180,7 @@ export class UsersRepository {
 
   async approvePendingUser(
     id: string,
-    roleCode: string,
+    roleCodes: readonly string[],
     assignedBy: string,
     customerIds: readonly string[],
   ): Promise<UserListItem> {
@@ -201,20 +201,24 @@ export class UsersRepository {
         throw new ValidationError('Status naloga može menjati samo korisnik na čekanju.')
       }
 
-      const [roleRow] = await tx
+      const uniqueRoleCodes = [...new Set(roleCodes)]
+      const roleRows = await tx
         .select({ id: roles.id, code: roles.code })
         .from(roles)
-        .where(and(eq(roles.code, roleCode), isNull(roles.deletedAt)))
-        .limit(1)
+        .where(and(inArray(roles.code, uniqueRoleCodes), isNull(roles.deletedAt)))
 
-      if (roleRow === undefined) {
+      // A count mismatch means one of the codes names a set that was deleted or never existed.
+      // Refusing the whole approval is the point: approving somebody with two of the three packages
+      // that were chosen is worse than approving nobody.
+      if (roleRows.length !== uniqueRoleCodes.length) {
         throw new ValidationError('Izabrana uloga nije validna.')
       }
 
       // Validate the linked customers BEFORE any write so an invalid customer
-      // rolls the whole approval back — the role is never assigned (atomicity).
+      // rolls the whole approval back — no set is ever assigned (atomicity).
       const uniqueCustomerIds = [...new Set(customerIds)]
-      if (roleCode === SYSTEM_ROLE_CLIENT) {
+      const asClient = uniqueRoleCodes.includes(SYSTEM_ROLE_CLIENT)
+      if (asClient) {
         if (uniqueCustomerIds.length === 0) {
           throw new ValidationError('Klijent mora biti vezan za bar jednu firmu.')
         }
@@ -253,13 +257,15 @@ export class UsersRepository {
         throw new NotFoundError('User', id)
       }
 
-      await tx.insert(userRoles).values({
-        userId: id,
-        roleId: roleRow.id,
-        assignedBy,
-      })
+      await tx.insert(userRoles).values(
+        roleRows.map((role) => ({
+          userId: id,
+          roleId: role.id,
+          assignedBy,
+        })),
+      )
 
-      if (roleCode === SYSTEM_ROLE_CLIENT && uniqueCustomerIds.length > 0) {
+      if (asClient && uniqueCustomerIds.length > 0) {
         await tx.insert(customerUsers).values(
           uniqueCustomerIds.map((customerId) => ({
             customerId,
@@ -269,7 +275,10 @@ export class UsersRepository {
         )
       }
 
-      return mapUserRow(updated, [roleRow.code])
+      return mapUserRow(
+        updated,
+        roleRows.map((role) => role.code),
+      )
     })
   }
 

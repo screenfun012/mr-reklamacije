@@ -1,6 +1,12 @@
 import { formatListDateTime, type AuditLogListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { dataTableRowHoverOnlyClassName } from '@mr/ui'
+import {
+  dataTableCardClassName,
+  dataTableCellClassName,
+  dataTableHeadCellClassName,
+  dataTableHeadRowClassName,
+  dataTableRowHoverOnlyClassName,
+} from '@mr/ui'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Fragment, useState, type ReactElement } from 'react'
 
@@ -10,26 +16,27 @@ import { auditEntityTypeLabel } from './audit-labels'
 
 function AuditDetail({ item }: { item: AuditLogListItem }): ReactElement {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-2">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">{m.audit_detail_ip()}</p>
-          <p className="font-mono text-xs">{item.actorIp ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">{m.audit_detail_user_agent()}</p>
-          <p className="break-all text-xs">{item.actorUserAgent ?? '—'}</p>
-        </div>
+    <div className="flex flex-col gap-2.5">
+      {/* Who and from where, on one mono line — the prototype's shape. These three are the whole
+          reason an audit row is opened: the rest is the payload beneath. */}
+      <div className="flex flex-wrap gap-x-7 gap-y-1 font-mono text-[11px] font-medium text-muted-foreground">
+        <span>
+          {m.audit_detail_ip()}: {item.actorIp ?? '—'}
+        </span>
+        <span className="max-w-full break-all">{item.actorUserAgent ?? '—'}</span>
       </div>
-      <div className="space-y-2">
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
+
+      {/* `min-w-0` on both cells: without it a long JSON line sets the column's width and the
+          payload runs out past the card's right edge instead of scrolling inside its own box. */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="min-w-0">
+          <p className="mb-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
             {m.audit_detail_changes()}
           </p>
           <AuditJson value={item.changes} />
         </div>
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
+        <div className="min-w-0">
+          <p className="mb-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
             {m.audit_detail_context()}
           </p>
           <AuditJson value={item.context} />
@@ -59,23 +66,17 @@ export function AuditLogTable({ items }: AuditLogTableProps): ReactElement {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className={dataTableCardClassName}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[920px] text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/20 text-left">
-              <th className="w-10 px-4 py-3" aria-hidden="true" />
-              <th className="px-4 py-3 font-medium text-muted-foreground">{m.audit_col_time()}</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">{m.audit_col_actor()}</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.audit_col_action()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.audit_col_entity()}
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                {m.audit_col_changes()}
-              </th>
+            <tr className={dataTableHeadRowClassName}>
+              <th className={`${dataTableHeadCellClassName} w-10`} aria-hidden="true" />
+              <th className={dataTableHeadCellClassName}>{m.audit_col_time()}</th>
+              <th className={dataTableHeadCellClassName}>{m.audit_col_actor()}</th>
+              <th className={dataTableHeadCellClassName}>{m.audit_col_action()}</th>
+              <th className={dataTableHeadCellClassName}>{m.audit_col_entity()}</th>
+              <th className={dataTableHeadCellClassName}>{m.audit_col_changes()}</th>
             </tr>
           </thead>
           <tbody>
@@ -84,13 +85,13 @@ export function AuditLogTable({ items }: AuditLogTableProps): ReactElement {
               return (
                 <Fragment key={item.id}>
                   <tr className={dataTableRowHoverOnlyClassName}>
-                    <td className="px-4 py-3 align-top">
+                    <td className={`${dataTableCellClassName} align-top`}>
                       <button
                         type="button"
                         onClick={() => toggle(item.id)}
                         aria-expanded={isOpen}
                         aria-label={isOpen ? m.audit_expand_hide() : m.audit_expand_show()}
-                        className="text-muted-foreground transition-colors hover:text-foreground"
+                        className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {isOpen ? (
                           <ChevronDown className="size-4" />
@@ -99,14 +100,18 @@ export function AuditLogTable({ items }: AuditLogTableProps): ReactElement {
                         )}
                       </button>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 align-top font-mono text-xs text-muted-foreground">
+                    <td
+                      className={`${dataTableCellClassName} whitespace-nowrap align-top font-mono text-[11.5px] font-medium text-muted-foreground`}
+                    >
                       {formatListDateTime(item.createdAt)}
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className={`${dataTableCellClassName} align-top`}>
                       {item.actor !== null ? (
                         <div>
-                          <div className="font-medium">{item.actor.name}</div>
-                          <div className="text-xs text-muted-foreground">{item.actor.email}</div>
+                          <div className="text-[13px] font-semibold">{item.actor.name}</div>
+                          <div className="font-mono text-[10.5px] text-muted-foreground">
+                            {item.actor.email}
+                          </div>
                         </div>
                       ) : (
                         <span className="italic text-muted-foreground">
@@ -114,23 +119,25 @@ export function AuditLogTable({ items }: AuditLogTableProps): ReactElement {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className={`${dataTableCellClassName} align-top`}>
                       <AuditActionBadge action={item.action} />
                     </td>
-                    <td className="px-4 py-3 align-top">
-                      <div className="font-medium">{auditEntityTypeLabel(item.entityType)}</div>
-                      <div className="font-mono text-xs text-muted-foreground">
+                    <td className={`${dataTableCellClassName} align-top`}>
+                      <div className="text-[12.5px] font-medium">
+                        {auditEntityTypeLabel(item.entityType)}
+                      </div>
+                      <div className="font-mono text-[10.5px] text-muted-foreground">
                         {item.entityId.slice(0, 8)}
                       </div>
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className={`${dataTableCellClassName} align-top`}>
                       <AuditChanges changes={item.changes} />
                     </td>
                   </tr>
                   {isOpen ? (
-                    <tr className="border-b border-border bg-muted/10">
+                    <tr className="border-b border-border bg-adm-inbg">
                       <td aria-hidden="true" />
-                      <td colSpan={5} className="px-4 py-4">
+                      <td colSpan={5} className="px-[18px] pb-4 pt-3.5">
                         <AuditDetail item={item} />
                       </td>
                     </tr>

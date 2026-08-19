@@ -9,6 +9,7 @@ import {
 import { m } from '@mr/i18n'
 import {
   Button,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +27,13 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 
+import {
+  admLabelClassName,
+  admPrimaryButtonClassName,
+  admSecondaryButtonClassName,
+} from '~/lib/adm-chrome'
 import { toAssignableRoles } from './assignable-roles'
+import { RolePackagePicker } from './role-package-picker'
 import { customersResourceDefinition } from '~/resources/customers.definition'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from '~/lib/resource/use-resource-crud'
 
@@ -38,15 +45,15 @@ const { useCreateResource: useCreateCustomer } = createResourceCrudHooks(
 )
 
 /**
- * Safe default role when the approve dialog opens: a registrant who named a
- * company is a client (forces the customer link); everyone else defaults to
- * least-privilege viewer — never the most-privileged operator.
+ * Safe default when the approve dialog opens: a registrant who named a company is a client (which
+ * forces the customer link); everyone else defaults to least-privilege viewer — never the
+ * most-privileged operator, and never more than one package by default.
  */
-function initialApproveRole(user: UserListItem | null): string {
+function initialApproveRoles(user: UserListItem | null): string[] {
   if (user !== null && user.requestedCompany !== null && user.requestedCompany !== '') {
-    return SYSTEM_ROLE_CLIENT
+    return [SYSTEM_ROLE_CLIENT]
   }
-  return SYSTEM_ROLE_VIEWER
+  return [SYSTEM_ROLE_VIEWER]
 }
 
 interface UserApproveDialogProps {
@@ -54,7 +61,7 @@ interface UserApproveDialogProps {
   open: boolean
   pending: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (user: UserListItem, roleCode: string, customerIds: string[]) => void
+  onConfirm: (user: UserListItem, roleCodes: string[], customerIds: string[]) => void
 }
 
 export function UserApproveDialog({
@@ -73,7 +80,7 @@ export function UserApproveDialog({
     [roles, locale],
   )
 
-  const [roleCode, setRoleCode] = useState<string>(() => initialApproveRole(user))
+  const [roleCodes, setRoleCodes] = useState<string[]>(() => initialApproveRoles(user))
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [creatingCustomer, setCreatingCustomer] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
@@ -89,7 +96,7 @@ export function UserApproveDialog({
   // (mirror of the roles-edit dialog's [user, open] sync).
   useEffect(() => {
     if (user !== null && open) {
-      setRoleCode(initialApproveRole(user))
+      setRoleCodes(initialApproveRoles(user))
       setCustomerId(null)
       setCreatingCustomer(false)
       // The company the applicant typed is the obvious starting name — it is
@@ -99,7 +106,7 @@ export function UserApproveDialog({
     }
   }, [user, open])
 
-  const isClient = roleCode === SYSTEM_ROLE_CLIENT
+  const isClient = roleCodes.includes(SYSTEM_ROLE_CLIENT)
 
   const customersQuery = useQuery({
     ...customersReferenceOptions(EMOTIVE_PARTNER_CUSTOMERS_REFERENCE),
@@ -107,7 +114,7 @@ export function UserApproveDialog({
   })
 
   const resetState = (): void => {
-    setRoleCode(initialApproveRole(user))
+    setRoleCodes(initialApproveRoles(user))
     setCustomerId(null)
     setCreatingCustomer(false)
     setNewCustomerName(user?.requestedCompany ?? '')
@@ -161,9 +168,24 @@ export function UserApproveDialog({
     onOpenChange(nextOpen)
   }
 
-  const handleRoleChange = (value: string): void => {
-    setRoleCode(value)
+  /**
+   * Picking the client package REPLACES everything else, and picking anything else while it is on
+   * is blocked (the list says why). The server refuses the combination too — this is the half that
+   * explains it before somebody hits a 400.
+   */
+  const toggleRole = (code: string): void => {
     setCustomerId(null)
+    setRoleCodes((current) => {
+      if (code === SYSTEM_ROLE_CLIENT) {
+        return current.includes(code) ? [] : [SYSTEM_ROLE_CLIENT]
+      }
+
+      if (current.includes(code)) {
+        return current.filter((existing) => existing !== code)
+      }
+
+      return [...current, code]
+    })
   }
 
   const handleConfirm = (): void => {
@@ -171,23 +193,35 @@ export function UserApproveDialog({
       return
     }
 
+    if (roleCodes.length === 0) {
+      return
+    }
+
     if (isClient) {
       if (customerId === null) {
         return
       }
-      onConfirm(user, roleCode, [customerId])
+      onConfirm(user, roleCodes, [customerId])
       return
     }
 
-    onConfirm(user, roleCode, [])
+    onConfirm(user, roleCodes, [])
   }
 
   const customers = customersQuery.data ?? []
-  const confirmDisabled = pending || user === null || (isClient && customerId === null)
+  const confirmDisabled =
+    pending || user === null || roleCodes.length === 0 || (isClient && customerId === null)
+  const blockedRoles = isClient
+    ? new Map(
+        roleOptions
+          .filter((option) => option.code !== SYSTEM_ROLE_CLIENT)
+          .map((option) => [option.code, m.users_approve_dialog_client_alone()]),
+      )
+    : new Map<string, string>()
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{m.users_approve_dialog_title()}</DialogTitle>
           {user !== null ? (
@@ -208,24 +242,20 @@ export function UserApproveDialog({
           ) : null}
 
           <div className="space-y-2">
-            <p id="approve-role-label" className="text-sm font-medium">
-              {m.users_approve_dialog_role_label()}
+            <p className={admLabelClassName}>{m.users_approve_dialog_packages_label()}</p>
+            <p className="text-[12.5px] text-muted-foreground">
+              {m.users_approve_dialog_packages_hint()}
             </p>
-            <Select value={roleCode} onValueChange={handleRoleChange}>
-              <SelectTrigger id="approve-role" aria-labelledby="approve-role-label">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {roleOptions.map((option) => (
-                  <SelectItem key={option.code} value={option.code}>
-                    {option.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              {roleOptions.find((option) => option.code === roleCode)?.description}
-            </p>
+            <RolePackagePicker
+              options={roleOptions}
+              selected={roleCodes}
+              disabled={pending}
+              blocked={blockedRoles}
+              onToggle={toggleRole}
+            />
+            {roleCodes.length === 0 ? (
+              <p className="text-[12.5px] text-adm-amb">{m.users_approve_dialog_needs_package()}</p>
+            ) : null}
           </div>
 
           {isClient ? (
@@ -328,18 +358,28 @@ export function UserApproveDialog({
           ) : null}
         </div>
 
-        <DialogFooter>
-          <Button
+        <DialogFooter className="gap-2.5 sm:justify-stretch">
+          <button
             type="button"
-            variant="outline"
+            className={admSecondaryButtonClassName}
             disabled={pending}
             onClick={() => handleOpenChange(false)}
           >
             {m.action_cancel()}
-          </Button>
-          <Button type="button" disabled={confirmDisabled} onClick={handleConfirm}>
+          </button>
+          {/* Green, not the panel's white: approving is the one action in admin that lets a person
+              in, and it is worth telling apart from "save" at a glance. */}
+          <button
+            type="button"
+            className={cn(
+              admPrimaryButtonClassName,
+              'border border-adm-grn/45 bg-adm-grn/[0.16] text-adm-grn',
+            )}
+            disabled={confirmDisabled}
+            onClick={handleConfirm}
+          >
             {m.users_approve_dialog_confirm()}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -152,7 +152,7 @@ describe.sequential('Activation module', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: UserAccountStatus.Approved,
-        roleCode: SYSTEM_ROLE_CLIENT,
+        roleCodes: [SYSTEM_ROLE_CLIENT],
         customerIds: [LINKABLE_CUSTOMER_ID],
       }),
     })
@@ -195,7 +195,7 @@ describe.sequential('Activation module', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: UserAccountStatus.Approved,
-        roleCode: SYSTEM_ROLE_CLIENT,
+        roleCodes: [SYSTEM_ROLE_CLIENT],
         customerIds: [LINKABLE_CUSTOMER_ID],
       }),
     })

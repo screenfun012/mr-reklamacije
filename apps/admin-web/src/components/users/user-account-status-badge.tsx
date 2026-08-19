@@ -1,6 +1,5 @@
 import { UserAccountStatus, type UserAccountStatus as UserAccountStatusValue } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { BADGE_SHELL_CLASSES } from '@mr/ui'
 import type { ReactElement } from 'react'
 
 const STATUS_LABEL: Record<UserAccountStatusValue, () => string> = {
@@ -9,14 +8,15 @@ const STATUS_LABEL: Record<UserAccountStatusValue, () => string> = {
   [UserAccountStatus.Rejected]: () => m.users_status_rejected(),
 }
 
-/** Status badge colors via brandbook mr-* tokens (same class shape as OUTCOME_BADGE_CLASSES). */
+/**
+ * A tinted pill with a dot in the same hue, as the prototype draws every state in this panel. The
+ * dot is what makes the three tell each other apart at a glance in a column of twenty rows — the
+ * word is for reading, the dot for scanning.
+ */
 const STATUS_CLASSES: Record<UserAccountStatusValue, string> = {
-  [UserAccountStatus.Pending]:
-    'border-mr-warning/45 bg-mr-warning-subtle text-mr-warning-strong shadow-sm shadow-mr-warning/15 dark:border-mr-warning/55 dark:bg-mr-warning/20 dark:text-mr-warning dark:shadow-mr-warning/10',
-  [UserAccountStatus.Approved]:
-    'border-mr-success/45 bg-mr-success-subtle text-mr-success-strong shadow-sm shadow-mr-success/15 dark:border-mr-success/55 dark:bg-mr-success/20 dark:text-mr-success dark:shadow-mr-success/10',
-  [UserAccountStatus.Rejected]:
-    'border-mr-error/45 bg-mr-error-subtle text-mr-error-strong shadow-sm shadow-mr-error/15 dark:border-mr-error/55 dark:bg-mr-error/20 dark:text-mr-error dark:shadow-mr-error/10',
+  [UserAccountStatus.Pending]: 'bg-adm-amb/15 text-adm-amb',
+  [UserAccountStatus.Approved]: 'bg-adm-grn/15 text-adm-grn',
+  [UserAccountStatus.Rejected]: 'bg-mr-brand/[0.13] text-adm-red-h',
 }
 
 export interface UserAccountStatusBadgeProps {
@@ -25,7 +25,10 @@ export interface UserAccountStatusBadgeProps {
 
 export function UserAccountStatusBadge({ status }: UserAccountStatusBadgeProps): ReactElement {
   return (
-    <span className={`${BADGE_SHELL_CLASSES} ${STATUS_CLASSES[status]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-[3px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.06em] ${STATUS_CLASSES[status]}`}
+    >
+      <span aria-hidden="true" className="size-[5px] rounded-full bg-current" />
       {STATUS_LABEL[status]()}
     </span>
   )

@@ -33,6 +33,8 @@ export interface AssignableRole {
   code: string
   name: string
   description: string | null
+  /** How many actions the package carries — the figure the picker prints beside its name. */
+  permissionCount: number
 }
 
 export function toAssignableRoles(
@@ -51,6 +53,7 @@ export function toAssignableRoles(
       code: role.code,
       name: locale === 'en' ? role.nameEn : role.nameSr,
       description: role.description ?? LEGACY_DESCRIPTION[role.code]?.() ?? null,
+      permissionCount: role.permissionCount,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, locale === 'en' ? 'en' : 'sr'))
 }

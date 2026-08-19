@@ -1,7 +1,6 @@
 import { rolesListOptions, type UserListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,7 +12,13 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 
+import {
+  admLabelClassName,
+  admPrimaryButtonClassName,
+  admSecondaryButtonClassName,
+} from '~/lib/adm-chrome'
 import { toAssignableRoles } from './assignable-roles'
+import { RolePackagePicker } from './role-package-picker'
 
 /**
  * What the person already holds, minus anything this dialog cannot hand back. Starting from their
@@ -85,7 +90,7 @@ export function UserRolesEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{m.users_roles_edit_dialog_title()}</DialogTitle>
           {user !== null ? (
@@ -95,54 +100,33 @@ export function UserRolesEditDialog({
           ) : null}
         </DialogHeader>
 
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-medium">{m.users_roles_edit_dialog_roles_label()}</legend>
-          {assignable.map((option) => {
-            const inputId = `user-role-${option.code}`
-
-            return (
-              <label
-                key={option.code}
-                htmlFor={inputId}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 hover:bg-muted/40"
-              >
-                <input
-                  id={inputId}
-                  type="checkbox"
-                  className="mt-0.5 size-4 rounded border-border"
-                  checked={selectedRoles.includes(option.code)}
-                  disabled={pending}
-                  onChange={() => toggleRole(option.code)}
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">{option.name}</span>
-                  {option.description === null ? null : (
-                    <span className="block text-xs text-muted-foreground">
-                      {option.description}
-                    </span>
-                  )}
-                </span>
-              </label>
-            )
-          })}
+        <fieldset className="space-y-2">
+          <legend className={admLabelClassName}>{m.users_roles_edit_dialog_roles_label()}</legend>
+          <RolePackagePicker
+            options={assignable}
+            selected={selectedRoles}
+            disabled={pending}
+            onToggle={toggleRole}
+          />
         </fieldset>
 
-        <DialogFooter>
-          <Button
+        <DialogFooter className="gap-2.5 sm:justify-stretch">
+          <button
             type="button"
-            variant="outline"
+            className={admSecondaryButtonClassName}
             disabled={pending}
             onClick={() => handleOpenChange(false)}
           >
             {m.action_cancel()}
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
+            className={admPrimaryButtonClassName}
             disabled={pending || user === null || selectedRoles.length === 0}
             onClick={handleConfirm}
           >
             {m.users_roles_edit_dialog_confirm()}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

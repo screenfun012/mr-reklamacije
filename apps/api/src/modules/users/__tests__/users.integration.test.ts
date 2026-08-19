@@ -88,6 +88,7 @@ async function seedApprovedUser(db: TestDbContext['db']): Promise<void> {
 
 const PENDING_USER_ID = '22222222-2222-4222-8222-222222222222'
 const PENDING_VIEWER_APPROVE_ID = '22222222-2222-4222-8222-222222222223'
+const PENDING_TWO_PACKAGES_ID = '22222222-2222-4222-8222-222222222224'
 const PENDING_ADMIN_ROLE_REJECT_ID = '22222222-2222-4222-8222-222222222224'
 const PENDING_ROLLBACK_ID = '22222222-2222-4222-8222-222222222225'
 const PENDING_REJECT_ID = '22222222-2222-4222-8222-222222222226'
@@ -464,7 +465,7 @@ describe.sequential('Users module', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: UserAccountStatus.Approved,
-          roleCode: SYSTEM_ROLE_OPERATOR,
+          roleCodes: [SYSTEM_ROLE_OPERATOR],
         }),
       })
       expect(response.status).toBe(200)
@@ -502,7 +503,7 @@ describe.sequential('Users module', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: UserAccountStatus.Approved,
-          roleCode: SYSTEM_ROLE_OPERATOR,
+          roleCodes: [SYSTEM_ROLE_OPERATOR],
         }),
       })
 
@@ -543,6 +544,73 @@ describe.sequential('Users module', () => {
       )
     })
 
+    /**
+     * The whole point of the sets model: rights ADD UP, so approving hands out every package the
+     * approver ticked in one transaction. Before this, approving took exactly one and the roles
+     * editor had to be opened straight afterwards to add the rest.
+     */
+    it('approves a pending user with several packages at once', async () => {
+      await seedPendingUser(
+        ctx.db,
+        PENDING_TWO_PACKAGES_ID,
+        'two.packages@mrengines.rs',
+        'Two Packages',
+      )
+
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(`/api/users/${PENDING_TWO_PACKAGES_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCodes: [SYSTEM_ROLE_VIEWER, SYSTEM_ROLE_OPERATOR],
+        }),
+      })
+
+      expect(response.status).toBe(200)
+
+      const updated = (await response.json()) as { roles: string[] }
+      expect([...updated.roles].sort()).toEqual([SYSTEM_ROLE_OPERATOR, SYSTEM_ROLE_VIEWER].sort())
+
+      const roleRows = await ctx.db
+        .select({ code: schema.roles.code })
+        .from(schema.userRoles)
+        .innerJoin(schema.roles, eq(schema.userRoles.roleId, schema.roles.id))
+        .where(eq(schema.userRoles.userId, PENDING_TWO_PACKAGES_ID))
+
+      expect(roleRows.map((row) => row.code).sort()).toEqual(
+        [SYSTEM_ROLE_OPERATOR, SYSTEM_ROLE_VIEWER].sort(),
+      )
+    })
+
+    /**
+     * A portal client is not a colleague with an extra package: the client set is what makes an
+     * account see the portal, and combined with a staff set the same account would hold internal
+     * rights and a firm link at once. Refused at the boundary, and the account stays pending.
+     */
+    it('refuses the client package beside another one and leaves the user pending', async () => {
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await app.request(`/api/users/${PENDING_USER_ID}/account-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCodes: [SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_OPERATOR],
+          customerIds: [LINKABLE_CUSTOMER_ID],
+        }),
+      })
+
+      expect(response.status).toBe(400)
+
+      const [row] = await ctx.db
+        .select({ accountStatus: schema.users.accountStatus })
+        .from(schema.users)
+        .where(eq(schema.users.id, PENDING_USER_ID))
+      expect(row?.accountStatus).toBe(UserAccountStatus.Pending)
+    })
+
     it('approves a pending user with explicit viewer role', async () => {
       await seedPendingUser(
         ctx.db,
@@ -556,7 +624,10 @@ describe.sequential('Users module', () => {
       const response = await app.request(`/api/users/${PENDING_VIEWER_APPROVE_ID}/account-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_VIEWER }),
+        body: JSON.stringify({
+          status: UserAccountStatus.Approved,
+          roleCodes: [SYSTEM_ROLE_VIEWER],
+        }),
       })
 
       expect(response.status).toBe(200)
@@ -581,7 +652,10 @@ describe.sequential('Users module', () => {
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_ADMIN }),
+          body: JSON.stringify({
+            status: UserAccountStatus.Approved,
+            roleCodes: [SYSTEM_ROLE_ADMIN],
+          }),
         },
       )
 
@@ -642,7 +716,7 @@ describe.sequential('Users module', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: UserAccountStatus.Approved,
-          roleCode: SYSTEM_ROLE_OPERATOR,
+          roleCodes: [SYSTEM_ROLE_OPERATOR],
         }),
       })
 
@@ -669,7 +743,7 @@ describe.sequential('Users module', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: UserAccountStatus.Approved,
-            roleCode: SYSTEM_ROLE_OPERATOR,
+            roleCodes: [SYSTEM_ROLE_OPERATOR],
           }),
         },
       )
@@ -691,7 +765,11 @@ describe.sequential('Users module', () => {
       await expect(
         container.usersService.updateAccountStatus(
           PENDING_ROLLBACK_ID,
-          { status: UserAccountStatus.Approved, roleCode: SYSTEM_ROLE_OPERATOR, customerIds: [] },
+          {
+            status: UserAccountStatus.Approved,
+            roleCodes: [SYSTEM_ROLE_OPERATOR],
+            customerIds: [],
+          },
           {
             actorUserId: TEST_USER_ID,
             actorIp: '127.0.0.1',
@@ -994,7 +1072,7 @@ describe.sequential('Users module', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: UserAccountStatus.Approved,
-          roleCode: SYSTEM_ROLE_OPERATOR,
+          roleCodes: [SYSTEM_ROLE_OPERATOR],
         }),
       })
 
@@ -1224,7 +1302,7 @@ describe.sequential('Users module', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: UserAccountStatus.Approved,
-          roleCode: SYSTEM_ROLE_CLIENT,
+          roleCodes: [SYSTEM_ROLE_CLIENT],
           customerIds: [LINKABLE_CUSTOMER_ID],
         }),
       })
@@ -1287,7 +1365,7 @@ describe.sequential('Users module', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: UserAccountStatus.Approved,
-            roleCode: SYSTEM_ROLE_CLIENT,
+            roleCodes: [SYSTEM_ROLE_CLIENT],
           }),
         },
       )
@@ -1319,7 +1397,7 @@ describe.sequential('Users module', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: UserAccountStatus.Approved,
-            roleCode: SYSTEM_ROLE_OPERATOR,
+            roleCodes: [SYSTEM_ROLE_OPERATOR],
             customerIds: [LINKABLE_CUSTOMER_ID],
           }),
         },
@@ -1348,7 +1426,7 @@ describe.sequential('Users module', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: UserAccountStatus.Approved,
-            roleCode: SYSTEM_ROLE_CLIENT,
+            roleCodes: [SYSTEM_ROLE_CLIENT],
             customerIds: [MISSING_CUSTOMER_ID],
           }),
         },
@@ -1382,7 +1460,7 @@ describe.sequential('Users module', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: UserAccountStatus.Approved,
-          roleCode: SYSTEM_ROLE_CLIENT,
+          roleCodes: [SYSTEM_ROLE_CLIENT],
           customerIds: [LINKABLE_CUSTOMER_ID],
         }),
       })

@@ -35,19 +35,26 @@ export function usersListOptions() {
  */
 export function buildAccountStatusPatchBody(decision: {
   status: typeof UserAccountStatus.Approved | typeof UserAccountStatus.Rejected
-  roleCode?: string | undefined
+  /** The packages the account is approved with; rights add up. */
+  roleCodes?: readonly string[] | undefined
   customerIds?: readonly string[] | undefined
 }): UserAccountStatusPatchBody {
   if (decision.status !== UserAccountStatus.Approved) {
     return { status: decision.status }
   }
 
-  const roleCode = decision.roleCode ?? SYSTEM_ROLE_VIEWER
-  if (roleCode === SYSTEM_ROLE_CLIENT) {
-    return { status: decision.status, roleCode, customerIds: [...(decision.customerIds ?? [])] }
+  const roleCodes =
+    decision.roleCodes === undefined || decision.roleCodes.length === 0
+      ? [SYSTEM_ROLE_VIEWER]
+      : [...decision.roleCodes]
+
+  // The firm link rides along with the client package and with nothing else — the schema refuses
+  // `customerIds` for any other set, so sending an empty array would fail a staff approval.
+  if (roleCodes.includes(SYSTEM_ROLE_CLIENT)) {
+    return { status: decision.status, roleCodes, customerIds: [...(decision.customerIds ?? [])] }
   }
 
-  return { status: decision.status, roleCode }
+  return { status: decision.status, roleCodes }
 }
 
 export async function patchUserAccountStatus(

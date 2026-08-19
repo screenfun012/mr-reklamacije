@@ -55,21 +55,32 @@ export type UserListResponse = z.infer<typeof UserListResponseSchema>
 export const UserAccountStatusPatchInputSchema = z
   .object({
     status: z.enum([UserAccountStatus.Approved, UserAccountStatus.Rejected]),
-    // Any live set, EXCEPT admin. Approving a registration must never mint an administrator —
-    // that was true when this was a four-code enum and it is the one part of the closed list worth
-    // keeping. Everything else is data now, so the service checks the set is live and grantable.
-    roleCode: RoleCodeSchema.refine((code) => code !== SYSTEM_ROLE_ADMIN, {
-      message: 'Nalog se ne može odobriti kao administrator.',
-    }).optional(),
+    /**
+     * The packages the account is approved with — several at once, because rights ADD UP and a
+     * person normally needs two or three small ones (docs `2026-08-17-roles-admin-panel-design`).
+     * Approving used to take exactly one, which meant every approval was followed by opening the
+     * roles editor to add the rest.
+     *
+     * Any live set EXCEPT admin: approving a registration must never mint an administrator. That
+     * was true when this was a four-code enum and it is the one part of the closed list worth
+     * keeping. Everything else is data now, so the service checks each set is live and grantable.
+     */
+    roleCodes: z
+      .array(
+        RoleCodeSchema.refine((code) => code !== SYSTEM_ROLE_ADMIN, {
+          message: 'Nalog se ne može odobriti kao administrator.',
+        }),
+      )
+      .optional(),
     customerIds: z.array(z.string().uuid()).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.status === UserAccountStatus.Rejected) {
-      if (value.roleCode !== undefined) {
+      if (value.roleCodes !== undefined) {
         ctx.addIssue({
           code: 'custom',
-          message: 'roleCode is only allowed when approving',
-          path: ['roleCode'],
+          message: 'roleCodes is only allowed when approving',
+          path: ['roleCodes'],
         })
       }
       if (value.customerIds !== undefined) {
@@ -82,15 +93,29 @@ export const UserAccountStatusPatchInputSchema = z
       return
     }
 
-    if (value.roleCode === undefined) {
+    if (value.roleCodes === undefined || value.roleCodes.length === 0) {
       ctx.addIssue({
         code: 'custom',
-        message: 'roleCode is required when approving',
-        path: ['roleCode'],
+        message: 'roleCodes is required when approving',
+        path: ['roleCodes'],
       })
       return
     }
-    if (value.roleCode === SYSTEM_ROLE_CLIENT) {
+
+    if (value.roleCodes.includes(SYSTEM_ROLE_CLIENT)) {
+      /*
+       * A portal client is not a colleague with an extra package. The client set is what makes an
+       * account see the portal and NOTHING else; combined with a staff package the same account
+       * would hold internal rights and a firm link at once, which is a shape no screen in this
+       * system was designed for. One or the other, decided here rather than discovered later.
+       */
+      if (value.roleCodes.length > 1) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Klijent se ne može kombinovati sa drugim ovlašćenjima.',
+          path: ['roleCodes'],
+        })
+      }
       if (value.customerIds === undefined || value.customerIds.length === 0) {
         ctx.addIssue({
           code: 'custom',
@@ -108,15 +133,19 @@ export const UserAccountStatusPatchInputSchema = z
   })
   .transform((value) => {
     if (value.status === UserAccountStatus.Approved) {
-      // superRefine rejects an approval without a roleCode, so it is always present
-      // here; the fallback is unreachable and least-privilege (never operator).
-      const roleCode = value.roleCode ?? SYSTEM_ROLE_VIEWER
-      const customerIds =
-        roleCode === SYSTEM_ROLE_CLIENT ? [...new Set(value.customerIds ?? [])] : []
+      // superRefine rejects an approval without a package, so the list is always non-empty here;
+      // the fallback is unreachable and least-privilege (never operator).
+      const roleCodes =
+        value.roleCodes === undefined || value.roleCodes.length === 0
+          ? [SYSTEM_ROLE_VIEWER]
+          : [...new Set(value.roleCodes)]
+      const customerIds = roleCodes.includes(SYSTEM_ROLE_CLIENT)
+        ? [...new Set(value.customerIds ?? [])]
+        : []
 
       return {
         status: value.status,
-        roleCode,
+        roleCodes,
         customerIds,
       }
     }

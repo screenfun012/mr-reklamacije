@@ -15,6 +15,9 @@ import { auditActionLabel, auditEntityTypeLabel } from './audit-labels'
 
 const ALL_VALUE = '__all__'
 
+/** The height and fill every control in this bar shares (`admFieldClassName` at filter size). */
+const FILTER_CONTROL = 'h-10 rounded-[9px] border-mr-border-strong bg-adm-inbg text-[12.5px]'
+
 export interface AuditLogFiltersBarProps {
   filters: AuditLogFilters
   onFiltersChange: (next: AuditLogFilters) => void
@@ -32,7 +35,7 @@ function ActorFilter({ filters, onFiltersChange }: AuditLogFiltersBarProps): Rea
       emptyOptionLabel={m.audit_filter_actor_all()}
       noResultsLabel={m.field_no_results()}
       aria-label={m.audit_filter_actor_label()}
-      className="w-full sm:w-[16rem]"
+      className={`w-full sm:w-[16rem] ${FILTER_CONTROL}`}
       onValueChange={(value) =>
         onFiltersChange({ ...filters, actorUserId: value === '' ? undefined : value })
       }
@@ -58,8 +61,15 @@ export function AuditLogFiltersBar({
     ...AUDIT_ACTIONS.map((action) => ({ value: action, label: auditActionLabel(action) })),
   ]
 
+  const hasActiveFilter =
+    filters.actorUserId !== undefined ||
+    filters.entityType !== undefined ||
+    filters.action !== undefined ||
+    filters.dateFrom !== undefined ||
+    filters.dateTo !== undefined
+
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+    <div className="flex flex-col gap-2.5 lg:flex-row lg:flex-wrap lg:items-center">
       <Suspense fallback={<p className="text-sm text-muted-foreground">…</p>}>
         <ActorFilter filters={filters} onFiltersChange={onFiltersChange} />
       </Suspense>
@@ -69,7 +79,7 @@ export function AuditLogFiltersBar({
         options={entityOptions}
         placeholder={m.audit_filter_entity_all()}
         aria-label={m.audit_filter_entity_label()}
-        className="w-full sm:w-[14rem]"
+        className={`w-full sm:w-[14rem] ${FILTER_CONTROL}`}
         onValueChange={(value) =>
           onFiltersChange({ ...filters, entityType: value === ALL_VALUE ? undefined : value })
         }
@@ -80,7 +90,7 @@ export function AuditLogFiltersBar({
         options={actionOptions}
         placeholder={m.audit_filter_action_all()}
         aria-label={m.audit_filter_action_label()}
-        className="w-full sm:w-[14rem]"
+        className={`w-full sm:w-[14rem] ${FILTER_CONTROL}`}
         onValueChange={(value) =>
           onFiltersChange({
             ...filters,
@@ -94,7 +104,7 @@ export function AuditLogFiltersBar({
         onChange={(value) => onFiltersChange({ ...filters, dateFrom: value })}
         placeholder={m.audit_filter_date_from()}
         aria-label={m.audit_filter_date_from()}
-        className="w-full sm:w-[12rem]"
+        className={`w-full sm:w-[11rem] ${FILTER_CONTROL}`}
       />
 
       <DatePicker
@@ -102,8 +112,20 @@ export function AuditLogFiltersBar({
         onChange={(value) => onFiltersChange({ ...filters, dateTo: value })}
         placeholder={m.audit_filter_date_to()}
         aria-label={m.audit_filter_date_to()}
-        className="w-full sm:w-[12rem]"
+        className={`w-full sm:w-[11rem] ${FILTER_CONTROL}`}
       />
+
+      {/* Only once something is filtered: an always-present "clear" on an unfiltered list is a
+          control that does nothing, and this bar has five already. */}
+      {hasActiveFilter ? (
+        <button
+          type="button"
+          className="h-10 cursor-pointer px-3 text-[12px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          onClick={() => onFiltersChange({})}
+        >
+          {m.audit_filter_clear()}
+        </button>
+      ) : null}
     </div>
   )
 }
