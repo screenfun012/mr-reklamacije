@@ -17,8 +17,12 @@ import { m } from '@mr/i18n'
 import {
   Button,
   ConfirmDialog,
+  dataTableCardClassName,
   dataTableRowHoverOnlyClassName,
   Heading,
+  panelHeaderClassName,
+  panelMetaClassName,
+  panelTitleClassName,
   Skeleton,
   toast,
 } from '@mr/ui'
@@ -49,6 +53,25 @@ function canEditUserRoles(user: UserListItem, currentUserId: string | undefined)
   return true
 }
 
+function UsersTableHeader({
+  title,
+  titleId,
+  headerRight,
+}: {
+  title: string
+  titleId: string
+  headerRight?: React.ReactNode
+}): ReactElement {
+  return (
+    <div className={panelHeaderClassName}>
+      <h2 id={titleId} className={panelTitleClassName}>
+        {title}
+      </h2>
+      {headerRight}
+    </div>
+  )
+}
+
 function UsersTable({
   items,
   currentUserId,
@@ -68,6 +91,9 @@ function UsersTable({
   resendActivationDisabled,
   setActiveDisabled,
   emptyMessage,
+  title,
+  titleId,
+  headerRight,
 }: {
   items: readonly UserListItem[]
   currentUserId: string | undefined
@@ -87,22 +113,29 @@ function UsersTable({
   resendActivationDisabled: boolean
   setActiveDisabled: boolean
   emptyMessage?: string
+  /** The card's own name. The section above it no longer carries one — this replaces it. */
+  title: string
+  /** Kept so the surrounding <section aria-labelledby> still resolves after the heading moved in. */
+  titleId: string
+  /** Right of the title: a search box, or the count when there is nothing to put there. */
+  headerRight?: React.ReactNode
 }): ReactElement {
   if (items.length === 0) {
     return (
-      <div
-        className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center"
-        role="status"
-      >
-        <p className="text-sm text-muted-foreground">
-          {emptyMessage ?? (pending ? m.users_pending_empty() : m.users_all_empty())}
-        </p>
+      <div className={dataTableCardClassName}>
+        <UsersTableHeader title={title} titleId={titleId} headerRight={headerRight} />
+        <div className="px-5 py-12 text-center" role="status">
+          <p className="text-sm text-muted-foreground">
+            {emptyMessage ?? (pending ? m.users_pending_empty() : m.users_all_empty())}
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className={dataTableCardClassName}>
+      <UsersTableHeader title={title} titleId={titleId} headerRight={headerRight} />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[880px] text-sm">
           <thead>
@@ -546,10 +579,14 @@ export function UsersPageContent(): ReactElement {
       />
 
       <section aria-labelledby="users-pending-heading">
-        <Heading level="h2" id="users-pending-heading" className="mb-4 text-lg">
-          {m.users_pending_section_title()}
-        </Heading>
         <UsersTable
+          title={m.users_pending_section_title()}
+          titleId="users-pending-heading"
+          headerRight={
+            <span className={panelMetaClassName}>
+              {m.admin_catalog_count_total({ total: pendingUsers.length })}
+            </span>
+          }
           items={pendingUsers}
           currentUserId={currentUserId}
           onApprove={handleApproveClick}
@@ -571,20 +608,19 @@ export function UsersPageContent(): ReactElement {
       </section>
 
       <section aria-labelledby="users-all-heading">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <Heading level="h2" id="users-all-heading" className="text-lg">
-            {m.users_all_section_title()}
-          </Heading>
-          <input
-            type="search"
-            value={allSearch}
-            onChange={(event) => setAllSearch(event.target.value)}
-            placeholder={m.users_search_placeholder()}
-            aria-label={m.users_search_placeholder()}
-            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:w-72"
-          />
-        </div>
         <UsersTable
+          title={m.users_all_section_title()}
+          titleId="users-all-heading"
+          headerRight={
+            <input
+              type="search"
+              value={allSearch}
+              onChange={(event) => setAllSearch(event.target.value)}
+              placeholder={m.users_search_placeholder()}
+              aria-label={m.users_search_placeholder()}
+              className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:w-72"
+            />
+          }
           items={filteredOtherUsers}
           currentUserId={currentUserId}
           onApprove={handleApproveClick}

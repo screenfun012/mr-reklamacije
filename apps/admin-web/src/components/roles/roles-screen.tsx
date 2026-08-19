@@ -15,6 +15,9 @@ import {
   dataTableHeadCellClassName,
   dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
+  panelHeaderClassName,
+  panelMetaClassName,
+  panelTitleClassName,
   ConfirmDialog,
   Dialog,
   DialogContent,
@@ -81,6 +84,14 @@ export function RolesScreen({ heldPermissions }: RolesScreenProps): React.ReactE
         </div>
       ) : (
         <div className={dataTableCardClassName}>
+          {/* Not `m.roles_title()` — that is already the page <h1> two elements up. The plan said to
+              reuse it and the plan was wrong, the same way the dashboard was on 2026-08-19. */}
+          <div className={panelHeaderClassName}>
+            <h2 className={panelTitleClassName}>{m.admin_catalog_list_title()}</h2>
+            <span className={panelMetaClassName}>
+              {m.admin_catalog_count_total({ total: roles.length })}
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
