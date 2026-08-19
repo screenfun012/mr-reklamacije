@@ -1,5 +1,6 @@
 import { schema } from '@mr/db'
 import {
+  CLIENT_PERMISSIONS,
   CustomerKind,
   SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_OPERATOR,
@@ -24,11 +25,18 @@ const FOREIGN_ORIGIN = 'http://127.0.0.1:3002'
 
 const VALID_PASSWORD = 'brand-new-secure-pass-123'
 
+/**
+ * The four users-screen actions plus the client set's own, because since R-6 the server refuses to
+ * hand out an action the approver does not hold (guarantee 2 of the roles spec). In production the
+ * approver is `admin`, who holds everything; these suites are about the ACTIVATION EMAIL, so the
+ * actor just has to be a legal one.
+ */
 const CLIENT_APPROVE_PERMISSIONS = [
   'users.view',
   'users.approve_registration',
   'users.reject_registration',
   'customers.link_users',
+  ...CLIENT_PERMISSIONS,
 ] as const
 
 const LINKABLE_CUSTOMER_ID = '77777777-7777-4777-8777-7777777700c1'

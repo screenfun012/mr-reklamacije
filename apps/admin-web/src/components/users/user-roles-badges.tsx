@@ -4,9 +4,11 @@ import {
   SYSTEM_ROLE_OPERATOR,
   SYSTEM_ROLE_SERVISER,
   SYSTEM_ROLE_VIEWER,
+  rolesListOptions,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { BADGE_SHELL_CLASSES } from '@mr/ui'
+import { BADGE_SHELL_CLASSES, useLocale } from '@mr/ui'
+import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
 const ROLE_LABEL: Record<string, () => string> = {
@@ -61,7 +63,22 @@ export interface UserRolesBadgesProps {
   roles: readonly string[]
 }
 
+/**
+ * Reads the set list itself rather than taking names as a prop: it renders once per table row, and
+ * React Query serves every one of them from a single fetch on the shared key. Threading a
+ * `nameByCode` map down would have been a twentieth prop on `UsersTable` for the same result.
+ *
+ * The names matter as of R-6. Before it, only five codes could be held and all five had a hand
+ * written label below; now a person can hold any of 26, and without this a standard set rendered
+ * as its raw code — `intake_office` instead of "Prijem — kancelarija".
+ */
 export function UserRolesBadges({ roles }: UserRolesBadgesProps): ReactElement {
+  const { locale } = useLocale()
+  const { data: catalogue } = useQuery(rolesListOptions())
+  const nameByCode = new Map(
+    (catalogue ?? []).map((role) => [role.code, locale === 'en' ? role.nameEn : role.nameSr]),
+  )
+
   if (roles.length === 0) {
     return <span className="text-muted-foreground">—</span>
   }
@@ -75,7 +92,7 @@ export function UserRolesBadges({ roles }: UserRolesBadgesProps): ReactElement {
           key={role}
           className={`${BADGE_SHELL_CLASSES} ${ROLE_CLASSES[role] ?? 'border-border bg-muted/40 text-muted-foreground'}`}
         >
-          {ROLE_LABEL[role]?.() ?? role}
+          {ROLE_LABEL[role]?.() ?? nameByCode.get(role) ?? role}
         </span>
       ))}
     </div>

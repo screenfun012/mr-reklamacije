@@ -1,11 +1,9 @@
 import {
   EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
   SYSTEM_ROLE_CLIENT,
-  SYSTEM_ROLE_OPERATOR,
-  SYSTEM_ROLE_SERVISER,
   SYSTEM_ROLE_VIEWER,
   customersReferenceOptions,
-  type AccountApprovalRoleCode,
+  rolesListOptions,
   type UserListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -23,10 +21,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useLocale,
 } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 
+import { toAssignableRoles } from './assignable-roles'
 import { customersResourceDefinition } from '~/resources/customers.definition'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from '~/lib/resource/use-resource-crud'
 
@@ -37,39 +37,12 @@ const { useCreateResource: useCreateCustomer } = createResourceCrudHooks(
   customersResourceDefinition,
 )
 
-const APPROVE_ROLE_OPTIONS = [
-  {
-    value: SYSTEM_ROLE_OPERATOR,
-    label: () => m.users_role_operator(),
-    description: () => m.users_role_operator_description(),
-  },
-  {
-    value: SYSTEM_ROLE_VIEWER,
-    label: () => m.users_role_viewer(),
-    description: () => m.users_role_viewer_description(),
-  },
-  {
-    value: SYSTEM_ROLE_SERVISER,
-    label: () => m.users_role_serviser(),
-    description: () => m.users_role_serviser_description(),
-  },
-  {
-    value: SYSTEM_ROLE_CLIENT,
-    label: () => m.users_role_client(),
-    description: () => m.users_role_client_description(),
-  },
-] as const satisfies ReadonlyArray<{
-  value: AccountApprovalRoleCode
-  label: () => string
-  description: () => string
-}>
-
 /**
  * Safe default role when the approve dialog opens: a registrant who named a
  * company is a client (forces the customer link); everyone else defaults to
  * least-privilege viewer — never the most-privileged operator.
  */
-function initialApproveRole(user: UserListItem | null): AccountApprovalRoleCode {
+function initialApproveRole(user: UserListItem | null): string {
   if (user !== null && user.requestedCompany !== null && user.requestedCompany !== '') {
     return SYSTEM_ROLE_CLIENT
   }
@@ -81,7 +54,7 @@ interface UserApproveDialogProps {
   open: boolean
   pending: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (user: UserListItem, roleCode: AccountApprovalRoleCode, customerIds: string[]) => void
+  onConfirm: (user: UserListItem, roleCode: string, customerIds: string[]) => void
 }
 
 export function UserApproveDialog({
@@ -91,7 +64,16 @@ export function UserApproveDialog({
   onOpenChange,
   onConfirm,
 }: UserApproveDialogProps): ReactElement {
-  const [roleCode, setRoleCode] = useState<AccountApprovalRoleCode>(() => initialApproveRole(user))
+  const { locale } = useLocale()
+  // `client` belongs HERE and only here: approving as a client links the firm in the same
+  // transaction, which is the step the roles editor has no way to perform.
+  const { data: roles } = useQuery({ ...rolesListOptions(), enabled: open })
+  const roleOptions = useMemo(
+    () => toAssignableRoles(roles ?? [], locale, { includeClient: true }),
+    [roles, locale],
+  )
+
+  const [roleCode, setRoleCode] = useState<string>(() => initialApproveRole(user))
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [creatingCustomer, setCreatingCustomer] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
@@ -180,7 +162,7 @@ export function UserApproveDialog({
   }
 
   const handleRoleChange = (value: string): void => {
-    setRoleCode(value as AccountApprovalRoleCode)
+    setRoleCode(value)
     setCustomerId(null)
   }
 
@@ -234,15 +216,15 @@ export function UserApproveDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {APPROVE_ROLE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label()}
+                {roleOptions.map((option) => (
+                  <SelectItem key={option.code} value={option.code}>
+                    {option.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              {APPROVE_ROLE_OPTIONS.find((option) => option.value === roleCode)?.description()}
+              {roleOptions.find((option) => option.code === roleCode)?.description}
             </p>
           </div>
 

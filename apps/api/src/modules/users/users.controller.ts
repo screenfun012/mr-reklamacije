@@ -46,7 +46,10 @@ export function createUsersController(container: Container) {
       const { id } = UserIdParamSchema.parse({ id: c.req.param('id') })
       const body: unknown = await c.req.json()
       const input = UserRolesReplaceInputSchema.parse(body)
-      const updated = await container.usersService.replaceRoles(id, input, getActorContext(c, user))
+      const updated = await container.usersService.replaceRoles(id, input, {
+        ...getActorContext(c, user),
+        permissions: user.permissions ?? [],
+      })
 
       return c.json(updated)
     },

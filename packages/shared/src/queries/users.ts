@@ -2,7 +2,6 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
 import { fetchNoContent } from '../api/fetch-no-content.js'
-import { type AccountApprovalRoleCode } from '../constants/approve-registration-roles.js'
 import { SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_VIEWER } from '../constants/roles.js'
 import { UserAccountStatus } from '../enums.js'
 import { fetchAllReferencePages } from './fetch-all-reference-pages.js'
@@ -36,7 +35,7 @@ export function usersListOptions() {
  */
 export function buildAccountStatusPatchBody(decision: {
   status: typeof UserAccountStatus.Approved | typeof UserAccountStatus.Rejected
-  roleCode?: AccountApprovalRoleCode | undefined
+  roleCode?: string | undefined
   customerIds?: readonly string[] | undefined
 }): UserAccountStatusPatchBody {
   if (decision.status !== UserAccountStatus.Approved) {

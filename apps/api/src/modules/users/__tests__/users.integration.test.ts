@@ -1,6 +1,7 @@
 import { schema } from '@mr/db'
 import {
   ADMIN_PERMISSIONS,
+  OPERATOR_PERMISSIONS,
   AuditAction,
   CustomerKind,
   ERROR_CODE,
@@ -21,14 +22,28 @@ import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer, createUsersTestApp, testUser } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 
-const ADMIN_USER_PERMISSIONS = [
-  'users.view',
-  'users.approve_registration',
-  'users.reject_registration',
-  'roles.assign',
-] as const
+/**
+ * An admin, minus `customers.link_users` — the one capability whose ABSENCE a 403 test below
+ * asserts, and which `CLIENT_APPROVE_PERMISSIONS` adds back on top.
+ *
+ * It was the four users-screen actions until R-6. Since then the server refuses to hand out an
+ * action the assigner does not hold (guarantee 2 of the roles spec), so an actor approving somebody
+ * into `operator` has to hold operator's 41 actions. That is the production truth rather than a
+ * test convenience: `roles.assign` and `users.approve_registration` are admin-only, and the
+ * resolver hands `admin` every action. Tests that probe a NARROW gate still pass their own small
+ * array inline.
+ */
+const ADMIN_USER_PERMISSIONS = ADMIN_PERMISSIONS.filter(
+  (permission) => permission !== 'customers.link_users',
+)
 
 const ROLES_ASSIGN_PERMISSIONS = ['roles.assign'] as const
+
+/**
+ * The role-replacement suites are about MECHANICS, so their actor is a realistic assigner. The
+ * guard itself gets its own tests, with an actor deliberately too small for what it hands out.
+ */
+const ROLES_ASSIGN_ACTOR = ADMIN_PERMISSIONS
 
 const APPROVED_USER_ID = '33333333-3333-4333-8333-333333333333'
 const PROTECTED_SUPER_ADMIN_ID = '44444444-4444-4444-8444-444444444444'
@@ -692,7 +707,7 @@ describe.sequential('Users module', () => {
     it('assigns operator role to approved user with audit log and SSE', async () => {
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
@@ -726,7 +741,7 @@ describe.sequential('Users module', () => {
     it('returns 403 when attacker tries to remove admin from protected super-admin', async () => {
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await putUserRoles(app, PROTECTED_SUPER_ADMIN_ID, [SYSTEM_ROLE_OPERATOR])
@@ -747,7 +762,7 @@ describe.sequential('Users module', () => {
     it('returns 403 when actor tries to change own roles', async () => {
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await putUserRoles(app, ROLES_ADMIN_ACTOR_ID, [SYSTEM_ROLE_ADMIN])
@@ -760,7 +775,7 @@ describe.sequential('Users module', () => {
     it('returns 403 on any role change attempt for protected super-admin including demote', async () => {
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const demoteResponse = await putUserRoles(app, PROTECTED_SUPER_ADMIN_ID, [SYSTEM_ROLE_VIEWER])
@@ -780,7 +795,7 @@ describe.sequential('Users module', () => {
 
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await putUserRoles(app, PENDING_ROLES_422_ID, [SYSTEM_ROLE_OPERATOR])
@@ -794,10 +809,106 @@ describe.sequential('Users module', () => {
       expect(pendingRoles).toHaveLength(0)
     })
 
-    it('returns 400 for empty roleCodes payload', async () => {
+    it('refuses to hand out a set carrying an action the assigner does not hold', async () => {
+      // Guarantee 2 of the roles spec. Without it anybody allowed to assign could write themselves
+      // — or a colleague — a set containing every action and climb the ladder in one request.
       const app = createUsersTestApp(
         container,
         testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(403)
+
+      const body = (await response.json()) as { error: { code: string; message: string } }
+      expect(body.error.code).toBe(ERROR_CODE.Forbidden)
+      // The message names what is missing, or the assigner cannot tell which set to pick instead.
+      expect(body.error.message).toContain('emotive_claims.view')
+
+      const roleRows = await ctx.db
+        .select()
+        .from(schema.userRoles)
+        .where(eq(schema.userRoles.userId, APPROVED_USER_ID))
+
+      expect(roleRows).toHaveLength(0)
+    })
+
+    it('allows a set whose every action the assigner holds', async () => {
+      // The other half: the guard must not refuse a legitimate assignment, or it would just be an
+      // outage. Exactly operator's actions, nothing wider.
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS, ...OPERATOR_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
+      expect(response.status).toBe(200)
+    })
+
+    it('accepts a set built in the panel, which no list in code names', async () => {
+      // The point of R-6: assignable sets are DATA now. This one exists only in the database.
+      const [created] = await ctx.db
+        .insert(schema.roles)
+        .values({ code: 'r6_probni_set', nameSr: 'Probni set', nameEn: 'Test set' })
+        .returning({ id: schema.roles.id })
+
+      await ctx.db
+        .insert(schema.rolePermissions)
+        .values({ roleId: created!.id, permissionId: 'audit.view' })
+
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_PERMISSIONS, 'audit.view'], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, ['r6_probni_set'])
+      expect(response.status).toBe(200)
+
+      const updated = (await response.json()) as { roles: string[] }
+      expect(updated.roles).toEqual(['r6_probni_set'])
+    })
+
+    it('rejects a code that is not even code-shaped AT THE BOUNDARY', async () => {
+      // The boundary stopped being a closed list; it did not stop being a boundary.
+      //
+      // ⚠ The status alone proves nothing: the repository ALSO refuses an unknown code, with its
+      // own 400, so this passed even with the schema's shape check removed. The message is what
+      // says which layer stopped it — asserting only the status let a mutation through.
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, ['NE VALJA; drop table'])
+      expect(response.status).toBe(400)
+
+      // The error handler answers a ZodError with a flat 'Validation failed' on purpose — the
+      // issues go to the log, not to the caller. That generic message is therefore the SIGNATURE of
+      // a boundary rejection: the repository's own refusal carries its domain sentence instead.
+      const body = (await response.json()) as { error: { message: string } }
+      expect(body.error.message).toBe('Validation failed')
+    })
+
+    it('rejects a well-shaped code that names no set, in the repository', async () => {
+      // The other half of the pair above: past the boundary, the layer that knows what exists is
+      // the one that refuses. Neither check is the whole answer, which is why both are asserted.
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
+      )
+
+      const response = await putUserRoles(app, APPROVED_USER_ID, ['ne_postoji_ovakav_set'])
+      expect(response.status).toBe(400)
+
+      const body = (await response.json()) as { error: { message: string } }
+      expect(body.error.message).not.toBe('Validation failed')
+      expect(body.error.message).toContain('nije validna')
+    })
+
+    it('returns 400 for empty roleCodes payload', async () => {
+      const app = createUsersTestApp(
+        container,
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await app.request(`/api/users/${APPROVED_USER_ID}/roles`, {
@@ -819,7 +930,7 @@ describe.sequential('Users module', () => {
     it('operator role grants emotive_claims access but not users.view', async () => {
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])
@@ -853,7 +964,7 @@ describe.sequential('Users module', () => {
 
       const app = createUsersTestApp(
         container,
-        testUser([...ROLES_ASSIGN_PERMISSIONS], ROLES_ADMIN_ACTOR_ID),
+        testUser([...ROLES_ASSIGN_ACTOR], ROLES_ADMIN_ACTOR_ID),
       )
 
       const response = await putUserRoles(app, APPROVED_USER_ID, [SYSTEM_ROLE_OPERATOR])

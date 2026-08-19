@@ -1,12 +1,4 @@
-import {
-  APPROVE_REGISTRATION_ROLE_CODES,
-  DEFAULT_APPROVE_REGISTRATION_ROLE,
-  SYSTEM_ROLE_OPERATOR,
-  SYSTEM_ROLE_SERVISER,
-  SYSTEM_ROLE_VIEWER,
-  type ApproveRegistrationRoleCode,
-  type UserListItem,
-} from '@mr/shared'
+import { rolesListOptions, type UserListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   Button,
@@ -16,41 +8,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  useLocale,
 } from '@mr/ui'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 
-const EDITABLE_ROLE_OPTIONS = [
-  {
-    value: SYSTEM_ROLE_OPERATOR,
-    label: () => m.users_role_operator(),
-    description: () => m.users_role_operator_description(),
-  },
-  {
-    value: SYSTEM_ROLE_VIEWER,
-    label: () => m.users_role_viewer(),
-    description: () => m.users_role_viewer_description(),
-  },
-  {
-    value: SYSTEM_ROLE_SERVISER,
-    label: () => m.users_role_serviser(),
-    description: () => m.users_role_serviser_description(),
-  },
-] as const satisfies ReadonlyArray<{
-  value: ApproveRegistrationRoleCode
-  label: () => string
-  description: () => string
-}>
+import { toAssignableRoles } from './assignable-roles'
 
-function initialSelectedRoles(roles: readonly string[]): ApproveRegistrationRoleCode[] {
-  const assignable = roles.filter((role): role is ApproveRegistrationRoleCode =>
-    (APPROVE_REGISTRATION_ROLE_CODES as readonly string[]).includes(role),
-  )
-
-  if (assignable.length > 0) {
-    return assignable
-  }
-
-  return [DEFAULT_APPROVE_REGISTRATION_ROLE]
+/**
+ * What the person already holds, minus anything this dialog cannot hand back. Starting from their
+ * real roles matters more than it did with three fixed codes: somebody can now hold several small
+ * sets, and an editor that silently dropped the ones it did not recognise would take them away on
+ * the next save.
+ */
+function initialSelectedRoles(
+  held: readonly string[],
+  assignable: readonly { code: string }[],
+): string[] {
+  const codes = new Set(assignable.map((role) => role.code))
+  return held.filter((role) => codes.has(role)).sort()
 }
 
 interface UserRolesEditDialogProps {
@@ -58,7 +34,7 @@ interface UserRolesEditDialogProps {
   open: boolean
   pending: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (user: UserListItem, roleCodes: ApproveRegistrationRoleCode[]) => void
+  onConfirm: (user: UserListItem, roleCodes: string[]) => void
 }
 
 export function UserRolesEditDialog({
@@ -68,24 +44,27 @@ export function UserRolesEditDialog({
   onOpenChange,
   onConfirm,
 }: UserRolesEditDialogProps): ReactElement {
-  const [selectedRoles, setSelectedRoles] = useState<ApproveRegistrationRoleCode[]>([
-    DEFAULT_APPROVE_REGISTRATION_ROLE,
-  ])
+  const { locale } = useLocale()
+  // Not suspense: the dialog is mounted by the users screen and must not hold its render.
+  const { data: roles } = useQuery({ ...rolesListOptions(), enabled: open })
+  const assignable = useMemo(() => toAssignableRoles(roles ?? [], locale), [roles, locale])
+
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
 
   useEffect(() => {
     if (user !== null && open) {
-      setSelectedRoles(initialSelectedRoles(user.roles))
+      setSelectedRoles(initialSelectedRoles(user.roles, assignable))
     }
-  }, [user, open])
+  }, [user, open, assignable])
 
   const handleOpenChange = (nextOpen: boolean): void => {
     if (!nextOpen && user !== null) {
-      setSelectedRoles(initialSelectedRoles(user.roles))
+      setSelectedRoles(initialSelectedRoles(user.roles, assignable))
     }
     onOpenChange(nextOpen)
   }
 
-  const toggleRole = (role: ApproveRegistrationRoleCode): void => {
+  const toggleRole = (role: string): void => {
     setSelectedRoles((current) => {
       if (current.includes(role)) {
         const next = current.filter((code) => code !== role)
@@ -118,12 +97,12 @@ export function UserRolesEditDialog({
 
         <fieldset className="space-y-3">
           <legend className="text-sm font-medium">{m.users_roles_edit_dialog_roles_label()}</legend>
-          {EDITABLE_ROLE_OPTIONS.map((option) => {
-            const inputId = `user-role-${option.value}`
+          {assignable.map((option) => {
+            const inputId = `user-role-${option.code}`
 
             return (
               <label
-                key={option.value}
+                key={option.code}
                 htmlFor={inputId}
                 className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 hover:bg-muted/40"
               >
@@ -131,15 +110,17 @@ export function UserRolesEditDialog({
                   id={inputId}
                   type="checkbox"
                   className="mt-0.5 size-4 rounded border-border"
-                  checked={selectedRoles.includes(option.value)}
+                  checked={selectedRoles.includes(option.code)}
                   disabled={pending}
-                  onChange={() => toggleRole(option.value)}
+                  onChange={() => toggleRole(option.code)}
                 />
                 <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">{option.label()}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {option.description()}
-                  </span>
+                  <span className="block text-sm font-medium">{option.name}</span>
+                  {option.description === null ? null : (
+                    <span className="block text-xs text-muted-foreground">
+                      {option.description}
+                    </span>
+                  )}
                 </span>
               </label>
             )

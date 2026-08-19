@@ -11,8 +11,6 @@ import {
   setUserActive,
   usersListOptions,
   usersListQueryKey,
-  type AccountApprovalRoleCode,
-  type ApproveRegistrationRoleCode,
   type UserListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -281,7 +279,7 @@ export function UsersPageContent(): ReactElement {
     }: {
       userId: string
       status: typeof UserAccountStatus.Approved | typeof UserAccountStatus.Rejected
-      roleCode?: AccountApprovalRoleCode
+      roleCode?: string
       customerIds?: string[]
     }) =>
       patchUserAccountStatus(
@@ -338,13 +336,8 @@ export function UsersPageContent(): ReactElement {
   })
 
   const rolesMutation = useMutation({
-    mutationFn: ({
-      userId,
-      roleCodes,
-    }: {
-      userId: string
-      roleCodes: ApproveRegistrationRoleCode[]
-    }) => patchUserRoles(userId, { roleCodes }),
+    mutationFn: ({ userId, roleCodes }: { userId: string; roleCodes: string[] }) =>
+      patchUserRoles(userId, { roleCodes }),
     onMutate: async ({ userId, roleCodes }) => {
       await queryClient.cancelQueries({ queryKey: usersListQueryKey() })
       const previous = queryClient.getQueryData<UserListItem[]>(usersListQueryKey())
@@ -442,7 +435,7 @@ export function UsersPageContent(): ReactElement {
 
   const handleApproveConfirm = (
     user: UserListItem,
-    roleCode: AccountApprovalRoleCode,
+    roleCode: string,
     customerIds: string[],
   ): void => {
     statusMutation.mutate({
@@ -464,10 +457,7 @@ export function UsersPageContent(): ReactElement {
     statusMutation.mutate({ userId: rejectTarget.id, status: UserAccountStatus.Rejected })
   }
 
-  const handleRolesEditConfirm = (
-    user: UserListItem,
-    roleCodes: ApproveRegistrationRoleCode[],
-  ): void => {
+  const handleRolesEditConfirm = (user: UserListItem, roleCodes: string[]): void => {
     rolesMutation.mutate({ userId: user.id, roleCodes })
   }
 

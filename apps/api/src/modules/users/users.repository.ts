@@ -9,7 +9,14 @@ import {
   parseOptionalKeysetCursor,
   type KeysetCursor,
 } from '../../core/utils/pagination.js'
-import { customers, customerUsers, roles, userRoles, users } from './users.schema.js'
+import {
+  customers,
+  customerUsers,
+  rolePermissions,
+  roles,
+  userRoles,
+  users,
+} from './users.schema.js'
 import type { UserListItem, UserListResponse, UsersListQuery } from './users.validators.js'
 
 /**
@@ -308,6 +315,25 @@ export class UsersRepository {
         roleRows.map((role) => role.code),
       )
     })
+  }
+
+  /**
+   * Every action the named sets carry, for the "you cannot hand out what you do not hold" check in
+   * the service. Live sets only — a soft-deleted one grants nothing, and the two assignment paths
+   * refuse an unknown code on their own, so a missing row here simply contributes no actions.
+   */
+  async findPermissionIdsForRoleCodes(roleCodes: readonly string[]): Promise<string[]> {
+    if (roleCodes.length === 0) {
+      return []
+    }
+
+    const rows = await this.db
+      .selectDistinct({ permissionId: rolePermissions.permissionId })
+      .from(rolePermissions)
+      .innerJoin(roles, eq(roles.id, rolePermissions.roleId))
+      .where(and(inArray(roles.code, [...roleCodes]), isNull(roles.deletedAt)))
+
+    return rows.map((row) => row.permissionId)
   }
 
   private async loadRoleCodesByUserIds(userIds: readonly string[]): Promise<Map<string, string[]>> {

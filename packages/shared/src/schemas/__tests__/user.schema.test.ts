@@ -187,7 +187,25 @@ describe('UserRolesReplaceInputSchema', () => {
     ).toThrow(/Duplicate role codes/)
   })
 
-  it('rejects unknown role codes', () => {
-    expect(() => UserRolesReplaceInputSchema.parse({ roleCodes: ['super_admin'] })).toThrow()
+  /**
+   * This asserted the opposite until R-6, when assignment stopped reading a list in code. A set is
+   * built in the panel now, so which codes EXIST is a question only the database can answer — the
+   * boundary checks the shape and `UsersRepository.replaceRoles` refuses a code that names nothing
+   * (integration-tested, both halves).
+   */
+  it('accepts a well-shaped code it has never heard of', () => {
+    expect(() =>
+      UserRolesReplaceInputSchema.parse({ roleCodes: ['prijem_kancelarija'] }),
+    ).not.toThrow()
+  })
+
+  it('rejects a code that is not code-shaped', () => {
+    for (const bad of ['NE VALJA', 'sa razmakom', 'Veliko', '_vodeci', 'trailing_', 'ćirilica']) {
+      expect(() => UserRolesReplaceInputSchema.parse({ roleCodes: [bad] })).toThrow()
+    }
+  })
+
+  it('rejects a code longer than the generator can produce', () => {
+    expect(() => UserRolesReplaceInputSchema.parse({ roleCodes: ['a'.repeat(41)] })).toThrow()
   })
 })

@@ -52,6 +52,36 @@ export class UsersService {
     private readonly activation: ClientActivationPort,
   ) {}
 
+  /**
+   * Guarantee 2 of the roles spec: you may hand out only what you hold yourself. Without it anybody
+   * allowed to assign could write themselves — or a colleague — a set containing every action and
+   * climb the ladder in one request.
+   *
+   * It reads the target sets' actions from the database rather than a table in code, because since
+   * R-3 a set is DATA: it can be built in the panel and its contents change without a deploy.
+   *
+   * Nobody meets it today — `roles.assign` is admin-only and the resolver hands `admin` every
+   * action — and it is still built now, for the same reason `RolesService.assertActorHolds` was:
+   * the moment assignment is delegated it is a hole, and by then there are sets in the wild.
+   */
+  private async assertActorMayGrant(
+    roleCodes: readonly string[],
+    actorPermissions: readonly Permission[],
+  ): Promise<void> {
+    const granted = await this.repo.findPermissionIdsForRoleCodes(roleCodes)
+    const missing = [
+      ...new Set(
+        granted.filter((permission) => !actorPermissions.includes(permission as Permission)),
+      ),
+    ].sort()
+
+    if (missing.length > 0) {
+      throw new ForbiddenError(
+        `Ne možeš dodeliti ovlašćenje koje sadrži radnju koju sam nemaš: ${missing.join(', ')}`,
+      )
+    }
+  }
+
   private async revokeTargetSessionsAfterRoleChange(
     targetUserId: string,
     actorUserId: string,
@@ -99,6 +129,10 @@ export class UsersService {
       !actor.permissions.includes('customers.link_users')
     ) {
       throw new ForbiddenError()
+    }
+
+    if (input.status === UserAccountStatus.Approved && input.roleCode !== undefined) {
+      await this.assertActorMayGrant([input.roleCode], actor.permissions)
     }
 
     const updated =
@@ -210,7 +244,9 @@ export class UsersService {
   async replaceRoles(
     id: string,
     input: UserRolesReplaceInput,
-    actor: HttpActorContext,
+    // Carries the actor's own actions, like `updateAccountStatus`: since R-6 the set being handed
+    // out is data, so the server has to compare it against what the assigner holds.
+    actor: HttpActorContext & { permissions: readonly Permission[] },
   ): Promise<UserListItem> {
     const target = await this.repo.findAccountStatusById(id)
     if (target === null) {
@@ -228,6 +264,8 @@ export class UsersService {
     if (target.accountStatus !== UserAccountStatus.Approved) {
       throw new UnprocessableEntityError('Uloge se mogu dodeliti samo odobrenim korisnicima.')
     }
+
+    await this.assertActorMayGrant(input.roleCodes, actor.permissions)
 
     const beforeRoles = sortedRoles(target.roles)
     const afterRoles = sortedRoles(input.roleCodes)

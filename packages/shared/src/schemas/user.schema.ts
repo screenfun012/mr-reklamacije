@@ -1,15 +1,14 @@
 import { z } from 'zod'
 
-import { ACCOUNT_APPROVAL_ROLE_CODES } from '../constants/approve-registration-roles.js'
-import { SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_CODES, SYSTEM_ROLE_VIEWER } from '../constants/roles.js'
+import {
+  RoleCodeSchema,
+  SYSTEM_ROLE_ADMIN,
+  SYSTEM_ROLE_CLIENT,
+  SYSTEM_ROLE_VIEWER,
+} from '../constants/roles.js'
 import { UserAccountStatus } from '../enums.js'
 
 import { ReferenceListQuerySchema, ReferenceListResponseSchema } from './reference-data.schema.js'
-
-const systemRoleCodeValues = [...SYSTEM_ROLE_CODES] as [
-  (typeof SYSTEM_ROLE_CODES)[number],
-  ...(typeof SYSTEM_ROLE_CODES)[number][],
-]
 
 const userAccountStatusValues = [
   UserAccountStatus.Pending,
@@ -56,7 +55,12 @@ export type UserListResponse = z.infer<typeof UserListResponseSchema>
 export const UserAccountStatusPatchInputSchema = z
   .object({
     status: z.enum([UserAccountStatus.Approved, UserAccountStatus.Rejected]),
-    roleCode: z.enum(ACCOUNT_APPROVAL_ROLE_CODES).optional(),
+    // Any live set, EXCEPT admin. Approving a registration must never mint an administrator —
+    // that was true when this was a four-code enum and it is the one part of the closed list worth
+    // keeping. Everything else is data now, so the service checks the set is live and grantable.
+    roleCode: RoleCodeSchema.refine((code) => code !== SYSTEM_ROLE_ADMIN, {
+      message: 'Nalog se ne može odobriti kao administrator.',
+    }).optional(),
     customerIds: z.array(z.string().uuid()).optional(),
   })
   .superRefine((value, ctx) => {
@@ -155,7 +159,7 @@ export type UserSetActiveInput = z.infer<typeof UserSetActiveInputSchema>
 
 export const UserRolesReplaceInputSchema = z.object({
   roleCodes: z
-    .array(z.enum(systemRoleCodeValues))
+    .array(RoleCodeSchema)
     .min(1)
     .refine((codes) => new Set(codes).size === codes.length, {
       message: 'Duplicate role codes are not allowed',
