@@ -99,20 +99,26 @@ export function ResourceListPage<
       <ResourceTable
         definition={definition}
         items={paged.items}
+        total={paged.total}
         onEdit={setEditTarget}
         onToggleActive={setToggleActiveTarget}
         {...(definition.lifecycle ? { onHardDelete: setHardDeleteTarget } : {})}
+        {...(listConfig
+          ? {
+              // Inside the card, under a rule: the pages belong to the list, not to the page they
+              // happen to sit on.
+              footer: (
+                <ListPagination
+                  total={paged.total}
+                  page={paged.page}
+                  pageSize={paged.pageSize}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              ),
+            }
+          : {})}
       />
-
-      {listConfig ? (
-        <ListPagination
-          total={paged.total}
-          page={paged.page}
-          pageSize={paged.pageSize}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
-      ) : null}
 
       <ResourceFormDialog
         definition={definition}

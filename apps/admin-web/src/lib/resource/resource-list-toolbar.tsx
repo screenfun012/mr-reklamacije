@@ -5,7 +5,7 @@ import {
   useDebouncedValue,
   type ResourceCatalogSearch,
 } from '@mr/shared'
-import { FilterSelect, Input, SearchableSelect } from '@mr/ui'
+import { FilterSelect, Input, panelClassName, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 
@@ -89,7 +89,9 @@ export function ResourceListToolbar({
   }, [debouncedQuery, onSearchChange, search])
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div
+      className={`${panelClassName} flex flex-col gap-3 p-5 lg:flex-row lg:items-center lg:justify-between`}
+    >
       <Input
         value={searchDraft}
         onChange={(event) => setSearchDraft(event.target.value)}
