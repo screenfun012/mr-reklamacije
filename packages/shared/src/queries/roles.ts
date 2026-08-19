@@ -22,6 +22,12 @@ export function rolesListOptions() {
   return queryOptions({
     queryKey: rolesQueryKeys.list(),
     queryFn: async () => (await fetchJson<{ items: RoleListItem[] }>('/api/roles')).items,
+    // Never stale on a timer, like every other catalogue here and like `permissionCatalogOptions`
+    // right below. Sets change only when somebody edits one, and every one of those mutations
+    // already invalidates `rolesQueryKeys.all` — so a clock would only add refetches nothing asked
+    // for. It was on the shared 30 s default until 2026-08-19, which since R-6 meant the users
+    // screen re-fetched all 26 sets twice a minute just to label its badges.
+    staleTime: Number.POSITIVE_INFINITY,
   })
 }
 
