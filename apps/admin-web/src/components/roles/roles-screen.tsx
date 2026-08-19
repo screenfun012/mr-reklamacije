@@ -9,6 +9,12 @@ import {
 import {
   BADGE_SHELL_CLASSES,
   Button,
+  dataTableCardClassName,
+  dataTableCellClassName,
+  dataTableEmptyClassName,
+  dataTableHeadCellClassName,
+  dataTableHeadRowClassName,
+  dataTableRowHoverOnlyClassName,
   ConfirmDialog,
   Dialog,
   DialogContent,
@@ -70,84 +76,92 @@ export function RolesScreen({ heldPermissions }: RolesScreenProps): React.ReactE
       </div>
 
       {roles.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{m.roles_empty()}</p>
+        <div className={dataTableEmptyClassName}>
+          <p className="text-sm text-muted-foreground">{m.roles_empty()}</p>
+        </div>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
-              <th className="py-2 pr-4 font-medium">{m.roles_col_name()}</th>
-              <th className="py-2 pr-4 font-medium">{m.roles_col_kind()}</th>
-              <th className="py-2 pr-4 font-medium">{m.roles_col_actions()}</th>
-              <th className="py-2 pr-4 font-medium">{m.roles_col_holders()}</th>
-              <th className="py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {roles.map((role) => (
-              <tr key={role.id} className="border-b border-border/60">
-                <td className="py-2 pr-4 font-medium">{nameOf(role)}</td>
-                <td className="py-2 pr-4">
-                  <span className={role.isSystem ? STANDARD_BADGE : CUSTOM_BADGE}>
-                    {role.isSystem ? m.roles_badge_standard() : m.roles_badge_custom()}
-                  </span>
-                </td>
-                <td className="py-2 pr-4 tabular-nums">{role.permissionCount}</td>
-                <td className="py-2 pr-4 tabular-nums">{role.userCount}</td>
-                <td className="py-2">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {role.isSystem ? null : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditing(role)}
-                      >
-                        {m.roles_action_edit()}
-                      </Button>
-                    )}
-                    {role.isSystem ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditing(role)}
-                      >
-                        {m.roles_action_view()}
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDuplicating(role)}
-                    >
-                      {m.roles_action_duplicate()}
-                    </Button>
-                    {role.isSystem ? null : (
-                      <>
+        <div className={dataTableCardClassName}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className={dataTableHeadRowClassName}>
+                  <th className={dataTableHeadCellClassName}>{m.roles_col_name()}</th>
+                  <th className={dataTableHeadCellClassName}>{m.roles_col_kind()}</th>
+                  <th className={dataTableHeadCellClassName}>{m.roles_col_actions()}</th>
+                  <th className={dataTableHeadCellClassName}>{m.roles_col_holders()}</th>
+                  <th className={dataTableHeadCellClassName} />
+                </tr>
+              </thead>
+              <tbody>
+                {roles.map((role) => (
+                  <tr key={role.id} className={dataTableRowHoverOnlyClassName}>
+                    <td className={`${dataTableCellClassName} font-medium`}>{nameOf(role)}</td>
+                    <td className={dataTableCellClassName}>
+                      <span className={role.isSystem ? STANDARD_BADGE : CUSTOM_BADGE}>
+                        {role.isSystem ? m.roles_badge_standard() : m.roles_badge_custom()}
+                      </span>
+                    </td>
+                    <td className={`${dataTableCellClassName} tabular-nums`}>
+                      {role.permissionCount}
+                    </td>
+                    <td className={`${dataTableCellClassName} tabular-nums`}>{role.userCount}</td>
+                    <td className={dataTableCellClassName}>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        {role.isSystem ? null : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditing(role)}
+                          >
+                            {m.roles_action_edit()}
+                          </Button>
+                        )}
+                        {role.isSystem ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditing(role)}
+                          >
+                            {m.roles_action_view()}
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
-                          disabled={role.userCount > 0}
-                          onClick={() => setDeleting(role)}
+                          onClick={() => setDuplicating(role)}
                         >
-                          {m.roles_action_delete()}
+                          {m.roles_action_duplicate()}
                         </Button>
-                        {/* A dead button has to say why — the count is the reason. */}
-                        {role.userCount > 0 ? (
-                          <span className="text-xs text-muted-foreground">
-                            {m.roles_delete_blocked({ count: role.userCount })}
-                          </span>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                        {role.isSystem ? null : (
+                          <>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={role.userCount > 0}
+                              onClick={() => setDeleting(role)}
+                            >
+                              {m.roles_action_delete()}
+                            </Button>
+                            {/* A dead button has to say why — the count is the reason. */}
+                            {role.userCount > 0 ? (
+                              <span className="text-xs text-muted-foreground">
+                                {m.roles_delete_blocked({ count: role.userCount })}
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {editing === null ? null : (

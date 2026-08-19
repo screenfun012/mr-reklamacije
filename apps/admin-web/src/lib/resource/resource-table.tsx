@@ -1,6 +1,11 @@
 import { m } from '@mr/i18n'
 import {
   Button,
+  dataTableCardClassName,
+  dataTableCellClassName,
+  dataTableEmptyClassName,
+  dataTableHeadCellClassName,
+  dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
   Tooltip,
   TooltipContent,
@@ -38,10 +43,7 @@ export function ResourceTable<
 
   if (items.length === 0) {
     return (
-      <div
-        className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center"
-        role="status"
-      >
+      <div className={dataTableEmptyClassName} role="status">
         <p className="text-sm text-muted-foreground">{definition.emptyLabel()}</p>
       </div>
     )
@@ -49,20 +51,20 @@ export function ResourceTable<
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className={dataTableCardClassName}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/20 text-left">
+              <tr className={dataTableHeadRowClassName}>
                 {definition.columns.map((column: ResourceColumnDef<TItem>) => (
                   <th
                     key={column.id}
-                    className={`px-4 py-3 font-medium text-muted-foreground ${column.headerClassName ?? ''}`}
+                    className={`${dataTableHeadCellClassName} ${column.headerClassName ?? ''}`}
                   >
                     {column.header()}
                   </th>
                 ))}
-                <th className="px-4 py-3 font-medium text-muted-foreground">
+                <th className={dataTableHeadCellClassName}>
                   <span className="sr-only">{definition.editActionLabel()}</span>
                 </th>
               </tr>
@@ -75,11 +77,14 @@ export function ResourceTable<
                 return (
                   <tr key={item.id} className={dataTableRowHoverOnlyClassName}>
                     {definition.columns.map((column) => (
-                      <td key={column.id} className={`px-4 py-3 ${column.cellClassName ?? ''}`}>
+                      <td
+                        key={column.id}
+                        className={`${dataTableCellClassName} ${column.cellClassName ?? ''}`}
+                      >
                         {column.cell(item)}
                       </td>
                     ))}
-                    <td className="px-4 py-3">
+                    <td className={dataTableCellClassName}>
                       <div className="flex justify-end gap-2">
                         <Button
                           type="button"

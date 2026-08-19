@@ -35,3 +35,24 @@ export const dataTableTextActionClassName = 'font-normal hover:bg-muted/60'
 /** Destructive text action in actions column — muted until direct hover. */
 export const dataTableDestructiveActionClassName =
   'font-normal text-destructive hover:bg-destructive/10 hover:text-destructive'
+
+/**
+ * The panel every admin table sits in. Extracted from `ResourceListPage`'s table when the roles
+ * screen — built outside that abstraction, because a set of actions is not a catalogue row — came
+ * out as a bare `<table>` on the page while the eight catalogue screens sat in a bordered card.
+ * The difference was the only thing that made it read as a different product.
+ *
+ * Classes, not a component: `ResourceTable` is definition-driven (form fields, active/inactive,
+ * usage counts) and roles have none of that. Sharing the LOOK is the whole overlap.
+ */
+export const dataTableCardClassName = 'overflow-hidden rounded-lg border border-border'
+
+export const dataTableHeadRowClassName = 'border-b border-border bg-muted/20 text-left'
+
+export const dataTableHeadCellClassName = 'px-4 py-3 font-medium text-muted-foreground'
+
+export const dataTableCellClassName = 'px-4 py-3'
+
+/** Empty state for a list that has no rows yet — same dashed panel across admin. */
+export const dataTableEmptyClassName =
+  'rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center'
