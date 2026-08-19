@@ -18,7 +18,9 @@ import {
   Button,
   ConfirmDialog,
   dataTableCardClassName,
+  dataTableDestructiveActionClassName,
   dataTableRowHoverOnlyClassName,
+  dataTableTextActionClassName,
   Heading,
   panelHeaderClassName,
   panelMetaClassName,
@@ -214,7 +216,8 @@ function UsersTable({
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
+                              className={dataTableTextActionClassName}
                               disabled={resendActivationDisabled}
                               onClick={() => onResendActivation(user)}
                             >
@@ -224,7 +227,8 @@ function UsersTable({
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
+                            className={dataTableTextActionClassName}
                             disabled={passwordResetDisabled}
                             onClick={() => onResetPassword(user)}
                           >
@@ -234,7 +238,8 @@ function UsersTable({
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
+                              className={dataTableTextActionClassName}
                               disabled={rolesEditDisabled}
                               onClick={() => onEditRoles(user)}
                             >
@@ -245,7 +250,8 @@ function UsersTable({
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
+                              className={dataTableDestructiveActionClassName}
                               disabled={setActiveDisabled}
                               onClick={() => onDeactivate(user)}
                             >
@@ -255,7 +261,8 @@ function UsersTable({
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
+                              className={dataTableTextActionClassName}
                               disabled={setActiveDisabled}
                               onClick={() => onReactivate(user)}
                             >

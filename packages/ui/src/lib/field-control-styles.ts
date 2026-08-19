@@ -29,12 +29,23 @@ export const dataTableRowHoverOnlyClassName = `${dataTableRowBorderClassName} ${
 export const dataTableIconActionClassName =
   'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground'
 
-/** Text button in actions column — neutral until direct hover. */
-export const dataTableTextActionClassName = 'font-normal hover:bg-muted/60'
+/**
+ * Text button in actions column — neutral until direct hover.
+ *
+ * It sets the COLOUR, which it did not until 2026-08-19: without it the `ghost` variant's
+ * `text-primary` came through and every action in the column was brand red — the constant promised
+ * neutral and delivered the loudest thing on the row. Found on the users screen, where five actions
+ * per row meant eleven red words.
+ */
+export const dataTableTextActionClassName =
+  'font-normal text-muted-foreground hover:bg-muted/60 hover:text-foreground'
 
-/** Destructive text action in actions column — muted until direct hover. */
+/**
+ * Destructive text action in actions column — muted until direct hover, and red only ON hover.
+ * "Muted" is what the name always claimed; `text-destructive` unconditionally was the opposite.
+ */
 export const dataTableDestructiveActionClassName =
-  'font-normal text-destructive hover:bg-destructive/10 hover:text-destructive'
+  'font-normal text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
 
 /**
  * The panel every admin table sits in. Extracted from `ResourceListPage`'s table when the roles
