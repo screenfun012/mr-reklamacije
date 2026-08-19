@@ -253,6 +253,23 @@ sastanka) · `users.update` (izmena imena/mejla — nema rutu) · `audit.export`
 
 **Nijedna migracija u celom poslu.**
 
+### Stanje 19.08.
+
+R-0 … R-7 i **R-9** gotovi. Ostaje **R-8**, i on čeka Nikolinu odluku, ne kod — ispostavilo se da
+`intake_damage_types` i `intake_arrival_modes` **niko ne čita**: čarobnjak radi iz zakucanih lista u
+`@mr/shared/enums.ts`, nema nijednog stranog ključa na te dve tabele, a vrednosti su iste na oba
+mesta. Ekran nad njima menjao bi podatak koji aplikacija ignoriše.
+
+**R-9 nije bio posao pisanja testova nego dokazivanja.** Pet od šest straža je već imalo test;
+svaka je mutirana i **viđena crveno**. Šesta — „izmena obara keš" — imala je test da se Map briše
+kad mu se kaže, ali nijedan da mu se **kaže**: uklanjanje `clearPermissionCache()` iz
+`RolesService` ostavljalo je svih osam testova zelenim. To je jedina rupa koju je R-9 zatvorio, i
+jedina koja se nije videla iz koda.
+
+⚠ Usput sam dodao dva testa za „niko ne menja sopstvene role" pa ih **obrisao**: oba su već
+postojala, i bolja su od mojih (proveravaju i kod greške). Promašio sam ih jer sam pretraživao po
+srpskoj poruci umesto po imenu testa.
+
 ## 9. Odvojeno, malo
 
 **Brisanje potpisanog naloga prijema — samo admin** (Nikolina odluka 17.08.). Danas ga ne može niko:

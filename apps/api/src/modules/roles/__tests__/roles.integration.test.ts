@@ -1,3 +1,4 @@
+import { createCachedPermissionResolver, getPermissionCacheEntryCount } from '@mr/auth'
 import { schema } from '@mr/db'
 import { SYSTEM_ROLE_OPERATOR, type Permission } from '@mr/shared'
 import { eq } from 'drizzle-orm'
@@ -138,6 +139,31 @@ describe('Roles module', () => {
 
     // Without this the person keeps the action that was just taken away, for up to seven days.
     expect(remaining).toHaveLength(0)
+  })
+
+  it('drops the permission cache the moment a set changes', async () => {
+    // The revoke above is NOT what makes a change take effect: permissions are not stored in a
+    // session — `customSession` recomputes them on every request, from a module-level Map keyed by
+    // sorted role codes with a 5-minute TTL. Clearing that Map is the step that takes a removed
+    // action away on the very next request, and it is the one nothing was watching: removing
+    // `clearPermissionCache()` from the service left all eight tests in this file green.
+    //
+    // `permission-cache.test.ts` proves the Map clears when told. This proves it is told.
+    const created = await container.rolesService.create(
+      { nameSr: 'Kes se obara', nameEn: 'Cache drops', permissions: [...ALL_OF_THEM] },
+      ACTOR,
+      ALL_OF_THEM,
+    )
+
+    const cached = createCachedPermissionResolver({
+      resolveForRoles: async () => Promise.resolve([...ALL_OF_THEM]),
+    })
+    await cached.resolveForRoles([created.code])
+    expect(getPermissionCacheEntryCount()).toBeGreaterThan(0)
+
+    await container.rolesService.update(created.id, { permissions: [...INTAKE] }, ACTOR, INTAKE)
+
+    expect(getPermissionCacheEntryCount()).toBe(0)
   })
 
   it('copies a set, actions and all', async () => {
