@@ -153,11 +153,13 @@ git commit -m "feat(ui): the panel shape every admin screen was missing"
 In BOTH `packages/i18n/src/messages/sr.json` and `en.json`, add (keys stay alphabetically sorted):
 
 ```json
-"admin_catalog_count_total": "Ukupno: {total}"
+"admin_catalog_count_total": "Ukupno: {total}",
+"admin_catalog_list_title": "Spisak"
 ```
 
 ```json
-"admin_catalog_count_total": "Total: {total}"
+"admin_catalog_count_total": "Total: {total}",
+"admin_catalog_list_title": "List"
 ```
 
 ⚠ Phrased with a colon deliberately. `{total} stavki` reads "1 stavki" in Serbian, and this repo cannot use ICU plurals to fix it.
@@ -185,11 +187,16 @@ In `apps/admin-web/src/lib/resource/resource-table.tsx`, the element currently r
 ```tsx
       <div className={dataTableCardClassName}>
         <div className={panelHeaderClassName}>
-          <h2 className={panelTitleClassName}>{definition.title()}</h2>
+          <h2 className={panelTitleClassName}>{m.admin_catalog_list_title()}</h2>
           <span className={panelMetaClassName}>{m.admin_catalog_count_total({ total })}</span>
         </div>
         <div className="overflow-x-auto">
 ```
+
+⚠ **Not `definition.title()`.** `ResourceListPage` already renders it as the page `<h1>`, so reusing
+it here would print "Odeljenja" twice on one screen — the exact fault found on the admin dashboard on
+19.08. and fixed in `c52d83d`. internal-web has the same split: the page says "Reklamacije" and the
+card says "Lista reklamacija". A generic "Spisak" serves all eight catalogues without eight new keys.
 
 `ResourceTable` does not receive `total` today. Add it to its props and pass `paged.total` from `ResourceListPage`:
 
@@ -206,7 +213,32 @@ In `apps/admin-web/src/lib/resource/resource-table.tsx`, the element currently r
 
 ⚠ `paged.total`, not `items.length` — the count belongs to the whole filtered set, not to the page being shown. `paginateClientList` already returns it.
 
-- [ ] **Step 4: Move pagination inside the card**
+- [ ] **Step 4: Keep the card when the list is empty**
+
+`ResourceTable` returns early when `items.length === 0`, rendering a bare dashed panel. Leave that
+branch for a catalogue that is genuinely empty, but a search filtered down to nothing must NOT make
+the whole card disappear — the screen then reads as broken rather than as "no matches". Move the
+early return inside the card so the header and its `Ukupno: 0` survive:
+
+```tsx
+      <div className={dataTableCardClassName}>
+        <div className={panelHeaderClassName}>
+          <h2 className={panelTitleClassName}>{m.admin_catalog_list_title()}</h2>
+          <span className={panelMetaClassName}>{m.admin_catalog_count_total({ total })}</span>
+        </div>
+        {items.length === 0 ? (
+          <div className="px-5 py-12 text-center" role="status">
+            <p className="text-sm text-muted-foreground">{definition.emptyLabel()}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">{/* the existing table */}</div>
+        )}
+```
+
+`dataTableEmptyClassName` stays exported and in use by other screens; it is simply no longer this
+component's whole output.
+
+- [ ] **Step 5: Move pagination inside the card**
 
 In `apps/admin-web/src/lib/resource/resource-list-page.tsx`, `<ListPagination …/>` currently sits as a sibling after `<ResourceTable>`. Move it inside the card by rendering it from `ResourceTable`'s footer slot — add an optional `footer?: ReactNode` prop to `ResourceTable`, rendered last inside `dataTableCardClassName` with a top rule:
 
@@ -232,7 +264,7 @@ and in `ResourceListPage`:
         }
 ```
 
-- [ ] **Step 5: Gate**
+- [ ] **Step 6: Gate**
 
 ```bash
 pnpm format:write && pnpm format:check \
@@ -240,11 +272,11 @@ pnpm format:write && pnpm format:check \
   && TZ=UTC pnpm exec turbo run test --force --concurrency=2
 ```
 
-- [ ] **Step 6: Look at it**
+- [ ] **Step 7: Look at it**
 
 Open `http://localhost:3001/settings/departments` and `http://localhost:3001/settings/engine-types` (the one with the extra manufacturer filter), in **dark and light**, **SR and EN**. Check: filters sit in their own panel; the list panel has a title and `Ukupno: 13`; pagination is inside the card; nothing overflows horizontally.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add apps/admin-web/src/lib/resource packages/i18n/src/messages

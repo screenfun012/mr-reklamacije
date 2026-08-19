@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  dataTableCardClassName,
   dataTableDestructiveActionClassName,
   dataTableIconActionClassName,
   dataTableRowHoverOnlyClassName,
@@ -8,6 +9,8 @@ import {
   dataTableRowNavigableClassName,
   dataTableTextActionClassName,
   listItemInteractiveClassName,
+  panelClassName,
+  panelHeaderClassName,
 } from '../field-control-styles.js'
 
 describe('listItemInteractiveClassName', () => {
@@ -43,5 +46,26 @@ describe('dataTable action classes', () => {
     expect(dataTableIconActionClassName).toContain('hover:bg-muted/60')
     expect(dataTableTextActionClassName).toContain('hover:bg-muted/60')
     expect(dataTableDestructiveActionClassName).toContain('hover:bg-destructive/10')
+  })
+})
+
+describe('panel classes', () => {
+  // The panel is the one shape every admin screen was missing: internal-web wraps its filters, its
+  // list and every dashboard block in it, while admin wrapped only tables — which is most of why
+  // its screens read as loose rows on a page rather than as a screen.
+  it('shares its radius and border with the data-table card', () => {
+    // Not cosmetic: a filter panel sits directly above the list card, and two different radii on
+    // one screen edge is the kind of thing you see without being able to name.
+    expect(panelClassName).toContain('rounded-[14px]')
+    expect(dataTableCardClassName).toContain('rounded-[14px]')
+    expect(panelClassName).toContain('border-border')
+  })
+
+  it('paints the panel on the card surface, not the page', () => {
+    expect(panelClassName).toContain('bg-card')
+  })
+
+  it('separates the header from the body with a rule', () => {
+    expect(panelHeaderClassName).toContain('border-b')
   })
 })

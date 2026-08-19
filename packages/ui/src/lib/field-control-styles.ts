@@ -44,8 +44,12 @@ export const dataTableDestructiveActionClassName =
  *
  * Classes, not a component: `ResourceTable` is definition-driven (form fields, active/inactive,
  * usage counts) and roles have none of that. Sharing the LOOK is the whole overlap.
+ *
+ * The radius is internal-web's 14px, not Tailwind's `rounded-lg` (~8px at this preset's `--radius`).
+ * It moved on 2026-08-19 so a filter panel and the list card beneath it share one edge. Only admin
+ * consumes this constant, so internal-web and portal-web are untouched by the change.
  */
-export const dataTableCardClassName = 'overflow-hidden rounded-lg border border-border'
+export const dataTableCardClassName = 'overflow-hidden rounded-[14px] border border-border'
 
 export const dataTableHeadRowClassName = 'border-b border-border bg-muted/20 text-left'
 
@@ -56,3 +60,23 @@ export const dataTableCellClassName = 'px-4 py-3'
 /** Empty state for a list that has no rows yet — same dashed panel across admin. */
 export const dataTableEmptyClassName =
   'rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center'
+
+/**
+ * The block a screen is made of. internal-web wraps its filters, its list and every dashboard
+ * section in this shape; admin wrapped only tables, which is most of why its screens read as loose
+ * rows on a page rather than as a screen (Nikola, 2026-08-19: "prazan", "nije frendli").
+ *
+ * Same radius and border as `dataTableCardClassName` on purpose — a filter panel sits directly
+ * above the list card, and two radii on one screen edge is the kind of wrongness a person sees
+ * without being able to name.
+ */
+export const panelClassName = 'rounded-[14px] border border-border bg-card'
+
+/** Title row of a panel: its name on the left, a count or an action on the right. */
+export const panelHeaderClassName =
+  'flex items-center justify-between gap-3 border-b border-border px-5 py-4'
+
+export const panelTitleClassName = 'text-[15px] font-extrabold text-foreground'
+
+/** The quiet figure beside a panel title — a count, a range, a timestamp. */
+export const panelMetaClassName = 'font-mono text-[11px] text-muted-foreground'
