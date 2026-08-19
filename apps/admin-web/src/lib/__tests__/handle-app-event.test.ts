@@ -60,6 +60,9 @@ describe('handleAppEvent', () => {
       payload: { kind: ClaimKind.Domace, id: 'claim-1' },
     })
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard', 'summary'] })
+    // The prefix, not one window: the summary is cached per chart window since the admin dashboard
+    // began asking for twenty-four months (`?months=`), and naming a window would leave the others
+    // showing pre-event counts.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
   })
 })

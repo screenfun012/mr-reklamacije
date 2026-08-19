@@ -1,6 +1,7 @@
 import {
   auditLogListOptions,
   dashboardSummaryOptions,
+  formatDateEyebrow,
   UserAccountStatus,
   usersListOptions,
 } from '@mr/shared'
@@ -9,9 +10,11 @@ import { useSuspenseQuery, useSuspenseInfiniteQuery } from '@tanstack/react-quer
 import { Suspense, type ReactElement } from 'react'
 
 import { m } from '@mr/i18n'
-import { Heading, Skeleton, cn } from '@mr/ui'
+import { Skeleton, useLocale } from '@mr/ui'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 
+import { ClaimsTrendCard } from '~/components/dashboard/claims-trend-card'
+import { OverdueClaimsCard, RecentClaimsCard } from '~/components/dashboard/claim-list-cards'
 import { NeedsYouCard } from '~/components/dashboard/needs-you-card'
 import { RecentChangesCard } from '~/components/dashboard/recent-changes-card'
 import { StatCard } from '~/components/dashboard/stat-card'
@@ -19,13 +22,19 @@ import { TopFaultsCard } from '~/components/dashboard/top-faults-card'
 import { authClient } from '~/lib/auth-client'
 import { countUsersByStatus } from '~/lib/dashboard-user-counts'
 
+/**
+ * Two years of buckets, where internal-web takes the server's default six. The card is half the
+ * screen wide here; six bars in that space are slabs, not a trend.
+ */
+const CHART_MONTHS = 24
+
 export const Route = createFileRoute('/_shell/')({
   loader: async ({ context: { queryClient } }) => {
     // All three in parallel. The audit list is new here — without it in the loader the two cards
     // below render, then the browser fetches their contents after hydration, which is a waterfall
     // behind a screen that has already drawn.
     await Promise.all([
-      queryClient.ensureQueryData(dashboardSummaryOptions()),
+      queryClient.ensureQueryData(dashboardSummaryOptions({ months: CHART_MONTHS })),
       queryClient.ensureQueryData(usersListOptions()),
       queryClient.ensureInfiniteQueryData(auditLogListOptions({})),
     ])
@@ -43,31 +52,27 @@ function HomeRoute(): ReactElement {
 
 function MonthTrend({ delta }: { delta: number }): ReactElement {
   if (delta === 0) {
-    return (
-      <span className="text-xs text-muted-foreground">{m.dashboard_trend_vs_last_month()}</span>
-    )
+    return <span>{m.dashboard_trend_vs_last_month()}</span>
   }
 
   const isUp = delta > 0
   return (
     <span
-      className={cn(
-        'flex items-center gap-0.5 text-xs font-medium',
-        isUp ? 'text-mr-success-strong' : 'text-mr-error-strong',
-      )}
+      className={`flex items-center gap-1 ${isUp ? 'text-adm-grn' : 'text-adm-red-h'}`}
       title={m.dashboard_trend_vs_last_month()}
     >
       {isUp ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
-      {Math.abs(delta)}
+      {Math.abs(delta)} {m.dashboard_trend_vs_last_month()}
     </span>
   )
 }
 
 function DashboardContent(): ReactElement {
+  const { locale } = useLocale()
   const { data: session } = authClient.useSession()
   const userName = session?.user?.name ?? session?.user?.email ?? ''
 
-  const { data: summary } = useSuspenseQuery(dashboardSummaryOptions())
+  const { data: summary } = useSuspenseQuery(dashboardSummaryOptions({ months: CHART_MONTHS }))
   const { data: users } = useSuspenseQuery(usersListOptions())
   const { data: audit } = useSuspenseInfiniteQuery(auditLogListOptions({}))
   const { active, pendingApproval } = countUsersByStatus(users)
@@ -76,66 +81,85 @@ function DashboardContent(): ReactElement {
   const recentChanges = audit.pages.flatMap((page) => page.items)
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div>
-        <Heading level="h1" className="mb-2">
+        <div className="mb-[7px] font-mono text-[10.5px] font-semibold tracking-[0.2em] text-adm-red-h">
+          {formatDateEyebrow(new Date(), locale)}
+        </div>
+        <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-foreground">
           {m.dashboard_welcome({ userName })}
-        </Heading>
+        </h1>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title={m.dashboard_card_open_claims()}
           value={summary.stats.pending}
           hint={m.dashboard_card_open_claims_hint()}
+          tone="info"
         />
         <StatCard
           title={m.dashboard_card_this_month()}
           value={summary.stats.newThisMonth}
           hint={m.dashboard_card_this_month_hint()}
+          tone="success"
           trend={<MonthTrend delta={summary.trends.newThisMonth.delta} />}
         />
         <StatCard
           title={m.dashboard_card_active_users()}
           value={active}
           hint={m.dashboard_card_active_users_hint()}
+          tone="neutral"
         />
         <StatCard
           title={m.dashboard_card_pending_approvals()}
           value={pendingApproval}
           hint={m.dashboard_card_pending_approvals_hint()}
+          tone="warning"
           to="/users"
         />
       </div>
 
-      {/* What is waiting on the left, what the system has been doing on the right — the two
-          questions an admin opens this screen with. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
-        <NeedsYouCard pendingUsers={pendingUsers} />
-        <RecentChangesCard items={recentChanges} />
+      {/* What is waiting on the left, what the shop has been doing on the right — the two questions
+          an admin opens this screen with, in that order. */}
+      <div className="grid grid-cols-1 items-stretch gap-3.5 xl:grid-cols-[340px_1fr]">
+        <div className="flex min-w-0 flex-col gap-3.5">
+          <NeedsYouCard pendingUsers={pendingUsers} />
+          <TopFaultsCard rows={summary.topFaultEmployees} />
+        </div>
+        <ClaimsTrendCard months={summary.chart} />
       </div>
 
-      <TopFaultsCard rows={summary.topFaultEmployees} />
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+        <RecentChangesCard items={recentChanges} />
+        <RecentClaimsCard items={summary.recent} />
+        <OverdueClaimsCard items={summary.overdue} />
+      </div>
     </div>
   )
 }
 
 function DashboardSkeleton(): ReactElement {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-8 w-64" />
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-36 w-full" />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <Skeleton className="h-[92px] w-full" />
+        <Skeleton className="h-[92px] w-full" />
+        <Skeleton className="h-[92px] w-full" />
+        <Skeleton className="h-[92px] w-full" />
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[340px_1fr]">
+        <Skeleton className="h-[300px] w-full" />
+        <Skeleton className="h-[300px] w-full" />
+      </div>
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+        <Skeleton className="h-[220px] w-full" />
+        <Skeleton className="h-[220px] w-full" />
+        <Skeleton className="h-[220px] w-full" />
       </div>
     </div>
   )

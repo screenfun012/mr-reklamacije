@@ -9,6 +9,7 @@ const { customerUsers, customers } = schema
 
 const OVERDUE_DAYS_THRESHOLD = 7
 const LIST_LIMIT = 20
+/** Default trend window. internal-web takes it; admin-web asks for a longer one (`?months=`). */
 const CHART_MONTH_COUNT = 6
 
 interface StatsRow extends Record<string, unknown> {
@@ -219,12 +220,16 @@ export class DashboardRepository {
    * that produces it — and so the SERVICE's cache key, which carries the same flag, can never hand
    * one reader's answer to the other.
    */
-  async getSummary(scope: DashboardScope, includeNamedBlame: boolean): Promise<DashboardSummary> {
+  async getSummary(
+    scope: DashboardScope,
+    includeNamedBlame: boolean,
+    chartMonths: number = CHART_MONTH_COUNT,
+  ): Promise<DashboardSummary> {
     const [statsBundle, overdue, recent, chart, topFaultEmployees] = await Promise.all([
       this.fetchStats(scope),
       this.fetchOverdue(scope),
       this.fetchRecent(scope),
-      this.fetchChart(scope),
+      this.fetchChart(scope, chartMonths),
       includeNamedBlame ? this.fetchTopFaultEmployees(scope) : Promise.resolve(null),
     ])
 
@@ -499,7 +504,10 @@ export class DashboardRepository {
     return result.rows.map(mapListRow)
   }
 
-  private async fetchChart(scope: DashboardScope): Promise<DashboardSummary['chart']> {
+  private async fetchChart(
+    scope: DashboardScope,
+    months: number,
+  ): Promise<DashboardSummary['chart']> {
     const branches: SQL[] = []
 
     if (scope.includeEmotive) {
@@ -509,7 +517,7 @@ export class DashboardRepository {
           date_trunc('month', ec.created_at AT TIME ZONE 'UTC')::date AS month_start
         FROM emotive_claims ec
         WHERE ${activeEmotiveWhere('ec')}
-          AND ec.created_at >= (date_trunc('month', CURRENT_DATE) - (${CHART_MONTH_COUNT - 1} * interval '1 month'))
+          AND ec.created_at >= (date_trunc('month', CURRENT_DATE) - (${months - 1} * interval '1 month'))
       `)
     }
 
@@ -520,7 +528,7 @@ export class DashboardRepository {
           date_trunc('month', dc.created_at AT TIME ZONE 'UTC')::date AS month_start
         FROM domace_claims dc
         WHERE ${activeDomaceWhere('dc')}
-          AND dc.created_at >= (date_trunc('month', CURRENT_DATE) - (${CHART_MONTH_COUNT - 1} * interval '1 month'))
+          AND dc.created_at >= (date_trunc('month', CURRENT_DATE) - (${months - 1} * interval '1 month'))
       `)
     }
 
@@ -533,7 +541,7 @@ export class DashboardRepository {
     const result = await this.db.execute<ChartRow>(sql`
       WITH months AS (
         SELECT generate_series(
-          date_trunc('month', CURRENT_DATE) - (${CHART_MONTH_COUNT - 1} * interval '1 month'),
+          date_trunc('month', CURRENT_DATE) - (${months - 1} * interval '1 month'),
           date_trunc('month', CURRENT_DATE),
           interval '1 month'
         )::date AS month_start

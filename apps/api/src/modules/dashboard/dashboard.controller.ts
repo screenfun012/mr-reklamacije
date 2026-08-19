@@ -4,6 +4,7 @@ import type { Container } from '../../core/container.js'
 import type { MRSessionUser } from '../../core/auth/session-types.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import type { DashboardActor } from './dashboard.types.js'
+import { DashboardSummaryQuerySchema } from './dashboard.validators.js'
 
 function requireUser(c: Context): MRSessionUser {
   const user = c.get('user')
@@ -24,7 +25,8 @@ export function createDashboardController(container: Container) {
   return {
     summary: async (c: Context) => {
       const user = requireUser(c)
-      const result = await container.dashboardService.getSummary(toActor(user))
+      const { months } = DashboardSummaryQuerySchema.parse(c.req.query())
+      const result = await container.dashboardService.getSummary(toActor(user), months)
       return c.json(result)
     },
 

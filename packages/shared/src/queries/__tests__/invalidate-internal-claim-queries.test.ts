@@ -11,7 +11,10 @@ describe('invalidateInternalClaimQueries', () => {
 
     invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id: 'claim-1' })
 
-    expect(spy).toHaveBeenCalledWith({ queryKey: ['dashboard', 'summary'] })
+    // The `dashboard` prefix, not `['dashboard','summary']`: since the chart window became a query
+    // parameter the summary is cached once per window (internal asks for six months, admin for
+    // twenty-four), and naming one window would leave the other showing pre-mutation counts.
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
   })
 
   it('still invalidates the unified list, the kind list and detail, and statistics', () => {

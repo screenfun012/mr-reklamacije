@@ -107,7 +107,7 @@ export class DashboardService {
     private readonly appSettings: AppSettingsReader,
   ) {}
 
-  async getSummary(actor: DashboardActor): Promise<DashboardSummaryResponse> {
+  async getSummary(actor: DashboardActor, chartMonths?: number): Promise<DashboardSummaryResponse> {
     // Global (all-customers) dashboard: keyed only by scope (~2 variants), never per user.
     // getClientSummary below stays UNCACHED — it is per-customer and low-hit.
     const scope = resolveScope(actor)
@@ -117,11 +117,13 @@ export class DashboardService {
     // of it — in whichever order they happened to arrive. Two scopes become four entries; that is
     // the whole cost.
     const includeNamedBlame = actor.permissions.includes('employees.view_analytics')
+    // The window is part of the key for the same reason the permission is: two callers ask for
+    // different charts, and one must never be served the other's.
     return this.summaryCache.read(
       'dashboard',
-      [scope.includeEmotive, scope.includeDomace, includeNamedBlame],
+      [scope.includeEmotive, scope.includeDomace, includeNamedBlame, chartMonths ?? null],
       SUMMARY_CACHE_TTL_SECONDS,
-      () => this.repo.getSummary(scope, includeNamedBlame),
+      () => this.repo.getSummary(scope, includeNamedBlame, chartMonths),
     )
   }
 
