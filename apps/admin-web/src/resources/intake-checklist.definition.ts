@@ -1,4 +1,6 @@
 import { m } from '@mr/i18n'
+
+import { renderActiveCell } from '~/lib/resource/resource-active-cell'
 import {
   IntakeChecklistItemCreateInputSchema,
   IntakeChecklistItemUpdateInputSchema,
@@ -64,9 +66,12 @@ export const intakeChecklistResourceDefinition: ResourceDefinition<
       id: 'isActive',
       header: () => m.intake_checklist_field_active(),
       cell: (item) =>
-        item.isActive
-          ? m.intake_checklist_admin_active_yes()
-          : m.intake_checklist_admin_active_no(),
+        renderActiveCell(
+          item.isActive,
+          item.isActive
+            ? m.intake_checklist_admin_active_yes()
+            : m.intake_checklist_admin_active_no(),
+        ),
     },
   ],
   formFields: [

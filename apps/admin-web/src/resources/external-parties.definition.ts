@@ -1,4 +1,6 @@
 import { m } from '@mr/i18n'
+
+import { renderActiveCell } from '~/lib/resource/resource-active-cell'
 import {
   ExternalPartyCreateInputSchema,
   ExternalPartyKind,
@@ -68,9 +70,12 @@ export const externalPartiesResourceDefinition: ResourceDefinition<
       id: 'isActive',
       header: () => m.field_active(),
       cell: (item) =>
-        item.isActive
-          ? m.admin_external_parties_active_yes()
-          : m.admin_external_parties_active_no(),
+        renderActiveCell(
+          item.isActive,
+          item.isActive
+            ? m.admin_external_parties_active_yes()
+            : m.admin_external_parties_active_no(),
+        ),
     },
   ],
   formFields: [

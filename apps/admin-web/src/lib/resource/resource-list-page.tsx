@@ -103,10 +103,11 @@ export function ResourceListPage<
         onEdit={setEditTarget}
         onToggleActive={setToggleActiveTarget}
         {...(definition.lifecycle ? { onHardDelete: setHardDeleteTarget } : {})}
-        {...(listConfig
+        {...(listConfig && paged.total > 0
           ? {
               // Inside the card, under a rule: the pages belong to the list, not to the page they
-              // happen to sit on.
+              // happen to sit on. Hidden entirely at zero rows — "Prikazano 0–0 od 0" beside a
+              // page-size selector is furniture for a list that is not there.
               footer: (
                 <ListPagination
                   total={paged.total}

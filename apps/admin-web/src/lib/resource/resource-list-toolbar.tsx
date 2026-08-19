@@ -89,18 +89,20 @@ export function ResourceListToolbar({
   }, [debouncedQuery, onSearchChange, search])
 
   return (
-    <div
-      className={`${panelClassName} flex flex-col gap-3 p-5 lg:flex-row lg:items-center lg:justify-between`}
-    >
+    // Wrapped, not spread. internal-web's filter card carries six controls, so `justify-between`
+    // fills it; a catalogue has two or three and the same rule left a search box on one edge, a
+    // select on the other, and a thousand pixels of nothing between them — which read as an empty
+    // bar rather than as a filter.
+    <div className={`${panelClassName} flex flex-wrap items-center gap-3 p-5`}>
       <Input
         value={searchDraft}
         onChange={(event) => setSearchDraft(event.target.value)}
         placeholder={m.admin_catalog_search_placeholder()}
         aria-label={m.admin_catalog_search_placeholder()}
-        className="max-w-md"
+        className="w-full sm:w-[18rem]"
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-1 flex-wrap items-center gap-3">
         {showManufacturerFilter ? (
           <Suspense fallback={<p className="text-sm text-muted-foreground">…</p>}>
             <ResourceManufacturerFilter search={search} onSearchChange={onSearchChange} />

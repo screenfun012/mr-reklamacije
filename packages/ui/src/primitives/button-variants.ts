@@ -30,6 +30,13 @@ export const buttonVariants = cva(
           'bg-transparent text-primary shadow-none',
           'hover:bg-[var(--mr-red-50-wash)] hover:text-primary active:bg-[var(--mr-red-50-wash)]',
           'dark:text-white dark:hover:bg-[var(--mr-surface-raised)] dark:hover:text-white dark:active:bg-[var(--mr-surface-raised)]',
+          // `brandDisabled` fills a disabled button — right for a solid button, wrong for a ghost:
+          // it paints a grey box where there was nothing, so the ONE action you cannot take becomes
+          // the loudest thing in the row. On the admin engine-types screen every row is blocked
+          // from hard-delete, so the whole action column was a column of grey squares (seen
+          // 2026-08-19, only after the neighbouring red buttons became quiet icons).
+          // `link` has carried this same line for the same reason; ghost was simply missed.
+          'disabled:bg-transparent disabled:border-transparent',
         ],
         link: [
           'bg-transparent text-primary underline-offset-4 shadow-none hover:underline',

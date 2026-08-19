@@ -1,4 +1,6 @@
 import { m } from '@mr/i18n'
+
+import { renderActiveCell } from '~/lib/resource/resource-active-cell'
 import {
   EngineManufacturerCreateInputSchema,
   EngineManufacturerUpdateInputSchema,
@@ -62,9 +64,12 @@ export const engineManufacturersResourceDefinition: ResourceDefinition<
       id: 'isActive',
       header: () => m.admin_engine_manufacturers_col_active(),
       cell: (item) =>
-        item.isActive
-          ? m.admin_engine_manufacturers_active_yes()
-          : m.admin_engine_manufacturers_active_no(),
+        renderActiveCell(
+          item.isActive,
+          item.isActive
+            ? m.admin_engine_manufacturers_active_yes()
+            : m.admin_engine_manufacturers_active_no(),
+        ),
     },
   ],
   formFields: [
