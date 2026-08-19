@@ -16,6 +16,7 @@ import {
 } from '@mr/ui'
 import { Trash2 } from 'lucide-react'
 
+import { ResourceRowActions } from './resource-row-actions.js'
 import type { ResourceColumnDef, ResourceDefinition } from './types.js'
 
 export interface ResourceTableProps<
@@ -103,25 +104,16 @@ export function ResourceTable<
                       ))}
                       <td className={dataTableCellClassName}>
                         <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onEdit(item)}
-                          >
-                            {definition.editActionLabel()}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={item.isActive ? 'destructive' : 'outline'}
-                            size="sm"
-                            onClick={() => onToggleActive(item)}
-                          >
-                            {item.isActive
-                              ? definition.deactivateConfirmLabel()
-                              : (lifecycle?.reactivateConfirmLabel() ??
-                                definition.activeYesLabel())}
-                          </Button>
+                          <ResourceRowActions
+                            item={item}
+                            editLabel={definition.editActionLabel()}
+                            deactivateLabel={definition.deactivateConfirmLabel()}
+                            activateLabel={
+                              lifecycle?.reactivateConfirmLabel() ?? definition.activeYesLabel()
+                            }
+                            onEdit={onEdit}
+                            onToggleActive={onToggleActive}
+                          />
                           {lifecycle && onHardDelete ? (
                             canHardDelete ? (
                               <Button
