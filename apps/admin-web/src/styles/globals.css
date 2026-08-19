@@ -16,6 +16,21 @@
  * amber arc was invisible from the day it was drawn (CLAUDE.md §5). */
 @theme inline {
   --color-mr-border-strong: var(--mr-border-strong);
+
+  /* The admin prototype's own surfaces and hues (`admin-prototip.dc.html`, 19.08.2026). Same rule
+   * as above: the values live in the two theme blocks below, this block only names them so
+   * Tailwind emits `bg-adm-*` / `text-adm-*` utilities. */
+  --color-adm-hdr: var(--adm-hdr);
+  --color-adm-inbg: var(--adm-inbg);
+  --color-adm-btn: var(--adm-btn);
+  --color-adm-btn-fg: var(--adm-btn-fg);
+  --color-adm-red-h: var(--adm-red-h);
+  --color-adm-grn: var(--adm-grn);
+  --color-adm-amb: var(--adm-amb);
+  --color-adm-blu: var(--adm-blu);
+  --color-adm-gry: var(--adm-gry);
+  --color-adm-teal: var(--adm-teal);
+  --color-adm-pur: var(--adm-pur);
 }
 
 /* ---------- Palette: the same one internal-web wears ----------
@@ -43,6 +58,20 @@
   --mr-border: rgba(20, 20, 25, 0.1); /* --mri-border */
   --mr-list-item-hover: rgba(20, 20, 25, 0.03); /* --mri-rowhv */
   --mr-border-strong: rgba(20, 20, 25, 0.2); /* --mri-border2 */
+
+  /* Light values of the block documented under `.dark`. */
+  --adm-grid: rgba(20, 20, 25, 0.045);
+  --adm-hdr: rgba(244, 244, 245, 0.88);
+  --adm-inbg: rgba(20, 20, 25, 0.03);
+  --adm-btn: #1a1a1f;
+  --adm-btn-fg: #ffffff;
+  --adm-red-h: #c8141b;
+  --adm-grn: #12855a;
+  --adm-amb: #a9700f;
+  --adm-blu: #1570d4;
+  --adm-gry: #6b6c72;
+  --adm-teal: #0d8577;
+  --adm-pur: #6d4fd0;
 }
 
 .dark {
@@ -54,4 +83,39 @@
   --mr-border: rgba(255, 255, 255, 0.09); /* --mri-border */
   --mr-list-item-hover: rgba(255, 255, 255, 0.03); /* --mri-rowhv */
   --mr-border-strong: rgba(255, 255, 255, 0.16); /* --mri-border2 */
+
+  /* ---------- What the prototype adds on top of those seven ----------
+   * Transferred verbatim from `admin-prototip.dc.html` (Claude Design, 19.08.2026), which is the
+   * visual source of truth for this app. Four of them are structure the shared preset has no name
+   * for — the background grid, the translucent top bar, the field fill, and a primary button that
+   * is NOT the brand red (the panel's own rule: red is identity and destruction, never "go").
+   *
+   * The six hues below deliberately carry a DIFFERENT value per theme, which is where they part
+   * company with the preset's `mr-success`/`mr-warning`/`mr-info` (one value, `-strong` chosen by
+   * hand at each call site). A hue that switches with the theme is one class at the call site
+   * instead of two, and this panel uses them on every screen. Their dark values ARE the preset's:
+   * grn = mr-success, amb ≈ mr-warning (#f5a524 vs #f5a623), blu = mr-info. Teal and purple have
+   * no preset equivalent at these values — teal is the panel's "TVOJE" mark (mr-accent is #0e9384,
+   * too dark on #0b0b0d) and purple is DOMAĆE, which internal-web already draws as #a78bfa. */
+  --adm-grid: rgba(255, 255, 255, 0.033);
+  --adm-hdr: rgba(11, 11, 13, 0.82);
+  --adm-inbg: rgba(255, 255, 255, 0.045);
+  --adm-btn: #f2f2f3;
+  --adm-btn-fg: #141417;
+  --adm-red-h: #ff4b52;
+  --adm-grn: #1fa971;
+  --adm-amb: #f5a524;
+  --adm-blu: #2e90fa;
+  --adm-gry: #8a8b91;
+  --adm-teal: #14b8a6;
+  --adm-pur: #a78bfa;
+}
+
+/* The 56px graph-paper the whole app sits on. A class, not utilities: it is two gradients and a
+ * background-size that would be four arbitrary values inline on the one element that uses it. */
+.adm-grid {
+  background-image:
+    linear-gradient(var(--adm-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--adm-grid) 1px, transparent 1px);
+  background-size: 56px 56px;
 }

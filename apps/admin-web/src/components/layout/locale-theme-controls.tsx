@@ -1,5 +1,6 @@
 import { m, type Locale } from '@mr/i18n'
 import { cn, useLocale } from '@mr/ui'
+import { Moon, Sun } from 'lucide-react'
 import type { ReactElement } from 'react'
 
 import { useTheme } from '~/lib/theme'
@@ -21,9 +22,9 @@ function LocaleSegment({
         onSelect(value)
       }}
       className={cn(
-        'cursor-pointer px-[11px] py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors',
+        'cursor-pointer px-3 py-2 font-mono text-[10.5px] font-semibold uppercase transition-colors',
         active
-          ? 'bg-primary text-primary-foreground'
+          ? 'bg-mr-brand text-white'
           : 'bg-transparent text-muted-foreground hover:text-foreground',
       )}
     >
@@ -51,18 +52,28 @@ export function LocaleThemeControls(): ReactElement {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   }
 
+  const nextThemeLabel = resolvedTheme === 'dark' ? m.theme_light() : m.theme_dark()
+
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <div className="flex overflow-hidden rounded-lg border border-mr-border-strong">
         <LocaleSegment value="en" current={locale} onSelect={setLocale} />
         <LocaleSegment value="sr" current={locale} onSelect={setLocale} />
       </div>
+      {/* A glyph, not the word: the word is the only element in this bar whose width changes with
+          the language AND with the current theme, and it was the widest thing in the corner. */}
       <button
         type="button"
         onClick={toggleTheme}
-        className="cursor-pointer rounded-lg border border-mr-border-strong bg-transparent px-[13px] py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground"
+        aria-label={nextThemeLabel}
+        title={nextThemeLabel}
+        className="grid size-[34px] cursor-pointer place-items-center rounded-lg border border-mr-border-strong bg-adm-inbg text-muted-foreground transition-colors hover:text-foreground"
       >
-        {resolvedTheme === 'dark' ? m.theme_light() : m.theme_dark()}
+        {resolvedTheme === 'dark' ? (
+          <Sun className="size-4" aria-hidden="true" />
+        ) : (
+          <Moon className="size-4" aria-hidden="true" />
+        )}
       </button>
     </div>
   )

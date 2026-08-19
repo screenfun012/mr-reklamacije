@@ -12,6 +12,8 @@ import {
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
+  TriangleAlert,
+  Truck,
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -30,89 +32,147 @@ export interface NavItem {
   to: string
   /** Lucide icon component */
   icon: ComponentType<{ className?: string }>
+  /**
+   * The screen exists in the menu but the catalogue behind it does not yet — it opens a page that
+   * says so. Two entries carry it (`admin-prototip.dc.html` draws them; Nikola, 19.08.2026).
+   */
+  comingSoon?: true
+}
+
+export interface NavGroup {
+  key: string
+  /** Absent on the first group — the dashboard needs no heading above it. */
+  label?: () => string
+  items: NavItem[]
 }
 
 /**
- * Admin navigation items. Order in the array determines display
- * order in the sidebar. Keys are stable across locale changes.
+ * Admin navigation, in three named groups plus the dashboard.
+ *
+ * The flat list of thirteen entries this replaces put "Korisnici" and "Tipovi motora" on the same
+ * footing, which is most of why the menu read as a bucket: a person and an engine size are not the
+ * same kind of thing. Groups are the prototype's (`admin-prototip.dc.html`).
  */
-export const adminNavItems: NavItem[] = [
+export const adminNavGroups: NavGroup[] = [
   {
-    key: 'dashboard',
-    label: m.nav_dashboard,
-    to: '/',
-    icon: LayoutDashboard,
+    key: 'top',
+    items: [
+      {
+        key: 'dashboard',
+        label: m.nav_dashboard,
+        to: '/',
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
-    key: 'users',
-    label: m.nav_users,
-    to: '/users',
-    icon: Users,
+    key: 'people',
+    label: m.nav_group_people,
+    items: [
+      {
+        key: 'users',
+        label: m.nav_users,
+        to: '/users',
+        icon: Users,
+      },
+      {
+        key: 'roles',
+        label: m.nav_roles,
+        to: '/settings/roles',
+        icon: ShieldCheck,
+      },
+      {
+        key: 'audit',
+        label: m.nav_audit,
+        to: '/audit',
+        icon: ScrollText,
+      },
+    ],
   },
   {
-    key: 'roles',
-    label: m.nav_roles,
-    to: '/settings/roles',
-    icon: ShieldCheck,
+    key: 'catalogs',
+    label: m.nav_group_catalogs,
+    items: [
+      {
+        key: 'engine-manufacturers',
+        label: m.nav_engine_manufacturers,
+        to: '/settings/engine-manufacturers',
+        icon: Cog,
+      },
+      {
+        key: 'engine-types',
+        label: m.nav_engine_types,
+        to: '/settings/engine-types',
+        icon: Cpu,
+      },
+      {
+        key: 'customers',
+        label: m.nav_customers,
+        to: '/settings/customers',
+        icon: Building2,
+      },
+      {
+        key: 'departments',
+        label: m.nav_departments,
+        to: '/settings/departments',
+        icon: Network,
+      },
+      {
+        key: 'employees',
+        label: m.nav_employees,
+        to: '/settings/employees',
+        icon: HardHat,
+      },
+      {
+        key: 'external-parties',
+        label: m.nav_external_parties,
+        to: '/settings/external-parties',
+        icon: Handshake,
+      },
+      {
+        key: 'claim-sources',
+        label: m.nav_claim_sources,
+        to: '/settings/claim-sources',
+        icon: Inbox,
+      },
+      {
+        key: 'intake-checklist',
+        label: m.nav_intake_checklist,
+        to: '/settings/intake-checklist',
+        icon: ClipboardCheck,
+      },
+      {
+        key: 'intake-damage-types',
+        label: m.nav_intake_damage_types,
+        to: '/settings/intake-damage-types',
+        icon: TriangleAlert,
+        comingSoon: true,
+      },
+      {
+        key: 'intake-arrival-modes',
+        label: m.nav_intake_arrival_modes,
+        to: '/settings/intake-arrival-modes',
+        icon: Truck,
+        comingSoon: true,
+      },
+    ],
   },
   {
-    key: 'audit',
-    label: m.nav_audit,
-    to: '/audit',
-    icon: ScrollText,
-  },
-  {
-    key: 'engine-manufacturers',
-    label: m.nav_engine_manufacturers,
-    to: '/settings/engine-manufacturers',
-    icon: Cog,
-  },
-  {
-    key: 'engine-types',
-    label: m.nav_engine_types,
-    to: '/settings/engine-types',
-    icon: Cpu,
-  },
-  {
-    key: 'customers',
-    label: m.nav_customers,
-    to: '/settings/customers',
-    icon: Building2,
-  },
-  {
-    key: 'departments',
-    label: m.nav_departments,
-    to: '/settings/departments',
-    icon: Network,
-  },
-  {
-    key: 'employees',
-    label: m.nav_employees,
-    to: '/settings/employees',
-    icon: HardHat,
-  },
-  {
-    key: 'external-parties',
-    label: m.nav_external_parties,
-    to: '/settings/external-parties',
-    icon: Handshake,
-  },
-  {
-    key: 'claim-sources',
-    label: m.nav_claim_sources,
-    to: '/settings/claim-sources',
-    icon: Inbox,
-  },
-  {
-    key: 'intake-checklist',
-    label: m.nav_intake_checklist,
-    to: '/settings/intake-checklist',
-    icon: ClipboardCheck,
-  },
-  {
-    key: 'app-settings',
-    label: m.nav_app_settings,
-    to: '/settings/app',
-    icon: SlidersHorizontal,
+    key: 'system',
+    label: m.nav_group_system,
+    items: [
+      {
+        key: 'app-settings',
+        label: m.nav_app_settings,
+        to: '/settings/app',
+        icon: SlidersHorizontal,
+      },
+    ],
   },
 ]
+
+/**
+ * Every entry, flat. The top bar reads the section name off it (longest matching path wins), so a
+ * screen reachable from the menu can never be added without its name reaching the bar.
+ */
+export const adminNavItems: NavItem[] = adminNavGroups.flatMap((group) => group.items)

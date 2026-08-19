@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;overflow:hidden}
+body{font-family:'Figtree',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#0b0b0d}
+a{color:#ff4b52}a:hover{color:#ed1c24}
+*{box-sizing:border-box}
+input,textarea,button,select{font-family:inherit;color:inherit;outline:none}
+[data-adm="dark"]{--bg:#0b0b0d;--surface:#131316;--raised:#1a1a1f;--border:rgba(255,255,255,.09);--border2:rgba(255,255,255,.16);--text:#f2f2f3;--text2:#9c9da3;--red:#ed1c24;--redh:#ff4b52;--grid:rgba(255,255,255,.033);--hdr:rgba(11,11,13,.82);--inbg:rgba(255,255,255,.045);--rowhv:rgba(255,255,255,.03);--btn:#f2f2f3;--btntx:#141417;--grn:#1fa971;--amb:#f5a524;--blu:#2e90fa;--gry:#8a8b91;--teal:#14b8a6;--pur:#a78bfa}
+[data-adm="light"]{--bg:#f4f4f5;--surface:#ffffff;--raised:#fafafa;--border:rgba(20,20,25,.1);--border2:rgba(20,20,25,.2);--text:#17171a;--text2:#5c5d63;--red:#ed1c24;--redh:#c8141b;--grid:rgba(20,20,25,.045);--hdr:rgba(244,244,245,.88);--inbg:rgba(20,20,25,.03);--rowhv:rgba(20,20,25,.03);--btn:#1a1a1f;--btntx:#ffffff;--grn:#12855a;--amb:#a9700f;--blu:#1570d4;--gry:#6b6c72;--teal:#0d8577;--pur:#6d4fd0}
+input::placeholder{color:var(--text2);opacity:.7}
+select option{background:var(--surface);color:var(--text)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes slideUp{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes shimmer{0%,100%{opacity:.5}50%{opacity:1}}
+</style>
+</helmet>
+<div data-adm="{{ theme }}" data-screen-label="Admin panel" style="position:relative;width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:Figtree,system-ui,sans-serif;display:flex;flex-direction:column">
+  <div style="position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:56px 56px;pointer-events:none"></div>
+
+  <!-- ═════ LOGIN ═════ -->
+  <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative;flex:1;display:grid;place-items:center;padding:24px">
+      <div style="width:420px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:34px 36px;display:flex;flex-direction:column;gap:16px;animation:fadeUp .4s cubic-bezier(.22,1,.36,1) both">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--redh);margin-bottom:8px">MR ENGINES · ADMIN</div>
+          <h1 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em">Prijava</h1>
+        </div>
+        <sc-if value="{{ loginErr.show }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:11px 13px;border-radius:10px;background:rgba(237,28,36,.1);border:1px solid rgba(237,28,36,.35);font-size:13px;line-height:1.5;color:var(--text)">{{ loginErr.text }}</div>
+        </sc-if>
+        <label style="display:flex;flex-direction:column;gap:7px"><span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--text2)">Mejl</span><input value="nikola@mrengines.rs" style="height:46px;padding:0 14px;border-radius:10px;background:var(--inbg);border:1px solid var(--border2);font-size:15px" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)"></label>
+        <label style="display:flex;flex-direction:column;gap:7px"><span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--text2)">Lozinka</span><input type="password" value="••••••••••" style="height:46px;padding:0 14px;border-radius:10px;background:var(--inbg);border:1px solid var(--border2);font-size:15px" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)"></label>
+        <button onClick="{{ doLogin }}" style="height:48px;border:0;border-radius:10px;background:var(--btn);color:var(--btntx);font-size:13.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 8px 22px rgba(0,0,0,.3);cursor:pointer">Prijavi se</button>
+      </div>
+      <div style="position:absolute;bottom:22px;left:0;right:0;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;padding:0 24px">
+        <sc-for list="{{ loginDemo }}" as="e" hint-placeholder-count="6">
+          <button onClick="{{ e.on }}" style="padding:6px 10px;border:1px solid var(--border2);border-radius:99px;background:var(--inbg);color:var(--text2);font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.06em;cursor:pointer" style-hover="color:var(--text)">{{ e.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═════ APP ═════ -->
+  <sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative;display:flex;align-items:center;gap:14px;height:60px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--hdr);flex:none;z-index:3">
+      <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:8px;color:var(--text2)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16 M4 12h16 M4 18h16"></path></svg></span>
+      <span style="display:flex;align-items:baseline;gap:9px">
+        <span style="font-size:15px;font-weight:900;letter-spacing:-.01em">MR ENGINES</span>
+        <span style="font:700 9px 'JetBrains Mono',monospace;letter-spacing:.14em;padding:3px 8px;border-radius:6px;background:rgba(237,28,36,.13);color:var(--redh)">ADMIN</span>
+      </span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.16em;color:var(--text2)"><span style="opacity:.5">/</span> {{ crumb }}</span>
+      <span style="margin-left:auto;display:flex;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+        <button onClick="{{ langNoop }}" style="padding:8px 12px;border:0;background:transparent;color:var(--text2);font:600 10.5px 'JetBrains Mono',monospace;cursor:pointer">EN</button>
+        <button style="padding:8px 12px;border:0;background:var(--red);color:#fff;font:600 10.5px 'JetBrains Mono',monospace;cursor:pointer">SR</button>
+      </span>
+      <button onClick="{{ toggleTheme }}" style="width:34px;height:34px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text2);font-size:13px;cursor:pointer">{{ themeIcon }}</button>
+    </div>
+
+    <div style="position:relative;flex:1;display:flex;min-height:0">
+      <!-- SIDEBAR -->
+      <div style="width:236px;flex:none;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;padding:14px 10px 12px;overflow:auto">
+        <sc-for list="{{ navTop }}" as="n" hint-placeholder-count="1">
+          <button onClick="{{ n.on }}" style="display:flex;align-items:center;gap:11px;width:100%;height:40px;padding:0 12px;border:0;border-radius:9px;background:{{ n.bg }};color:{{ n.fg }};cursor:pointer;text-align:left" style-hover="background:var(--rowhv)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.85"><path d="{{ n.icon }}"></path></svg>
+            <span style="flex:1;font-size:13.5px;font-weight:{{ n.fw }}">{{ n.label }}</span>
+          </button>
+        </sc-for>
+        <div style="margin:14px 12px 6px;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.2em;color:var(--text2)">LJUDI I PRAVA</div>
+        <sc-for list="{{ navPeople }}" as="n" hint-placeholder-count="3">
+          <button onClick="{{ n.on }}" style="display:flex;align-items:center;gap:11px;width:100%;height:40px;padding:0 12px;border:0;border-radius:9px;background:{{ n.bg }};color:{{ n.fg }};cursor:pointer;text-align:left" style-hover="background:var(--rowhv)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.85"><path d="{{ n.icon }}"></path></svg>
+            <span style="flex:1;font-size:13.5px;font-weight:{{ n.fw }}">{{ n.label }}</span>
+            <sc-if value="{{ n.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font:700 10px 'JetBrains Mono',monospace;padding:2px 7px;border-radius:99px;background:rgba(245,165,36,.16);color:var(--amb)">{{ n.badge }}</span></sc-if>
+          </button>
+        </sc-for>
+        <div style="margin:14px 12px 6px;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.2em;color:var(--text2)">ŠIFARNICI</div>
+        <sc-for list="{{ navCb }}" as="n" hint-placeholder-count="10">
+          <button onClick="{{ n.on }}" style="display:flex;align-items:center;gap:11px;width:100%;height:38px;padding:0 12px;border:0;border-radius:9px;background:{{ n.bg }};color:{{ n.fg }};cursor:pointer;text-align:left" style-hover="background:var(--rowhv)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.8"><path d="{{ n.icon }}"></path></svg>
+            <span style="flex:1;font-size:13px;font-weight:{{ n.fw }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.label }}</span>
+          </button>
+        </sc-for>
+        <div style="margin:14px 12px 6px;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.2em;color:var(--text2)">SISTEM</div>
+        <sc-for list="{{ navSys }}" as="n" hint-placeholder-count="1">
+          <button onClick="{{ n.on }}" style="display:flex;align-items:center;gap:11px;width:100%;height:40px;padding:0 12px;border:0;border-radius:9px;background:{{ n.bg }};color:{{ n.fg }};cursor:pointer;text-align:left" style-hover="background:var(--rowhv)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.85"><path d="{{ n.icon }}"></path></svg>
+            <span style="flex:1;font-size:13.5px;font-weight:{{ n.fw }}">{{ n.label }}</span>
+          </button>
+        </sc-for>
+        <div style="margin-top:auto;padding:12px 8px 2px;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+            <span style="width:32px;height:32px;flex:none;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font:700 11px 'JetBrains Mono',monospace">NR</span>
+            <span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nikola Radović</span><span style="display:block;font:500 10px 'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">nikola@mrengines.rs</span></span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ goSecurity }}" style="flex:1;height:34px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text2);font-size:11.5px;font-weight:700;cursor:pointer" style-hover="color:var(--text)">Bezbednost</button>
+            <button onClick="{{ doLogout }}" style="flex:1;height:34px;border:0;border-radius:8px;background:transparent;color:var(--text2);font-size:11.5px;font-weight:600;cursor:pointer" style-hover="color:var(--redh)">Odjava →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN -->
+      <div style="flex:1;min-width:0;overflow:auto;padding:24px 28px">
+        <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:14px;animation:fadeUp .2s both">
+            <span style="height:30px;width:320px;border-radius:8px;background:var(--inbg);animation:shimmer 1.1s ease-in-out infinite"></span>
+            <span style="height:90px;border-radius:13px;background:var(--inbg);animation:shimmer 1.1s ease-in-out infinite"></span>
+            <span style="height:260px;border-radius:13px;background:var(--inbg);animation:shimmer 1.1s ease-in-out infinite;animation-delay:.12s"></span>
+            <span style="height:120px;border-radius:13px;background:var(--inbg);animation:shimmer 1.1s ease-in-out infinite;animation-delay:.22s"></span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+
+        <!-- ── KONTROLNA TABLA ── -->
+        <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:16px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.2em;color:var(--redh);margin-bottom:7px">{{ todayLong }}</div>
+              <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em">Dobrodošao, Nikola!</h2>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <button onClick="{{ k.on }}" style="text-align:left;background:var(--surface);border:1px solid {{ k.border }};border-radius:13px;padding:15px 17px;cursor:{{ k.cursor }}">
+                  <span style="display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.16em;color:var(--text2)"><span style="width:6px;height:6px;border-radius:50%;background:{{ k.dot }}"></span>{{ k.label }}</span>
+                  <span style="display:block;font:700 27px 'JetBrains Mono',monospace;margin-top:8px;color:var(--text)">{{ k.value }}</span>
+                  <span style="display:block;font-size:11.5px;margin-top:4px;color:{{ k.subColor }}">{{ k.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:stretch">
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                <div style="background:var(--surface);border:1px solid rgba(245,165,36,.3);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;align-items:center"><span style="font-size:14.5px;font-weight:800">Traži tebe</span><span style="margin-left:auto;font:700 11px 'JetBrains Mono',monospace;padding:2px 9px;border-radius:99px;background:rgba(245,165,36,.16);color:var(--amb)">{{ pendingCount }}</span></div>
+                  <sc-for list="{{ dashPending }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.on }}" style="display:flex;align-items:center;gap:10px;padding:10px 11px;border:0;border-radius:10px;background:var(--inbg);cursor:pointer;text-align:left" style-hover="background:var(--rowhv)">
+                      <span style="min-width:0;flex:1"><span style="display:block;font-size:13px;font-weight:700;color:var(--text)">{{ p.name }}</span><span style="display:block;font:500 10.5px 'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.email }}</span></span>
+                      <span style="font-size:12px;color:var(--redh);font-weight:700;flex:none">Otvori →</span>
+                    </button>
+                  </sc-for>
+                  <sc-if value="{{ noPending }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;font-style:italic;color:var(--text2)">Nema naloga na čekanju.</div></sc-if>
+                </div>
+                <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+                  <div><span style="font-size:14.5px;font-weight:800">Ko najviše greši</span><span style="display:block;font-size:11px;color:var(--text2);margin-top:2px">Broj upisanih krivica</span></div>
+                  <sc-for list="{{ topFaults }}" as="f" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="width:120px;flex:none;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.name }}</span>
+                      <span style="flex:1;height:6px;border-radius:99px;background:var(--inbg);overflow:hidden"><span style="display:block;height:100%;width:{{ f.w }};background:var(--amb);opacity:.8"></span></span>
+                      <span style="font:700 12px 'JetBrains Mono',monospace;width:18px;text-align:right">{{ f.n }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;min-width:0">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+                  <span style="font-size:14.5px;font-weight:800">Reklamacije po mesecima</span>
+                  <span style="display:flex;align-items:center;gap:6px;font:600 10px 'JetBrains Mono',monospace;color:var(--text2)"><span style="width:8px;height:8px;border-radius:3px;background:var(--blu)"></span>EMOTIVE</span>
+                  <span style="display:flex;align-items:center;gap:6px;font:600 10px 'JetBrains Mono',monospace;color:var(--text2)"><span style="width:8px;height:8px;border-radius:3px;background:var(--pur)"></span>DOMAĆE</span>
+                  <span style="margin-left:auto;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--text2)">24 MESECA</span>
+                </div>
+                <div style="flex:1;display:flex;align-items:flex-end;gap:5px;min-height:190px">
+                  <sc-for list="{{ chart }}" as="b" hint-placeholder-count="24">
+                    <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%">
+                      <span style="height:{{ b.dh }}px;background:var(--pur);border-radius:3px 3px 0 0;opacity:.9"></span>
+                      <span style="height:{{ b.eh }}px;background:var(--blu);border-radius:{{ b.er }}"></span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:5px;margin-top:7px">
+                  <sc-for list="{{ chart }}" as="b" hint-placeholder-count="24"><span style="flex:1;text-align:center;font:500 8px 'JetBrains Mono',monospace;color:var(--text2)">{{ b.lab }}</span></sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center"><span style="font-size:14.5px;font-weight:800">Poslednje promene</span><button onClick="{{ goAudit }}" style="margin-left:auto;border:0;background:transparent;color:var(--redh);font-size:12px;font-weight:700;cursor:pointer">Sve →</button></div>
+                <sc-for list="{{ dashAudit }}" as="a" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
+                    <span style="font:600 9px 'JetBrains Mono',monospace;letter-spacing:.06em;padding:3px 8px;border-radius:99px;background:{{ a.bg }};color:{{ a.fg }};flex:none">{{ a.action }}</span>
+                    <span style="flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.what }}</span>
+                    <span style="font:500 10px 'JetBrains Mono',monospace;color:var(--text2);flex:none">{{ a.when }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+                <span style="font-size:14.5px;font-weight:800">Najnovije reklamacije</span>
+                <sc-for list="{{ dashRecent }}" as="r" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
+                    <span style="font:600 12px 'JetBrains Mono',monospace;flex:none">{{ r.mr }}</span>
+                    <span style="font:600 8.5px 'JetBrains Mono',monospace;padding:3px 7px;border-radius:99px;background:{{ r.kbg }};color:{{ r.kfg }};flex:none">{{ r.kind }}</span>
+                    <span style="flex:1;min-width:0;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.firm }}</span>
+                    <span style="font:500 10.5px 'JetBrains Mono',monospace;color:var(--text2);flex:none">{{ r.days }} d</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center"><span style="font-size:14.5px;font-weight:800">Najduže otvorene</span><span style="margin-left:auto;font:600 9.5px 'JetBrains Mono',monospace;color:var(--text2)">30+ DANA</span></div>
+                <sc-for list="{{ dashOverdue }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
+                    <span style="font:600 12px 'JetBrains Mono',monospace;flex:none">{{ r.mr }}</span>
+                    <span style="flex:1;min-width:0;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.firm }}</span>
+                    <span style="font:700 10.5px 'JetBrains Mono',monospace;padding:3px 9px;border-radius:99px;background:rgba(237,28,36,.13);color:var(--redh);flex:none">{{ r.days }} dana</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── KORISNICI ── -->
+        <sc-if value="{{ isUsers }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div><h2 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">Korisnici</h2><div style="margin-top:5px;font-size:13px;color:var(--text2)">Ko sme da uđe i ko čeka odluku</div></div>
+            <sc-if value="{{ hasPending }}" hint-placeholder-val="{{ true }}">
+              <div style="background:var(--surface);border:1px solid rgba(245,165,36,.32);border-radius:14px;overflow:hidden">
+                <div style="display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--border)"><span style="font-size:14.5px;font-weight:800">Zahtevi na čekanju</span><span style="margin-left:auto;font:600 10.5px 'JetBrains Mono',monospace;color:var(--text2)">UKUPNO: {{ pendingCount }}</span></div>
+                <sc-for list="{{ pendingRows }}" as="p" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--border)">
+                    <span style="width:34px;height:34px;flex:none;border-radius:50%;background:rgba(245,165,36,.16);color:var(--amb);display:grid;place-items:center;font:700 11px 'JetBrains Mono',monospace">{{ p.init }}</span>
+                    <span style="min-width:0;width:220px"><span style="display:block;font-size:13.5px;font-weight:700">{{ p.name }}</span><span style="display:block;font:500 10.5px 'JetBrains Mono',monospace;color:var(--text2)">{{ p.email }}</span></span>
+                    <span style="font-size:12px;color:var(--text2);flex:1">{{ p.note }}</span>
+                    <button onClick="{{ p.onApprove }}" style="height:38px;padding:0 18px;border:1px solid rgba(31,169,113,.45);border-radius:9px;background:rgba(31,169,113,.14);color:var(--grn);font:800 11.5px 'JetBrains Mono',monospace;letter-spacing:.06em;cursor:pointer">ODOBRI</button>
+                    <button onClick="{{ p.onReject }}" style="height:38px;padding:0 16px;border:1px solid rgba(237,28,36,.4);border-radius:9px;background:transparent;color:var(--redh);font:700 11.5px 'JetBrains Mono',monospace;letter-spacing:.06em;cursor:pointer">ODBIJ</button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--border)">
+                <span style="font-size:14.5px;font-weight:800;flex:none">Svi korisnici</span>
+                <span style="flex:1;max-width:340px;display:flex;align-items:center;gap:9px;height:38px;padding:0 12px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--text2);flex:none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <input value="{{ userQuery }}" onChange="{{ onUserQuery }}" placeholder="Ime ili mejl…" style="flex:1;border:0;background:transparent;font-size:13px">
+                </span>
+                <span style="margin-left:auto;font:600 10.5px 'JetBrains Mono',monospace;color:var(--text2)">PRIKAZANO {{ userShown }} OD 23</span>
+              </div>
+              <div style="display:grid;grid-template-columns:200px 230px 120px 1fr 110px 300px;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;color:var(--text2)">
+                <span>IME</span><span>EMAIL</span><span>STATUS</span><span>ULOGE</span><span>REGISTROVAN</span><span></span>
+              </div>
+              <sc-for list="{{ userRows }}" as="u" hint-placeholder-count="7">
+                <div style="display:grid;grid-template-columns:200px 230px 120px 1fr 110px 300px;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);align-items:center;opacity:{{ u.op }}" style-hover="background:var(--rowhv)">
+                  <span style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.name }} <span style="font-size:11px;font-weight:600;color:var(--text2)">{{ u.tag }}</span></span>
+                  <span style="font:500 11.5px 'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.email }}</span>
+                  <span><span style="display:inline-flex;align-items:center;gap:6px;font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.06em;padding:3px 9px;border-radius:99px;background:{{ u.sbg }};color:{{ u.sfg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ u.sfg }}"></span>{{ u.status }}</span></span>
+                  <span style="display:flex;gap:5px;flex-wrap:wrap">
+                    <sc-for list="{{ u.roles }}" as="rl" hint-placeholder-count="1"><span style="font:600 9.5px 'JetBrains Mono',monospace;padding:3px 8px;border-radius:99px;background:var(--inbg);border:1px solid var(--border2);color:var(--text2);white-space:nowrap">{{ rl.n }}</span></sc-for>
+                  </span>
+                  <span style="font:500 11px 'JetBrains Mono',monospace;color:var(--text2)">{{ u.reg }}</span>
+                  <span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                    <sc-for list="{{ u.acts }}" as="a" hint-placeholder-count="3">
+                      <button onClick="{{ a.on }}" style="height:32px;padding:0 11px;border:1px solid {{ a.bd }};border-radius:8px;background:{{ a.bg }};color:{{ a.fg }};font:700 10px 'JetBrains Mono',monospace;letter-spacing:.04em;cursor:pointer;opacity:{{ a.op }}">{{ a.label }}</button>
+                    </sc-for>
+                    <sc-if value="{{ u.noteShow }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-style:italic;color:var(--text2);align-self:center">{{ u.note }}</span></sc-if>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── OVLAŠĆENJA ── -->
+        <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div style="display:flex;align-items:flex-start;gap:16px">
+              <div style="flex:1"><h2 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">Ovlašćenja</h2>
+              <div style="margin-top:7px;font-size:13px;color:var(--text2);line-height:1.6;max-width:640px">Ovlašćenje nosi više radnji. Čovek drži više ovlašćenja i prava mu se sabiraju — zato su mali i nezavisni, umesto jednog velikog za svaku sitnu razliku.</div></div>
+              <button onClick="{{ roleNew }}" style="height:44px;padding:0 22px;border:0;border-radius:10px;background:var(--btn);color:var(--btntx);font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 8px 22px rgba(0,0,0,.3);cursor:pointer">+ Novo ovlašćenje</button>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--border)"><span style="font-size:14.5px;font-weight:800">Lista</span><span style="margin-left:auto;font:600 10.5px 'JetBrains Mono',monospace;color:var(--text2)">UKUPNO: 26</span></div>
+              <div style="display:grid;grid-template-columns:1.7fr 150px 110px 110px 330px;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;color:var(--text2)">
+                <span>NAZIV</span><span>VRSTA</span><span>RADNJI</span><span>DRŽI</span><span></span>
+              </div>
+              <sc-for list="{{ roleRows }}" as="r" hint-placeholder-count="8">
+                <div style="display:grid;grid-template-columns:1.7fr 150px 110px 110px 330px;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);align-items:center" style-hover="background:var(--rowhv)">
+                  <span><span style="display:block;font-size:13.5px;font-weight:700">{{ r.name }}</span><span style="display:block;font-size:11.5px;color:var(--text2);margin-top:2px">{{ r.desc }}</span></span>
+                  <span><span style="font:700 9px 'JetBrains Mono',monospace;letter-spacing:.1em;padding:4px 9px;border-radius:7px;background:{{ r.vbg }};color:{{ r.vfg }}">{{ r.vrsta }}</span></span>
+                  <span style="font:600 13px 'JetBrains Mono',monospace">{{ r.acts }}</span>
+                  <span style="font:600 13px 'JetBrains Mono',monospace;color:{{ r.holdColor }}">{{ r.holds }}</span>
+                  <span style="display:flex;gap:6px;justify-content:flex-end">
+                    <sc-for list="{{ r.btns }}" as="a" hint-placeholder-count="3">
+                      <button onClick="{{ a.on }}" style="height:32px;padding:0 12px;border:1px solid {{ a.bd }};border-radius:8px;background:{{ a.bg }};color:{{ a.fg }};font:700 10px 'JetBrains Mono',monospace;letter-spacing:.04em;cursor:pointer;opacity:{{ a.op }}">{{ a.label }}</button>
+                    </sc-for>
+                  </span>
+                </div>
+              </sc-for>
+              <div style="display:flex;align-items:center;padding:12px 18px">
+                <span style="font:500 11px 'JetBrains Mono',monospace;color:var(--text2)">PRIKAZANO 1–12 OD 26</span>
+                <span style="margin-left:auto;display:flex;gap:7px"><button onClick="{{ pageNoop }}" style="width:34px;height:34px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text2);cursor:pointer">←</button><button onClick="{{ pageNoop }}" style="width:34px;height:34px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text);cursor:pointer">→</button></span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── REVIZIJA ── -->
+        <sc-if value="{{ isAudit }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div><h2 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">Revizioni dnevnik</h2><div style="margin-top:5px;font-size:13px;color:var(--text2)">Ko je šta menjao i kada — svaka izmena u sistemu.</div></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <select value="{{ afUser }}" onChange="{{ onAfUser }}" style="height:40px;padding:0 11px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:12.5px;min-width:170px;cursor:pointer">
+                <sc-for list="{{ afUserOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+              <select value="{{ afEntity }}" onChange="{{ onAfEntity }}" style="height:40px;padding:0 11px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:12.5px;min-width:170px;cursor:pointer">
+                <sc-for list="{{ afEntityOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+              <select value="{{ afAction }}" onChange="{{ onAfAction }}" style="height:40px;padding:0 11px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:12.5px;min-width:150px;cursor:pointer">
+                <sc-for list="{{ afActionOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+              <input placeholder="Od: 01.08.2026" style="height:40px;width:130px;padding:0 11px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font:500 12px 'JetBrains Mono',monospace">
+              <input placeholder="Do: 19.08.2026" style="height:40px;width:130px;padding:0 11px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font:500 12px 'JetBrains Mono',monospace">
+              <button onClick="{{ afClear }}" style="height:40px;padding:0 14px;border:0;background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer" style-hover="color:var(--text)">Poništi filtere</button>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:34px 150px 1fr 160px 1.4fr;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;color:var(--text2)">
+                <span></span><span>VREME</span><span>KORISNIK</span><span>AKCIJA</span><span>IZMENA</span>
+              </div>
+              <sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="6">
+                <div>
+                  <div onClick="{{ a.onToggle }}" style="display:grid;grid-template-columns:34px 150px 1fr 160px 1.4fr;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer" style-hover="background:var(--rowhv)">
+                    <span style="color:var(--text2);font-size:11px;transform:rotate({{ a.rot }});transition:transform .15s;display:inline-block;width:12px">▶</span>
+                    <span style="font:500 11.5px 'JetBrains Mono',monospace;color:var(--text2)">{{ a.time }}</span>
+                    <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.user }} <span style="color:var(--text2);font-weight:400;font-size:12px">· {{ a.entity }}</span></span>
+                    <span><span style="font:600 9px 'JetBrains Mono',monospace;letter-spacing:.06em;padding:3px 9px;border-radius:99px;background:{{ a.bg }};color:{{ a.fg }}">{{ a.action }}</span></span>
+                    <span style="font-size:12.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.change }}</span>
+                  </div>
+                  <sc-if value="{{ a.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:14px 18px 16px 64px;border-bottom:1px solid var(--border);background:var(--inbg);display:flex;flex-direction:column;gap:9px">
+                      <div style="display:flex;gap:26px;font:500 11px 'JetBrains Mono',monospace;color:var(--text2)"><span>IP: {{ a.ip }}</span><span>{{ a.dev }}</span><span>{{ a.ctx }}</span></div>
+                      <sc-for list="{{ a.fields }}" as="f" hint-placeholder-count="1">
+                        <div style="display:flex;align-items:center;gap:9px;font:500 12px 'JetBrains Mono',monospace"><span style="color:var(--text2)">{{ f.f }}:</span><span style="padding:2px 8px;border-radius:6px;background:rgba(237,28,36,.1);color:var(--redh);text-decoration:line-through">{{ f.a }}</span><span style="color:var(--text2)">→</span><span style="padding:2px 8px;border-radius:6px;background:rgba(31,169,113,.12);color:var(--grn)">{{ f.b }}</span></div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="display:flex;justify-content:center;padding:14px">
+                <button onClick="{{ auditMore }}" style="height:40px;padding:0 26px;border:1px solid var(--border2);border-radius:9px;background:var(--inbg);color:var(--text2);font:700 11px 'JetBrains Mono',monospace;letter-spacing:.08em;cursor:pointer" style-hover="color:var(--text)">UČITAJ JOŠ</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── ŠIFARNIK (generički) ── -->
+        <sc-if value="{{ isCb }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div style="display:flex;align-items:flex-start;gap:16px">
+              <div style="flex:1"><h2 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">{{ cb.title }}</h2><div style="margin-top:5px;font-size:13px;color:var(--text2)">{{ cb.sub }}</div></div>
+              <button onClick="{{ cbAdd }}" style="height:44px;padding:0 22px;border:0;border-radius:10px;background:var(--btn);color:var(--btntx);font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 8px 22px rgba(0,0,0,.3);cursor:pointer">{{ cb.addLabel }}</button>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center">
+              <span style="display:flex;flex:none;border:1px solid var(--border2);border-radius:9px;overflow:hidden">
+                <sc-for list="{{ cbStatusFilters }}" as="f" hint-placeholder-count="3">
+                  <button onClick="{{ f.on }}" style="padding:10px 15px;border:0;background:{{ f.bg }};color:{{ f.fg }};font-size:11.5px;font-weight:800;letter-spacing:.05em;cursor:pointer">{{ f.label }}</button>
+                </sc-for>
+              </span>
+              <span style="flex:1;max-width:360px;display:flex;align-items:center;gap:9px;height:40px;padding:0 12px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--text2);flex:none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input value="{{ cbQuery }}" onChange="{{ onCbQuery }}" placeholder="Pretraga…" style="flex:1;border:0;background:transparent;font-size:13px">
+              </span>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--border)"><span style="font-size:14.5px;font-weight:800">Lista</span><span style="margin-left:auto;font:600 10.5px 'JetBrains Mono',monospace;color:var(--text2)">UKUPNO: {{ cb.total }}</span></div>
+              <div style="display:grid;grid-template-columns:{{ cb.grid }};gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;color:var(--text2)">
+                <sc-for list="{{ cb.headers }}" as="h" hint-placeholder-count="6"><span>{{ h.t }}</span></sc-for>
+              </div>
+              <sc-for list="{{ cbRows }}" as="r" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:{{ cb.grid }};gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);align-items:center;opacity:{{ r.op }}" style-hover="background:var(--rowhv)">
+                  <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="3"><span style="font-family:{{ c.ff }};font-size:{{ c.fs }};font-weight:{{ c.fw }};color:{{ c.col }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.t }}</span></sc-for>
+                  <sc-if value="{{ r.hasUse }}" hint-placeholder-val="{{ true }}"><span style="font:600 12.5px 'JetBrains Mono',monospace;color:{{ r.useColor }}">{{ r.use }}</span></sc-if>
+                  <span><span style="font:700 9.5px 'JetBrains Mono',monospace;padding:3px 10px;border-radius:99px;background:{{ r.abg }};color:{{ r.afg }}">{{ r.aktivan }}</span></span>
+                  <span style="display:flex;gap:6px;justify-content:flex-end">
+                    <button onClick="{{ r.onEdit }}" style="height:32px;padding:0 12px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text2);font:700 10px 'JetBrains Mono',monospace;cursor:pointer" style-hover="color:var(--text)">IZMENI</button>
+                    <button onClick="{{ r.onToggle }}" style="height:32px;padding:0 12px;border:1px solid var(--border2);border-radius:8px;background:transparent;color:var(--text2);font:700 10px 'JetBrains Mono',monospace;cursor:pointer" style-hover="color:var(--text)">{{ r.toggleLabel }}</button>
+                    <button onClick="{{ r.onDelete }}" style="height:32px;width:34px;border:1px solid {{ r.delBd }};border-radius:8px;background:transparent;color:{{ r.delFg }};cursor:pointer;opacity:{{ r.delOp }};display:grid;place-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18 M8 6V4h8v2 M6 6l1 14h10l1-14 M10 11v6 M14 11v6"></path></svg></button>
+                  </span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ cbEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:38px;text-align:center;font-size:13.5px;font-style:italic;color:var(--text2)">{{ cb.empty }}</div></sc-if>
+              <div style="display:flex;align-items:center;padding:12px 18px">
+                <span style="font:500 11px 'JetBrains Mono',monospace;color:var(--text2)">PRIKAZANO {{ cbShownLabel }}</span>
+                <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
+                  <span style="font:500 10.5px 'JetBrains Mono',monospace;color:var(--text2)">PO STRANI: 20</span>
+                  <button onClick="{{ pageNoop }}" style="width:34px;height:34px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text2);cursor:pointer">←</button>
+                  <button onClick="{{ pageNoop }}" style="width:34px;height:34px;border:1px solid var(--border2);border-radius:8px;background:var(--inbg);color:var(--text);cursor:pointer">→</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── PODEŠAVANJA ── -->
+        <sc-if value="{{ isAppset }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;max-width:760px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div><h2 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">Podešavanja aplikacije</h2><div style="margin-top:5px;font-size:13px;color:var(--text2)">Šta sistem radi sam od sebe</div></div>
+            <sc-for list="{{ setGroups }}" as="g" hint-placeholder-count="2">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+                <div style="padding:13px 20px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.18em;color:var(--redh)">{{ g.name }}</div>
+                <sc-for list="{{ g.items }}" as="s" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:18px;padding:16px 20px;border-bottom:1px solid var(--border)">
+                    <span style="flex:1;min-width:0"><span style="display:flex;align-items:center;gap:9px"><span style="font-size:13.5px;font-weight:700">{{ s.label }}</span><sc-if value="{{ s.isDef }}" hint-placeholder-val="{{ true }}"><span style="font:600 8.5px 'JetBrains Mono',monospace;letter-spacing:.08em;padding:2px 7px;border-radius:6px;background:var(--inbg);border:1px solid var(--border2);color:var(--text2)">PODRAZUMEVANO</span></sc-if></span><span style="display:block;font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5">{{ s.desc }}</span>
+                    <sc-if value="{{ s.notDef }}" hint-placeholder-val="{{ false }}"><button onClick="{{ s.onReset }}" style="border:0;background:transparent;padding:4px 0 0;color:var(--redh);font-size:11.5px;font-weight:700;cursor:pointer;text-align:left">Vrati na podrazumevano</button></sc-if></span>
+                    <sc-if value="{{ s.isBool }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden;flex:none">
+                        <button onClick="{{ s.onYes }}" style="padding:9px 16px;border:0;background:{{ s.ybg }};color:{{ s.yfg }};font-size:12px;font-weight:800;cursor:pointer">DA</button>
+                        <button onClick="{{ s.onNo }}" style="padding:9px 16px;border:0;background:{{ s.nbg }};color:{{ s.nfg }};font-size:12px;font-weight:800;cursor:pointer">NE</button>
+                      </span>
+                    </sc-if>
+                    <sc-if value="{{ s.isText }}" hint-placeholder-val="{{ true }}">
+                      <input value="{{ s.val }}" onChange="{{ s.onChange }}" style="width:260px;height:42px;padding:0 13px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font:500 13px 'JetBrains Mono',monospace;flex:none" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)">
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+            <div style="display:flex;justify-content:flex-end;gap:12px;align-items:center">
+              <span style="font-size:12px;color:var(--text2)">{{ setHint }}</span>
+              <button onClick="{{ setSave }}" style="height:46px;padding:0 28px;border:0;border-radius:10px;background:var(--btn);color:var(--btntx);font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 8px 22px rgba(0,0,0,.3);cursor:pointer;opacity:{{ setSaveOp }}">Sačuvaj</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ── BEZBEDNOST ── -->
+        <sc-if value="{{ isSecurity }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px;max-width:640px;animation:fadeUp .35s cubic-bezier(.22,1,.36,1) both">
+            <div><h2 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">Bezbednost</h2><div style="margin-top:5px;font-size:13px;color:var(--text2)">Moj nalog — nikola@mrengines.rs</div></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;display:flex;align-items:center;gap:18px">
+              <span style="flex:1"><span style="display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:800">Dvofaktorska prijava</span><span style="display:inline-flex;align-items:center;gap:6px;font:600 9.5px 'JetBrains Mono',monospace;padding:3px 10px;border-radius:99px;background:{{ tfaBg }};color:{{ tfaFg }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ tfaFg }}"></span>{{ tfaStatus }}</span></span>
+              <span style="display:block;font-size:12.5px;color:var(--text2);margin-top:5px;line-height:1.55">Uz lozinku se pri prijavi traži i šestocifreni kod iz aplikacije na telefonu.</span></span>
+              <button onClick="{{ tfaAction }}" style="height:44px;padding:0 22px;border:{{ tfaBtnBd }};border-radius:10px;background:{{ tfaBtnBg }};color:{{ tfaBtnFg }};font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;flex:none">{{ tfaBtnLabel }}</button>
+            </div>
+          </div>
+        </sc-if>
+
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═════ DIJALOZI ═════ -->
+  <sc-if value="{{ dlgConfirm.open }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:24px">
+      <div style="width:480px;background:var(--raised);border:1px solid var(--border2);border-radius:15px;padding:24px 26px;display:flex;flex-direction:column;gap:13px;box-shadow:0 28px 70px rgba(0,0,0,.5);animation:fadeUp .25s both">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.18em;color:{{ dlgConfirm.tagColor }}">{{ dlgConfirm.tag }}</div>
+        <div style="font-size:17px;font-weight:800;line-height:1.35">{{ dlgConfirm.title }}</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6">{{ dlgConfirm.body }}</div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <button onClick="{{ dlgConfirm.onNo }}" style="flex:1;height:46px;border:1px solid var(--border2);border-radius:10px;background:var(--inbg);color:var(--text2);font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">Odustani</button>
+          <button onClick="{{ dlgConfirm.onYes }}" style="flex:1;height:46px;border:1px solid {{ dlgConfirm.ybd }};border-radius:10px;background:{{ dlgConfirm.ybg }};color:{{ dlgConfirm.yfg }};font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">{{ dlgConfirm.yesLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ dlgEdit.open }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:24px">
+      <div style="width:520px;background:var(--raised);border:1px solid var(--border2);border-radius:15px;padding:24px 26px;display:flex;flex-direction:column;gap:14px;box-shadow:0 28px 70px rgba(0,0,0,.5);animation:fadeUp .25s both">
+        <div style="font-size:17px;font-weight:800">{{ dlgEdit.title }}</div>
+        <sc-for list="{{ dlgEdit.fields }}" as="f" hint-placeholder-count="3">
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--text2)">{{ f.label }}</span>
+            <sc-if value="{{ f.isLocked }}" hint-placeholder-val="{{ false }}"><span style="display:flex;align-items:center;height:44px;padding:0 13px;border-radius:9px;background:var(--inbg);border:1px dashed var(--border2);font:600 14px 'JetBrains Mono',monospace;color:var(--text2)">{{ f.val }} <span style="margin-left:auto;font-size:10px;letter-spacing:.08em">ZAKLJUČANO</span></span></sc-if>
+            <sc-if value="{{ f.isText }}" hint-placeholder-val="{{ true }}"><input value="{{ f.val }}" onChange="{{ f.onChange }}" style="height:44px;padding:0 13px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:14px" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)"></sc-if>
+            <sc-if value="{{ f.isSelect }}" hint-placeholder-val="{{ false }}">
+              <select value="{{ f.val }}" onChange="{{ f.onChange }}" style="height:44px;padding:0 11px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:13.5px;cursor:pointer">
+                <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+            </sc-if>
+            <sc-if value="{{ f.isBool }}" hint-placeholder-val="{{ false }}">
+              <span style="display:flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden;align-self:flex-start">
+                <button onClick="{{ f.onYes }}" style="padding:10px 18px;border:0;background:{{ f.ybg }};color:{{ f.yfg }};font-size:12px;font-weight:800;cursor:pointer">DA</button>
+                <button onClick="{{ f.onNo }}" style="padding:10px 18px;border:0;background:{{ f.nbg }};color:{{ f.nfg }};font-size:12px;font-weight:800;cursor:pointer">NE</button>
+              </span>
+            </sc-if>
+          </label>
+        </sc-for>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button onClick="{{ dlgEdit.onCancel }}" style="flex:1;height:46px;border:1px solid var(--border2);border-radius:10px;background:var(--inbg);color:var(--text2);font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">Odustani</button>
+          <button onClick="{{ dlgEdit.onSave }}" style="flex:1;height:46px;border:0;border-radius:10px;background:var(--btn);color:var(--btntx);font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">Sačuvaj</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ dlgRoles.open }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:24px">
+      <div style="width:520px;background:var(--raised);border:1px solid var(--border2);border-radius:15px;padding:24px 26px;display:flex;flex-direction:column;gap:13px;box-shadow:0 28px 70px rgba(0,0,0,.5);animation:fadeUp .25s both">
+        <div style="font-size:17px;font-weight:800">{{ dlgRoles.title }}</div>
+        <div style="font-size:12.5px;color:var(--text2)">{{ dlgRoles.sub }}</div>
+        <div style="display:flex;flex-direction:column;gap:7px;max-height:340px;overflow:auto">
+          <sc-for list="{{ dlgRoles.items }}" as="r" hint-placeholder-count="6">
+            <button onClick="{{ r.on }}" style="display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid {{ r.bd }};border-radius:10px;background:{{ r.bg }};cursor:pointer;text-align:left">
+              <span style="width:18px;height:18px;flex:none;border-radius:5px;border:1.5px solid {{ r.ckBd }};background:{{ r.ckBg }};display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800">{{ r.mark }}</span>
+              <span style="flex:1;font-size:13px;font-weight:600;color:var(--text)">{{ r.name }}</span>
+              <span style="font:600 10px 'JetBrains Mono',monospace;color:var(--text2)">{{ r.acts }} radnji</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button onClick="{{ dlgRoles.onCancel }}" style="flex:1;height:46px;border:1px solid var(--border2);border-radius:10px;background:var(--inbg);color:var(--text2);font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">Odustani</button>
+          <button onClick="{{ dlgRoles.onSave }}" style="flex:1;height:46px;border:1px solid rgba(31,169,113,.45);border-radius:10px;background:rgba(31,169,113,.16);color:var(--grn);font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">{{ dlgRoles.saveLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ mx.open }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.62);display:grid;place-items:center;padding:20px">
+      <div style="width:1100px;max-width:96vw;max-height:92vh;background:var(--raised);border:1px solid var(--border2);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 28px 70px rgba(0,0,0,.5);animation:fadeUp .25s both;overflow:hidden">
+        <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);flex:none">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:18px;font-weight:800">{{ mx.title }}</span>
+            <sc-if value="{{ mx.locked }}" hint-placeholder-val="{{ false }}"><span style="font:700 9px 'JetBrains Mono',monospace;letter-spacing:.1em;padding:4px 9px;border-radius:7px;background:rgba(46,144,250,.13);color:var(--blu)">STANDARDNO · SAMO PREGLED</span></sc-if>
+            <span style="margin-left:auto;font:600 11.5px 'JetBrains Mono',monospace;color:var(--text2)">IZABRANO: <span style="color:var(--text)">{{ mx.count }}</span> OD 84</span>
+          </div>
+          <sc-if value="{{ mx.locked }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:11px;padding:10px 13px;border-radius:10px;background:rgba(46,144,250,.09);border:1px solid rgba(46,144,250,.3);font-size:12.5px;line-height:1.5">Standardno ovlašćenje se ne menja — održava ga sistem. Umnoži ga pa menjaj kopiju.</div>
+          </sc-if>
+          <sc-if value="{{ mx.editable }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:11px;margin-top:12px">
+              <label style="flex:1;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.13em;color:var(--text2)">NAZIV (SR)</span><input value="{{ mx.sr }}" onChange="{{ mx.onSr }}" style="height:40px;padding:0 12px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:13.5px" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)"></label>
+              <label style="flex:1;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.13em;color:var(--text2)">NAZIV (EN)</span><input value="{{ mx.en }}" onChange="{{ mx.onEn }}" style="height:40px;padding:0 12px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:13.5px" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)"></label>
+              <label style="flex:1.4;display:flex;flex-direction:column;gap:5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.13em;color:var(--text2)">OPIS</span><input value="{{ mx.desc }}" onChange="{{ mx.onDesc }}" style="height:40px;padding:0 12px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);font-size:13.5px" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)"></label>
+            </div>
+            <sc-if value="{{ mx.warn }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:11px;padding:10px 13px;border-radius:10px;background:rgba(245,165,36,.09);border:1px solid rgba(245,165,36,.35);font-size:12.5px;line-height:1.5">Broj korisnika koji drže ovo ovlašćenje: <strong>{{ mx.holds }}</strong>. Posle čuvanja biće im prekinuta prijava i moraju ponovo da se prijave.</div>
+            </sc-if>
+          </sc-if>
+        </div>
+        <div style="flex:1;min-height:0;overflow:auto;padding:16px 24px">
+          <div style="columns:3;column-gap:14px">
+            <sc-for list="{{ mx.modules }}" as="m" hint-placeholder-count="16">
+              <div style="break-inside:avoid;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <span style="flex:1;font-size:12.5px;font-weight:800">{{ m.name }}</span>
+                  <span style="font:600 10px 'JetBrains Mono',monospace;color:var(--text2)">{{ m.cnt }}</span>
+                  <sc-if value="{{ mx.editable }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ m.onAll }}" style="border:0;background:transparent;padding:2px 4px;color:var(--redh);font:700 9.5px 'JetBrains Mono',monospace;cursor:pointer">SVE</button>
+                    <button onClick="{{ m.onNone }}" style="border:0;background:transparent;padding:2px 4px;color:var(--text2);font:700 9.5px 'JetBrains Mono',monospace;cursor:pointer">NIŠTA</button>
+                  </sc-if>
+                </div>
+                <sc-for list="{{ m.acts }}" as="a" hint-placeholder-count="5">
+                  <button onClick="{{ a.on }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:5px 4px;border:0;background:transparent;cursor:{{ a.cursor }};text-align:left;opacity:{{ a.op }}">
+                    <span style="width:17px;height:17px;flex:none;border-radius:5px;border:1.5px solid {{ a.bd }};background:{{ a.bg }};display:grid;place-items:center;color:#fff;font-size:10px;font-weight:800">{{ a.mark }}</span>
+                    <span style="flex:1;font-size:12px;color:var(--text)">{{ a.name }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;padding:14px 24px;border-top:1px solid var(--border);flex:none">
+          <button onClick="{{ mx.onCancel }}" style="margin-left:auto;height:46px;padding:0 22px;border:1px solid var(--border2);border-radius:10px;background:var(--inbg);color:var(--text2);font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">{{ mx.cancelLabel }}</button>
+          <sc-if value="{{ mx.editable }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ mx.onSave }}" style="height:46px;padding:0 28px;border:0;border-radius:10px;background:var(--btn);color:var(--btntx);font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">Sačuvaj</button>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ dlg2fa.open }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:24px">
+      <div style="width:540px;background:var(--raised);border:1px solid var(--border2);border-radius:15px;padding:24px 26px;display:flex;flex-direction:column;gap:14px;box-shadow:0 28px 70px rgba(0,0,0,.5);animation:fadeUp .25s both">
+        <div style="font-size:17px;font-weight:800">Uključivanje dvofaktorske prijave</div>
+        <div style="display:flex;gap:18px">
+          <span style="width:150px;height:150px;flex:none;border-radius:12px;background:#fff;display:grid;place-items:center"><svg width="126" height="126" viewBox="0 0 21 21"><path d="{{ qrPath }}" fill="#17171a"></path></svg></span>
+          <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+            <div style="font-size:12.5px;color:var(--text2);line-height:1.55">Skeniraj kod aplikacijom (Google Authenticator, 1Password…), pa sačuvaj kodove za oporavak:</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;font:600 12px 'JetBrains Mono',monospace;color:var(--text)">
+              <sc-for list="{{ recCodes }}" as="c" hint-placeholder-count="8"><span>{{ c.t }}</span></sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button onClick="{{ dlg2faCancel }}" style="flex:1;height:46px;border:1px solid var(--border2);border-radius:10px;background:var(--inbg);color:var(--text2);font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">Odustani</button>
+          <button onClick="{{ dlg2faConfirm }}" style="flex:1;height:46px;border:1px solid rgba(31,169,113,.45);border-radius:10px;background:rgba(31,169,113,.16);color:var(--grn);font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer">✓ Uključi</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;bottom:26px;left:50%;z-index:40;display:flex;align-items:center;gap:11px;padding:13px 20px;border-radius:11px;background:#17171b;border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.5);animation:slideUp .35s cubic-bezier(.22,1,.36,1) both;max-width:70vw">
+      <span style="width:20px;height:20px;flex:none;border-radius:50%;background:rgba(31,169,113,.18);color:#3fd598;display:grid;place-items:center;font-size:11px;font-weight:700">✓</span>
+      <span style="font-size:14px;color:#f2f2f3">{{ toast }}</span>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+const ICONS = {
+  dash: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
+  roles: 'M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z M9.5 12l2 2 3.5-3.5',
+  audit: 'M5 3h14v18H5z M9 8h6 M9 12h6 M9 16h4',
+  mfr: 'M3 21V9l6 4V9l6 4V4h6v17z',
+  eng: 'M14 7a4 4 0 1 1-5.6 5.6L3 18l3 3 5.4-5.4A4 4 0 0 1 17 10z',
+  firm: 'M4 21V5a2 2 0 0 1 2-2h8v18 M14 9h6v12 M2 21h20 M8 7h2 M8 11h2 M8 15h2',
+  dept: 'M12 3l9 5-9 5-9-5z M3 13l9 5 9-5',
+  work: 'M4 15a8 8 0 0 1 16 0 M2 18h20 M10 5h4v4',
+  ext: 'M2 6h11v10H2z M13 9h5l3 3v4h-8 M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4 M17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
+  src: 'M3 12l3-8h12l3 8v7H3z M3 12h5l2 3h4l2-3h5',
+  chk: 'M4 4h16v16H4z M8 9l2 2 4-4 M8 16h8',
+  dmg: 'M13 2L5 13h6l-1 9 8-12h-6z',
+  arr: 'M5 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4 M19 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4 M7 18h8a4 4 0 0 0 0-8H9',
+  set: 'M4 6h10 M18 6h2 M14 3.5v5 M4 12h4 M12 12h8 M8 9.5v5 M4 18h12 M20 18h0 M16 15.5v5',
+};
+const AB = {
+  'Kreiranje': ['rgba(31,169,113,.13)', 'var(--grn)'], 'Izmena': ['rgba(46,144,250,.13)', 'var(--blu)'],
+  'Brisanje': ['rgba(237,28,36,.13)', 'var(--redh)'], 'Vraćanje': ['rgba(20,184,166,.13)', 'var(--teal)'],
+  'Prijava': ['rgba(138,139,145,.16)', 'var(--gry)'], 'Odjava': ['rgba(138,139,145,.16)', 'var(--gry)'],
+  'Promena dozvola': ['rgba(245,165,36,.13)', 'var(--amb)'], 'Izvoz': ['rgba(167,139,250,.15)', 'var(--pur)'],
+};
+const MODULES = [
+  ['EMOTIVE reklamacije', ['Pregled spiska', 'Pregled detalja', 'Kreiranje', 'Izmena', 'Promena ishoda', 'Dodela radnika', 'Upis krivice', 'Arhiviranje', 'Brisanje']],
+  ['DOMAĆE reklamacije', ['Pregled spiska', 'Pregled detalja', 'Kreiranje', 'Izmena', 'Promena ishoda', 'Dodela radnika', 'Upis krivice', 'Arhiviranje', 'Brisanje']],
+  ['Prilozi', ['Pregled', 'Dodavanje', 'Preuzimanje', 'Brisanje']],
+  ['Izveštaji o reklamaciji', ['Pregled', 'Pisanje', 'Izmena', 'Zaključavanje', 'Štampa']],
+  ['Prijave klijenata', ['Pregled', 'Preuzimanje u rad', 'Odbacivanje', 'Odgovor klijentu']],
+  ['Obaveštenja', ['Pregled', 'Označavanje pročitanim', 'Podešavanje']],
+  ['Prijem vozila', ['Pregled spiska', 'Pregled detalja', 'Kreiranje naloga', 'Izmena naloga', 'Potpisivanje', 'Promena statusa', 'Ispravka posle potpisa', 'Uklanjanje naloga']],
+  ['Kupci', ['Pregled', 'Kreiranje', 'Izmena', 'Deaktiviranje']],
+  ['Radnici', ['Pregled', 'Kreiranje', 'Izmena', 'Deaktiviranje']],
+  ['Učinak radnika', ['Pregled učinka', 'Pregled krivica', 'Izvoz učinka']],
+  ['Statistika', ['Pregled', 'Filtriranje po firmi', 'Izvoz']],
+  ['Izvoz', ['Excel reklamacije', 'Excel prijem', 'PDF nalozi', 'Masovni izvoz']],
+  ['Korisnici', ['Pregled', 'Odobravanje', 'Odbijanje', 'Reset lozinke', 'Izmena uloga', 'Deaktiviranje', 'Slanje aktivacije']],
+  ['Ovlašćenja', ['Pregled', 'Kreiranje', 'Izmena', 'Umnožavanje', 'Brisanje']],
+  ['Šifarnici i podešavanja', ['Pregled šifarnika', 'Dodavanje stavke', 'Izmena stavke', 'Deaktiviranje stavke', 'Brisanje stavke', 'Pregled podešavanja', 'Izmena podešavanja', 'Vraćanje podrazumevanih']],
+  ['Istorija', ['Pregled dnevnika', 'Razvijanje detalja', 'Filtriranje', 'Izvoz dnevnika']],
+];
+const ALLKEYS = [];
+MODULES.forEach((m, mi) => m[1].forEach((_, ai) => ALLKEYS.push(mi + '.' + ai)));
+function mono(t) { return { t, ff: "'JetBrains Mono',monospace", fs: '12.5px', fw: '600', col: 'var(--text)' }; }
+function txt(t, dim) { return { t, ff: 'inherit', fs: '13.5px', fw: dim ? '400' : '600', col: dim ? 'var(--text2)' : 'var(--text)' }; }
+const CBS = {
+  mfr: { title: 'Proizvođači motora', sub: 'Marke motora koje se biraju na reklamaciji', icon: 'mfr', total: 14, empty: 'Nema proizvođača za izabrani filter.',
+    headers: ['ŠIFRA', 'NAZIV', 'REDOSLED', 'KORISTI SE', 'AKTIVAN', ''], grid: '110px 1fr 110px 120px 100px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['name', 'Naziv', 'text'], ['ord', 'Redosled', 'text']],
+    cells: (d) => [mono(d.code), txt(d.name), mono(d.ord)],
+    rows: [
+      { id: 'm1', data: { code: 'BMW', name: 'BMW', ord: '1' }, use: 41, active: true },
+      { id: 'm2', data: { code: 'MB', name: 'Mercedes-Benz', ord: '2' }, use: 33, active: true },
+      { id: 'm3', data: { code: 'VW', name: 'Volkswagen', ord: '3' }, use: 27, active: true },
+      { id: 'm4', data: { code: 'REN', name: 'Renault', ord: '4' }, use: 12, active: true },
+      { id: 'm5', data: { code: 'PEU', name: 'Peugeot', ord: '5' }, use: 0, active: false },
+    ] },
+  eng: { title: 'Tipovi motora', sub: 'Oznake motora po proizvođaču', icon: 'eng', total: 62, empty: 'Nema tipova motora za izabrani filter.',
+    headers: ['ŠIFRA', 'PROIZVOĐAČ', 'ZAPREMINA', 'KORISTI SE', 'AKTIVAN', ''], grid: '150px 1fr 120px 120px 100px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['mfr', 'Proizvođač', 'select', false, ['BMW', 'Mercedes-Benz', 'Volkswagen', 'Renault']], ['ccm', 'Zapremina (ccm)', 'text'], ['note', 'Napomena', 'text']],
+    cells: (d) => [mono(d.code), txt(d.mfr), mono(d.ccm + ' ccm')],
+    rows: [
+      { id: 'e1', data: { code: 'N47D20D', mfr: 'BMW', ccm: '1995', note: '' }, use: 17, active: true },
+      { id: 'e2', data: { code: 'M57D30', mfr: 'BMW', ccm: '2993', note: '' }, use: 9, active: true },
+      { id: 'e3', data: { code: 'OM651', mfr: 'Mercedes-Benz', ccm: '2143', note: '' }, use: 11, active: true },
+      { id: 'e4', data: { code: 'EA189', mfr: 'Volkswagen', ccm: '1968', note: '' }, use: 14, active: true },
+      { id: 'e5', data: { code: 'K9K', mfr: 'Renault', ccm: '1461', note: 'stari program' }, use: 0, active: false },
+    ] },
+  firm: { title: 'Firme', sub: 'Kupci i partneri — EMOTIVE i domaći', icon: 'firm', total: 31, empty: 'Nema firmi za izabrani filter.',
+    headers: ['NAZIV', 'DRŽAVA', 'GRAD', 'KORISTI SE', 'AKTIVAN', ''], grid: '1fr 150px 150px 120px 100px 220px',
+    fields: [['name', 'Naziv', 'text'], ['country', 'Država', 'text'], ['city', 'Grad', 'text']],
+    cells: (d) => [txt(d.name), txt(d.country, true), txt(d.city, true)],
+    rows: [
+      { id: 'f1', data: { name: 'Motoren Huber GmbH', country: 'Austrija', city: 'Grac' }, use: 28, active: true },
+      { id: 'f2', data: { name: 'Auto Teile Weber', country: 'Nemačka', city: 'Minhen' }, use: 19, active: true },
+      { id: 'f3', data: { name: 'Delta motori doo', country: 'Srbija', city: 'Niš' }, use: 22, active: true },
+      { id: 'f4', data: { name: 'Remont plus', country: 'Srbija', city: 'Čačak' }, use: 6, active: true },
+      { id: 'f5', data: { name: 'Motor centar Lukić', country: 'Srbija', city: 'Užice' }, use: 0, active: false },
+    ] },
+  dept: { title: 'Odeljenja', sub: 'Gde čovek radi u firmi — nikad ne daje prava', icon: 'dept', total: 21, empty: 'Nema odeljenja za izabrani filter.',
+    headers: ['ŠIFRA', 'NAZIV (SR)', 'NAZIV (EN)', 'REDOSLED', 'DAJE ZADUŽENOG', 'KORISTI SE', 'AKTIVAN', ''], grid: '90px 1fr 1fr 100px 140px 110px 90px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['sr', 'Naziv (sr)', 'text'], ['en', 'Naziv (en)', 'text'], ['ord', 'Redosled', 'text'], ['gives', 'Daje zaduženog radnika', 'bool']],
+    cells: (d) => [mono(d.code), txt(d.sr), txt(d.en, true), mono(d.ord), { t: d.gives ? 'Da' : 'Ne', ff: "'JetBrains Mono',monospace", fs: '12px', fw: '700', col: d.gives ? 'var(--grn)' : 'var(--text2)' }],
+    rows: [
+      { id: 'd1', data: { code: 'MAS', sr: 'Mašinska obrada', en: 'Machining', ord: '1', gives: true }, use: 48, active: true },
+      { id: 'd2', data: { code: 'MON', sr: 'Montaža', en: 'Assembly', ord: '2', gives: true }, use: 39, active: true },
+      { id: 'd3', data: { code: 'DVO', sr: 'Dvorište', en: 'Yard', ord: '3', gives: false }, use: 22, active: true },
+      { id: 'd4', data: { code: 'KAN', sr: 'Kancelarija', en: 'Office', ord: '4', gives: false }, use: 8, active: true },
+      { id: 'd5', data: { code: 'PRA', sr: 'Pranje delova', en: 'Parts washing', ord: '5', gives: false }, use: 0, active: true },
+    ] },
+  work: { title: 'Radnici', sub: 'Ljudi u proizvodnji — dodeljuju se reklamacijama', icon: 'work', total: 125, empty: 'Nema radnika za izabrani filter.',
+    headers: ['IME I PREZIME', 'ODELJENJE', 'KORISTI SE', 'AKTIVAN', ''], grid: '1fr 220px 120px 100px 220px',
+    fields: [['name', 'Ime i prezime', 'text'], ['dept', 'Odeljenje', 'select', false, ['Mašinska obrada', 'Montaža', 'Dvorište', 'Kancelarija']]],
+    cells: (d) => [txt(d.name), txt(d.dept, true)],
+    rows: [
+      { id: 'w1', data: { name: 'Petar Janković', dept: 'Mašinska obrada' }, use: 31, active: true },
+      { id: 'w2', data: { name: 'Ivan Marić', dept: 'Montaža' }, use: 26, active: true },
+      { id: 'w3', data: { name: 'Saša Lukić', dept: 'Mašinska obrada' }, use: 19, active: true },
+      { id: 'w4', data: { name: 'Miloš Đorđević', dept: 'Dvorište' }, use: 14, active: true },
+      { id: 'w5', data: { name: 'Nenad Kostić', dept: 'Montaža' }, use: 9, active: true },
+      { id: 'w6', data: { name: 'Zoran Pavlović', dept: 'Mašinska obrada' }, use: 0, active: false },
+    ] },
+  ext: { title: 'Eksterni izvođači', sub: 'Dobavljači i kooperanti koji se pominju u nalazima', icon: 'ext', total: 12, empty: 'Nema izvođača za izabrani filter.',
+    headers: ['NAZIV', 'VRSTA', 'KORISTI SE', 'AKTIVAN', ''], grid: '1fr 200px 120px 100px 220px',
+    fields: [['name', 'Naziv', 'text'], ['kind', 'Vrsta', 'select', false, ['dobavljač', 'kooperant', 'proizvođač', 'ostalo']]],
+    cells: (d) => [txt(d.name), txt(d.kind, true)],
+    rows: [
+      { id: 'x1', data: { name: 'Bosch Service Ristić', kind: 'dobavljač' }, use: 11, active: true },
+      { id: 'x2', data: { name: 'TermoObrada doo', kind: 'kooperant' }, use: 7, active: true },
+      { id: 'x3', data: { name: 'MAHLE', kind: 'proizvođač' }, use: 4, active: true },
+      { id: 'x4', data: { name: 'Špedicija Lakić', kind: 'ostalo' }, use: 0, active: true },
+    ] },
+  src: { title: 'Izvori reklamacija', sub: 'Odakle reklamacija stiže i kakav broj dobija', icon: 'src', total: 5, empty: 'Nema izvora za izabrani filter.',
+    headers: ['ŠIFRA', 'NAZIV', 'PODRAZUMEVANA FIRMA', 'PREFIKS', 'REDOSLED', 'KORISTI SE', 'AKTIVAN', ''], grid: '90px 1fr 1fr 90px 100px 110px 90px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['name', 'Naziv', 'text'], ['prefix', 'Prefiks broja', 'text'], ['firm', 'Podrazumevana firma', 'select', false, ['—', 'Motoren Huber GmbH', 'Auto Teile Weber', 'Delta motori doo']], ['ord', 'Redosled', 'text']],
+    cells: (d) => [mono(d.code), txt(d.name), txt(d.firm, true), mono(d.prefix), mono(d.ord)],
+    rows: [
+      { id: 's1', data: { code: 'EMO', name: 'EMOTIVE program', firm: 'Motoren Huber GmbH', prefix: 'MR', ord: '1' }, use: 96, active: true },
+      { id: 's2', data: { code: 'DOM', name: 'Domaća prodaja', firm: '—', prefix: 'MRD', ord: '2' }, use: 38, active: true },
+      { id: 's3', data: { code: 'WEB', name: 'Prijava sa portala', firm: '—', prefix: 'MRW', ord: '3' }, use: 0, active: true },
+    ] },
+  chk: { title: 'Ček-lista prijema', sub: 'Stavke zatečenog stanja pri prijemu vozila', icon: 'chk', total: 8, empty: 'Nema stavki za izabrani filter.', noUse: true,
+    headers: ['ŠIFRA', 'NAZIV (SR)', 'NAZIV (EN)', 'REDOSLED', 'AKTIVAN', ''], grid: '90px 1fr 1fr 110px 100px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['sr', 'Naziv (sr)', 'text'], ['en', 'Naziv (en)', 'text'], ['ord', 'Redosled', 'text']],
+    cells: (d) => [mono(d.code), txt(d.sr), txt(d.en, true), mono(d.ord)],
+    rows: [
+      { id: 'c1', data: { code: 'RG', sr: 'Rezervna guma', en: 'Spare tire', ord: '1' }, use: 0, active: true },
+      { id: 'c2', data: { code: 'DIZ', sr: 'Dizalica', en: 'Jack', ord: '2' }, use: 0, active: true },
+      { id: 'c3', data: { code: 'KD', sr: 'Komplet dizalice', en: 'Jack kit', ord: '3' }, use: 0, active: true },
+      { id: 'c4', data: { code: 'SD', sr: 'Saobraćajna dozvola', en: 'Registration', ord: '4' }, use: 0, active: true },
+      { id: 'c5', data: { code: 'PP', sr: 'Prva pomoć', en: 'First aid kit', ord: '5' }, use: 0, active: true },
+    ] },
+  dmg: { title: 'Vrste oštećenja', sub: 'Oznake koje serviser bira na crtežu vozila (novi ekran)', icon: 'dmg', total: 4, empty: 'Nema vrsta za izabrani filter.',
+    headers: ['ŠIFRA', 'NAZIV (SR)', 'NAZIV (EN)', 'REDOSLED', 'KORISTI SE', 'AKTIVAN', ''], grid: '90px 1fr 1fr 110px 120px 100px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['sr', 'Naziv (sr)', 'text'], ['en', 'Naziv (en)', 'text'], ['ord', 'Redosled', 'text']],
+    cells: (d) => [mono(d.code), txt(d.sr), txt(d.en, true), mono(d.ord)],
+    rows: [
+      { id: 'g1', data: { code: 'OGR', sr: 'Ogrebotina', en: 'Scratch', ord: '1' }, use: 64, active: true },
+      { id: 'g2', data: { code: 'UDU', sr: 'Udubljenje', en: 'Dent', ord: '2' }, use: 31, active: true },
+      { id: 'g3', data: { code: 'PUK', sr: 'Puknuto', en: 'Crack', ord: '3' }, use: 12, active: true },
+      { id: 'g4', data: { code: 'RDJ', sr: 'Rđa', en: 'Rust', ord: '4' }, use: 8, active: true },
+    ] },
+  arr: { title: 'Način dolaska', sub: 'Kako je vozilo stiglo u servis (novi ekran)', icon: 'arr', total: 3, empty: 'Nema stavki za izabrani filter.',
+    headers: ['ŠIFRA', 'NAZIV (SR)', 'NAZIV (EN)', 'REDOSLED', 'KORISTI SE', 'AKTIVAN', ''], grid: '90px 1fr 1fr 110px 120px 100px 220px',
+    fields: [['code', 'Šifra', 'text', true], ['sr', 'Naziv (sr)', 'text'], ['en', 'Naziv (en)', 'text'], ['ord', 'Redosled', 'text']],
+    cells: (d) => [mono(d.code), txt(d.sr), txt(d.en, true), mono(d.ord)],
+    rows: [
+      { id: 'a1', data: { code: 'DOV', sr: 'Dovezeno', en: 'Driven in', ord: '1' }, use: 71, active: true },
+      { id: 'a2', data: { code: 'SLEP', sr: 'Došlepano', en: 'Towed', ord: '2' }, use: 18, active: true },
+      { id: 'a3', data: { code: 'VUC', sr: 'Dovučeno', en: 'Pulled', ord: '3' }, use: 5, active: true },
+    ] },
+};
+const CB_ORDER = ['mfr', 'eng', 'firm', 'dept', 'work', 'ext', 'src', 'chk', 'dmg', 'arr'];
+const ROLES0 = [
+  { id: 'r1', name: 'Super administrator', desc: 'Sve radnje u sistemu', std: true, acts: 84, holds: 1 },
+  { id: 'r2', name: 'Reklamacije — pun pristup', desc: 'Obrada EMOTIVE i domaćih reklamacija', std: true, acts: 41, holds: 4 },
+  { id: 'r3', name: 'Reklamacije — samo pregled', desc: 'Čitanje bez izmena', std: true, acts: 12, holds: 6 },
+  { id: 'r4', name: 'Portal klijenta', desc: 'Spoljni korisnici — svoje reklamacije', std: true, acts: 8, holds: 9 },
+  { id: 'r5', name: 'Prijem — rad u dvorištu', desc: 'Kreiranje i potpisivanje naloga', std: false, acts: 14, holds: 3 },
+  { id: 'r6', name: 'Prijem — kancelarija', desc: 'Svi nalozi, ispravke, uklanjanje', std: false, acts: 22, holds: 2 },
+  { id: 'r7', name: 'Statistika i izvoz', desc: 'Pregled statistike i izvoz u Excel', std: false, acts: 7, holds: 2 },
+  { id: 'r8', name: 'Šifarnici — održavanje', desc: 'Dodavanje i izmena stavki šifarnika', std: false, acts: 16, holds: 1 },
+  { id: 'r9', name: 'Kadrovska', desc: 'Radnici i odeljenja', std: false, acts: 11, holds: 0 },
+  { id: 'r10', name: 'Revizija — pregled', desc: 'Čitanje revizionog dnevnika', std: true, acts: 4, holds: 2 },
+  { id: 'r11', name: 'Obaveštenja', desc: 'Pregled i podešavanje obaveštenja', std: true, acts: 3, holds: 5 },
+  { id: 'r12', name: 'Nalozi klijenata', desc: 'Odobravanje klijenata sa portala', std: true, acts: 6, holds: 1 },
+];
+const AUDIT_POOL = [
+  { id: 'q1', time: '19.08.2026 14:32', user: 'Nikola Radović', action: 'Izmena', entity: 'Ovlašćenje', change: 'Prijem — kancelarija: dodata radnja „Ispravka posle potpisa"', ip: '82.117.204.12', dev: 'Chrome 139 · macOS', ctx: 'Dijalog ovlašćenja', fields: [{ f: 'radnje', a: '21', b: '22' }] },
+  { id: 'q2', time: '19.08.2026 11:05', user: 'Nikola Radović', action: 'Kreiranje', entity: 'Firma', change: 'Dodata firma „Remont plus" (Srbija, Čačak)', ip: '82.117.204.12', dev: 'Chrome 139 · macOS', ctx: 'Šifarnik firmi', fields: [{ f: 'naziv', a: '—', b: 'Remont plus' }] },
+  { id: 'q3', time: '18.08.2026 16:40', user: 'Stefan Ilić', action: 'Prijava', entity: 'Korisnik', change: 'Uspešna prijava u internu aplikaciju', ip: '82.117.204.18', dev: 'Safari · iPad', ctx: 'Interna aplikacija', fields: [] },
+  { id: 'q4', time: '18.08.2026 10:22', user: 'Nikola Radović', action: 'Promena dozvola', entity: 'Korisnik', change: 'Ana Perić: dodato ovlašćenje „Statistika i izvoz"', ip: '82.117.204.12', dev: 'Chrome 139 · macOS', ctx: 'Ekran korisnika', fields: [{ f: 'uloge', a: 'Reklamacije — samo pregled', b: '+ Statistika i izvoz' }] },
+  { id: 'q5', time: '17.08.2026 13:58', user: 'Nikola Radović', action: 'Brisanje', entity: 'Tip motora', change: 'Obrisan tip „D5244T" (nije korišćen)', ip: '82.117.204.12', dev: 'Chrome 139 · macOS', ctx: 'Šifarnik tipova', fields: [{ f: 'aktivan', a: 'Da', b: 'obrisano' }] },
+  { id: 'q6', time: '17.08.2026 09:12', user: 'Ana Perić', action: 'Izvoz', entity: 'Statistika', change: 'Izvoz statistike u Excel (jul 2026)', ip: '82.117.204.31', dev: 'Edge · Windows', ctx: 'Statistika', fields: [] },
+];
+const AUDIT_MORE = [
+  { id: 'q7', time: '16.08.2026 15:44', user: 'Miloš Jovanović', action: 'Kreiranje', entity: 'Prijem vozila', change: 'Kreiran nalog RN-0261/26 (BG 445-KL)', ip: '82.117.204.44', dev: 'Safari · iPad', ctx: 'Prijem — čarobnjak', fields: [] },
+  { id: 'q8', time: '16.08.2026 09:03', user: 'Nikola Radović', action: 'Izmena', entity: 'Podešavanja', change: 'Promenjen mejl podrške', ip: '82.117.204.12', dev: 'Chrome 139 · macOS', ctx: 'Podešavanja aplikacije', fields: [{ f: 'mejl podrške', a: 'info@mrengines.rs', b: 'podrska@mrengines.rs' }] },
+  { id: 'q9', time: '15.08.2026 17:20', user: 'Stefan Ilić', action: 'Odjava', entity: 'Korisnik', change: 'Odjava iz interne aplikacije', ip: '82.117.204.18', dev: 'Safari · iPad', ctx: 'Interna aplikacija', fields: [] },
+];
+function seedChecks(n) { const c = {}; ALLKEYS.forEach((k, i) => { c[k] = i < n; }); return c; }
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let qr = '';
+    for (let i = 0; i < 21; i++) for (let j = 0; j < 21; j++) {
+      const fin = (i < 7 && j < 7) || (i < 7 && j > 13) || (i > 13 && j < 7);
+      const on = fin ? ((i % 6 === 0 || j % 6 === 0 || (i > 1 && i < 5 && j > 1 && j < 5)) && !(i > 13 && j > 13)) : ((i * 31 + j * 17 + i * j) % 5 < 2);
+      if (on) qr += 'M' + j + ' ' + i + 'h1v1h-1z';
+    }
+    this.qr = qr;
+    this.state = {
+      theme: 'dark', screen: 'dash', loading: false, toast: null,
+      userQuery: '', cbQuery: '', cbStatus: 'SVI',
+      pending: [
+        { id: 'p1', name: 'Marko Ilić', email: 'marko.ilic@mrengines.rs', note: 'Registrovan juče · traži pristup internoj aplikaciji' },
+        { id: 'p2', name: 'Jelena Stanić', email: 'jelena@deltamotori.rs', note: 'Klijent · Delta motori doo', client: true },
+      ],
+      users: [
+        { id: 'u1', name: 'Nikola Radović', email: 'nikola@mrengines.rs', status: 'Odobren', roles: ['Super administrator'], reg: '12.03.2024', self: true, prot: true },
+        { id: 'u2', name: 'Stefan Ilić', email: 'stefan@mrengines.rs', status: 'Odobren', roles: ['Reklamacije — pun pristup', 'Prijem — kancelarija'], reg: '04.06.2024' },
+        { id: 'u3', name: 'Miloš Jovanović', email: 'milos@mrengines.rs', status: 'Odobren', roles: ['Prijem — rad u dvorištu'], reg: '22.09.2024' },
+        { id: 'u4', name: 'Ana Perić', email: 'ana@mrengines.rs', status: 'Odobren', roles: ['Reklamacije — samo pregled', 'Statistika i izvoz'], reg: '15.01.2025' },
+        { id: 'u5', name: 'Hans Gruber', email: 'h.gruber@motorenhuber.at', status: 'Odobren', roles: ['Portal klijenta'], reg: '02.02.2025', client: true },
+        { id: 'u6', name: 'Ivana Kolar', email: 'ivana@mrengines.rs', status: 'Odobren', roles: ['Šifarnici — održavanje'], reg: '11.11.2024', inactive: true },
+        { id: 'u7', name: 'Vladan Simić', email: 'vladan.simic@gmail.com', status: 'Odbijen', roles: [], reg: '30.07.2026' },
+      ],
+      roles: ROLES0.slice(),
+      audit: AUDIT_POOL.slice(), auditOpen: null, auditMoreUsed: false,
+      afUser: 'svi', afEntity: 'svi', afAction: 'sve',
+      cb: {}, dlgEdit: null, dlgConfirm: null, dlgRoles: null,
+      mx: null, dlg2fa: false, tfaOn: false,
+      appset: { notif: true, inbox: 'prijave@mrengines.rs', tel: '+381 21 555 120', mail: 'podrska@mrengines.rs' },
+      appsetSaved: { notif: true, inbox: 'prijave@mrengines.rs', tel: '+381 21 555 120', mail: 'podrska@mrengines.rs' },
+      loginErr: null,
+    };
+    CB_ORDER.forEach((k) => { this.state.cb[k] = CBS[k].rows.map((r) => Object.assign({}, r, { data: Object.assign({}, r.data) })); });
+  }
+  componentWillUnmount() { if (this.tt) clearTimeout(this.tt); if (this.lt) clearTimeout(this.lt); }
+  toast(m) { this.setState({ toast: m }); if (this.tt) clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 3200); }
+  go(screen) {
+    if (this.state.screen === screen) return;
+    this.setState({ screen, loading: true, cbQuery: '', cbStatus: 'SVI', auditOpen: null });
+    if (this.lt) clearTimeout(this.lt);
+    this.lt = setTimeout(() => this.setState({ loading: false }), 480);
+  }
+  confirm(cfg) { this.setState({ dlgConfirm: cfg }); }
+  renderVals() {
+    const s = this.state;
+    const APPSET_DEF = { notif: true, inbox: 'prijave@mrengines.rs', tel: '+381 21 555 120', mail: 'podrska@mrengines.rs' };
+    const nav = (key, label, icon, badge) => ({
+      label, icon: ICONS[icon], badge: badge || '', hasBadge: !!badge,
+      bg: s.screen === key ? 'rgba(237,28,36,.11)' : 'transparent',
+      fg: s.screen === key ? 'var(--text)' : 'var(--text2)',
+      fw: s.screen === key ? '800' : '600',
+      on: () => this.go(key),
+    });
+    const dayNames = ['NEDELJA', 'PONEDELJAK', 'UTORAK', 'SREDA', 'ČETVRTAK', 'PETAK', 'SUBOTA'];
+    const now = new Date();
+    const isCb = s.screen.indexOf('cb:') === 0;
+    const cbKey = isCb ? s.screen.slice(3) : 'mfr';
+    const cbCfg = CBS[cbKey];
+    const crumbs = { dash: 'KONTROLNA TABLA', users: 'KORISNICI', roles: 'OVLAŠĆENJA', audit: 'REVIZIJA', appset: 'PODEŠAVANJA', security: 'BEZBEDNOST' };
+    // ── dashboard ──
+    const months = ['SEP', 'OKT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR', 'APR', 'MAJ', 'JUN', 'JUL', 'AVG', 'SEP', 'OKT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR', 'APR', 'MAJ', 'JUN', 'JUL', 'AVG'];
+    const eData = [4, 6, 3, 5, 7, 4, 6, 8, 5, 7, 9, 6, 5, 7, 4, 6, 8, 10, 7, 9, 11, 8, 6, 9];
+    const dData = [2, 1, 2, 3, 2, 2, 3, 2, 4, 3, 2, 4, 3, 2, 3, 4, 3, 2, 4, 3, 5, 4, 3, 4];
+    const chart = eData.map((e, i) => ({
+      eh: e * 11, dh: dData[i] * 11, er: dData[i] === 0 ? '3px 3px 0 0' : '0',
+      lab: i % 2 === 0 ? months[i] : '',
+    }));
+    const kpis = [
+      { label: 'OTVORENE REKLAMACIJE', value: '47', sub: 'Reklamacije u obradi', subColor: 'var(--text2)', dot: 'var(--blu)', border: 'rgba(46,144,250,.3)', cursor: 'default', on: () => {} },
+      { label: 'OVAJ MESEC', value: '14', sub: '▲ 2 u odnosu na prošli mesec', subColor: 'var(--grn)', dot: 'var(--grn)', border: 'var(--border)', cursor: 'default', on: () => {} },
+      { label: 'AKTIVNI KORISNICI', value: '23', sub: 'Odobreni nalozi', subColor: 'var(--text2)', dot: 'var(--gry)', border: 'var(--border)', cursor: 'default', on: () => {} },
+      { label: 'ČEKA ODOBRENJE', value: String(s.pending.length), sub: 'Klikni za pregled korisnika', subColor: 'var(--amb)', dot: 'var(--amb)', border: 'rgba(245,165,36,.35)', cursor: 'pointer', on: () => this.go('users') },
+    ];
+    const topFaults = [['Petar Janković', 7], ['Ivan Marić', 5], ['Saša Lukić', 4], ['Miloš Đorđević', 3], ['Nenad Kostić', 2]].map(([name, n]) => ({ name, n, w: Math.round((n / 7) * 100) + '%' }));
+    const abadge = (a) => { const b = AB[a] || AB['Prijava']; return { bg: b[0], fg: b[1] }; };
+    const dashAudit = s.audit.slice(0, 4).map((a) => Object.assign({ what: a.change, when: a.time.slice(0, 6), action: a.action }, abadge(a.action)));
+    const dashRecent = [
+      { mr: '0159/26', kind: 'EMOTIVE', firm: 'Motoren Huber GmbH', days: 2 },
+      { mr: '0158/26', kind: 'DOMAĆA', firm: 'Delta motori doo', days: 4 },
+      { mr: '0157/26', kind: 'EMOTIVE', firm: 'Auto Teile Weber', days: 5 },
+      { mr: '0156/26', kind: 'EMOTIVE', firm: 'Motoren Huber GmbH', days: 9 },
+    ].map((r) => Object.assign(r, {
+      kbg: r.kind === 'EMOTIVE' ? 'rgba(46,144,250,.13)' : 'rgba(167,139,250,.15)',
+      kfg: r.kind === 'EMOTIVE' ? 'var(--blu)' : 'var(--pur)',
+    }));
+    const dashOverdue = [
+      { mr: '0118/26', firm: 'Auto Teile Weber', days: 41 },
+      { mr: '0124/26', firm: 'Motoren Huber GmbH', days: 38 },
+      { mr: '0131/26', firm: 'Delta motori doo', days: 33 },
+    ];
+    // ── users ──
+    const uq = s.userQuery.trim().toLowerCase();
+    const userRows = s.users.filter((u) => !uq || (u.name + ' ' + u.email).toLowerCase().indexOf(uq) >= 0).map((u) => {
+      const st = u.inactive ? 'Neaktivan' : u.status;
+      const sc = st === 'Odobren' ? 'var(--grn)' : st === 'Na čekanju' ? 'var(--amb)' : st === 'Odbijen' ? 'var(--redh)' : 'var(--gry)';
+      const sbg = st === 'Odobren' ? 'rgba(31,169,113,.13)' : st === 'Na čekanju' ? 'rgba(245,165,36,.13)' : st === 'Odbijen' ? 'rgba(237,28,36,.13)' : 'rgba(138,139,145,.16)';
+      const mk = (label, on, tone) => ({
+        label, on,
+        bd: tone === 'red' ? 'rgba(237,28,36,.4)' : 'var(--border2)',
+        bg: 'transparent', fg: tone === 'red' ? 'var(--redh)' : 'var(--text2)', op: '1',
+      });
+      let acts = [];
+      if (!u.prot && !u.self && u.status === 'Odobren') {
+        if (u.inactive) acts = [mk('AKTIVIRAJ', () => { this.setState((st2) => ({ users: st2.users.map((x) => x.id === u.id ? Object.assign({}, x, { inactive: false }) : x) })); this.toast('Nalog ponovo aktiviran — ' + u.name); })];
+        else {
+          acts = [mk('RESET LOZINKE', () => this.toast('Poslat mejl za novu lozinku — ' + u.email))];
+          if (u.client) acts.push(mk('POŠALJI PONOVO LINK', () => this.toast('Aktivacioni mejl ponovo poslat — ' + u.email)));
+          else acts.push(mk('IZMENI ULOGE', () => this.openRolesDlg(u)));
+          acts.push(mk('DEAKTIVIRAJ', () => this.confirm({
+            tag: 'DEAKTIVIRANJE', tagColor: 'var(--redh)', title: 'Deaktivirati nalog ' + u.name + '?',
+            body: 'Korisnik više neće moći da se prijavi. Nalog se ne briše i može ponovo da se aktivira.',
+            yesLabel: 'Deaktiviraj', ybd: 'var(--red)', ybg: 'rgba(237,28,36,.16)', yfg: 'var(--redh)',
+            onNo: () => this.setState({ dlgConfirm: null }),
+            onYes: () => { this.setState((st2) => ({ dlgConfirm: null, users: st2.users.map((x) => x.id === u.id ? Object.assign({}, x, { inactive: true }) : x) })); this.toast('Nalog deaktiviran — ' + u.name); },
+          }), 'red'));
+        }
+      }
+      return {
+        name: u.name, email: u.email, reg: u.reg, status: st.toUpperCase(), sfg: sc, sbg,
+        tag: u.prot ? '· zaštićen' : u.client ? '· klijent' : '',
+        roles: u.roles.map((n) => ({ n })), op: u.inactive ? '.6' : '1',
+        acts, noteShow: acts.length === 0, note: u.self ? 'To si ti — sebi ne menjaš ništa' : u.prot ? 'Zaštićen nalog' : u.status === 'Odbijen' ? 'Odbijen — mejl se ne može ponovo registrovati' : '',
+      };
+    });
+    const pendingRows = s.pending.map((p) => ({
+      name: p.name, email: p.email, note: p.note,
+      init: p.name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase(),
+      onApprove: () => this.openRolesDlg(null, p),
+      onReject: () => this.confirm({
+        tag: 'ODBIJANJE ZAHTEVA', tagColor: 'var(--redh)', title: 'Odbiti zahtev — ' + p.name + '?',
+        body: 'Odbijanje je nepovratno: isti mejl (' + p.email + ') ne može ponovo da se registruje.',
+        yesLabel: 'Odbij', ybd: 'var(--red)', ybg: 'rgba(237,28,36,.16)', yfg: 'var(--redh)',
+        onNo: () => this.setState({ dlgConfirm: null }),
+        onYes: () => { this.setState((st2) => ({ dlgConfirm: null, pending: st2.pending.filter((x) => x.id !== p.id) })); this.toast('Zahtev odbijen — ' + p.name); },
+      }),
+    }));
+    // ── roles ──
+    const roleRows = s.roles.map((r) => {
+      const btns = [];
+      const openMx = (locked) => this.setState({ mx: { roleId: r.id, locked, sr: r.name, en: r.name, desc: r.desc, checks: seedChecks(r.acts), holds: r.holds } });
+      if (r.std) btns.push({ label: 'POGLEDAJ', on: () => openMx(true), bd: 'var(--border2)', bg: 'var(--inbg)', fg: 'var(--text2)', op: '1' });
+      else btns.push({ label: 'IZMENI', on: () => openMx(false), bd: 'var(--border2)', bg: 'var(--inbg)', fg: 'var(--text2)', op: '1' });
+      btns.push({ label: 'UMNOŽI', on: () => this.setState({ dlgEdit: { kind: 'dup', roleId: r.id, title: 'Umnoži ovlašćenje — ' + r.name, fields: [
+        { k: 'sr', label: 'Naziv kopije (sr)', type: 'text', val: r.name + ' — kopija' },
+        { k: 'en', label: 'Naziv kopije (en)', type: 'text', val: r.name + ' — copy' },
+      ] } }), bd: 'var(--border2)', bg: 'transparent', fg: 'var(--text2)', op: '1' });
+      if (!r.std) {
+        const dead = r.holds > 0;
+        btns.push({
+          label: 'OBRIŠI', op: dead ? '.45' : '1',
+          bd: 'rgba(237,28,36,.4)', bg: 'transparent', fg: 'var(--redh)',
+          on: () => dead
+            ? this.toast('Ne može da se obriše dok ga neko drži. Broj korisnika: ' + r.holds)
+            : this.confirm({
+              tag: 'BRISANJE', tagColor: 'var(--redh)', title: 'Obrisati ovlašćenje „' + r.name + '"?',
+              body: 'Niko ga ne drži, pa brisanje ništa ne prekida. Ovo je trajno.',
+              yesLabel: 'Obriši', ybd: 'var(--red)', ybg: 'rgba(237,28,36,.16)', yfg: 'var(--redh)',
+              onNo: () => this.setState({ dlgConfirm: null }),
+              onYes: () => { this.setState((st2) => ({ dlgConfirm: null, roles: st2.roles.filter((x) => x.id !== r.id) })); this.toast('Ovlašćenje obrisano — ' + r.name); },
+            }),
+        });
+      }
+      return {
+        name: r.name, desc: r.desc, acts: String(r.acts), holds: String(r.holds),
+        holdColor: r.holds === 0 ? 'var(--text2)' : 'var(--text)',
+        vrsta: r.std ? 'STANDARDNO' : 'TVOJE',
+        vbg: r.std ? 'rgba(46,144,250,.13)' : 'rgba(20,184,166,.14)',
+        vfg: r.std ? 'var(--blu)' : 'var(--teal)', btns,
+      };
+    });
+    // ── matrix ──
+    let mx = { open: false };
+    if (s.mx) {
+      const m = s.mx;
+      const cnt = ALLKEYS.filter((k) => m.checks[k]).length;
+      mx = {
+        open: true, locked: m.locked, editable: !m.locked,
+        title: m.locked ? 'Pregled ovlašćenja — ' + m.sr : (m.roleId ? 'Izmena ovlašćenja' : 'Novo ovlašćenje'),
+        count: String(cnt), sr: m.sr, en: m.en, desc: m.desc,
+        warn: !m.locked && m.holds > 0, holds: String(m.holds),
+        cancelLabel: m.locked ? 'Zatvori' : 'Odustani',
+        onSr: (e) => this.setState({ mx: Object.assign({}, m, { sr: e.target.value }) }),
+        onEn: (e) => this.setState({ mx: Object.assign({}, m, { en: e.target.value }) }),
+        onDesc: (e) => this.setState({ mx: Object.assign({}, m, { desc: e.target.value }) }),
+        onCancel: () => this.setState({ mx: null }),
+        onSave: () => {
+          const total = ALLKEYS.filter((k) => m.checks[k]).length;
+          this.setState((st2) => ({
+            mx: null,
+            roles: m.roleId
+              ? st2.roles.map((x) => x.id === m.roleId ? Object.assign({}, x, { name: m.sr, desc: m.desc, acts: total }) : x)
+              : st2.roles.concat([{ id: 'r' + Math.random().toString(36).slice(2, 6), name: m.sr || 'Novo ovlašćenje', desc: m.desc || '', std: false, acts: total, holds: 0 }]),
+          }));
+          this.toast(m.holds > 0 ? 'Sačuvano. ' + m.holds + ' korisnika mora ponovo da se prijavi.' : 'Ovlašćenje sačuvano — ' + (m.sr || 'novo'));
+        },
+        modules: MODULES.map(([name, acts], mi) => {
+          const keys = acts.map((_, ai) => mi + '.' + ai);
+          const on = keys.filter((k) => m.checks[k]).length;
+          const setAll = (v) => {
+            const c = Object.assign({}, m.checks);
+            keys.forEach((k) => { c[k] = v; });
+            this.setState({ mx: Object.assign({}, m, { checks: c }) });
+          };
+          return {
+            name, cnt: on + '/' + acts.length,
+            onAll: () => setAll(true), onNone: () => setAll(false),
+            acts: acts.map((an, ai) => {
+              const k = mi + '.' + ai;
+              const ck = !!m.checks[k];
+              return {
+                name: an, mark: ck ? '✓' : '',
+                bd: ck ? 'var(--grn)' : 'var(--border2)', bg: ck ? 'var(--grn)' : 'transparent',
+                cursor: m.locked ? 'default' : 'pointer', op: m.locked && !ck ? '.45' : '1',
+                on: () => {
+                  if (m.locked) { this.toast('Standardno ovlašćenje se ne menja — umnoži ga pa menjaj kopiju.'); return; }
+                  const c = Object.assign({}, m.checks); c[k] = !ck;
+                  this.setState({ mx: Object.assign({}, m, { checks: c }) });
+                },
+              };
+            }),
+          };
+        }),
+      };
+    }
+    // ── audit ──
+    const afU = s.afUser, afE = s.afEntity, afA = s.afAction;
+    const auditRows = s.audit.filter((a) =>
+      (afU === 'svi' || a.user === afU) && (afE === 'svi' || a.entity === afE) && (afA === 'sve' || a.action === afA)
+    ).map((a) => Object.assign({
+      time: a.time, user: a.user, entity: a.entity, action: a.action, change: a.change,
+      ip: a.ip, dev: a.dev, ctx: a.ctx, fields: a.fields,
+      open: s.auditOpen === a.id, rot: s.auditOpen === a.id ? '90deg' : '0deg',
+      onToggle: () => this.setState({ auditOpen: s.auditOpen === a.id ? null : a.id }),
+    }, abadge(a.action)));
+    const opts = (arr) => arr.map(([v, t]) => ({ v, t }));
+    // ── šifarnik ──
+    const cbRowsAll = s.cb[cbKey] || [];
+    const cq = s.cbQuery.trim().toLowerCase();
+    const cbRows = cbRowsAll.filter((r) => {
+      const okS = s.cbStatus === 'SVI' || (s.cbStatus === 'AKTIVNI' ? r.active : !r.active);
+      const okQ = !cq || Object.keys(r.data).some((k) => String(r.data[k]).toLowerCase().indexOf(cq) >= 0);
+      return okS && okQ;
+    }).map((r) => {
+      const openEdit = (isNew) => {
+        const src = isNew ? null : r;
+        this.setState({ dlgEdit: { kind: 'cb', cbKey, rowId: isNew ? null : r.id, title: (isNew ? 'Dodavanje — ' : 'Izmena — ') + cbCfg.title,
+          fields: cbCfg.fields.map(([k, label, type, locked, options]) => ({
+            k, label, type: type === 'bool' ? 'bool' : type, locked: !isNew && locked,
+            options: (options || []).map((o) => ({ v: o, t: o })),
+            val: src ? src.data[k] : (type === 'bool' ? false : ''),
+          })) } });
+      };
+      return {
+        cells: cbCfg.cells(r.data), hasUse: !cbCfg.noUse,
+        use: r.use === 0 ? '—' : String(r.use), useColor: r.use === 0 ? 'var(--text2)' : 'var(--text)',
+        aktivan: r.active ? 'DA' : 'NE',
+        abg: r.active ? 'rgba(31,169,113,.13)' : 'rgba(138,139,145,.16)',
+        afg: r.active ? 'var(--grn)' : 'var(--gry)',
+        op: r.active ? '1' : '.6',
+        toggleLabel: r.active ? 'DEAKTIVIRAJ' : 'AKTIVIRAJ',
+        onEdit: () => openEdit(false),
+        onToggle: () => {
+          if (r.active) this.confirm({
+            tag: 'DEAKTIVIRANJE', tagColor: 'var(--amb)', title: 'Deaktivirati stavku?',
+            body: 'Neće se više nuditi pri unosu, a postojeći zapisi je zadržavaju.',
+            yesLabel: 'Deaktiviraj', ybd: 'var(--border2)', ybg: 'var(--inbg)', yfg: 'var(--text)',
+            onNo: () => this.setState({ dlgConfirm: null }),
+            onYes: () => { this.cbPatch(cbKey, r.id, { active: false }); this.setState({ dlgConfirm: null }); this.toast('Stavka deaktivirana'); },
+          });
+          else { this.cbPatch(cbKey, r.id, { active: true }); this.toast('Stavka aktivirana'); }
+        },
+        delOp: r.use > 0 ? '.45' : '1',
+        delBd: 'rgba(237,28,36,.4)', delFg: 'var(--redh)',
+        onDelete: () => r.use > 0
+          ? this.toast('Ne može da se obriše dok se koristi. Broj zapisa: ' + r.use)
+          : this.confirm({
+            tag: 'TRAJNO BRISANJE', tagColor: 'var(--redh)', title: 'Trajno obrisati stavku?',
+            body: 'Stavka se nigde ne koristi, pa brisanje ništa ne kvari. Ovo je trajno i ne vraća se.',
+            yesLabel: 'Obriši trajno', ybd: 'var(--red)', ybg: 'rgba(237,28,36,.16)', yfg: 'var(--redh)',
+            onNo: () => this.setState({ dlgConfirm: null }),
+            onYes: () => { this.setState((st2) => { const cb = Object.assign({}, st2.cb); cb[cbKey] = cb[cbKey].filter((x) => x.id !== r.id); return { cb, dlgConfirm: null }; }); this.toast('Stavka trajno obrisana'); },
+          }),
+      };
+    });
+    // ── dialogs generic ──
+    let dlgEdit = { open: false };
+    if (s.dlgEdit) {
+      const d = s.dlgEdit;
+      dlgEdit = {
+        open: true, title: d.title,
+        fields: d.fields.map((f, i) => ({
+          label: f.label, val: String(f.val === false ? '' : f.val === true ? 'Da' : f.val),
+          isLocked: !!f.locked, isText: !f.locked && f.type === 'text', isSelect: f.type === 'select', isBool: f.type === 'bool',
+          options: f.options || [],
+          ybg: f.val === true ? 'rgba(31,169,113,.16)' : 'transparent', yfg: f.val === true ? 'var(--grn)' : 'var(--text2)',
+          nbg: f.val === false ? 'rgba(237,28,36,.16)' : 'transparent', nfg: f.val === false ? 'var(--redh)' : 'var(--text2)',
+          onChange: (e) => { const fl = d.fields.slice(); fl[i] = Object.assign({}, f, { val: e.target.value }); this.setState({ dlgEdit: Object.assign({}, d, { fields: fl }) }); },
+          onYes: () => { const fl = d.fields.slice(); fl[i] = Object.assign({}, f, { val: true }); this.setState({ dlgEdit: Object.assign({}, d, { fields: fl }) }); },
+          onNo: () => { const fl = d.fields.slice(); fl[i] = Object.assign({}, f, { val: false }); this.setState({ dlgEdit: Object.assign({}, d, { fields: fl }) }); },
+        })),
+        onCancel: () => this.setState({ dlgEdit: null }),
+        onSave: () => {
+          if (d.kind === 'dup') {
+            const src = s.roles.filter((x) => x.id === d.roleId)[0];
+            const nm = d.fields[0].val;
+            this.setState((st2) => ({ dlgEdit: null, roles: st2.roles.concat([{ id: 'r' + Math.random().toString(36).slice(2, 6), name: nm, desc: src.desc, std: false, acts: src.acts, holds: 0 }]) }));
+            this.toast('Kopija napravljena — ' + nm + ' (TVOJE)');
+          } else {
+            const vals = {}; d.fields.forEach((f) => { vals[f.k] = f.val; });
+            if (d.rowId) { this.cbPatchData(d.cbKey, d.rowId, vals); this.toast('Sačuvano'); }
+            else {
+              this.setState((st2) => { const cb = Object.assign({}, st2.cb); cb[d.cbKey] = cb[d.cbKey].concat([{ id: 'n' + Math.random().toString(36).slice(2, 6), data: vals, use: 0, active: true }]); return { cb, dlgEdit: null }; });
+              this.toast('Dodato u šifarnik');
+              return;
+            }
+            this.setState({ dlgEdit: null });
+          }
+        },
+      };
+    }
+    let dlgRoles = { open: false };
+    if (s.dlgRoles) {
+      const d = s.dlgRoles;
+      dlgRoles = {
+        open: true, title: d.title, sub: d.sub, saveLabel: d.saveLabel,
+        items: s.roles.filter((r) => !r.std || r.id === 'r4').map((r) => {
+          const ck = d.checks.indexOf(r.id) >= 0;
+          return {
+            name: r.name, acts: String(r.acts), mark: ck ? '✓' : '',
+            bd: ck ? 'rgba(31,169,113,.4)' : 'var(--border)', bg: ck ? 'rgba(31,169,113,.08)' : 'var(--inbg)',
+            ckBd: ck ? 'var(--grn)' : 'var(--border2)', ckBg: ck ? 'var(--grn)' : 'transparent',
+            on: () => this.setState({ dlgRoles: Object.assign({}, d, { checks: ck ? d.checks.filter((x) => x !== r.id) : d.checks.concat([r.id]) }) }),
+          };
+        }),
+        onCancel: () => this.setState({ dlgRoles: null }),
+        onSave: () => {
+          const names = s.roles.filter((r) => d.checks.indexOf(r.id) >= 0).map((r) => r.name);
+          if (d.pendingId) {
+            const p = s.pending.filter((x) => x.id === d.pendingId)[0];
+            this.setState((st2) => ({
+              dlgRoles: null,
+              pending: st2.pending.filter((x) => x.id !== d.pendingId),
+              users: st2.users.concat([{ id: 'u' + Math.random().toString(36).slice(2, 6), name: p.name, email: p.email, status: 'Odobren', roles: names, reg: '19.08.2026', client: p.client }]),
+            }));
+            this.toast('Nalog odobren — ' + p.name);
+          } else {
+            this.setState((st2) => ({ dlgRoles: null, users: st2.users.map((x) => x.id === d.userId ? Object.assign({}, x, { roles: names }) : x) }));
+            this.toast('Uloge izmenjene');
+          }
+        },
+      };
+    }
+    // ── appset ──
+    const setDirty = JSON.stringify(s.appset) !== JSON.stringify(s.appsetSaved);
+    const mkSet = (k, label, desc, type) => {
+      const val = s.appset[k];
+      const isDef = val === APPSET_DEF[k];
+      return {
+        label, desc, val: String(val), isBool: type === 'bool', isText: type === 'text', isDef, notDef: !isDef,
+        ybg: val === true ? 'rgba(31,169,113,.16)' : 'transparent', yfg: val === true ? 'var(--grn)' : 'var(--text2)',
+        nbg: val === false ? 'rgba(237,28,36,.14)' : 'transparent', nfg: val === false ? 'var(--redh)' : 'var(--text2)',
+        onYes: () => this.setState({ appset: Object.assign({}, s.appset, { [k]: true }) }),
+        onNo: () => this.setState({ appset: Object.assign({}, s.appset, { [k]: false }) }),
+        onChange: (e) => this.setState({ appset: Object.assign({}, s.appset, { [k]: e.target.value }) }),
+        onReset: () => { this.setState({ appset: Object.assign({}, s.appset, { [k]: APPSET_DEF[k] }) }); this.toast('Vraćeno na podrazumevano'); },
+      };
+    };
+    const setGroups = [
+      { name: 'OBAVEŠTENJA', items: [
+        mkSet('notif', 'Mejl klijentu kad se promeni ishod', 'Klijent dobija poruku čim reklamacija dobije novi ishod.', 'bool'),
+        mkSet('inbox', 'Mejl za nove prijave klijenata', 'Na ovu adresu stižu prijave podnete kroz portal.', 'text'),
+      ] },
+      { name: 'KONTAKT PODRŠKE', items: [
+        mkSet('tel', 'Telefon podrške', 'Ide u podnožje svakog mejla i na karticu podrške na portalu.', 'text'),
+        mkSet('mail', 'Mejl podrške', 'Isto mesto kao telefon — podnožje mejlova i portal.', 'text'),
+      ] },
+    ];
+    const dirtyCount = Object.keys(s.appset).filter((k) => s.appset[k] !== s.appsetSaved[k]).length;
+    return {
+      theme: s.theme, themeIcon: s.theme === 'dark' ? '☾' : '☀',
+      toggleTheme: () => this.setState({ theme: s.theme === 'dark' ? 'light' : 'dark' }),
+      isLogin: s.screen === 'login', isApp: s.screen !== 'login',
+      crumb: isCb ? cbCfg.title.toUpperCase() : (crumbs[s.screen] || ''),
+      langNoop: () => this.toast('Engleski postoji ravnopravno — prototip prikazuje samo srpski'),
+      loading: s.loading, ready: !s.loading,
+      isDash: s.screen === 'dash', isUsers: s.screen === 'users', isRoles: s.screen === 'roles',
+      isAudit: s.screen === 'audit', isCb, isAppset: s.screen === 'appset', isSecurity: s.screen === 'security',
+      navTop: [nav('dash', 'Kontrolna tabla', 'dash')],
+      navPeople: [nav('users', 'Korisnici', 'users', s.pending.length ? String(s.pending.length) : ''), nav('roles', 'Ovlašćenja', 'roles'), nav('audit', 'Revizija', 'audit')],
+      navCb: CB_ORDER.map((k) => nav('cb:' + k, CBS[k].title, CBS[k].icon)),
+      navSys: [nav('appset', 'Podešavanja aplikacije', 'set')],
+      goSecurity: () => this.go('security'), doLogout: () => this.setState({ screen: 'login', loginErr: null }),
+      todayLong: dayNames[now.getDay()] + ' · 19.08.2026',
+      kpis, chart, topFaults, dashAudit, dashRecent, dashOverdue,
+      dashPending: s.pending.map((p) => ({ name: p.name, email: p.email, on: () => this.go('users') })),
+      pendingCount: String(s.pending.length), noPending: s.pending.length === 0, hasPending: s.pending.length > 0,
+      goAudit: () => this.go('audit'),
+      userQuery: s.userQuery, onUserQuery: (e) => this.setState({ userQuery: e.target.value }),
+      userRows, userShown: '1–' + userRows.length, pendingRows,
+      roleRows, roleNew: () => this.setState({ mx: { roleId: null, locked: false, sr: '', en: '', desc: '', checks: seedChecks(0), holds: 0 } }),
+      pageNoop: () => this.toast('Demo: podaci su na jednoj strani'),
+      afUser: s.afUser, afEntity: s.afEntity, afAction: s.afAction,
+      onAfUser: (e) => this.setState({ afUser: e.target.value }),
+      onAfEntity: (e) => this.setState({ afEntity: e.target.value }),
+      onAfAction: (e) => this.setState({ afAction: e.target.value }),
+      afUserOpts: opts([['svi', 'Korisnik: svi'], ['Nikola Radović', 'Nikola Radović'], ['Stefan Ilić', 'Stefan Ilić'], ['Ana Perić', 'Ana Perić'], ['Miloš Jovanović', 'Miloš Jovanović']]),
+      afEntityOpts: opts([['svi', 'Entitet: svi'], ['Korisnik', 'Korisnik'], ['Ovlašćenje', 'Ovlašćenje'], ['Firma', 'Firma'], ['Tip motora', 'Tip motora'], ['Prijem vozila', 'Prijem vozila'], ['Podešavanja', 'Podešavanja'], ['Statistika', 'Statistika']]),
+      afActionOpts: opts([['sve', 'Akcija: sve'], ['Kreiranje', 'Kreiranje'], ['Izmena', 'Izmena'], ['Brisanje', 'Brisanje'], ['Prijava', 'Prijava'], ['Odjava', 'Odjava'], ['Promena dozvola', 'Promena dozvola'], ['Izvoz', 'Izvoz']]),
+      afClear: () => this.setState({ afUser: 'svi', afEntity: 'svi', afAction: 'sve' }),
+      auditRows,
+      auditMore: () => {
+        if (s.auditMoreUsed) { this.toast('Kraj demo podataka — u aplikaciji se učitava sledećih 50'); return; }
+        this.setState((st2) => ({ audit: st2.audit.concat(AUDIT_MORE), auditMoreUsed: true }));
+      },
+      cb: {
+        title: cbCfg.title, sub: cbCfg.sub, total: String(cbCfg.total), empty: cbCfg.empty,
+        addLabel: '+ Dodaj', grid: cbCfg.grid, headers: cbCfg.headers.map((t) => ({ t })),
+      },
+      cbAdd: () => this.setState({ dlgEdit: { kind: 'cb', cbKey, rowId: null, title: 'Dodavanje — ' + cbCfg.title,
+        fields: cbCfg.fields.map(([k, label, type, locked, options]) => ({ k, label, type: type === 'bool' ? 'bool' : type, locked: false, options: (options || []).map((o) => ({ v: o, t: o })), val: type === 'bool' ? false : '' })) } }),
+      cbStatusFilters: ['SVI', 'AKTIVNI', 'NEAKTIVNI'].map((f) => ({
+        label: f, bg: s.cbStatus === f ? 'var(--red)' : 'transparent', fg: s.cbStatus === f ? '#fff' : 'var(--text2)',
+        on: () => this.setState({ cbStatus: f }),
+      })),
+      cbQuery: s.cbQuery, onCbQuery: (e) => this.setState({ cbQuery: e.target.value }),
+      cbRows, cbEmpty: cbRows.length === 0,
+      cbShownLabel: cbRows.length === 0 ? '0' : '1–' + cbRows.length + ' OD ' + cbCfg.total,
+      setGroups, setHint: setDirty ? 'Šalje se samo izmenjeno: ' + dirtyCount + ' polja' : 'Nema izmena',
+      setSaveOp: setDirty ? '1' : '.45',
+      setSave: () => { if (!setDirty) return; this.setState({ appsetSaved: Object.assign({}, s.appset) }); this.toast('Sačuvano — poslato samo izmenjeno (' + dirtyCount + ')'); },
+      tfaStatus: s.tfaOn ? 'UKLJUČENA' : 'ISKLJUČENA',
+      tfaBg: s.tfaOn ? 'rgba(31,169,113,.13)' : 'rgba(245,165,36,.13)', tfaFg: s.tfaOn ? 'var(--grn)' : 'var(--amb)',
+      tfaBtnLabel: s.tfaOn ? 'Isključi' : 'Uključi',
+      tfaBtnBd: s.tfaOn ? '1px solid rgba(237,28,36,.4)' : '0', tfaBtnBg: s.tfaOn ? 'transparent' : 'var(--btn)', tfaBtnFg: s.tfaOn ? 'var(--redh)' : 'var(--btntx)',
+      tfaAction: () => s.tfaOn
+        ? this.confirm({ tag: 'ISKLJUČIVANJE', tagColor: 'var(--redh)', title: 'Isključiti dvofaktorsku prijavu?', body: 'Prijava će tražiti samo lozinku. Potvrdi lozinkom u aplikaciji — u prototipu je odmah.', yesLabel: 'Isključi', ybd: 'var(--red)', ybg: 'rgba(237,28,36,.16)', yfg: 'var(--redh)', onNo: () => this.setState({ dlgConfirm: null }), onYes: () => { this.setState({ tfaOn: false, dlgConfirm: null }); this.toast('Dvofaktorska prijava isključena'); } })
+        : this.setState({ dlg2fa: true }),
+      dlg2fa: { open: s.dlg2fa }, qrPath: this.qr,
+      recCodes: ['K7F2-9D1A', 'M3X8-Q4B7', 'T6N1-V9C2', 'H2R5-W8E3', 'P9J4-L1S6', 'B5G7-Z3Y8', 'D8U2-A6M4', 'X1C9-F5T7'].map((t) => ({ t })),
+      dlg2faCancel: () => this.setState({ dlg2fa: false }),
+      dlg2faConfirm: () => { this.setState({ dlg2fa: false, tfaOn: true }); this.toast('Dvofaktorska prijava uključena'); },
+      dlgConfirm: s.dlgConfirm ? Object.assign({ open: true }, s.dlgConfirm) : { open: false },
+      dlgEdit, dlgRoles, mx,
+      loginErr: s.loginErr ? { show: true, text: s.loginErr } : { show: false, text: '' },
+      loginDemo: [
+        'Pogrešan mejl ili lozinka.',
+        'Previše pokušaja. Sačekaj 5 minuta pa pokušaj ponovo.',
+        'Nalog je privremeno zaključan. Javi se administratoru.',
+        'Nalog čeka odobrenje — dobićeš mejl kad bude odobren.',
+        'Registracija je odbijena. Javi se administratoru ako misliš da je greška.',
+        'Ovaj nalog nema pravo na admin panel.',
+      ].map((t, i) => ({ label: 'GREŠKA ' + (i + 1), on: () => this.setState({ loginErr: t }) })),
+      doLogin: () => { this.setState({ screen: 'dash', loginErr: null }); this.toast('Dobrodošao nazad, Nikola'); },
+      hasToast: !!s.toast, toast: s.toast || '',
+    };
+  }
+  openRolesDlg(user, pending) {
+    if (pending) {
+      this.setState({ dlgRoles: { pendingId: pending.id, title: 'Odobravanje — ' + pending.name, sub: pending.client ? 'Klijent dobija „Portal klijenta" — vezan je za svoju firmu.' : 'Izaberi ovlašćenja koja nalog dobija. Prava se sabiraju.', saveLabel: 'Odobri', checks: pending.client ? ['r4'] : [] } });
+    } else {
+      const ids = this.state.roles.filter((r) => user.roles.indexOf(r.name) >= 0).map((r) => r.id);
+      this.setState({ dlgRoles: { userId: user.id, title: 'Izmena uloga — ' + user.name, sub: 'Prava se sabiraju iz svih izabranih ovlašćenja.', saveLabel: 'Sačuvaj', checks: ids } });
+    }
+  }
+  cbPatch(key, id, patch) { this.setState((st) => { const cb = Object.assign({}, st.cb); cb[key] = cb[key].map((r) => r.id === id ? Object.assign({}, r, patch) : r); return { cb }; }); }
+  cbPatchData(key, id, vals) { this.setState((st) => { const cb = Object.assign({}, st.cb); cb[key] = cb[key].map((r) => r.id === id ? Object.assign({}, r, { data: Object.assign({}, r.data, vals) }) : r); return { cb, dlgEdit: null }; }); }
+}
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@ import { Link } from '@tanstack/react-router'
 import { LogOut, Shield } from 'lucide-react'
 import type { ReactElement } from 'react'
 
-import { adminNavItems } from '~/config/navigation'
+import { adminNavGroups, type NavItem } from '~/config/navigation'
 
 export interface AdminSidebarProps {
   /** Desktop icon-rail (lg+). Ignored on mobile, where the sidebar is a drawer. */
@@ -16,6 +16,81 @@ export interface AdminSidebarProps {
   userName: string
   userEmail: string
   onLogout: () => void
+  /**
+   * Accounts waiting for a decision — drawn on "Korisnici" as an amber count. It is the one number
+   * in this app that means "somebody is blocked until you look", so it belongs where the eye lands
+   * first rather than only on the dashboard.
+   */
+  pendingUserCount: number
+}
+
+function NavRow({
+  item,
+  collapsed,
+  onCloseMobile,
+  badge,
+  compact,
+}: {
+  item: NavItem
+  collapsed: boolean
+  onCloseMobile: () => void
+  badge?: number
+  /** The catalogue group sits a notch smaller than the rest — ten rows in a row need the air. */
+  compact: boolean
+}): ReactElement {
+  return (
+    <Link
+      to={item.to}
+      title={item.label()}
+      onClick={onCloseMobile}
+      className={cn(
+        'flex items-center gap-[11px] rounded-[9px] px-3 transition-colors duration-150',
+        compact ? 'h-[38px]' : 'h-10',
+        collapsed && 'lg:justify-center lg:px-0',
+      )}
+      // A tinted panel, not the solid red block this used to be — the same red at a ninth, which is
+      // the prototype's `rgba(237,28,36,.11)` expressed through the token so a brand change reaches
+      // it. No border: the tint alone marks the row there, and the outline read as a second state.
+      activeProps={{ className: 'bg-mr-brand/[0.11]' }}
+      inactiveProps={{ className: 'hover:bg-mr-list-item-hover' }}
+      // Without `exact`, the dashboard link (to='/') would match on every child route; all
+      // other items match as prefix.
+      activeOptions={{ exact: item.to === '/' }}
+    >
+      {({ isActive }) => (
+        <>
+          <item.icon
+            className={cn(
+              'flex-none',
+              compact ? 'size-[15px] opacity-80' : 'size-4 opacity-85',
+              isActive ? 'text-foreground' : 'text-muted-foreground',
+            )}
+            aria-hidden="true"
+          />
+          <span
+            className={cn(
+              'flex-1 truncate',
+              compact ? 'text-[13px]' : 'text-[13.5px]',
+              isActive ? 'font-extrabold text-foreground' : 'font-semibold text-muted-foreground',
+              collapsed && 'lg:hidden',
+            )}
+          >
+            {item.label()}
+          </span>
+          {badge !== undefined && badge > 0 ? (
+            <span
+              className={cn(
+                'flex-none rounded-full bg-adm-amb/15 px-[7px] py-0.5 font-mono text-[10px] font-bold text-adm-amb',
+                collapsed && 'lg:hidden',
+              )}
+            >
+              {badge}
+            </span>
+          ) : null}
+        </>
+      )}
+    </Link>
+  )
 }
 
 export function AdminSidebar({
@@ -25,6 +100,7 @@ export function AdminSidebar({
   userName,
   userEmail,
   onLogout,
+  pendingUserCount,
 }: AdminSidebarProps): ReactElement {
   return (
     <>
@@ -40,98 +116,89 @@ export function AdminSidebar({
       <aside
         aria-label="Sidebar navigation"
         className={cn(
-          'fixed bottom-0 left-0 top-[60px] z-40 flex w-60 flex-none flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200',
+          'fixed bottom-0 left-0 top-[60px] z-40 flex w-[236px] flex-none flex-col overflow-y-auto border-r border-border bg-card text-foreground transition-transform duration-200',
           'lg:sticky lg:z-20 lg:h-[calc(100vh-60px)] lg:translate-x-0 lg:transition-[width]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-[72px]' : 'lg:w-60',
+          collapsed ? 'lg:w-[72px]' : 'lg:w-[236px]',
         )}
       >
         <nav
           aria-label="Main navigation"
-          className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"
+          className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-3 pt-3.5"
         >
-          {adminNavItems.map((item) => (
-            <Link
-              key={item.key}
-              to={item.to}
-              title={item.label()}
-              onClick={onCloseMobile}
-              className={cn(
-                'flex items-center gap-[13px] rounded-[9px] border px-[13px] py-[11px] transition-colors duration-150',
-                collapsed && 'lg:justify-center lg:px-0',
+          {adminNavGroups.map((group) => (
+            <div key={group.key} className="contents">
+              {group.label === undefined ? null : (
+                <div
+                  className={cn(
+                    'mb-1.5 mt-3.5 px-3 font-mono text-[8.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground',
+                    // In the icon rail there is no room for a word; the gap that stays is enough
+                    // to keep the three groups apart.
+                    collapsed && 'lg:invisible lg:h-2 lg:overflow-hidden',
+                  )}
+                >
+                  {group.label()}
+                </div>
               )}
-              // A tinted panel, not the solid red block this used to be: `bg-sidebar-primary` is
-              // the full brand red, which read as a warning bar down the side of every screen and
-              // was the loudest thing the admin panel did. Same red at a tenth, as internal-web
-              // does it — but through the token with an opacity modifier, where internal hardcodes
-              // `rgba(237,28,36,.1)`. A literal there is a second definition of the brand red that
-              // no token change would ever reach.
-              activeProps={{ className: 'border-mr-brand/35 bg-mr-brand/10' }}
-              inactiveProps={{ className: 'border-transparent hover:bg-accent' }}
-              // Without `exact`, the dashboard link (to='/') would match on every child route; all
-              // other items match as prefix.
-              activeOptions={{ exact: item.to === '/' }}
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon
-                    className={cn(
-                      'size-[18px] flex-none',
-                      isActive ? 'text-mr-brand-400' : 'text-muted-foreground',
-                    )}
-                    aria-hidden="true"
-                  />
-                  <span
-                    className={cn(
-                      'truncate text-sm',
-                      isActive
-                        ? 'font-bold text-foreground'
-                        : 'font-semibold text-muted-foreground',
-                      collapsed && 'lg:hidden',
-                    )}
-                  >
-                    {item.label()}
-                  </span>
-                </>
-              )}
-            </Link>
+              {group.items.map((item) => (
+                <NavRow
+                  key={item.key}
+                  item={item}
+                  collapsed={collapsed}
+                  compact={group.key === 'catalogs'}
+                  onCloseMobile={onCloseMobile}
+                  {...(item.key === 'users' ? { badge: pendingUserCount } : {})}
+                />
+              ))}
+            </div>
           ))}
         </nav>
 
-        <div className="flex-none border-t border-border px-[18px] py-4">
-          <div
-            className={cn('mb-3 flex items-center gap-[11px]', collapsed && 'lg:justify-center')}
-          >
+        <div className="flex-none border-t border-border px-[18px] py-3">
+          <div className={cn('mb-2.5 flex items-center gap-2.5', collapsed && 'lg:justify-center')}>
             <span
               aria-hidden="true"
-              className="grid size-9 flex-none place-items-center rounded-full bg-mr-brand text-[12.5px] font-bold text-white"
+              className="grid size-8 flex-none place-items-center rounded-full bg-mr-brand font-mono text-[11px] font-bold text-white"
             >
               {getInitials(userName, userEmail)}
             </span>
             <div className={cn('min-w-0 leading-tight', collapsed && 'lg:hidden')}>
-              <div className="truncate text-[13.5px] font-bold text-foreground">{userName}</div>
-              <div className="truncate font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
+              <div className="truncate text-[13px] font-bold text-foreground">{userName}</div>
+              <div className="truncate font-mono text-[10px] font-medium text-muted-foreground">
                 {userEmail}
               </div>
             </div>
           </div>
-          <div className={cn('flex flex-col gap-1.5', collapsed && 'lg:items-center')}>
+          <div className={cn('flex gap-2', collapsed && 'lg:flex-col lg:items-center')}>
             <Link
               to="/settings/security"
               title={m.nav_security()}
               onClick={onCloseMobile}
-              className="flex items-center gap-2 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-mr-brand-400"
+              className={cn(
+                'flex h-[34px] flex-1 items-center justify-center rounded-lg border border-mr-border-strong bg-adm-inbg text-[11.5px] font-bold text-muted-foreground transition-colors hover:text-foreground',
+                collapsed && 'lg:size-9 lg:flex-none',
+              )}
             >
-              <Shield className="size-4 flex-none" aria-hidden="true" />
+              {/* Word when there is room, icon when there is not — the rail is 72px wide. */}
+              <Shield
+                className={cn('hidden size-4 flex-none', collapsed && 'lg:block')}
+                aria-hidden="true"
+              />
               <span className={cn(collapsed && 'lg:hidden')}>{m.nav_security()}</span>
             </Link>
             <button
               type="button"
               onClick={onLogout}
               title={m.auth_logout()}
-              className="flex cursor-pointer items-center gap-2 text-left text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-mr-brand-400"
+              className={cn(
+                'flex h-[34px] flex-1 cursor-pointer items-center justify-center rounded-lg text-[11.5px] font-semibold text-muted-foreground transition-colors hover:text-adm-red-h',
+                collapsed && 'lg:size-9 lg:flex-none',
+              )}
             >
-              <LogOut className="size-4 flex-none" aria-hidden="true" />
+              <LogOut
+                className={cn('hidden size-4 flex-none', collapsed && 'lg:block')}
+                aria-hidden="true"
+              />
               <span className={cn(collapsed && 'lg:hidden')}>{m.auth_logout()} →</span>
             </button>
           </div>

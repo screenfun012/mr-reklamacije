@@ -40,32 +40,39 @@ export interface AdminTopbarProps {
 }
 
 /**
- * Admin top bar: ☰ + brand and the current section on the left, EN/SR + theme on the right.
+ * Admin top bar: ☰ + brand, the ADMIN chip and the current section on the left, EN/SR + theme on
+ * the right.
  *
- * The user block moved OUT of here and down to the foot of the sidebar, where internal-web has kept
- * it all along — so logout, the security screen and who-am-I sit in the same corner in both apps.
+ * The chip and the mono breadcrumb are the prototype's (`admin-prototip.dc.html`); they replace two
+ * hairline dividers and a spelled-out "ADMINISTRACIJA", which cost three times the width to say the
+ * same thing. The user block lives at the foot of the sidebar, where internal-web has kept it all
+ * along.
  */
 export function AdminTopbar({ onToggleSidebar }: AdminTopbarProps): ReactElement {
   const { resolvedTheme } = useTheme()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   return (
-    <div className="flex h-full items-center gap-3 px-4 sm:px-6">
+    <div className="flex h-full items-center gap-3.5 px-4 sm:px-[18px]">
       <button
         type="button"
         onClick={onToggleSidebar}
         aria-label={m.nav_menu()}
-        className="grid size-9 flex-none place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="grid size-[34px] flex-none cursor-pointer place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-mr-list-item-hover hover:text-foreground"
       >
-        <Menu className="size-5" aria-hidden="true" />
+        <Menu className="size-[17px]" aria-hidden="true" />
       </button>
-      <MrEnginesLogo theme={resolvedTheme} className="h-7 w-auto" />
-      <span aria-hidden="true" className="hidden h-4 w-px flex-none bg-mr-border-strong sm:block" />
-      <span className="hidden whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:block">
-        {m.admin_app_eyebrow()}
+      <span className="flex items-center gap-2.5">
+        <MrEnginesLogo theme={resolvedTheme} className="h-6 w-auto" />
+        <span className="rounded-md bg-mr-brand/[0.13] px-2 py-[3px] font-mono text-[9px] font-bold tracking-[0.14em] text-adm-red-h">
+          {m.admin_app_chip()}
+        </span>
       </span>
-      <span aria-hidden="true" className="hidden h-4 w-px flex-none bg-mr-border-strong md:block" />
-      <span className="hidden truncate font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:block">
+      {/* Hidden below `sm`: it neither shrinks nor wraps, and the page's own H1 says the same. */}
+      <span className="hidden truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:block">
+        <span aria-hidden="true" className="opacity-50">
+          /
+        </span>{' '}
         {sectionLabel(pathname)}
       </span>
       <div className="ml-auto">
