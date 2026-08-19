@@ -10,6 +10,14 @@
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
+/* `--mr-border` is the hairline between regions; an interactive outline needs to be seen. Declared
+ * in BOTH theme blocks below and only REFERENCED here — a variable that exists solely inside
+ * `@theme` is substituted at build time and never reaches `:root`, which is how internal-web's
+ * amber arc was invisible from the day it was drawn (CLAUDE.md §5). */
+@theme inline {
+  --color-mr-border-strong: var(--mr-border-strong);
+}
+
 /* ---------- Palette: the same one internal-web wears ----------
  * Admin was the one app that never got a redesign — an 11-line stylesheet on the shared preset,
  * against internal-web's 545 lines. Both are staff-facing and people move between them all day, so
@@ -34,6 +42,7 @@
   --mr-text-secondary: #5c5d63; /* --mri-text2 */
   --mr-border: rgba(20, 20, 25, 0.1); /* --mri-border */
   --mr-list-item-hover: rgba(20, 20, 25, 0.03); /* --mri-rowhv */
+  --mr-border-strong: rgba(20, 20, 25, 0.2); /* --mri-border2 */
 }
 
 .dark {
@@ -44,4 +53,5 @@
   --mr-text-secondary: #9c9da3; /* --mri-text2 */
   --mr-border: rgba(255, 255, 255, 0.09); /* --mri-border */
   --mr-list-item-hover: rgba(255, 255, 255, 0.03); /* --mri-rowhv */
+  --mr-border-strong: rgba(255, 255, 255, 0.16); /* --mri-border2 */
 }

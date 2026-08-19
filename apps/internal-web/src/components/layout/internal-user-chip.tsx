@@ -1,18 +1,8 @@
 import { m } from '@mr/i18n'
+import { getInitials } from '@mr/shared'
 import { LogOut, Shield } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { ReactElement } from 'react'
-
-export function getInitials(name: string, email: string): string {
-  const source = (name.trim().length > 0 ? name : email).trim()
-  if (source.length === 0) {
-    return '?'
-  }
-  const parts = source.split(/\s+/).filter((part) => part.length > 0)
-  const initials =
-    parts.length >= 2 ? `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}` : source.slice(0, 2)
-  return initials.toUpperCase()
-}
 
 export interface InternalUserChipProps {
   userName: string

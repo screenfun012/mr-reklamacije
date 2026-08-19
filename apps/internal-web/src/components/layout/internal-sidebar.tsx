@@ -4,7 +4,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { LogOut, Shield } from 'lucide-react'
 
 import type { NavItem } from '~/config/navigation'
-import { getInitials } from './internal-user-chip'
+import { getInitials } from '@mr/shared'
 
 const rootRoute = getRouteApi('__root__')
 

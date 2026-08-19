@@ -6,6 +6,7 @@ export { proxyApiRequest } from './api/proxy-api-request.js'
 export { resolveFetchUrl } from './api/resolve-fetch-url.js'
 export { formatListDate } from './utils/format-list-date.js'
 export { formatTimeAgo } from './utils/format-time-ago.js'
+export { getInitials } from './utils/get-initials.js'
 export { claimDetailPath, type ClaimDetailLink } from './utils/claim-detail-path.js'
 export { formatClaimDetailMetaLine } from './utils/format-claim-detail-meta-line.js'
 export {

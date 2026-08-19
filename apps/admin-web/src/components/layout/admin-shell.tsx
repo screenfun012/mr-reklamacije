@@ -14,10 +14,10 @@ export interface AdminShellProps {
 }
 
 /**
- * Admin app shell: a full-width sticky header (☰ toggle + brand + user menu) on
- * top, with the collapsible sidebar and main area below it — mirroring the
- * internal app. Collapsible-sidebar state (desktop icon rail, mobile drawer)
- * lives in the shared `useSidebarState` hook.
+ * Admin app shell: a full-width sticky header (☰ toggle, brand, current section, EN/SR + theme) on
+ * top, with the collapsible sidebar and main area below it — mirroring the internal app, including
+ * where the user block sits: at the FOOT OF THE SIDEBAR, not in the bar. Collapsible-sidebar state
+ * (desktop icon rail, mobile drawer) lives in the shared `useSidebarState` hook.
  *
  * User data comes from `authClient.useSession()`; during the first SSR render
  * the hook returns `data: undefined`, so the user fields are briefly blank until
@@ -48,16 +48,18 @@ export function AdminShell({ children }: AdminShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-30 h-[60px] flex-none border-b border-border bg-background">
-        <AdminTopbar
-          userEmail={userEmail}
-          userName={userName}
-          onLogout={handleLogout}
-          onToggleSidebar={onToggle}
-        />
+        <AdminTopbar onToggleSidebar={onToggle} />
       </header>
 
       <div className="flex flex-1 items-stretch">
-        <AdminSidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={onCloseMobile} />
+        <AdminSidebar
+          collapsed={collapsed}
+          mobileOpen={mobileOpen}
+          onCloseMobile={onCloseMobile}
+          userName={userName}
+          userEmail={userEmail}
+          onLogout={handleLogout}
+        />
         <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
       </div>
     </div>
