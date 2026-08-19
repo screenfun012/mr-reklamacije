@@ -57,6 +57,21 @@ export const DashboardSummarySchema = z.object({
   overdue: z.array(DashboardListItemSchema),
   recent: z.array(DashboardListItemSchema),
   chart: z.array(DashboardChartMonthSchema),
+  /**
+   * The five workers blamed most often — and `null`, never `[]`, for a reader without
+   * `employees.view_analytics`. How many times a NAMED person was blamed is exactly what that
+   * permission protects, and an empty list would be a claim about the shop rather than about the
+   * reader. `StatisticsByFaults.byEmployee` has behaved this way since Grupa D; this matches it.
+   */
+  topFaultEmployees: z
+    .array(
+      z.object({
+        employeeId: z.string().uuid(),
+        name: z.string(),
+        faultCount: z.number().int().nonnegative(),
+      }),
+    )
+    .nullable(),
 })
 
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>

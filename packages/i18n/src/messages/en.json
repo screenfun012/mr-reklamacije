@@ -66,6 +66,8 @@
   "admin_dashboard_recent_changes": "Latest changes",
   "admin_dashboard_recent_changes_empty": "No changes recorded yet.",
   "admin_dashboard_see_all": "All",
+  "admin_dashboard_top_faults": "Most blamed",
+  "admin_dashboard_top_faults_hint": "Recorded fault count",
   "admin_departments_active_no": "No",
   "admin_departments_active_yes": "Yes",
   "admin_departments_add": "Add department",

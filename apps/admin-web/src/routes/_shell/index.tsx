@@ -15,6 +15,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 import { NeedsYouCard } from '~/components/dashboard/needs-you-card'
 import { RecentChangesCard } from '~/components/dashboard/recent-changes-card'
 import { StatCard } from '~/components/dashboard/stat-card'
+import { TopFaultsCard } from '~/components/dashboard/top-faults-card'
 import { authClient } from '~/lib/auth-client'
 import { countUsersByStatus } from '~/lib/dashboard-user-counts'
 
@@ -113,6 +114,8 @@ function DashboardContent(): ReactElement {
         <NeedsYouCard pendingUsers={pendingUsers} />
         <RecentChangesCard items={recentChanges} />
       </div>
+
+      <TopFaultsCard rows={summary.topFaultEmployees} />
     </div>
   )
 }

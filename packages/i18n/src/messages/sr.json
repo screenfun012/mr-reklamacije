@@ -66,6 +66,8 @@
   "admin_dashboard_recent_changes": "Poslednje promene",
   "admin_dashboard_recent_changes_empty": "Još nema zabeleženih promena.",
   "admin_dashboard_see_all": "Sve",
+  "admin_dashboard_top_faults": "Ko najviše greši",
+  "admin_dashboard_top_faults_hint": "Broj upisanih krivica",
   "admin_departments_active_no": "Ne",
   "admin_departments_active_yes": "Da",
   "admin_departments_add": "Dodaj odeljenje",

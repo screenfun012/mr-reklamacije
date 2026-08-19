@@ -213,12 +213,19 @@ export class DashboardRepository {
     }))
   }
 
-  async getSummary(scope: DashboardScope): Promise<DashboardSummary> {
-    const [statsBundle, overdue, recent, chart] = await Promise.all([
+  /**
+   * `includeNamedBlame` decides whether the fifth query runs at all. It is a parameter rather than
+   * a filter applied afterwards so a reader who may not see named blame does not pay for the query
+   * that produces it — and so the SERVICE's cache key, which carries the same flag, can never hand
+   * one reader's answer to the other.
+   */
+  async getSummary(scope: DashboardScope, includeNamedBlame: boolean): Promise<DashboardSummary> {
+    const [statsBundle, overdue, recent, chart, topFaultEmployees] = await Promise.all([
       this.fetchStats(scope),
       this.fetchOverdue(scope),
       this.fetchRecent(scope),
       this.fetchChart(scope),
+      includeNamedBlame ? this.fetchTopFaultEmployees(scope) : Promise.resolve(null),
     ])
 
     return {
@@ -227,7 +234,65 @@ export class DashboardRepository {
       overdue,
       recent,
       chart,
+      topFaultEmployees,
     }
+  }
+
+  /**
+   * The five workers blamed most often, in ONE query.
+   *
+   * Deliberately not `/api/statistics/summary`: that endpoint runs eleven parallel queries to build
+   * the whole statistics page, and a module may not import another module anyway. Five names do not
+   * justify eleven queries on every dashboard load.
+   */
+  private async fetchTopFaultEmployees(
+    scope: DashboardScope,
+  ): Promise<DashboardSummary['topFaultEmployees']> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      branches.push(sql`
+        SELECT f.employee_id
+        FROM emotive_claim_faults f
+        JOIN emotive_claims ec ON ec.id = f.claim_id
+        WHERE f.employee_id IS NOT NULL AND ${activeEmotiveWhere('ec')}
+      `)
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT f.employee_id
+        FROM domace_claim_faults f
+        JOIN domace_claims dc ON dc.id = f.claim_id
+        WHERE f.employee_id IS NOT NULL AND ${activeDomaceWhere('dc')}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<{
+      employee_id: string
+      name: string
+      fault_count: number
+    }>(sql`
+      SELECT f.employee_id, e.full_name AS name, COUNT(*)::int AS fault_count
+      FROM (${unionSql}) f
+      JOIN employees e ON e.id = f.employee_id
+      WHERE e.deleted_at IS NULL
+      GROUP BY f.employee_id, e.full_name
+      ORDER BY fault_count DESC, e.full_name ASC
+      LIMIT 5
+    `)
+
+    return result.rows.map((row) => ({
+      employeeId: row.employee_id,
+      name: row.name,
+      faultCount: row.fault_count,
+    }))
   }
 
   private async fetchStats(scope: DashboardScope): Promise<{

@@ -111,11 +111,17 @@ export class DashboardService {
     // Global (all-customers) dashboard: keyed only by scope (~2 variants), never per user.
     // getClientSummary below stays UNCACHED — it is per-customer and low-hit.
     const scope = resolveScope(actor)
+    // ⚠ The permission is part of the CACHE KEY, not a filter applied to the result.
+    // `topFaultEmployees` names people, and a payload keyed on scope alone would let a reader who
+    // holds `employees.view_analytics` warm the cache and a reader who does not read the names out
+    // of it — in whichever order they happened to arrive. Two scopes become four entries; that is
+    // the whole cost.
+    const includeNamedBlame = actor.permissions.includes('employees.view_analytics')
     return this.summaryCache.read(
       'dashboard',
-      [scope.includeEmotive, scope.includeDomace],
+      [scope.includeEmotive, scope.includeDomace, includeNamedBlame],
       SUMMARY_CACHE_TTL_SECONDS,
-      () => this.repo.getSummary(scope),
+      () => this.repo.getSummary(scope, includeNamedBlame),
     )
   }
 

@@ -33,6 +33,12 @@ const FULL_OPERATOR: DashboardActor = {
   permissions: ['emotive_claims.view', 'domace_claims.view'],
 }
 
+/** The same actor, plus the one permission that decides whether named blame may be read. */
+const FULL_OPERATOR_WITH_ANALYTICS: DashboardActor = {
+  id: TEST_USER_ID,
+  permissions: ['emotive_claims.view', 'domace_claims.view', 'employees.view_analytics'],
+}
+
 const auditContext = {
   actorUserId: TEST_USER_ID,
   actorIp: null,
@@ -109,6 +115,40 @@ describe('DashboardService integration', () => {
     )
     return created.id
   }
+
+  describe('when naming who is blamed most', () => {
+    it('withholds named blame from a reader without employees.view_analytics', async () => {
+      // How often a NAMED person was blamed is exactly what that permission protects. `null` is a
+      // statement about the reader; an empty array would be a statement about the shop.
+      const summary = await container.dashboardService.getSummary(FULL_OPERATOR)
+
+      expect(summary.topFaultEmployees).toBeNull()
+    })
+
+    it('does not serve a permitted reader a cached answer built for one without', async () => {
+      // ⚠ The summary is CACHED, keyed by scope. Adding a permission-gated field to a payload keyed
+      // only by scope is how one reader warms the cache and another reads what they may not see —
+      // in whichever order they happen to arrive. This asserts BOTH orders.
+      const withoutFirst = await container.dashboardService.getSummary(FULL_OPERATOR)
+      const withAfter = await container.dashboardService.getSummary(FULL_OPERATOR_WITH_ANALYTICS)
+
+      expect(withoutFirst.topFaultEmployees).toBeNull()
+      expect(withAfter.topFaultEmployees).not.toBeNull()
+
+      const withoutAgain = await container.dashboardService.getSummary(FULL_OPERATOR)
+      expect(withoutAgain.topFaultEmployees).toBeNull()
+    })
+
+    it('returns at most five workers, most-blamed first', async () => {
+      const summary = await container.dashboardService.getSummary(FULL_OPERATOR_WITH_ANALYTICS)
+      const rows = summary.topFaultEmployees ?? []
+
+      expect(rows.length).toBeLessThanOrEqual(5)
+      for (let index = 1; index < rows.length; index += 1) {
+        expect(rows[index - 1]!.faultCount).toBeGreaterThanOrEqual(rows[index]!.faultCount)
+      }
+    })
+  })
 
   describe('when loading dashboard summary', () => {
     it('includes pending claims older than 7 days in overdue', async () => {
