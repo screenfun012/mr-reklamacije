@@ -1,19 +1,23 @@
 import { m } from '@mr/i18n'
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  FilterSelect,
-  Input,
   toast,
 } from '@mr/ui'
 import { useEffect, useState } from 'react'
 import { Suspense } from 'react'
 
+import {
+  admFieldClassName,
+  admLabelClassName,
+  admLockedFieldClassName,
+  admPrimaryButtonClassName,
+  admSecondaryButtonClassName,
+} from '../adm-chrome.js'
 import { ResourceReferenceSelectField } from './resource-reference-select-field.js'
 import type { ResourceDefinition, ResourceFormFieldDef } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
@@ -113,7 +117,7 @@ export function ResourceFormDialog<
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[520px]">
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? definition.createTitle() : definition.editTitle()}
@@ -129,8 +133,13 @@ export function ResourceFormDialog<
             if (isReadonlyField(field, mode)) {
               return (
                 <div key={field.key} className="space-y-1.5">
-                  <span className="text-sm font-medium">{field.label()}</span>
-                  <p className="text-sm text-muted-foreground">{value}</p>
+                  <span className={admLabelClassName}>{field.label()}</span>
+                  <p className={admLockedFieldClassName}>
+                    {value}
+                    <span className="ml-auto font-mono text-[8.5px] font-bold uppercase tracking-[0.14em]">
+                      {m.admin_catalog_field_locked()}
+                    </span>
+                  </p>
                   {field.hint ? (
                     <p className="text-xs text-muted-foreground">{field.hint()}</p>
                   ) : null}
@@ -144,7 +153,7 @@ export function ResourceFormDialog<
                   key={field.key}
                   fallback={
                     <div className="space-y-1.5">
-                      <span className="text-sm font-medium">{field.label()}</span>
+                      <span className={admLabelClassName}>{field.label()}</span>
                       <p className="text-sm text-muted-foreground">…</p>
                     </div>
                   }
@@ -163,18 +172,23 @@ export function ResourceFormDialog<
             if (field.type === 'select') {
               return (
                 <div key={field.key} className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor={fieldId}>
+                  <label className={admLabelClassName} htmlFor={fieldId}>
                     {field.label()}
                   </label>
-                  <FilterSelect
+                  <select
                     id={fieldId}
                     value={value}
-                    options={field.options()}
-                    placeholder={field.label()}
                     aria-label={field.label()}
                     disabled={isPending}
-                    onValueChange={(next) => setFieldValue(field.key, next)}
-                  />
+                    className={`${admFieldClassName} cursor-pointer`}
+                    onChange={(event) => setFieldValue(field.key, event.target.value)}
+                  >
+                    {field.options().map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )
             }
@@ -182,12 +196,12 @@ export function ResourceFormDialog<
             if (field.type === 'textarea') {
               return (
                 <div key={field.key} className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor={fieldId}>
+                  <label className={admLabelClassName} htmlFor={fieldId}>
                     {field.label()}
                   </label>
                   <textarea
                     id={fieldId}
-                    className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`${admFieldClassName} min-h-24 py-2.5`}
                     value={value}
                     disabled={isPending}
                     onChange={(event) => setFieldValue(field.key, event.target.value)}
@@ -198,11 +212,12 @@ export function ResourceFormDialog<
 
             return (
               <div key={field.key} className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor={fieldId}>
+                <label className={admLabelClassName} htmlFor={fieldId}>
                   {field.label()}
                 </label>
-                <Input
+                <input
                   id={fieldId}
+                  className={admFieldClassName}
                   value={value}
                   type={field.type === 'number' ? 'number' : undefined}
                   step={field.type === 'number' ? 1 : undefined}
@@ -218,22 +233,23 @@ export function ResourceFormDialog<
           })}
         </div>
 
-        <DialogFooter>
-          <Button
+        <DialogFooter className="gap-2.5 sm:justify-stretch">
+          <button
             type="button"
-            variant="outline"
+            className={admSecondaryButtonClassName}
             disabled={isPending}
             onClick={() => onOpenChange(false)}
           >
             {m.action_cancel()}
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
+            className={admPrimaryButtonClassName}
             disabled={isPending || isSubmitDisabled(definition, mode, values)}
             onClick={handleSubmit}
           >
             {m.action_save()}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

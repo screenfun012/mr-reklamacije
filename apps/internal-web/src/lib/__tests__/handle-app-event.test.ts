@@ -168,7 +168,9 @@ describe('handleAppEvent', () => {
       payload: { kind: ClaimKind.Emotive, id: 'claim-9' },
     })
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard', 'summary'] })
+    // The `dashboard` prefix, not one window: the summary is cached per chart window since the
+    // endpoint took a `?months=` parameter, and naming a window would leave the others stale.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] })
   })
 
   it('invalidates the Inbox list and the changed submission on a client-submission event', () => {

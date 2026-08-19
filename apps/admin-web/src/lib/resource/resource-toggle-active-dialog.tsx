@@ -1,5 +1,7 @@
-import { ConfirmDialog, toast } from '@mr/ui'
+import { m } from '@mr/i18n'
+import { toast } from '@mr/ui'
 
+import { AdmConfirmDialog } from '~/components/adm-confirm-dialog'
 import type { ResourceDefinition } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
 
@@ -58,13 +60,16 @@ export function ResourceToggleActiveDialog<
     : (definition.lifecycle?.reactivateConfirmLabel() ?? definition.editActionLabel())
 
   return (
-    <ConfirmDialog
+    <AdmConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
+      tag={isDeactivating ? m.admin_confirm_tag_deactivate() : m.admin_confirm_tag_activate()}
+      // Switching a catalogue row off is reversible and takes nothing away from what exists — amber,
+      // not red. The red confirm is reserved for the row that disappears.
+      tone={isDeactivating ? 'warning' : 'neutral'}
       title={title}
       description={description}
       confirmLabel={confirmLabel}
-      variant={isDeactivating ? 'destructive' : 'default'}
       pending={setActiveMutation.isPending}
       onConfirm={handleConfirm}
     />

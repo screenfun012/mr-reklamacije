@@ -60,17 +60,23 @@ export const dataTableDestructiveActionClassName =
  * It moved on 2026-08-19 so a filter panel and the list card beneath it share one edge. Only admin
  * consumes this constant, so internal-web and portal-web are untouched by the change.
  */
-export const dataTableCardClassName = 'overflow-hidden rounded-[14px] border border-border'
+export const dataTableCardClassName = 'overflow-hidden rounded-[14px] border border-border bg-card'
 
-export const dataTableHeadRowClassName = 'border-b border-border bg-muted/20 text-left'
+/**
+ * The head strip carries no fill. It is separated by its rule and by the type — mono, 9px, wide
+ * tracking — which is how the prototype draws it; a tinted band under a card header was a second
+ * horizontal edge two rules apart.
+ */
+export const dataTableHeadRowClassName = 'border-b border-border text-left'
 
-export const dataTableHeadCellClassName = 'px-4 py-3 font-medium text-muted-foreground'
+export const dataTableHeadCellClassName =
+  'px-[18px] py-2.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground'
 
-export const dataTableCellClassName = 'px-4 py-3'
+export const dataTableCellClassName = 'px-[18px] py-3'
 
-/** Empty state for a list that has no rows yet — same dashed panel across admin. */
+/** Empty state for a list that has no rows yet — italic, quiet, and inside the card. */
 export const dataTableEmptyClassName =
-  'rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center'
+  'px-6 py-10 text-center text-[13.5px] italic text-muted-foreground'
 
 /**
  * The block a screen is made of. internal-web wraps its filters, its list and every dashboard
@@ -85,9 +91,10 @@ export const panelClassName = 'rounded-[14px] border border-border bg-card'
 
 /** Title row of a panel: its name on the left, a count or an action on the right. */
 export const panelHeaderClassName =
-  'flex items-center justify-between gap-3 border-b border-border px-5 py-4'
+  'flex items-center justify-between gap-3 border-b border-border px-[18px] py-[13px]'
 
-export const panelTitleClassName = 'text-[15px] font-extrabold text-foreground'
+export const panelTitleClassName = 'text-[14.5px] font-extrabold text-foreground'
 
 /** The quiet figure beside a panel title — a count, a range, a timestamp. */
-export const panelMetaClassName = 'font-mono text-[11px] text-muted-foreground'
+export const panelMetaClassName =
+  'font-mono text-[10.5px] font-semibold uppercase text-muted-foreground'

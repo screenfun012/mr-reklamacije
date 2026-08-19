@@ -1,5 +1,7 @@
-import { ConfirmDialog, toast } from '@mr/ui'
+import { m } from '@mr/i18n'
+import { toast } from '@mr/ui'
 
+import { AdmConfirmDialog } from '~/components/adm-confirm-dialog'
 import type { ResourceDefinition } from './types.js'
 import { createResourceCrudHooks, resourceSaveErrorMessage } from './use-resource-crud.js'
 
@@ -45,9 +47,10 @@ export function ResourceHardDeleteDialog<
   }
 
   return (
-    <ConfirmDialog
+    <AdmConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
+      tag={m.admin_confirm_tag_hard_delete()}
       title={lifecycle.hardDeleteTitle()}
       description={lifecycle.hardDeleteDescription(item)}
       confirmLabel={lifecycle.hardDeleteConfirmLabel()}

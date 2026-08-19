@@ -1,26 +1,21 @@
-import { BADGE_SHELL_CLASSES } from '@mr/ui'
 import { createElement, type ReactNode } from 'react'
 
-const INACTIVE_CHIP = `${BADGE_SHELL_CLASSES} border-mr-warning/45 bg-mr-warning-subtle text-mr-warning-strong dark:border-mr-warning/55 dark:bg-mr-warning/20 dark:text-mr-warning`
+const ACTIVE_PILL =
+  'rounded-full bg-adm-grn/15 px-2.5 py-[3px] font-mono text-[9.5px] font-bold uppercase text-adm-grn'
+const INACTIVE_PILL =
+  'rounded-full bg-adm-gry/20 px-2.5 py-[3px] font-mono text-[9.5px] font-bold uppercase text-adm-gry'
 
 /**
- * Colours the EXCEPTION, not the rule.
+ * DA / NE as two quiet pills, per the prototype (`admin-prototip.dc.html`).
  *
- * The spec asked for Da/Ne as chips. Looking at the real screens changed the answer: the Active
- * column reads "Da" on every row — 76 of them on engine types — so chipping both values would add
- * 76 green pills that carry no information and one more colour to a panel already accused of noise.
- * A chip earns its place when values differ, and here the interesting one is the rare "Ne".
- *
- * So an inactive row gets an amber chip and an active one stays quiet text: the eye finds what you
- * actually scan that column for.
+ * They replace a green-vs-plain-text pairing that coloured only the exception. The prototype's
+ * answer is better on the screens that actually exist: at 9.5px mono in a 15%-tint pill neither
+ * value shouts, the column reads as one shape whichever way a row goes, and the eye still finds the
+ * grey one — 76 "DA" pills on engine types cost nothing because they are the quiet state.
  *
  * A function rather than a component because the eight resource definitions are `.ts`, not `.tsx` —
  * renaming all eight to hold one cell's markup would be the tail wagging the dog.
  */
 export function renderActiveCell(isActive: boolean, label: string): ReactNode {
-  if (isActive) {
-    return createElement('span', { className: 'text-muted-foreground' }, label)
-  }
-
-  return createElement('span', { className: INACTIVE_CHIP }, label)
+  return createElement('span', { className: isActive ? ACTIVE_PILL : INACTIVE_PILL }, label)
 }

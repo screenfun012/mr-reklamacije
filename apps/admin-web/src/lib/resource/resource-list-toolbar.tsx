@@ -5,8 +5,9 @@ import {
   useDebouncedValue,
   type ResourceCatalogSearch,
 } from '@mr/shared'
-import { FilterSelect, Input, panelClassName, SearchableSelect } from '@mr/ui'
+import { cn, panelClassName, SearchableSelect } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { Search } from 'lucide-react'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 
 import { useLocale } from '@mr/ui'
@@ -93,43 +94,54 @@ export function ResourceListToolbar({
     // fills it; a catalogue has two or three and the same rule left a search box on one edge, a
     // select on the other, and a thousand pixels of nothing between them — which read as an empty
     // bar rather than as a filter.
-    <div className={`${panelClassName} flex flex-wrap items-center gap-3 p-5`}>
-      <Input
-        value={searchDraft}
-        onChange={(event) => setSearchDraft(event.target.value)}
-        placeholder={m.admin_catalog_search_placeholder()}
-        aria-label={m.admin_catalog_search_placeholder()}
-        className="w-full sm:w-[18rem]"
-      />
-
-      <div className="flex flex-1 flex-wrap items-center gap-3">
-        {showManufacturerFilter ? (
-          <Suspense fallback={<p className="text-sm text-muted-foreground">…</p>}>
-            <ResourceManufacturerFilter search={search} onSearchChange={onSearchChange} />
-          </Suspense>
-        ) : null}
-
-        <FilterSelect
-          value={search.status}
-          options={statusOptions}
-          placeholder={m.admin_catalog_filter_all()}
-          aria-label={m.admin_catalog_filter_status()}
-          className="w-full sm:w-[12rem]"
-          onValueChange={(value) => {
-            if (
-              value === ResourceCatalogStatusFilter.All ||
-              value === ResourceCatalogStatusFilter.Active ||
-              value === ResourceCatalogStatusFilter.Inactive
-            ) {
-              onSearchChange({
-                ...search,
-                status: value,
-                page: 1,
-              })
-            }
-          }}
-        />
+    <div className={`${panelClassName} flex flex-wrap items-center gap-3 px-4 py-3.5`}>
+      {/* Three states, three visible buttons. As a dropdown the current filter was a word inside a
+          control you had to open to see the alternatives; here the whole choice is on the screen and
+          costs one tap. */}
+      <div
+        className="flex flex-none overflow-hidden rounded-[9px] border border-mr-border-strong"
+        role="group"
+        aria-label={m.admin_catalog_filter_status()}
+      >
+        {statusOptions.map((option) => {
+          const active = option.value === search.status
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              className={cn(
+                'cursor-pointer px-[15px] py-2.5 text-[11.5px] font-extrabold tracking-[0.05em] transition-colors',
+                active
+                  ? 'bg-mr-brand text-white'
+                  : 'bg-transparent text-muted-foreground hover:text-foreground',
+              )}
+              onClick={() => {
+                onSearchChange({ ...search, status: option.value, page: 1 })
+              }}
+            >
+              {option.label}
+            </button>
+          )
+        })}
       </div>
+
+      <label className="flex h-10 w-full max-w-[360px] flex-1 items-center gap-2.5 rounded-[9px] border border-mr-border-strong bg-adm-inbg px-3">
+        <Search className="size-3.5 flex-none text-muted-foreground" aria-hidden="true" />
+        <input
+          value={searchDraft}
+          onChange={(event) => setSearchDraft(event.target.value)}
+          placeholder={m.admin_catalog_search_placeholder()}
+          aria-label={m.admin_catalog_search_placeholder()}
+          className="min-w-0 flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+        />
+      </label>
+
+      {showManufacturerFilter ? (
+        <Suspense fallback={<p className="text-sm text-muted-foreground">…</p>}>
+          <ResourceManufacturerFilter search={search} onSearchChange={onSearchChange} />
+        </Suspense>
+      ) : null}
     </div>
   )
 }

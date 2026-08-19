@@ -5,12 +5,11 @@ import {
   type ListPageSize,
   type ResourceCatalogSearch,
 } from '@mr/shared'
-import { Button, Heading, ListPagination } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { ResourceFormDialog } from './resource-form-dialog.js'
+import { ResourcePagination } from './resource-pagination.js'
 import { ResourceHardDeleteDialog } from './resource-hard-delete-dialog.js'
 import { ResourceListToolbar } from './resource-list-toolbar.js'
 import { ResourceTable } from './resource-table.js'
@@ -76,16 +75,23 @@ export function ResourceListPage<
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Heading level="h1">{definition.title()}</Heading>
-          <p className="mt-1 text-sm text-muted-foreground">{definition.subtitle()}</p>
+          <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+            {definition.title()}
+          </h1>
+          <p className="mt-[5px] text-[13px] text-muted-foreground">{definition.subtitle()}</p>
         </div>
-        <Button type="button" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
+        {/* The one filled button on the screen, and it is NOT red: in this panel red means
+            identity or destruction, and "add a row" is neither (prototype §1). */}
+        <button
+          type="button"
+          className="h-11 cursor-pointer rounded-[10px] bg-adm-btn px-[22px] text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-adm-btn-fg shadow-[0_8px_22px_rgba(0,0,0,.3)] transition-opacity hover:opacity-90"
+          onClick={() => setCreateOpen(true)}
+        >
           {definition.addLabel()}
-        </Button>
+        </button>
       </div>
 
       {listConfig ? (
@@ -105,11 +111,12 @@ export function ResourceListPage<
         {...(definition.lifecycle ? { onHardDelete: setHardDeleteTarget } : {})}
         {...(listConfig && paged.total > 0
           ? {
-              // Inside the card, under a rule: the pages belong to the list, not to the page they
-              // happen to sit on. Hidden entirely at zero rows — "Prikazano 0–0 od 0" beside a
-              // page-size selector is furniture for a list that is not there.
+              // Inside the card: the pages belong to the list, not to the page they happen to sit
+              // on. No rule above it — the last row's own border is already that line. Hidden
+              // entirely at zero rows: "Prikazano 0–0 od 0" beside a page-size selector is
+              // furniture for a list that is not there.
               footer: (
-                <ListPagination
+                <ResourcePagination
                   total={paged.total}
                   page={paged.page}
                   pageSize={paged.pageSize}

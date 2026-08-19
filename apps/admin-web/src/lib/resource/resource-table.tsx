@@ -1,10 +1,11 @@
 import { m } from '@mr/i18n'
 import {
-  Button,
+  cn,
   dataTableCardClassName,
   dataTableCellClassName,
   dataTableHeadCellClassName,
   dataTableHeadRowClassName,
+  dataTableEmptyClassName,
   dataTableRowHoverOnlyClassName,
   panelHeaderClassName,
   panelMetaClassName,
@@ -18,6 +19,13 @@ import { Trash2 } from 'lucide-react'
 
 import { ResourceRowActions } from './resource-row-actions.js'
 import type { ResourceColumnDef, ResourceDefinition } from './types.js'
+
+/**
+ * The one red control in a catalogue row: permanent deletion. Outlined rather than filled — the
+ * filled red belongs to the confirm dialog, one step further in.
+ */
+const deleteButtonClassName =
+  'inline-flex h-8 w-[34px] cursor-pointer items-center justify-center rounded-lg border border-mr-brand/40 text-adm-red-h transition-colors hover:bg-mr-brand/10 disabled:cursor-not-allowed'
 
 export interface ResourceTableProps<
   TItem extends { id: string; isActive: boolean },
@@ -66,8 +74,8 @@ export function ResourceTable<
           // Inside the card, not instead of it. A search filtered down to nothing used to make the
           // whole panel vanish, and a screen that disappears reads as broken rather than as
           // "no matches".
-          <div className="px-5 py-12 text-center" role="status">
-            <p className="text-sm text-muted-foreground">{definition.emptyLabel()}</p>
+          <div className={dataTableEmptyClassName} role="status">
+            {definition.emptyLabel()}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -93,7 +101,12 @@ export function ResourceTable<
                   const canHardDelete = lifecycle !== undefined && usageCount === 0
 
                   return (
-                    <tr key={item.id} className={dataTableRowHoverOnlyClassName}>
+                    <tr
+                      key={item.id}
+                      // A deactivated row stays legible but steps back — it is still a record, just
+                      // not one anybody can choose any more.
+                      className={cn(dataTableRowHoverOnlyClassName, !item.isActive && 'opacity-60')}
+                    >
                       {definition.columns.map((column) => (
                         <td
                           key={column.id}
@@ -103,7 +116,7 @@ export function ResourceTable<
                         </td>
                       ))}
                       <td className={dataTableCellClassName}>
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1.5">
                           <ResourceRowActions
                             item={item}
                             editLabel={definition.editActionLabel()}
@@ -116,30 +129,27 @@ export function ResourceTable<
                           />
                           {lifecycle && onHardDelete ? (
                             canHardDelete ? (
-                              <Button
+                              <button
                                 type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-8 text-destructive hover:text-destructive"
+                                className={deleteButtonClassName}
+                                title={m.action_delete()}
                                 aria-label={m.action_delete()}
                                 onClick={() => onHardDelete(item)}
                               >
-                                <Trash2 className="size-4" />
-                              </Button>
+                                <Trash2 className="size-[13px]" aria-hidden="true" />
+                              </button>
                             ) : (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="inline-flex">
-                                    <Button
+                                    <button
                                       type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="size-8 text-destructive hover:text-destructive"
+                                      className={`${deleteButtonClassName} opacity-45`}
                                       disabled
                                       aria-label={m.action_delete()}
                                     >
-                                      <Trash2 className="size-4" />
-                                    </Button>
+                                      <Trash2 className="size-[13px]" aria-hidden="true" />
+                                    </button>
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -157,9 +167,7 @@ export function ResourceTable<
             </table>
           </div>
         )}
-        {footer === undefined ? null : (
-          <div className="border-t border-border px-5 py-3">{footer}</div>
-        )}
+        {footer === undefined ? null : <div className="px-[18px] py-3">{footer}</div>}
       </div>
     </TooltipProvider>
   )

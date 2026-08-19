@@ -20,6 +20,10 @@
   /* The admin prototype's own surfaces and hues (`admin-prototip.dc.html`, 19.08.2026). Same rule
    * as above: the values live in the two theme blocks below, this block only names them so
    * Tailwind emits `bg-adm-*` / `text-adm-*` utilities. */
+  /* The preset routes `--mr-surface-raised` into shadcn's `--popover` but never names a colour
+   * after it, so `bg-mr-surface-raised` is not a utility — it compiles to nothing and the element
+   * comes out transparent (CLAUDE.md §5, found again here on the confirm dialog). Named here. */
+  --color-adm-raised: var(--mr-surface-raised);
   --color-adm-hdr: var(--adm-hdr);
   --color-adm-inbg: var(--adm-inbg);
   --color-adm-btn: var(--adm-btn);
