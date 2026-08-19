@@ -34,8 +34,8 @@ export interface RolesScreenProps {
   heldPermissions: readonly string[]
 }
 
-const STANDARD_BADGE = `${BADGE_SHELL_CLASSES} border-mr-info bg-mr-info-subtle text-mr-info-strong`
-const CUSTOM_BADGE = `${BADGE_SHELL_CLASSES} border-mr-accent bg-mr-accent-subtle text-mr-accent-strong`
+const STANDARD_BADGE = `${BADGE_SHELL_CLASSES} border-mr-info bg-mr-info-subtle text-mr-info-strong dark:border-mr-info/55 dark:bg-mr-info/20 dark:text-mr-info`
+const CUSTOM_BADGE = `${BADGE_SHELL_CLASSES} border-mr-accent bg-mr-accent-subtle text-mr-accent-strong dark:border-mr-accent/55 dark:bg-mr-accent/20 dark:text-mr-accent`
 
 export function RolesScreen({ heldPermissions }: RolesScreenProps): React.ReactElement {
   const { locale } = useLocale()

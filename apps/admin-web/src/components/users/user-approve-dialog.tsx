@@ -217,7 +217,7 @@ export function UserApproveDialog({
 
         <div className="space-y-4">
           {user !== null && user.requestedCompany !== null && user.requestedCompany !== '' ? (
-            <div className="rounded-md border border-mr-info-subtle bg-mr-info-subtle/40 px-3 py-2 text-sm">
+            <div className="rounded-md border border-mr-info-subtle bg-mr-info-subtle/40 px-3 py-2 text-sm dark:border-mr-info/40 dark:bg-mr-info/15">
               <span className="text-muted-foreground">
                 {m.users_approve_dialog_requested_company_label()}:{' '}
               </span>

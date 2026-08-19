@@ -216,7 +216,7 @@ export function RoleEditorDialog({
           statement about the world and not about what is being typed.
         */}
         {holderCount > 0 && !readOnly ? (
-          <p className="rounded-md border border-mr-warning bg-mr-warning-subtle px-3 py-2 text-sm text-mr-warning-strong">
+          <p className="rounded-md border border-mr-warning bg-mr-warning-subtle px-3 py-2 text-sm text-mr-warning-strong dark:bg-mr-warning/20 dark:text-mr-warning">
             {m.roles_holders_warning({ count: holderCount })}
           </p>
         ) : null}

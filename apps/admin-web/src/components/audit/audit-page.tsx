@@ -37,7 +37,7 @@ export function AuditPageContent(): ReactElement {
         <AuditTableSkeleton />
       ) : query.isError ? (
         <div
-          className="rounded-lg border border-dashed border-mr-error/40 bg-mr-error-subtle px-6 py-12 text-center"
+          className="rounded-lg border border-dashed border-mr-error/40 bg-mr-error-subtle px-6 py-12 text-center dark:bg-mr-error/15"
           role="alert"
         >
           <p className="text-sm text-mr-error-strong">{m.audit_error()}</p>

@@ -65,7 +65,6 @@ function DashboardContent(): ReactElement {
         <Heading level="h1" className="mb-2">
           {m.dashboard_welcome({ userName })}
         </Heading>
-        <p className="text-muted-foreground">{m.nav_dashboard()}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -155,7 +155,7 @@ function SettingField({
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{text.label()}</span>
         {isDefault && (
-          <span className="rounded-full bg-mr-neutral-subtle px-2 py-0.5 text-[11px] text-mr-neutral-strong">
+          <span className="rounded-full bg-mr-neutral-subtle px-2 py-0.5 text-[11px] text-mr-neutral-strong dark:bg-mr-neutral-600 dark:text-mr-neutral-200">
             {m.app_settings_default_badge()}
           </span>
         )}

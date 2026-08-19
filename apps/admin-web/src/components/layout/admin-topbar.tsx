@@ -61,6 +61,10 @@ export function AdminTopbar({ onToggleSidebar }: AdminTopbarProps): ReactElement
       </button>
       <MrEnginesLogo theme={resolvedTheme} className="h-7 w-auto" />
       <span aria-hidden="true" className="hidden h-4 w-px flex-none bg-mr-border-strong sm:block" />
+      <span className="hidden whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:block">
+        {m.admin_app_eyebrow()}
+      </span>
+      <span aria-hidden="true" className="hidden h-4 w-px flex-none bg-mr-border-strong md:block" />
       <span className="hidden truncate font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:block">
         {sectionLabel(pathname)}
       </span>
