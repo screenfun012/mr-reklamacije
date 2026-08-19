@@ -11,9 +11,10 @@ import {
   TwoFactorVerifyForm,
 } from '@mr/auth/route-guards'
 import { m } from '@mr/i18n'
-import { Button, Card, CardContent, CardHeader, Heading, Input, PasswordInput } from '@mr/ui'
+import { PasswordInput } from '@mr/ui'
 
 import { authClient } from '~/lib/auth-client'
+import { admFieldClassName, admLabelClassName, admPrimaryButtonClassName } from '~/lib/adm-chrome'
 
 const loginSearchSchema = z.object({
   reason: z.literal(LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE).optional(),
@@ -113,22 +114,24 @@ function LoginComponent(): React.ReactElement {
   })
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[url('/background.png')] bg-cover bg-center bg-no-repeat"
-      />
-      <Card className="relative z-10 w-full max-w-md border border-white/15 bg-card/75 shadow-xl backdrop-blur-md">
-        <CardHeader>
-          <Heading level="h2" as="h1">
+    // The workshop photograph is gone: the prototype puts the panel's own graph paper behind this
+    // card, and a sign-in for one administrator does not need a hero. internal-web and portal-web
+    // keep theirs — they are the screens clients and the shop floor see.
+    <main className="adm-grid relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <div className="relative z-10 w-full max-w-[420px] rounded-2xl border border-border bg-card px-9 py-8">
+        <div className="mb-4">
+          <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-adm-red-h">
+            {m.admin_login_eyebrow()}
+          </p>
+          <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-foreground">
             {m.auth_login_title()}
-          </Heading>
-        </CardHeader>
-        <CardContent>
+          </h1>
+        </div>
+        <div>
           {reason === LOGIN_REDIRECT_REASON_INSUFFICIENT_ROLE ? (
             <div
               role="alert"
-              className="mb-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground"
+              className="mb-4 rounded-[10px] border border-mr-border-strong bg-adm-inbg px-3.5 py-2.5 text-[13px] leading-[1.5] text-foreground"
             >
               {m.auth_login_insufficient_role()}
             </div>
@@ -141,7 +144,10 @@ function LoginComponent(): React.ReactElement {
                 onError={(message: string) => setAuthError(message)}
               />
               {authError !== null ? (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                <div
+                  role="alert"
+                  className="rounded-[10px] border border-mr-brand/35 bg-mr-brand/10 px-3.5 py-2.5 text-[13px] leading-[1.5] text-foreground"
+                >
                   {authError}
                 </div>
               ) : null}
@@ -160,14 +166,15 @@ function LoginComponent(): React.ReactElement {
               <form.Field
                 name="email"
                 children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="email" className="text-sm font-medium">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="email" className={admLabelClassName}>
                       {m.auth_login_email()}
                     </label>
-                    <Input
+                    <input
                       id="email"
                       type="email"
                       autoComplete="email"
+                      className={`${admFieldClassName} h-[46px] text-[15px]`}
                       value={field.state.value}
                       onChange={(e) => {
                         field.handleChange(e.target.value)
@@ -176,7 +183,7 @@ function LoginComponent(): React.ReactElement {
                       disabled={isPending}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
+                      <span className="text-[12.5px] text-adm-red-h">
                         {formatFieldError(field.state.meta.errors[0])}
                       </span>
                     )}
@@ -187,13 +194,16 @@ function LoginComponent(): React.ReactElement {
               <form.Field
                 name="password"
                 children={(field) => (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="password" className="text-sm font-medium">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="password" className={admLabelClassName}>
                       {m.auth_login_password()}
                     </label>
+                    {/* Still `@mr/ui`'s: it carries the show/hide eye, which is a behaviour and not
+                        a skin. Only its height is pulled up to the field beside it. */}
                     <PasswordInput
                       id="password"
                       autoComplete="current-password"
+                      className="h-[46px] rounded-[9px] border-mr-border-strong bg-adm-inbg text-[15px]"
                       value={field.state.value}
                       onChange={(e) => {
                         field.handleChange(e.target.value)
@@ -202,7 +212,7 @@ function LoginComponent(): React.ReactElement {
                       disabled={isPending}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <span className="text-sm text-destructive">
+                      <span className="text-[12.5px] text-adm-red-h">
                         {formatFieldError(field.state.meta.errors[0])}
                       </span>
                     )}
@@ -211,18 +221,25 @@ function LoginComponent(): React.ReactElement {
               />
 
               {authError !== null && (
-                <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md">
+                <div
+                  role="alert"
+                  className="rounded-[10px] border border-mr-brand/35 bg-mr-brand/10 px-3.5 py-2.5 text-[13px] leading-[1.5] text-foreground"
+                >
                   {authError}
                 </div>
               )}
 
-              <Button type="submit" loading={isPending} className="w-full">
+              <button
+                type="submit"
+                disabled={isPending}
+                className={`${admPrimaryButtonClassName} h-12 w-full flex-none`}
+              >
                 {m.auth_login_submit()}
-              </Button>
+              </button>
             </form>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
   )
 }

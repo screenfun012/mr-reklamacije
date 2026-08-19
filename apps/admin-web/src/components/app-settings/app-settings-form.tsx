@@ -9,23 +9,11 @@ import {
   type AppSettingDefinition,
   type AppSettingValues,
 } from '@mr/shared'
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Heading,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  toast,
-} from '@mr/ui'
+import { cn, toast } from '@mr/ui'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+
+import { admFieldClassName, admPrimaryButtonClassName } from '~/lib/adm-chrome'
 
 /**
  * The registry carries no text on purpose — every user-facing string in this repository comes from
@@ -103,37 +91,50 @@ export function AppSettingsForm(): React.ReactElement {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <Heading level="h1">{m.app_settings_title()}</Heading>
-        <p className="max-w-2xl text-sm text-muted-foreground">{m.app_settings_subtitle()}</p>
+    <div className="flex max-w-[760px] flex-col gap-4">
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+          {m.app_settings_title()}
+        </h1>
+        <p className="mt-[5px] text-[13px] text-muted-foreground">{m.app_settings_subtitle()}</p>
       </div>
 
       {GROUP_ORDER.map((group) => (
-        <Card key={group} className="max-w-2xl">
-          <CardHeader>
-            <CardTitle>{GROUP_TITLE[group]()}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {APP_SETTINGS.filter((definition) => definition.group === group).map((definition) => (
-              <SettingField
-                key={definition.key}
-                definition={definition}
-                value={draft[definition.key] ?? definition.defaultValue}
-                onChange={(next) => setDraft((current) => ({ ...current, [definition.key]: next }))}
-              />
-            ))}
-          </CardContent>
-        </Card>
+        <section
+          key={group}
+          className="overflow-hidden rounded-[14px] border border-border bg-card"
+        >
+          <h2 className="border-b border-border px-5 py-3.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-adm-red-h">
+            {GROUP_TITLE[group]()}
+          </h2>
+          {APP_SETTINGS.filter((definition) => definition.group === group).map((definition) => (
+            <SettingField
+              key={definition.key}
+              definition={definition}
+              value={draft[definition.key] ?? definition.defaultValue}
+              onChange={(next) => setDraft((current) => ({ ...current, [definition.key]: next }))}
+            />
+          ))}
+        </section>
       ))}
 
-      <Button
-        onClick={handleSave}
-        disabled={changed.length === 0 || saveMutation.isPending}
-        className="max-w-2xl"
-      >
-        {m.app_settings_save()}
-      </Button>
+      <div className="flex items-center justify-end gap-3.5">
+        {/* The button is dead until something changed, so it has to say what it is waiting for —
+            and, once there is something, exactly how much of it leaves this screen. */}
+        <span className="text-[12.5px] text-muted-foreground">
+          {changed.length === 0
+            ? m.app_settings_no_changes()
+            : m.app_settings_changed_count({ count: changed.length })}
+        </span>
+        <button
+          type="button"
+          className={`${admPrimaryButtonClassName} flex-none px-7`}
+          disabled={changed.length === 0 || saveMutation.isPending}
+          onClick={handleSave}
+        >
+          {m.app_settings_save()}
+        </button>
+      </div>
     </div>
   )
 }
@@ -150,42 +151,69 @@ function SettingField({
   const text = SETTING_TEXT[definition.key]
   const isDefault = value === definition.defaultValue
 
+  const isBoolean = definition.valueType === AppSettingValueType.Boolean
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">{text.label()}</span>
-        {isDefault && (
-          <span className="rounded-full bg-mr-neutral-subtle px-2 py-0.5 text-[11px] text-mr-neutral-strong dark:bg-mr-neutral-600 dark:text-mr-neutral-200">
-            {m.app_settings_default_badge()}
-          </span>
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-border px-5 py-4 last:border-b-0">
+      <div className="min-w-[240px] flex-1">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-[13.5px] font-bold text-foreground">{text.label()}</span>
+          {isDefault && (
+            <span className="rounded-md bg-adm-inbg px-[7px] py-0.5 font-mono text-[8.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {m.app_settings_default_badge()}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-[12px] leading-[1.5] text-muted-foreground">{text.help()}</p>
+        {isDefault ? null : (
+          <button
+            type="button"
+            className="mt-1 cursor-pointer text-[11.5px] font-bold text-adm-red-h"
+            onClick={() => onChange(definition.defaultValue)}
+          >
+            {m.app_settings_reset()}
+          </button>
         )}
       </div>
 
-      {definition.valueType === AppSettingValueType.Boolean ? (
-        <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="max-w-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="true">{m.app_settings_toggle_on()}</SelectItem>
-            <SelectItem value="false">{m.app_settings_toggle_off()}</SelectItem>
-          </SelectContent>
-        </Select>
+      {isBoolean ? (
+        <div
+          className="flex flex-none overflow-hidden rounded-[9px] border border-mr-border-strong"
+          role="group"
+          aria-label={text.label()}
+        >
+          {[
+            { value: 'true', label: m.app_settings_toggle_on(), on: 'bg-adm-grn/15 text-adm-grn' },
+            {
+              value: 'false',
+              label: m.app_settings_toggle_off(),
+              on: 'bg-mr-brand/[0.13] text-adm-red-h',
+            },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={value === option.value}
+              className={cn(
+                'cursor-pointer px-[18px] py-2.5 text-[12px] font-extrabold transition-colors',
+                value === option.value
+                  ? option.on
+                  : 'bg-transparent text-muted-foreground hover:text-foreground',
+              )}
+              onClick={() => onChange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       ) : (
-        <Input
+        <input
+          className={`${admFieldClassName} max-w-[320px] flex-none font-mono text-[13px]`}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="max-w-md"
           inputMode={definition.format === 'email' ? 'email' : 'text'}
+          aria-label={text.label()}
         />
-      )}
-
-      <p className="text-xs text-muted-foreground">{text.help()}</p>
-
-      {!isDefault && (
-        <Button variant="ghost" size="sm" onClick={() => onChange(definition.defaultValue)}>
-          {m.app_settings_reset()}
-        </Button>
       )}
     </div>
   )
