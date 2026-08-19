@@ -78,12 +78,15 @@ const DETAIL: Record<string, { permissions: string[] }> = {
 
 function stubFetch(): {
   patches: { url: string; body: unknown }[]
+  /** Every DELETE that reached the server — empty is the proof a blocked button did not act. */
+  deletes: string[]
   /** Changes what the NEXT detail read answers, the way another admin's edit would. */
   bumpHolders: () => void
   /** How many times the detail row has been read — the proof a refetch actually landed. */
   detailReads: () => number
 } {
   const patches: { url: string; body: unknown }[] = []
+  const deletes: string[] = []
   let holderBump = 0
   let reads = 0
 
@@ -111,6 +114,11 @@ function stubFetch(): {
           return json({ ...item, ...DETAIL[id] })
         }
 
+        if (init?.method === 'DELETE') {
+          deletes.push(url)
+          return new Response(null, { status: 204 })
+        }
+
         reads += 1
         return json({ ...item, userCount: item.userCount + holderBump, ...DETAIL[id] })
       }
@@ -121,6 +129,7 @@ function stubFetch(): {
 
   return {
     patches,
+    deletes,
     bumpHolders: () => {
       holderBump += 1
     },
@@ -167,14 +176,21 @@ describe('the privileges screen', () => {
    * is the thing this codebase treats as a bug.
    */
   it('will not delete a privilege somebody holds, and says how many', async () => {
-    stubFetch()
+    const { deletes } = stubFetch()
     renderScreen(ALL_HELD)
 
     const row = await screen.findByRole('row', { name: /Držano ovlašćenje/ })
     const remove = within(row).getByRole('button', { name: 'Obriši' })
 
-    expect(remove).toBeDisabled()
-    expect(within(row).getByText(/Broj korisnika: 3/)).toBeInTheDocument()
+    // Announced as disabled but still clickable, because a button that cannot act still has to be
+    // able to say why — the reason rides along as the tooltip and is printed on click.
+    expect(remove).toHaveAttribute('aria-disabled', 'true')
+    expect(remove).toHaveAttribute('title', expect.stringContaining('Broj korisnika: 3'))
+
+    await userEvent.click(remove)
+
+    expect(deletes).toHaveLength(0)
+    expect(screen.queryByText('Brisanje ovlašćenja')).not.toBeInTheDocument()
   })
 
   it('names the consequence, with the number, before a held privilege is saved', async () => {

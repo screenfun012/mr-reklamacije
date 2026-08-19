@@ -8,20 +8,17 @@ import {
   type Permission,
   type RoleListItem,
 } from '@mr/shared'
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  toast,
-  useLocale,
-} from '@mr/ui'
+import { cn, Dialog, DialogContent, DialogDescription, DialogTitle, toast, useLocale } from '@mr/ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+
+import {
+  admFieldClassName,
+  admLabelClassName,
+  admPrimaryButtonClassName,
+  admSecondaryButtonClassName,
+} from '~/lib/adm-chrome'
 
 import { roleModuleLabel } from './role-module-labels.js'
 
@@ -172,136 +169,185 @@ export function RoleEditorDialog({
 
   return (
     <Dialog open={role !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {readOnly ? (
-            <DialogDescription>{m.roles_system_readonly_hint()}</DialogDescription>
-          ) : null}
-        </DialogHeader>
+      <DialogContent
+        unstyled
+        hideClose
+        className="left-1/2 top-1/2 flex max-h-[92vh] w-[1100px] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-mr-border-strong bg-adm-raised shadow-[0_28px_70px_rgba(0,0,0,.5)]"
+      >
+        <div className="flex-none border-b border-border px-6 pb-3.5 pt-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <DialogTitle className="text-lg font-extrabold">{title}</DialogTitle>
+            {readOnly ? (
+              <span className="rounded-[7px] bg-adm-blu/[0.13] px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-adm-blu">
+                {m.roles_badge_standard()} · {m.roles_action_view()}
+              </span>
+            ) : null}
+            <span className="ml-auto font-mono text-[11.5px] font-semibold uppercase text-muted-foreground">
+              {m.roles_matrix_selected({ count: selected.size, total: catalog.data?.length ?? 0 })}
+            </span>
+          </div>
 
-        <div className="space-y-2">
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">{m.roles_field_name_sr()}</span>
-            <Input
-              value={nameSr}
-              disabled={readOnly}
-              onChange={(event) => setNameSr(event.target.value)}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">{m.roles_field_name_en()}</span>
-            <Input
-              value={nameEn}
-              disabled={readOnly}
-              onChange={(event) => setNameEn(event.target.value)}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">{m.roles_field_description()}</span>
-            <Input
-              value={description}
-              disabled={readOnly}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </label>
+          {readOnly ? (
+            <DialogDescription className="mt-3 rounded-[10px] border border-adm-blu/30 bg-adm-blu/[0.09] px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-foreground">
+              {m.roles_system_readonly_hint()}
+            </DialogDescription>
+          ) : (
+            <>
+              <div className="mt-3 flex flex-wrap gap-2.5">
+                <label className="flex min-w-[180px] flex-1 flex-col gap-1.5">
+                  <span className={admLabelClassName}>{m.roles_field_name_sr()}</span>
+                  <input
+                    className={`${admFieldClassName} h-10 text-[13.5px]`}
+                    value={nameSr}
+                    onChange={(event) => setNameSr(event.target.value)}
+                  />
+                </label>
+                <label className="flex min-w-[180px] flex-1 flex-col gap-1.5">
+                  <span className={admLabelClassName}>{m.roles_field_name_en()}</span>
+                  <input
+                    className={`${admFieldClassName} h-10 text-[13.5px]`}
+                    value={nameEn}
+                    onChange={(event) => setNameEn(event.target.value)}
+                  />
+                </label>
+                <label className="flex min-w-[240px] flex-[1.4] flex-col gap-1.5">
+                  <span className={admLabelClassName}>{m.roles_field_description()}</span>
+                  <input
+                    className={`${admFieldClassName} h-10 text-[13.5px]`}
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                  />
+                </label>
+              </div>
+
+              {/*
+                The count comes from the row itself, NOT from the list entry that opened this dialog.
+                The list entry is a snapshot of the moment somebody clicked "Izmeni"; if a person is
+                assigned the set while it is being edited, that snapshot still says nobody holds it —
+                and saving would sign three people out having promised it affects no one. The form
+                deliberately does not follow the server (see `seededFrom`); this sentence
+                deliberately does, because it is a statement about the world and not about what is
+                being typed.
+              */}
+              {holderCount > 0 ? (
+                <p className="mt-2.5 rounded-[10px] border border-adm-amb/35 bg-adm-amb/[0.09] px-3.5 py-2.5 text-[12.5px] leading-[1.5] text-foreground">
+                  {m.roles_holders_warning({ count: holderCount })}
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
 
-        {/*
-          The count comes from the row itself, NOT from the list entry that opened this dialog. The
-          list entry is a snapshot of the moment somebody clicked "Izmeni"; if a person is assigned
-          the set while it is being edited, that snapshot still says nobody holds it — and saving
-          would sign three people out having promised it affects no one. The form deliberately does
-          not follow the server (see `seededFrom`); this sentence deliberately does, because it is a
-          statement about the world and not about what is being typed.
-        */}
-        {holderCount > 0 && !readOnly ? (
-          <p className="rounded-md border border-mr-warning bg-mr-warning-subtle px-3 py-2 text-sm text-mr-warning-strong dark:bg-mr-warning/20 dark:text-mr-warning">
-            {m.roles_holders_warning({ count: holderCount })}
-          </p>
-        ) : null}
+        {/* Three columns of module cards. `columns` rather than a grid: the cards are different
+            heights (three actions to nine), and a grid would leave a ragged hole under every short
+            one — this is the one layout CSS columns is actually for. */}
+        <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+          <div className="gap-3.5 md:columns-2 xl:columns-3">
+            {groups.map((group) => {
+              const chosen = group.items.filter((item) => selected.has(item.id)).length
 
-        <section className="space-y-4">
-          <h3 className="text-sm font-semibold">{m.roles_matrix_title()}</h3>
-
-          {groups.map((group) => (
-            <fieldset key={group.module} className="space-y-2 rounded-md border border-border p-3">
-              <legend className="flex items-center gap-2 px-1 text-sm font-medium">
-                {group.label}
-                {readOnly ? null : (
-                  <>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setGroup(group, true)}
-                    >
-                      {m.roles_matrix_all()}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setGroup(group, false)}
-                    >
-                      {m.roles_matrix_none()}
-                    </Button>
-                  </>
-                )}
-              </legend>
-
-              {group.items.map((item) => {
-                const inputId = `permission-${item.id}`
-                const dead = isDead(item.id)
-
-                return (
-                  <label
-                    key={item.id}
-                    htmlFor={inputId}
-                    className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40"
-                  >
-                    <input
-                      id={inputId}
-                      type="checkbox"
-                      className="mt-0.5 size-4 rounded border-border"
-                      checked={selected.has(item.id)}
-                      disabled={dead}
-                      onChange={() => toggle(item.id)}
-                    />
-                    <span className="space-y-0.5">
-                      <span className="block text-sm font-medium">
-                        {english ? item.nameEn : item.nameSr}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {english ? item.descriptionEn : item.descriptionSr}
-                      </span>
-                      {dead && !readOnly ? (
-                        <span className="block text-xs text-mr-warning-strong">
-                          {m.roles_dead_action_hint()}
-                        </span>
-                      ) : null}
+              return (
+                <fieldset
+                  key={group.module}
+                  className="mb-3.5 break-inside-avoid rounded-xl border border-border bg-card px-3.5 py-3"
+                >
+                  <legend className="sr-only">{group.label}</legend>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex-1 text-[12.5px] font-extrabold text-foreground">
+                      {group.label}
                     </span>
-                  </label>
-                )
-              })}
-            </fieldset>
-          ))}
-        </section>
+                    <span className="font-mono text-[10px] font-semibold text-muted-foreground">
+                      {chosen}/{group.items.length}
+                    </span>
+                    {readOnly ? null : (
+                      <>
+                        <button
+                          type="button"
+                          className="cursor-pointer px-1 font-mono text-[9.5px] font-bold uppercase text-adm-red-h"
+                          onClick={() => setGroup(group, true)}
+                        >
+                          {m.roles_matrix_all()}
+                        </button>
+                        <button
+                          type="button"
+                          className="cursor-pointer px-1 font-mono text-[9.5px] font-bold uppercase text-muted-foreground transition-colors hover:text-foreground"
+                          onClick={() => setGroup(group, false)}
+                        >
+                          {m.roles_matrix_none()}
+                        </button>
+                      </>
+                    )}
+                  </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
-            {m.action_cancel()}
-          </Button>
+                  {group.items.map((item) => {
+                    const inputId = `permission-${item.id}`
+                    const dead = isDead(item.id)
+
+                    return (
+                      <label
+                        key={item.id}
+                        htmlFor={inputId}
+                        // The description rides along as the tooltip. On the screen it would triple
+                        // the height of eighty-four rows and push the last module off three columns.
+                        title={english ? item.descriptionEn : item.descriptionSr}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-md px-1 py-[5px]',
+                          dead ? 'cursor-not-allowed opacity-45' : 'cursor-pointer',
+                        )}
+                      >
+                        <input
+                          id={inputId}
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={selected.has(item.id)}
+                          disabled={dead}
+                          onChange={() => toggle(item.id)}
+                        />
+                        <span
+                          aria-hidden="true"
+                          className="grid size-[17px] flex-none place-items-center rounded-[5px] border-[1.5px] border-mr-border-strong text-transparent peer-checked:border-adm-grn peer-checked:bg-adm-grn peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-mr-brand/40"
+                        >
+                          <Check className="size-3" strokeWidth={3} />
+                        </span>
+                        <span className="text-[12px] text-foreground">
+                          {english ? item.nameEn : item.nameSr}
+                        </span>
+                      </label>
+                    )
+                  })}
+
+                  {/* One sentence per module, not per box: the reason is the same for every dead
+                      action in it, and eighty-four copies of it is noise. */}
+                  {!readOnly && group.items.some((item) => isDead(item.id)) ? (
+                    <p className="mt-1.5 text-[11px] leading-[1.45] text-adm-amb">
+                      {m.roles_dead_action_hint()}
+                    </p>
+                  ) : null}
+                </fieldset>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-none gap-2.5 border-t border-border px-6 py-3.5">
+          <button
+            type="button"
+            className={`${admSecondaryButtonClassName} ml-auto flex-none px-6`}
+            onClick={onClose}
+          >
+            {readOnly ? m.action_close() : m.action_cancel()}
+          </button>
           {readOnly ? null : (
-            <Button
+            <button
               type="button"
+              className={`${admPrimaryButtonClassName} flex-none px-7`}
               disabled={save.isPending || seededFrom === null}
               onClick={() => save.mutate()}
             >
               {m.action_save()}
-            </Button>
+            </button>
           )}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )
