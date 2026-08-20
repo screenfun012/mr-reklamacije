@@ -1,6 +1,7 @@
 import {
   CLAIMS_LIST_VIEW_PERMISSIONS,
   INTAKE_ORDERS_VIEW_PERMISSIONS,
+  MACHINING_CLAIM_CATEGORY_CODE,
   STATISTICS_VIEW_PERMISSIONS,
 } from '@mr/shared'
 import { BarChart3, Briefcase, Car, Cog, Inbox, LayoutDashboard } from 'lucide-react'
@@ -12,6 +13,8 @@ export interface NavItem {
   key: string
   label: () => string
   to: string
+  /** Search params the entry opens its screen with — a filtered view of an existing list. */
+  search?: Record<string, string>
   icon: ComponentType<{ className?: string }>
   /** When set, nav link is hidden unless the user has this permission. */
   permission?: string
@@ -45,13 +48,14 @@ export const internalNavItems: NavItem[] = [
     permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
-    // Placeholder screen: the work exists in the shop but has nowhere to be
-    // recorded yet, so the place is reserved next to Reklamacije rather than
-    // bolted on later. Same gate as claims — whoever handles claims will handle
-    // machining; no permission of its own until there is a backend to guard.
+    // Not a screen of its own: machining is a category a claim carries, so this is the
+    // claims list with that filter applied. It keeps its place in the menu because that
+    // is where people look for the work — but there is nothing behind it to maintain,
+    // and a renamed or retired category needs no change here beyond the code.
     key: 'masinska-obrada',
     label: m.nav_masinska_obrada,
-    to: '/masinska-obrada',
+    to: '/reklamacije',
+    search: { categoryCode: MACHINING_CLAIM_CATEGORY_CODE },
     icon: Cog,
     permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },

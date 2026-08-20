@@ -109,9 +109,9 @@ export function CommandPalette(): React.ReactElement {
     handleOpenChange(false)
   }
 
-  function goTo(to: string): void {
+  function goTo(to: string, search?: Record<string, string>): void {
     close()
-    navigate({ to })
+    navigate(search === undefined ? { to } : { to, search })
   }
 
   function goToClaim(claim: ClaimListItem): void {
@@ -174,7 +174,7 @@ export function CommandPalette(): React.ReactElement {
               <CommandItem
                 key={item.key}
                 value={`nav-${item.key}`}
-                onSelect={() => goTo(item.to)}
+                onSelect={() => goTo(item.to, item.search)}
                 className={ROW_CLASSES}
               >
                 <span

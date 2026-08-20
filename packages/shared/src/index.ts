@@ -64,6 +64,7 @@ export * from './constants/outcome-colors.js'
 export * from './constants/outcome-registry.js'
 export * from './constants/kind-colors.js'
 export * from './constants/kind-registry.js'
+export * from './constants/claim-categories.js'
 export * from './constants/statistics-manufacturer-colors.js'
 export * from './constants/statistics-rank-colors.js'
 export {

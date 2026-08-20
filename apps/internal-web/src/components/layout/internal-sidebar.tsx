@@ -69,6 +69,7 @@ export function InternalSidebar({
             <Link
               key={item.key}
               to={item.to}
+              search={item.search ?? {}}
               title={item.label()}
               onClick={onCloseMobile}
               className={cn(
