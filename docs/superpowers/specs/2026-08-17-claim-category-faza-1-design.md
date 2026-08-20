@@ -4,7 +4,8 @@
 **Grana:** nova, iz `main`
 **Prethodi mu:** sastanak u firmi 16.08.2026 — četiri zaključane odluke (kategorija = polje;
 obaveznost po fazi; uzrok = DEO+KVAR; nova uloga „radnik")
-**Status:** sva tri pitanja odgovorena (Nikola, 17.08.2026) — čeka reč „kreni", kod nije počet
+**Status:** **ODOBREN — Nikola, 20.08.2026.** Migracija `0045` izričito odobrena, backfill potvrđen
+(§10). Kod kreće od Z-1.
 
 ---
 
@@ -199,3 +200,38 @@ auto-servis bez motora), to ograničenje je prvo na šta se nailazi i traži svo
 - Mutaciono testiranje na dva mesta koja se lako razlaze: uslov u `buildActiveClaimWhere` i **oba**
   uslova u objedinjenoj listi (grana `dc` se najlakše zaboravi).
 - Pun gejt zelen pre svakog komita; prolaz kroz pregledač za unos i filter.
+
+---
+
+## 10. Potvrđeno 20.08.2026 (pre prve linije koda)
+
+Admin panel je tog dana otišao na live (`588d3e9`) i Faza 1 je puštena u rad. Šta je rečeno, jer
+menja ili potvrđuje ono gore:
+
+1. **Backfill potvrđen, i ne broji redove.** Nikolina reč: sve što je do sada uneto bio je generalni
+   remont motora. Svaka zatečena reklamacija u obe tabele dobija `REMONT_MOTORA`. ⚠ Broj **134** iz
+   §2 je slika baze iz avgusta; na produkciji ih je više. Migracija pokriva **sve redove kojima je
+   kolona prazna**, nikad nabrojane.
+2. **Migracija `0045` odobrena** izričito — dogovor traži njegovu reč za svaku.
+3. **Menjivost je uslov, ne želja.** Njegova rečenica: ne smemo da zabodemo u jednosmernoj ulici,
+   kod mora biti sređen da se sutra može menjati — ali bez priplitanja bez razloga. Praktično, i
+   proverljivo pri pregledu koda: kategorija je red u šifarniku i nikad `enum`; **nijedan ekran ne
+   grana po kategoriji** (`if (category === 'MASINSKA_OBRADA')` je zabranjen — kategorija je podatak,
+   ne tok); kategorija se gasi, ne briše; nikakva mašinerija za buduće kategorije (generator formi,
+   podesive kolone) — širina dolazi od toga što je kategorija obično polje.
+4. **Redosled faza potvrđen:** 1 → 2 → 3 → 4 → 5 → 6, s tim da je Faza 3 dobila sadržaj (tačka 5).
+5. **Dve odluke koje pripadaju Fazi 3, zabeležene sada da se ne izgube:** sistem hvata **sve**
+   probleme, uključujući one koje majstor reši na licu mesta (forma mora biti kraća od Viber poruke);
+   i **interna prijava i reklamacija kupca su dve stavke koje se kače jedna na drugu** — broje se
+   odvojeno (izveštaj ne sme da sabere 380 internih sitnica i 20 pravih reklamacija u „400"), a dele
+   isti rečnik uzroka.
+6. **Razgovor u aplikaciji + push na telefon su ZASEBAN posao, posle faza** (njegova odluka).
+   Rešeno usput, da se ne istražuje ponovo: **Firebase ne treba** — push je W3C standard (VAPID +
+   service worker + `web-push`), bez vendora i bez cene po poruci; na iPhone-u radi tek kad se
+   aplikacija doda na početni ekran, na Androidu i bez toga. **OpenWA otpada** — nezvanično vozi
+   WhatsApp Web, protivno uslovima, trenutno polomljeno obaveznim passkey-em, i ne rešava traženo
+   (razgovor uz reklamaciju). Kad taj posao dođe na red, dve stvari ulaze u njegov spec: realtime
+   kanal dobija **svestan izuzetak** od pravila „samo signal" (poruka putuje sama, inače svaka poruka
+   tera svakog gledaoca da ponovo povuče ceo razgovor), i **razgovor je interni — klijent ga ne sme
+   videti nikada**, sa testom, kao interne beleške.
+
