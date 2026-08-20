@@ -6,6 +6,10 @@ import {
   clientPortalSummaryOptions,
   CLIENT_CLAIMS_PAGE_SIZE,
 } from '@mr/shared'
+import {
+  categoryCodeForServiceFilter,
+  type PortalServiceFilter,
+} from '~/features/claims/claim-status-presentation'
 import { cn } from '@mr/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, getRouteApi, useNavigate, useRouter } from '@tanstack/react-router'
@@ -23,14 +27,19 @@ import { formatPortalDateEyebrow } from '~/lib/portal-format'
 
 const dashboardSearchSchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
+  // The chosen tab lives in the URL, not in component state: the loader has to know which list
+  // to fetch, and a filtered dashboard stays a link the client can send or reload.
+  service: z.enum(['all', 'engine', 'machining']).optional(),
 })
 
 export const Route = createFileRoute('/claims/')({
   validateSearch: (search) => dashboardSearchSchema.parse(search),
-  loaderDeps: ({ search }) => ({ page: search.page ?? 1 }),
+  loaderDeps: ({ search }) => ({ page: search.page ?? 1, service: search.service ?? 'all' }),
   loader: async ({ context: { queryClient }, deps }) => {
     await Promise.all([
-      queryClient.ensureQueryData(clientClaimsListOptions(deps.page)),
+      queryClient.ensureQueryData(
+        clientClaimsListOptions(deps.page, categoryCodeForServiceFilter(deps.service)),
+      ),
       queryClient.ensureQueryData(clientPortalSummaryOptions()),
     ])
   },
@@ -41,9 +50,7 @@ export const Route = createFileRoute('/claims/')({
 
 const dashboardRoute = getRouteApi('/claims/')
 
-type ServiceFilter = 'all' | 'engine' | 'machining'
-
-const FILTERS: { key: ServiceFilter; label: () => string }[] = [
+const FILTERS: { key: PortalServiceFilter; label: () => string }[] = [
   { key: 'all', label: () => m.portal_filter_all() },
   { key: 'engine', label: () => m.portal_filter_engine() },
   { key: 'machining', label: () => m.portal_filter_machining() },
@@ -67,17 +74,16 @@ function DashboardBackdrop() {
 function DashboardComponent() {
   const navigate = useNavigate()
   const { locale } = useLocale()
-  const { page } = dashboardRoute.useLoaderDeps()
+  const { page, service: filter } = dashboardRoute.useLoaderDeps()
   const { primary } = usePortalCompany()
-  const { data: list } = useSuspenseQuery(clientClaimsListOptions(page))
+  const { data: list } = useSuspenseQuery(
+    clientClaimsListOptions(page, categoryCodeForServiceFilter(filter)),
+  )
   const { data: summary } = useSuspenseQuery(clientPortalSummaryOptions())
-  const [filter, setFilter] = useState<ServiceFilter>('all')
   // One stable timestamp per mount for the eyebrow + relative feed times.
   const [now] = useState(() => new Date())
 
-  // All claims are engine remanufacture until machining claims exist in the
-  // internal app — the machining tab is prepared UI with an honest empty state.
-  const claims = filter === 'machining' ? [] : list.items
+  const claims = list.items
   const totalPages = Math.max(1, Math.ceil(list.total / CLIENT_CLAIMS_PAGE_SIZE))
 
   return (
@@ -124,7 +130,14 @@ function DashboardComponent() {
                   <button
                     key={f.key}
                     type="button"
-                    onClick={() => setFilter(f.key)}
+                    onClick={() => {
+                      // Back to page 1: page 4 of every claim is rarely page 4 of one category,
+                      // and an out-of-range page would show an empty dashboard.
+                      void navigate({
+                        to: '/claims',
+                        search: f.key === 'all' ? {} : { service: f.key },
+                      })
+                    }}
                     className={cn(
                       'cursor-pointer px-[15px] py-2 font-sans text-xs font-semibold transition-colors',
                       index > 0 && 'border-l border-mrp-border',
@@ -153,18 +166,19 @@ function DashboardComponent() {
               </div>
             )}
 
-            {filter !== 'machining' && (
-              <PortalPagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={(nextPage) => {
-                  void navigate({
-                    to: '/claims',
-                    search: nextPage === 1 ? {} : { page: nextPage },
-                  })
-                }}
-              />
-            )}
+            <PortalPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(nextPage) => {
+                void navigate({
+                  to: '/claims',
+                  search: {
+                    ...(nextPage === 1 ? {} : { page: nextPage }),
+                    ...(filter === 'all' ? {} : { service: filter }),
+                  },
+                })
+              }}
+            />
           </div>
 
           <div className="flex flex-col gap-5">

@@ -6,6 +6,11 @@ import { SectionNewBadge } from '~/components/section-new-badge'
 
 import { claimServiceType, serviceTypeLabel } from './claim-status-presentation'
 
+function serviceLabelOrDash(claim: ClientClaimDetail): string {
+  const service = claimServiceType(claim)
+  return service === null ? '—' : serviceTypeLabel(service)
+}
+
 function BasicsCell({
   label,
   value,
@@ -50,10 +55,7 @@ export function BasicsCard({ claim }: { claim: ClientClaimDetail }) {
           value={claim.manufacturerName ?? claim.engineTypeManufacturer ?? '—'}
         />
         <BasicsCell label={m.portal_detail_field_serial()} value={claim.engineCode ?? '—'} mono />
-        <BasicsCell
-          label={m.portal_detail_field_service()}
-          value={serviceTypeLabel(claimServiceType())}
-        />
+        <BasicsCell label={m.portal_detail_field_service()} value={serviceLabelOrDash(claim)} />
       </div>
     </div>
   )

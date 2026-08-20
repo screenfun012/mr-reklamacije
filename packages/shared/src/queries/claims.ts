@@ -63,7 +63,8 @@ export const CLIENT_CLAIMS_PAGE_SIZE = 10 satisfies ClaimsPageSize
  */
 export const clientClaimKeys = {
   lists: () => ['claims', 'client-list'] as const,
-  list: (page: number, pageSize: number) => [...clientClaimKeys.lists(), page, pageSize] as const,
+  list: (page: number, pageSize: number, categoryCode?: string) =>
+    [...clientClaimKeys.lists(), page, pageSize, categoryCode] as const,
   summary: () => ['dashboard', 'client-summary'] as const,
   detail: (id: string) => ['emotive-claims', 'client-detail', id] as const,
 }
@@ -77,12 +78,20 @@ export const clientClaimKeys = {
  */
 export function clientClaimsListOptions(
   page = 1,
+  categoryCode?: string,
   pageSize: ClaimsPageSize = CLIENT_CLAIMS_PAGE_SIZE,
 ) {
+  // Filtered by the server, not by the component: the list is paginated 10 to a page, so
+  // dropping rows after they arrive would leave the page counter describing a different list
+  // than the one on screen.
+  const categoryParam = categoryCode === undefined ? '' : `&categoryCode=${categoryCode}`
+
   return queryOptions({
-    queryKey: clientClaimKeys.list(page, pageSize),
+    queryKey: clientClaimKeys.list(page, pageSize, categoryCode),
     queryFn: async () =>
-      fetchJson<ClientClaimListResponse>(`/api/claims?page=${page}&pageSize=${pageSize}`),
+      fetchJson<ClientClaimListResponse>(
+        `/api/claims?page=${page}&pageSize=${pageSize}${categoryParam}`,
+      ),
     staleTime: CLAIMS_LIST_STALE_MS,
     placeholderData: keepPreviousData,
   })

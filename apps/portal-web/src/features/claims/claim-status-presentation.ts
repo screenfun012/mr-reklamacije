@@ -1,5 +1,11 @@
 import { m } from '@mr/i18n'
-import { ClaimOutcome, ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
+import {
+  ClaimOutcome,
+  ClientClaimPhase,
+  ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE,
+  MACHINING_CLAIM_CATEGORY_CODE,
+  type ClientClaimListItem,
+} from '@mr/shared'
 
 /**
  * Visual mapping of the server-derived three-phase status, straight from the
@@ -96,15 +102,44 @@ export function triBarConfig(claim: PhaseSource, trackColor: string): TriBarConf
 }
 
 /**
- * Service type ('engine' | 'head' | 'block' | 'crank'). The claims system only
- * tracks whole-engine remanufacture today; machining claims arrive with a
- * future internal-app feature, at which point this gains a claim parameter and
- * reads the real field.
+ * Service type. A claim now carries a category, so the coarse split — whole-engine overhaul
+ * vs machining — is read from it rather than assumed.
+ *
+ * The finer types ('head' | 'block' | 'crank') are the PART being machined, which is a Faza 2
+ * field and must NOT be guessed from the category: every machining claim would come out as the
+ * same part. They stay in the union unused until that field exists.
+ *
+ * `null` for a category the portal has no tab for. The catalogue is Nikola's to extend, and an
+ * unknown category must not be labelled as one of these two — no label is honest, a wrong one
+ * is a claim about someone's engine.
  */
-export type PortalServiceType = 'engine' | 'head' | 'block' | 'crank'
+export type PortalServiceType = 'engine' | 'head' | 'block' | 'crank' | 'machining'
 
-export function claimServiceType(): PortalServiceType {
-  return 'engine'
+const SERVICE_TYPE_BY_CATEGORY_CODE: Record<string, PortalServiceType> = {
+  [ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE]: 'engine',
+  [MACHINING_CLAIM_CATEGORY_CODE]: 'machining',
+}
+
+export function claimServiceType(
+  claim: Pick<ClientClaimListItem, 'categoryCode'>,
+): PortalServiceType | null {
+  if (claim.categoryCode === null) {
+    return null
+  }
+  return SERVICE_TYPE_BY_CATEGORY_CODE[claim.categoryCode] ?? null
+}
+
+/** The dashboard's service tabs, and the category each one asks the server for. */
+export type PortalServiceFilter = 'all' | 'engine' | 'machining'
+
+export function categoryCodeForServiceFilter(filter: PortalServiceFilter): string | undefined {
+  if (filter === 'engine') {
+    return ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE
+  }
+  if (filter === 'machining') {
+    return MACHINING_CLAIM_CATEGORY_CODE
+  }
+  return undefined
 }
 
 export function serviceTypeLabel(service: PortalServiceType): string {
@@ -117,5 +152,7 @@ export function serviceTypeLabel(service: PortalServiceType): string {
       return m.portal_service_block()
     case 'crank':
       return m.portal_service_crank()
+    case 'machining':
+      return m.portal_service_machining()
   }
 }

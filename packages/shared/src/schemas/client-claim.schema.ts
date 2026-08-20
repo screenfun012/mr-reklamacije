@@ -100,6 +100,12 @@ export const ClientClaimListItemSchema = z.object({
   createdAt: z.string(),
   clientPhase: z.enum(clientClaimPhaseValues),
   freshness: z.enum(claimFreshnessValues).nullable(),
+  /**
+   * The category CODE, not its id and not its name: the id is an internal UUID this whitelist
+   * keeps out, and the name is catalogue text written in Serbian — the portal defaults to
+   * English and labels the two categories it has tabs for with its own translated strings.
+   */
+  categoryCode: z.string().nullable(),
 })
 
 export type ClientClaimListItem = z.infer<typeof ClientClaimListItemSchema>
@@ -151,6 +157,7 @@ export function toClientClaimListItem(item: ClaimListItem): ClientClaimListItem 
     // narrow on kind so it keeps TS total instead of reading a field that
     // doesn't exist on DomaceClaimListItem.
     freshness: item.kind === ClaimKind.Emotive ? item.freshness : null,
+    categoryCode: item.category?.code ?? null,
   }
 }
 

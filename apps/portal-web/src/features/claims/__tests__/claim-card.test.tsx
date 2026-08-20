@@ -4,6 +4,8 @@ import {
   ClaimKind,
   ClaimOutcome,
   ClientClaimPhase,
+  ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE,
+  MACHINING_CLAIM_CATEGORY_CODE,
   type ClientClaimListItem,
 } from '@mr/shared'
 import {
@@ -36,6 +38,7 @@ function baseClaim(overrides: Partial<ClientClaimListItem> = {}): ClientClaimLis
     createdAt: '2026-06-01T00:00:00.000Z',
     clientPhase: ClientClaimPhase.InProgress,
     freshness: null,
+    categoryCode: ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE,
     ...overrides,
   }
 }
@@ -124,5 +127,16 @@ describe('ClaimCard', () => {
     // Reduced-motion users get NO animation — Tailwind's motion-reduce variant
     // overrides animate-pulse back to `animation: none`.
     expect(chip.className).toContain('motion-reduce:animate-none')
+  })
+})
+
+describe("the card's service tag", () => {
+  beforeEach(() => setLocale('sr'))
+
+  it("names the claim's own category", async () => {
+    await renderCard(baseClaim({ categoryCode: MACHINING_CLAIM_CATEGORY_CODE }))
+
+    expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
+    expect(screen.queryByText('Remont motora')).not.toBeInTheDocument()
   })
 })

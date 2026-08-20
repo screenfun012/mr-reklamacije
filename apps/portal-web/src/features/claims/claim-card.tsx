@@ -35,6 +35,8 @@ export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index:
   const clickable = portalPhase(claim) !== ClientClaimPhase.Received
   const style = { animationDelay: `${(0.1 + index * 0.07).toFixed(2)}s` }
 
+  const service = claimServiceType(claim)
+
   const content = (
     <>
       <div className="mb-2.5 flex items-start justify-between gap-3">
@@ -53,9 +55,11 @@ export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index:
         </div>
       </div>
 
-      <span className="mb-3 inline-block rounded-[5px] border border-mrp-border2 px-[9px] py-[3px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-mrp-text2">
-        {serviceTypeLabel(claimServiceType())}
-      </span>
+      {service !== null && (
+        <span className="mb-3 inline-block rounded-[5px] border border-mrp-border2 px-[9px] py-[3px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-mrp-text2">
+          {serviceTypeLabel(service)}
+        </span>
+      )}
 
       <div className="mb-[3px] text-[14.5px] font-semibold">{engineLine(claim)}</div>
       <div className="text-[12.5px] text-mrp-text2">

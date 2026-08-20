@@ -143,6 +143,11 @@ describe('toClientClaimListItem', () => {
     expect(item.outcome).toBe(ClaimOutcome.Pending)
     expect(item.warrantyReport).toBe('Kvar na motoru')
     expect(item.clientPhase).toBe(ClientClaimPhase.Received)
+    // The category travels as its CODE alone: the id is an internal UUID and the name is
+    // catalogue text in Serbian, while the portal runs in English by default and names the
+    // categories it knows with its own strings.
+    expect(item.categoryCode).toBe('REMONT_MOTORA')
+    expect('category' in item).toBe(false)
     // Status is derived server-side from clientVisibility (deriveClientClaimPhase),
     // so no redundant `progressPhase` field ships.
     expect('progressPhase' in item).toBe(false)

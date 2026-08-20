@@ -95,6 +95,7 @@ function ClaimDetailComponent() {
   )
 
   const chip = statusChipConfig(claim)
+  const service = claimServiceType(claim)
   const claimLabel = formatPortalClaimId(claim.mrNumber, claim.claimNumber)
   const technicianName = claim.employeeName
 
@@ -126,12 +127,14 @@ function ClaimDetailComponent() {
           </h1>
           <StatusChip config={chip} size="lg" />
         </div>
-        <span
-          className="mrp-fade-up mb-[30px] inline-block rounded-md border border-mrp-border2 px-[11px] py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-mrp-text2"
-          style={{ animationDelay: '0.08s' }}
-        >
-          {serviceTypeLabel(claimServiceType())}
-        </span>
+        {service !== null && (
+          <span
+            className="mrp-fade-up mb-[30px] inline-block rounded-md border border-mrp-border2 px-[11px] py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-mrp-text2"
+            style={{ animationDelay: '0.08s' }}
+          >
+            {serviceTypeLabel(service)}
+          </span>
+        )}
 
         <TimelineCard claim={claim} />
 

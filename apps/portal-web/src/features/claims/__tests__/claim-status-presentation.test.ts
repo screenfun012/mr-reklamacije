@@ -1,8 +1,20 @@
 import { setLocale } from '@mr/i18n'
-import { ClaimOutcome, ClientClaimPhase, type ClientClaimListItem } from '@mr/shared'
+import {
+  ClaimOutcome,
+  ClientClaimPhase,
+  ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE,
+  MACHINING_CLAIM_CATEGORY_CODE,
+  type ClientClaimListItem,
+} from '@mr/shared'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { portalPhase, statusChipConfig, triBarConfig } from '../claim-status-presentation'
+import {
+  categoryCodeForServiceFilter,
+  claimServiceType,
+  portalPhase,
+  statusChipConfig,
+  triBarConfig,
+} from '../claim-status-presentation'
 
 type PhaseSource = Pick<ClientClaimListItem, 'clientPhase' | 'outcome'>
 
@@ -75,5 +87,27 @@ describe('triBarConfig', () => {
     expect(bar.s1).not.toBe('track')
     expect(bar.s2).toBe('track')
     expect(bar.s3).toBe('track')
+  })
+})
+
+describe('claimServiceType', () => {
+  it("reads the claim's own category instead of assuming every claim is an engine", () => {
+    expect(claimServiceType({ categoryCode: MACHINING_CLAIM_CATEGORY_CODE })).toBe('machining')
+    expect(claimServiceType({ categoryCode: ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE })).toBe('engine')
+  })
+
+  it('says nothing rather than something false for a category the portal has no tab for', () => {
+    // The catalogue is Nikola's to extend; a fifth category must not silently be labelled
+    // "Remont motora" on the client's screen. No label is honest, a wrong one is not.
+    expect(claimServiceType({ categoryCode: 'NOVI_DELOVI' })).toBeNull()
+    expect(claimServiceType({ categoryCode: null })).toBeNull()
+  })
+})
+
+describe('categoryCodeForServiceFilter', () => {
+  it('turns a tab into the category the server filters by', () => {
+    expect(categoryCodeForServiceFilter('all')).toBeUndefined()
+    expect(categoryCodeForServiceFilter('engine')).toBe(ENGINE_OVERHAUL_CLAIM_CATEGORY_CODE)
+    expect(categoryCodeForServiceFilter('machining')).toBe(MACHINING_CLAIM_CATEGORY_CODE)
   })
 })
