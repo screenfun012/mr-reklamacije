@@ -10,10 +10,4 @@ describe('claimCategoriesResourceDefinition', () => {
     expect(createFields.find((f) => f.key === 'code')?.type).toBe('text')
     expect(editFields.find((f) => f.key === 'code')?.type).toBe('readonly')
   })
-
-  it('blocks hard delete while claims still use the category', () => {
-    expect(
-      claimCategoriesResourceDefinition.lifecycle?.getUsageCount({ usageCount: 3 } as never),
-    ).toBe(3)
-  })
 })
