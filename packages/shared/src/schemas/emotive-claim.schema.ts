@@ -123,6 +123,11 @@ export const EmotiveClaimListItemSchema = z.object({
   claimYear: z.coerce.number().int(),
   customerId: z.string().uuid().nullable(),
   customerName: z.string().nullable(),
+  // The kind of work the claim is about, resolved from `categoryId` (Faza 1, spec §3.3).
+  // On the LIST as well as the detail: the list has a Kategorija column and filters by it.
+  // `null` only for a legacy row outside this feature's write paths. The category is data —
+  // nothing in any layer may branch on `code`.
+  category: ClaimCategoryRefSchema.nullable(),
   createdAt: z.string(),
   /**
    * Client-visibility lifecycle timestamps (Phase 2, EMOTIVE only) — INTERNAL,
@@ -161,11 +166,6 @@ export const SectionFreshnessSchema = z.object({
 export type SectionFreshness = z.infer<typeof SectionFreshnessSchema>
 
 export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
-  // Resolved from `categoryId` (Faza 1, spec §3.3). `null` only for a legacy row outside
-  // this feature's write paths — create/update both require `categoryId` via Zod, so a
-  // claim reachable through the API always carries one. The category is data; nothing
-  // in any layer may branch on `code`.
-  category: ClaimCategoryRefSchema.nullable(),
   engineTypeManufacturer: z.string().nullable(),
   sourceCode: z.string().nullable(),
   sourceName: z.string().nullable(),

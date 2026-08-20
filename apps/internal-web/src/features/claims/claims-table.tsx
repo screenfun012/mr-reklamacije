@@ -188,6 +188,13 @@ function createClaimsTableColumns(
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({
+      id: 'category',
+      header: () => m.field_claim_category(),
+      // Data, never a fork: the name is printed, nothing reads the code to decide anything.
+      cell: ({ row }) => row.original.category?.name ?? '—',
+      meta: { cellClassName: 'px-4 py-3' },
+    }),
+    columnHelper.display({
       id: 'engine',
       header: () => m.emotive_claims_col_engine(),
       cell: ({ row }) => <span className="font-mono text-xs">{claimEngineCode(row.original)}</span>,

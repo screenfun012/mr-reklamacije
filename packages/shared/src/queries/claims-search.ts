@@ -20,6 +20,7 @@ export const ClaimsSearchSchema = z.object({
   kind: z.enum(claimKindValues).optional(),
   outcome: z.enum(claimOutcomeValues).optional(),
   manufacturerId: z.string().uuid().optional(),
+  categoryCode: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),
   dateFrom: z.string().regex(isoDatePattern).optional(),
   dateTo: z.string().regex(isoDatePattern).optional(),

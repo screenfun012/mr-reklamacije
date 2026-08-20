@@ -76,6 +76,21 @@ function mapFaultRow(row: {
   }
 }
 
+/**
+ * The kind of work the claim is about. `null` only for a row that predates the column —
+ * create and update both require it, so anything written through the API carries one.
+ */
+function mapCategoryRef(
+  id: string | null,
+  code: string | null,
+  name: string | null,
+): ClaimCategoryRef | null {
+  if (id === null || code === null || name === null) {
+    return null
+  }
+  return { id, code, name }
+}
+
 function mapListItem(row: {
   id: string
   sequenceNumber: number
@@ -95,6 +110,9 @@ function mapListItem(row: {
   outcome: string
   claimYear: number
   totalAmount: number | null
+  categoryId: string | null
+  categoryCode: string | null
+  categoryName: string | null
   createdAt: Date
 }): DomaceClaimListItem {
   return {
@@ -117,6 +135,7 @@ function mapListItem(row: {
     outcome: row.outcome as DomaceClaimListItem['outcome'],
     claimYear: row.claimYear,
     totalAmount: row.totalAmount,
+    category: mapCategoryRef(row.categoryId, row.categoryCode, row.categoryName),
     createdAt: formatTimestamp(row.createdAt),
   }
 }
@@ -343,12 +362,16 @@ export class DomaceClaimsRepository {
         outcome: domaceClaims.outcome,
         claimYear: domaceClaims.claimYear,
         totalAmount: domaceClaims.totalAmount,
+        categoryId: domaceClaims.categoryId,
+        categoryCode: claimCategories.code,
+        categoryName: claimCategories.name,
         createdAt: domaceClaims.createdAt,
       })
       .from(domaceClaims)
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
       .leftJoin(engineManufacturers, eq(domaceClaims.manufacturerId, engineManufacturers.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
+      .leftJoin(claimCategories, eq(domaceClaims.categoryId, claimCategories.id))
       .where(whereClause)
       .orderBy(desc(domaceClaims.dateOfClaim), desc(domaceClaims.id))
       .limit(query.pageSize)
@@ -466,20 +489,11 @@ export class DomaceClaimsRepository {
       originalInvoiceAmount,
       partsAmount,
       laborAmount,
-      categoryId,
-      categoryCode,
-      categoryName,
       ...listFields
     } = row
 
-    const category: ClaimCategoryRef | null =
-      categoryId === null || categoryCode === null || categoryName === null
-        ? null
-        : { id: categoryId, code: categoryCode, name: categoryName }
-
     return {
       ...mapListItem(listFields),
-      category,
       engineTypeManufacturer,
       invoiceNumber,
       originalInvoiceAmount,

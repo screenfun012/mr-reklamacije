@@ -137,17 +137,14 @@ export const DomaceClaimListItemSchema = z.object({
   outcome: z.enum(claimOutcomeValues),
   claimYear: z.coerce.number().int(),
   totalAmount: z.coerce.number().nullable(),
+  // See the EMOTIVE list item: the category rides the list, not only the detail.
+  category: ClaimCategoryRefSchema.nullable(),
   createdAt: z.string(),
 })
 
 export type DomaceClaimListItem = z.infer<typeof DomaceClaimListItemSchema>
 
 export const DomaceClaimDetailSchema = DomaceClaimListItemSchema.extend({
-  // Resolved from `categoryId` (Faza 1, spec §3.3). `null` only for a legacy row outside
-  // this feature's write paths — create/update both require `categoryId` via Zod, so a
-  // claim reachable through the API always carries one. The category is data; nothing
-  // in any layer may branch on `code`.
-  category: ClaimCategoryRefSchema.nullable(),
   engineTypeManufacturer: z.string().nullable(),
   invoiceNumber: z.string().nullable(),
   originalInvoiceAmount: z.coerce.number().nullable(),

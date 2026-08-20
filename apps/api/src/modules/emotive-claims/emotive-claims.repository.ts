@@ -143,6 +143,21 @@ function mapFaultRow(row: {
   }
 }
 
+/**
+ * The kind of work the claim is about. `null` only for a row that predates the column —
+ * create and update both require it, so anything written through the API carries one.
+ */
+function mapCategoryRef(
+  id: string | null,
+  code: string | null,
+  name: string | null,
+): ClaimCategoryRef | null {
+  if (id === null || code === null || name === null) {
+    return null
+  }
+  return { id, code, name }
+}
+
 function mapListItem(row: {
   id: string
   sequenceNumber: number
@@ -163,6 +178,9 @@ function mapListItem(row: {
   claimYear: number
   customerId: string | null
   customerName: string | null
+  categoryId: string | null
+  categoryCode: string | null
+  categoryName: string | null
   createdAt: Date
   clientVisibleAt: Date | null
   publishedAt: Date | null
@@ -188,6 +206,7 @@ function mapListItem(row: {
     claimYear: row.claimYear,
     customerId: row.customerId,
     customerName: row.customerName,
+    category: mapCategoryRef(row.categoryId, row.categoryCode, row.categoryName),
     createdAt: formatTimestamp(row.createdAt),
     clientVisibleAt: row.clientVisibleAt === null ? null : formatTimestamp(row.clientVisibleAt),
     publishedAt: row.publishedAt === null ? null : formatTimestamp(row.publishedAt),
@@ -541,6 +560,9 @@ export class EmotiveClaimsRepository {
         claimYear: emotiveClaims.claimYear,
         customerId: emotiveClaims.customerId,
         customerName: customers.name,
+        categoryId: emotiveClaims.categoryId,
+        categoryCode: claimCategories.code,
+        categoryName: claimCategories.name,
         createdAt: emotiveClaims.createdAt,
         clientVisibleAt: emotiveClaims.clientVisibleAt,
         publishedAt: emotiveClaims.publishedAt,
@@ -549,6 +571,7 @@ export class EmotiveClaimsRepository {
       .leftJoin(customers, eq(emotiveClaims.customerId, customers.id))
       .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
       .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
+      .leftJoin(claimCategories, eq(emotiveClaims.categoryId, claimCategories.id))
       .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
       .where(whereClause)
       .orderBy(desc(emotiveClaims.dateOfClaim), desc(emotiveClaims.id))
@@ -713,20 +736,11 @@ export class EmotiveClaimsRepository {
       sourceCode,
       sourceName,
       sectionFreshness,
-      categoryId,
-      categoryCode,
-      categoryName,
       ...listFields
     } = row
 
-    const category: ClaimCategoryRef | null =
-      categoryId === null || categoryCode === null || categoryName === null
-        ? null
-        : { id: categoryId, code: categoryCode, name: categoryName }
-
     return {
       ...mapListItem(listFields),
-      category,
       engineTypeManufacturer,
       sourceCode,
       sourceName,

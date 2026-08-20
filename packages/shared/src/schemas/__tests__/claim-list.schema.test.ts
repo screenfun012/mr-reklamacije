@@ -78,6 +78,7 @@ describe('ClaimListResponseSchema', () => {
           claimYear: '2026',
           customerId: null,
           customerName: 'SELMAN',
+          category: null,
           createdAt: '2026-04-17T10:00:00.000Z',
           clientVisibleAt: null,
           publishedAt: null,

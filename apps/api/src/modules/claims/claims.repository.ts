@@ -41,6 +41,9 @@ interface UnifiedListRow {
   engine_type_code: string | null
   manufacturer_id: string | null
   manufacturer_name: string | null
+  category_id: string | null
+  category_code: string | null
+  category_name: string | null
   engine_code: string | null
   date_of_claim: Date | string | null
   mr_number: string | null
@@ -76,6 +79,17 @@ function toInt(value: number | string): number {
   return typeof value === 'number' ? value : Number.parseInt(value, 10)
 }
 
+/**
+ * The kind of work the claim is about. `null` for a legacy row that predates the column —
+ * create and update both require it, so a claim written through the API always carries one.
+ */
+function mapCategory(row: UnifiedListRow): ClaimListItem['category'] {
+  if (row.category_id === null || row.category_code === null || row.category_name === null) {
+    return null
+  }
+  return { id: row.category_id, code: row.category_code, name: row.category_name }
+}
+
 function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
   if (row.kind === ClaimKind.Domace) {
     const item: DomaceClaimListItem = {
@@ -98,6 +112,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
       outcome: row.outcome as DomaceClaimListItem['outcome'],
       claimYear: toInt(row.claim_year),
       totalAmount: row.total_amount === null ? null : Number(row.total_amount),
+      category: mapCategory(row),
       createdAt: formatTimestamp(row.created_at),
     }
     return item
@@ -128,6 +143,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     claimYear: toInt(row.claim_year),
     customerId: row.customer_id,
     customerName: row.customer_name,
+    category: mapCategory(row),
     createdAt: formatTimestamp(row.created_at),
     clientVisibleAt,
     publishedAt,
@@ -232,6 +248,14 @@ export class ClaimsRepository {
       conditions.push(sql`ec.manufacturer_id = ${query.manufacturerId}`)
     }
 
+    if (query.categoryCode !== undefined) {
+      // Semi-join on the code, not the id (spec §4.2): the code is what travels in the URL,
+      // and a code no category carries yields an empty list rather than an error.
+      conditions.push(sql`ec.category_id IN (
+        SELECT id FROM claim_categories WHERE code = ${query.categoryCode} AND deleted_at IS NULL
+      )`)
+    }
+
     if (query.dateFrom !== undefined) {
       conditions.push(sql`ec.date_of_claim >= ${query.dateFrom.toISOString().slice(0, 10)}`)
     }
@@ -299,6 +323,9 @@ export class ClaimsRepository {
         et.code AS engine_type_code,
         ec.manufacturer_id,
         em.name AS manufacturer_name,
+        ec.category_id,
+        cc.code AS category_code,
+        cc.name AS category_name,
         ec.engine_code,
         ec.date_of_claim,
         ec.mr_number,
@@ -317,6 +344,7 @@ export class ClaimsRepository {
       FROM emotive_claims ec
       INNER JOIN engine_types et ON et.id = ec.engine_type_id
       LEFT JOIN engine_manufacturers em ON em.id = ec.manufacturer_id
+      LEFT JOIN claim_categories cc ON cc.id = ec.category_id
       LEFT JOIN customers c ON c.id = ec.customer_id
       LEFT JOIN employees emp ON emp.id = ec.employee_id
       ${viewerJoin}
@@ -337,6 +365,14 @@ export class ClaimsRepository {
 
     if (query.manufacturerId !== undefined) {
       conditions.push(sql`dc.manufacturer_id = ${query.manufacturerId}`)
+    }
+
+    if (query.categoryCode !== undefined) {
+      // The DOMAĆE half of the same filter. Both branches or neither — a filter written into
+      // one branch of a UNION silently returns the whole other family.
+      conditions.push(sql`dc.category_id IN (
+        SELECT id FROM claim_categories WHERE code = ${query.categoryCode} AND deleted_at IS NULL
+      )`)
     }
 
     if (query.dateFrom !== undefined) {
@@ -378,6 +414,9 @@ export class ClaimsRepository {
         et.code AS engine_type_code,
         dc.manufacturer_id,
         em.name AS manufacturer_name,
+        dc.category_id,
+        cc.code AS category_code,
+        cc.name AS category_name,
         dc.engine_code,
         dc.date_of_claim,
         dc.mr_number,
@@ -396,6 +435,7 @@ export class ClaimsRepository {
       FROM domace_claims dc
       LEFT JOIN engine_types et ON et.id = dc.engine_type_id
       LEFT JOIN engine_manufacturers em ON em.id = dc.manufacturer_id
+      LEFT JOIN claim_categories cc ON cc.id = dc.category_id
       LEFT JOIN employees emp ON emp.id = dc.employee_id
       WHERE ${whereClause}
     `

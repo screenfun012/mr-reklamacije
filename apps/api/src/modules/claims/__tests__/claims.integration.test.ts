@@ -77,12 +77,12 @@ describe('ClaimsService integration', () => {
 
   async function createEmotive(
     mrNumber: string,
-    options: { dateOfClaim?: Date; dateOfFinish?: Date } = {},
+    options: { dateOfClaim?: Date; dateOfFinish?: Date; categoryCode?: string } = {},
   ): Promise<string> {
     const engineType = await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)
     const created = await container.emotiveClaimsService.create(
       {
-        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
+        categoryId: await getClaimCategoryIdByCode(ctx.db, options.categoryCode ?? 'REMONT_MOTORA'),
         engineTypeId: engineType.id,
         dateOfClaim: options.dateOfClaim ?? new Date('2026-06-15'),
         dateOfFinish: options.dateOfFinish,
@@ -103,11 +103,11 @@ describe('ClaimsService integration', () => {
   async function createDomace(
     mrNumber: string,
     customerName: string,
-    options: { dateOfClaim?: Date | null; dateOfFinish?: Date | null } = {},
+    options: { dateOfClaim?: Date | null; dateOfFinish?: Date | null; categoryCode?: string } = {},
   ): Promise<string> {
     const created = await container.domaceClaimsService.create(
       {
-        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
+        categoryId: await getClaimCategoryIdByCode(ctx.db, options.categoryCode ?? 'REMONT_MOTORA'),
         mrNumber,
         customerName,
         dateOfClaim:
@@ -145,6 +145,39 @@ describe('ClaimsService integration', () => {
       expect(emotiveRow?.kind).toBe(ClaimKind.Emotive)
       expect(domaceRow?.kind).toBe(ClaimKind.Domace)
       expect(domaceRow?.customerName).toBe('Unified Domace Kupac')
+    })
+
+    it('filters by category code, in both families', async () => {
+      // One claim of each family in the category being asked for, one of each outside it.
+      // Both halves matter: the unified list is a UNION, so a filter written into only one
+      // branch still returns the whole other family.
+      await createEmotive('KAT-EM-MAS/26', { categoryCode: 'MASINSKA_OBRADA' })
+      await createDomace('KAT-DO-MAS/26', 'Mašinska domaća', { categoryCode: 'MASINSKA_OBRADA' })
+      await createEmotive('KAT-EM-REM/26')
+      await createDomace('KAT-DO-REM/26', 'Remont domaća')
+
+      const result = await container.claimsService.list(
+        listQuery({ categoryCode: 'MASINSKA_OBRADA', search: 'KAT-' }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.mrNumber).sort()).toEqual([
+        'KAT-DO-MAS/26',
+        'KAT-EM-MAS/26',
+      ])
+      expect(result.items.every((item) => item.category?.code === 'MASINSKA_OBRADA')).toBe(true)
+    })
+
+    it('returns an empty list for a code no category carries, not an error', async () => {
+      await createEmotive('KAT-EM-NEMA/26')
+
+      const result = await container.claimsService.list(
+        listQuery({ categoryCode: 'NE_POSTOJI', search: 'KAT-EM-NEMA' }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items).toEqual([])
+      expect(result.total).toBe(0)
     })
 
     it('filters by kind=domace', async () => {

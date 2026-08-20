@@ -394,6 +394,7 @@
   "claims_detail_section_inspection_report": "Inspection report",
   "claims_field_assigned_worker": "Assigned worker",
   "claims_filter_category": "Category",
+  "claims_filter_category_all": "All categories",
   "claims_filter_clear": "Clear filters",
   "claims_filter_kind": "Type",
   "claims_filter_kind_all": "All",

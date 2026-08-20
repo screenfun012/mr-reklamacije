@@ -1,5 +1,6 @@
 import {
   CLAIM_KIND_REGISTRY,
+  claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   OUTCOME_REGISTRY,
   useDebouncedValue,
@@ -43,6 +44,9 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  const { data: categories } = useSuspenseQuery(
+    claimCategoriesReferenceOptions({ activeOnly: true }),
+  )
 
   const outcomeOptions = useMemo(
     () => [
@@ -63,6 +67,16 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
         keywords: manufacturer.code,
       })),
     [manufacturers],
+  )
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        value: category.code,
+        label: category.name,
+        keywords: category.code,
+      })),
+    [categories],
   )
 
   useEffect(() => {
@@ -87,6 +101,7 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
     search.kind !== undefined ||
     search.outcome !== undefined ||
     search.manufacturerId !== undefined ||
+    search.categoryCode !== undefined ||
     search.dateFrom !== undefined ||
     search.dateTo !== undefined ||
     (search.search !== undefined && search.search.length > 0)
@@ -98,6 +113,7 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
       kind: undefined,
       outcome: undefined,
       manufacturerId: undefined,
+      categoryCode: undefined,
       dateFrom: undefined,
       dateTo: undefined,
       search: undefined,
@@ -190,6 +206,29 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
             onSearchChange({
               ...search,
               manufacturerId: manufacturerId.length > 0 ? manufacturerId : undefined,
+              page: 1,
+            })
+          }}
+        />
+      </div>
+
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.claims_filter_category()}</InternalFieldLabel>
+        <SearchableSelect
+          value={search.categoryCode ?? ''}
+          options={categoryOptions}
+          placeholder={m.claims_filter_category_all()}
+          searchPlaceholder={m.field_search_placeholder()}
+          emptyOptionLabel={m.claims_filter_category_all()}
+          noResultsLabel={m.field_no_results()}
+          className={INTERNAL_CONTROL_CLASSES}
+          aria-label={m.claims_filter_category()}
+          onValueChange={(categoryCode) => {
+            // The CODE travels, not the id (spec §4.2) — this lands in the URL, and the
+            // menu's "Mašinska obrada" entry is an ordinary link built from the same code.
+            onSearchChange({
+              ...search,
+              categoryCode: categoryCode.length > 0 ? categoryCode : undefined,
               page: 1,
             })
           }}

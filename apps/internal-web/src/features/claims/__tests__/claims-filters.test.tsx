@@ -1,4 +1,5 @@
 import {
+  claimCategoriesReferenceQueryKey,
   engineManufacturersReferenceOptions,
   engineManufacturersReferenceQueryKey,
 } from '@mr/shared'
@@ -28,6 +29,17 @@ async function renderFilters(): Promise<void> {
       name: 'BMW',
       sortOrder: 1,
       isActive: true,
+    },
+  ])
+
+  queryClient.setQueryData(claimCategoriesReferenceQueryKey(ACTIVE_MANUFACTURERS_LOOKUP), [
+    {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      code: 'MASINSKA_OBRADA',
+      name: 'Mašinska obrada',
+      sortOrder: 20,
+      isActive: true,
+      usageCount: 0,
     },
   ])
 
