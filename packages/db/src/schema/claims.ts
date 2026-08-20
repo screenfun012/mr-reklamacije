@@ -16,7 +16,13 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import { users } from './access-control.js'
-import { claimSources, engineManufacturers, engineTypes, externalParties } from './catalogs.js'
+import {
+  claimCategories,
+  claimSources,
+  engineManufacturers,
+  engineTypes,
+  externalParties,
+} from './catalogs.js'
 import { customers } from './customers.js'
 import { departments, employees } from './employees.js'
 
@@ -63,6 +69,9 @@ export const emotiveClaims = pgTable(
       mode: 'date',
     }),
     sectionUpdatedAt: jsonb('section_updated_at').$type<Record<string, string>>(),
+    // NULL-able in the database so the rows that predate this column survive; required by Zod on
+    // input. The migration backfills every existing row to REMONT_MOTORA (spec §10.1).
+    categoryId: uuid('category_id'),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
@@ -112,6 +121,12 @@ export const emotiveClaims = pgTable(
       columns: [t.updatedBy],
       foreignColumns: [users.id],
     }).onDelete('set null'),
+    foreignKey({
+      name: 'emotive_claims_category_id_fkey',
+      columns: [t.categoryId],
+      foreignColumns: [claimCategories.id],
+    }).onDelete('restrict'),
+    index('idx_emotive_claims_category_id').on(t.categoryId),
     index('idx_emotive_claims_date_of_claim').on(t.dateOfClaim.desc()),
     index('idx_emotive_claims_date_of_claim_id').on(t.dateOfClaim.desc(), t.id.desc()),
     index('idx_emotive_claims_claim_year_outcome').on(t.claimYear, t.outcome),
@@ -255,6 +270,9 @@ export const domaceClaims = pgTable(
     // Short worker-written English summary shown to the client on the portal
     // (distinct from internal_notes and the rich claim_reports document).
     inspectionReport: text('inspection_report'),
+    // NULL-able in the database so the rows that predate this column survive; required by Zod on
+    // input. The migration backfills every existing row to REMONT_MOTORA (spec §10.1).
+    categoryId: uuid('category_id'),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
@@ -294,6 +312,12 @@ export const domaceClaims = pgTable(
       columns: [t.updatedBy],
       foreignColumns: [users.id],
     }).onDelete('set null'),
+    foreignKey({
+      name: 'domace_claims_category_id_fkey',
+      columns: [t.categoryId],
+      foreignColumns: [claimCategories.id],
+    }).onDelete('restrict'),
+    index('idx_domace_claims_category_id').on(t.categoryId),
     index('idx_domace_claims_date_of_claim').on(t.dateOfClaim.desc()),
     index('idx_domace_claims_date_of_claim_id').on(t.dateOfClaim.desc(), t.id.desc()),
     index('idx_domace_claims_claim_year_outcome').on(t.claimYear, t.outcome),

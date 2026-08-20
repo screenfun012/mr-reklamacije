@@ -220,3 +220,28 @@ export const intakeArrivalModes = pgTable(
   },
   (t) => [uniqueIndex('intake_arrival_modes_code_key').on(t.code)],
 )
+
+/**
+ * What kind of work the claim is about: general overhaul, machining, new parts, car service.
+ *
+ * A catalog rather than an enum on purpose (spec §10.3): a fifth category is a row Nikola adds
+ * from the admin panel, with no deploy and no migration. Nothing in the code may branch on a
+ * value in this table.
+ */
+export const claimCategories = pgTable(
+  'claim_categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [uniqueIndex('claim_categories_code_key').on(t.code)],
+)
