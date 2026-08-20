@@ -31,6 +31,7 @@ export interface StatisticsQueryContext {
   effectiveScope: StatisticsScope
   period: StatisticsPeriod
   manufacturerId?: string
+  categoryCode?: string
 }
 
 function toIsoDate(value: Date): string {
@@ -114,6 +115,10 @@ export function buildStatisticsQueryContext(
     ctx.manufacturerId = filters.manufacturerId
   }
 
+  if (filters.categoryCode !== undefined) {
+    ctx.categoryCode = filters.categoryCode
+  }
+
   return ctx
 }
 
@@ -132,6 +137,15 @@ export function buildActiveClaimWhere(alias: string, ctx: StatisticsQueryContext
 
   if (ctx.manufacturerId !== undefined) {
     conditions.push(sql`${sql.raw(alias)}.manufacturer_id = ${ctx.manufacturerId}`)
+  }
+
+  if (ctx.categoryCode !== undefined) {
+    // Every section of the summary is built on this function, so the category is honoured by
+    // all of them at once — including the ones that know nothing about categories. Semi-join
+    // on the CODE, exactly as the claims list does (spec §4.2): an unknown code counts nothing.
+    conditions.push(sql`${sql.raw(alias)}.category_id IN (
+      SELECT id FROM claim_categories WHERE code = ${ctx.categoryCode} AND deleted_at IS NULL
+    )`)
   }
 
   return sql.join(conditions, sql` AND `)

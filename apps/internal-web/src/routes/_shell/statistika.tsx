@@ -2,6 +2,7 @@ import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-route
 import { Suspense, useCallback } from 'react'
 
 import {
+  claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   INTERNAL_APP_ROLES,
   STATISTICS_VIEW_PERMISSIONS,
@@ -30,6 +31,7 @@ export const Route = createFileRoute('/_shell/statistika')({
       return Promise.all([
         queryClient.ensureQueryData(statisticsSummaryOptions(search)),
         queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
+        queryClient.ensureQueryData(claimCategoriesReferenceOptions({ activeOnly: true })),
       ])
     }
 

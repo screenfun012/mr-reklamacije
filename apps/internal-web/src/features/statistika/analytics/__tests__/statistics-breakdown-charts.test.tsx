@@ -29,6 +29,7 @@ describe('the statistics breakdown, for a reader who may not measure people', ()
       <StatisticsBreakdownCharts
         byEmployee={null}
         byEngineType={{ items: [] }}
+        byCategory={{ items: [] }}
         byCustomer={{ items: [] }}
         byFaults={{ ...EMPTY_FAULTS, byEmployee: null, byDepartment: [PARTY_ROW] }}
       />,
@@ -45,6 +46,7 @@ describe('the statistics breakdown, for a reader who may not measure people', ()
       <StatisticsBreakdownCharts
         byEmployee={{ items: [EMPLOYEE_ROW] }}
         byEngineType={{ items: [] }}
+        byCategory={{ items: [] }}
         byCustomer={{ items: [] }}
         byFaults={{ ...EMPTY_FAULTS, byEmployee: [PARTY_ROW] }}
       />,

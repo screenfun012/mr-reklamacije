@@ -61,6 +61,24 @@ export const StatisticsByManufacturerSchema = z.object({
 
 export type StatisticsByManufacturer = z.infer<typeof StatisticsByManufacturerSchema>
 
+export const StatisticsCategoryRowSchema = z.object({
+  categoryId: z.string().uuid().nullable(),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+  pending: z.coerce.number().int().nonnegative(),
+  accepted: z.coerce.number().int().nonnegative(),
+  rejected: z.coerce.number().int().nonnegative(),
+})
+
+export type StatisticsCategoryRow = z.infer<typeof StatisticsCategoryRowSchema>
+
+export const StatisticsByCategorySchema = z.object({
+  items: z.array(StatisticsCategoryRowSchema),
+})
+
+export type StatisticsByCategory = z.infer<typeof StatisticsByCategorySchema>
+
 export const StatisticsOutcomeDistributionSchema = z.object({
   pending: z.coerce.number().int().nonnegative(),
   accepted: z.coerce.number().int().nonnegative(),
@@ -185,6 +203,7 @@ export type StatisticsTrends = z.infer<typeof StatisticsTrendsSchema>
 export const StatisticsSummarySchema = z.object({
   trends: StatisticsTrendsSchema,
   byManufacturer: StatisticsByManufacturerSchema,
+  byCategory: StatisticsByCategorySchema,
   outcomes: StatisticsOutcomesSchema,
   /** `null` for a reader without `employees.view_analytics` — see `StatisticsByFaultsSchema`. */
   byEmployee: StatisticsByEmployeeSchema.nullable(),

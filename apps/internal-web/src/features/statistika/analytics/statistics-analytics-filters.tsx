@@ -1,5 +1,6 @@
 import {
   CLAIM_KIND_REGISTRY,
+  claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   useDebouncedValue,
   type StatisticsSearch,
@@ -70,6 +71,9 @@ export function StatisticsAnalyticsFilters({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  const { data: categories } = useSuspenseQuery(
+    claimCategoriesReferenceOptions({ activeOnly: true }),
+  )
 
   const yearOptions = useMemo(() => buildYearOptions(), [])
 
@@ -99,6 +103,17 @@ export function StatisticsAnalyticsFilters({
         keywords: manufacturer.code,
       })),
     [manufacturers],
+  )
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        // The CODE is the value here, not the id — the same one the claims list carries.
+        value: category.code,
+        label: category.name,
+        keywords: category.code,
+      })),
+    [categories],
   )
 
   useEffect(() => {
@@ -151,19 +166,23 @@ export function StatisticsAnalyticsFilters({
           aria-label={m.statistika_analytics_filter_period()}
           className={INTERNAL_CONTROL_CLASSES}
           onValueChange={(value) => {
+            // Rebuilt from scratch on purpose (the period keys are mutually exclusive), so every
+            // other filter has to be carried over by hand or it drops when the period changes.
+            const kept = {
+              kind: search.kind,
+              manufacturerId: search.manufacturerId,
+              categoryCode: search.categoryCode,
+            }
+
             if (value === STATISTICS_PERIOD_ROLLING) {
-              onSearchChange({
-                kind: search.kind,
-                manufacturerId: search.manufacturerId,
-              })
+              onSearchChange(kept)
               return
             }
 
             if (value === STATISTICS_PERIOD_CUSTOM) {
               const defaults = defaultCustomDateRange()
               onSearchChange({
-                kind: search.kind,
-                manufacturerId: search.manufacturerId,
+                ...kept,
                 dateFrom: search.dateFrom ?? defaults.dateFrom,
                 dateTo: search.dateTo ?? defaults.dateTo,
               })
@@ -171,8 +190,7 @@ export function StatisticsAnalyticsFilters({
             }
 
             onSearchChange({
-              kind: search.kind,
-              manufacturerId: search.manufacturerId,
+              ...kept,
               year: Number.parseInt(value, 10),
             })
           }}
@@ -217,6 +235,26 @@ export function StatisticsAnalyticsFilters({
             onSearchChange({
               ...search,
               manufacturerId: manufacturerId.length > 0 ? manufacturerId : undefined,
+            })
+          }}
+        />
+      </div>
+
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.statistika_analytics_filter_category()}</InternalFieldLabel>
+        <SearchableSelect
+          className={INTERNAL_CONTROL_CLASSES}
+          value={search.categoryCode ?? ''}
+          options={categoryOptions}
+          placeholder={m.statistika_analytics_filter_category_all()}
+          searchPlaceholder={m.field_search_placeholder()}
+          emptyOptionLabel={m.statistika_analytics_filter_category_all()}
+          noResultsLabel={m.field_no_results()}
+          aria-label={m.statistika_analytics_filter_category()}
+          onValueChange={(categoryCode) => {
+            onSearchChange({
+              ...search,
+              categoryCode: categoryCode.length > 0 ? categoryCode : undefined,
             })
           }}
         />

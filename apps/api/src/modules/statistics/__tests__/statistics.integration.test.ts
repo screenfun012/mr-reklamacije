@@ -382,6 +382,122 @@ describe('Statistics module integration', () => {
     })
   })
 
+  describe('when loading category statistics', () => {
+    async function setClaimCategory(claimId: string, code: string): Promise<void> {
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ categoryId: await getClaimCategoryIdByCode(ctx.db, code) })
+        .where(eq(schema.emotiveClaims.id, claimId))
+    }
+
+    it('groups active claims by category with outcome counts', async () => {
+      // Isolated by a per-test manufacturer: the container commits through the pool, so
+      // claims from other tests and other runs share this database (CLAUDE.md §6).
+      const manufacturerId = await createEngineManufacturer(`STAT-CAT-${Date.now()}`, 'Cat Stats')
+      await createEmotiveClaim('STAT-CAT-1/26', ClaimOutcome.Accepted, daysAgo(10), manufacturerId)
+      await createEmotiveClaim('STAT-CAT-2/26', ClaimOutcome.Pending, daysAgo(9), manufacturerId)
+      const machiningId = await createEmotiveClaim(
+        'STAT-CAT-3/26',
+        ClaimOutcome.Rejected,
+        daysAgo(8),
+        manufacturerId,
+      )
+      await setClaimCategory(machiningId, 'MASINSKA_OBRADA')
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.byCategory.items).toEqual([
+        expect.objectContaining({ code: 'REMONT_MOTORA', total: 2, pending: 1, accepted: 1 }),
+        expect.objectContaining({ code: 'MASINSKA_OBRADA', total: 1, rejected: 1 }),
+      ])
+    })
+
+    it('honours the category filter in a section that knows nothing about categories', async () => {
+      // The point of this test: the condition belongs in buildActiveClaimWhere, which every
+      // section calls. Put it in the category section alone and this one goes red.
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-CAT-FIL-${Date.now()}`,
+        'Cat Filter',
+      )
+      await createEmotiveClaim(
+        'STAT-CAT-FIL-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+      )
+      const machiningId = await createEmotiveClaim(
+        'STAT-CAT-FIL-2/26',
+        ClaimOutcome.Pending,
+        daysAgo(9),
+        manufacturerId,
+      )
+      await setClaimCategory(machiningId, 'MASINSKA_OBRADA')
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+        categoryCode: 'MASINSKA_OBRADA',
+      })
+
+      expect(summary.outcomes.distribution.total).toBe(1)
+      expect(summary.outcomes.distribution.pending).toBe(1)
+      expect(summary.byCategory.items).toEqual([
+        expect.objectContaining({ code: 'MASINSKA_OBRADA', total: 1 }),
+      ])
+    })
+
+    it('gives a category-filtered summary its own cache entry', async () => {
+      // The summary cache is keyed by scope + filters and shared by every reader, so a filter
+      // missing from that key means whoever asks first decides what the next one sees. Redis is
+      // off in tests, so the key is only observable through a live fake — same shape as the
+      // amounts-warming test above.
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-CAT-CACHE-${Date.now()}`,
+        'Cat Cache',
+      )
+      await createEmotiveClaim(
+        'STAT-CAT-CACHE-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+      )
+      const machiningId = await createEmotiveClaim(
+        'STAT-CAT-CACHE-2/26',
+        ClaimOutcome.Accepted,
+        daysAgo(9),
+        manufacturerId,
+      )
+      await setClaimCategory(machiningId, 'MASINSKA_OBRADA')
+
+      const entries = new Map<string, unknown>()
+      const liveCache = {
+        enabled: true,
+        get: async (key: string) => entries.get(key) ?? null,
+        set: async (key: string, value: unknown) => {
+          entries.set(key, value)
+        },
+        incr: async () => 1,
+        getNumber: async () => 1,
+      } as unknown as RedisCache
+
+      const cached = new StatisticsService(
+        container.statisticsRepository,
+        new SummaryCache(liveCache),
+      )
+
+      const unfiltered = await cached.getSummary(FULL_STATISTICS, { manufacturerId })
+      const filtered = await cached.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+        categoryCode: 'MASINSKA_OBRADA',
+      })
+
+      expect(unfiltered.outcomes.distribution.total).toBe(2)
+      expect(filtered.outcomes.distribution.total).toBe(1)
+      expect(entries.size).toBe(2)
+    })
+  })
+
   describe('HTTP', () => {
     it('returns 403 without statistics permissions', async () => {
       const app = createStatisticsTestApp(container, NO_STATISTICS)

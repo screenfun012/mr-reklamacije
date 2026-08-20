@@ -4,6 +4,8 @@ import type { ClaimKind } from '../enums.js'
 export interface StatisticsSummaryFilters {
   kind?: ClaimKind
   manufacturerId?: string
+  /** The category CODE, never its id — the same value the claims list carries in its URL. */
+  categoryCode?: string
   year?: number
   dateFrom?: Date
   dateTo?: Date
@@ -27,6 +29,9 @@ export function normalizeStatisticsSummaryFilters(
   }
   if (filters.manufacturerId !== undefined) {
     normalized.manufacturerId = filters.manufacturerId
+  }
+  if (filters.categoryCode !== undefined) {
+    normalized.categoryCode = filters.categoryCode
   }
   if (filters.year !== undefined) {
     normalized.year = filters.year

@@ -8,6 +8,7 @@ import {
   STATISTICS_UNKNOWN_MANUFACTURER_CODE,
   type StatisticsAcceptanceRateMonth,
   type StatisticsByFaults,
+  type StatisticsCategoryRow,
   type StatisticsCustomerRow,
   type StatisticsDomaceAmounts,
   type StatisticsEmployeeRow,
@@ -46,6 +47,16 @@ interface TrendYearRow extends Record<string, unknown> {
 
 interface ManufacturerRow extends Record<string, unknown> {
   manufacturer_id: string | null
+  code: string | null
+  name: string | null
+  total: number | string
+  pending: number | string
+  accepted: number | string
+  rejected: number | string
+}
+
+interface CategoryRow extends Record<string, unknown> {
+  category_id: string | null
   code: string | null
   name: string | null
   total: number | string
@@ -289,6 +300,62 @@ export class StatisticsRepository {
         row.manufacturer_id === null
           ? 'Nepoznato'
           : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+      total: toInt(row.total),
+      pending: toInt(row.pending),
+      accepted: toInt(row.accepted),
+      rejected: toInt(row.rejected),
+    }))
+  }
+
+  async fetchByCategory(ctx: StatisticsQueryContext): Promise<StatisticsCategoryRow[]> {
+    const branches: SQL[] = []
+
+    if (ctx.effectiveScope.includeEmotive) {
+      branches.push(sql`
+        SELECT ec.category_id, ec.outcome
+        FROM emotive_claims ec
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
+      `)
+    }
+
+    if (ctx.effectiveScope.includeDomace) {
+      branches.push(sql`
+        SELECT dc.category_id, dc.outcome
+        FROM domace_claims dc
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const result = await this.db.execute<CategoryRow>(sql`
+      SELECT
+        c.category_id,
+        MAX(cc.code) AS code,
+        MAX(cc.name) AS name,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Pending})::int AS pending,
+        COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Accepted})::int AS accepted,
+        COUNT(*) FILTER (WHERE c.outcome = ${ClaimOutcome.Rejected})::int AS rejected
+      FROM (${unionSql}) AS c
+      LEFT JOIN claim_categories cc
+        ON cc.id = c.category_id
+      GROUP BY c.category_id
+      HAVING COUNT(*) > 0
+      ORDER BY total DESC, MAX(cc.name) ASC NULLS LAST
+    `)
+
+    // The join deliberately does NOT filter deleted_at: a claim keeps the category it was
+    // given, so a category the office has since removed must still be named here. Hiding it
+    // as "Nepoznato" would be a statement about the claims, and it would be false.
+    return result.rows.map((row) => ({
+      categoryId: row.category_id,
+      code: row.category_id === null ? STATISTICS_UNKNOWN_CODE : (row.code ?? row.category_id),
+      name: row.category_id === null ? 'Nepoznato' : (row.name ?? 'Nepoznato'),
       total: toInt(row.total),
       pending: toInt(row.pending),
       accepted: toInt(row.accepted),

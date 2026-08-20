@@ -1,5 +1,6 @@
 import {
   collapseRankRowsForDisplay,
+  type StatisticsByCategory,
   type StatisticsByCustomer,
   type StatisticsByEmployee,
   type StatisticsByEngineType,
@@ -16,6 +17,7 @@ import { resolveBreakdownDisplayName } from './statistics-breakdown-formatters.j
 import { StatisticsManufacturerRankTooltip } from './statistics-manufacturer-chart-tooltip.js'
 
 export interface StatisticsBreakdownChartsProps {
+  byCategory: StatisticsByCategory
   /** `null` when the reader may not see `employees.view_analytics` figures. */
   byEmployee: StatisticsByEmployee | null
   byEngineType: StatisticsByEngineType
@@ -163,6 +165,7 @@ function BreakdownRankCard({
 }
 
 export function StatisticsBreakdownCharts({
+  byCategory,
   byEmployee,
   byEngineType,
   byCustomer,
@@ -174,6 +177,7 @@ export function StatisticsBreakdownCharts({
    * the filters matched no work, and the section is equally absent — but for a reason the rest of
    * the screen already tells him.
    */
+  const showCategory = byCategory.items.length > 0
   const showEmployee = byEmployee !== null && byEmployee.items.length > 0
   const faultsByEmployee = byFaults.byEmployee
   const showEngineType = byEngineType.items.length > 0
@@ -183,12 +187,32 @@ export function StatisticsBreakdownCharts({
     byFaults.byDepartment.length > 0 ||
     byFaults.byExternalParty.length > 0
 
-  if (!showEmployee && !showEngineType && !showCustomer && !showFaults) {
+  if (!showCategory && !showEmployee && !showEngineType && !showCustomer && !showFaults) {
     return null
   }
 
   return (
     <section className="flex flex-col gap-4">
+      {showCategory ? (
+        <>
+          <div>
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
+              {m.statistika_analytics_category_section_title()}
+            </h3>
+            <p className="mt-1.5 text-sm text-mri-text2">
+              {m.statistika_analytics_category_section_description()}
+            </p>
+          </div>
+          <BreakdownRankCard
+            prefix="category"
+            title={m.statistika_analytics_category_section_title()}
+            items={byCategory.items}
+            gradient={STATISTICS_MONO_GRADIENTS.teal}
+            rollupOthers
+          />
+        </>
+      ) : null}
+
       {showCustomer ? (
         <>
           <div>

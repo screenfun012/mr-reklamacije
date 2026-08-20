@@ -39,6 +39,8 @@ export const STATISTICS_MONO_GRADIENTS = {
   gray: { from: '#6b6c72', to: '#96969e' },
   /** Acceptance rate — success green. */
   green: { from: '#1fa971', to: '#27c286' },
+  /** Category — brand-extension teal (mr-accent, CLAUDE.md §5). */
+  teal: { from: '#0e9384', to: '#15b8a6' },
 } as const
 
 /** Mono axis ticks shared by every statistics chart. */

@@ -19,6 +19,9 @@ export function serializeStatisticsSummaryParams(filters: StatisticsSummaryFilte
   if (normalized.manufacturerId !== undefined) {
     params.set('manufacturerId', normalized.manufacturerId)
   }
+  if (normalized.categoryCode !== undefined) {
+    params.set('categoryCode', normalized.categoryCode)
+  }
   if (normalized.year !== undefined) {
     params.set('year', String(normalized.year))
   }

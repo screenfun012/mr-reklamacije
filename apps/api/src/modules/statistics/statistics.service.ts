@@ -104,6 +104,7 @@ export class StatisticsService {
         scope.includeDomace,
         filters.kind,
         filters.manufacturerId,
+        filters.categoryCode,
         filters.year,
         filters.dateFrom?.toISOString(),
         filters.dateTo?.toISOString(),
@@ -154,6 +155,7 @@ export class StatisticsService {
       byMonth,
       byYear,
       manufacturerItems,
+      categoryItems,
       distribution,
       processingTime,
       acceptanceRateByMonth,
@@ -166,6 +168,7 @@ export class StatisticsService {
       this.repo.fetchTrendsByMonth(queryContext),
       this.repo.fetchTrendsByYear(queryContext),
       this.repo.fetchByManufacturer(queryContext),
+      this.repo.fetchByCategory(queryContext),
       this.repo.fetchOutcomeDistribution(queryContext),
       this.repo.fetchProcessingTime(queryContext),
       this.repo.fetchAcceptanceRateByMonth(queryContext),
@@ -184,6 +187,9 @@ export class StatisticsService {
       },
       byManufacturer: {
         items: manufacturerItems,
+      },
+      byCategory: {
+        items: categoryItems,
       },
       outcomes: {
         distribution,

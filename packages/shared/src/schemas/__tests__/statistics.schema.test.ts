@@ -14,6 +14,7 @@ const emptyOutcomes = {
 }
 
 const emptyBreakdowns = {
+  byCategory: { items: [] },
   byEmployee: { items: [] },
   byEngineType: { items: [] },
   domaceAmounts: { totalAmount: 0, claimCount: 0 },
@@ -72,6 +73,19 @@ describe('StatisticsSummarySchema', () => {
           },
         ],
       },
+      byCategory: {
+        items: [
+          {
+            categoryId: '00000000-0000-4000-8000-000000000040',
+            code: 'REMONT_MOTORA',
+            name: 'Generalni remont motora',
+            total: 5,
+            pending: 1,
+            accepted: 3,
+            rejected: 1,
+          },
+        ],
+      },
       byEngineType: {
         items: [
           {
@@ -115,6 +129,7 @@ describe('StatisticsSummarySchema', () => {
     expect(parsed.byManufacturer.items[1]?.code).toBe(STATISTICS_UNKNOWN_MANUFACTURER_CODE)
     expect(parsed.outcomes.processingTime.sampleSize).toBe(6)
     expect(parsed.byEmployee?.items[0]?.name).toBe('Marko Marković')
+    expect(parsed.byCategory.items[0]?.name).toBe('Generalni remont motora')
     expect(parsed.byEngineType.items[0]?.code).toBe(STATISTICS_UNKNOWN_CODE)
     expect(parsed.domaceAmounts).toEqual({ totalAmount: 3999.75, claimCount: 2 })
     expect(parsed.byCustomer.items[0]?.name).toBe('Auto Stanić')

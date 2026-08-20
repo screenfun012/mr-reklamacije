@@ -16,6 +16,7 @@ export const StatisticsSearchSchema = z
   .object({
     kind: z.enum(claimKindValues).optional(),
     manufacturerId: z.string().uuid().optional(),
+    categoryCode: z.string().trim().min(1).optional(),
     year: z.coerce.number().int().min(2000).max(2100).optional(),
     dateFrom: z.string().regex(isoDatePattern).optional(),
     dateTo: z.string().regex(isoDatePattern).optional(),
@@ -89,6 +90,9 @@ export function statisticsFiltersFromSearch(search: StatisticsSearch): Statistic
   if (search.manufacturerId !== undefined) {
     filters.manufacturerId = search.manufacturerId
   }
+  if (search.categoryCode !== undefined) {
+    filters.categoryCode = search.categoryCode
+  }
 
   if (hasCustomRange && search.dateFrom !== undefined && search.dateTo !== undefined) {
     const dateFrom = parseIsoDate(search.dateFrom)
@@ -115,6 +119,9 @@ export function statisticsSearchFromFilters(filters: StatisticsSummaryFilters): 
   }
   if (normalized.manufacturerId !== undefined) {
     search.manufacturerId = normalized.manufacturerId
+  }
+  if (normalized.categoryCode !== undefined) {
+    search.categoryCode = normalized.categoryCode
   }
   if (normalized.dateFrom !== undefined && normalized.dateTo !== undefined) {
     search.dateFrom = normalized.dateFrom.toISOString().slice(0, 10)
