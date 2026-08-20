@@ -482,6 +482,12 @@ export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
     descriptionSr: '',
     descriptionEn: '',
   },
+  'settings.claim_categories.manage': {
+    nameSr: 'Uređuje kategorije reklamacija',
+    nameEn: 'Maintains the claim-category list',
+    descriptionSr: '',
+    descriptionEn: '',
+  },
   'settings.intake_checklist.manage': {
     nameSr: 'Vodi ček-listu prijema',
     nameEn: 'Maintains the intake checklist',

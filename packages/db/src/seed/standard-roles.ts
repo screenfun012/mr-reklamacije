@@ -209,6 +209,7 @@ export const STANDARD_ROLES = [
       'settings.external_parties.manage',
       'settings.external_parties.create',
       'settings.claim_sources.manage',
+      'settings.claim_categories.manage',
     ],
   },
   {

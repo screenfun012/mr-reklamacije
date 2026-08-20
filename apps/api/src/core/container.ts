@@ -46,6 +46,10 @@ import {
   EngineManufacturersRepository,
   EngineManufacturersService,
 } from '../modules/engine-manufacturers/index.js'
+import {
+  ClaimCategoriesRepository,
+  ClaimCategoriesService,
+} from '../modules/claim-categories/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
 import {
   ClientSubmissionsRepository,
@@ -106,6 +110,8 @@ export interface Container {
   engineTypesService: EngineTypesService
   engineManufacturersRepository: EngineManufacturersRepository
   engineManufacturersService: EngineManufacturersService
+  claimCategoriesRepository: ClaimCategoriesRepository
+  claimCategoriesService: ClaimCategoriesService
   externalPartiesRepository: ExternalPartiesRepository
   externalPartiesService: ExternalPartiesService
   customersRepository: CustomersRepository
@@ -222,6 +228,13 @@ export function buildContainer(
     auditService,
     eventBus,
     notificationsService,
+  )
+
+  const claimCategoriesRepository = new ClaimCategoriesRepository(db)
+  const claimCategoriesService = new ClaimCategoriesService(
+    claimCategoriesRepository,
+    auditService,
+    eventBus,
   )
 
   const externalPartiesRepository = new ExternalPartiesRepository(db)
@@ -438,6 +451,8 @@ export function buildContainer(
     engineTypesService,
     engineManufacturersRepository,
     engineManufacturersService,
+    claimCategoriesRepository,
+    claimCategoriesService,
     externalPartiesRepository,
     externalPartiesService,
     customersRepository,
