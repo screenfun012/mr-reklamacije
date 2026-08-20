@@ -437,12 +437,43 @@ describe('DomaceClaimsService integration', () => {
     })
   })
 
+  describe('when an editor saves only its own slice', () => {
+    it('keeps the category the claim already has', async () => {
+      // The findings, faults and inspection-report editors each PATCH one key. This is the
+      // service-level half of the EMOTIVE HTTP test: a partial edit must neither be refused
+      // nor quietly drop the category.
+      const created = await container.domaceClaimsService.create(
+        await baseCreateInput({ mrNumber: `DOM-PARTIAL-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const updated = await container.domaceClaimsService.update(
+        created.id,
+        { inspectionReport: 'Nalaz pregleda' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.inspectionReport).toBe('Nalaz pregleda')
+      expect(updated.category?.code).toBe('REMONT_MOTORA')
+    })
+  })
+
   describe('DomaceClaimUpdateInputSchema', () => {
-    it('refuses to update a claim without a category, even when only changing one other field', () => {
-      const result = DomaceClaimUpdateInputSchema.safeParse({
-        warrantyReport: 'Ažurirano',
-      })
-      expect(result.success).toBe(false)
+    it('accepts a partial edit that says nothing about the category', () => {
+      // Mirrors EMOTIVE: requiring the category on every PATCH broke the editors that send
+      // one key at a time, and guaranteed nothing — the field cannot be cleared.
+      expect(DomaceClaimUpdateInputSchema.safeParse({ customerName: 'Nova firma' }).success).toBe(
+        true,
+      )
+    })
+
+    it('still refuses a category that is not a category id', () => {
+      expect(DomaceClaimUpdateInputSchema.safeParse({ categoryId: 'REMONT_MOTORA' }).success).toBe(
+        false,
+      )
+      expect(DomaceClaimUpdateInputSchema.safeParse({ categoryId: null }).success).toBe(false)
     })
   })
 

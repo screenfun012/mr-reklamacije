@@ -1638,12 +1638,24 @@ describe('EmotiveClaimsService integration', () => {
   })
 
   describe('EmotiveClaimUpdateInputSchema', () => {
-    it('refuses to update a claim without a category, even when only changing one other field', () => {
-      const result = EmotiveClaimUpdateInputSchema.safeParse({
-        warrantyReport: 'Ažurirano',
-      })
+    it('accepts a partial edit that says nothing about the category', () => {
+      // This schema used to REQUIRE the category on every PATCH, which read like a guarantee
+      // and was none: the field is not nullable, so leaving it out can only mean "as it was".
+      // What it did do was break every editor that PATCHes its own slice — the inspection
+      // report (Gate A), the faults, the findings — each of which sends one key.
+      expect(EmotiveClaimUpdateInputSchema.safeParse({ warrantyReport: 'Ažurirano' }).success).toBe(
+        true,
+      )
+      expect(
+        EmotiveClaimUpdateInputSchema.safeParse({ inspectionReport: 'Head gasket blown' }).success,
+      ).toBe(true)
+    })
 
-      expect(result.success).toBe(false)
+    it('still refuses a category that is not a category id', () => {
+      expect(EmotiveClaimUpdateInputSchema.safeParse({ categoryId: 'REMONT_MOTORA' }).success).toBe(
+        false,
+      )
+      expect(EmotiveClaimUpdateInputSchema.safeParse({ categoryId: null }).success).toBe(false)
     })
   })
 

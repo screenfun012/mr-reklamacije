@@ -540,6 +540,27 @@ describe('EmotiveClaims HTTP', () => {
       const body = (await res.json()) as { warrantyReport: string }
       expect(body.warrantyReport).toBe('Ažurirana garancija')
     })
+
+    it('saves the inspection report on its own, the way the screen sends it', async () => {
+      // The inspection-report editor PATCHes { inspectionReport } and nothing else — and that
+      // save is Gate A, the moment a claim becomes visible to its client. Requiring the
+      // category on every PATCH made this body a 400 and would have taken the report, the
+      // faults and the findings editors down with it.
+      const created = await createClaimViaHttp()
+      const app = createEmotiveClaimsTestApp(container, testUser([...FULL_OPERATOR_PERMS]))
+
+      const res = await app.request(`/api/emotive-claims/${created.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inspectionReport: 'Head gasket blown, block within tolerance.' }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { inspectionReport: string; category: { code: string } }
+      expect(body.inspectionReport).toBe('Head gasket blown, block within tolerance.')
+      // Untouched, not cleared: leaving the category out of a partial edit says nothing about it.
+      expect(body.category.code).toBe('REMONT_MOTORA')
+    })
   })
 
   describe('DELETE /api/emotive-claims/:id', () => {

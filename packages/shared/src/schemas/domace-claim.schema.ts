@@ -66,9 +66,15 @@ export const DomaceClaimUpdateInputSchema = z
     customerName: z.string().trim().max(255).nullable().optional(),
     engineTypeId: z.string().uuid().nullable().optional(),
     manufacturerId: z.string().uuid().nullable().optional(),
-    // Required on update too, deliberately (spec §3.3): a claim being edited must not
-    // leave the edit uncategorised. The Task 1 backfill means no existing claim is blocked.
-    categoryId: z.string().uuid(),
+    /**
+     * OPTIONAL on update, unlike on create. Every editor on the claim screen PATCHes its own
+     * slice — the inspection report alone (which is Gate A), the faults alone, the findings
+     * alone — so demanding the category on every PATCH turned all three into a 400. And it
+     * bought nothing: the field is not nullable here, so an absent key can only mean "leave
+     * the category as it is", never "clear it". A claim still cannot BECOME uncategorised —
+     * create demands one, and the basic-fields editor always sends it.
+     */
+    categoryId: z.string().uuid().optional(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().nullable().optional(),
     warrantyReport: z.string().trim().max(8000).nullable().optional(),
