@@ -3,7 +3,6 @@ import {
   cn,
   dataTableCardClassName,
   dataTableCellClassName,
-  dataTableHeadCellClassName,
   dataTableHeadRowClassName,
   dataTableEmptyClassName,
   dataTableRowHoverOnlyClassName,
@@ -17,6 +16,7 @@ import {
 } from '@mr/ui'
 import { Trash2 } from 'lucide-react'
 
+import { admTableHeadCellClassName, admTableScrollClassName } from '~/lib/adm-chrome'
 import { ResourceRowActions } from './resource-row-actions.js'
 import type { ResourceColumnDef, ResourceDefinition } from './types.js'
 
@@ -78,19 +78,19 @@ export function ResourceTable<
             {definition.emptyLabel()}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={admTableScrollClassName}>
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className={dataTableHeadRowClassName}>
                   {definition.columns.map((column: ResourceColumnDef<TItem>) => (
                     <th
                       key={column.id}
-                      className={`${dataTableHeadCellClassName} ${column.headerClassName ?? ''}`}
+                      className={`${admTableHeadCellClassName} ${column.headerClassName ?? ''}`}
                     >
                       {column.header()}
                     </th>
                   ))}
-                  <th className={dataTableHeadCellClassName}>
+                  <th className={admTableHeadCellClassName}>
                     <span className="sr-only">{definition.editActionLabel()}</span>
                   </th>
                 </tr>

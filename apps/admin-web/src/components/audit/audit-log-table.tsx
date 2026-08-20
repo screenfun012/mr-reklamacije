@@ -3,13 +3,13 @@ import { m } from '@mr/i18n'
 import {
   dataTableCardClassName,
   dataTableCellClassName,
-  dataTableHeadCellClassName,
   dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
 } from '@mr/ui'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Fragment, useState, type ReactElement } from 'react'
 
+import { admTableHeadCellClassName, admTableScrollClassName } from '~/lib/adm-chrome'
 import { AuditActionBadge } from './audit-action-badge'
 import { AuditChanges, AuditJson } from './audit-changes'
 import { auditEntityTypeLabel } from './audit-labels'
@@ -67,16 +67,16 @@ export function AuditLogTable({ items }: AuditLogTableProps): ReactElement {
 
   return (
     <div className={dataTableCardClassName}>
-      <div className="overflow-x-auto">
+      <div className={admTableScrollClassName}>
         <table className="w-full min-w-[920px] text-sm">
           <thead>
             <tr className={dataTableHeadRowClassName}>
-              <th className={`${dataTableHeadCellClassName} w-10`} aria-hidden="true" />
-              <th className={dataTableHeadCellClassName}>{m.audit_col_time()}</th>
-              <th className={dataTableHeadCellClassName}>{m.audit_col_actor()}</th>
-              <th className={dataTableHeadCellClassName}>{m.audit_col_action()}</th>
-              <th className={dataTableHeadCellClassName}>{m.audit_col_entity()}</th>
-              <th className={dataTableHeadCellClassName}>{m.audit_col_changes()}</th>
+              <th className={`${admTableHeadCellClassName} w-10`} aria-hidden="true" />
+              <th className={admTableHeadCellClassName}>{m.audit_col_time()}</th>
+              <th className={admTableHeadCellClassName}>{m.audit_col_actor()}</th>
+              <th className={admTableHeadCellClassName}>{m.audit_col_action()}</th>
+              <th className={admTableHeadCellClassName}>{m.audit_col_entity()}</th>
+              <th className={admTableHeadCellClassName}>{m.audit_col_changes()}</th>
             </tr>
           </thead>
           <tbody>

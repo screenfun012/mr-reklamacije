@@ -10,7 +10,6 @@ import {
   cn,
   dataTableCardClassName,
   dataTableCellClassName,
-  dataTableHeadCellClassName,
   dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
   panelHeaderClassName,
@@ -35,6 +34,7 @@ import {
   admPrimaryButtonClassName,
   admSecondaryButtonClassName,
 } from '~/lib/adm-chrome'
+import { admTableHeadCellClassName, admTableScrollClassName } from '~/lib/adm-chrome'
 import { rowActionClassName } from '~/lib/resource/resource-row-actions'
 
 import { RoleEditorDialog } from './role-editor-dialog.js'
@@ -106,15 +106,15 @@ export function RolesScreen({ heldPermissions }: RolesScreenProps): React.ReactE
             {m.roles_empty()}
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={admTableScrollClassName}>
             <table className="w-full min-w-[840px] text-sm">
               <thead>
                 <tr className={dataTableHeadRowClassName}>
-                  <th className={dataTableHeadCellClassName}>{m.roles_col_name()}</th>
-                  <th className={dataTableHeadCellClassName}>{m.roles_col_kind()}</th>
-                  <th className={dataTableHeadCellClassName}>{m.roles_col_actions()}</th>
-                  <th className={dataTableHeadCellClassName}>{m.roles_col_holders()}</th>
-                  <th className={dataTableHeadCellClassName} />
+                  <th className={admTableHeadCellClassName}>{m.roles_col_name()}</th>
+                  <th className={admTableHeadCellClassName}>{m.roles_col_kind()}</th>
+                  <th className={admTableHeadCellClassName}>{m.roles_col_actions()}</th>
+                  <th className={admTableHeadCellClassName}>{m.roles_col_holders()}</th>
+                  <th className={admTableHeadCellClassName} />
                 </tr>
               </thead>
               <tbody>

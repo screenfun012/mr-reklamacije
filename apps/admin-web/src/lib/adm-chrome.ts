@@ -1,3 +1,5 @@
+import { dataTableHeadCellClassName } from '@mr/ui'
+
 /**
  * The panel's own controls, as the prototype draws them (`design_handoff_admin_panel/`).
  *
@@ -29,3 +31,21 @@ export const admPrimaryButtonClassName =
 /** Its neighbour: cancel, back out, leave things as they are. */
 export const admSecondaryButtonClassName =
   'h-[46px] flex-1 cursor-pointer rounded-[10px] border border-mr-border-strong bg-adm-inbg px-5 text-[12.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50'
+
+/**
+ * The box a list table scrolls inside, capped to what the screen can show.
+ *
+ * Without the cap the table sets the page's height and everything under it goes with it: measured
+ * on `/audit` at fifty rows the document was 3587px tall on a 1211px screen, so the pager sat
+ * 2400px below the fold and changing page meant scrolling the whole way down and back. 24rem is
+ * what the tallest of these screens spends above the table (page title, filter bar, card header)
+ * plus the pager beneath it, which then clears the bottom edge of the screen rather than touching it.
+ */
+export const admTableScrollClassName = 'max-h-[calc(100vh-25rem)] overflow-auto'
+
+/**
+ * A head cell in that box: it stays put while the rows move under it, so the columns keep their
+ * names. Carries its own fill and rule because the shared head strip has neither — transparent, the
+ * rows would read straight through it.
+ */
+export const admTableHeadCellClassName = `${dataTableHeadCellClassName} sticky top-0 z-10 border-b border-border bg-card`

@@ -19,7 +19,6 @@ import {
   dataTableCardClassName,
   dataTableCellClassName,
   dataTableEmptyClassName,
-  dataTableHeadCellClassName,
   dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
   panelHeaderClassName,
@@ -32,6 +31,7 @@ import { Search } from 'lucide-react'
 import { useState, type ReactElement } from 'react'
 
 import { AdmConfirmDialog } from '~/components/adm-confirm-dialog'
+import { admTableHeadCellClassName, admTableScrollClassName } from '~/lib/adm-chrome'
 import { rowActionClassName } from '~/lib/resource/resource-row-actions'
 import { authClient } from '~/lib/auth-client'
 
@@ -106,16 +106,16 @@ function UsersTable({
           {m.users_all_empty()}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className={admTableScrollClassName}>
           <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className={dataTableHeadRowClassName}>
-                <th className={dataTableHeadCellClassName}>{m.users_col_name()}</th>
-                <th className={dataTableHeadCellClassName}>{m.users_col_email()}</th>
-                <th className={dataTableHeadCellClassName}>{m.users_col_status()}</th>
-                <th className={dataTableHeadCellClassName}>{m.users_col_roles()}</th>
-                <th className={dataTableHeadCellClassName}>{m.users_col_registered()}</th>
-                <th className={dataTableHeadCellClassName}>
+                <th className={admTableHeadCellClassName}>{m.users_col_name()}</th>
+                <th className={admTableHeadCellClassName}>{m.users_col_email()}</th>
+                <th className={admTableHeadCellClassName}>{m.users_col_status()}</th>
+                <th className={admTableHeadCellClassName}>{m.users_col_roles()}</th>
+                <th className={admTableHeadCellClassName}>{m.users_col_registered()}</th>
+                <th className={admTableHeadCellClassName}>
                   <span className="sr-only">{m.users_col_actions()}</span>
                 </th>
               </tr>
