@@ -1,5 +1,6 @@
 import {
   ApiError,
+  claimCategoriesReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
@@ -112,6 +113,7 @@ export function DomaceClaimBasicReadOnly({
           label={m.domace_claims_create_field_customer_name()}
           value={claim.customerName}
         />
+        <DetailItem label={m.field_claim_category()} value={claim.category?.name ?? null} />
         <DetailItem
           label={m.domace_claims_create_field_engine_type()}
           value={claim.engineTypeCode}
@@ -157,6 +159,9 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  const { data: categories } = useSuspenseQuery(
+    claimCategoriesReferenceOptions({ activeOnly: true }),
+  )
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -196,12 +201,14 @@ function BasicEditMode({
         form={form}
         employees={employees}
         manufacturers={manufacturers}
+        categories={categories}
         orphanEngineType={
           claim.engineTypeId && claim.engineTypeCode
             ? { id: claim.engineTypeId, code: claim.engineTypeCode }
             : undefined
         }
         currentAssignedWorkerName={claim.employeeName ?? undefined}
+        currentCategoryName={claim.category?.name ?? undefined}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

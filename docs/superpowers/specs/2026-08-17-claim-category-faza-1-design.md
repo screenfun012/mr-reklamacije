@@ -194,7 +194,8 @@ auto-servis bez motora), to ograničenje je prvo na šta se nailazi i traži svo
 
 ## 9. Dokaz pre komita
 
-- Integracioni testovi: kreiranje bez kategorije → 422 (obe familije); filter po kodu vraća samo tu
+- Integracioni testovi: kreiranje bez kategorije → 400 (obe familije, Zod na granici — repo tako
+  mapira svaki `ZodError`, nikad 422 za ovo); filter po kodu vraća samo tu
   kategoriju; nepoznat kod vraća praznu listu; `byCategory` broji ishode isto kao `byManufacturer`;
   brisanje kategorije u upotrebi → 409 (`ON DELETE RESTRICT`).
 - Mutaciono testiranje na dva mesta koja se lako razlaze: uslov u `buildActiveClaimWhere` i **oba**

@@ -38,6 +38,11 @@ export const emotiveClaimStepBasicSchema = z.object({
     .min(1, m.emotive_claims_create_field_customer_required())
     .uuid(m.emotive_claims_create_field_customer_required()),
   manufacturerId: z.string().trim(),
+  categoryId: z
+    .string()
+    .trim()
+    .min(1, m.field_claim_category_required())
+    .uuid(m.field_claim_category_required()),
   engineTypeId: z
     .string()
     .trim()
@@ -55,6 +60,7 @@ export type EmotiveClaimFormValues = {
   claimNumber: string
   customerId: string
   manufacturerId: string
+  categoryId: string
   engineTypeId: string
   engineCode: string
   dateOfFinish: string
@@ -69,6 +75,7 @@ export const EMOTIVE_CLAIM_FORM_DEFAULTS: EmotiveClaimFormValues = {
   claimNumber: '',
   customerId: '',
   manufacturerId: '',
+  categoryId: '',
   engineTypeId: '',
   engineCode: '',
   dateOfFinish: '',
@@ -84,6 +91,7 @@ export function formValuesToCreateInput(values: EmotiveClaimFormValues) {
     claimNumber: values.claimNumber.trim() === '' ? undefined : values.claimNumber,
     customerId: values.customerId,
     manufacturerId: values.manufacturerId.trim() === '' ? undefined : values.manufacturerId,
+    categoryId: values.categoryId,
     engineTypeId: values.engineTypeId,
     engineCode: values.engineCode.trim() === '' ? undefined : values.engineCode,
     dateOfClaim: values.dateOfClaim,

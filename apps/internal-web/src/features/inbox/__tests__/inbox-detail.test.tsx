@@ -2,10 +2,12 @@ import {
   ClientSubmissionStatus,
   clientSubmissionAttachmentsOptions,
   clientSubmissionDetailOptions,
+  claimCategoriesReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
+  type ClaimCategoryListItem,
   type ClientSubmissionAttachmentListResponse,
   type ClientSubmissionDetail,
   type EngineManufacturerListItem,
@@ -31,6 +33,7 @@ const SUBMISSION_ID = '11111111-1111-4111-8111-111111111111'
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222'
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
+const CATEGORY_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const CREATED_CLAIM_ID = '99999999-9999-4999-8999-999999999999'
 
 const SUBMISSION: ClientSubmissionDetail = {
@@ -69,6 +72,16 @@ const ATTACHMENTS: ClientSubmissionAttachmentListResponse = {
 const MANUFACTURERS: EngineManufacturerListItem[] = [
   { id: MANUFACTURER_ID, code: 'MERCEDES', name: 'Mercedes-Benz', sortOrder: 1, isActive: true },
 ]
+const CATEGORIES: ClaimCategoryListItem[] = [
+  {
+    id: CATEGORY_ID,
+    code: 'REMONT_MOTORA',
+    name: 'Generalni remont motora',
+    sortOrder: 10,
+    isActive: true,
+    usageCount: 0,
+  },
+]
 const ENGINE_TYPES: EngineTypeListItem[] = [
   {
     id: ENGINE_TYPE_ID,
@@ -95,6 +108,7 @@ function seedClient(): QueryClient {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
   client.setQueryData(
@@ -178,6 +192,8 @@ describe('InboxDetailView', () => {
       screen.getByRole('combobox', { name: m.emotive_claims_create_field_manufacturer() }),
     )
     await user.click(screen.getByRole('option', { name: 'Mercedes-Benz' }))
+    await user.click(screen.getByRole('combobox', { name: m.field_claim_category() }))
+    await user.click(screen.getByRole('option', { name: 'Generalni remont motora' }))
     await user.click(
       screen.getByRole('combobox', { name: m.emotive_claims_create_field_engine_type() }),
     )

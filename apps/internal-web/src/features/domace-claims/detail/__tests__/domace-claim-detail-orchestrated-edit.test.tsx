@@ -3,9 +3,11 @@ import {
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
+  claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   employeesReferenceOptions,
   engineTypesReferenceOptions,
+  type ClaimCategoryListItem,
   type DomaceClaimDetail,
   type EngineManufacturerListItem,
   type EngineTypeListItem,
@@ -21,6 +23,18 @@ import { DomaceClaimDetailView } from '../domace-claim-detail.js'
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
+const CATEGORY_ID = '99999999-9999-4999-8999-999999999999'
+
+const CATEGORIES: ClaimCategoryListItem[] = [
+  {
+    id: CATEGORY_ID,
+    code: 'REMONT_MOTORA',
+    name: 'Generalni remont motora',
+    sortOrder: 10,
+    isActive: true,
+    usageCount: 0,
+  },
+]
 
 const ENGINE_TYPES: EngineTypeListItem[] = [
   {
@@ -74,6 +88,7 @@ function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetai
     engineTypeManufacturer: 'Mercedes',
     manufacturerId: MANUFACTURER_ID,
     manufacturerName: 'Mercedes-Benz',
+    category: { id: CATEGORY_ID, code: 'REMONT_MOTORA', name: 'Generalni remont motora' },
     engineCode: null,
     dateOfClaim: '2026-05-01',
     mrNumber: 'MR-1/26',
@@ -111,6 +126,7 @@ function renderDetail(claim: DomaceClaimDetail): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
 
   const node: ReactElement = (

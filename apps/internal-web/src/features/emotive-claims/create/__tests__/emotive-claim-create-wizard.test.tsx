@@ -1,12 +1,14 @@
 import {
   CustomerKind,
   customersReferenceOptions,
+  claimCategoriesReferenceOptions,
   departmentsReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
   externalPartiesReferenceOptions,
+  type ClaimCategoryListItem,
   type CustomerListItem,
   type EngineManufacturerListItem,
   type EngineTypeListItem,
@@ -34,6 +36,7 @@ import { EmotiveClaimCreateWizard } from '../emotive-claim-create-wizard.js'
 const CUSTOMER_ID = '55555555-5555-4555-8555-555555555555'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
+const CATEGORY_ID = '99999999-9999-4999-8999-999999999999'
 
 const CUSTOMERS: CustomerListItem[] = [
   {
@@ -48,6 +51,16 @@ const CUSTOMERS: CustomerListItem[] = [
 ]
 const MANUFACTURERS: EngineManufacturerListItem[] = [
   { id: MANUFACTURER_ID, code: 'MERCEDES', name: 'Mercedes-Benz', sortOrder: 1, isActive: true },
+]
+const CATEGORIES: ClaimCategoryListItem[] = [
+  {
+    id: CATEGORY_ID,
+    code: 'REMONT_MOTORA',
+    name: 'Generalni remont motora',
+    sortOrder: 10,
+    isActive: true,
+    usageCount: 0,
+  },
 ]
 const ENGINE_TYPES: EngineTypeListItem[] = [
   {
@@ -77,6 +90,7 @@ async function renderWizard(): Promise<void> {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
   client.setQueryData(departmentsReferenceOptions({ activeOnly: true }).queryKey, [])
@@ -122,7 +136,9 @@ function postedToEmotive(fetchSpy: ReturnType<typeof vi.fn>): boolean {
   })
 }
 
-async function completeBasicStep(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+async function completeBasicStepExceptCategory(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> {
   await user.type(
     screen.getByLabelText(m.emotive_claims_create_field_mr_number(), { exact: false }),
     'MR-TEST/26',
@@ -145,6 +161,13 @@ async function completeBasicStep(user: ReturnType<typeof userEvent.setup>): Prom
   await user.click(screen.getByRole('button', { name: /(^|\D)15(\D|$)/ }))
 }
 
+async function completeBasicStep(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await completeBasicStepExceptCategory(user)
+
+  await user.click(screen.getByRole('combobox', { name: m.field_claim_category() }))
+  await user.click(screen.getByRole('option', { name: 'Generalni remont motora' }))
+}
+
 describe('EmotiveClaimCreateWizard', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -152,6 +175,23 @@ describe('EmotiveClaimCreateWizard', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  // A claim can never leave create uncategorised (spec §3.3, categoryId required on
+  // create/update). Client-side validation on the basic step blocks the transition
+  // to the next step the same way it already blocks a missing customer/engine type.
+  it('will not advance from the basic step until a category is chosen', async () => {
+    const user = userEvent.setup()
+    await renderWizard()
+
+    await completeBasicStepExceptCategory(user)
+    await user.click(screen.getByRole('button', { name: m.emotive_claims_create_next() }))
+
+    // Still on the basic step: Back only enables once we have left it.
+    expect(screen.getByRole('button', { name: m.emotive_claims_create_back() })).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', { name: m.emotive_claims_create_field_customer() }),
+    ).toBeInTheDocument()
   })
 
   // Regression: advancing from the faults step to the review step must NOT save.
@@ -186,6 +226,7 @@ describe('formValuesToCreateInput', () => {
       ...EMOTIVE_CLAIM_FORM_DEFAULTS,
       mrNumber: 'MR-1/26',
       customerId: '55555555-5555-4555-8555-555555555555',
+      categoryId: CATEGORY_ID,
       engineTypeId: '66666666-6666-4666-8666-666666666666',
       dateOfClaim: '2026-05-01',
       employeeId,

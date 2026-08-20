@@ -1,8 +1,10 @@
 import {
   ApiError,
   assignedWorkerReferenceOptions,
+  claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   formatFieldError,
+  type ClaimCategoryListItem,
   type ClientSubmissionDetail,
   type EngineManufacturerListItem,
 } from '@mr/shared'
@@ -43,6 +45,16 @@ function manufacturerOptions(
   }))
 }
 
+function categoryOptions(
+  categories: readonly ClaimCategoryListItem[],
+): { value: string; label: string; keywords: string }[] {
+  return categories.map((category) => ({
+    value: category.id,
+    label: category.name,
+    keywords: category.code,
+  }))
+}
+
 export interface ConvertClaimFormProps {
   submission: ClientSubmissionDetail
   onCancel: () => void
@@ -60,6 +72,9 @@ export function ConvertClaimForm({
 }: ConvertClaimFormProps): React.ReactElement {
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
+  )
+  const { data: categories } = useSuspenseQuery(
+    claimCategoriesReferenceOptions({ activeOnly: true }),
   )
   const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
 
@@ -178,6 +193,33 @@ export function ConvertClaimForm({
                     field.handleChange(nextValue)
                     form.setFieldValue('engineTypeId', '')
                   }}
+                  onBlur={field.handleBlur}
+                />
+              </InternalFieldGroup>
+            )}
+          />
+
+          <form.Field
+            name="categoryId"
+            children={(field) => (
+              <InternalFieldGroup
+                id="categoryId"
+                label={m.field_claim_category()}
+                required
+                error={fieldErrors['categoryId'] ?? formatFieldError(field.state.meta.errors[0])}
+              >
+                <SearchableSelect
+                  id="categoryId"
+                  className={FORM_CONTROL_CLASS}
+                  value={field.state.value}
+                  options={categoryOptions(categories)}
+                  placeholder={m.emotive_claims_create_select_placeholder()}
+                  searchPlaceholder={m.field_search_placeholder()}
+                  emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+                  noResultsLabel={m.field_no_results()}
+                  disabled={isPending}
+                  aria-label={m.field_claim_category()}
+                  onValueChange={field.handleChange}
                   onBlur={field.handleBlur}
                 />
               </InternalFieldGroup>

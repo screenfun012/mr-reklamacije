@@ -2,10 +2,12 @@ import {
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
+  claimCategoriesReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   engineTypesReferenceOptions,
+  type ClaimCategoryListItem,
   type DomaceClaimDetail,
   type EngineManufacturerListItem,
   type EngineTypeListItem,
@@ -21,6 +23,18 @@ import { DomaceClaimBasicSection } from '../domace-claim-basic-section.js'
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
+const CATEGORY_ID = '99999999-9999-4999-8999-999999999999'
+
+const CATEGORIES: ClaimCategoryListItem[] = [
+  {
+    id: CATEGORY_ID,
+    code: 'REMONT_MOTORA',
+    name: 'Generalni remont motora',
+    sortOrder: 10,
+    isActive: true,
+    usageCount: 0,
+  },
+]
 
 const ENGINE_TYPES: EngineTypeListItem[] = [
   {
@@ -53,6 +67,7 @@ function makeClaim(): DomaceClaimDetail {
     claimNumber: 'CLM-1',
     customerName: 'Auto Stanić',
     warrantyReport: 'Report text',
+    category: { id: CATEGORY_ID, code: 'REMONT_MOTORA', name: 'Generalni remont motora' },
     engineTypeId: ENGINE_TYPE_ID,
     engineTypeCode: 'OM651',
     engineTypeManufacturer: 'Mercedes',
@@ -94,6 +109,7 @@ function renderSection(canEdit: boolean): void {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
 

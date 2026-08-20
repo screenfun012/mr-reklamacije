@@ -1,5 +1,10 @@
 import { formatFieldError } from '@mr/shared'
-import type { CustomerListItem, EmployeeListItem, EngineManufacturerListItem } from '@mr/shared'
+import type {
+  ClaimCategoryListItem,
+  CustomerListItem,
+  EmployeeListItem,
+  EngineManufacturerListItem,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import {
   DatePicker,
@@ -35,6 +40,31 @@ function manufacturerOptions(
   }))
 }
 
+/**
+ * Keeps the claim's current category selectable even once the office has
+ * deactivated it (mirrors `EmployeeSelectField`'s `currentEmployeeName`) — a
+ * switched-off category must not silently drop off a claim that carries it.
+ */
+function categoryOptions(
+  categories: readonly ClaimCategoryListItem[],
+  currentValue: string,
+  currentCategoryName: string | undefined,
+): { value: string; label: string; keywords: string }[] {
+  const options = categories.map((category) => ({
+    value: category.id,
+    label: category.name,
+    keywords: category.code,
+  }))
+  if (currentValue !== '' && !options.some((option) => option.value === currentValue)) {
+    options.unshift({
+      value: currentValue,
+      label: currentCategoryName ?? currentValue,
+      keywords: '',
+    })
+  }
+  return options
+}
+
 interface StepBasicFieldsProps {
   form: {
     Field: React.ComponentType<{
@@ -54,6 +84,7 @@ interface StepBasicFieldsProps {
   customers: CustomerListItem[]
   employees: EmployeeListItem[]
   manufacturers: EngineManufacturerListItem[]
+  categories: ClaimCategoryListItem[]
   orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
   disabled: boolean
@@ -61,6 +92,8 @@ interface StepBasicFieldsProps {
   checkMrDuplicate?: boolean
   /** Edit-only: keep the claim's current assigned worker selectable if outside assembly. */
   currentAssignedWorkerName?: string | undefined
+  /** Edit-only: keep the claim's current category selectable even if since deactivated. */
+  currentCategoryName?: string | undefined
 }
 
 export function StepBasicFields({
@@ -68,11 +101,13 @@ export function StepBasicFields({
   customers,
   employees,
   manufacturers,
+  categories,
   orphanEngineType,
   stepErrors,
   disabled,
   checkMrDuplicate = false,
   currentAssignedWorkerName,
+  currentCategoryName,
 }: StepBasicFieldsProps): React.ReactElement {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -176,6 +211,33 @@ export function StepBasicFields({
                 field.handleChange(nextValue)
                 form.setFieldValue('engineTypeId', '')
               }}
+              onBlur={field.handleBlur}
+            />
+          </InternalFieldGroup>
+        )}
+      />
+
+      <form.Field
+        name="categoryId"
+        children={(field) => (
+          <InternalFieldGroup
+            id="categoryId"
+            label={m.field_claim_category()}
+            required
+            error={stepErrors['categoryId'] ?? formatFieldError(field.state.meta.errors[0])}
+          >
+            <SearchableSelect
+              id="categoryId"
+              className={FORM_CONTROL_CLASS}
+              value={field.state.value}
+              options={categoryOptions(categories, field.state.value, currentCategoryName)}
+              placeholder={m.emotive_claims_create_select_placeholder()}
+              searchPlaceholder={m.field_search_placeholder()}
+              emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+              noResultsLabel={m.field_no_results()}
+              disabled={disabled}
+              aria-label={m.field_claim_category()}
+              onValueChange={field.handleChange}
               onBlur={field.handleBlur}
             />
           </InternalFieldGroup>

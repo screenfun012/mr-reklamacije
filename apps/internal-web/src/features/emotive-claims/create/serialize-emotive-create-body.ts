@@ -12,6 +12,7 @@ export function serializeEmotiveCreateBody(
     claimNumber: input.claimNumber,
     customerId: input.customerId,
     manufacturerId: input.manufacturerId,
+    categoryId: input.categoryId,
     engineTypeId: input.engineTypeId,
     engineCode: input.engineCode,
     dateOfClaim: formatDateParam(input.dateOfClaim),

@@ -46,6 +46,11 @@ export const domaceClaimBasicFieldsSchema = z.object({
   invoiceNumber: z.string().trim().max(50),
   customerName: z.string().trim().max(255),
   manufacturerId: z.string().trim(),
+  categoryId: z
+    .string()
+    .trim()
+    .min(1, m.field_claim_category_required())
+    .uuid(m.field_claim_category_required()),
   engineTypeId: z.string().trim(),
   engineCode: z.string().trim().max(100),
   dateOfFinish: optionalDateField,
@@ -79,6 +84,7 @@ export type DomaceClaimFormValues = {
   invoiceNumber: string
   customerName: string
   manufacturerId: string
+  categoryId: string
   engineTypeId: string
   engineCode: string
   dateOfFinish: string
@@ -97,6 +103,7 @@ export const DOMACE_CLAIM_FORM_DEFAULTS: DomaceClaimFormValues = {
   invoiceNumber: '',
   customerName: '',
   manufacturerId: '',
+  categoryId: '',
   engineTypeId: '',
   engineCode: '',
   dateOfFinish: '',
@@ -128,6 +135,7 @@ export function formValuesToCreateInput(values: DomaceClaimFormValues): DomaceCl
     invoiceNumber: emptyToUndefined(values.invoiceNumber),
     customerName: emptyToUndefined(values.customerName),
     manufacturerId: emptyToUndefined(values.manufacturerId),
+    categoryId: emptyToUndefined(values.categoryId),
     engineTypeId: emptyToUndefined(values.engineTypeId),
     engineCode: emptyToUndefined(values.engineCode),
     dateOfClaim: emptyToUndefined(values.dateOfClaim),

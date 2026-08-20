@@ -2,6 +2,7 @@ import {
   ApiError,
   CustomerKind,
   customersReferenceOptions,
+  claimCategoriesReferenceOptions,
   assignedWorkerReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
@@ -105,6 +106,7 @@ function BasicReadOnly({
         )}
         <DetailItem label={m.emotive_claims_col_claim_number()} value={claim.claimNumber} />
         <DetailItem label={m.emotive_claims_col_partner()} value={claim.customerName} />
+        <DetailItem label={m.field_claim_category()} value={claim.category?.name ?? null} />
         <DetailItem label={m.emotive_claims_col_engine()} value={claim.engineTypeCode} mono />
         <DetailItem
           label={m.emotive_claims_detail_field_manufacturer()}
@@ -151,6 +153,9 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  const { data: categories } = useSuspenseQuery(
+    claimCategoriesReferenceOptions({ activeOnly: true }),
+  )
   const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
 
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
@@ -190,12 +195,14 @@ function BasicEditMode({
         customers={customers}
         employees={employees}
         manufacturers={manufacturers}
+        categories={categories}
         orphanEngineType={
           claim.engineTypeId && claim.engineTypeCode
             ? { id: claim.engineTypeId, code: claim.engineTypeCode }
             : undefined
         }
         currentAssignedWorkerName={claim.employeeName ?? undefined}
+        currentCategoryName={claim.category?.name ?? undefined}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />
@@ -234,6 +241,7 @@ function claimToFormValues(claim: EmotiveClaimDetail): EmotiveClaimFormValues {
     claimNumber: claim.claimNumber ?? '',
     customerId: claim.customerId ?? '',
     manufacturerId: claim.manufacturerId ?? '',
+    categoryId: claim.category?.id ?? '',
     engineTypeId: claim.engineTypeId,
     engineCode: claim.engineCode ?? '',
     dateOfFinish: claim.dateOfFinish ?? '',
@@ -253,6 +261,7 @@ function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasi
     claimNumber: claimNumber === '' ? null : claimNumber,
     customerId: values.customerId,
     manufacturerId: values.manufacturerId.trim() === '' ? null : values.manufacturerId,
+    categoryId: values.categoryId,
     engineTypeId: values.engineTypeId,
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: values.dateOfClaim,

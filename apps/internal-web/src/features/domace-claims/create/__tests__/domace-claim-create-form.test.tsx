@@ -1,9 +1,11 @@
 import {
   departmentsReferenceOptions,
+  claimCategoriesReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
+  type ClaimCategoryListItem,
   type EngineManufacturerListItem,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
@@ -16,6 +18,7 @@ import {
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -26,6 +29,7 @@ import {
 import { DomaceClaimCreateForm } from '../domace-claim-create-form.js'
 
 const MANUFACTURER_ID = '77777777-7777-4777-8777-777777777777'
+const CATEGORY_ID = '99999999-9999-4999-8999-999999999999'
 
 const MANUFACTURERS: EngineManufacturerListItem[] = [
   {
@@ -34,6 +38,16 @@ const MANUFACTURERS: EngineManufacturerListItem[] = [
     name: 'Mercedes-Benz',
     sortOrder: 1,
     isActive: true,
+  },
+]
+const CATEGORIES: ClaimCategoryListItem[] = [
+  {
+    id: CATEGORY_ID,
+    code: 'REMONT_MOTORA',
+    name: 'Generalni remont motora',
+    sortOrder: 10,
+    isActive: true,
+    usageCount: 0,
   },
 ]
 
@@ -48,6 +62,7 @@ async function renderForm(): Promise<void> {
     engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
     MANUFACTURERS,
   )
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
   client.setQueryData(departmentsReferenceOptions({ activeOnly: true }).queryKey, [])
@@ -83,6 +98,12 @@ function stubCreatedResponse(): ReturnType<typeof vi.fn> {
   return fetchSpy
 }
 
+async function selectCategory(): Promise<void> {
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('combobox', { name: m.field_claim_category() }))
+  await user.click(screen.getByRole('option', { name: 'Generalni remont motora' }))
+}
+
 function findPostBody(fetchSpy: ReturnType<typeof vi.fn>): Record<string, unknown> {
   const call = fetchSpy.mock.calls.find(([url, init]) => {
     const request = init as RequestInit | undefined
@@ -111,6 +132,7 @@ describe('DomaceClaimCreateForm', () => {
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_customer_name()), {
       target: { value: 'Petar Petrović' },
     })
+    await selectCategory()
     fireEvent.click(screen.getByRole('button', { name: m.action_save() }))
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled())
@@ -136,6 +158,7 @@ describe('DomaceClaimCreateForm', () => {
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_mr_number()), {
       target: { value: 'MR1234/23' },
     })
+    await selectCategory()
     fireEvent.click(screen.getByRole('button', { name: m.action_save() }))
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled())
@@ -168,6 +191,7 @@ describe('DomaceClaimCreateForm', () => {
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_customer_name()), {
       target: { value: 'AC Stanić' },
     })
+    await selectCategory()
     fireEvent.click(screen.getByRole('button', { name: m.action_save() }))
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled())
@@ -182,6 +206,7 @@ describe('formValuesToCreateInput', () => {
     const input = formValuesToCreateInput({
       ...DOMACE_CLAIM_FORM_DEFAULTS,
       mrNumber: 'bilo šta /23',
+      categoryId: CATEGORY_ID,
       dateOfClaim: '2026-05-01',
     })
 
@@ -195,6 +220,7 @@ describe('formValuesToCreateInput', () => {
     const input = formValuesToCreateInput({
       ...DOMACE_CLAIM_FORM_DEFAULTS,
       customerName: 'Kupac',
+      categoryId: CATEGORY_ID,
     })
 
     expect(input.totalAmount).toBeUndefined()
@@ -205,6 +231,7 @@ describe('formValuesToCreateInput', () => {
     const input = formValuesToCreateInput({
       ...DOMACE_CLAIM_FORM_DEFAULTS,
       customerName: 'Kupac',
+      categoryId: CATEGORY_ID,
       employeeId,
     })
 

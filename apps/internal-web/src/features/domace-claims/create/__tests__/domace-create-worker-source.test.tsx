@@ -1,5 +1,6 @@
 import {
   departmentsReferenceOptions,
+  claimCategoriesReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
@@ -56,6 +57,7 @@ async function renderForm(): Promise<void> {
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
   })
   client.setQueryData(engineManufacturersReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, [])
   // One roster feeds both the ZAPOSLENI field and fault attribution.
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [
     ASSEMBLY_WORKER,

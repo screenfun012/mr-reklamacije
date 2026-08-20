@@ -17,6 +17,7 @@ export interface EmotiveClaimBasicEdit {
   claimNumber: string | null
   customerId: string
   manufacturerId: string | null
+  categoryId: string
   engineTypeId: string
   engineCode: string | null
   dateOfClaim: string

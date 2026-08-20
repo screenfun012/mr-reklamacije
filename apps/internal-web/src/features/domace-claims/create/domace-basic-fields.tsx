@@ -1,5 +1,9 @@
 import { computeDomaceTotal, formatEuroAmount, formatFieldError } from '@mr/shared'
-import type { EmployeeListItem, EngineManufacturerListItem } from '@mr/shared'
+import type {
+  ClaimCategoryListItem,
+  EmployeeListItem,
+  EngineManufacturerListItem,
+} from '@mr/shared'
 import { m } from '@mr/i18n'
 import { DatePicker, Input, SearchableSelect } from '@mr/ui'
 
@@ -33,6 +37,7 @@ interface DomaceBasicFieldsProps {
   }
   employees: EmployeeListItem[]
   manufacturers: EngineManufacturerListItem[]
+  categories: ClaimCategoryListItem[]
   orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
   disabled: boolean
@@ -40,17 +45,21 @@ interface DomaceBasicFieldsProps {
   checkMrDuplicate?: boolean
   /** Edit-only: keep the claim's current assigned worker selectable if outside assembly. */
   currentAssignedWorkerName?: string | undefined
+  /** Edit-only: keep the claim's current category selectable even if since deactivated. */
+  currentCategoryName?: string | undefined
 }
 
 export function DomaceBasicFields({
   form,
   employees,
   manufacturers,
+  categories,
   orphanEngineType,
   stepErrors,
   disabled,
   checkMrDuplicate = false,
   currentAssignedWorkerName,
+  currentCategoryName,
 }: DomaceBasicFieldsProps): React.ReactElement {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -161,6 +170,53 @@ export function DomaceBasicFields({
             />
           </InternalFieldGroup>
         )}
+      />
+
+      <form.Field
+        name="categoryId"
+        children={(field) => {
+          // Keep the claim's current category selectable even if since deactivated
+          // (mirrors ZAPOSLENI above) — a switched-off category must not silently
+          // drop off a claim that carries it.
+          const options = categories.map((category) => ({
+            value: category.id,
+            label: category.name,
+            keywords: category.code,
+          }))
+          if (
+            field.state.value !== '' &&
+            !options.some((option) => option.value === field.state.value)
+          ) {
+            options.unshift({
+              value: field.state.value,
+              label: currentCategoryName ?? field.state.value,
+              keywords: '',
+            })
+          }
+          return (
+            <InternalFieldGroup
+              id="categoryId"
+              label={m.field_claim_category()}
+              required
+              error={stepErrors['categoryId'] ?? formatFieldError(field.state.meta.errors[0])}
+            >
+              <SearchableSelect
+                id="categoryId"
+                className={FORM_CONTROL_CLASS}
+                value={field.state.value}
+                options={options}
+                placeholder={m.emotive_claims_create_select_placeholder()}
+                searchPlaceholder={m.field_search_placeholder()}
+                emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+                noResultsLabel={m.field_no_results()}
+                disabled={disabled}
+                aria-label={m.field_claim_category()}
+                onValueChange={field.handleChange}
+                onBlur={field.handleBlur}
+              />
+            </InternalFieldGroup>
+          )
+        }}
       />
 
       <form.Subscribe selector={(state) => state.values.manufacturerId}>
