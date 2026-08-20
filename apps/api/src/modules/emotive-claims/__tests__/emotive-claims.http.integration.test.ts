@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getCustomerIdByName,
   getEmployeeIdByNormalizedName,
@@ -39,6 +40,7 @@ function serializeCreateBody(input: EmotiveClaimCreateInput): Record<string, unk
   return {
     warrantyReport: input.warrantyReport,
     engineTypeId: input.engineTypeId,
+    categoryId: input.categoryId,
     engineCode: input.engineCode,
     dateOfClaim: input.dateOfClaim.toISOString().slice(0, 10),
     mrNumber: input.mrNumber,
@@ -85,9 +87,12 @@ describe('EmotiveClaims HTTP', () => {
       'sourceId' in overrides ? overrides.sourceId : await getClaimSourceIdByCode(ctx.db, 'SELMAN')
     const warrantyReport =
       'warrantyReport' in overrides ? overrides.warrantyReport : 'Kvar na motoru pri hladnom startu'
+    const categoryId =
+      overrides.categoryId ?? (await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'))
 
     return {
       engineTypeId,
+      categoryId,
       dateOfClaim: new Date('2026-04-17'),
       mrNumber: `HTTP-${Date.now()}/26`,
       employeeId,
@@ -264,6 +269,26 @@ describe('EmotiveClaims HTTP', () => {
 
       const body = (await res.json()) as { internalNotes: string | null }
       expect(body.internalNotes).toBe('Interna napomena za operatera')
+    })
+
+    it('returns the category on the detail, resolved to code and name', async () => {
+      const remontCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      const created = await createClaimViaHttp({
+        categoryId: remontCategoryId,
+        mrNumber: 'HTTP-CATEGORY/26',
+      })
+      const app = createEmotiveClaimsTestApp(container, testUser(['emotive_claims.view']))
+      const res = await app.request(`/api/emotive-claims/${created.id}`)
+      expect(res.status).toBe(200)
+
+      const body = (await res.json()) as {
+        category: { id: string; code: string; name: string } | null
+      }
+      expect(body.category).toEqual({
+        id: remontCategoryId,
+        code: 'REMONT_MOTORA',
+        name: 'Generalni remont motora',
+      })
     })
 
     it('client detail is a strict whitelist — no faults (krivica), handler, or internal notes', async () => {
@@ -461,6 +486,22 @@ describe('EmotiveClaims HTTP', () => {
       expect(body.mrNumber).toBe('HTTP-CREATE/26')
       expect(body.id.length).toBeGreaterThan(0)
     })
+
+    it('refuses to create a claim without a category', async () => {
+      const input = await buildCreateInput({ mrNumber: 'HTTP-NO-CATEGORY/26' })
+      const app = createEmotiveClaimsTestApp(container, testUser([...FULL_OPERATOR_PERMS]))
+      const body = serializeCreateBody(input)
+      delete body['categoryId']
+      const res = await app.request('/api/emotive-claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      expect(res.status).toBe(400)
+      const responseBody = (await res.json()) as { error: { code: string } }
+      expect(responseBody.error.code).toBe(ERROR_CODE.ValidationError)
+    })
   })
 
   describe('PATCH /api/emotive-claims/:id', () => {
@@ -488,11 +529,12 @@ describe('EmotiveClaims HTTP', () => {
 
     it('updates claim with 200', async () => {
       const created = await createClaimViaHttp()
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
       const app = createEmotiveClaimsTestApp(container, testUser([...FULL_OPERATOR_PERMS]))
       const res = await app.request(`/api/emotive-claims/${created.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ warrantyReport: 'Ažurirana garancija' }),
+        body: JSON.stringify({ categoryId, warrantyReport: 'Ažurirana garancija' }),
       })
       expect(res.status).toBe(200)
       const body = (await res.json()) as { warrantyReport: string }

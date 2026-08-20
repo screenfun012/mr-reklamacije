@@ -15,6 +15,7 @@ import type { Container } from '../../../core/container.js'
 import { ForbiddenError } from '../../../core/errors/domain-errors.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getDepartmentIdByCode,
   getEmployeeIdByNormalizedName,
@@ -112,11 +113,16 @@ function dateInYear(year: number, month: number, day: number): Date {
 describe('Statistics module integration', () => {
   let ctx: TestDbContext
   let container: Container
+  // Every claim built below now MUST carry categoryId (spec §3.3) — resolved once per
+  // test from the migration-seeded catalog row. Category is irrelevant to what this
+  // suite measures, so every helper below just reuses the same one.
+  let defaultCategoryId: string
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
     await ensureTestUser(ctx.db)
+    defaultCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
   })
 
   afterEach(async () => {
@@ -144,6 +150,7 @@ describe('Statistics module integration', () => {
     const claim = await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType.id,
+        categoryId: defaultCategoryId,
         dateOfClaim,
         mrNumber,
         outcome,
@@ -175,6 +182,7 @@ describe('Statistics module integration', () => {
     const claim = await container.domaceClaimsService.create(
       {
         mrNumber,
+        categoryId: defaultCategoryId,
         customerName: 'Stats Domace',
         dateOfClaim,
         outcome,
@@ -323,7 +331,7 @@ describe('Statistics module integration', () => {
 
       await container.domaceClaimsService.update(
         claimId,
-        { manufacturerId: bmwId },
+        { categoryId: defaultCategoryId, manufacturerId: bmwId },
         {
           id: TEST_USER_ID,
           permissions: ['domace_claims.view', 'domace_claims.update', 'emotive_claims.view'],
@@ -747,6 +755,7 @@ describe('Statistics module integration', () => {
       const claim = await container.domaceClaimsService.create(
         {
           mrNumber,
+          categoryId: defaultCategoryId,
           customerName: 'Stats Domace',
           dateOfClaim: daysAgo(15),
           outcome: ClaimOutcome.Accepted,
@@ -782,6 +791,7 @@ describe('Statistics module integration', () => {
       const claim = await container.emotiveClaimsService.create(
         {
           engineTypeId: engineType.id,
+          categoryId: defaultCategoryId,
           dateOfClaim: daysAgo(10),
           mrNumber,
           outcome: options.outcome ?? ClaimOutcome.Accepted,

@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
 import { RecordingEmailPort } from '../../../test-helpers/recording-email-port.js'
-import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import {
+  ensureTestUser,
+  getClaimCategoryIdByCode,
+  TEST_USER_ID,
+} from '../../../test-helpers/fixtures.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 
@@ -72,6 +76,7 @@ describe('EMOTIVE outcome-change client email', () => {
     const claim = await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType!.id,
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         dateOfClaim: new Date(),
         mrNumber,
         outcome: ClaimOutcome.Pending,

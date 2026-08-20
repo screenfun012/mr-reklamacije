@@ -5,6 +5,7 @@ import {
   ClaimKind,
   ClaimOutcome,
   EmotiveClaimCreateInputSchema,
+  EmotiveClaimUpdateInputSchema,
   FaultType,
   normalizeName,
   type AppEvent,
@@ -24,6 +25,7 @@ import {
 } from '../../../test-helpers/engine-type-fixtures.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getCustomerIdByName,
   getDepartmentIdByCode,
@@ -95,6 +97,10 @@ describe('EmotiveClaimsService integration', () => {
   let eventBus: InProcessEventBus
   let receivedEvents: AppEvent[]
   let unsubscribeEvents: (() => void) | null
+  // Every `.update(...)` call below now MUST carry categoryId (spec §3.3 — required on update
+  // too, so an edit can never leave a claim uncategorised). Resolved once per test from the
+  // migration-seeded catalog row; tests that care about the category use their own value instead.
+  let defaultCategoryId: string
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
@@ -105,6 +111,7 @@ describe('EmotiveClaimsService integration', () => {
     })
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)
     await ensureTestUser(ctx.db)
+    defaultCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
   })
 
   afterEach(async () => {
@@ -147,9 +154,12 @@ describe('EmotiveClaimsService integration', () => {
       'sourceId' in overrides ? overrides.sourceId : await getClaimSourceIdByCode(ctx.db, 'SELMAN')
     const warrantyReport =
       'warrantyReport' in overrides ? overrides.warrantyReport : 'Kvar na motoru pri hladnom startu'
+    const categoryId =
+      overrides.categoryId ?? (await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'))
 
     return {
       engineTypeId,
+      categoryId,
       dateOfClaim: new Date('2026-04-17'),
       mrNumber: `TST-${crypto.randomUUID().slice(0, 8)}/26`,
       employeeId,
@@ -173,7 +183,7 @@ describe('EmotiveClaimsService integration', () => {
       const findByIdSpy = vi.spyOn(container.emotiveClaimsRepository, 'findById')
       await container.emotiveClaimsService.update(
         created.id,
-        { warrantyReport: 'Ažurirani nalaz' },
+        { categoryId: defaultCategoryId, warrantyReport: 'Ažurirani nalaz' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -216,7 +226,7 @@ describe('EmotiveClaimsService integration', () => {
       await expect(
         container.emotiveClaimsService.update(
           id,
-          { warrantyReport: 'PROBOJ' },
+          { categoryId: defaultCategoryId, warrantyReport: 'PROBOJ' },
           OWN_CUSTOMER_OPERATOR,
           auditContext,
         ),
@@ -723,7 +733,10 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Pregled izvrsen, motor u ispravnom stanju' },
+        {
+          categoryId: defaultCategoryId,
+          inspectionReport: 'Pregled izvrsen, motor u ispravnom stanju',
+        },
         FULL_OPERATOR,
         auditContext,
       )
@@ -740,7 +753,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const filled = await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Prvobitni nalaz' },
+        { categoryId: defaultCategoryId, inspectionReport: 'Prvobitni nalaz' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -749,7 +762,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const cleared = await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: null },
+        { categoryId: defaultCategoryId, inspectionReport: null },
         FULL_OPERATOR,
         auditContext,
       )
@@ -767,7 +780,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         created.id,
-        { engineCode: 'ENG-CODE-1' },
+        { categoryId: defaultCategoryId, engineCode: 'ENG-CODE-1' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -818,7 +831,7 @@ describe('EmotiveClaimsService integration', () => {
       await expect(
         container.emotiveClaimsRepository.update(
           created.id,
-          { warrantyReport: 'RACED' },
+          { categoryId: defaultCategoryId, warrantyReport: 'RACED' },
           TEST_USER_ID,
           before!,
           { type: 'all' },
@@ -854,7 +867,7 @@ describe('EmotiveClaimsService integration', () => {
       await expect(
         container.emotiveClaimsRepository.update(
           created.id,
-          { warrantyReport: 'RACED' },
+          { categoryId: defaultCategoryId, warrantyReport: 'RACED' },
           TEST_USER_ID,
           before!,
           { type: 'all' },
@@ -926,7 +939,7 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Updated: valve seats re-cut.' },
+        { categoryId: defaultCategoryId, inspectionReport: 'Updated: valve seats re-cut.' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -1112,7 +1125,7 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { mrNumber: newMrNumber },
+        { categoryId: defaultCategoryId, mrNumber: newMrNumber },
         FULL_OPERATOR,
         auditContext,
       )
@@ -1141,7 +1154,7 @@ describe('EmotiveClaimsService integration', () => {
       await expect(
         container.emotiveClaimsService.update(
           second.id,
-          { mrNumber: keepMrNumber },
+          { categoryId: defaultCategoryId, mrNumber: keepMrNumber },
           FULL_OPERATOR,
           auditContext,
         ),
@@ -1319,6 +1332,26 @@ describe('EmotiveClaimsService integration', () => {
       expect(departmentFault?.departmentName).toBeTruthy()
       expect(externalFault?.externalPartyName).toBe(externalParty.name)
     })
+
+    it('returns the category on the detail, resolved to code and name', async () => {
+      const remontCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId: remontCategoryId,
+          mrNumber: `CATEGORY-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const detail = await container.emotiveClaimsService.findById(created.id, FULL_OPERATOR)
+
+      expect(detail.category).toEqual({
+        id: remontCategoryId,
+        code: 'REMONT_MOTORA',
+        name: 'Generalni remont motora',
+      })
+    })
   })
 
   describe('when engine manufacturer is set', () => {
@@ -1367,7 +1400,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         created.id,
-        { manufacturerId: null },
+        { categoryId: defaultCategoryId, manufacturerId: null },
         FULL_OPERATOR,
         auditContext,
       )
@@ -1409,7 +1442,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const cleared = await container.emotiveClaimsService.update(
         created.id,
-        { employeeId: null },
+        { categoryId: defaultCategoryId, employeeId: null },
         FULL_OPERATOR,
         auditContext,
       )
@@ -1474,6 +1507,7 @@ describe('EmotiveClaimsService integration', () => {
       const updated = await container.emotiveClaimsService.update(
         created.id,
         {
+          categoryId: defaultCategoryId,
           manufacturerId: null,
           engineTypeId: legacyEngineTypeId,
           engineCode: 'ORPHAN-KEEP',
@@ -1496,6 +1530,26 @@ describe('EmotiveClaimsService integration', () => {
         dateOfClaim: '2026-01-01',
         employeeId: crypto.randomUUID(),
         sourceId: crypto.randomUUID(),
+      })
+
+      expect(result.success).toBe(false)
+    })
+
+    it('refuses to create a claim without a category', () => {
+      const result = EmotiveClaimCreateInputSchema.safeParse({
+        engineTypeId: crypto.randomUUID(),
+        dateOfClaim: '2026-01-01',
+        mrNumber: 'CAT-CREATE/26',
+      })
+
+      expect(result.success).toBe(false)
+    })
+  })
+
+  describe('EmotiveClaimUpdateInputSchema', () => {
+    it('refuses to update a claim without a category, even when only changing one other field', () => {
+      const result = EmotiveClaimUpdateInputSchema.safeParse({
+        warrantyReport: 'Ažurirano',
       })
 
       expect(result.success).toBe(false)
@@ -1892,7 +1946,7 @@ describe('EmotiveClaimsService integration', () => {
       vi.setSystemTime(new Date('2026-07-18T09:05:00Z'))
       await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Pregled izvrsen, sve u redu' },
+        { categoryId: defaultCategoryId, inspectionReport: 'Pregled izvrsen, sve u redu' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -1917,7 +1971,7 @@ describe('EmotiveClaimsService integration', () => {
       vi.setSystemTime(new Date('2026-07-18T09:05:00Z'))
       await container.emotiveClaimsService.update(
         created.id,
-        { internalNotes: 'Interna napomena, klijent je ne vidi' },
+        { categoryId: defaultCategoryId, internalNotes: 'Interna napomena, klijent je ne vidi' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -1942,7 +1996,7 @@ describe('EmotiveClaimsService integration', () => {
       // Clearing a whitelisted field is a removal, not new content → no badge bump.
       await container.emotiveClaimsService.update(
         created.id,
-        { warrantyReport: '' },
+        { categoryId: defaultCategoryId, warrantyReport: '' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2014,7 +2068,7 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Pregled izvrsen, sve u redu' },
+        { categoryId: defaultCategoryId, inspectionReport: 'Pregled izvrsen, sve u redu' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2040,7 +2094,7 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { engineCode: 'ENG-CODE-123' },
+        { categoryId: defaultCategoryId, engineCode: 'ENG-CODE-123' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2068,7 +2122,11 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Pregled izvrsen', engineCode: 'ENG-CODE-456' },
+        {
+          categoryId: defaultCategoryId,
+          inspectionReport: 'Pregled izvrsen',
+          engineCode: 'ENG-CODE-456',
+        },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2091,7 +2149,7 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { internalNotes: 'Interna napomena, klijent je ne vidi' },
+        { categoryId: defaultCategoryId, internalNotes: 'Interna napomena, klijent je ne vidi' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2116,7 +2174,7 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { warrantyReport: '' },
+        { categoryId: defaultCategoryId, warrantyReport: '' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2140,7 +2198,7 @@ describe('EmotiveClaimsService integration', () => {
       // Blank report: no 'inspection' marker, and Gate A does not fire.
       const blank = await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: '   ' },
+        { categoryId: defaultCategoryId, inspectionReport: '   ' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2150,7 +2208,7 @@ describe('EmotiveClaimsService integration', () => {
       // Non-blank report: marker set AND Gate A stamps client_visible_at (COALESCE unchanged).
       const filled = await container.emotiveClaimsService.update(
         created.id,
-        { inspectionReport: 'Pregled izvrsen, sve u redu' },
+        { categoryId: defaultCategoryId, inspectionReport: 'Pregled izvrsen, sve u redu' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2211,7 +2269,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         id,
-        { warrantyReport: 'pokusaj izmene' },
+        { categoryId: defaultCategoryId, warrantyReport: 'pokusaj izmene' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2224,7 +2282,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         id,
-        { internalNotes: 'Nalaz posle prihvatanja' },
+        { categoryId: defaultCategoryId, internalNotes: 'Nalaz posle prihvatanja' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2238,7 +2296,10 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         id,
-        { faults: [{ faultType: FaultType.Department, departmentId }] },
+        {
+          categoryId: defaultCategoryId,
+          faults: [{ faultType: FaultType.Department, departmentId }],
+        },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2312,7 +2373,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         id,
-        { warrantyReport: 'izmena posle otkljucavanja' },
+        { categoryId: defaultCategoryId, warrantyReport: 'izmena posle otkljucavanja' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2364,6 +2425,7 @@ describe('EmotiveClaimsService integration', () => {
       const updated = await container.emotiveClaimsService.update(
         created.id,
         {
+          categoryId: defaultCategoryId,
           faults: [{ faultType: FaultType.Employee, employeeId }],
         },
         FULL_OPERATOR,
@@ -2384,7 +2446,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         created.id,
-        { dateOfClaim: new Date('2026-08-01') },
+        { categoryId: defaultCategoryId, dateOfClaim: new Date('2026-08-01') },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2402,7 +2464,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const withCode = await container.emotiveClaimsService.update(
         created.id,
-        { engineCode: 'MR-ENG-7788' },
+        { categoryId: defaultCategoryId, engineCode: 'MR-ENG-7788' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2410,7 +2472,7 @@ describe('EmotiveClaimsService integration', () => {
 
       const cleared = await container.emotiveClaimsService.update(
         created.id,
-        { engineCode: null },
+        { categoryId: defaultCategoryId, engineCode: null },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2456,7 +2518,10 @@ describe('EmotiveClaimsService integration', () => {
 
       const updated = await container.emotiveClaimsService.update(
         created.id,
-        { findings: [{ text: 'Prepravljen nalaz', type: 'elektrika' }] },
+        {
+          categoryId: defaultCategoryId,
+          findings: [{ text: 'Prepravljen nalaz', type: 'elektrika' }],
+        },
         FULL_OPERATOR,
         auditContext,
       )
@@ -2489,7 +2554,10 @@ describe('EmotiveClaimsService integration', () => {
 
       await container.emotiveClaimsService.update(
         created.id,
-        { findings: [{ text: 'Interni nalaz koji klijent ne vidi', type: '' }] },
+        {
+          categoryId: defaultCategoryId,
+          findings: [{ text: 'Interni nalaz koji klijent ne vidi', type: '' }],
+        },
         FULL_OPERATOR,
         auditContext,
       )

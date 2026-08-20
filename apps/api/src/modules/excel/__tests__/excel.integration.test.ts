@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Container } from '../../../core/container.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
@@ -59,6 +60,7 @@ describe('Excel export integration', () => {
     await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType.id,
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         dateOfClaim: new Date('2025-03-15T12:00:00.000Z'),
         mrNumber,
         outcome: ClaimOutcome.Accepted,
@@ -80,6 +82,7 @@ describe('Excel export integration', () => {
     await container.domaceClaimsService.create(
       {
         mrNumber,
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         customerName: 'Excel Domace',
         dateOfClaim: new Date('2025-02-10T12:00:00.000Z'),
         outcome: ClaimOutcome.Accepted,

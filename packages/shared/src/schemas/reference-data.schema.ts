@@ -187,6 +187,20 @@ export const ClaimCategoryUpdateInputSchema = z
 
 export type ClaimCategoryUpdateInput = z.infer<typeof ClaimCategoryUpdateInputSchema>
 
+/**
+ * The category resolved onto a claim detail wire (Faza 1, spec §3.3) — the minimal
+ * `{ id, code, name }` a claim needs to display and filter by, distinct from the fuller
+ * `ClaimCategoryListItemSchema` the admin catalogue screen manages (sortOrder/isActive/
+ * usageCount belong to the catalogue, not to the claim that references one row of it).
+ */
+export const ClaimCategoryRefSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+})
+
+export type ClaimCategoryRef = z.infer<typeof ClaimCategoryRefSchema>
+
 export const ExternalPartyListItemSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),

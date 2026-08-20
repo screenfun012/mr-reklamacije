@@ -7,6 +7,7 @@ import type { Container } from '../../../core/container.js'
 import { registerGlobalErrorHandler } from '../../../core/middleware/error-handler.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
@@ -53,6 +54,7 @@ describe('MrRegistry HTTP', () => {
     const created = await container.emotiveClaimsService.create(
       {
         engineTypeId,
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         dateOfClaim: new Date('2026-04-17'),
         mrNumber,
         employeeId: await getEmployeeIdByNormalizedName(ctx.db, normalizeName('Dejan Milovanović')),

@@ -1,5 +1,5 @@
 import { schema } from '@mr/db'
-import { ClaimKind, computeDomaceTotal } from '@mr/shared'
+import { ClaimKind, computeDomaceTotal, type ClaimCategoryRef } from '@mr/shared'
 import { and, desc, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -25,7 +25,14 @@ import type {
   DomaceClaimUpdateInput,
 } from './domace-claims.validators.js'
 
-const { departments, employees, engineManufacturers, engineTypes, externalParties } = schema
+const {
+  claimCategories,
+  departments,
+  employees,
+  engineManufacturers,
+  engineTypes,
+  externalParties,
+} = schema
 
 const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
 
@@ -218,6 +225,7 @@ export class DomaceClaimsRepository {
           warrantyReport: input.warrantyReport ?? null,
           engineTypeId: input.engineTypeId ?? null,
           manufacturerId: input.manufacturerId ?? null,
+          categoryId: input.categoryId,
           engineCode: input.engineCode ?? null,
           dateOfClaim: input.dateOfClaim ?? null,
           dateOfFinish: input.dateOfFinish ?? null,
@@ -393,6 +401,9 @@ export class DomaceClaimsRepository {
         engineTypeManufacturer: engineTypeMfg.name,
         manufacturerId: domaceClaims.manufacturerId,
         manufacturerName: engineManufacturers.name,
+        categoryId: domaceClaims.categoryId,
+        categoryCode: claimCategories.code,
+        categoryName: claimCategories.name,
         engineCode: domaceClaims.engineCode,
         dateOfClaim: domaceClaims.dateOfClaim,
         mrNumber: domaceClaims.mrNumber,
@@ -417,6 +428,7 @@ export class DomaceClaimsRepository {
       .leftJoin(engineTypes, eq(domaceClaims.engineTypeId, engineTypes.id))
       .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
       .leftJoin(engineManufacturers, eq(domaceClaims.manufacturerId, engineManufacturers.id))
+      .leftJoin(claimCategories, eq(domaceClaims.categoryId, claimCategories.id))
       .leftJoin(employees, eq(domaceClaims.employeeId, employees.id))
       .where(and(eq(domaceClaims.id, id), deletedCondition))
       .limit(1)
@@ -454,11 +466,20 @@ export class DomaceClaimsRepository {
       originalInvoiceAmount,
       partsAmount,
       laborAmount,
+      categoryId,
+      categoryCode,
+      categoryName,
       ...listFields
     } = row
 
+    const category: ClaimCategoryRef | null =
+      categoryId === null || categoryCode === null || categoryName === null
+        ? null
+        : { id: categoryId, code: categoryCode, name: categoryName }
+
     return {
       ...mapListItem(listFields),
+      category,
       engineTypeManufacturer,
       invoiceNumber,
       originalInvoiceAmount,
@@ -501,6 +522,9 @@ export class DomaceClaimsRepository {
     }
     if (input.manufacturerId !== undefined) {
       patch.manufacturerId = input.manufacturerId
+    }
+    if (input.categoryId !== undefined) {
+      patch.categoryId = input.categoryId
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

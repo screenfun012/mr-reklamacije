@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 import { FindingSchema } from './finding.schema.js'
+import { ClaimCategoryRefSchema } from './reference-data.schema.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -31,6 +32,9 @@ export const DomaceClaimCreateInputSchema = z
     customerName: z.string().trim().min(1).max(255).optional(),
     engineTypeId: z.string().uuid().optional(),
     manufacturerId: z.string().uuid().optional(),
+    // What kind of work the claim is about (spec §3.3) — required on create AND update so a
+    // claim can never leave the edit uncategorised. NULL-able in the DB (Task 1 backfill), not here.
+    categoryId: z.string().uuid(),
     engineCode: z.string().trim().max(100).optional(),
     dateOfClaim: z.coerce.date().optional(),
     outcome: z.enum(claimOutcomeValues).default(ClaimOutcome.Pending),
@@ -62,6 +66,9 @@ export const DomaceClaimUpdateInputSchema = z
     customerName: z.string().trim().max(255).nullable().optional(),
     engineTypeId: z.string().uuid().nullable().optional(),
     manufacturerId: z.string().uuid().nullable().optional(),
+    // Required on update too, deliberately (spec §3.3): a claim being edited must not
+    // leave the edit uncategorised. The Task 1 backfill means no existing claim is blocked.
+    categoryId: z.string().uuid(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().nullable().optional(),
     warrantyReport: z.string().trim().max(8000).nullable().optional(),
@@ -136,6 +143,11 @@ export const DomaceClaimListItemSchema = z.object({
 export type DomaceClaimListItem = z.infer<typeof DomaceClaimListItemSchema>
 
 export const DomaceClaimDetailSchema = DomaceClaimListItemSchema.extend({
+  // Resolved from `categoryId` (Faza 1, spec §3.3). `null` only for a legacy row outside
+  // this feature's write paths — create/update both require `categoryId` via Zod, so a
+  // claim reachable through the API always carries one. The category is data; nothing
+  // in any layer may branch on `code`.
+  category: ClaimCategoryRefSchema.nullable(),
   engineTypeManufacturer: z.string().nullable(),
   invoiceNumber: z.string().nullable(),
   originalInvoiceAmount: z.coerce.number().nullable(),

@@ -1,5 +1,11 @@
 import { schema } from '@mr/db'
-import { ClaimKind, UserAccountStatus, type SectionFreshness, type UserLanguage } from '@mr/shared'
+import {
+  ClaimKind,
+  UserAccountStatus,
+  type ClaimCategoryRef,
+  type SectionFreshness,
+  type UserLanguage,
+} from '@mr/shared'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -32,8 +38,15 @@ import type {
 } from './emotive-claims.validators.js'
 import { FaultsRepository } from './faults/faults.repository.js'
 
-const { customers, departments, employees, engineManufacturers, engineTypes, externalParties } =
-  schema
+const {
+  claimCategories,
+  customers,
+  departments,
+  employees,
+  engineManufacturers,
+  engineTypes,
+  externalParties,
+} = schema
 
 const engineTypeMfg = alias(engineManufacturers, 'engine_type_manufacturer')
 
@@ -409,6 +422,7 @@ export class EmotiveClaimsRepository {
         warrantyReport: input.warrantyReport ?? null,
         engineTypeId: input.engineTypeId,
         manufacturerId: input.manufacturerId ?? null,
+        categoryId: input.categoryId,
         engineCode: input.engineCode ?? null,
         dateOfClaim: input.dateOfClaim,
         mrNumber: input.mrNumber,
@@ -582,6 +596,9 @@ export class EmotiveClaimsRepository {
       engineTypeManufacturer: engineTypeMfg.name,
       manufacturerId: emotiveClaims.manufacturerId,
       manufacturerName: engineManufacturers.name,
+      categoryId: emotiveClaims.categoryId,
+      categoryCode: claimCategories.code,
+      categoryName: claimCategories.name,
       engineCode: emotiveClaims.engineCode,
       dateOfClaim: emotiveClaims.dateOfClaim,
       mrNumber: emotiveClaims.mrNumber,
@@ -630,6 +647,7 @@ export class EmotiveClaimsRepository {
             .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
             .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
             .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
+            .leftJoin(claimCategories, eq(emotiveClaims.categoryId, claimCategories.id))
             .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
             .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
             .leftJoin(
@@ -653,6 +671,7 @@ export class EmotiveClaimsRepository {
             .innerJoin(engineTypes, eq(emotiveClaims.engineTypeId, engineTypes.id))
             .leftJoin(engineTypeMfg, eq(engineTypes.manufacturerId, engineTypeMfg.id))
             .leftJoin(engineManufacturers, eq(emotiveClaims.manufacturerId, engineManufacturers.id))
+            .leftJoin(claimCategories, eq(emotiveClaims.categoryId, claimCategories.id))
             .leftJoin(employees, eq(emotiveClaims.employeeId, employees.id))
             .leftJoin(claimSources, eq(emotiveClaims.sourceId, claimSources.id))
             .where(and(eq(emotiveClaims.id, id), deletedCondition))
@@ -694,11 +713,20 @@ export class EmotiveClaimsRepository {
       sourceCode,
       sourceName,
       sectionFreshness,
+      categoryId,
+      categoryCode,
+      categoryName,
       ...listFields
     } = row
 
+    const category: ClaimCategoryRef | null =
+      categoryId === null || categoryCode === null || categoryName === null
+        ? null
+        : { id: categoryId, code: categoryCode, name: categoryName }
+
     return {
       ...mapListItem(listFields),
+      category,
       engineTypeManufacturer,
       sourceCode,
       sourceName,
@@ -740,6 +768,9 @@ export class EmotiveClaimsRepository {
     }
     if (input.manufacturerId !== undefined) {
       patch.manufacturerId = input.manufacturerId
+    }
+    if (input.categoryId !== undefined) {
+      patch.categoryId = input.categoryId
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

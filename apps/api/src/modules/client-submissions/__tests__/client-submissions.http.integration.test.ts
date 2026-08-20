@@ -8,7 +8,11 @@ import type { AppVariables } from '../../../app.js'
 import type { MRSessionUser } from '../../../core/auth/session-types.js'
 import type { Container } from '../../../core/container.js'
 import { registerGlobalErrorHandler } from '../../../core/middleware/error-handler.js'
-import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import {
+  ensureTestUser,
+  getClaimCategoryIdByCode,
+  TEST_USER_ID,
+} from '../../../test-helpers/fixtures.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer, testUser } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
@@ -238,6 +242,7 @@ describe('ClientSubmissions HTTP', () => {
     it('converts a pending submission into an EMOTIVE claim (201) and marks it converted', async () => {
       const customerId = await seedCustomer()
       const engineTypeId = await seedEngineType()
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
       const submissionId = await seedSubmission(customerId, 'Klijentov razlog reklamacije')
       const mrNumber = `CS-HTTP-CONV-${suffix()}/26`
 
@@ -245,7 +250,7 @@ describe('ClientSubmissions HTTP', () => {
       const res = await app.request(`/api/client-submissions/${submissionId}/convert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ engineTypeId, dateOfClaim: '2026-07-01', mrNumber }),
+        body: JSON.stringify({ engineTypeId, categoryId, dateOfClaim: '2026-07-01', mrNumber }),
       })
 
       expect(res.status).toBe(201)

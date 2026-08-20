@@ -20,6 +20,7 @@ import { ForbiddenError } from '../../../core/errors/domain-errors.js'
 import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getCustomerIdByName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
@@ -86,6 +87,7 @@ async function createDomaceClaim(container: Container): Promise<string> {
   const created = await container.domaceClaimsService.create(
     {
       customerName: 'Auto Stanić',
+      categoryId: await getClaimCategoryIdByCode(container.db, 'REMONT_MOTORA'),
       outcome: ClaimOutcome.Pending,
       faults: [],
       findings: [],
@@ -710,6 +712,7 @@ describe('ClaimReports export integration', () => {
       const created = await container.emotiveClaimsService.create(
         {
           engineTypeId: engineType.id,
+          categoryId: await getClaimCategoryIdByCode(container.db, 'REMONT_MOTORA'),
           dateOfClaim: new Date('2026-04-17'),
           mrNumber: `RPT-${crypto.randomUUID().slice(0, 8)}/26`,
           outcome: ClaimOutcome.Pending,

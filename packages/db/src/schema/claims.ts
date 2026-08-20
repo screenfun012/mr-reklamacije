@@ -406,6 +406,10 @@ export const emotiveClaimsRelations = relations(emotiveClaims, ({ many, one }) =
     fields: [emotiveClaims.manufacturerId],
     references: [engineManufacturers.id],
   }),
+  category: one(claimCategories, {
+    fields: [emotiveClaims.categoryId],
+    references: [claimCategories.id],
+  }),
   employee: one(employees, {
     fields: [emotiveClaims.employeeId],
     references: [employees.id],
@@ -458,6 +462,10 @@ export const domaceClaimsRelations = relations(domaceClaims, ({ many, one }) => 
   manufacturer: one(engineManufacturers, {
     fields: [domaceClaims.manufacturerId],
     references: [engineManufacturers.id],
+  }),
+  category: one(claimCategories, {
+    fields: [domaceClaims.categoryId],
+    references: [claimCategories.id],
   }),
   employee: one(employees, {
     fields: [domaceClaims.employeeId],

@@ -24,7 +24,11 @@ import {
 import type { HttpActorContext } from '../../../core/http/actor-context.js'
 import type { EmailMessage, EmailPort } from '../../../core/ports/email-port.js'
 import { DbAppSettingsReader } from '../../../core/settings/app-settings.reader.js'
-import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import {
+  ensureTestUser,
+  getClaimCategoryIdByCode,
+  TEST_USER_ID,
+} from '../../../test-helpers/fixtures.js'
 import { RecordingEmailPort } from '../../../test-helpers/recording-email-port.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer } from '../../../test-helpers/test-app.js'
@@ -70,18 +74,6 @@ function uniqueSuffix(): string {
   return crypto.randomUUID().slice(0, 8)
 }
 
-function buildClaimInput(
-  overrides: Partial<EmotiveClaimCreateInput> = {},
-): EmotiveClaimCreateInput {
-  const { engineTypeId, dateOfClaim, mrNumber, ...rest } = overrides
-  return EmotiveClaimCreateInputSchema.parse({
-    engineTypeId: engineTypeId ?? crypto.randomUUID(),
-    dateOfClaim: dateOfClaim ?? new Date('2026-07-01'),
-    mrNumber: mrNumber ?? `CS-CONV-${uniqueSuffix()}/26`,
-    ...rest,
-  })
-}
-
 describe('ClientSubmissionsService integration', () => {
   let ctx: TestDbContext
   let container: Container
@@ -89,6 +81,22 @@ describe('ClientSubmissionsService integration', () => {
   let events: RecordingEventBus
   let email: RecordingEmailPort
   let service: ClientSubmissionsService
+  // categoryId is required by EmotiveClaimCreateInputSchema (spec §3.3); resolved once per
+  // test from the migration-seeded catalog row — category is irrelevant to what this suite tests.
+  let defaultCategoryId: string
+
+  async function buildClaimInput(
+    overrides: Partial<EmotiveClaimCreateInput> = {},
+  ): Promise<EmotiveClaimCreateInput> {
+    const { engineTypeId, dateOfClaim, mrNumber, ...rest } = overrides
+    return EmotiveClaimCreateInputSchema.parse({
+      engineTypeId: engineTypeId ?? crypto.randomUUID(),
+      categoryId: defaultCategoryId,
+      dateOfClaim: dateOfClaim ?? new Date('2026-07-01'),
+      mrNumber: mrNumber ?? `CS-CONV-${uniqueSuffix()}/26`,
+      ...rest,
+    })
+  }
   // The convert path commits (db.transaction) on the shared single-connection harness, so
   // its rows are NOT rolled back with the test — track and delete them so the repository
   // suite's global `listPending` count stays accurate.
@@ -124,6 +132,7 @@ describe('ClientSubmissionsService integration', () => {
     attachmentCleanup = []
 
     await ensureTestUser(ctx.db)
+    defaultCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
   })
 
   afterEach(async () => {
@@ -398,7 +407,7 @@ describe('ClientSubmissionsService integration', () => {
       const claim = await service.convert(
         actorFor(TEST_USER_ID),
         id,
-        buildClaimInput({ engineTypeId, mrNumber: `CS-CONV-${uniqueSuffix()}/26` }),
+        await buildClaimInput({ engineTypeId, mrNumber: `CS-CONV-${uniqueSuffix()}/26` }),
       )
 
       const after = await notificationsForUser(operatorId)
@@ -421,7 +430,7 @@ describe('ClientSubmissionsService integration', () => {
       const claim = await service.convert(
         ACTOR,
         submissionId,
-        buildClaimInput({ engineTypeId, mrNumber }),
+        await buildClaimInput({ engineTypeId, mrNumber }),
       )
 
       // Claim is created, warranty report defaults to the client's message, scoped to the firm.
@@ -478,7 +487,7 @@ describe('ClientSubmissionsService integration', () => {
       // Occupy the MR number with a committed claim so the conversion's claim create fails
       // AFTER inserting its own row — proving the whole conversion transaction rolls back.
       await container.emotiveClaimsService.create(
-        buildClaimInput({ engineTypeId, mrNumber: takenMrNumber }),
+        await buildClaimInput({ engineTypeId, mrNumber: takenMrNumber }),
         CONVERTER_ACTOR,
         CONVERTER_AUDIT_CONTEXT,
       )
@@ -487,7 +496,7 @@ describe('ClientSubmissionsService integration', () => {
         service.convert(
           ACTOR,
           submissionId,
-          buildClaimInput({ engineTypeId, mrNumber: takenMrNumber }),
+          await buildClaimInput({ engineTypeId, mrNumber: takenMrNumber }),
         ),
       ).rejects.toBeInstanceOf(MrKeyConflictError)
 
@@ -510,7 +519,7 @@ describe('ClientSubmissionsService integration', () => {
 
     it('throws NotFoundError for a missing submission', async () => {
       await expect(
-        service.convert(ACTOR, '00000000-0000-4000-8000-0000000000ff', buildClaimInput()),
+        service.convert(ACTOR, '00000000-0000-4000-8000-0000000000ff', await buildClaimInput()),
       ).rejects.toBeInstanceOf(NotFoundError)
     })
 
@@ -519,9 +528,9 @@ describe('ClientSubmissionsService integration', () => {
       const submissionId = await createSubmission(customerId, 'Vec odbijena')
       await repository.markRejected(submissionId, 'Nije garancija', TEST_USER_ID)
 
-      await expect(service.convert(ACTOR, submissionId, buildClaimInput())).rejects.toBeInstanceOf(
-        NotFoundError,
-      )
+      await expect(
+        service.convert(ACTOR, submissionId, await buildClaimInput()),
+      ).rejects.toBeInstanceOf(NotFoundError)
     })
   })
 

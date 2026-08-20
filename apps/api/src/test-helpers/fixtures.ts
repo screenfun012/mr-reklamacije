@@ -61,6 +61,20 @@ export async function getCustomerIdByName(db: ApiDatabase, name: string): Promis
   return customer.id
 }
 
+export async function getClaimCategoryIdByCode(db: ApiDatabase, code: string): Promise<string> {
+  const [category] = await db
+    .select({ id: schema.claimCategories.id })
+    .from(schema.claimCategories)
+    .where(eq(schema.claimCategories.code, code))
+    .limit(1)
+
+  if (category === undefined) {
+    throw new Error(`Claim category ${code} not found — run the claim-category migration`)
+  }
+
+  return category.id
+}
+
 export async function getDepartmentIdByCode(db: ApiDatabase, code: string): Promise<string> {
   const [department] = await db
     .select({ id: schema.departments.id })

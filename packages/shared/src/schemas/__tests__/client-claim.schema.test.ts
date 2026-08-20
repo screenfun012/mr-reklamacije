@@ -20,6 +20,11 @@ const fullDetail: EmotiveClaimDetail = {
   engineTypeCode: 'ENG-1',
   manufacturerId: '33333333-3333-4333-8333-333333333333',
   manufacturerName: 'Bosch',
+  category: {
+    id: '99999999-9999-4999-8999-999999999999',
+    code: 'REMONT_MOTORA',
+    name: 'Generalni remont motora',
+  },
   engineCode: 'EC-1',
   dateOfClaim: '2026-04-17',
   mrNumber: '5376/25',

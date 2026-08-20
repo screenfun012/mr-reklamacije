@@ -15,6 +15,7 @@ import { ForbiddenError } from '../../../core/errors/domain-errors.js'
 import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getCustomerIdByName,
   getEmployeeIdByNormalizedName,
@@ -81,6 +82,7 @@ describe('ClaimsService integration', () => {
     const engineType = await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)
     const created = await container.emotiveClaimsService.create(
       {
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         engineTypeId: engineType.id,
         dateOfClaim: options.dateOfClaim ?? new Date('2026-06-15'),
         dateOfFinish: options.dateOfFinish,
@@ -105,6 +107,7 @@ describe('ClaimsService integration', () => {
   ): Promise<string> {
     const created = await container.domaceClaimsService.create(
       {
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         mrNumber,
         customerName,
         dateOfClaim:
@@ -238,6 +241,7 @@ describe('ClaimsService integration', () => {
       const engineType = await createTestEngineType(container, code)
       const created = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `ENGC${Date.now()}/26`,
@@ -484,6 +488,7 @@ describe('ClaimsService integration', () => {
       const engineType = await createTestEngineType(container, `ENG-CLIENT-${Date.now()}`)
       await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `UNIFIED-CLIENT-${Date.now()}/26`,
@@ -537,6 +542,7 @@ describe('ClaimsService integration', () => {
       const engineType = await createTestEngineType(container, `ENG-VIS-${Date.now()}`)
       const published = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `VIS-PUBLISHED-${Date.now()}/26`,
@@ -552,6 +558,7 @@ describe('ClaimsService integration', () => {
       )
       const visibleNotPublished = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `VIS-INPROGRESS-${Date.now()}/26`,
@@ -567,6 +574,7 @@ describe('ClaimsService integration', () => {
       )
       const brandNew = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `VIS-RECEIVED-${Date.now()}/26`,
@@ -645,6 +653,7 @@ describe('ClaimsService integration', () => {
       const selmanSource = await getClaimSourceIdByCode(ctx.db, 'SELMAN')
       const own = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `SCOPE-OWN-${Date.now()}/26`,
@@ -660,6 +669,7 @@ describe('ClaimsService integration', () => {
       )
       const foreign = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `SCOPE-FOREIGN-${Date.now()}/26`,
@@ -711,6 +721,7 @@ describe('ClaimsService integration', () => {
       const engineType = await createTestEngineType(container, `ENG-ARCH-${Date.now()}`)
       const created = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `ARCH-CLIENT-${Date.now()}/26`,
@@ -756,6 +767,7 @@ describe('ClaimsService integration', () => {
       const engineType = await createTestEngineType(container, `ENG-${token}-${Date.now()}`)
       const created = await container.emotiveClaimsService.create(
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           engineTypeId: engineType.id,
           dateOfClaim: new Date('2026-06-15'),
           mrNumber: `${token}-${Date.now()}/26`,

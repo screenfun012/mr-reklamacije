@@ -4,6 +4,7 @@ import {
   ClaimKind,
   ClaimOutcome,
   DomaceClaimCreateInputSchema,
+  DomaceClaimUpdateInputSchema,
   FaultType,
   normalizeName,
 } from '@mr/shared'
@@ -20,6 +21,7 @@ import {
 import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getDepartmentIdByCode,
   getEmployeeIdByNormalizedName,
@@ -83,24 +85,32 @@ function listQuery(overrides: Partial<DomaceClaimListQuery> = {}): DomaceClaimLi
   return { page: 1, pageSize: 50, includeDeleted: false, ...overrides }
 }
 
-function baseCreateInput(overrides: Partial<DomaceClaimCreateInput> = {}): DomaceClaimCreateInput {
-  return {
-    customerName: 'Auto Stanić',
-    outcome: ClaimOutcome.Pending,
-    faults: [],
-    findings: [],
-    ...overrides,
-  }
-}
-
 describe('DomaceClaimsService integration', () => {
   let ctx: TestDbContext
   let container: Container
+  // Every create/update below now MUST carry categoryId (spec §3.3 — required on both, so a
+  // claim can never leave the edit uncategorised). Resolved once per test from the
+  // migration-seeded catalog row; tests that care about the category use their own value instead.
+  let defaultCategoryId: string
+
+  async function baseCreateInput(
+    overrides: Partial<DomaceClaimCreateInput> = {},
+  ): Promise<DomaceClaimCreateInput> {
+    return {
+      customerName: 'Auto Stanić',
+      outcome: ClaimOutcome.Pending,
+      faults: [],
+      findings: [],
+      categoryId: defaultCategoryId,
+      ...overrides,
+    }
+  }
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new InProcessEventBus())
     await ensureTestUser(ctx.db)
+    defaultCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
   })
 
   afterEach(async () => {
@@ -127,7 +137,7 @@ describe('DomaceClaimsService integration', () => {
   describe('read efficiency', () => {
     it('loads the aggregate detail exactly twice on update (service before-read + repo after-read)', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
+        await baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -135,7 +145,7 @@ describe('DomaceClaimsService integration', () => {
       const findByIdSpy = vi.spyOn(container.domaceClaimsRepository, 'findById')
       await container.domaceClaimsService.update(
         created.id,
-        { warrantyReport: 'Ažurirani nalaz' },
+        { categoryId: defaultCategoryId, warrantyReport: 'Ažurirani nalaz' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -151,7 +161,7 @@ describe('DomaceClaimsService integration', () => {
     // DOMACE has no customer linkage, so an own_customer actor is denied every row.
     it('rejects update with 404 and leaves the row unchanged', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
+        await baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -159,7 +169,7 @@ describe('DomaceClaimsService integration', () => {
       await expect(
         container.domaceClaimsService.update(
           created.id,
-          { warrantyReport: 'PROBOJ' },
+          { categoryId: defaultCategoryId, warrantyReport: 'PROBOJ' },
           OWN_CUSTOMER_OPERATOR,
           auditContext,
         ),
@@ -171,7 +181,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('rejects change-outcome with 404 and leaves the outcome unchanged', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -191,7 +201,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('rejects restore with 404 and leaves it deleted', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -209,7 +219,7 @@ describe('DomaceClaimsService integration', () => {
   describe('compare-and-swap guard (TOCTOU)', () => {
     it('refuses to update a claim soft-deleted after the before-read → ConflictError, row unchanged', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
+        await baseCreateInput({ warrantyReport: 'Originalni nalaz' }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -222,7 +232,7 @@ describe('DomaceClaimsService integration', () => {
       await expect(
         container.domaceClaimsRepository.update(
           created.id,
-          { warrantyReport: 'RACED' },
+          { categoryId: defaultCategoryId, warrantyReport: 'RACED' },
           TEST_USER_ID,
           before!,
           { type: 'all' },
@@ -240,7 +250,7 @@ describe('DomaceClaimsService integration', () => {
   describe('when creating', () => {
     it('assigns sequence_number and claim_year from date_of_claim', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber: 'MR1234/23', dateOfClaim: new Date('2025-06-01') }),
+        await baseCreateInput({ mrNumber: 'MR1234/23', dateOfClaim: new Date('2025-06-01') }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -254,7 +264,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('falls back claim_year to the current year when date_of_claim is omitted', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -265,7 +275,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('accepts a claim with only customer_name and no mr_number', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ customerName: 'Servis Petrović', mrNumber: undefined }),
+        await baseCreateInput({ customerName: 'Servis Petrović', mrNumber: undefined }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -278,7 +288,7 @@ describe('DomaceClaimsService integration', () => {
     it('registers MR key on create when mr_number is provided', async () => {
       const mrNumber = `DOM-REG-${crypto.randomUUID().slice(0, 8)}/26`
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -295,6 +305,7 @@ describe('DomaceClaimsService integration', () => {
       const emotive = await container.emotiveClaimsService.create(
         {
           engineTypeId,
+          categoryId: defaultCategoryId,
           dateOfClaim: new Date('2026-04-17'),
           mrNumber,
           employeeId: await getEmployeeIdByNormalizedName(
@@ -315,7 +326,7 @@ describe('DomaceClaimsService integration', () => {
 
       await expect(
         container.domaceClaimsService.create(
-          baseCreateInput({ mrNumber: `  ${mrNumber.toUpperCase()}  ` }),
+          await baseCreateInput({ mrNumber: `  ${mrNumber.toUpperCase()}  ` }),
           FULL_OPERATOR,
           auditContext,
         ),
@@ -326,7 +337,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('computes total_amount from parts + labor on create', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ partsAmount: 60000, laborAmount: 24500.5 }),
+        await baseCreateInput({ partsAmount: 60000, laborAmount: 24500.5 }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -338,7 +349,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('writes an audit log entry', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -361,7 +372,7 @@ describe('DomaceClaimsService integration', () => {
       const departmentId = await getDepartmentIdByCode(ctx.db, 'RADILICE')
 
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({
+        await baseCreateInput({
           faults: [
             { faultType: FaultType.Employee, employeeId, notes: 'loš moment' },
             { faultType: FaultType.Department, departmentId },
@@ -382,7 +393,7 @@ describe('DomaceClaimsService integration', () => {
     it('rejects an invalid fault employee reference and rolls back', async () => {
       await expect(
         container.domaceClaimsService.create(
-          baseCreateInput({
+          await baseCreateInput({
             faults: [
               {
                 faultType: FaultType.Employee,
@@ -411,15 +422,56 @@ describe('DomaceClaimsService integration', () => {
         mrNumber: 'cokolada-123',
         outcome: ClaimOutcome.Pending,
         faults: [],
+        categoryId: crypto.randomUUID(),
       })
       expect(result.success).toBe(true)
+    })
+
+    it('refuses to create a claim without a category', () => {
+      const result = DomaceClaimCreateInputSchema.safeParse({
+        mrNumber: 'CAT-CREATE/26',
+        outcome: ClaimOutcome.Pending,
+        faults: [],
+      })
+      expect(result.success).toBe(false)
+    })
+  })
+
+  describe('DomaceClaimUpdateInputSchema', () => {
+    it('refuses to update a claim without a category, even when only changing one other field', () => {
+      const result = DomaceClaimUpdateInputSchema.safeParse({
+        warrantyReport: 'Ažurirano',
+      })
+      expect(result.success).toBe(false)
+    })
+  })
+
+  describe('when fetching detail', () => {
+    it('returns the category on the detail, resolved to code and name', async () => {
+      const remontCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      const created = await container.domaceClaimsService.create(
+        await baseCreateInput({
+          categoryId: remontCategoryId,
+          mrNumber: `CATEGORY-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const detail = await container.domaceClaimsService.findById(created.id, FULL_OPERATOR)
+
+      expect(detail.category).toEqual({
+        id: remontCategoryId,
+        code: 'REMONT_MOTORA',
+        name: 'Generalni remont motora',
+      })
     })
   })
 
   describe('when listing', () => {
     it('filters by outcome and full-text search across report and customer', async () => {
       await container.domaceClaimsService.create(
-        baseCreateInput({
+        await baseCreateInput({
           customerName: 'Kompresor Plus',
           warrantyReport: 'Curenje ulja sa poklopca',
           outcome: ClaimOutcome.Pending,
@@ -428,7 +480,7 @@ describe('DomaceClaimsService integration', () => {
         auditContext,
       )
       await container.domaceClaimsService.create(
-        baseCreateInput({
+        await baseCreateInput({
           customerName: 'Drugi Kupac',
           warrantyReport: 'Vibracije radilice',
           outcome: ClaimOutcome.Accepted,
@@ -453,7 +505,7 @@ describe('DomaceClaimsService integration', () => {
     it('excludes soft-deleted claims by default', async () => {
       const uniqueCustomer = `SoftDeleteTest-${Date.now()}`
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ customerName: uniqueCustomer }),
+        await baseCreateInput({ customerName: uniqueCustomer }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -473,7 +525,11 @@ describe('DomaceClaimsService integration', () => {
     })
 
     it('returns nothing for an own_customer-only actor', async () => {
-      await container.domaceClaimsService.create(baseCreateInput(), FULL_OPERATOR, auditContext)
+      await container.domaceClaimsService.create(
+        await baseCreateInput(),
+        FULL_OPERATOR,
+        auditContext,
+      )
 
       const result = await container.domaceClaimsService.list(listQuery(), OWN_CUSTOMER_VIEWER)
       expect(result.items).toHaveLength(0)
@@ -484,14 +540,18 @@ describe('DomaceClaimsService integration', () => {
   describe('when updating', () => {
     it('edits fields and recomputes claim_year', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ dateOfClaim: new Date('2025-01-01') }),
+        await baseCreateInput({ dateOfClaim: new Date('2025-01-01') }),
         FULL_OPERATOR,
         auditContext,
       )
 
       const updated = await container.domaceClaimsService.update(
         created.id,
-        { customerName: 'Novi Kupac', dateOfClaim: new Date('2026-03-03') },
+        {
+          categoryId: defaultCategoryId,
+          customerName: 'Novi Kupac',
+          dateOfClaim: new Date('2026-03-03'),
+        },
         FULL_OPERATOR,
         auditContext,
       )
@@ -503,14 +563,14 @@ describe('DomaceClaimsService integration', () => {
     it('clears MR registry entry when mr_number is removed', async () => {
       const mrNumber = `DOM-CLEAR-${crypto.randomUUID().slice(0, 8)}/26`
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
 
       await container.domaceClaimsService.update(
         created.id,
-        { mrNumber: null },
+        { categoryId: defaultCategoryId, mrNumber: null },
         FULL_OPERATOR,
         auditContext,
       )
@@ -523,7 +583,7 @@ describe('DomaceClaimsService integration', () => {
     it('releases MR on soft-delete so another claim can take it (A)', async () => {
       const mrNumber = `DOM-REL-A-${crypto.randomUUID().slice(0, 8)}/26`
       const deleted = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -533,7 +593,7 @@ describe('DomaceClaimsService integration', () => {
       expect(await container.mrRegistryService.findByMr(mrNumber)).toBeNull()
 
       const replacement = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -547,7 +607,7 @@ describe('DomaceClaimsService integration', () => {
     it('restores MR registry entry when MR is free again (B)', async () => {
       const mrNumber = `DOM-REL-B-${crypto.randomUUID().slice(0, 8)}/26`
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -571,14 +631,14 @@ describe('DomaceClaimsService integration', () => {
     it('keeps claim soft-deleted when restore fails because MR is taken (C)', async () => {
       const mrNumber = `DOM-REL-C-${crypto.randomUUID().slice(0, 8)}/26`
       const first = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
       await container.domaceClaimsService.softDelete(first.id, FULL_OPERATOR, auditContext)
 
       const second = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber }),
+        await baseCreateInput({ mrNumber }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -602,7 +662,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('does not touch mr_registry when claim has no mr_number (D)', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ customerName: 'Servis Petrović', mrNumber: undefined }),
+        await baseCreateInput({ customerName: 'Servis Petrović', mrNumber: undefined }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -627,7 +687,7 @@ describe('DomaceClaimsService integration', () => {
   describe('outcome_resolved_at', () => {
     it('sets outcome_resolved_at when rejecting a pending claim', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber: `DOM-RES-${Date.now()}/26` }),
+        await baseCreateInput({ mrNumber: `DOM-RES-${Date.now()}/26` }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -656,7 +716,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('clears outcome_resolved_at when reopening to pending', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ mrNumber: `DOM-REOPEN-RES-${Date.now()}/26` }),
+        await baseCreateInput({ mrNumber: `DOM-REOPEN-RES-${Date.now()}/26` }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -687,7 +747,7 @@ describe('DomaceClaimsService integration', () => {
   describe('editing freedom (completed claims, no outcome lock)', () => {
     async function createCompleted(outcome = ClaimOutcome.Accepted): Promise<string> {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -705,7 +765,7 @@ describe('DomaceClaimsService integration', () => {
 
       const updated = await container.domaceClaimsService.update(
         id,
-        { customerName: 'Promena' },
+        { categoryId: defaultCategoryId, customerName: 'Promena' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -718,7 +778,7 @@ describe('DomaceClaimsService integration', () => {
 
       const updated = await container.domaceClaimsService.update(
         id,
-        { internalNotes: 'Nalaz posle prihvatanja' },
+        { categoryId: defaultCategoryId, internalNotes: 'Nalaz posle prihvatanja' },
         FULL_OPERATOR,
         auditContext,
       )
@@ -779,7 +839,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('lets an operator delete a pending claim', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -792,7 +852,7 @@ describe('DomaceClaimsService integration', () => {
   describe('when recording money (docs/23)', () => {
     it('records the amounts and invoice number on a PENDING claim (no accepted-only gate)', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -801,6 +861,7 @@ describe('DomaceClaimsService integration', () => {
       const updated = await container.domaceClaimsService.update(
         created.id,
         {
+          categoryId: defaultCategoryId,
           originalInvoiceAmount: 100000,
           partsAmount: 60000,
           laborAmount: 24500.5,
@@ -820,7 +881,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('recomputes total_amount when only one component changes', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ partsAmount: 60000, laborAmount: 20000 }),
+        await baseCreateInput({ partsAmount: 60000, laborAmount: 20000 }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -828,7 +889,7 @@ describe('DomaceClaimsService integration', () => {
 
       const updated = await container.domaceClaimsService.update(
         created.id,
-        { laborAmount: 25000 },
+        { categoryId: defaultCategoryId, laborAmount: 25000 },
         FULL_OPERATOR,
         auditContext,
       )
@@ -840,7 +901,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('leaves total_amount null while both components are empty', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ originalInvoiceAmount: 50000 }),
+        await baseCreateInput({ originalInvoiceAmount: 50000 }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -860,7 +921,7 @@ describe('DomaceClaimsService integration', () => {
       )
 
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({ manufacturerId, mrNumber: `DOM-MFG-${Date.now()}/26` }),
+        await baseCreateInput({ manufacturerId, mrNumber: `DOM-MFG-${Date.now()}/26` }),
         FULL_OPERATOR,
         auditContext,
       )
@@ -869,7 +930,7 @@ describe('DomaceClaimsService integration', () => {
       expect(created.manufacturerName).toBe('BMW Domace')
 
       await container.domaceClaimsService.create(
-        baseCreateInput({
+        await baseCreateInput({
           manufacturerId: otherManufacturerId,
           mrNumber: `DOM-MFG-OTHER-${Date.now()}/26`,
         }),
@@ -892,7 +953,7 @@ describe('DomaceClaimsService integration', () => {
 
       await expect(
         container.domaceClaimsService.create(
-          baseCreateInput({ manufacturerId }),
+          await baseCreateInput({ manufacturerId }),
           FULL_OPERATOR,
           auditContext,
         ),
@@ -913,7 +974,7 @@ describe('DomaceClaimsService integration', () => {
 
       await expect(
         container.domaceClaimsService.create(
-          baseCreateInput({
+          await baseCreateInput({
             manufacturerId: mbManufacturerId,
             engineTypeId: bmwEngineTypeId,
           }),
@@ -930,7 +991,7 @@ describe('DomaceClaimsService integration', () => {
       )
 
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({
+        await baseCreateInput({
           engineTypeId: legacyEngineTypeId,
         }),
         FULL_OPERATOR,
@@ -940,6 +1001,7 @@ describe('DomaceClaimsService integration', () => {
       const updated = await container.domaceClaimsService.update(
         created.id,
         {
+          categoryId: defaultCategoryId,
           manufacturerId: null,
           engineTypeId: legacyEngineTypeId,
           engineCode: 'DOM-ORPHAN-KEEP',
@@ -957,7 +1019,7 @@ describe('DomaceClaimsService integration', () => {
   describe('authorization', () => {
     it('throws NotFoundError for an own_customer actor fetching a real claim', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )
@@ -970,7 +1032,7 @@ describe('DomaceClaimsService integration', () => {
   describe('findings', () => {
     it('round-trips findings on create and replaces the whole list on update', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput({
+        await baseCreateInput({
           findings: [
             { text: 'Ogrebotina na glavi motora', type: 'mehanika' },
             { text: 'Curenje ulja oko zaptivača', type: '' },
@@ -987,7 +1049,10 @@ describe('DomaceClaimsService integration', () => {
 
       const updated = await container.domaceClaimsService.update(
         created.id,
-        { findings: [{ text: 'Prepravljen nalaz', type: 'elektrika' }] },
+        {
+          categoryId: defaultCategoryId,
+          findings: [{ text: 'Prepravljen nalaz', type: 'elektrika' }],
+        },
         FULL_OPERATOR,
         auditContext,
       )
@@ -997,7 +1062,7 @@ describe('DomaceClaimsService integration', () => {
 
     it('creates a claim with an empty findings list when none are given', async () => {
       const created = await container.domaceClaimsService.create(
-        baseCreateInput(),
+        await baseCreateInput(),
         FULL_OPERATOR,
         auditContext,
       )

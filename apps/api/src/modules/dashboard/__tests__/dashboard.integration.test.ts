@@ -15,6 +15,7 @@ import { ForbiddenError } from '../../../core/errors/domain-errors.js'
 import { InProcessEventBus } from '../../events/in-process-event-bus.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getClaimSourceIdByCode,
   getEmployeeIdByNormalizedName,
   TEST_USER_ID,
@@ -75,6 +76,7 @@ describe('DashboardService integration', () => {
     const created = await container.emotiveClaimsService.create(
       {
         engineTypeId: engineType.id,
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         dateOfClaim,
         mrNumber,
         outcome,
@@ -101,6 +103,7 @@ describe('DashboardService integration', () => {
     const created = await container.domaceClaimsService.create(
       {
         mrNumber,
+        categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
         customerName: 'Dashboard Domace Kupac',
         dateOfClaim: dateOfClaim ?? undefined,
         outcome,
@@ -332,6 +335,7 @@ describe('DashboardService integration', () => {
       const created = await container.emotiveClaimsService.create(
         {
           engineTypeId: engineType.id,
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           dateOfClaim: daysAgo(3),
           mrNumber,
           outcome: ClaimOutcome.Pending,
@@ -478,6 +482,7 @@ describe('DashboardService integration', () => {
       await container.emotiveClaimsService.update(
         claimId,
         {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           employeeId: await getEmployeeIdByNormalizedName(
             ctx.db,
             normalizeName('Dejan Milovanović'),

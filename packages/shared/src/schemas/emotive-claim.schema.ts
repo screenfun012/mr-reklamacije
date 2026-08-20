@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { claimFreshnessValues, ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 import { FindingSchema } from './finding.schema.js'
+import { ClaimCategoryRefSchema } from './reference-data.schema.js'
 
 const claimOutcomeValues = [
   ClaimOutcome.Pending,
@@ -23,6 +24,9 @@ export type EmotiveClaimFaultInput = z.infer<typeof EmotiveClaimFaultInputSchema
 export const EmotiveClaimCreateInputSchema = z.object({
   engineTypeId: z.string().uuid(),
   manufacturerId: z.string().uuid().optional(),
+  // What kind of work the claim is about (spec §3.3) — required on create AND update so a
+  // claim can never leave the edit uncategorised. NULL-able in the DB (Task 1 backfill), not here.
+  categoryId: z.string().uuid(),
   dateOfClaim: z.coerce.date(),
   /** MR Engines internal work order (e.g. 5376/25). Required on create. */
   mrNumber: z.string().trim().min(1).max(50),
@@ -47,6 +51,9 @@ export const EmotiveClaimUpdateInputSchema = z
     warrantyReport: z.string().trim().min(1).max(8000).optional(),
     engineTypeId: z.string().uuid().optional(),
     manufacturerId: z.string().uuid().nullable().optional(),
+    // Required on update too, deliberately (spec §3.3): a claim being edited must not
+    // leave the edit uncategorised. The Task 1 backfill means no existing claim is blocked.
+    categoryId: z.string().uuid(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().optional(),
     mrNumber: z.string().trim().min(1).max(50).optional(),
@@ -154,6 +161,11 @@ export const SectionFreshnessSchema = z.object({
 export type SectionFreshness = z.infer<typeof SectionFreshnessSchema>
 
 export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
+  // Resolved from `categoryId` (Faza 1, spec §3.3). `null` only for a legacy row outside
+  // this feature's write paths — create/update both require `categoryId` via Zod, so a
+  // claim reachable through the API always carries one. The category is data; nothing
+  // in any layer may branch on `code`.
+  category: ClaimCategoryRefSchema.nullable(),
   engineTypeManufacturer: z.string().nullable(),
   sourceCode: z.string().nullable(),
   sourceName: z.string().nullable(),

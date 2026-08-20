@@ -15,6 +15,7 @@ import {
 import { createTestEngineType } from '../../../test-helpers/engine-type-fixtures.js'
 import {
   ensureTestUser,
+  getClaimCategoryIdByCode,
   getCustomerIdByName,
   TEST_USER_ID,
 } from '../../../test-helpers/fixtures.js'
@@ -59,6 +60,7 @@ async function createDomaceClaim(container: Container): Promise<string> {
   const created = await container.domaceClaimsService.create(
     {
       customerName: 'Auto Stanić',
+      categoryId: await getClaimCategoryIdByCode(container.db, 'REMONT_MOTORA'),
       outcome: ClaimOutcome.Pending,
       faults: [],
       findings: [],
@@ -397,6 +399,7 @@ describe('AttachmentsService integration', () => {
       const created = await container.emotiveClaimsService.create(
         {
           engineTypeId: engineType.id,
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           dateOfClaim: new Date('2026-04-17'),
           mrNumber: `ATT-${crypto.randomUUID().slice(0, 8)}/26`,
           outcome: ClaimOutcome.Pending,
@@ -476,6 +479,7 @@ describe('AttachmentsService integration', () => {
       const created = await container.emotiveClaimsService.create(
         {
           engineTypeId: engineType.id,
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           dateOfClaim: new Date('2026-04-17'),
           mrNumber: `FRESH-${crypto.randomUUID().slice(0, 8)}/26`,
           outcome: ClaimOutcome.Pending,
@@ -604,6 +608,7 @@ describe('AttachmentsService integration', () => {
       const created = await container.emotiveClaimsService.create(
         {
           engineTypeId: engineType.id,
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA'),
           dateOfClaim: new Date('2026-04-17'),
           mrNumber: `SECFRESH-${crypto.randomUUID().slice(0, 8)}/26`,
           outcome: ClaimOutcome.Pending,
