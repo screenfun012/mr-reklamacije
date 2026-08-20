@@ -2,6 +2,7 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query'
 
 import { CustomerKind } from '../enums.js'
 import type {
+  ClaimCategoryListItem,
   ClaimSourceListItem,
   CustomerListItem,
   CustomersListQuery,
@@ -102,6 +103,26 @@ export function claimSourcesReferenceOptions(filters: ReferenceLookupFilters = {
     queryKey: claimSourcesReferenceQueryKey(normalized),
     queryFn: () =>
       fetchAllReferencePages<ClaimSourceListItem>('/api/claim-sources', {
+        activeOnly: normalized.activeOnly ?? true,
+        search: normalized.search,
+      }),
+    staleTime: REFERENCE_STALE_MS,
+    gcTime: REFERENCE_GC_MS,
+  })
+}
+
+export function claimCategoriesReferenceQueryKey(
+  filters: ReferenceLookupFilters = {},
+): readonly ['claim-categories', 'reference', ReferenceLookupFilters] {
+  return ['claim-categories', 'reference', normalizeReferenceLookupFilters(filters)] as const
+}
+
+export function claimCategoriesReferenceOptions(filters: ReferenceLookupFilters = {}) {
+  const normalized = normalizeReferenceLookupFilters(filters)
+  return queryOptions({
+    queryKey: claimCategoriesReferenceQueryKey(normalized),
+    queryFn: () =>
+      fetchAllReferencePages<ClaimCategoryListItem>('/api/claim-categories', {
         activeOnly: normalized.activeOnly ?? true,
         search: normalized.search,
       }),

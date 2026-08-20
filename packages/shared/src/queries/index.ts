@@ -105,6 +105,8 @@ export {
 } from './emotive-claims.js'
 export {
   ACTIVE_REFERENCE_LOOKUP,
+  claimCategoriesReferenceOptions,
+  claimCategoriesReferenceQueryKey,
   claimSourcesReferenceOptions,
   claimSourcesReferenceQueryKey,
   customersReferenceOptions,

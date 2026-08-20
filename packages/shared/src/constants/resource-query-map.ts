@@ -26,6 +26,8 @@ export function queryKeyPrefixesForResourceChanged(
       return [['external-parties']] as const
     case ResourceChangedKey.ClaimSources:
       return [['claim-sources']] as const
+    case ResourceChangedKey.ClaimCategories:
+      return [['claim-categories']] as const
     case ResourceChangedKey.Users:
       return [['users']] as const
     // The list, the KPI cards and any open detail all live under this prefix.

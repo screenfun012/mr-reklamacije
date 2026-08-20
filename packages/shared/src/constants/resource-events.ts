@@ -12,6 +12,7 @@ export const ResourceChangedKey = {
   Employees: 'employees',
   ExternalParties: 'externalParties',
   ClaimSources: 'claimSources',
+  ClaimCategories: 'claimCategories',
   Users: 'users',
   IntakeOrders: 'intakeOrders',
   IntakeChecklistItems: 'intakeChecklistItems',
