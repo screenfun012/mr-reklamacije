@@ -945,6 +945,39 @@ describe('DomaceClaimsService integration', () => {
       expect(filtered.items.every((item) => item.manufacturerId === manufacturerId)).toBe(true)
     })
 
+    it('rejects a category that does not exist or has been switched off', async () => {
+      // Mirrors the EMOTIVE pair: without this the ghost id reached Postgres as a foreign-key
+      // error (a 500), and a retired category was accepted in silence.
+      await expect(
+        container.domaceClaimsService.create(
+          await baseCreateInput({ categoryId: crypto.randomUUID() }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
+      await ctx.db
+        .update(schema.claimCategories)
+        .set({ isActive: false })
+        .where(eq(schema.claimCategories.id, categoryId))
+
+      try {
+        await expect(
+          container.domaceClaimsService.create(
+            await baseCreateInput({ categoryId }),
+            FULL_OPERATOR,
+            auditContext,
+          ),
+        ).rejects.toBeInstanceOf(ValidationError)
+      } finally {
+        await ctx.db
+          .update(schema.claimCategories)
+          .set({ isActive: true })
+          .where(eq(schema.claimCategories.id, categoryId))
+      }
+    })
+
     it('rejects inactive engine manufacturer on create', async () => {
       const manufacturerId = await createInactiveEngineManufacturer(
         `DOM-INACTIVE-${Date.now()}`,

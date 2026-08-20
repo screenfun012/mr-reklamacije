@@ -172,6 +172,21 @@ export class DomaceClaimsRepository {
     return row?.manufacturerId ?? null
   }
 
+  async isClaimCategoryActive(categoryId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: claimCategories.id })
+      .from(claimCategories)
+      .where(
+        and(
+          eq(claimCategories.id, categoryId),
+          isNull(claimCategories.deletedAt),
+          eq(claimCategories.isActive, true),
+        ),
+      )
+      .limit(1)
+    return row !== undefined
+  }
+
   async isManufacturerActive(manufacturerId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: engineManufacturers.id })

@@ -62,9 +62,13 @@ export class ClaimCategoriesRepository {
 
     if (query.search !== undefined) {
       const pattern = `%${query.search}%`
-      conditions.push(
-        or(ilike(claimCategories.code, pattern), ilike(claimCategories.name, pattern))!,
+      const searchCondition = or(
+        ilike(claimCategories.code, pattern),
+        ilike(claimCategories.name, pattern),
       )
+      if (searchCondition !== undefined) {
+        conditions.push(searchCondition)
+      }
     }
 
     const keysetCondition = keysetAfter(claimCategories.sortOrder, claimCategories.id, cursor)

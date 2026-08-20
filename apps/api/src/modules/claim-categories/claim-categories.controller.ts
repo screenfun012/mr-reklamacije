@@ -10,7 +10,12 @@ import {
   ReferenceListQuerySchema,
 } from './claim-categories.validators.js'
 
-export function createClaimCategoriesController(container: Container) {
+export function createClaimCategoriesController(container: Container): {
+  list: (c: Context) => Promise<Response>
+  create: (c: Context) => Promise<Response>
+  update: (c: Context) => Promise<Response>
+  delete: (c: Context) => Promise<Response>
+} {
   return {
     list: async (c: Context) => {
       const query = ReferenceListQuerySchema.parse(c.req.query())

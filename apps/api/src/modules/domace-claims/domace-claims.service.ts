@@ -120,7 +120,7 @@ export class DomaceClaimsService {
       throw new NotFoundError('Domace claim', id)
     }
 
-    await this.validateUpdateReferences(input)
+    await this.validateUpdateReferences(input, before.category?.id ?? null)
 
     const updated = await this.repo.update(id, input, auditContext.actorUserId, before, scope)
 
@@ -246,17 +246,19 @@ export class DomaceClaimsService {
   }
 
   private async validateCreateReferences(input: DomaceClaimCreateInput): Promise<void> {
-    const [engineTypeActive, manufacturerActive, employeeActive] = await Promise.all([
-      input.engineTypeId !== undefined
-        ? this.repo.isEngineTypeActive(input.engineTypeId)
-        : Promise.resolve(true),
-      input.manufacturerId !== undefined
-        ? this.repo.isManufacturerActive(input.manufacturerId)
-        : Promise.resolve(true),
-      input.employeeId !== undefined
-        ? this.repo.isEmployeeActive(input.employeeId)
-        : Promise.resolve(true),
-    ])
+    const [engineTypeActive, manufacturerActive, employeeActive, categoryActive] =
+      await Promise.all([
+        input.engineTypeId !== undefined
+          ? this.repo.isEngineTypeActive(input.engineTypeId)
+          : Promise.resolve(true),
+        input.manufacturerId !== undefined
+          ? this.repo.isManufacturerActive(input.manufacturerId)
+          : Promise.resolve(true),
+        input.employeeId !== undefined
+          ? this.repo.isEmployeeActive(input.employeeId)
+          : Promise.resolve(true),
+        this.repo.isClaimCategoryActive(input.categoryId),
+      ])
 
     if (!engineTypeActive) {
       throw new ValidationError('Invalid or inactive engine type')
@@ -266,6 +268,11 @@ export class DomaceClaimsService {
     }
     if (!employeeActive) {
       throw new ValidationError('Invalid or inactive employee')
+    }
+    // Same reason as EMOTIVE: the category is required, so an unchecked stale id came back
+    // from Postgres as a foreign-key error and reached the caller as a 500.
+    if (!categoryActive) {
+      throw new ValidationError('Invalid or inactive claim category')
     }
 
     await this.validateFaults(input.faults)
@@ -292,9 +299,21 @@ export class DomaceClaimsService {
     )
   }
 
-  private async validateUpdateReferences(input: DomaceClaimUpdateInput): Promise<void> {
+  private async validateUpdateReferences(
+    input: DomaceClaimUpdateInput,
+    currentCategoryId: string | null,
+  ): Promise<void> {
     type ReferenceCheck = { active: Promise<boolean>; message: string }
     const checks: ReferenceCheck[] = []
+
+    // Keeping a switched-off category the claim already carries stays allowed; moving a claim
+    // into one does not. Mirrors EMOTIVE exactly.
+    if (input.categoryId !== undefined && input.categoryId !== currentCategoryId) {
+      checks.push({
+        active: this.repo.isClaimCategoryActive(input.categoryId),
+        message: 'Invalid or inactive claim category',
+      })
+    }
 
     if (input.engineTypeId !== undefined && input.engineTypeId !== null) {
       checks.push({

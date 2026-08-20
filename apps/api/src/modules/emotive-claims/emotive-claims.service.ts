@@ -210,7 +210,7 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    await this.validateUpdateReferences(input)
+    await this.validateUpdateReferences(input, before.category?.id ?? null)
 
     const updated = await this.repo.update(id, input, auditContext.actorUserId, before, scope)
 
@@ -438,22 +438,29 @@ export class EmotiveClaimsService {
   }
 
   private async validateCreateReferences(input: EmotiveClaimCreateInput): Promise<void> {
-    const [engineTypeActive, manufacturerActive, employeeActive, sourceActive, customerActive] =
-      await Promise.all([
-        this.repo.isEngineTypeActive(input.engineTypeId),
-        input.manufacturerId !== undefined
-          ? this.repo.isManufacturerActive(input.manufacturerId)
-          : Promise.resolve(true),
-        input.employeeId !== undefined
-          ? this.repo.isEmployeeActive(input.employeeId)
-          : Promise.resolve(true),
-        input.sourceId !== undefined
-          ? this.repo.isClaimSourceActive(input.sourceId)
-          : Promise.resolve(true),
-        input.customerId !== undefined
-          ? this.repo.isCustomerActive(input.customerId)
-          : Promise.resolve(true),
-      ])
+    const [
+      engineTypeActive,
+      manufacturerActive,
+      employeeActive,
+      sourceActive,
+      customerActive,
+      categoryActive,
+    ] = await Promise.all([
+      this.repo.isEngineTypeActive(input.engineTypeId),
+      input.manufacturerId !== undefined
+        ? this.repo.isManufacturerActive(input.manufacturerId)
+        : Promise.resolve(true),
+      input.employeeId !== undefined
+        ? this.repo.isEmployeeActive(input.employeeId)
+        : Promise.resolve(true),
+      input.sourceId !== undefined
+        ? this.repo.isClaimSourceActive(input.sourceId)
+        : Promise.resolve(true),
+      input.customerId !== undefined
+        ? this.repo.isCustomerActive(input.customerId)
+        : Promise.resolve(true),
+      this.repo.isClaimCategoryActive(input.categoryId),
+    ])
 
     if (!engineTypeActive) {
       throw new ValidationError('Invalid or inactive engine type')
@@ -469,6 +476,11 @@ export class EmotiveClaimsService {
     }
     if (!customerActive) {
       throw new ValidationError('Invalid or inactive customer')
+    }
+    // The category is the one reference the server REQUIRES, so an unchecked stale id reached
+    // Postgres as a foreign-key error and came back a 500 instead of a refusal.
+    if (!categoryActive) {
+      throw new ValidationError('Invalid or inactive claim category')
     }
 
     await this.validateFaults(input.faults)
@@ -495,9 +507,22 @@ export class EmotiveClaimsService {
     )
   }
 
-  private async validateUpdateReferences(input: EmotiveClaimUpdateInput): Promise<void> {
+  private async validateUpdateReferences(
+    input: EmotiveClaimUpdateInput,
+    currentCategoryId: string | null,
+  ): Promise<void> {
     type ReferenceCheck = { active: Promise<boolean>; message: string }
     const checks: ReferenceCheck[] = []
+
+    // A claim KEEPS a category the office has since switched off — the form deliberately keeps
+    // it selectable, and refusing it would block every edit to such a claim. What is refused is
+    // MOVING a claim into a retired category, and any id that is not a live category at all.
+    if (input.categoryId !== undefined && input.categoryId !== currentCategoryId) {
+      checks.push({
+        active: this.repo.isClaimCategoryActive(input.categoryId),
+        message: 'Invalid or inactive claim category',
+      })
+    }
 
     if (input.engineTypeId !== undefined) {
       checks.push({

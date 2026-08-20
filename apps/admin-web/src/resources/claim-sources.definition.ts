@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 
 import { renderActiveCell } from '~/lib/resource/resource-active-cell'
+import { parseOptionalInt } from '~/lib/resource/parse-optional-int'
 import {
   ClaimSourceCreateInputSchema,
   ClaimSourceUpdateInputSchema,
@@ -22,17 +23,6 @@ function parseOptionalString(value: string): string | undefined {
 function parseOptionalNullableString(value: string): string | null {
   const trimmed = value.trim()
   return trimmed === '' ? null : trimmed
-}
-
-function parseOptionalInt(value: string): number | undefined {
-  const trimmed = value.trim()
-  if (trimmed === '') {
-    return undefined
-  }
-  // Strict full-string parse: a separated value like "1.998" / "1,998" / "1 998" is
-  // REJECTED (undefined), not silently truncated to 1 the way Number.parseInt would.
-  const parsed = Number(trimmed)
-  return Number.isInteger(parsed) ? parsed : undefined
 }
 
 function displayNullableText(value: string | null): string {

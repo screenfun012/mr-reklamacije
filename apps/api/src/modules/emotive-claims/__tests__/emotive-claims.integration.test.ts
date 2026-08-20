@@ -1081,6 +1081,41 @@ describe('EmotiveClaimsService integration', () => {
       expect(claims).toHaveLength(0)
     })
 
+    it('refuses a category that does not exist, instead of letting the FK raise a 500', async () => {
+      // Every other reference on a claim is checked for existence and life before the insert
+      // (engine type, manufacturer, worker, source, customer). The category was the one that
+      // was not — and it is the only one the server REQUIRES, so a stale id reached Postgres
+      // and came back as an unhandled foreign-key error.
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({ mrNumber: 'CAT-GHOST/26', categoryId: crypto.randomUUID() }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('refuses a category the office has switched off', async () => {
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
+      await ctx.db
+        .update(schema.claimCategories)
+        .set({ isActive: false })
+        .where(eq(schema.claimCategories.id, categoryId))
+
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({ mrNumber: 'CAT-OFF/26', categoryId }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+
+      await ctx.db
+        .update(schema.claimCategories)
+        .set({ isActive: true })
+        .where(eq(schema.claimCategories.id, categoryId))
+    })
+
     it('registers MR key on create', async () => {
       const mrNumber = `REG-HOOK-${crypto.randomUUID().slice(0, 8)}/26`
       const created = await container.emotiveClaimsService.create(
@@ -1417,6 +1452,62 @@ describe('EmotiveClaimsService integration', () => {
       await expect(
         container.emotiveClaimsService.create(
           await buildCreateInput({ manufacturerId }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+  })
+
+  describe('when the claim carries a switched-off category', () => {
+    async function switchOffCategory(code: string): Promise<string> {
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, code)
+      await ctx.db
+        .update(schema.claimCategories)
+        .set({ isActive: false })
+        .where(eq(schema.claimCategories.id, categoryId))
+      return categoryId
+    }
+
+    afterEach(async () => {
+      await ctx.db.update(schema.claimCategories).set({ isActive: true })
+    })
+
+    it('keeps letting the claim be edited without losing the category it already has', async () => {
+      // The form deliberately keeps a switched-off category selectable on the claim that
+      // carries it (commit 3720d8f). If the server refused it, editing anything else on such
+      // a claim would fail — the office would have to re-open a retired category to fix a typo.
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ categoryId, mrNumber: `CAT-KEEP-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await switchOffCategory('MASINSKA_OBRADA')
+
+      const updated = await container.emotiveClaimsService.update(
+        created.id,
+        { categoryId, warrantyReport: 'Dopunjen opis' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(updated.category?.code).toBe('MASINSKA_OBRADA')
+      expect(updated.warrantyReport).toBe('Dopunjen opis')
+    })
+
+    it('still refuses to MOVE a claim into a switched-off category', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({ mrNumber: `CAT-MOVE-${Date.now()}/26` }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const retiredId = await switchOffCategory('MASINSKA_OBRADA')
+
+      await expect(
+        container.emotiveClaimsService.update(
+          created.id,
+          { categoryId: retiredId },
           FULL_OPERATOR,
           auditContext,
         ),
