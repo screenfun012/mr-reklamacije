@@ -12,6 +12,7 @@ import {
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
+  Tags,
   TriangleAlert,
   Truck,
   Users,
@@ -128,6 +129,12 @@ export const adminNavGroups: NavGroup[] = [
         label: m.nav_external_parties,
         to: '/settings/external-parties',
         icon: Handshake,
+      },
+      {
+        key: 'claim-categories',
+        label: m.nav_claim_categories,
+        to: '/settings/claim-categories',
+        icon: Tags,
       },
       {
         key: 'claim-sources',
