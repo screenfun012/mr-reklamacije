@@ -15,6 +15,7 @@ import {
 import { m, setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -121,6 +122,42 @@ function renderSection(canEdit: boolean): void {
   render(node)
 }
 
+const DEACTIVATED_CATEGORY_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+
+function makeDeactivatedCategoryClaim(): DomaceClaimDetail {
+  return {
+    ...makeClaim(),
+    category: { id: DEACTIVATED_CATEGORY_ID, code: 'UGASENA', name: 'Ugašena kategorija' },
+  }
+}
+
+function renderDeactivatedCategorySection(): void {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const claim = makeDeactivatedCategoryClaim()
+  client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, claim)
+  client.setQueryData(
+    engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
+    ENGINE_TYPES,
+  )
+  client.setQueryData(
+    engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
+    MANUFACTURERS,
+  )
+  // Active catalog no longer contains the claim's own category — it was switched off.
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+
+  const node: ReactElement = (
+    <QueryClientProvider client={client}>
+      <DomaceClaimBasicSection claim={claim} canEdit={true} />
+    </QueryClientProvider>
+  )
+  render(node)
+}
+
 describe('DomaceClaimBasicSection', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -156,5 +193,15 @@ describe('DomaceClaimBasicSection', () => {
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
     expect(init.method).toBe('PATCH')
     expect(JSON.parse(String(init.body))).toMatchObject({ customerName: 'Novi Kupac' })
+  })
+
+  it('keeps the current category selectable even if it has since been deactivated', async () => {
+    const user = userEvent.setup()
+    renderDeactivatedCategorySection()
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+
+    await user.click(screen.getByRole('combobox', { name: m.field_claim_category() }))
+
+    expect(screen.getByRole('option', { name: 'Ugašena kategorija' })).toBeInTheDocument()
   })
 })

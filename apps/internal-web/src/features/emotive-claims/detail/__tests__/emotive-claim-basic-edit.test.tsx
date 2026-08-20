@@ -17,6 +17,7 @@ import {
 import { m, setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -105,6 +106,44 @@ function renderLegacyOrphanSection(): void {
   const node: ReactElement = (
     <QueryClientProvider client={client}>
       <EmotiveClaimBasicSection claim={makeLegacyOrphanClaim()} canEdit={true} />
+    </QueryClientProvider>
+  )
+  render(node)
+}
+
+const DEACTIVATED_CATEGORY_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+
+function makeDeactivatedCategoryClaim(): EmotiveClaimDetail {
+  return {
+    ...makeClaim(),
+    category: { id: DEACTIVATED_CATEGORY_ID, code: 'UGASENA', name: 'Ugašena kategorija' },
+  } as unknown as EmotiveClaimDetail
+}
+
+function renderDeactivatedCategorySection(): void {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  client.setQueryData(
+    customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }).queryKey,
+    CUSTOMERS,
+  )
+  client.setQueryData(
+    engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
+    ENGINE_TYPES,
+  )
+  client.setQueryData(
+    engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
+    MANUFACTURERS,
+  )
+  // Active catalog no longer contains the claim's own category — it was switched off.
+  client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
+  client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+
+  const node: ReactElement = (
+    <QueryClientProvider client={client}>
+      <EmotiveClaimBasicSection claim={makeDeactivatedCategoryClaim()} canEdit={true} />
     </QueryClientProvider>
   )
   render(node)
@@ -310,5 +349,15 @@ describe('EmotiveClaimBasicSection', () => {
     }
     expect(body.engineTypeId).toBe(LEGACY_ENGINE_TYPE_ID)
     expect(body.manufacturerId).toBeNull()
+  })
+
+  it('keeps the current category selectable even if it has since been deactivated', async () => {
+    const user = userEvent.setup()
+    renderDeactivatedCategorySection()
+    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+
+    await user.click(screen.getByRole('combobox', { name: m.field_claim_category() }))
+
+    expect(screen.getByRole('option', { name: 'Ugašena kategorija' })).toBeInTheDocument()
   })
 })
