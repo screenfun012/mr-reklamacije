@@ -148,6 +148,14 @@ export function DomaceClaimOverviewEdit({
         </p>
       ) : null}
 
+      {/* A green button that quietly does nothing is the worst thing on a screen: the guard is
+          right to refuse an incomplete row, but it has to SAY so where the eye already is. */}
+      {saveError === null && Object.keys(fieldErrors).length > 0 ? (
+        <p className="text-[13px] text-mri-bad" role="alert">
+          {m.claims_edit_blocked_hint()}
+        </p>
+      ) : null}
+
       <div className="flex items-center justify-end gap-2.5">
         <InternalButton
           type="button"

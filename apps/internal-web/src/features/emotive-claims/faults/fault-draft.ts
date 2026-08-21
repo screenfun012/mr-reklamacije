@@ -1,3 +1,4 @@
+import { m } from '@mr/i18n'
 import {
   EmotiveClaimFaultInputSchema,
   FaultType,
@@ -41,6 +42,9 @@ export function faultDraftsToInput(faults: EmotiveClaimFaultDraft[]): EmotiveCla
   })
 }
 
+/** The one-of reference a fault row must carry — whichever kind of blame it names. */
+const CULPRIT_FIELDS = new Set(['employeeId', 'departmentId', 'externalPartyId'])
+
 export function validateFaultDrafts(faults: EmotiveClaimFaultDraft[]): z.ZodError | null {
   const issues: z.ZodIssue[] = []
 
@@ -48,8 +52,18 @@ export function validateFaultDrafts(faults: EmotiveClaimFaultDraft[]): z.ZodErro
     const result = EmotiveClaimFaultInputSchema.safeParse(faultDraftToPayload(fault))
     if (!result.success) {
       for (const issue of result.error.issues) {
+        // The WIRE schema carries no UI copy, and rightly so — but its default text reached the
+        // shop floor as "Invalid UUID" under a select nobody had touched, beside a green SAVE
+        // that simply did nothing (found 2026-08-21). The field's own sentence, in Serbian.
+        const field = issue.path[issue.path.length - 1]
+        const message =
+          typeof field === 'string' && CULPRIT_FIELDS.has(field)
+            ? m.emotive_claims_create_fault_culprit_required()
+            : issue.message
+
         issues.push({
           ...issue,
+          message,
           path: ['faults', index, ...issue.path],
         })
       }
