@@ -15,11 +15,15 @@ function isKnownLocale(value: string | undefined): value is Locale {
 }
 
 /**
- * Blocking inline script for the portal `<head>`: mirrors a stored locale into
- * the cookie, and — when nothing is stored — pins the portal default (en) so
- * SSR and client agree from the very first render.
+ * Blocking inline script for the portal `<head>`. Same rule as the internal one
+ * ({@link LOCALE_BOOTSTRAP_SCRIPT}): an EXISTING cookie wins and is mirrored into localStorage,
+ * because the server has already rendered with it and overwriting it here would change the
+ * language between SSR and hydration — which React answers by throwing the whole tree away.
+ *
+ * With nothing stored the portal pins its default (en) so SSR and client agree from the very
+ * first render.
  */
-export const PORTAL_LOCALE_BOOTSTRAP_SCRIPT = `(function(){try{var ls='${runtime.localStorageKey}';var cn='${runtime.cookieName}';var l=localStorage.getItem(ls);if(l!=='sr'&&l!=='en'){l='${PORTAL_DEFAULT_LOCALE}';localStorage.setItem(ls,l);}document.cookie=cn+'='+l+'; path=/; max-age=${runtime.cookieMaxAge}';}catch(e){}})();`
+export const PORTAL_LOCALE_BOOTSTRAP_SCRIPT = `(function(){try{var ls='${runtime.localStorageKey}';var cn='${runtime.cookieName}';var m=document.cookie.match(new RegExp('(?:^|; *)'+cn+'=(sr|en)'));if(m){localStorage.setItem(ls,m[1]);return;}var l=localStorage.getItem(ls);if(l!=='sr'&&l!=='en'){l='${PORTAL_DEFAULT_LOCALE}';localStorage.setItem(ls,l);}document.cookie=cn+'='+l+'; path=/; max-age=${runtime.cookieMaxAge}';}catch(e){}})();`
 
 /**
  * Resolve the portal locale from the request cookie ONLY — never Accept-Language
