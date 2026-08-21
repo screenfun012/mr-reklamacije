@@ -42,7 +42,7 @@ describe('createRootAuthBeforeLoad', () => {
     expect(authClient.getSession).toHaveBeenCalledTimes(1)
     expect(result).toEqual({
       authSession: {
-        user: { roles: ['operator'], permissions: [], name: '', email: '' },
+        user: { id: '', roles: ['operator'], permissions: [], name: '', email: '' },
       },
       locale: 'sr',
     })

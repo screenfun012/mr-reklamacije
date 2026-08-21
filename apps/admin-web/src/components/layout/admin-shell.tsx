@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { authClient } from '~/lib/auth-client'
 import { countUsersByStatus } from '~/lib/dashboard-user-counts'
 import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
+import { useAdminAuthUser } from '~/lib/use-admin-auth-user'
 
 import { AdminSidebar } from './admin-sidebar'
 import { AdminTopbar } from './admin-topbar'
@@ -21,14 +22,15 @@ export interface AdminShellProps {
  * where the user block sits: at the FOOT OF THE SIDEBAR, not in the bar. Collapsible-sidebar state
  * (desktop icon rail, mobile drawer) lives in the shared `useSidebarState` hook.
  *
- * User data comes from `authClient.useSession()`; during the first SSR render
- * the hook returns `data: undefined`, so the user fields are briefly blank until
- * the browser hydrates.
+ * User data comes from {@link useAdminAuthUser}: the router's settled session first, the live
+ * one only as a refinement. Reading `useSession()` straight resolved differently on the server
+ * than on the client's first render, and React answered the difference by throwing the whole
+ * SSR tree away — on every admin page load (2026-08-21).
  */
 export function AdminShell({ children }: AdminShellProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { data: session } = authClient.useSession()
+  const { userName, userEmail } = useAdminAuthUser()
   useRealtimeEventStream()
   const { collapsed, mobileOpen, onToggle, onCloseMobile } = useSidebarState(
     'mrr:admin:sidebar-collapsed',
@@ -50,9 +52,6 @@ export function AdminShell({ children }: AdminShellProps) {
       await navigate({ to: '/login' })
     })()
   }
-
-  const userEmail = session?.user.email ?? ''
-  const userName = session?.user.name ?? userEmail
 
   return (
     // `adm-grid` is the 56px graph-paper the prototype draws behind everything. It sits on the page

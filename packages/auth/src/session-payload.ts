@@ -1,4 +1,5 @@
 export type AuthSessionUser = {
+  id?: unknown
   roles?: unknown
   permissions?: unknown
   name?: unknown
@@ -12,6 +13,12 @@ export type AuthSessionPayload = {
 /** Router-context shape — JSON-serializable fields only (TanStack beforeLoad). */
 export type SerializableAuthSession = {
   user: {
+    /**
+     * Carried so "is this me?" can be answered from the SAME session the server rendered with.
+     * Reading it from the live client session instead made screens differ between SSR and
+     * hydration, which React answers by re-rendering the whole tree (2026-08-21).
+     */
+    id: string
     roles: readonly string[]
     permissions: readonly string[]
     name: string
@@ -33,10 +40,11 @@ export function toSerializableAuthSession(
     ? session.user.permissions.filter((p): p is string => typeof p === 'string')
     : []
 
+  const id = typeof session.user.id === 'string' ? session.user.id : ''
   const name = typeof session.user.name === 'string' ? session.user.name : ''
   const email = typeof session.user.email === 'string' ? session.user.email : ''
 
-  return { user: { roles, permissions, name, email } }
+  return { user: { id, roles, permissions, name, email } }
 }
 
 function parseClientSessionPayload(raw: unknown): AuthSessionPayload | null {

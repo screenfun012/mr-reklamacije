@@ -1,5 +1,6 @@
+import { m, setLocale } from '@mr/i18n'
 import { IntakeOwnerType } from '@mr/shared'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { step1MissingLabels } from '../intake-step1-hint'
 import { emptyIntakeWizardValues, type IntakeWizardValues } from '../intake-wizard-state'
@@ -19,9 +20,18 @@ function filledValues(overrides: Partial<IntakeWizardValues> = {}): IntakeWizard
 
 /** The suite runs in the default locale, English — the labels below are that locale's. */
 describe('step1MissingLabels', () => {
+  beforeEach(() => {
+    // Pinned on purpose: these labels are read off the live message catalogue, and the suite
+    // used to pass only because the test environment happened to resolve English. The app's
+    // primary language is Serbian; the assertions below read from the catalogue either way.
+    setLocale('sr', { reload: false })
+  })
+
   it('names the ID card, the field the old sentence never mentioned', () => {
     // The reported bug, verbatim: everything the footer listed was filled and DALJE stayed dead.
-    expect(step1MissingLabels(filledValues({ ownerIdNumber: '' }))).toBe('ID card number')
+    expect(step1MissingLabels(filledValues({ ownerIdNumber: '' }))).toBe(
+      m.intake_field_owner_id_card(),
+    )
   })
 
   it('says nothing when nothing is missing', () => {
@@ -30,7 +40,7 @@ describe('step1MissingLabels', () => {
 
   it('names each empty field by the label on its own row, in form order', () => {
     expect(step1MissingLabels(filledValues({ vehicle: '', ownerPhone: '' }))).toBe(
-      'Make and model, Phone',
+      `${m.intake_field_vehicle()}, ${m.intake_field_owner_phone()}`,
     )
   })
 

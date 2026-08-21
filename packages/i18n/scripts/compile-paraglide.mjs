@@ -10,8 +10,15 @@
  * - globalVariable mirrors `setLocale` into in-memory `_locale` so Vitest/node
  *   callers get consistent `getLocale()` after `setLocale(..., { reload: false })`
  *   without a browser (built-in strategies skip localStorage when `isServer`).
- * - preferredLanguage: Accept-Language / navigator (client only).
  * - baseLocale: final fallback (sr).
+ *
+ * ⚠ `preferredLanguage` was REMOVED (2026-08-21). It is the one rung the two sides read
+ * differently: the SERVER sees the request's Accept-Language, the client its own chain, so a
+ * first visit with no cookie rendered "Sign in" on the server and "Prijava" in the browser —
+ * and React answers a text mismatch by throwing the whole SSR tree away and re-rendering, which
+ * is how a screen arrives with its buttons missing. Stored choice, else the app's own default:
+ * the portal already resolved it that way on purpose (`resolvePortalLocaleFromRequest`), and
+ * Serbian is the internal apps' primary language regardless of what a browser asks for.
  */
 import { compile } from '@inlang/paraglide-js'
 import { rmSync } from 'node:fs'
@@ -41,6 +48,6 @@ await compile({
   project: join(pkgRoot, 'project.inlang'),
   outdir,
   cleanOutdir: false,
-  strategy: ['cookie', 'localStorage', 'globalVariable', 'preferredLanguage', 'baseLocale'],
+  strategy: ['cookie', 'localStorage', 'globalVariable', 'baseLocale'],
   localStorageKey: 'mrr:locale',
 })

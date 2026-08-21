@@ -5,9 +5,10 @@ import { describe, expect, it } from 'vitest'
 import { resolveSessionPayload, toSerializableAuthSession } from '../session-payload.js'
 
 describe('toSerializableAuthSession', () => {
-  it('preserves name and email for router context', () => {
+  it('preserves id, name and email for router context', () => {
     const result = toSerializableAuthSession({
       user: {
+        id: 'user-1',
         roles: ['admin'],
         permissions: ['claims.read'],
         name: 'Nikola Admin',
@@ -17,6 +18,9 @@ describe('toSerializableAuthSession', () => {
 
     expect(result).toEqual({
       user: {
+        // The id travels with the rest so "is this me?" is answered from the session the SERVER
+        // rendered with — reading it from the live client session split SSR from hydration.
+        id: 'user-1',
         roles: ['admin'],
         permissions: ['claims.read'],
         name: 'Nikola Admin',
@@ -25,13 +29,13 @@ describe('toSerializableAuthSession', () => {
     })
   })
 
-  it('defaults missing name and email to empty strings', () => {
+  it('defaults a missing id, name and email to empty strings', () => {
     const result = toSerializableAuthSession({
       user: { roles: ['operator'] },
     })
 
     expect(result).toEqual({
-      user: { roles: ['operator'], permissions: [], name: '', email: '' },
+      user: { id: '', roles: ['operator'], permissions: [], name: '', email: '' },
     })
   })
 
@@ -55,6 +59,7 @@ describe('resolveSessionPayload', () => {
 
     expect(toSerializableAuthSession(payload)).toEqual({
       user: {
+        id: '',
         roles: ['admin'],
         permissions: [],
         name: 'Nikola Admin',

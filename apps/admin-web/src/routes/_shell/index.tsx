@@ -19,8 +19,8 @@ import { NeedsYouCard } from '~/components/dashboard/needs-you-card'
 import { RecentChangesCard } from '~/components/dashboard/recent-changes-card'
 import { StatCard } from '~/components/dashboard/stat-card'
 import { TopFaultsCard } from '~/components/dashboard/top-faults-card'
-import { authClient } from '~/lib/auth-client'
 import { countUsersByStatus } from '~/lib/dashboard-user-counts'
+import { useAdminAuthUser } from '~/lib/use-admin-auth-user'
 
 /**
  * Two years of buckets, where internal-web takes the server's default six. The card is half the
@@ -69,8 +69,7 @@ function MonthTrend({ delta }: { delta: number }): ReactElement {
 
 function DashboardContent(): ReactElement {
   const { locale } = useLocale()
-  const { data: session } = authClient.useSession()
-  const userName = session?.user?.name ?? session?.user?.email ?? ''
+  const { userName } = useAdminAuthUser()
 
   const { data: summary } = useSuspenseQuery(dashboardSummaryOptions({ months: CHART_MONTHS }))
   const { data: users } = useSuspenseQuery(usersListOptions())

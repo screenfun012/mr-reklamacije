@@ -34,7 +34,7 @@ import { useState, type ReactElement } from 'react'
 import { AdmConfirmDialog } from '~/components/adm-confirm-dialog'
 import { admTableHeadCellClassName, admTableScrollClassName } from '~/lib/adm-chrome'
 import { rowActionClassName } from '~/lib/resource/resource-row-actions'
-import { authClient } from '~/lib/auth-client'
+import { useAdminAuthUser } from '~/lib/use-admin-auth-user'
 
 import { PendingUsersCard } from './pending-users-card'
 import { UserAccountStatusBadge } from './user-account-status-badge'
@@ -267,8 +267,7 @@ function UsersTable({
 
 export function UsersPageContent(): ReactElement {
   const queryClient = useQueryClient()
-  const { data: session } = authClient.useSession()
-  const currentUserId = session?.user.id
+  const { userId: currentUserId } = useAdminAuthUser()
   const { data: users } = useSuspenseQuery(usersListOptions())
   const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
   const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
