@@ -17,6 +17,9 @@ export function registerClaimCategoriesRoutes(
     '/',
     // Anyone who may see or enter a claim needs to read this catalog — the filter and both
     // create forms are built from it. Mutations below stay settings-gated.
+    // Statistics readers too: that screen filters by this catalogue, and its loader fetches it
+    // before drawing. Rights are handed out as small packages that add up, so an account holding
+    // "Statistika" and nothing else is real — and it used to die on a 403 from a dropdown.
     requirePermissions(
       'emotive_claims.view',
       'domace_claims.view',
@@ -25,6 +28,9 @@ export function registerClaimCategoriesRoutes(
       'domace_claims.create',
       'domace_claims.update',
       'settings.claim_categories.manage',
+      'statistics.view_emotive',
+      'statistics.view_domace',
+      'statistics.view_overall',
     ),
     controller.list,
   )

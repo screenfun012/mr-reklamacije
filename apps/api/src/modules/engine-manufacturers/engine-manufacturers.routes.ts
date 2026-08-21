@@ -18,6 +18,9 @@ export function registerEngineManufacturersRoutes(
     // Claim VIEWERS read the catalog too — the list filter needs it, and they
     // already see manufacturer names on every claim row. Mutations below stay
     // settings-gated.
+    // Statistics readers too: that screen filters by this catalogue, and its loader fetches it
+    // before drawing. Rights are handed out as small packages that add up, so an account holding
+    // "Statistika" and nothing else is real — and it used to die on a 403 from a dropdown.
     requirePermissions(
       'emotive_claims.view',
       'domace_claims.view',
@@ -27,6 +30,9 @@ export function registerEngineManufacturersRoutes(
       'domace_claims.update',
       'settings.engine_manufacturers.manage',
       'settings.engine_manufacturers.create',
+      'statistics.view_emotive',
+      'statistics.view_domace',
+      'statistics.view_overall',
     ),
     controller.list,
   )

@@ -330,6 +330,15 @@ describe('EngineManufacturers reference module', () => {
   })
 
   describe('HTTP', () => {
+    it('lists them to someone who only reads statistics', async () => {
+      // Same reason as the claim-category catalogue: the statistics screen filters by
+      // manufacturer and its loader fetches this list before drawing anything.
+      const app = createReferenceTestApp(container, testUser(['statistics.view_emotive']))
+      const res = await app.request('/api/engine-manufacturers')
+
+      expect(res.status).toBe(200)
+    })
+
     it('returns 403 on GET without any read permission', async () => {
       const app = createReferenceTestApp(container, testUser(['customers.view']))
       const res = await app.request('/api/engine-manufacturers')

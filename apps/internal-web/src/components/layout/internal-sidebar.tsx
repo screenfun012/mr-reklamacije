@@ -1,6 +1,6 @@
 import { m } from '@mr/i18n'
 import { cn } from '@mr/ui'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useLocation } from '@tanstack/react-router'
 import { LogOut, Shield } from 'lucide-react'
 
 import type { NavItem } from '~/config/navigation'
@@ -8,12 +8,55 @@ import { getInitials } from '@mr/shared'
 
 const rootRoute = getRouteApi('__root__')
 
+const SIDEBAR_LINK_ACTIVE_CLASSES = 'border-[rgba(237,28,36,.35)] bg-[rgba(237,28,36,.1)]'
+const SIDEBAR_LINK_INACTIVE_CLASSES = 'border-transparent hover:bg-mri-rowhv'
+
 const ROLE_LABELS: Record<string, () => string> = {
   admin: m.users_role_admin,
   operator: m.users_role_operator,
   viewer: m.users_role_viewer,
   client: m.users_role_client,
   serviser: m.users_role_serviser,
+}
+
+/**
+ * Two entries can point at ONE route — "Mašinska obrada" is the claims list with a category
+ * filter, not a screen of its own. TanStack calls a link active when its search is a SUBSET of
+ * the URL's, so the plain "Reklamacije" entry (no search at all) lit up red on the filtered
+ * list too, and two items glowed at once.
+ *
+ * The entry therefore declares `categoryCode: undefined` and asks for `explicitUndefined`, which
+ * makes the ROUTER call it inactive whenever the URL carries any category — so `aria-current`
+ * and `data-status` tell the truth, not just the colour. The one case that leaves behind is a
+ * list filtered to some OTHER category from the filter control, where nothing would be lit at
+ * all; `paintsAsActive` below puts the highlight back for it.
+ *
+ * Written generically: the sidebar knows nothing about categories, only about entries that share
+ * a destination.
+ */
+/** An entry that actually narrows its screen, as opposed to one declaring the plain view. */
+function isFilteredEntry(item: NavItem): boolean {
+  return item.search !== undefined && Object.values(item.search).some((v) => v !== undefined)
+}
+
+function paintsAsActive(
+  item: NavItem,
+  items: readonly NavItem[],
+  location: { pathname: string; search: Record<string, unknown> },
+): boolean {
+  if (isFilteredEntry(item) || location.pathname !== item.to) {
+    return false
+  }
+
+  const aFilteredSiblingMatches = items.some(
+    (other) =>
+      other.key !== item.key &&
+      other.to === item.to &&
+      isFilteredEntry(other) &&
+      Object.entries(other.search ?? {}).every(([key, value]) => location.search[key] === value),
+  )
+
+  return !aFilteredSiblingMatches
 }
 
 export interface InternalSidebarProps {
@@ -39,6 +82,9 @@ export function InternalSidebar({
   onCloseMobile,
 }: InternalSidebarProps) {
   const { authSession } = rootRoute.useRouteContext()
+  const location = useLocation({
+    select: (loc) => ({ pathname: loc.pathname, search: loc.search as Record<string, unknown> }),
+  })
   const userRoles = authSession?.user?.roles ?? []
   const roleLabel = userRoles.map((role) => ROLE_LABELS[role]).find((label) => label !== undefined)
 
@@ -76,9 +122,13 @@ export function InternalSidebar({
                 'flex items-center gap-[13px] rounded-[9px] border px-[13px] py-[11px] transition-colors duration-150',
                 collapsed && 'lg:justify-center lg:px-0',
               )}
-              activeProps={{ className: 'border-[rgba(237,28,36,.35)] bg-[rgba(237,28,36,.1)]' }}
-              inactiveProps={{ className: 'border-transparent hover:bg-mri-rowhv' }}
-              activeOptions={{ exact: item.to === '/' }}
+              activeProps={{ className: SIDEBAR_LINK_ACTIVE_CLASSES }}
+              inactiveProps={{
+                className: paintsAsActive(item, items, location)
+                  ? SIDEBAR_LINK_ACTIVE_CLASSES
+                  : SIDEBAR_LINK_INACTIVE_CLASSES,
+              }}
+              activeOptions={{ exact: item.to === '/', explicitUndefined: true }}
             >
               {({ isActive }) => (
                 <>

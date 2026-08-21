@@ -332,6 +332,17 @@ describe('ClaimCategories reference module', () => {
       expect(body.items.map((item) => item.code)).toContain('MASINSKA_OBRADA')
     })
 
+    it('lists them to someone who only reads statistics', async () => {
+      // The statistics screen filters by category and by manufacturer, and its route loader
+      // fetches both catalogues before it draws anything. Rights are handed out as small
+      // packages that add up, so "Statistika" alone is a real account — and without this the
+      // whole screen died on a 403 from a dropdown's data.
+      const app = createReferenceTestApp(container, testUser(['statistics.view_emotive']))
+      const res = await app.request('/api/claim-categories')
+
+      expect(res.status).toBe(200)
+    })
+
     it('returns 403 on GET without any read permission', async () => {
       const app = createReferenceTestApp(container, testUser(['customers.view']))
       const res = await app.request('/api/claim-categories')

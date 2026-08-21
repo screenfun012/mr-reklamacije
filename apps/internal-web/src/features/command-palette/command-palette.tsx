@@ -109,7 +109,7 @@ export function CommandPalette(): React.ReactElement {
     handleOpenChange(false)
   }
 
-  function goTo(to: string, search?: Record<string, string>): void {
+  function goTo(to: string, search?: Record<string, string | undefined>): void {
     close()
     navigate(search === undefined ? { to } : { to, search })
   }

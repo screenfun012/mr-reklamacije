@@ -13,8 +13,12 @@ export interface NavItem {
   key: string
   label: () => string
   to: string
-  /** Search params the entry opens its screen with — a filtered view of an existing list. */
-  search?: Record<string, string>
+  /**
+   * Search params the entry opens its screen with — a filtered view of an existing list. A key
+   * set to `undefined` means "this entry is the UNfiltered view", which is what keeps the
+   * sidebar from lighting two entries that share one route (see `paintsAsActive`).
+   */
+  search?: Record<string, string | undefined>
   icon: ComponentType<{ className?: string }>
   /** When set, nav link is hidden unless the user has this permission. */
   permission?: string
@@ -44,6 +48,9 @@ export const internalNavItems: NavItem[] = [
     key: 'reklamacije',
     label: m.nav_reklamacije,
     to: '/reklamacije',
+    // Explicitly the UNFILTERED list. "Mašinska obrada" below points at the same route with a
+    // filter, and without this the sidebar lit both entries at once (see the sidebar's own note).
+    search: { categoryCode: undefined },
     icon: Briefcase,
     permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
