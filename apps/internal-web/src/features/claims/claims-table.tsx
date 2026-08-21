@@ -1,7 +1,6 @@
 'use no memo'
 
 import {
-  CLAIM_DETAIL_DEFAULT_SEARCH,
   ClaimKind,
   ClaimSortBy,
   formatListDate,
@@ -9,7 +8,7 @@ import {
   type ClaimsSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { dataTableIconActionClassName, dataTableRowNavigableClassName, Skeleton } from '@mr/ui'
+import { cn, dataTableIconActionClassName, dataTableRowNavigableClassName, Skeleton } from '@mr/ui'
 
 import {
   createColumnHelper,
@@ -26,6 +25,8 @@ import type { RowSelectionState } from '@tanstack/react-table'
 import { KindPill } from '~/components/kind-pill'
 import { OutcomePill } from '~/components/outcome-pill'
 import { EmotiveClaimStageBadge } from '~/features/emotive-claims/emotive-claim-stage-badge'
+
+import { claimDetailTarget } from '~/features/command-palette/claim-target'
 
 import { ClaimDeleteDialog } from './claim-delete-dialog'
 import { ClaimsSelectionCheckbox } from './claims-selection-checkbox'
@@ -53,6 +54,10 @@ export interface ClaimsTableProps {
   total: number
   search: ClaimsSearch
   onSearchChange: (next: ClaimsSearch) => void
+  /** Off inside one category — every row would say the same thing. */
+  showCategoryColumn: boolean
+  /** The category this list is, when it is one: it travels into the detail link. */
+  categoryCode?: string | undefined
 }
 
 const columnHelper = createColumnHelper<ClaimListItem>()
@@ -65,25 +70,6 @@ function claimCustomerName(item: ClaimListItem): string | null {
 
 function claimEngineCode(item: ClaimListItem): string {
   return item.engineTypeCode ?? '—'
-}
-
-function claimDetailLink(item: ClaimListItem): {
-  to: '/reklamacije/emotive/$id' | '/reklamacije/domace/$id'
-  params: { id: string }
-  search: typeof CLAIM_DETAIL_DEFAULT_SEARCH
-} {
-  if (item.kind === ClaimKind.Domace) {
-    return {
-      to: '/reklamacije/domace/$id',
-      params: { id: item.id },
-      search: CLAIM_DETAIL_DEFAULT_SEARCH,
-    }
-  }
-  return {
-    to: '/reklamacije/emotive/$id',
-    params: { id: item.id },
-    search: CLAIM_DETAIL_DEFAULT_SEARCH,
-  }
 }
 
 function SortableColumnHeader({
@@ -122,6 +108,8 @@ function createClaimsTableColumns(
   search: ClaimsSearch,
   onSearchChange: (next: ClaimsSearch) => void,
   deleteConfig: ClaimsTableDeleteConfig,
+  showCategoryColumn: boolean,
+  categoryCode: string | undefined,
 ) {
   return [
     columnHelper.display({
@@ -191,7 +179,25 @@ function createClaimsTableColumns(
       id: 'category',
       header: () => m.field_claim_category(),
       // Data, never a fork: the name is printed, nothing reads the code to decide anything.
-      cell: ({ row }) => row.original.category?.name ?? '—',
+      // A retired category is drawn apart — the claim keeps it, and the row says so.
+      cell: ({ row }) => {
+        const category = row.original.category
+        if (category === null) {
+          return '—'
+        }
+        return (
+          <span
+            className={cn(
+              'inline-block rounded-md border bg-mri-inbg px-2 py-[3px] font-mono text-[10px]',
+              category.isActive
+                ? 'border-mri-border2 text-mri-text'
+                : 'border-dashed border-mri-border2 text-mri-text2',
+            )}
+          >
+            {category.isActive ? category.name : `${category.name} †`}
+          </span>
+        )
+      },
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({
@@ -240,7 +246,7 @@ function createClaimsTableColumns(
       id: 'actions',
       header: () => m.emotive_claims_col_actions(),
       cell: ({ row }) => {
-        const detailLink = claimDetailLink(row.original)
+        const detailLink = claimDetailTarget(row.original, categoryCode)
 
         return (
           <div className="flex items-center gap-2">
@@ -272,10 +278,17 @@ function createClaimsTableColumns(
       },
       meta: { cellClassName: 'px-4 py-3' },
     }),
-  ]
+  ].filter((column) => showCategoryColumn || column.id !== 'category')
 }
 
-export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTableProps) {
+export function ClaimsTable({
+  items,
+  total,
+  search,
+  onSearchChange,
+  showCategoryColumn,
+  categoryCode,
+}: ClaimsTableProps) {
   const navigate = useNavigate()
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions ?? []
@@ -291,8 +304,15 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
   )
 
   const columns = useMemo(
-    () => createClaimsTableColumns(search, onSearchChange, { canDelete, onDeleteRequest }),
-    [onSearchChange, search, canDelete, onDeleteRequest],
+    () =>
+      createClaimsTableColumns(
+        search,
+        onSearchChange,
+        { canDelete, onDeleteRequest },
+        showCategoryColumn,
+        categoryCode,
+      ),
+    [onSearchChange, search, canDelete, onDeleteRequest, showCategoryColumn, categoryCode],
   )
   const sorting = useMemo(() => claimsTableSortingFromSearch(search), [search])
 
@@ -400,7 +420,7 @@ export function ClaimsTable({ items, total, search, onSearchChange }: ClaimsTabl
             </thead>
             <tbody>
               {table.getRowModel().rows.map((row) => {
-                const detailLink = claimDetailLink(row.original)
+                const detailLink = claimDetailTarget(row.original, categoryCode)
 
                 return (
                   <tr

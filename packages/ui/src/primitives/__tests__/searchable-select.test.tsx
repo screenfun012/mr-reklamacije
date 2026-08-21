@@ -102,3 +102,54 @@ describe('SearchableSelect', () => {
     expect(option.tagName).toBe('BUTTON')
   })
 })
+
+describe('SearchableSelect grouping', () => {
+  const GROUPED: readonly SearchableSelectOption[] = [
+    { value: 'live-a', label: 'Mašinska obrada' },
+    { value: 'gone', label: 'Kompresori †', group: 'Ugašene' },
+    { value: 'live-b', label: 'Novi delovi' },
+  ]
+
+  // Wrapped in a Dialog like the rest of this file: Radix leaves `pointer-events: none` on the
+  // body after an open dialog, and content inside one is what stays clickable.
+  function GroupedFixture(): React.ReactElement {
+    const [value, setValue] = useState('')
+    return (
+      <Dialog open>
+        <DialogContent aria-describedby={undefined}>
+          <DialogTitle className="sr-only">Form</DialogTitle>
+          <SearchableSelect
+            value={value}
+            options={GROUPED}
+            onValueChange={setValue}
+            aria-label="Kategorija"
+          />
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  it('keeps ungrouped options first and puts grouped ones under their heading', async () => {
+    const user = userEvent.setup()
+    render(<GroupedFixture />)
+
+    await user.click(screen.getByRole('combobox', { name: 'Kategorija' }))
+
+    const options = screen.getAllByRole('option').map((option) => option.textContent)
+    // Grouped options move to the end regardless of where they sat in the input list, so a
+    // retired row can never be mistaken for a live one just by being next to it.
+    expect(options).toEqual(['Mašinska obrada', 'Novi delovi', 'Kompresori †'])
+    expect(screen.getByText('Ugašene')).toBeInTheDocument()
+  })
+
+  it('drops the heading when its options are filtered away', async () => {
+    const user = userEvent.setup()
+    render(<GroupedFixture />)
+
+    await user.click(screen.getByRole('combobox', { name: 'Kategorija' }))
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'delovi' } })
+
+    expect(screen.getByRole('option', { name: 'Novi delovi' })).toBeInTheDocument()
+    expect(screen.queryByText('Ugašene')).not.toBeInTheDocument()
+  })
+})

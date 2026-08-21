@@ -8,7 +8,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -53,6 +53,12 @@ const sampleItems = [
     claimYear: 2026,
     customerId: '55555555-5555-4555-8555-555555555555',
     customerName: 'SELMAN',
+    category: {
+      id: '77777777-7777-4777-8777-777777777777',
+      code: 'MASINSKA_OBRADA',
+      name: 'Mašinska obrada',
+      isActive: true,
+    },
     createdAt: '2026-04-17T10:00:00.000Z',
   },
   {
@@ -75,6 +81,12 @@ const sampleItems = [
     outcome: 'pending' as const,
     claimYear: 2026,
     totalAmount: null,
+    category: {
+      id: '88888888-8888-4888-8888-888888888888',
+      code: 'KOMPRESORI',
+      name: 'Kompresori',
+      isActive: false,
+    },
     createdAt: '2026-05-01T10:00:00.000Z',
   },
 ] as const
@@ -113,7 +125,13 @@ describe('ClaimsTable', () => {
   it('renders empty state when there are no rows', async () => {
     const onSearchChange = vi.fn()
     await renderWithRouter(
-      <ClaimsTable items={[]} total={0} search={defaultSearch} onSearchChange={onSearchChange} />,
+      <ClaimsTable
+        showCategoryColumn={false}
+        items={[]}
+        total={0}
+        search={defaultSearch}
+        onSearchChange={onSearchChange}
+      />,
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('Nema reklamacija')
@@ -123,6 +141,7 @@ describe('ClaimsTable', () => {
     const onSearchChange = vi.fn()
     await renderWithRouter(
       <ClaimsTable
+        showCategoryColumn={false}
         total={2}
         items={sampleItems}
         search={defaultSearch}
@@ -152,6 +171,7 @@ describe('ClaimsTable', () => {
     const onSearchChange = vi.fn()
     await renderWithRouter(
       <ClaimsTable
+        showCategoryColumn={false}
         total={2}
         items={sampleItems}
         search={defaultSearch}
@@ -172,6 +192,7 @@ describe('ClaimsTable', () => {
 
     await renderWithRouter(
       <ClaimsTable
+        showCategoryColumn={false}
         total={2}
         items={sampleItems}
         search={{ outcome: 'pending', page: 2, pageSize: 25 }}
@@ -196,6 +217,7 @@ describe('ClaimsTable', () => {
 
     await renderWithRouter(
       <ClaimsTable
+        showCategoryColumn={false}
         total={2}
         items={sampleItems}
         search={{
@@ -223,7 +245,13 @@ describe('ClaimsTable', () => {
     mockState.permissions = ['emotive_claims.delete'] // emotive deletable, domace not
 
     await renderWithRouter(
-      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
     )
 
     const deleteButtons = screen.getAllByRole('button', { name: 'Obriši' })
@@ -238,7 +266,13 @@ describe('ClaimsTable', () => {
 
   it('shows no delete action without the delete permission', async () => {
     await renderWithRouter(
-      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
     )
 
     expect(screen.queryByRole('button', { name: 'Obriši' })).not.toBeInTheDocument()
@@ -247,7 +281,13 @@ describe('ClaimsTable', () => {
   it('selects a single row and shows the count, then clears it', async () => {
     const user = userEvent.setup()
     await renderWithRouter(
-      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
     )
 
     await user.click(screen.getAllByRole('checkbox', { name: 'Označi reklamaciju' })[0]!)
@@ -260,7 +300,13 @@ describe('ClaimsTable', () => {
   it('the header checkbox selects every row on the page', async () => {
     const user = userEvent.setup()
     await renderWithRouter(
-      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
     )
 
     await user.click(screen.getByRole('checkbox', { name: 'Označi sve na strani' }))
@@ -270,7 +316,13 @@ describe('ClaimsTable', () => {
   it('clicking the checkbox does not navigate to the claim', async () => {
     const user = userEvent.setup()
     await renderWithRouter(
-      <ClaimsTable total={2} items={sampleItems} search={defaultSearch} onSearchChange={vi.fn()} />,
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
     )
 
     const box = screen.getAllByRole('checkbox', { name: 'Označi reklamaciju' })[0]!
@@ -278,5 +330,48 @@ describe('ClaimsTable', () => {
     // Selecting is not opening — the count appears, we did not leave the list.
     expect(screen.getByText('1 označeno')).toBeInTheDocument()
     expect(box).toBeChecked()
+  })
+
+  it('hides the category column inside one category and shows it in the list of everything', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    // Inside a category every row would repeat the same word — the column would be noise.
+    expect(screen.queryByText('Mašinska obrada')).not.toBeInTheDocument()
+
+    cleanup()
+
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
+  })
+
+  it('marks a retired category so the row says what the claim still carries', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    // The claim keeps the category the office switched off; the dagger is how the row admits it.
+    expect(screen.getByText('Kompresori †')).toBeInTheDocument()
+    expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
   })
 })

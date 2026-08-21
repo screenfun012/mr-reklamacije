@@ -1,6 +1,6 @@
 import {
   CLAIM_KIND_REGISTRY,
-  claimCategoriesReferenceOptions,
+  claimCategoryCountsOptions,
   engineManufacturersReferenceOptions,
   OUTCOME_REGISTRY,
   useDebouncedValue,
@@ -14,6 +14,7 @@ import { X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { INTERNAL_CONTROL_CLASSES, InternalFieldLabel } from '~/components/internal-field'
+import { hasActiveClaimsFilters, type ClaimsListMode } from './claims-list-mode'
 import { FILTER_ALL_SENTINEL } from '~/features/filters/filter-sentinel'
 import { useLocale } from '@mr/ui'
 
@@ -35,18 +36,26 @@ const KIND_FILTER_LABELS = {
 export interface ClaimsFiltersProps {
   search: ClaimsSearch
   onSearchChange: (next: ClaimsSearch) => void
+  mode: ClaimsListMode
+  /** Leave the category's own list, keeping every other filter. */
+  onLeaveCategory: (next: ClaimsSearch) => void
 }
 
-export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
+export function ClaimsFilters({
+  search,
+  onSearchChange,
+  mode,
+  onLeaveCategory,
+}: ClaimsFiltersProps) {
   const { locale } = useLocale()
   const [searchDraft, setSearchDraft] = useState(search.search ?? '')
   const debouncedSearch = useDebouncedValue(searchDraft, SEARCH_DEBOUNCE_MS)
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: categories } = useSuspenseQuery(
-    claimCategoriesReferenceOptions({ activeOnly: true }),
-  )
+  // One source for what a category is called and whether it is still live — the same answer the
+  // sidebar and the list header read, so a rename cannot show up in one place and not the other.
+  const { data: counts } = useSuspenseQuery(claimCategoryCountsOptions())
 
   const outcomeOptions = useMemo(
     () => [
@@ -71,12 +80,15 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
 
   const categoryOptions = useMemo(
     () =>
-      categories.map((category) => ({
+      counts.items.map((category) => ({
         value: category.code,
-        label: category.name,
+        label: category.isActive ? category.name : `${category.name} †`,
         keywords: category.code,
+        // Retired categories still carrying claims are listed apart rather than mixed in — the
+        // office switched them off, and the filter should not pretend otherwise.
+        ...(category.isActive ? {} : { group: m.claims_filter_category_retired_group() }),
       })),
-    [categories],
+    [counts, locale],
   )
 
   useEffect(() => {
@@ -97,14 +109,9 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
     })
   }, [debouncedSearch, onSearchChange, search])
 
-  const hasActiveFilters =
-    search.kind !== undefined ||
-    search.outcome !== undefined ||
-    search.manufacturerId !== undefined ||
-    search.categoryCode !== undefined ||
-    search.dateFrom !== undefined ||
-    search.dateTo !== undefined ||
-    (search.search !== undefined && search.search.length > 0)
+  // In category mode the code lives in the path, so it is not in `search` at all and cannot be
+  // cleared by accident — "Poništi filtere" never moves you out of the category you are in.
+  const hasActiveFilters = hasActiveClaimsFilters(search)
 
   const handleClearFilters = (): void => {
     setSearchDraft('')
@@ -212,28 +219,49 @@ export function ClaimsFilters({ search, onSearchChange }: ClaimsFiltersProps) {
         />
       </div>
 
-      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
-        <InternalFieldLabel>{m.claims_filter_category()}</InternalFieldLabel>
-        <SearchableSelect
-          value={search.categoryCode ?? ''}
-          options={categoryOptions}
-          placeholder={m.claims_filter_category_all()}
-          searchPlaceholder={m.field_search_placeholder()}
-          emptyOptionLabel={m.claims_filter_category_all()}
-          noResultsLabel={m.field_no_results()}
-          className={INTERNAL_CONTROL_CLASSES}
-          aria-label={m.claims_filter_category()}
-          onValueChange={(categoryCode) => {
-            // The CODE travels, not the id (spec §4.2) — this lands in the URL, and the
-            // menu's "Mašinska obrada" entry is an ordinary link built from the same code.
-            onSearchChange({
-              ...search,
-              categoryCode: categoryCode.length > 0 ? categoryCode : undefined,
-              page: 1,
-            })
-          }}
-        />
-      </div>
+      {mode.kind === 'category' ? (
+        <div className="flex flex-col justify-end gap-[7px] text-sm">
+          <span
+            className="flex h-11 items-center gap-2 rounded-[9px] border border-dashed border-[rgba(237,28,36,.45)] bg-[rgba(237,28,36,.09)] px-3 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-mri-text2"
+            data-testid="claims-category-chip"
+          >
+            {m.claims_filter_category_chip_prefix()}{' '}
+            <span className="text-mri-text">{mode.category?.name ?? mode.code}</span>
+            <button
+              type="button"
+              aria-label={m.claims_filter_category_chip_leave()}
+              title={m.claims_filter_category_chip_leave()}
+              className="cursor-pointer text-xs text-mri-redh"
+              onClick={() => onLeaveCategory({ ...search, page: 1 })}
+            >
+              ✕
+            </button>
+          </span>
+        </div>
+      ) : (
+        <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+          <InternalFieldLabel>{m.claims_filter_category()}</InternalFieldLabel>
+          <SearchableSelect
+            value={search.categoryCode ?? ''}
+            options={categoryOptions}
+            placeholder={m.claims_filter_category_all()}
+            searchPlaceholder={m.field_search_placeholder()}
+            emptyOptionLabel={m.claims_filter_category_all()}
+            noResultsLabel={m.field_no_results()}
+            className={INTERNAL_CONTROL_CLASSES}
+            aria-label={m.claims_filter_category()}
+            onValueChange={(categoryCode) => {
+              // The CODE travels, not the id (spec §4.2): it lands in the URL and reads plainly
+              // in a bookmark. Here it is an ordinary filter — the PLACE is the route.
+              onSearchChange({
+                ...search,
+                categoryCode: categoryCode.length > 0 ? categoryCode : undefined,
+                page: 1,
+              })
+            }}
+          />
+        </div>
+      )}
 
       <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
         <InternalFieldLabel>{m.emotive_claims_filter_date_from()}</InternalFieldLabel>

@@ -14,6 +14,12 @@ export interface SearchableSelectOption {
   value: string
   label: string
   keywords?: string
+  /**
+   * Optional heading this option sits under. Ungrouped options come first, then each group in
+   * the order it first appears — used to set retired catalogue entries apart from live ones
+   * without smuggling the distinction into their name.
+   */
+  group?: string
 }
 
 export interface SearchableSelectProps {
@@ -50,6 +56,20 @@ export function filterSearchableSelectOptions(
     }
     return option.keywords?.toLowerCase().includes(query) ?? false
   })
+}
+
+/** Grouped options, each group in the order it first appears. */
+function groupsOf(
+  options: readonly SearchableSelectOption[],
+): [string, SearchableSelectOption[]][] {
+  const groups = new Map<string, SearchableSelectOption[]>()
+  for (const option of options) {
+    if (option.group === undefined) {
+      continue
+    }
+    groups.set(option.group, [...(groups.get(option.group) ?? []), option])
+  }
+  return [...groups.entries()]
 }
 
 export function SearchableSelect({
@@ -154,14 +174,32 @@ export function SearchableSelect({
               onSelect={() => selectValue('')}
             />
           ) : null}
-          {filteredOptions.map((option) => (
-            <ListSelectOptionButton
-              key={option.value}
-              label={option.label}
-              selected={normalizedValue === option.value}
-              disabled={disabled}
-              onSelect={() => selectValue(option.value)}
-            />
+          {filteredOptions
+            .filter((option) => option.group === undefined)
+            .map((option) => (
+              <ListSelectOptionButton
+                key={option.value}
+                label={option.label}
+                selected={normalizedValue === option.value}
+                disabled={disabled}
+                onSelect={() => selectValue(option.value)}
+              />
+            ))}
+          {groupsOf(filteredOptions).map(([group, groupOptions]) => (
+            <div key={group}>
+              <p className="px-2 pb-1 pt-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {group}
+              </p>
+              {groupOptions.map((option) => (
+                <ListSelectOptionButton
+                  key={option.value}
+                  label={option.label}
+                  selected={normalizedValue === option.value}
+                  disabled={disabled}
+                  onSelect={() => selectValue(option.value)}
+                />
+              ))}
+            </div>
           ))}
           {filteredOptions.length === 0 && noResultsLabel !== undefined ? (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">{noResultsLabel}</p>

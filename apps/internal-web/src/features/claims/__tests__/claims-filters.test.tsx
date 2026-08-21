@@ -1,19 +1,26 @@
 import {
-  claimCategoriesReferenceQueryKey,
+  claimCategoryCountsOptions,
   engineManufacturersReferenceOptions,
   engineManufacturersReferenceQueryKey,
 } from '@mr/shared'
 import { setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { ClaimsSearch } from '@mr/shared'
+
 import { ClaimsFilters } from '../claims-filters.js'
+import type { ClaimsListMode } from '../claims-list-mode.js'
 
 const ACTIVE_MANUFACTURERS_LOOKUP = { activeOnly: true } as const
 
-async function renderFilters(): Promise<void> {
+async function renderFilters(
+  mode: ClaimsListMode = { kind: 'all' },
+  onLeaveCategory?: (next: ClaimsSearch) => void,
+): Promise<void> {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -32,22 +39,39 @@ async function renderFilters(): Promise<void> {
     },
   ])
 
-  queryClient.setQueryData(claimCategoriesReferenceQueryKey(ACTIVE_MANUFACTURERS_LOOKUP), [
-    {
-      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      code: 'MASINSKA_OBRADA',
-      name: 'Mašinska obrada',
-      sortOrder: 20,
-      isActive: true,
-      deactivatedAt: null,
-      usageCount: 0,
-    },
-  ])
+  queryClient.setQueryData(claimCategoryCountsOptions().queryKey, {
+    items: [
+      {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        code: 'MASINSKA_OBRADA',
+        name: 'Mašinska obrada',
+        sortOrder: 20,
+        isActive: true,
+        total: 14,
+        pending: 9,
+      },
+      {
+        id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        code: 'KOMPRESORI',
+        name: 'Kompresori',
+        sortOrder: 90,
+        isActive: false,
+        total: 1,
+        pending: 0,
+      },
+    ],
+    totals: { total: 15, pending: 9 },
+  })
 
   render(
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={null}>
-        <ClaimsFilters search={{ page: 1, pageSize: 10 }} onSearchChange={() => undefined} />
+        <ClaimsFilters
+          search={{ page: 1, pageSize: 10 }}
+          onSearchChange={() => undefined}
+          mode={mode}
+          onLeaveCategory={onLeaveCategory ?? (() => undefined)}
+        />
       </Suspense>
     </QueryClientProvider>,
   )
@@ -84,5 +108,42 @@ describe('ClaimsFilters', () => {
     expect(screen.getByRole('combobox', { name: 'Ishod' }).textContent).not.toContain(
       'Svi ishodi Svi ishodi',
     )
+  })
+
+  it('offers a retired category under its own heading, never mixed in with the live ones', async () => {
+    await renderFilters()
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Kategorija' }))
+
+    expect(screen.getByText('Ugašene')).toBeInTheDocument()
+    expect(screen.getByText('Kompresori †')).toBeInTheDocument()
+  })
+
+  it('inside a category shows a chip instead of the select, and leaving keeps the other filters', async () => {
+    const left: ClaimsSearch[] = []
+    await renderFilters(
+      {
+        kind: 'category',
+        code: 'MASINSKA_OBRADA',
+        category: {
+          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          code: 'MASINSKA_OBRADA',
+          name: 'Mašinska obrada',
+          sortOrder: 20,
+          isActive: true,
+          total: 14,
+          pending: 9,
+        },
+      },
+      (next) => left.push(next),
+    )
+
+    // The category is the place here, so it has no control that could set it to something else.
+    expect(screen.queryByRole('combobox', { name: 'Kategorija' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('claims-category-chip')).toHaveTextContent('Mašinska obrada')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ukloni — pređi na sve reklamacije' }))
+    expect(left).toHaveLength(1)
+    expect(left[0]).toMatchObject({ page: 1, pageSize: 10 })
   })
 })

@@ -18,6 +18,11 @@ const claimDetailTabValues = [
 
 export const ClaimDetailSearchSchema = z.object({
   tab: z.enum(claimDetailTabValues).default(ClaimDetailTab.Pregled),
+  /**
+   * Which category's list this claim was opened from, when it was. Not a filter — it is what
+   * lets the sidebar keep the right entry lit and the back link return where you came from.
+   */
+  categoryCode: z.string().trim().min(1).optional(),
 })
 
 export type ClaimDetailSearch = z.infer<typeof ClaimDetailSearchSchema>
