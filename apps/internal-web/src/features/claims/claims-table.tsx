@@ -140,7 +140,21 @@ function createClaimsTableColumns(
     columnHelper.display({
       id: 'mrNumber',
       header: () => m.emotive_claims_col_mr_number(),
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.mrNumber ?? '—'}</span>,
+      // The "fill this in" mark rides with the MR NUMBER, not with the category chip the handoff
+      // named: inside one category the category column is hidden, and that is precisely the list
+      // where a claim missing its new fields has to be visible. The MR number is always there.
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="font-mono text-xs">{row.original.mrNumber ?? '—'}</span>
+          {row.original.missingRequiredCategoryFields.length > 0 ? (
+            <span
+              title={m.claim_category_fields_incomplete_hint()}
+              aria-label={m.claim_category_fields_incomplete_hint()}
+              className="size-[6px] flex-none rounded-full bg-mri-amb"
+            />
+          ) : null}
+        </span>
+      ),
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({
@@ -185,28 +199,19 @@ function createClaimsTableColumns(
         if (category === null) {
           return '—'
         }
-        // A claim moved to another kind of work is missing what the new one asks for. The dot
-        // says so where people scan, without a filter or a column of its own (handoff §4).
-        const incomplete = row.original.missingRequiredCategoryFields.length > 0
         return (
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className={cn(
-                'inline-block rounded-md border bg-mri-inbg px-2 py-[3px] font-mono text-[10px]',
-                category.isActive
-                  ? 'border-mri-border2 text-mri-text'
-                  : 'border-dashed border-mri-border2 text-mri-text2',
-              )}
-            >
-              {category.isActive ? category.name : `${category.name} †`}
-            </span>
-            {incomplete ? (
-              <span
-                title={m.claim_category_fields_incomplete_hint()}
-                aria-label={m.claim_category_fields_incomplete_hint()}
-                className="size-[6px] flex-none rounded-full bg-mri-amb"
-              />
-            ) : null}
+          <span
+            title={category.name}
+            className={cn(
+              // Never wraps: a two-word category used to break across three lines and push every
+              // row in the list from 48px to 76px (measured in the browser, 2026-08-21).
+              'inline-block max-w-[170px] truncate whitespace-nowrap rounded-md border bg-mri-inbg px-2 py-[3px] font-mono text-[10px]',
+              category.isActive
+                ? 'border-mri-border2 text-mri-text'
+                : 'border-dashed border-mri-border2 text-mri-text2',
+            )}
+          >
+            {category.isActive ? category.name : `${category.name} †`}
           </span>
         )
       },

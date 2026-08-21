@@ -173,6 +173,16 @@ function renderSection(canEdit: boolean): void {
   render(node)
 }
 
+/**
+ * PATCH calls only. The edit form also reads the category's field catalogue, so counting every
+ * fetch would count a read as a save.
+ */
+function patchCalls(fetchSpy: ReturnType<typeof vi.fn>): unknown[] {
+  return fetchSpy.mock.calls.filter(
+    ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+  )
+}
+
 describe('EmotiveClaimBasicSection', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -213,9 +223,9 @@ describe('EmotiveClaimBasicSection', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
 
-    const body = JSON.parse(String((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body)) as {
+    const body = JSON.parse(String((patchCalls(fetchSpy)[0] as [string, RequestInit])[1].body)) as {
       warrantyReport: string
     }
     expect(body.warrantyReport).toBe('Ažuriran razlog')
@@ -242,9 +252,9 @@ describe('EmotiveClaimBasicSection', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
 
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    const [url, init] = patchCalls(fetchSpy)[0] as [string, RequestInit]
     expect(String(url)).toContain(`/api/emotive-claims/${CLAIM_ID}`)
     expect(init.method).toBe('PATCH')
     const body = JSON.parse(String(init.body)) as { engineCode: string; mrNumber: string }
@@ -303,9 +313,9 @@ describe('EmotiveClaimBasicSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
 
-    const body = JSON.parse(String((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body)) as {
+    const body = JSON.parse(String((patchCalls(fetchSpy)[0] as [string, RequestInit])[1].body)) as {
       engineTypeId: string
       manufacturerId: string | null
     }

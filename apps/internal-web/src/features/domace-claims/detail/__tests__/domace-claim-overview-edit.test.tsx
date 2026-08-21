@@ -127,6 +127,16 @@ function renderOverviewEdit(
   return onDone
 }
 
+/**
+ * PATCH calls only. The edit form also reads the category's field catalogue, so counting every
+ * fetch would count a read as a save.
+ */
+function patchCalls(fetchSpy: ReturnType<typeof vi.fn>): unknown[] {
+  return fetchSpy.mock.calls.filter(
+    ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+  )
+}
+
 describe('DomaceClaimOverviewEdit', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -164,8 +174,8 @@ describe('DomaceClaimOverviewEdit', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
+    const [url, init] = patchCalls(fetchSpy)[0] as [string, RequestInit]
     expect(String(url)).toBe(`/api/domace-claims/${CLAIM_ID}`)
     expect(init.method).toBe('PATCH')
     expect(JSON.parse(String(init.body))).toMatchObject({ customerName: 'Novi Kupac' })
@@ -195,8 +205,8 @@ describe('DomaceClaimOverviewEdit', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
+    const [url, init] = patchCalls(fetchSpy)[0] as [string, RequestInit]
     expect(String(url)).toBe(`/api/domace-claims/${CLAIM_ID}`)
     expect(init.method).toBe('PATCH')
     expect(JSON.parse(String(init.body))).toMatchObject({ partsAmount: 2500 })
@@ -244,8 +254,8 @@ describe('DomaceClaimOverviewEdit', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
+    const [url, init] = patchCalls(fetchSpy)[0] as [string, RequestInit]
     expect(String(url)).toBe(`/api/domace-claims/${CLAIM_ID}`)
     expect(init.method).toBe('PATCH')
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))

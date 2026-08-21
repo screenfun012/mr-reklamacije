@@ -1,4 +1,4 @@
-import { EmotiveClaimCreateInputSchema } from '@mr/shared'
+import { EmotiveClaimCreateInputSchema, type ClaimCategoryFieldValues } from '@mr/shared'
 import { z } from 'zod'
 
 import { m } from '@mr/i18n'
@@ -56,6 +56,8 @@ export const emotiveClaimStepBasicSchema = z.object({
 })
 
 export type EmotiveClaimFormValues = {
+  /** Answers to the category's own fields — edited on the detail, set by the wizard. */
+  categoryFieldValues: ClaimCategoryFieldValues
   mrNumber: string
   claimNumber: string
   customerId: string
@@ -71,6 +73,7 @@ export type EmotiveClaimFormValues = {
 }
 
 export const EMOTIVE_CLAIM_FORM_DEFAULTS: EmotiveClaimFormValues = {
+  categoryFieldValues: {},
   mrNumber: '',
   claimNumber: '',
   customerId: '',
@@ -92,6 +95,7 @@ export function formValuesToCreateInput(values: EmotiveClaimFormValues) {
     customerId: values.customerId,
     manufacturerId: values.manufacturerId.trim() === '' ? undefined : values.manufacturerId,
     categoryId: values.categoryId,
+    categoryFieldValues: values.categoryFieldValues,
     engineTypeId: values.engineTypeId,
     engineCode: values.engineCode.trim() === '' ? undefined : values.engineCode,
     dateOfClaim: values.dateOfClaim,

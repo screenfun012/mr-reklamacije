@@ -19,8 +19,8 @@ a{color:var(--redh)}a:hover{color:#ff6b71}
 input::placeholder{color:#6b6c72}
 </style>
 </helmet>
-<div style="display:flex;justify-content:center;padding:28px 20px">
-<div data-screen-label="MR Kategorije prototip" style="width:1440px;height:900px;position:relative;display:flex;background:var(--bg);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+<div style="display:flex;padding:28px 20px">
+<div data-screen-label="MR Kategorije prototip" style="width:1440px;height:900px;flex:none;margin:auto;position:relative;display:flex;background:var(--bg);border:1px solid var(--border);border-radius:16px;overflow:hidden">
   <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);background-size:56px 56px;mask-image:linear-gradient(#000,transparent 75%);-webkit-mask-image:linear-gradient(#000,transparent 75%);pointer-events:none"></div>
 
   <!-- SIDEBAR pun -->
@@ -206,12 +206,25 @@ input::placeholder{color:#6b6c72}
           </div>
           <div style="border:1px dashed var(--border2);border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:11px">
             <div style="display:flex;align-items:center;gap:9px"><span style="font:700 9.5px 'JetBrains Mono',monospace;letter-spacing:.18em;color:var(--text2)">POLJA KATEGORIJE · <span style="color:var(--text)">{{ wizCatUp }}</span></span><span style="font:700 8.5px 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--amb);background:rgba(234,179,8,.1);padding:3px 8px;border-radius:6px;border:1px dashed rgba(234,179,8,.4)">BELEŠKA: POLJE JOŠ NE POSTOJI (§9)</span></div>
-            <span style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.13em;color:var(--text2)">OBRAĐENI DEO</span><span style="display:flex;gap:7px">
-              <span style="height:34px;display:inline-flex;align-items:center;padding:0 14px;border-radius:8px;background:rgba(237,28,36,.13);border:1px solid rgba(237,28,36,.5);font-size:12.5px;font-weight:700;cursor:pointer">Glava</span>
-              <span style="height:34px;display:inline-flex;align-items:center;padding:0 14px;border-radius:8px;border:1px solid var(--border2);font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer" style-hover="border-color:var(--text2)">Blok</span>
-              <span style="height:34px;display:inline-flex;align-items:center;padding:0 14px;border-radius:8px;border:1px solid var(--border2);font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer" style-hover="border-color:var(--text2)">Radilica</span>
-            </span></span>
-            <span style="font-size:11.5px;color:var(--text2);font-style:italic">Grupa polja koja pripada samo ovoj vrsti posla — vidljivo odvojena, da se zna da nije zajednička svima.</span>
+            <sc-if value="{{ hasCatFields }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
+                <sc-for list="{{ catFields }}" as="cf" hint-placeholder-count="2">
+                  <span style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.13em;color:var(--text2)">{{ cf.label }}</span>
+                    <sc-if value="{{ cf.isSeg }}" hint-placeholder-val="{{ true }}">
+                      <span style="display:flex;gap:7px;flex-wrap:wrap"><sc-for list="{{ cf.opts }}" as="op" hint-placeholder-count="3"><span onClick="{{ op.pick }}" style="{{ op.st }}" style-hover="border-color:var(--text2)">{{ op.name }}</span></sc-for></span>
+                    </sc-if>
+                    <sc-if value="{{ cf.isInput }}" hint-placeholder-val="{{ false }}">
+                      <input value="{{ cf.val }}" style="height:38px;padding:0 12px;border-radius:9px;background:var(--inbg);border:1px solid var(--border2);color:var(--text);font:{{ cf.font }};outline:none" style-focus="border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.18)">
+                    </sc-if>
+                  </span>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noCatFields }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:12px;color:var(--text2);font-style:italic">Kategorija „{{ wizCatName }}" nema dodatnih polja — u pravoj aplikaciji se ova grupa uopšte ne prikazuje.</span>
+            </sc-if>
+            <span style="font-size:11.5px;color:var(--text2);font-style:italic">Polja se menjaju sa izabranom kategorijom (probaj ▾ gore) — polja druge kategorije se ne prikazuju, pa ne mogu ni da se pogrešno popune.</span>
           </div>
         </div>
         </sc-if>
@@ -344,7 +357,22 @@ input::placeholder{color:#6b6c72}
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state = { screen:'list', cat:'masinska', collapsed:false, fly:false, navExp:true, q:'', kindF:'Sve', wizStep:0, wizKind:null, wizCat:'masinska', catMenu:false, detailId:1, toast:'' };
+  state = { screen:'list', cat:'masinska', collapsed:false, fly:false, navExp:true, q:'', kindF:'Sve', wizStep:0, wizKind:null, wizCat:'masinska', catMenu:false, detailId:1, toast:'', cfSel:{} };
+  CATFIELDS = {
+    masinska: [
+      {t:'seg', label:'OBRAĐENI DEO', opts:['Glava','Blok','Radilica'], def:'Glava'},
+      {t:'in', label:'MERA OBRADE (MM)', val:'+0,25', mono:true},
+    ],
+    remont: [
+      {t:'seg', label:'OBIM REMONTA', opts:['Kompletan','Delimičan'], def:'Kompletan'},
+      {t:'seg', label:'STANJE BLOKA PRI PRIJEMU', opts:['Ispravan','Za obradu','Zamena'], def:'Ispravan'},
+    ],
+    delovi: [
+      {t:'in', label:'KATALOŠKI BROJ DELA', val:'059 103 265 AC', mono:true},
+      {t:'in', label:'DOBAVLJAČ', val:'Euro Auto Parts', mono:false},
+    ],
+    servis: [], elektro: [],
+  };
   CATS = [
     {id:null, name:'Sve reklamacije', count:'39', amb:false},
     {id:'remont', name:'Generalni remont', count:'27', amb:true},
@@ -434,15 +462,25 @@ class Component extends DCLogic {
       {label:'IZNOS DELOVA', req:'', val:'—', font:M},
       {label:'IZNOS RADA', req:'', val:'—', font:M},
     ]);
+    const cfList = this.CATFIELDS[s.wizCat] || [];
+    const segSel = (f)=> s.cfSel[s.wizCat+'|'+f.label] || f.def;
+    const catFields = cfList.map(f=>{
+      if(f.t==='seg'){ const sel=segSel(f);
+        return { isSeg:true, isInput:false, label:f.label, val:'', font:F,
+          opts:f.opts.map(o=>({ name:o,
+            pick:()=>{ const m=Object.assign({},s.cfSel); m[s.wizCat+'|'+f.label]=o; self.setState({cfSel:m}); },
+            st:`height:38px;display:inline-flex;align-items:center;padding:0 14px;border-radius:8px;font-size:12.5px;cursor:pointer;${o===sel?'background:rgba(237,28,36,.13);border:1px solid rgba(237,28,36,.5);font-weight:700;color:var(--text)':'border:1px solid var(--border2);font-weight:600;color:var(--text2)'}` })) };
+      }
+      return { isSeg:false, isInput:true, label:f.label, opts:[], val:f.val, font:f.mono?M:F };
+    });
+    const cfKv = cfList.map(f=>({ k:f.label, v: f.t==='seg'?segSel(f):f.val, ff: f.t!=='seg'&&f.mono?"'JetBrains Mono',monospace":"'Figtree',sans-serif" }));
     const reviewKv = [
       {k:'VRSTA', v:s.wizKind||'—', ff:"'Figtree',sans-serif"},
       {k:'KATEGORIJA', v:this.CATNAMES[s.wizCat], ff:"'Figtree',sans-serif"},
       {k:'MR BROJ', v:'7168/25', ff:"'JetBrains Mono',monospace"},
       {k:dom?'KUPAC':'PARTNER', v:dom?'Autoservis Đorđević':'Emotive GmbH', ff:"'Figtree',sans-serif"},
       {k:'MOTOR', v:'BMW N47D20D', ff:"'JetBrains Mono',monospace"},
-      {k:'OBRAĐENI DEO', v:'Glava', ff:"'Figtree',sans-serif"},
-      {k:'KVAROVI', v:'1 — Curenje ulja na spoju glave (Radnik)', ff:"'Figtree',sans-serif"},
-    ];
+    ].concat(cfKv, [{k:'KVAROVI', v:'1 — Curenje ulja na spoju glave (Radnik)', ff:"'Figtree',sans-serif"}]);
     const wizCatOpts = this.CATS.filter(c=>c.id).map(c=>({
       name:c.name, pick:()=>self.setState({wizCat:c.id, catMenu:false}),
       st:`display:flex;align-items:center;height:31px;padding:0 9px;border-radius:8px;cursor:pointer;font-size:12.5px;${s.wizCat===c.id?'background:rgba(237,28,36,.11);color:var(--text);font-weight:700':'color:var(--text2);font-weight:600'}`,
@@ -488,6 +526,8 @@ class Component extends DCLogic {
       wizExit: ()=>self.go({screen:'list'}),
       wizTitle: s.wizStep===0 ? 'Izbor vrste' : s.wizStep===1 ? 'Osnovni podaci' : s.wizStep===2 ? 'Kvarovi' : 'Pregled',
       wizCatUp: this.CATNAMES[s.wizCat].toUpperCase(), wizCatOpts,
+      catFields, hasCatFields: catFields.length>0, noCatFields: catFields.length===0,
+      wizCatName: this.CATNAMES[s.wizCat],
       toggleCatMenu: ()=>self.setState({catMenu:!s.catMenu}), catMenuOpen: s.catMenu,
       steps, w0: s.wizStep===0, w1: s.wizStep===1, w2: s.wizStep===2, w3: s.wizStep===3,
       pickEmotive: ()=>self.setState({wizKind:'EMOTIVE', wizStep:1}),

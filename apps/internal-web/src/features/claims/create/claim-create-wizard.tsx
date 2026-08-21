@@ -316,21 +316,32 @@ export function ClaimCreateWizard({
 
       {currentStep !== 'kind' ? (
         <div className="flex gap-2.5">
-          <InternalButton type="button" variant="outline" onClick={goBack} disabled={isPending}>
+          <InternalButton
+            type="button"
+            variant="outline"
+            onClick={goBack}
+            disabled={isPending}
+            className="h-[42px] w-auto px-[18px] text-xs"
+          >
             {m.emotive_claims_create_back()}
           </InternalButton>
           {currentStep === 'review' ? (
             <InternalButton
               type="button"
               variant="green"
-              className="ml-auto"
+              className="ml-auto h-[42px] w-auto px-[22px] text-xs"
               onClick={() => void form.handleSubmit()}
               disabled={isPending}
             >
               ✓ {m.action_save()}
             </InternalButton>
           ) : (
-            <InternalButton type="button" className="ml-auto" onClick={goNext} disabled={isPending}>
+            <InternalButton
+              type="button"
+              className="ml-auto h-[42px] w-auto px-[22px] text-xs"
+              onClick={goNext}
+              disabled={isPending}
+            >
               {m.emotive_claims_create_next()}
             </InternalButton>
           )}

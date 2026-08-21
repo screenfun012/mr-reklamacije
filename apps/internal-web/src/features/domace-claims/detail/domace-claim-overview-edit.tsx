@@ -10,6 +10,7 @@ import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { CategoryFieldsGroup } from '../../claims/category-fields/category-fields-group.js'
 import { DomaceBasicFields } from '../create/domace-basic-fields.js'
 import {
   formatZodFieldErrors,
@@ -97,6 +98,21 @@ export function DomaceClaimOverviewEdit({
           stepErrors={stepErrors}
           disabled={mutation.isPending}
         />
+
+        {claim.category === null ? null : (
+          <form.Subscribe
+            selector={(state) => state.values.categoryFieldValues}
+            children={(values) => (
+              <CategoryFieldsGroup
+                categoryId={claim.category?.id ?? ''}
+                categoryName={claim.category?.name ?? ''}
+                values={values}
+                onChange={(next) => form.setFieldValue('categoryFieldValues', next)}
+                disabled={mutation.isPending}
+              />
+            )}
+          />
+        )}
       </section>
 
       <OverviewEditFooter

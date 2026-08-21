@@ -5,6 +5,7 @@ import {
   emotiveClaimKeys,
   fetchJson,
   invalidateInternalClaimQueries,
+  type ClaimCategoryFieldValues,
   type EmotiveClaimDetail,
 } from '@mr/shared'
 
@@ -13,6 +14,8 @@ import {
  * clear a stored value (server maps `null` → cleared column).
  */
 export interface EmotiveClaimBasicEdit {
+  /** Answers to the category's own fields — judged by the server against the catalogue. */
+  categoryFieldValues: ClaimCategoryFieldValues
   mrNumber: string
   claimNumber: string | null
   customerId: string

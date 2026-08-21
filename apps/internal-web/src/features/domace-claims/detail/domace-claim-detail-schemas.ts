@@ -1,3 +1,4 @@
+import type { ClaimCategoryFieldValues } from '@mr/shared'
 import { z } from 'zod'
 
 import type { DomaceClaimDetail } from '@mr/shared'
@@ -14,9 +15,16 @@ export const domaceClaimDetailBasicSchema = domaceClaimBasicFieldsSchema.refine(
   },
 )
 
-export type DomaceClaimDetailBasicValues = z.infer<typeof domaceClaimDetailBasicSchema>
+/**
+ * The zod schema validates the typed fields; the category's own answers ride along on the form
+ * but are judged by the SERVER against the catalogue, which no client schema can know.
+ */
+export type DomaceClaimDetailBasicValues = z.infer<typeof domaceClaimDetailBasicSchema> & {
+  categoryFieldValues: ClaimCategoryFieldValues
+}
 
 export interface DomaceClaimBasicEdit {
+  categoryFieldValues: ClaimCategoryFieldValues
   mrNumber: string | null
   customerName: string | null
   claimNumber: string | null
@@ -51,6 +59,7 @@ export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimD
     customerName: claim.customerName ?? '',
     manufacturerId: claim.manufacturerId ?? '',
     categoryId: claim.category?.id ?? '',
+    categoryFieldValues: claim.categoryFieldValues,
     engineTypeId: claim.engineTypeId ?? '',
     engineCode: claim.engineCode ?? '',
     dateOfFinish: claim.dateOfFinish ?? '',
@@ -84,6 +93,7 @@ export function detailBasicValuesToPatch(
     invoiceNumber: invoiceNumber === '' ? null : invoiceNumber,
     manufacturerId: manufacturerId === '' ? null : manufacturerId,
     categoryId: values.categoryId,
+    categoryFieldValues: values.categoryFieldValues,
     engineTypeId: engineTypeId === '' ? null : engineTypeId,
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: dateOfClaim === '' ? null : dateOfClaim,

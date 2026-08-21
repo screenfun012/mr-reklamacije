@@ -377,7 +377,38 @@ describe('ClaimsTable', () => {
     expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
   })
 
-  it('marks a claim whose new kind of work is still missing something', async () => {
+  it('marks a claim whose new kind of work is still missing something — in BOTH modes', async () => {
+    const label = 'Reklamacija je premeštena u drugu vrstu posla — dopuni polja koja ona traži.'
+
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    expect(screen.getAllByLabelText(label)).toHaveLength(1)
+
+    cleanup()
+
+    // ⚙ the mark used to sit in the category cell, which is HIDDEN inside one category — exactly
+    // the list where a claim missing its new fields most needs to be visible. Found in the
+    // browser, 2026-08-21. It rides with the MR number now, which never disappears.
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn={false}
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+    expect(screen.getAllByLabelText(label)).toHaveLength(1)
+  })
+
+  it('keeps a two-word category on one line', async () => {
     await renderWithRouter(
       <ClaimsTable
         showCategoryColumn
@@ -388,11 +419,8 @@ describe('ClaimsTable', () => {
       />,
     )
 
-    // A claim moved to another category is missing what the new one asks for. The dot says so
-    // where people scan, without a filter or a column of its own.
-    const marks = screen.getAllByLabelText(
-      'Reklamacija je premeštena u drugu vrstu posla — dopuni polja koja ona traži.',
-    )
-    expect(marks).toHaveLength(1)
+    // Measured in the browser: "Generalni remont motora" broke across three lines and pushed
+    // every row from 48px to 76px.
+    expect(screen.getByText('Mašinska obrada').className).toContain('whitespace-nowrap')
   })
 })

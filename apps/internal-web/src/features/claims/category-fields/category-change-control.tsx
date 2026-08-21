@@ -115,8 +115,10 @@ export function CategoryChangeControl({
         }
         confirmLabel={m.claim_category_change_confirm()}
         // Nothing is deleted — the old answers are kept and shown as "Prethodna kategorija" —
-        // so this is a decision, not a destructive act, and must not read as red.
+        // so this is a decision, not a destructive act, and must not read as red. `variant`
+        // cannot say that here: the brand PRIMARY is the same red as `destructive`.
         variant="default"
+        confirmClassName="border-none bg-mri-btn text-mri-btnfg hover:bg-mri-btnhv"
         pending={changeCategory.isPending}
         onConfirm={() => void confirmChange()}
       />

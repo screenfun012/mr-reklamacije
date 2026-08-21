@@ -1,4 +1,8 @@
-import { DomaceClaimCreateInputSchema, type DomaceClaimCreateInput } from '@mr/shared'
+import {
+  DomaceClaimCreateInputSchema,
+  type ClaimCategoryFieldValues,
+  type DomaceClaimCreateInput,
+} from '@mr/shared'
 import { z } from 'zod'
 
 import { m } from '@mr/i18n'
@@ -79,6 +83,8 @@ export const domaceClaimFormSchema = domaceClaimBasicFieldsSchema.refine(
 )
 
 export type DomaceClaimFormValues = {
+  /** Answers to the category's own fields — edited on the detail, set by the wizard. */
+  categoryFieldValues: ClaimCategoryFieldValues
   mrNumber: string
   claimNumber: string
   invoiceNumber: string
@@ -98,6 +104,7 @@ export type DomaceClaimFormValues = {
 }
 
 export const DOMACE_CLAIM_FORM_DEFAULTS: DomaceClaimFormValues = {
+  categoryFieldValues: {},
   mrNumber: '',
   claimNumber: '',
   invoiceNumber: '',
@@ -136,6 +143,7 @@ export function formValuesToCreateInput(values: DomaceClaimFormValues): DomaceCl
     customerName: emptyToUndefined(values.customerName),
     manufacturerId: emptyToUndefined(values.manufacturerId),
     categoryId: emptyToUndefined(values.categoryId),
+    categoryFieldValues: values.categoryFieldValues,
     engineTypeId: emptyToUndefined(values.engineTypeId),
     engineCode: emptyToUndefined(values.engineCode),
     dateOfClaim: emptyToUndefined(values.dateOfClaim),

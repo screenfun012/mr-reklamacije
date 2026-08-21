@@ -21,6 +21,7 @@ import {
   formatZodFieldErrors,
   type EmotiveClaimFormValues,
 } from '../create/emotive-claim-create-schemas.js'
+import { CategoryFieldsGroup } from '../../claims/category-fields/category-fields-group.js'
 import { StepBasicFields } from '../create/step-basic-fields.js'
 import {
   useUpdateEmotiveClaimBasic,
@@ -201,6 +202,21 @@ function BasicEditMode({
         disabled={mutation.isPending}
       />
 
+      {claim.category === null ? null : (
+        <form.Subscribe
+          selector={(state) => state.values.categoryFieldValues}
+          children={(values) => (
+            <CategoryFieldsGroup
+              categoryId={claim.category?.id ?? ''}
+              categoryName={claim.category?.name ?? ''}
+              values={values}
+              onChange={(next) => form.setFieldValue('categoryFieldValues', next)}
+              disabled={mutation.isPending}
+            />
+          )}
+        />
+      )}
+
       {saveError ? (
         <p className="text-sm text-mri-bad" role="alert">
           {saveError}
@@ -236,6 +252,7 @@ function claimToFormValues(claim: EmotiveClaimDetail): EmotiveClaimFormValues {
     customerId: claim.customerId ?? '',
     manufacturerId: claim.manufacturerId ?? '',
     categoryId: claim.category?.id ?? '',
+    categoryFieldValues: claim.categoryFieldValues,
     engineTypeId: claim.engineTypeId,
     engineCode: claim.engineCode ?? '',
     dateOfFinish: claim.dateOfFinish ?? '',
@@ -256,6 +273,7 @@ function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasi
     customerId: values.customerId,
     manufacturerId: values.manufacturerId.trim() === '' ? null : values.manufacturerId,
     categoryId: values.categoryId,
+    categoryFieldValues: values.categoryFieldValues,
     engineTypeId: values.engineTypeId,
     engineCode: engineCode === '' ? null : engineCode,
     dateOfClaim: values.dateOfClaim,

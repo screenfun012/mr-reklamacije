@@ -122,6 +122,16 @@ function renderSection(canEdit: boolean): void {
   render(node)
 }
 
+/**
+ * PATCH calls only. The edit form also reads the category's field catalogue, so counting every
+ * fetch would count a read as a save.
+ */
+function patchCalls(fetchSpy: ReturnType<typeof vi.fn>): unknown[] {
+  return fetchSpy.mock.calls.filter(
+    ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+  )
+}
+
 describe('DomaceClaimBasicSection', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -153,8 +163,8 @@ describe('DomaceClaimBasicSection', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }))
 
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
-    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    await waitFor(() => expect(patchCalls(fetchSpy)).toHaveLength(1))
+    const [, init] = patchCalls(fetchSpy)[0] as [string, RequestInit]
     expect(init.method).toBe('PATCH')
     expect(JSON.parse(String(init.body))).toMatchObject({ customerName: 'Novi Kupac' })
   })
