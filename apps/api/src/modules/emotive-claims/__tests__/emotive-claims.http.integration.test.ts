@@ -288,6 +288,8 @@ describe('EmotiveClaims HTTP', () => {
         id: remontCategoryId,
         code: 'REMONT_MOTORA',
         name: 'Generalni remont motora',
+        isActive: true,
+        deactivatedAt: null,
       })
     })
 

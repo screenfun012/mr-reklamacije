@@ -2,6 +2,7 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 
 import { fetchJson } from '../api/fetch-json.js'
 import type { ClaimKind } from '../enums.js'
+import type { ClaimCategoryCountsResponse } from '../schemas/claim-category-counts.schema.js'
 import type { ClaimListQuery, ClaimListResponse } from '../schemas/claim-list.schema.js'
 import type { ClientClaimDetail, ClientClaimListResponse } from '../schemas/client-claim.schema.js'
 import type { ClientPortalSummary } from '../schemas/client-portal.schema.js'
@@ -48,6 +49,18 @@ export function claimsListOptions(
     },
     staleTime: CLAIMS_LIST_STALE_MS,
     placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * Pending/total per category for the reader's scope — the sidebar's badges, the list header and
+ * the retired group in the category filter all read this one answer (V2 spec §4.4).
+ */
+export function claimCategoryCountsOptions() {
+  return queryOptions({
+    queryKey: claimKeys.categoryCounts(),
+    queryFn: async () => fetchJson<ClaimCategoryCountsResponse>('/api/claims/category-counts'),
+    staleTime: CLAIMS_LIST_STALE_MS,
   })
 }
 

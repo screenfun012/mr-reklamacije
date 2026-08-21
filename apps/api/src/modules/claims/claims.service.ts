@@ -1,4 +1,4 @@
-import { ClaimKind } from '@mr/shared'
+import { ClaimKind, type ClaimCategoryCountsResponse } from '@mr/shared'
 
 import { ForbiddenError } from '../../core/errors/domain-errors.js'
 import type { ClaimsRepository } from './claims.repository.js'
@@ -16,39 +16,50 @@ function canViewDomace(actor: ClaimsActor): boolean {
   return actor.permissions.includes('domace_claims.view')
 }
 
-function resolveListScope(actor: ClaimsActor, query: ClaimListQuery): ClaimsListScope {
+/**
+ * Which families and which rows the actor may read — the one gate both the list and the counts
+ * use, so a badge can never count a claim its owner is not allowed to open.
+ */
+export function resolveViewScope(actor: ClaimsActor): ClaimsListScope {
   const includeEmotive = canViewEmotive(actor)
   const includeDomace = canViewDomace(actor)
-
-  if (query.kind === ClaimKind.Emotive && !includeEmotive) {
-    throw new ForbiddenError()
-  }
-
-  if (query.kind === ClaimKind.Domace && !includeDomace) {
-    throw new ForbiddenError()
-  }
 
   if (!includeEmotive && !includeDomace) {
     throw new ForbiddenError()
   }
 
-  const emotiveCustomerScope = actor.permissions.includes('emotive_claims.view')
-    ? 'all'
-    : 'own_customer'
-
   return {
     includeEmotive,
     includeDomace,
-    emotiveCustomerScope,
+    emotiveCustomerScope: actor.permissions.includes('emotive_claims.view')
+      ? 'all'
+      : 'own_customer',
     userId: actor.id,
   }
+}
+
+function resolveListScope(actor: ClaimsActor, query: ClaimListQuery): ClaimsListScope {
+  const scope = resolveViewScope(actor)
+
+  if (query.kind === ClaimKind.Emotive && !scope.includeEmotive) {
+    throw new ForbiddenError()
+  }
+
+  if (query.kind === ClaimKind.Domace && !scope.includeDomace) {
+    throw new ForbiddenError()
+  }
+
+  return scope
 }
 
 export class ClaimsService {
   constructor(private readonly repo: ClaimsRepository) {}
 
   async list(query: ClaimListQuery, actor: ClaimsActor): Promise<ClaimListResponse> {
-    const scope = resolveListScope(actor, query)
-    return this.repo.list(query, scope)
+    return this.repo.list(query, resolveListScope(actor, query))
+  }
+
+  async categoryCounts(actor: ClaimsActor): Promise<ClaimCategoryCountsResponse> {
+    return this.repo.categoryCounts(resolveViewScope(actor))
   }
 }

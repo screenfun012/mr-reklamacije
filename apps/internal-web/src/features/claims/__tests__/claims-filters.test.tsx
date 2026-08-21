@@ -39,6 +39,7 @@ async function renderFilters(): Promise<void> {
       name: 'Mašinska obrada',
       sortOrder: 20,
       isActive: true,
+      deactivatedAt: null,
       usageCount: 0,
     },
   ])

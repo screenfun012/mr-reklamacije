@@ -20,6 +20,8 @@ export function registerClaimsRoutes(
   const routes = new Hono<{ Variables: AppVariables }>()
 
   routes.get('/', viewClaimsPermissions, controller.list)
+  // The sidebar's per-category badges. Same gate as the list: the counts ARE the list, reduced.
+  routes.get('/category-counts', viewClaimsPermissions, controller.categoryCounts)
 
   app.route('/api/claims', routes)
 }

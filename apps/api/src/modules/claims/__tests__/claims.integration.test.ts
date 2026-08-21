@@ -77,12 +77,18 @@ describe('ClaimsService integration', () => {
 
   async function createEmotive(
     mrNumber: string,
-    options: { dateOfClaim?: Date; dateOfFinish?: Date; categoryCode?: string } = {},
+    options: {
+      dateOfClaim?: Date
+      dateOfFinish?: Date
+      categoryCode?: string
+      customerId?: string
+    } = {},
   ): Promise<string> {
     const engineType = await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)
     const created = await container.emotiveClaimsService.create(
       {
         categoryId: await getClaimCategoryIdByCode(ctx.db, options.categoryCode ?? 'REMONT_MOTORA'),
+        ...(options.customerId === undefined ? {} : { customerId: options.customerId }),
         engineTypeId: engineType.id,
         dateOfClaim: options.dateOfClaim ?? new Date('2026-06-15'),
         dateOfFinish: options.dateOfFinish,
@@ -124,6 +130,91 @@ describe('ClaimsService integration', () => {
     )
     return created.id
   }
+
+  describe('when counting per category', () => {
+    it("counts pending and total per category, and totals across the reader's scope", async () => {
+      const before = await container.claimsService.categoryCounts(FULL_OPERATOR)
+      const beforeMachining =
+        before.items.find((item) => item.code === 'MASINSKA_OBRADA')?.total ?? 0
+
+      await createEmotive('CNT-EM-1/26', { categoryCode: 'MASINSKA_OBRADA' })
+      await createDomace('CNT-DO-1/26', 'Brojač', { categoryCode: 'MASINSKA_OBRADA' })
+      const acceptedId = await createEmotive('CNT-EM-2/26', { categoryCode: 'MASINSKA_OBRADA' })
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome: ClaimOutcome.Accepted })
+        .where(eq(schema.emotiveClaims.id, acceptedId))
+
+      const counts = await container.claimsService.categoryCounts(FULL_OPERATOR)
+      const machining = counts.items.find((item) => item.code === 'MASINSKA_OBRADA')
+
+      expect(machining?.total).toBe(beforeMachining + 3)
+      expect(machining?.isActive).toBe(true)
+      expect(counts.totals.total).toBeGreaterThanOrEqual(3)
+      expect(counts.totals.pending).toBeGreaterThanOrEqual(2)
+    })
+
+    it('counts only the kinds the reader may see', async () => {
+      // The link matters: without it the EMOTIVE branch would return nothing anyway (this user
+      // owns no firm), and the test would pass no matter what the scope did. With it, an
+      // EMOTIVE claim IS within reach — and must still not be counted for a DOMACE-only reader.
+      const customerSelman = await getCustomerIdByName(ctx.db, 'SELMAN')
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ customerId: customerSelman, userId: TEST_USER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+
+      const before = await container.claimsService.categoryCounts(DOMACE_ONLY)
+      const beforeParts = before.items.find((item) => item.code === 'NOVI_DELOVI')?.total ?? 0
+
+      await createEmotive('CNT-SCOPE-EM/26', {
+        categoryCode: 'NOVI_DELOVI',
+        customerId: customerSelman,
+      })
+      await createDomace('CNT-SCOPE-DO/26', 'Scope', { categoryCode: 'NOVI_DELOVI' })
+
+      const counts = await container.claimsService.categoryCounts(DOMACE_ONLY)
+      const parts = counts.items.find((item) => item.code === 'NOVI_DELOVI')
+
+      // Only the DOMACE one — a badge must never count a claim its reader cannot open.
+      expect(parts?.total).toBe(beforeParts + 1)
+    })
+
+    it('drops a retired category with no claims and keeps one that still carries them', async () => {
+      const emptyRetired = await container.claimCategoriesRepository.create({
+        code: `CNT-EMPTY-${Date.now()}`,
+        name: 'Empty Retired',
+      })
+      const usedRetired = await container.claimCategoriesRepository.create({
+        code: `CNT-USED-${Date.now()}`,
+        name: 'Used Retired',
+      })
+      await createEmotive('CNT-USED/26', { categoryCode: usedRetired.code })
+      for (const id of [emptyRetired.id, usedRetired.id]) {
+        await container.claimCategoriesRepository.update(id, { isActive: false })
+      }
+
+      const counts = await container.claimsService.categoryCounts(FULL_OPERATOR)
+
+      expect(counts.items.some((item) => item.code === emptyRetired.code)).toBe(false)
+      expect(counts.items.find((item) => item.code === usedRetired.code)).toMatchObject({
+        isActive: false,
+        total: 1,
+      })
+    })
+
+    it('is served to a claims viewer over HTTP and refused without a claims permission', async () => {
+      const ok = await createClaimsTestApp(container, testUser(['emotive_claims.view'])).request(
+        '/api/claims/category-counts',
+      )
+      expect(ok.status).toBe(200)
+
+      const forbidden = await createClaimsTestApp(container, testUser(['customers.view'])).request(
+        '/api/claims/category-counts',
+      )
+      expect(forbidden.status).toBe(403)
+    })
+  })
 
   describe('when listing unified claims', () => {
     it('returns both kinds with server-stamped kind', async () => {

@@ -319,6 +319,43 @@ describe('ClaimCategories reference module', () => {
     })
   })
 
+  describe('deactivation carries a date', () => {
+    const MANAGER = {
+      actorUserId: testUser(['settings.claim_categories.manage']).id,
+      actorIp: null,
+      actorUserAgent: null,
+    }
+
+    it('stamps deactivated_at on switch-off, keeps the first date, and clears it on switch-on', async () => {
+      const created = await container.claimCategoriesService.create(
+        { code: 'DATED-CAT', name: 'Dated Cat' },
+        MANAGER,
+      )
+      expect(created.deactivatedAt).toBeNull()
+
+      const off = await container.claimCategoriesService.update(
+        created.id,
+        { isActive: false },
+        MANAGER,
+      )
+      expect(off.deactivatedAt).not.toBeNull()
+
+      const offAgain = await container.claimCategoriesService.update(
+        created.id,
+        { name: 'Dated Cat 2', isActive: false },
+        MANAGER,
+      )
+      expect(offAgain.deactivatedAt).toBe(off.deactivatedAt)
+
+      const on = await container.claimCategoriesService.update(
+        created.id,
+        { isActive: true },
+        MANAGER,
+      )
+      expect(on.deactivatedAt).toBeNull()
+    })
+  })
+
   describe('HTTP', () => {
     it('lists the seeded categories to a user who may only view claims', async () => {
       // Migration 0045 ships four categories the meeting agreed on (REMONT_MOTORA,

@@ -236,6 +236,10 @@ export const claimCategories = pgTable(
     name: text('name').notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
+    // When the office switched it off (V2 spec §4.2): set on true→false, cleared on false→true,
+    // written by the catalogue service and by nothing else. The detail of an old claim needs it
+    // to say "KATEGORIJA UGAŠENA 03/26" instead of quietly looking wrong.
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -244,4 +248,91 @@ export const claimCategories = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   },
   (t) => [uniqueIndex('claim_categories_code_key').on(t.code)],
+)
+
+/**
+ * A field that exists only for claims of ONE category — "Obrađeni deo" on machining. A catalogue,
+ * never a code table (V2 spec §10): the office adds, renames and retires fields from the admin
+ * panel, and statistics count by them. `field_type` is text + CHECK so a second type is a row in
+ * the CHECK rather than a schema migration. Values live on the claim row as jsonb keyed by `code`.
+ */
+export const claimCategoryFields = pgTable(
+  'claim_category_fields',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    categoryId: uuid('category_id').notNull(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    fieldType: text('field_type').$type<'select'>().notNull().default('select'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [
+    uniqueIndex('claim_category_fields_category_code_key').on(t.categoryId, t.code),
+    index('idx_claim_category_fields_category_id').on(t.categoryId),
+    check('claim_category_fields_field_type_check', sql`${t.fieldType} IN ('select')`),
+    foreignKey({
+      name: 'claim_category_fields_category_id_fkey',
+      columns: [t.categoryId],
+      foreignColumns: [claimCategories.id],
+    }).onDelete('restrict'),
+  ],
+)
+
+/** One offered value of a select field. Retiring one keeps it on every claim that carries it. */
+export const claimCategoryFieldOptions = pgTable(
+  'claim_category_field_options',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    fieldId: uuid('field_id').notNull(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [
+    uniqueIndex('claim_category_field_options_field_code_key').on(t.fieldId, t.code),
+    index('idx_claim_category_field_options_field_id').on(t.fieldId),
+    foreignKey({
+      name: 'claim_category_field_options_field_id_fkey',
+      columns: [t.fieldId],
+      foreignColumns: [claimCategoryFields.id],
+    }).onDelete('restrict'),
+  ],
+)
+
+export const claimCategoriesRelations = relations(claimCategories, ({ many }) => ({
+  fields: many(claimCategoryFields),
+}))
+
+export const claimCategoryFieldsRelations = relations(claimCategoryFields, ({ one, many }) => ({
+  category: one(claimCategories, {
+    fields: [claimCategoryFields.categoryId],
+    references: [claimCategories.id],
+  }),
+  options: many(claimCategoryFieldOptions),
+}))
+
+export const claimCategoryFieldOptionsRelations = relations(
+  claimCategoryFieldOptions,
+  ({ one }) => ({
+    field: one(claimCategoryFields, {
+      fields: [claimCategoryFieldOptions.fieldId],
+      references: [claimCategoryFields.id],
+    }),
+  }),
 )

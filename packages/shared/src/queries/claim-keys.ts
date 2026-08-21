@@ -22,6 +22,8 @@ function sortKeyFields(sort: ClaimsListSort): Partial<ClaimsListSort> {
 export const claimKeys = {
   all: ['claims'] as const,
   lists: () => [...claimKeys.all, 'list'] as const,
+  /** The sidebar's per-category pending counts; under `all`, so claim invalidation covers it. */
+  categoryCounts: () => [...claimKeys.all, 'category-counts'] as const,
   list: (filters: ClaimsListFilters, page: number, pageSize: number, sort: ClaimsListSort = {}) =>
     [
       ...claimKeys.lists(),

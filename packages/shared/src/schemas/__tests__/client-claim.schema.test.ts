@@ -24,6 +24,8 @@ const fullDetail: EmotiveClaimDetail = {
     id: '99999999-9999-4999-8999-999999999999',
     code: 'REMONT_MOTORA',
     name: 'Generalni remont motora',
+    isActive: true,
+    deactivatedAt: null,
   },
   engineCode: 'EC-1',
   dateOfClaim: '2026-04-17',

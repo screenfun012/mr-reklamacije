@@ -62,4 +62,13 @@ describe('AppEvent union', () => {
     }
     expect(event.payload.resource).toBe('engineTypes')
   })
+
+  it('sends a category change to the counts as well as the catalogue', () => {
+    // The sidebar's badges and the claim lists print category names; a rename or a retirement
+    // that only reached the catalogue screens would leave both showing yesterday's answer.
+    expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.ClaimCategories)).toEqual([
+      ['claim-categories'],
+      ['claims', 'category-counts'],
+    ])
+  })
 })

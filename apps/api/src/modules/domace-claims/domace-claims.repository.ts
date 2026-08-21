@@ -84,11 +84,13 @@ function mapCategoryRef(
   id: string | null,
   code: string | null,
   name: string | null,
+  isActive: boolean | null,
+  deactivatedAt: Date | null,
 ): ClaimCategoryRef | null {
-  if (id === null || code === null || name === null) {
+  if (id === null || code === null || name === null || isActive === null) {
     return null
   }
-  return { id, code, name }
+  return { id, code, name, isActive, deactivatedAt: deactivatedAt?.toISOString() ?? null }
 }
 
 function mapListItem(row: {
@@ -113,6 +115,8 @@ function mapListItem(row: {
   categoryId: string | null
   categoryCode: string | null
   categoryName: string | null
+  categoryIsActive: boolean | null
+  categoryDeactivatedAt: Date | null
   createdAt: Date
 }): DomaceClaimListItem {
   return {
@@ -135,7 +139,13 @@ function mapListItem(row: {
     outcome: row.outcome as DomaceClaimListItem['outcome'],
     claimYear: row.claimYear,
     totalAmount: row.totalAmount,
-    category: mapCategoryRef(row.categoryId, row.categoryCode, row.categoryName),
+    category: mapCategoryRef(
+      row.categoryId,
+      row.categoryCode,
+      row.categoryName,
+      row.categoryIsActive,
+      row.categoryDeactivatedAt,
+    ),
     createdAt: formatTimestamp(row.createdAt),
   }
 }
@@ -380,6 +390,8 @@ export class DomaceClaimsRepository {
         categoryId: domaceClaims.categoryId,
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
+        categoryIsActive: claimCategories.isActive,
+        categoryDeactivatedAt: claimCategories.deactivatedAt,
         createdAt: domaceClaims.createdAt,
       })
       .from(domaceClaims)
@@ -442,6 +454,8 @@ export class DomaceClaimsRepository {
         categoryId: domaceClaims.categoryId,
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
+        categoryIsActive: claimCategories.isActive,
+        categoryDeactivatedAt: claimCategories.deactivatedAt,
         engineCode: domaceClaims.engineCode,
         dateOfClaim: domaceClaims.dateOfClaim,
         mrNumber: domaceClaims.mrNumber,

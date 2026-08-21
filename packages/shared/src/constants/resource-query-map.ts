@@ -26,8 +26,10 @@ export function queryKeyPrefixesForResourceChanged(
       return [['external-parties']] as const
     case ResourceChangedKey.ClaimSources:
       return [['claim-sources']] as const
+    // A renamed or retired category must reach the sidebar's counts and every claim list that
+    // prints its name, not only the catalogue screens.
     case ResourceChangedKey.ClaimCategories:
-      return [['claim-categories']] as const
+      return [['claim-categories'], ['claims', 'category-counts']] as const
     case ResourceChangedKey.Users:
       return [['users']] as const
     // The list, the KPI cards and any open detail all live under this prefix.

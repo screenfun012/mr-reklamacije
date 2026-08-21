@@ -29,6 +29,15 @@ describe('invalidateInternalClaimQueries', () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ['statistics'] })
   })
 
+  it('refreshes the per-category counts — a created or re-outcomed claim moves a sidebar badge', () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id: 'claim-1' })
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['claims', 'category-counts'] })
+  })
+
   it('invalidates the claim attachment list so a colleague upload/delete refreshes the Photos tab', () => {
     const queryClient = new QueryClient()
     const spy = vi.spyOn(queryClient, 'invalidateQueries')

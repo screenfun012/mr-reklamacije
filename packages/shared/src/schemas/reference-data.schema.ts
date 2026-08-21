@@ -162,6 +162,7 @@ export const ClaimCategoryListItemSchema = z.object({
   name: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  deactivatedAt: z.string().nullable(),
   usageCount: z.number().int().nonnegative(),
 })
 
@@ -197,6 +198,10 @@ export const ClaimCategoryRefSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
   name: z.string(),
+  // A claim keeps a category the office has switched off; the screens have to SAY so rather
+  // than show it as if nothing happened (V2 spec §4.3).
+  isActive: z.boolean(),
+  deactivatedAt: z.string().nullable(),
 })
 
 export type ClaimCategoryRef = z.infer<typeof ClaimCategoryRefSchema>

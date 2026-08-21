@@ -19,6 +19,7 @@ interface ClaimCategoryRow {
   name: string
   sortOrder: number
   isActive: boolean
+  deactivatedAt: Date | null
   usageCount: number
 }
 
@@ -45,6 +46,7 @@ function mapClaimCategoryRow(row: ClaimCategoryRow): ClaimCategoryListItem {
     name: row.name,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+    deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
     usageCount: row.usageCount,
   }
 }
@@ -83,6 +85,7 @@ export class ClaimCategoriesRepository {
         name: claimCategories.name,
         sortOrder: claimCategories.sortOrder,
         isActive: claimCategories.isActive,
+        deactivatedAt: claimCategories.deactivatedAt,
         usageCount: categoryUsageCountSql,
       })
       .from(claimCategories)
@@ -110,6 +113,7 @@ export class ClaimCategoriesRepository {
         name: claimCategories.name,
         sortOrder: claimCategories.sortOrder,
         isActive: claimCategories.isActive,
+        deactivatedAt: claimCategories.deactivatedAt,
         usageCount: categoryUsageCountSql,
       })
       .from(claimCategories)
@@ -144,6 +148,7 @@ export class ClaimCategoriesRepository {
         name: claimCategories.name,
         sortOrder: claimCategories.sortOrder,
         isActive: claimCategories.isActive,
+        deactivatedAt: claimCategories.deactivatedAt,
       })
 
     if (created === undefined) {
@@ -159,7 +164,16 @@ export class ClaimCategoriesRepository {
       .set({
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
-        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(input.isActive !== undefined
+          ? {
+              isActive: input.isActive,
+              // true→false stamps the moment (an already-off category keeps its first date);
+              // false→true clears it, so nothing claims a live category was ever retired.
+              deactivatedAt: input.isActive
+                ? null
+                : sql`COALESCE(${claimCategories.deactivatedAt}, now())`,
+            }
+          : {}),
       })
       .where(and(eq(claimCategories.id, id), isNull(claimCategories.deletedAt)))
       .returning({
@@ -168,6 +182,7 @@ export class ClaimCategoriesRepository {
         name: claimCategories.name,
         sortOrder: claimCategories.sortOrder,
         isActive: claimCategories.isActive,
+        deactivatedAt: claimCategories.deactivatedAt,
       })
 
     if (updated === undefined) {

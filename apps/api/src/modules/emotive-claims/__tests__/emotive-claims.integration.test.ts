@@ -1385,6 +1385,9 @@ describe('EmotiveClaimsService integration', () => {
         id: remontCategoryId,
         code: 'REMONT_MOTORA',
         name: 'Generalni remont motora',
+        // The screens must be able to say a category was switched off; a live one says so too.
+        isActive: true,
+        deactivatedAt: null,
       })
     })
   })

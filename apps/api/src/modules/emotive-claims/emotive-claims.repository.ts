@@ -151,11 +151,13 @@ function mapCategoryRef(
   id: string | null,
   code: string | null,
   name: string | null,
+  isActive: boolean | null,
+  deactivatedAt: Date | null,
 ): ClaimCategoryRef | null {
-  if (id === null || code === null || name === null) {
+  if (id === null || code === null || name === null || isActive === null) {
     return null
   }
-  return { id, code, name }
+  return { id, code, name, isActive, deactivatedAt: deactivatedAt?.toISOString() ?? null }
 }
 
 function mapListItem(row: {
@@ -181,6 +183,8 @@ function mapListItem(row: {
   categoryId: string | null
   categoryCode: string | null
   categoryName: string | null
+  categoryIsActive: boolean | null
+  categoryDeactivatedAt: Date | null
   createdAt: Date
   clientVisibleAt: Date | null
   publishedAt: Date | null
@@ -206,7 +210,13 @@ function mapListItem(row: {
     claimYear: row.claimYear,
     customerId: row.customerId,
     customerName: row.customerName,
-    category: mapCategoryRef(row.categoryId, row.categoryCode, row.categoryName),
+    category: mapCategoryRef(
+      row.categoryId,
+      row.categoryCode,
+      row.categoryName,
+      row.categoryIsActive,
+      row.categoryDeactivatedAt,
+    ),
     createdAt: formatTimestamp(row.createdAt),
     clientVisibleAt: row.clientVisibleAt === null ? null : formatTimestamp(row.clientVisibleAt),
     publishedAt: row.publishedAt === null ? null : formatTimestamp(row.publishedAt),
@@ -578,6 +588,8 @@ export class EmotiveClaimsRepository {
         categoryId: emotiveClaims.categoryId,
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
+        categoryIsActive: claimCategories.isActive,
+        categoryDeactivatedAt: claimCategories.deactivatedAt,
         createdAt: emotiveClaims.createdAt,
         clientVisibleAt: emotiveClaims.clientVisibleAt,
         publishedAt: emotiveClaims.publishedAt,
@@ -637,6 +649,8 @@ export class EmotiveClaimsRepository {
       categoryId: emotiveClaims.categoryId,
       categoryCode: claimCategories.code,
       categoryName: claimCategories.name,
+      categoryIsActive: claimCategories.isActive,
+      categoryDeactivatedAt: claimCategories.deactivatedAt,
       engineCode: emotiveClaims.engineCode,
       dateOfClaim: emotiveClaims.dateOfClaim,
       mrNumber: emotiveClaims.mrNumber,

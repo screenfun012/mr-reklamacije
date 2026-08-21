@@ -3,6 +3,7 @@ import {
   ClaimFreshness,
   ClaimKind,
   ClaimOutcome,
+  type ClaimCategoryCountsResponse,
   type ClaimListItem,
   type DomaceClaimListItem,
   type EmotiveClaimListItem,
@@ -44,6 +45,8 @@ interface UnifiedListRow {
   category_id: string | null
   category_code: string | null
   category_name: string | null
+  category_is_active: boolean | null
+  category_deactivated_at: Date | string | null
   engine_code: string | null
   date_of_claim: Date | string | null
   mr_number: string | null
@@ -59,6 +62,21 @@ interface UnifiedListRow {
   client_visible_at: Date | string | null
   published_at: Date | string | null
   freshness: string | null
+}
+
+interface CategoryCountRow extends Record<string, unknown> {
+  id: string
+  code: string
+  name: string
+  sort_order: number | string
+  is_active: boolean
+  total: number | string
+  pending: number | string
+}
+
+interface CountTotalsRow extends Record<string, unknown> {
+  total: number | string
+  pending: number | string
 }
 
 function formatDate(value: Date | string): string {
@@ -84,10 +102,22 @@ function toInt(value: number | string): number {
  * create and update both require it, so a claim written through the API always carries one.
  */
 function mapCategory(row: UnifiedListRow): ClaimListItem['category'] {
-  if (row.category_id === null || row.category_code === null || row.category_name === null) {
+  if (
+    row.category_id === null ||
+    row.category_code === null ||
+    row.category_name === null ||
+    row.category_is_active === null
+  ) {
     return null
   }
-  return { id: row.category_id, code: row.category_code, name: row.category_name }
+  return {
+    id: row.category_id,
+    code: row.category_code,
+    name: row.category_name,
+    isActive: row.category_is_active,
+    deactivatedAt:
+      row.category_deactivated_at === null ? null : formatTimestamp(row.category_deactivated_at),
+  }
 }
 
 function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
@@ -197,6 +227,88 @@ export class ClaimsRepository {
       page: query.page,
       pageSize: query.pageSize,
     }
+  }
+
+  /**
+   * Pending/total per category for the reader's scope — the same rows the list would return,
+   * reduced to two columns (V2 spec §4.4). A category is listed when it is live OR still carries
+   * claims this reader may see; a retired, empty one would be noise in the menu and the filter.
+   */
+  async categoryCounts(scope: ClaimsListScope): Promise<ClaimCategoryCountsResponse> {
+    const branches = await this.buildCountsBranches(scope)
+    if (branches.length === 0) {
+      return { items: [], totals: { total: 0, pending: 0 } }
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    const [itemsResult, totalsResult] = await Promise.all([
+      this.db.execute<CategoryCountRow>(sql`
+        WITH scoped AS (${unionSql})
+        SELECT cc.id, cc.code, cc.name, cc.sort_order, cc.is_active,
+          COUNT(s.category_id)::int AS total,
+          COUNT(s.category_id) FILTER (WHERE s.outcome = ${ClaimOutcome.Pending})::int AS pending
+        FROM claim_categories cc
+        LEFT JOIN scoped s ON s.category_id = cc.id
+        WHERE cc.deleted_at IS NULL
+        GROUP BY cc.id, cc.code, cc.name, cc.sort_order, cc.is_active
+        HAVING cc.is_active OR COUNT(s.category_id) > 0
+        ORDER BY cc.sort_order ASC, cc.name ASC
+      `),
+      this.db.execute<CountTotalsRow>(sql`
+        SELECT COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE outcome = ${ClaimOutcome.Pending})::int AS pending
+        FROM (${unionSql}) AS scoped
+      `),
+    ])
+
+    const totals = totalsResult.rows[0]
+
+    return {
+      items: itemsResult.rows.map((row) => ({
+        id: row.id,
+        code: row.code,
+        name: row.name,
+        sortOrder: toInt(row.sort_order),
+        isActive: row.is_active,
+        total: toInt(row.total),
+        pending: toInt(row.pending),
+      })),
+      totals: { total: toInt(totals?.total ?? 0), pending: toInt(totals?.pending ?? 0) },
+    }
+  }
+
+  private async buildCountsBranches(scope: ClaimsListScope): Promise<SQL[]> {
+    const branches: SQL[] = []
+
+    if (scope.includeEmotive) {
+      if (scope.emotiveCustomerScope === 'own_customer') {
+        const customerIds = await this.getUserCustomerIds(scope.userId)
+        if (customerIds.length > 0) {
+          branches.push(sql`
+            SELECT ec.category_id, ec.outcome
+            FROM emotive_claims ec
+            WHERE ec.deleted_at IS NULL
+              AND ec.customer_id IN (${sql.join(
+                customerIds.map((id) => sql`${id}`),
+                sql`, `,
+              )})
+          `)
+        }
+      } else {
+        branches.push(sql`
+          SELECT ec.category_id, ec.outcome FROM emotive_claims ec WHERE ec.deleted_at IS NULL
+        `)
+      }
+    }
+
+    if (scope.includeDomace) {
+      branches.push(sql`
+        SELECT dc.category_id, dc.outcome FROM domace_claims dc WHERE dc.deleted_at IS NULL
+      `)
+    }
+
+    return branches
   }
 
   private async buildUnionBranches(query: ClaimListQuery, scope: ClaimsListScope): Promise<SQL[]> {
@@ -326,6 +438,8 @@ export class ClaimsRepository {
         ec.category_id,
         cc.code AS category_code,
         cc.name AS category_name,
+        cc.is_active AS category_is_active,
+        cc.deactivated_at AS category_deactivated_at,
         ec.engine_code,
         ec.date_of_claim,
         ec.mr_number,
@@ -417,6 +531,8 @@ export class ClaimsRepository {
         dc.category_id,
         cc.code AS category_code,
         cc.name AS category_name,
+        cc.is_active AS category_is_active,
+        cc.deactivated_at AS category_deactivated_at,
         dc.engine_code,
         dc.date_of_claim,
         dc.mr_number,

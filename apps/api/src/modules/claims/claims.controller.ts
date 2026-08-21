@@ -45,7 +45,10 @@ function hasFullViewForKind(user: MRSessionUser, kind: ClaimKind): boolean {
   return user.permissions.includes(FULL_VIEW_PERMISSION_BY_KIND[kind])
 }
 
-export function createClaimsController(container: Container) {
+export function createClaimsController(container: Container): {
+  list: (c: Context) => Promise<Response>
+  categoryCounts: (c: Context) => Promise<Response>
+} {
   return {
     list: async (c: Context) => {
       const user = requireUser(c)
@@ -55,6 +58,11 @@ export function createClaimsController(container: Container) {
         hasFullViewForKind(user, item.kind) ? item : toClientClaimListItem(item),
       )
       return c.json({ ...result, items })
+    },
+
+    categoryCounts: async (c: Context) => {
+      const user = requireUser(c)
+      return c.json(await container.claimsService.categoryCounts(toActor(user)))
     },
   }
 }

@@ -69,6 +69,7 @@ const CATEGORIES: ClaimCategoryListItem[] = [
     name: 'Generalni remont motora',
     sortOrder: 10,
     isActive: true,
+    deactivatedAt: null,
     usageCount: 0,
   },
 ]

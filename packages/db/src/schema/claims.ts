@@ -72,6 +72,10 @@ export const emotiveClaims = pgTable(
     // NULL-able in the database so the rows that predate this column survive; required by Zod on
     // input. The migration backfills every existing row to REMONT_MOTORA (spec §10.1).
     categoryId: uuid('category_id'),
+    // `{ "<field code>": "<option code>" }` for the claim's category (V2 spec §4.1). jsonb like
+    // `findings`; integrity is the service's job (core/claims/validate-category-field-values.ts),
+    // and a retired field or option keeps its value here — the detail names it as retired.
+    categoryFieldValues: jsonb('category_field_values').$type<Record<string, string>>(),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
@@ -273,6 +277,10 @@ export const domaceClaims = pgTable(
     // NULL-able in the database so the rows that predate this column survive; required by Zod on
     // input. The migration backfills every existing row to REMONT_MOTORA (spec §10.1).
     categoryId: uuid('category_id'),
+    // `{ "<field code>": "<option code>" }` for the claim's category (V2 spec §4.1). jsonb like
+    // `findings`; integrity is the service's job (core/claims/validate-category-field-values.ts),
+    // and a retired field or option keeps its value here — the detail names it as retired.
+    categoryFieldValues: jsonb('category_field_values').$type<Record<string, string>>(),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),

@@ -25,6 +25,8 @@ export function invalidateInternalClaimQueries(
   payload: ClaimEventPayload,
 ): void {
   void queryClient.invalidateQueries({ queryKey: claimKeys.lists() })
+  // A created, deleted or re-outcomed claim moves a badge in the sidebar.
+  void queryClient.invalidateQueries({ queryKey: claimKeys.categoryCounts() })
   if (payload.kind === ClaimKind.Emotive) {
     void queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.lists() })
     void queryClient.invalidateQueries({ queryKey: emotiveClaimKeys.detail(payload.id) })

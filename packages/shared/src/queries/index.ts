@@ -64,6 +64,7 @@ export {
   type ClaimDetailTab as ClaimDetailTabValue,
 } from './claim-detail-search.js'
 export {
+  claimCategoryCountsOptions,
   claimsListOptions,
   claimsListQueryKey,
   CLIENT_CLAIMS_PAGE_SIZE,
