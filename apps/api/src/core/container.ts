@@ -50,6 +50,14 @@ import {
   ClaimCategoriesRepository,
   ClaimCategoriesService,
 } from '../modules/claim-categories/index.js'
+import {
+  ClaimCategoryFieldsRepository,
+  ClaimCategoryFieldsService,
+} from '../modules/claim-category-fields/index.js'
+import {
+  ClaimCategoryFieldOptionsRepository,
+  ClaimCategoryFieldOptionsService,
+} from '../modules/claim-category-field-options/index.js'
 import { EmotiveClaimsRepository, EmotiveClaimsService } from '../modules/emotive-claims/index.js'
 import {
   ClientSubmissionsRepository,
@@ -112,6 +120,10 @@ export interface Container {
   engineManufacturersService: EngineManufacturersService
   claimCategoriesRepository: ClaimCategoriesRepository
   claimCategoriesService: ClaimCategoriesService
+  claimCategoryFieldsRepository: ClaimCategoryFieldsRepository
+  claimCategoryFieldsService: ClaimCategoryFieldsService
+  claimCategoryFieldOptionsRepository: ClaimCategoryFieldOptionsRepository
+  claimCategoryFieldOptionsService: ClaimCategoryFieldOptionsService
   externalPartiesRepository: ExternalPartiesRepository
   externalPartiesService: ExternalPartiesService
   customersRepository: CustomersRepository
@@ -233,6 +245,21 @@ export function buildContainer(
   const claimCategoriesRepository = new ClaimCategoriesRepository(db)
   const claimCategoriesService = new ClaimCategoriesService(
     claimCategoriesRepository,
+    auditService,
+    eventBus,
+  )
+
+  // Constructed here, above the claim services: both of them validate a claim's field values
+  // against this repository, so it has to exist before they do.
+  const claimCategoryFieldsRepository = new ClaimCategoryFieldsRepository(db)
+  const claimCategoryFieldsService = new ClaimCategoryFieldsService(
+    claimCategoryFieldsRepository,
+    auditService,
+    eventBus,
+  )
+  const claimCategoryFieldOptionsRepository = new ClaimCategoryFieldOptionsRepository(db)
+  const claimCategoryFieldOptionsService = new ClaimCategoryFieldOptionsService(
+    claimCategoryFieldOptionsRepository,
     auditService,
     eventBus,
   )
@@ -453,6 +480,10 @@ export function buildContainer(
     engineManufacturersService,
     claimCategoriesRepository,
     claimCategoriesService,
+    claimCategoryFieldsRepository,
+    claimCategoryFieldsService,
+    claimCategoryFieldOptionsRepository,
+    claimCategoryFieldOptionsService,
     externalPartiesRepository,
     externalPartiesService,
     customersRepository,

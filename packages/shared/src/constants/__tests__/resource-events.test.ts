@@ -68,6 +68,8 @@ describe('AppEvent union', () => {
     // that only reached the catalogue screens would leave both showing yesterday's answer.
     expect(queryKeyPrefixesForResourceChanged(ResourceChangedKey.ClaimCategories)).toEqual([
       ['claim-categories'],
+      ['claim-category-fields'],
+      ['claim-category-field-options'],
       ['claims', 'category-counts'],
     ])
   })

@@ -30,6 +30,8 @@ import { registerClientSubmissionsRoutes } from './modules/client-submissions/in
 import { registerEngineTypesRoutes } from './modules/engine-types/index.js'
 import { registerEngineManufacturersRoutes } from './modules/engine-manufacturers/index.js'
 import { registerClaimCategoriesRoutes } from './modules/claim-categories/index.js'
+import { registerClaimCategoryFieldsRoutes } from './modules/claim-category-fields/index.js'
+import { registerClaimCategoryFieldOptionsRoutes } from './modules/claim-category-field-options/index.js'
 import { registerEventsRoutes } from './modules/events/index.js'
 import { registerExternalPartiesRoutes } from './modules/external-parties/index.js'
 import { registerAttachmentsRoutes } from './modules/attachments/index.js'
@@ -145,6 +147,8 @@ export function createApp(container: Container): Hono<{ Variables: AppVariables 
   registerEngineTypesRoutes(app, container)
   registerEngineManufacturersRoutes(app, container)
   registerClaimCategoriesRoutes(app, container)
+  registerClaimCategoryFieldsRoutes(app, container)
+  registerClaimCategoryFieldOptionsRoutes(app, container)
   registerExternalPartiesRoutes(app, container)
   registerCustomersRoutes(app, container)
   registerUsersRoutes(app, container)

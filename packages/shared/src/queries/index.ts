@@ -64,6 +64,15 @@ export {
   type ClaimDetailTab as ClaimDetailTabValue,
 } from './claim-detail-search.js'
 export {
+  claimCategoryFieldOptionsReferenceOptions,
+  claimCategoryFieldOptionsReferenceQueryKey,
+  claimCategoryFieldsForCategoryOptions,
+  claimCategoryFieldsReferenceOptions,
+  claimCategoryFieldsReferenceQueryKey,
+  type ClaimCategoryFieldOptionsReferenceFilters,
+  type ClaimCategoryFieldsReferenceFilters,
+} from './claim-category-fields.js'
+export {
   claimCategoryCountsOptions,
   claimsListOptions,
   claimsListQueryKey,

@@ -8,6 +8,8 @@ import {
   HardHat,
   Inbox,
   LayoutDashboard,
+  ListChecks,
+  ListTree,
   Network,
   ScrollText,
   ShieldCheck,
@@ -135,6 +137,18 @@ export const adminNavGroups: NavGroup[] = [
         label: m.nav_claim_categories,
         to: '/settings/claim-categories',
         icon: Tags,
+      },
+      {
+        key: 'claim-category-fields',
+        label: m.nav_claim_category_fields,
+        to: '/settings/claim-category-fields',
+        icon: ListChecks,
+      },
+      {
+        key: 'claim-category-field-options',
+        label: m.nav_claim_category_field_options,
+        to: '/settings/claim-category-field-options',
+        icon: ListTree,
       },
       {
         key: 'claim-sources',
