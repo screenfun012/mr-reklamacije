@@ -14,7 +14,10 @@ import { useState } from 'react'
 import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
 import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
+import { ClaimAttachmentsCard } from '../../claims/claim-attachments-card'
+import { ClaimFaultsCard } from '../../claims/claim-faults-card'
 import { CategoryFieldsCard } from '../../claims/category-fields/category-fields-card'
+import { EmotiveClaimClientViewCard } from './emotive-claim-client-view-card.js'
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
 import { EmotiveClaimFindingsSection } from './emotive-claim-findings-section.js'
@@ -93,33 +96,56 @@ export function EmotiveClaimDetailView({
           </InternalTabsTrigger>
         </InternalTabsList>
 
-        <TabsContent value={ClaimDetailTab.Pregled} className="flex flex-col gap-6">
-          <EmotiveClaimBasicSection
-            claim={claim}
-            canEdit={canEditBasic}
-            editing={editingBasic}
-            onEditingChange={setEditingBasic}
-            showSectionEditButton={false}
-            hideMrInReadOnly
-          />
-
-          {claim.category === null ? null : (
-            <CategoryFieldsCard
-              categoryId={claim.category.id}
-              categoryName={claim.category.name}
-              values={claim.categoryFieldValues}
-              previous={claim.previousCategoryFieldValues}
-              missing={claim.missingRequiredCategoryFields}
+        {/* The prototype's overview is two columns: the claim on the left, what the CLIENT sees
+            and the photos on the right (§6). Everything this app has and the prototype does not —
+            findings, the inspection report — keeps its place in the left column. */}
+        <TabsContent
+          value={ClaimDetailTab.Pregled}
+          className="grid items-start gap-4 xl:grid-cols-[1fr_340px]"
+        >
+          <div className="flex flex-col gap-4">
+            <EmotiveClaimBasicSection
+              claim={claim}
+              canEdit={canEditBasic}
+              editing={editingBasic}
+              onEditingChange={setEditingBasic}
+              showSectionEditButton={false}
+              hideMrInReadOnly
             />
-          )}
 
-          <EmotiveClaimFindingsSection claim={claim} canEdit={canEditFindings} />
+            {claim.category === null ? null : (
+              <CategoryFieldsCard
+                categoryId={claim.category.id}
+                categoryName={claim.category.name}
+                values={claim.categoryFieldValues}
+                previous={claim.previousCategoryFieldValues}
+                missing={claim.missingRequiredCategoryFields}
+              />
+            )}
 
-          <EmotiveClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
+            <EmotiveClaimFindingsSection claim={claim} canEdit={canEditFindings} />
 
-          <p className="font-mono text-[11px] tracking-[0.04em] text-mri-text2">
-            {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
-          </p>
+            <EmotiveClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
+
+            <ClaimFaultsCard faults={claim.faults} />
+
+            <p className="font-mono text-[11px] tracking-[0.04em] text-mri-text2">
+              {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
+            </p>
+          </div>
+
+          <aside className="flex flex-col gap-4">
+            <EmotiveClaimClientViewCard claim={claim} canPublish={canPublish} />
+            <ClaimAttachmentsCard
+              kind={ClaimKind.Emotive}
+              claimId={claim.id}
+              attachmentsTab={{
+                to: '/reklamacije/emotive/$id',
+                params: { id: claim.id },
+                search: { tab: ClaimDetailTab.Prilozi },
+              }}
+            />
+          </aside>
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Kvarovi}>

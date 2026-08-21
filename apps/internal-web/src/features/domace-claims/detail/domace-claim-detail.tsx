@@ -15,6 +15,8 @@ import { useState } from 'react'
 import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
 import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
+import { ClaimAttachmentsCard } from '../../claims/claim-attachments-card'
+import { ClaimFaultsCard } from '../../claims/claim-faults-card'
 import { CategoryFieldsCard } from '../../claims/category-fields/category-fields-card'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
@@ -98,38 +100,59 @@ export function DomaceClaimDetailView({
           </InternalTabsTrigger>
         </InternalTabsList>
 
-        <TabsContent value={ClaimDetailTab.Pregled} className="flex flex-col gap-6">
-          {editingData ? (
-            <DomaceClaimOverviewEdit claim={claim} onDone={() => setEditingData(false)} />
-          ) : (
-            <>
-              <DomaceClaimBasicSection
-                claim={claim}
-                canEdit={canEditBasic}
-                showSectionEditButton={false}
-                hideMrInReadOnly
+        {/* Same two columns as EMOTIVE (prototype §6) — but no "Klijent vidi": a DOMAĆA claim
+            has no portal, so there is nothing for a client to be looking at. */}
+        <TabsContent
+          value={ClaimDetailTab.Pregled}
+          className="grid items-start gap-4 xl:grid-cols-[1fr_340px]"
+        >
+          <div className="flex flex-col gap-4">
+            {editingData ? (
+              <DomaceClaimOverviewEdit claim={claim} onDone={() => setEditingData(false)} />
+            ) : (
+              <>
+                <DomaceClaimBasicSection
+                  claim={claim}
+                  canEdit={canEditBasic}
+                  showSectionEditButton={false}
+                  hideMrInReadOnly
+                />
+                <DomaceClaimAmountSection claim={claim} />
+              </>
+            )}
+
+            {claim.category === null ? null : (
+              <CategoryFieldsCard
+                categoryId={claim.category.id}
+                categoryName={claim.category.name}
+                values={claim.categoryFieldValues}
+                previous={claim.previousCategoryFieldValues}
+                missing={claim.missingRequiredCategoryFields}
               />
-              <DomaceClaimAmountSection claim={claim} />
-            </>
-          )}
+            )}
 
-          {claim.category === null ? null : (
-            <CategoryFieldsCard
-              categoryId={claim.category.id}
-              categoryName={claim.category.name}
-              values={claim.categoryFieldValues}
-              previous={claim.previousCategoryFieldValues}
-              missing={claim.missingRequiredCategoryFields}
+            <DomaceClaimFindingsSection claim={claim} canEdit={canEditFindings} />
+
+            <DomaceClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
+
+            <ClaimFaultsCard faults={claim.faults} />
+
+            <p className="font-mono text-[11px] tracking-[0.04em] text-mri-text2">
+              {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
+            </p>
+          </div>
+
+          <aside className="flex flex-col gap-4">
+            <ClaimAttachmentsCard
+              kind={ClaimKind.Domace}
+              claimId={claim.id}
+              attachmentsTab={{
+                to: '/reklamacije/domace/$id',
+                params: { id: claim.id },
+                search: { tab: ClaimDetailTab.Prilozi },
+              }}
             />
-          )}
-
-          <DomaceClaimFindingsSection claim={claim} canEdit={canEditFindings} />
-
-          <DomaceClaimInspectionReportSection claim={claim} canEdit={canEditFindings} />
-
-          <p className="font-mono text-[11px] tracking-[0.04em] text-mri-text2">
-            {m.emotive_claims_detail_field_updated_at()}: {formatListDateTime(claim.updatedAt)}
-          </p>
+          </aside>
         </TabsContent>
 
         <TabsContent value={ClaimDetailTab.Kvarovi}>

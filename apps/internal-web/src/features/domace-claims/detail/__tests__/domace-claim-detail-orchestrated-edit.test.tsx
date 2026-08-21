@@ -14,6 +14,13 @@ import {
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -114,7 +121,7 @@ function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetai
   }
 }
 
-function renderDetail(claim: DomaceClaimDetail): void {
+async function renderDetail(claim: DomaceClaimDetail): Promise<void> {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -135,7 +142,21 @@ function renderDetail(claim: DomaceClaimDetail): void {
       <DomaceClaimDetailView id={CLAIM_ID} tab={ClaimDetailTab.Pregled} onTabChange={vi.fn()} />
     </QueryClientProvider>
   )
-  render(node)
+
+  // The overview carries links now (the attachments card opens the Prilozi tab), and a <Link>
+  // outside a router throws — the screen has always been inside one.
+  const rootRoute = createRootRoute({ component: () => node })
+  const detailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/reklamacije/domace/$id',
+    component: () => null,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([detailRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+  render(<RouterProvider router={router as never} />)
 }
 
 describe('DomaceClaimDetailView orchestrated edit', () => {
@@ -148,7 +169,7 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
   })
 
   it('shows overview, findings and inspection-report saves on accepted claims', async () => {
-    renderDetail(makeClaim())
+    await renderDetail(makeClaim())
 
     expect(
       screen.queryByRole('button', { name: m.domace_claims_detail_amount_save() }),
@@ -164,8 +185,8 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
     })
   })
 
-  it('enters overview edit from the header for accepted claims', () => {
-    renderDetail(makeClaim())
+  it('enters overview edit from the header for accepted claims', async () => {
+    await renderDetail(makeClaim())
 
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
