@@ -252,11 +252,9 @@ function FooterHint({ keys, label }: { keys: string; label: string }): React.Rea
 }
 
 /** Permission gate first, then the palette's own substring match on the label. */
-function filterMatching<T extends { label: () => string; permission?: string }>(
-  items: readonly T[],
-  userPermissions: readonly string[],
-  query: string,
-): T[] {
+function filterMatching<
+  T extends { label: () => string; permission?: string; permissions?: readonly string[] },
+>(items: readonly T[], userPermissions: readonly string[], query: string): T[] {
   const visible = filterVisibleNavItems(items, userPermissions)
   const normalized = query.toLowerCase()
   if (normalized.length === 0) {

@@ -23,11 +23,9 @@ describe('commandPaletteNavItems', () => {
 })
 
 describe('commandPaletteActionItems', () => {
-  it('holds the create commands', () => {
-    expect(commandPaletteActionItems.map((item) => item.key)).toEqual([
-      'nova-emotive',
-      'nova-domace',
-    ])
+  it('holds ONE create command — the wizard is what asks which kind', () => {
+    // It used to be two, because the kind of claim was the route you picked.
+    expect(commandPaletteActionItems.map((item) => item.key)).toEqual(['nova-reklamacija'])
   })
 })
 
@@ -40,8 +38,10 @@ describe('filterVisibleNavItems', () => {
     expect(navKeys).toEqual(['bezbednost'])
   })
 
-  it('shows a command when the user has the required permission', () => {
-    const visible = filterVisibleNavItems(commandPaletteActionItems, ['emotive_claims.create'])
-    expect(visible.map((item) => item.key)).toContain('nova-emotive')
+  it('shows the create command to whoever may create EITHER kind', () => {
+    for (const permission of ['emotive_claims.create', 'domace_claims.create']) {
+      const visible = filterVisibleNavItems(commandPaletteActionItems, [permission])
+      expect(visible.map((item) => item.key)).toContain('nova-reklamacija')
+    }
   })
 })

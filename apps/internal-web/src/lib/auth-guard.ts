@@ -38,6 +38,19 @@ export function internalRequireDomaceClaimsCreate() {
   return requirePermissions(authClient, ['domace_claims.create'], loadServerSession)
 }
 
+/**
+ * The create wizard asks which KIND the claim is, so holding either permission is enough to open
+ * it — the step then offers only the cards the actor may actually use, and the server refuses
+ * anything else regardless.
+ */
+export function internalRequireClaimsCreate() {
+  return requirePermissions(
+    authClient,
+    ['emotive_claims.create', 'domace_claims.create'],
+    loadServerSession,
+  )
+}
+
 export function internalRequireDomaceClaimsView() {
   return requirePermissions(authClient, DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
 }

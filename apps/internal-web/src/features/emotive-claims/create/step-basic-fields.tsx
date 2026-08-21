@@ -84,7 +84,11 @@ interface StepBasicFieldsProps {
   customers: CustomerListItem[]
   employees: EmployeeListItem[]
   manufacturers: EngineManufacturerListItem[]
-  categories: ClaimCategoryListItem[]
+  /**
+   * The catalogue behind the category picker. LEFT OUT by the create wizard, where the category
+   * is the header chip — a place you are in, not one field among many. No catalogue, no picker.
+   */
+  categories?: ClaimCategoryListItem[]
   orphanEngineType?: EngineTypeOrphanOption | undefined
   stepErrors: Record<string, string>
   disabled: boolean
@@ -217,32 +221,34 @@ export function StepBasicFields({
         )}
       />
 
-      <form.Field
-        name="categoryId"
-        children={(field) => (
-          <InternalFieldGroup
-            id="categoryId"
-            label={m.field_claim_category()}
-            required
-            error={stepErrors['categoryId'] ?? formatFieldError(field.state.meta.errors[0])}
-          >
-            <SearchableSelect
+      {categories === undefined ? null : (
+        <form.Field
+          name="categoryId"
+          children={(field) => (
+            <InternalFieldGroup
               id="categoryId"
-              className={FORM_CONTROL_CLASS}
-              value={field.state.value}
-              options={categoryOptions(categories, field.state.value, currentCategoryName)}
-              placeholder={m.emotive_claims_create_select_placeholder()}
-              searchPlaceholder={m.field_search_placeholder()}
-              emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
-              noResultsLabel={m.field_no_results()}
-              disabled={disabled}
-              aria-label={m.field_claim_category()}
-              onValueChange={field.handleChange}
-              onBlur={field.handleBlur}
-            />
-          </InternalFieldGroup>
-        )}
-      />
+              label={m.field_claim_category()}
+              required
+              error={stepErrors['categoryId'] ?? formatFieldError(field.state.meta.errors[0])}
+            >
+              <SearchableSelect
+                id="categoryId"
+                className={FORM_CONTROL_CLASS}
+                value={field.state.value}
+                options={categoryOptions(categories, field.state.value, currentCategoryName)}
+                placeholder={m.emotive_claims_create_select_placeholder()}
+                searchPlaceholder={m.field_search_placeholder()}
+                emptyOptionLabel={m.emotive_claims_create_select_placeholder()}
+                noResultsLabel={m.field_no_results()}
+                disabled={disabled}
+                aria-label={m.field_claim_category()}
+                onValueChange={field.handleChange}
+                onBlur={field.handleBlur}
+              />
+            </InternalFieldGroup>
+          )}
+        />
+      )}
 
       <form.Subscribe selector={(state) => state.values.manufacturerId}>
         {(manufacturerId) => (

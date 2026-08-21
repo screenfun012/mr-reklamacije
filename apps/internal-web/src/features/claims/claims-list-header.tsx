@@ -21,9 +21,9 @@ export interface ClaimsListHeaderProps {
  * The container query is deliberate: what fits here depends on the width the sidebar leaves,
  * not on the viewport, and a `sm:` breakpoint does not know the sidebar exists.
  *
- * The prototype draws ONE "+ Nova reklamacija" button; it becomes one when the wizard that can
- * ask for the kind exists (V2 plan, task 7). Until then these are the two doors that do exist —
- * moved here, not invented.
+ * ONE "+ Nova reklamacija" button, as the prototype draws it: the wizard asks which kind the
+ * claim is, so the header no longer has to. Inside a category the button carries it along, so
+ * the wizard opens on the kind of work you were already looking at.
  */
 export function ClaimsListHeader({
   mode,
@@ -51,26 +51,18 @@ export function ClaimsListHeader({
           <p className="text-[13px] text-mri-text2">{subtitle}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2.5 self-start @min-[640px]:ml-auto">
-          {canCreateEmotive ? (
+        {canCreateEmotive || canCreateDomace ? (
+          <div className="flex flex-wrap gap-2.5 self-start @min-[640px]:ml-auto">
             <Link
-              to="/reklamacije/emotive/nova"
+              to="/reklamacije/nova"
+              search={mode.kind === 'category' ? { categoryCode: mode.code } : {}}
               className={internalButtonClasses('primary', 'h-10 w-auto px-[18px] text-xs')}
             >
               <Plus className="size-4" aria-hidden="true" />
-              {m.emotive_claims_new_claim()}
+              {m.crumb_new_claim()}
             </Link>
-          ) : null}
-          {canCreateDomace ? (
-            <Link
-              to="/reklamacije/domace/nova"
-              className={internalButtonClasses('outline', 'h-10 w-auto px-[18px] text-xs')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {m.domace_claims_new_claim()}
-            </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )

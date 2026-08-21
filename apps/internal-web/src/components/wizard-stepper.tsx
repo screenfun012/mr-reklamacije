@@ -2,29 +2,50 @@ import { cn } from '@mr/ui'
 import { Fragment } from 'react'
 
 /**
- * Visual wizard stepper (README §7): 34px numbered circles — active red /
- * done green tint with ✓ / upcoming outlined — joined by hairlines that turn
- * green once passed.
+ * The two wizards in this app draw their step strip differently, and both were approved that
+ * way: the intake wizard on a tablet in the yard (34px circles, plain labels), the claims wizard
+ * from the office prototype (26px circles, mono labels). These are two DESIGNS, not a size knob —
+ * pick the one belonging to the screen, never to fit a layout.
  */
+export type WizardStepperVariant = 'intake' | 'claims'
+
+const CIRCLE_CLASSES: Record<WizardStepperVariant, string> = {
+  intake: 'size-[34px] text-xs',
+  claims: 'size-[26px] text-[11px]',
+}
+
+const LABEL_CLASSES: Record<WizardStepperVariant, string> = {
+  intake: 'text-[13.5px]',
+  claims: 'font-mono text-[9.5px] uppercase tracking-[0.13em]',
+}
+
+const ROW_CLASSES: Record<WizardStepperVariant, string> = {
+  intake: 'mb-[34px] gap-[11px]',
+  claims: 'gap-[9px] px-0.5 py-1',
+}
+
 export function WizardStepper({
   steps,
   currentIndex,
+  variant = 'intake',
 }: {
   steps: readonly string[]
   currentIndex: number
+  variant?: WizardStepperVariant
 }) {
   return (
-    <div className="mb-[34px] flex items-center">
+    <div className={cn('flex items-center', variant === 'intake' && 'mb-[34px]')}>
       {steps.map((label, index) => {
         const active = index === currentIndex
         const done = index < currentIndex
         return (
           <Fragment key={label}>
-            <div className="flex flex-none items-center gap-[11px]">
+            <div className={cn('flex flex-none items-center', ROW_CLASSES[variant])}>
               <span
                 aria-hidden="true"
                 className={cn(
-                  'grid size-[34px] place-items-center rounded-full border font-mono text-xs font-bold',
+                  'grid place-items-center rounded-full border font-mono font-bold',
+                  CIRCLE_CLASSES[variant],
                   active && 'border-mri-red bg-mri-red text-white',
                   done && 'border-[rgba(31,169,113,0.4)] bg-[rgba(31,169,113,0.15)] text-mri-ok',
                   !active && !done && 'border-mri-border2 bg-transparent text-mri-text2',
@@ -34,7 +55,8 @@ export function WizardStepper({
               </span>
               <span
                 className={cn(
-                  'whitespace-nowrap text-[13.5px]',
+                  'whitespace-nowrap',
+                  LABEL_CLASSES[variant],
                   active ? 'font-bold text-mri-text' : 'font-semibold text-mri-text2',
                 )}
               >
@@ -45,7 +67,8 @@ export function WizardStepper({
               <span
                 aria-hidden="true"
                 className={cn(
-                  'mx-4 h-px flex-1',
+                  'h-px flex-1',
+                  variant === 'intake' ? 'mx-4' : 'mx-3',
                   done ? 'bg-[rgba(31,169,113,0.4)]' : 'bg-mri-border',
                 )}
               />

@@ -76,8 +76,8 @@ describe('CommandPalette', () => {
     expect(
       await screen.findByPlaceholderText('Pretraži komande ili reklamacije…'),
     ).toBeInTheDocument()
-    // permitted (has emotive_claims.create)
-    expect(screen.getByText('Nova EMOTIVE reklamacija')).toBeInTheDocument()
+    // permitted (has emotive_claims.create) — one command for both kinds now
+    expect(screen.getByText('Nova reklamacija')).toBeInTheDocument()
     // requires client_submissions.manage — hidden
     expect(screen.queryByText('Pristiglo')).not.toBeInTheDocument()
   })
