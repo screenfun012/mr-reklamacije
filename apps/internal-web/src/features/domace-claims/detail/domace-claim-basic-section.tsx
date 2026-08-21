@@ -1,6 +1,5 @@
 import {
   ApiError,
-  claimCategoriesReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
   formatListDate,
@@ -159,9 +158,6 @@ function BasicEditMode({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  const { data: categories } = useSuspenseQuery(
-    claimCategoriesReferenceOptions({ activeOnly: true }),
-  )
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -201,14 +197,12 @@ function BasicEditMode({
         form={form}
         employees={employees}
         manufacturers={manufacturers}
-        categories={categories}
         orphanEngineType={
           claim.engineTypeId && claim.engineTypeCode
             ? { id: claim.engineTypeId, code: claim.engineTypeCode }
             : undefined
         }
         currentAssignedWorkerName={claim.employeeName ?? undefined}
-        currentCategoryName={claim.category?.name ?? undefined}
         stepErrors={stepErrors}
         disabled={mutation.isPending}
       />

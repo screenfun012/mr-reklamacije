@@ -185,16 +185,28 @@ function createClaimsTableColumns(
         if (category === null) {
           return '—'
         }
+        // A claim moved to another kind of work is missing what the new one asks for. The dot
+        // says so where people scan, without a filter or a column of its own (handoff §4).
+        const incomplete = row.original.missingRequiredCategoryFields.length > 0
         return (
-          <span
-            className={cn(
-              'inline-block rounded-md border bg-mri-inbg px-2 py-[3px] font-mono text-[10px]',
-              category.isActive
-                ? 'border-mri-border2 text-mri-text'
-                : 'border-dashed border-mri-border2 text-mri-text2',
-            )}
-          >
-            {category.isActive ? category.name : `${category.name} †`}
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={cn(
+                'inline-block rounded-md border bg-mri-inbg px-2 py-[3px] font-mono text-[10px]',
+                category.isActive
+                  ? 'border-mri-border2 text-mri-text'
+                  : 'border-dashed border-mri-border2 text-mri-text2',
+              )}
+            >
+              {category.isActive ? category.name : `${category.name} †`}
+            </span>
+            {incomplete ? (
+              <span
+                title={m.claim_category_fields_incomplete_hint()}
+                aria-label={m.claim_category_fields_incomplete_hint()}
+                className="size-[6px] flex-none rounded-full bg-mri-amb"
+              />
+            ) : null}
           </span>
         )
       },

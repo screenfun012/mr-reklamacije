@@ -430,6 +430,7 @@
   "claim_category_fields_previous": "Previous category",
   "claim_category_fields_previous_badge": "previous",
   "claim_category_fields_retired": "retired",
+  "claim_category_retired_badge": "Category retired",
   "claim_detail_tab_attachments": "Attachments",
   "claim_detail_tab_faults": "Faults",
   "claim_detail_tab_overview": "Overview",

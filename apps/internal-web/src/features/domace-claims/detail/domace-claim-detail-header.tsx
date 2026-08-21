@@ -11,6 +11,9 @@ import { KindPill } from '~/components/kind-pill'
 import { OutcomePill } from '~/components/outcome-pill'
 import { Pencil } from 'lucide-react'
 
+import { CategoryChangeControl } from '../../claims/category-fields/category-change-control.js'
+import { ClaimCategoryRetiredBadge } from '../../claims/category-fields/claim-category-retired-badge.js'
+
 import { DomaceClaimStatusActions } from './domace-claim-status-actions.js'
 
 const EMPTY = '—'
@@ -45,8 +48,15 @@ export function DomaceClaimDetailHeader({
         <Heading level="h1" className="font-mono text-mri-text">
           {claim.mrNumber ?? EMPTY}
         </Heading>
-        <OutcomePill outcome={claim.outcome} />
         <KindPill kind={ClaimKind.Domace} />
+        <CategoryChangeControl
+          kind={ClaimKind.Domace}
+          claimId={claim.id}
+          category={claim.category}
+          canEdit={canEditData}
+        />
+        <ClaimCategoryRetiredBadge category={claim.category} />
+        <OutcomePill outcome={claim.outcome} />
       </div>
 
       <p className="text-sm text-mri-text2">{metaLine || EMPTY}</p>

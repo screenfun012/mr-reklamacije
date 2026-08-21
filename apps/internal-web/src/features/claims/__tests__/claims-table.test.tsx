@@ -59,6 +59,7 @@ const sampleItems = [
       name: 'Mašinska obrada',
       isActive: true,
     },
+    missingRequiredCategoryFields: [],
     createdAt: '2026-04-17T10:00:00.000Z',
   },
   {
@@ -87,6 +88,7 @@ const sampleItems = [
       name: 'Kompresori',
       isActive: false,
     },
+    missingRequiredCategoryFields: ['obradjeni_deo'],
     createdAt: '2026-05-01T10:00:00.000Z',
   },
 ] as const
@@ -373,5 +375,24 @@ describe('ClaimsTable', () => {
     // The claim keeps the category the office switched off; the dagger is how the row admits it.
     expect(screen.getByText('Kompresori †')).toBeInTheDocument()
     expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
+  })
+
+  it('marks a claim whose new kind of work is still missing something', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    // A claim moved to another category is missing what the new one asks for. The dot says so
+    // where people scan, without a filter or a column of its own.
+    const marks = screen.getAllByLabelText(
+      'Reklamacija je premeštena u drugu vrstu posla — dopuni polja koja ona traži.',
+    )
+    expect(marks).toHaveLength(1)
   })
 })

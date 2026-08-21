@@ -15,24 +15,36 @@ export interface CategoryFieldsCardProps {
   categoryName: string
   values: ClaimCategoryFieldValues
   /** Kinds of work this claim was moved away from — read-only, and never lost. */
-  previous: readonly ClaimPreviousCategoryFieldValues[]
-  /** Live required fields with no answer; drives the amber "dopuni podatke" treatment. */
-  missing: readonly string[]
+  previous?: readonly ClaimPreviousCategoryFieldValues[]
+  /**
+   * Live required fields with no answer; drives the amber "dopuni podatke" treatment. Defaulted
+   * so a payload from a server that predates the field reads as "nothing missing" rather than
+   * taking the whole claim screen down — a false alarm is the wrong way to fail here.
+   */
+  missing?: readonly string[]
 }
 
 function ValueRow({
   label,
   value,
   marked,
+  retired = false,
 }: {
   label: string
   value: string | null
   marked: boolean
+  /** The office switched this question off; the answer already given is kept and said so. */
+  retired?: boolean
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-1">
-      <span className="flex items-center gap-1.5 font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
+      <span className="flex flex-wrap items-center gap-1.5 font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
         {label}
+        {retired ? (
+          <span className="rounded-[5px] border border-dashed border-mri-border2 bg-mri-inbg px-1.5 py-0.5 text-[7.5px] font-bold tracking-[0.1em]">
+            {m.claim_category_fields_retired()}
+          </span>
+        ) : null}
         {marked ? <span aria-hidden="true" className="size-[5px] rounded-full bg-mri-amb" /> : null}
       </span>
       {value === null ? (
@@ -60,8 +72,8 @@ export function CategoryFieldsCard({
   categoryId,
   categoryName,
   values,
-  previous,
-  missing,
+  previous = [],
+  missing = [],
 }: CategoryFieldsCardProps): React.ReactElement | null {
   const { data: fields } = useQuery({
     ...claimCategoryFieldsForCategoryOptions(categoryId),
@@ -80,14 +92,16 @@ export function CategoryFieldsCard({
     <div
       data-testid="category-fields-card"
       className={cn(
-        'flex flex-col gap-3 rounded-[14px] border bg-mri-surface p-[15px]',
-        isIncomplete ? 'border-dashed border-[rgba(234,179,8,.4)]' : 'border-mri-border',
+        'overflow-hidden rounded-[14px] border border-dashed bg-mri-surface',
+        isIncomplete ? 'border-[rgba(234,179,8,.4)]' : 'border-mri-border2',
       )}
     >
-      <div className="flex flex-wrap items-center gap-[9px]">
-        <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-text2">
-          {m.claim_category_fields_group()} ·{' '}
-          <span className="text-mri-text">{categoryName.toUpperCase()}</span>
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-mri-border px-[18px] py-[13px]">
+        <span className="text-[14.5px] font-extrabold text-mri-text">
+          {m.claim_category_fields_group()}
+        </span>
+        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
+          {categoryName}
         </span>
         {isIncomplete ? (
           <span
@@ -100,7 +114,7 @@ export function CategoryFieldsCard({
       </div>
 
       {views.length > 0 ? (
-        <div className="grid gap-[11px_16px] sm:grid-cols-2">
+        <div className="grid gap-[15px_14px] px-[18px] py-4 sm:grid-cols-2 lg:grid-cols-3">
           {views.map((view) => {
             const raw = values[view.code]
             const option = view.options.find((candidate) => candidate.code === raw)
@@ -108,9 +122,10 @@ export function CategoryFieldsCard({
             return (
               <ValueRow
                 key={view.code}
-                label={view.isRetired ? `${view.name} †` : view.name}
+                label={view.name}
                 value={shown}
                 marked={missing.includes(view.code)}
+                retired={view.isRetired}
               />
             )
           })}
@@ -118,7 +133,7 @@ export function CategoryFieldsCard({
       ) : null}
 
       {previous.length > 0 ? (
-        <div className="flex flex-col gap-2 border-t border-mri-border pt-3">
+        <div className="flex flex-col gap-2 border-t border-mri-border px-[18px] py-3">
           <button
             type="button"
             onClick={() => setShowPrevious(!showPrevious)}
@@ -138,7 +153,7 @@ export function CategoryFieldsCard({
                       {m.claim_category_fields_previous_badge()}
                     </span>
                   </span>
-                  <div className="grid gap-[11px_16px] sm:grid-cols-2">
+                  <div className="grid gap-[15px_14px] sm:grid-cols-2 lg:grid-cols-3">
                     {section.values.map((value) => (
                       <ValueRow
                         key={value.fieldCode}

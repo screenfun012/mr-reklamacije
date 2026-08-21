@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
 import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
+import { CategoryFieldsCard } from '../../claims/category-fields/category-fields-card'
 import { DomaceClaimBasicSection } from './domace-claim-basic-section.js'
 import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
 import { DomaceClaimDetailHeader } from './domace-claim-detail-header.js'
@@ -110,6 +111,16 @@ export function DomaceClaimDetailView({
               />
               <DomaceClaimAmountSection claim={claim} />
             </>
+          )}
+
+          {claim.category === null ? null : (
+            <CategoryFieldsCard
+              categoryId={claim.category.id}
+              categoryName={claim.category.name}
+              values={claim.categoryFieldValues}
+              previous={claim.previousCategoryFieldValues}
+              missing={claim.missingRequiredCategoryFields}
+            />
           )}
 
           <DomaceClaimFindingsSection claim={claim} canEdit={canEditFindings} />

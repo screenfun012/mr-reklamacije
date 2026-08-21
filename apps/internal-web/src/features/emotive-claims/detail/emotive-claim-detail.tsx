@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
 import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
+import { CategoryFieldsCard } from '../../claims/category-fields/category-fields-card'
 import { EmotiveClaimBasicSection } from './emotive-claim-basic-section.js'
 import { EmotiveClaimDetailHeader } from './emotive-claim-detail-header.js'
 import { EmotiveClaimFindingsSection } from './emotive-claim-findings-section.js'
@@ -101,6 +102,16 @@ export function EmotiveClaimDetailView({
             showSectionEditButton={false}
             hideMrInReadOnly
           />
+
+          {claim.category === null ? null : (
+            <CategoryFieldsCard
+              categoryId={claim.category.id}
+              categoryName={claim.category.name}
+              values={claim.categoryFieldValues}
+              previous={claim.previousCategoryFieldValues}
+              missing={claim.missingRequiredCategoryFields}
+            />
+          )}
 
           <EmotiveClaimFindingsSection claim={claim} canEdit={canEditFindings} />
 

@@ -1,6 +1,5 @@
 import {
   ApiError,
-  claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   employeesReferenceOptions,
   type DomaceClaimDetail,
@@ -37,9 +36,6 @@ export function DomaceClaimOverviewEdit({
 }: DomaceClaimOverviewEditProps): React.ReactElement {
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
-  )
-  const { data: categories } = useSuspenseQuery(
-    claimCategoriesReferenceOptions({ activeOnly: true }),
   )
   // DOMACE ZAPOSLENI can be any active employee (not assembly-only), searchable.
   const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
@@ -92,14 +88,12 @@ export function DomaceClaimOverviewEdit({
           form={form}
           employees={employees}
           manufacturers={manufacturers}
-          categories={categories}
           orphanEngineType={
             claim.engineTypeId && claim.engineTypeCode
               ? { id: claim.engineTypeId, code: claim.engineTypeCode }
               : undefined
           }
           currentAssignedWorkerName={claim.employeeName ?? undefined}
-          currentCategoryName={claim.category?.name ?? undefined}
           stepErrors={stepErrors}
           disabled={mutation.isPending}
         />
