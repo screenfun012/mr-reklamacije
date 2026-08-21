@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { ClaimSortBy, ClaimSortDir } from '../../schemas/claim-list.schema.js'
 import { claimKeys } from '../claim-keys.js'
-import { claimsListQueryKey } from '../claims.js'
+import { claimsListOptions, claimsListQueryKey, normalizeClaimsListFilters } from '../claims.js'
+import { serializeEmotiveClaimsListParams } from '../serialize-search-params.js'
 import {
   ClaimsSearchSchema,
   claimsFiltersFromSearch,
@@ -139,5 +140,42 @@ describe('claimsSearchFromFilters', () => {
       page: 2,
       pageSize: 25,
     })
+  })
+})
+
+describe('the category filter, from the URL to the request', () => {
+  // The select, the URL schema and the API each handled categoryCode and each had a test; the one
+  // step that joins them — search → filters — dropped it, so the list ignored the filter for four
+  // days while everything around it was green. This test walks the exact chain the route loader
+  // walks.
+  it('carries categoryCode from the search into the filters, the query key and the params', () => {
+    const search = ClaimsSearchSchema.parse({
+      categoryCode: 'MASINSKA_OBRADA',
+      page: 1,
+      pageSize: 10,
+    })
+
+    const filters = claimsFiltersFromSearch(search)
+    expect(filters.categoryCode).toBe('MASINSKA_OBRADA')
+
+    const options = claimsListOptions(filters, 1, 10)
+    expect(JSON.stringify(options.queryKey)).toContain('MASINSKA_OBRADA')
+
+    const params = serializeEmotiveClaimsListParams({
+      ...normalizeClaimsListFilters(filters),
+      page: 1,
+      pageSize: 10,
+    })
+    expect(params).toContain('categoryCode=MASINSKA_OBRADA')
+  })
+
+  it('survives the round trip back into a search', () => {
+    const search = claimsSearchFromFilters(
+      { categoryCode: 'NOVI_DELOVI', outcome: 'pending' },
+      { page: 2, pageSize: 25 },
+    )
+
+    expect(search.categoryCode).toBe('NOVI_DELOVI')
+    expect(search.outcome).toBe('pending')
   })
 })

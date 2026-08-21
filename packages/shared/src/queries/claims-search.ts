@@ -52,6 +52,9 @@ export function claimsFiltersFromSearch(search: ClaimsSearch): ClaimsListFilters
     kind: search.kind,
     outcome: search.outcome,
     manufacturerId: search.manufacturerId,
+    // Forgotten here for four days while the select, the URL and the API each worked on their
+    // own: the list silently ignored the category because this is the one step that joins them.
+    categoryCode: search.categoryCode,
     search: search.search,
     dateFrom: parseIsoDate(search.dateFrom),
     dateTo: parseIsoDate(search.dateTo),
@@ -99,6 +102,9 @@ export function claimsSearchFromFilters(
   }
   if (filters.manufacturerId !== undefined) {
     search.manufacturerId = filters.manufacturerId
+  }
+  if (filters.categoryCode !== undefined) {
+    search.categoryCode = filters.categoryCode
   }
   if (filters.search !== undefined && filters.search.length > 0) {
     search.search = filters.search
