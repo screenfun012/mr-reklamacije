@@ -115,10 +115,16 @@ Cycle for every task: **PRE-CHECK (read/understand) → PLAN or show the proposa
 # builds and the test suites at 4-wide starve the timing-sensitive component tests — the neighbours
 # of the failure took 7.8 s for what normally costs under a second. A red like that is a lie about
 # the code, and chasing it burns an hour. Split it:
+# ⚠️ **2026-08-21 — the third and worst instance: the MACHINE ran out of memory and the editor was
+# killed** during a gate at `--concurrency=4` while `pnpm dev:all` was up (16 GB, 32 node/vite
+# processes at once). Nothing was lost — the commit was already pushed — but the numbers below are
+# now 2 and 1, not 4 and 2. This is not caution: three Vite builds each hold their own module graph,
+# and the test pass forks a worker per package on top of the dev servers. If a gate ever has to be
+# faster, ask Nikola to stop `dev:all` first rather than raising these.
 pnpm format:check \
-  && TZ=UTC pnpm exec turbo run build typecheck lint --force --concurrency=4 \
-  && TZ=UTC pnpm exec turbo run test --force --concurrency=2 \
-  && pnpm --filter api depcruise && pnpm test:integration
+  && TZ=UTC pnpm exec turbo run build typecheck lint --force --concurrency=2 \
+  && TZ=UTC pnpm exec turbo run test --force --concurrency=1 \
+  && pnpm --filter api depcruise && TZ=UTC pnpm test:integration
 # (One pass is still fine on a bigger machine:)
 # pnpm format:check && pnpm exec turbo run build typecheck lint test --force \
 #   && pnpm --filter api depcruise && pnpm test:integration
