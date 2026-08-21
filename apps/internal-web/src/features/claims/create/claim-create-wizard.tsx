@@ -45,6 +45,7 @@ import {
   CLAIM_WIZARD_STEPS,
   claimWizardStepIndex,
   claimWizardStepLabel,
+  claimWizardStepTitle,
   nextClaimWizardStep,
   previousClaimWizardStep,
   type ClaimWizardStep,
@@ -195,7 +196,7 @@ export function ClaimCreateWizard({
             {m.crumb_new_claim()}
           </span>
           <h1 className="text-[22px] font-black tracking-[-0.02em] text-mri-text">
-            {claimWizardStepLabel(currentStep)}
+            {claimWizardStepTitle(currentStep)}
           </h1>
         </div>
         <span className="ml-auto">

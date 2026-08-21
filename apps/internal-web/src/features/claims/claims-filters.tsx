@@ -142,7 +142,19 @@ export function ClaimsFilters({
   ]
 
   return (
-    <div className="flex flex-col gap-4 rounded-[14px] border border-mri-border bg-mri-surface p-5 sm:flex-row sm:flex-wrap sm:items-end">
+    <div className="flex flex-col gap-2.5 rounded-[14px] border border-mri-border bg-mri-surface p-[14px] sm:flex-row sm:flex-wrap sm:items-end">
+      {/* Search leads the row (prototype §4): it is the filter people reach for first. */}
+      <label className="flex min-w-[220px] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.emotive_claims_filter_search()}</InternalFieldLabel>
+        <Input
+          type="search"
+          className={INTERNAL_CONTROL_CLASSES}
+          placeholder={m.emotive_claims_filter_search_placeholder()}
+          value={searchDraft}
+          onChange={(event) => setSearchDraft(event.target.value)}
+        />
+      </label>
+
       <div className="flex flex-col gap-[7px]">
         <InternalFieldLabel>{m.claims_filter_kind()}</InternalFieldLabel>
         <div
@@ -294,17 +306,6 @@ export function ClaimsFilters({
           aria-label={m.emotive_claims_filter_date_to()}
         />
       </div>
-
-      <label className="flex min-w-[12rem] flex-[2] flex-col gap-[7px] text-sm">
-        <InternalFieldLabel>{m.emotive_claims_filter_search()}</InternalFieldLabel>
-        <Input
-          type="search"
-          className={INTERNAL_CONTROL_CLASSES}
-          placeholder={m.emotive_claims_filter_search_placeholder()}
-          value={searchDraft}
-          onChange={(event) => setSearchDraft(event.target.value)}
-        />
-      </label>
 
       {hasActiveFilters ? (
         <button

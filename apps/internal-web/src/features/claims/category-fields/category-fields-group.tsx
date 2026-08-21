@@ -44,7 +44,7 @@ function SegmentedField({
             onClick={() => onPick(selected ? '' : option.code)}
             aria-pressed={selected}
             className={cn(
-              'inline-flex h-[34px] cursor-pointer items-center rounded-lg px-[14px] text-[12.5px] transition-colors',
+              'inline-flex h-[38px] cursor-pointer items-center rounded-lg px-[14px] text-[12.5px] transition-colors',
               selected
                 ? 'border border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] font-bold text-mri-text'
                 : 'border border-mri-border2 font-semibold text-mri-text2 hover:border-mri-text2',
@@ -80,7 +80,7 @@ function FieldControl({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         aria-label={field.name}
-        className="mri-input h-[42px] rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 text-[13px] font-medium text-mri-text outline-none focus:border-mri-red focus:shadow-[0_0_0_3px_rgba(237,28,36,.18)] disabled:opacity-60"
+        className="mri-input h-[38px] rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 text-[13px] font-medium text-mri-text outline-none focus:border-mri-red focus:shadow-[0_0_0_3px_rgba(237,28,36,.18)] disabled:opacity-60"
       />
     )
   }

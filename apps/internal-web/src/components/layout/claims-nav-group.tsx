@@ -64,6 +64,8 @@ function CountBadge({
       className={cn(
         'ml-auto font-mono text-[10.5px] tabular-nums',
         active ? 'font-semibold' : 'font-medium',
+        // Amber when something is open, quiet when nothing is — the number is a call, not a
+        // decoration (prototype §1).
         count > 0 ? 'text-mri-amb' : 'text-mri-text2 opacity-45',
       )}
     >
@@ -97,7 +99,7 @@ function ChildLink({
       aria-current={active ? 'page' : undefined}
       className={cn(
         'flex items-center text-[12.5px] transition-colors hover:bg-mri-rowhv',
-        flyout ? 'h-[31px] rounded-lg px-[9px]' : 'h-8 rounded-r-lg pl-3 pr-[10px]',
+        flyout ? 'h-[31px] rounded-lg px-[9px]' : 'h-8 rounded-l-none rounded-r-lg pl-3 pr-[10px]',
         active
           ? 'bg-[rgba(237,28,36,.11)] font-bold text-mri-text shadow-[inset_2px_0_0_var(--mri-red)]'
           : 'font-semibold text-mri-text2',
@@ -111,12 +113,15 @@ function ChildLink({
 
 export interface ClaimsNavGroupProps {
   item: NavItem
+  /** `03` — the menu's own numbering, so the group sits in the same rhythm as its neighbours. */
+  index: string
   collapsed: boolean
   onNavigate: () => void
 }
 
 export function ClaimsNavGroup({
   item,
+  index,
   collapsed,
   onNavigate,
 }: ClaimsNavGroupProps): React.ReactElement {
@@ -191,13 +196,16 @@ export function ClaimsNavGroup({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         className={cn(
-          'flex h-[38px] cursor-pointer items-center gap-[10px] rounded-[9px] px-[11px] text-[13.5px] transition-colors hover:bg-mri-rowhv',
+          'flex h-[38px] w-full cursor-pointer items-center gap-[10px] rounded-[9px] px-[11px] text-[13.5px] transition-colors hover:bg-mri-rowhv',
           groupActive ? 'font-bold text-mri-text' : 'font-semibold text-mri-text2',
         )}
       >
         <item.icon
           className={cn('size-[18px] flex-none', groupActive ? 'text-mri-redh' : 'text-mri-text2')}
         />
+        <span aria-hidden="true" className="font-mono text-[10px] font-medium opacity-60">
+          {index}
+        </span>
         <span className="truncate">{item.label()}</span>
         <span className="ml-auto flex items-center gap-2">
           {pendingTotal > 0 ? (

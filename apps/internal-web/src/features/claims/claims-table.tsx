@@ -50,6 +50,8 @@ function claimDeletePermission(
 }
 
 export interface ClaimsTableProps {
+  /** Names the table after the kind of work it is showing (prototype §4). */
+  categoryName?: string | undefined
   items: readonly ClaimListItem[]
   total: number
   search: ClaimsSearch
@@ -305,6 +307,7 @@ export function ClaimsTable({
   onSearchChange,
   showCategoryColumn,
   categoryCode,
+  categoryName,
 }: ClaimsTableProps) {
   const navigate = useNavigate()
   const { authSession } = rootRoute.useRouteContext()
@@ -384,8 +387,12 @@ export function ClaimsTable({
     <>
       <div className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
         <div className="flex items-center justify-between border-b border-mri-border px-5 py-4">
+          {/* "Reklamacije — Mašinska obrada" inside a category, "Sve reklamacije" outside one:
+              the card says what it is a list OF, not that it is a list (prototype §4). */}
           <h2 className="text-[15px] font-extrabold text-mri-text">
-            {m.emotive_claims_list_title()}
+            {categoryName === undefined
+              ? m.claims_list_all_title()
+              : m.claims_table_title_category({ category: categoryName })}
           </h2>
           {selectedCount > 0 ? (
             <div className="flex items-center gap-3">
@@ -401,8 +408,8 @@ export function ClaimsTable({
               </button>
             </div>
           ) : (
-            <span className="font-mono text-[11px] text-mri-text2">
-              {m.emotive_claims_count({ count: total })}
+            <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-mri-text2">
+              {m.claims_table_total({ count: String(total) })}
             </span>
           )}
         </div>

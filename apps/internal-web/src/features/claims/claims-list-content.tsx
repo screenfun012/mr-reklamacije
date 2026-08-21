@@ -87,7 +87,12 @@ export function ClaimsListContent({
         mode={mode}
         onLeaveCategory={onLeaveCategory}
       />
-      {showCategoryEmpty ? <ClaimsCategoryEmpty /> : null}
+      {showCategoryEmpty ? (
+        <ClaimsCategoryEmpty
+          categoryCode={mode.kind === 'category' ? mode.code : undefined}
+          canCreate={canCreateEmotive || canCreateDomace}
+        />
+      ) : null}
       {showFilterEmpty ? (
         <ClaimsFilterEmpty
           onClear={() =>
@@ -98,6 +103,7 @@ export function ClaimsListContent({
       {showCategoryEmpty || showFilterEmpty ? null : (
         <>
           <ClaimsTable
+            categoryName={mode.kind === 'category' ? (mode.category?.name ?? mode.code) : undefined}
             items={data.items}
             total={data.total}
             search={search}

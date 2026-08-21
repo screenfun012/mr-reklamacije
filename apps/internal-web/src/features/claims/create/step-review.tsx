@@ -140,7 +140,13 @@ export function StepReview({
         </div>
       ))}
 
-      <p className="pt-3 text-[12px] text-mri-text2">{m.claim_wizard_review_note()}</p>
+      {/* The prototype closes the review with a BLUE note, not a grey sentence: it is telling you
+          what saving will do, which is information, not a footnote (prototype §5). */}
+      <p className="mt-3 rounded-[10px] border border-[rgba(46,144,250,.25)] bg-[rgba(46,144,250,.07)] px-3.5 py-2.5 text-[12px] text-mri-text2">
+        {m.claim_wizard_review_note_lead()}{' '}
+        <b className="text-mri-text">{m.claim_wizard_review_note_outcome()}</b>
+        {isDomace ? m.claim_wizard_review_note_domace() : m.claim_wizard_review_note_emotive()}
+      </p>
     </InternalCard>
   )
 }

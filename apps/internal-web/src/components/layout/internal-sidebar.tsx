@@ -21,6 +21,11 @@ const ROLE_LABELS: Record<string, () => string> = {
   serviser: m.users_role_serviser,
 }
 
+/** `01`–`05`, in the order the menu is rendered. */
+function navIndex(items: readonly NavItem[], key: string): string {
+  return String(items.findIndex((item) => item.key === key) + 1).padStart(2, '0')
+}
+
 export interface InternalSidebarProps {
   /** Already filtered by permission in the shell, which also decides whether to render this at all. */
   items: readonly NavItem[]
@@ -63,18 +68,19 @@ export function InternalSidebar({
           'fixed bottom-0 left-0 top-[var(--mri-topbar-h)] z-40 flex w-[236px] flex-none flex-col border-r border-mri-border bg-mri-surface transition-transform duration-200',
           'lg:sticky lg:z-20 lg:h-[calc(100vh-var(--mri-topbar-h))] lg:translate-x-0 lg:transition-[width]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-[72px]' : 'lg:w-[236px]',
+          collapsed ? 'lg:w-[60px]' : 'lg:w-[236px]',
         )}
       >
         <nav
           aria-label="Main navigation"
-          className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4"
+          className="flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-3 pt-4"
         >
           {items.map((item) =>
             item.children === 'claim-categories' ? (
               <ClaimsNavGroup
                 key={item.key}
                 item={item}
+                index={navIndex(items, item.key)}
                 collapsed={collapsed}
                 onNavigate={onCloseMobile}
               />
@@ -85,7 +91,7 @@ export function InternalSidebar({
                 title={item.label()}
                 onClick={onCloseMobile}
                 className={cn(
-                  'flex items-center gap-[13px] rounded-[9px] border px-[13px] py-[11px] transition-colors duration-150',
+                  'flex h-[38px] items-center gap-[10px] rounded-[9px] border px-[11px] transition-colors duration-150',
                   collapsed && 'lg:justify-center lg:px-0',
                 )}
                 activeProps={{ className: SIDEBAR_LINK_ACTIVE_CLASSES }}
@@ -100,9 +106,21 @@ export function InternalSidebar({
                         isActive ? 'text-mri-redh' : 'text-mri-text2',
                       )}
                     />
+                    {/* The prototype numbers the menu 01–05 in mono — it is how the eye finds a
+                        row again after looking away, and it is the same hand as every other
+                        technical label in this app. */}
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'font-mono text-[10px] font-medium opacity-60',
+                        collapsed && 'lg:hidden',
+                      )}
+                    >
+                      {navIndex(items, item.key)}
+                    </span>
                     <span
                       className={cn(
-                        'text-sm',
+                        'text-[13.5px]',
                         isActive ? 'font-bold text-mri-text' : 'font-semibold text-mri-text2',
                         collapsed && 'lg:hidden',
                       )}
@@ -116,19 +134,17 @@ export function InternalSidebar({
           )}
         </nav>
 
-        <div className="border-t border-mri-border px-[18px] py-4">
-          <div
-            className={cn('mb-3 flex items-center gap-[11px]', collapsed && 'lg:justify-center')}
-          >
+        <div className="border-t border-mri-border px-2.5 pb-0.5 pt-3">
+          <div className={cn('mb-3 flex items-center gap-[9px]', collapsed && 'lg:justify-center')}>
             <span
               aria-hidden="true"
-              className="grid size-9 flex-none place-items-center rounded-full bg-mri-red text-[12.5px] font-bold text-white"
+              className="grid size-[30px] flex-none place-items-center rounded-full bg-mri-red text-[11px] font-extrabold text-white"
             >
               {getInitials(userName, userEmail)}
             </span>
             <div className={cn('min-w-0 leading-tight', collapsed && 'lg:hidden')}>
-              <div className="truncate text-[13.5px] font-bold text-mri-text">{userName}</div>
-              <div className="truncate font-mono text-[9.5px] uppercase tracking-[0.1em] text-mri-text2">
+              <div className="truncate text-[12.5px] font-bold text-mri-text">{userName}</div>
+              <div className="truncate text-[10.5px] text-mri-text2">
                 {roleLabel !== undefined ? roleLabel() : userEmail}
               </div>
             </div>
