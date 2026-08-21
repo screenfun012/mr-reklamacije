@@ -1,9 +1,4 @@
-import {
-  CLAIM_DETAIL_DEFAULT_SEARCH,
-  ClaimKind,
-  MACHINING_CLAIM_CATEGORY_CODE,
-  type ClaimListItem,
-} from '@mr/shared'
+import { CLAIM_DETAIL_DEFAULT_SEARCH, ClaimKind, type ClaimListItem } from '@mr/shared'
 import { setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -112,19 +107,6 @@ describe('CommandPalette', () => {
     await user.click(await screen.findByText('Statistika'))
 
     expect(navigateMock).toHaveBeenCalledWith({ to: '/statistika' })
-  })
-
-  it("carries a filtered entry's search — machining is the claims list, not a screen", async () => {
-    const user = userEvent.setup()
-    await renderPalette(['emotive_claims.view'])
-
-    await user.keyboard('{Meta>}k{/Meta}')
-    await user.click(await screen.findByText('Mašinska obrada'))
-
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/reklamacije',
-      search: { categoryCode: MACHINING_CLAIM_CATEGORY_CODE },
-    })
   })
 })
 

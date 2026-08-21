@@ -8,6 +8,8 @@ import {
   engineManufacturersReferenceOptions,
 } from '@mr/shared'
 import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
+import type { SearchSchemaInput } from '@tanstack/react-router'
+import { z } from 'zod'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
@@ -21,7 +23,10 @@ const CategorySearchSchema = ClaimsSearchSchema.omit({ categoryCode: true })
 
 export const Route = createFileRoute('/_shell/reklamacije/kategorija/$categoryCode')({
   beforeLoad: internalRequireClaimsListView(),
-  validateSearch: (search) => CategorySearchSchema.parse(search),
+  // `SearchSchemaInput` is the router's way of saying "a link may omit what has a default":
+  // without it every `<Link>` to this route would have to repeat page and pageSize.
+  validateSearch: (search: z.input<typeof CategorySearchSchema> & SearchSchemaInput) =>
+    CategorySearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: async ({ context: { queryClient }, params: { categoryCode }, deps: search }) => {
     const filters = { ...claimsFiltersFromSearch(search), categoryCode }

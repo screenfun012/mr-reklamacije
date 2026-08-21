@@ -18,7 +18,7 @@ function sectionLabel(pathname: string): string {
     return m.nav_pristiglo()
   }
   if (pathname.startsWith('/prijem')) {
-    return m.nav_servis()
+    return m.nav_prijem_vozila()
   }
   if (pathname.startsWith('/settings')) {
     return m.nav_security()

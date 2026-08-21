@@ -1,10 +1,9 @@
 import {
   CLAIMS_LIST_VIEW_PERMISSIONS,
   INTAKE_ORDERS_VIEW_PERMISSIONS,
-  MACHINING_CLAIM_CATEGORY_CODE,
   STATISTICS_VIEW_PERMISSIONS,
 } from '@mr/shared'
-import { BarChart3, Briefcase, Car, Cog, Inbox, LayoutDashboard } from 'lucide-react'
+import { BarChart3, Briefcase, Car, Inbox, LayoutDashboard } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 import { m } from '@mr/i18n'
@@ -14,11 +13,10 @@ export interface NavItem {
   label: () => string
   to: string
   /**
-   * Search params the entry opens its screen with — a filtered view of an existing list. A key
-   * set to `undefined` means "this entry is the UNfiltered view", which is what keeps the
-   * sidebar from lighting two entries that share one route (see `paintsAsActive`).
+   * The entry is a group whose children are read from a query, not written here — today only
+   * the claim categories. The sidebar renders the children; the palette lists the group alone.
    */
-  search?: Record<string, string | undefined>
+  children?: 'claim-categories'
   icon: ComponentType<{ className?: string }>
   /** When set, nav link is hidden unless the user has this permission. */
   permission?: string
@@ -45,30 +43,18 @@ export const internalNavItems: NavItem[] = [
     permission: 'client_submissions.manage',
   },
   {
+    // A group: its children are the kinds of work the catalogue knows, read at render time.
+    // Adding one is a row in the admin panel, never a line here.
     key: 'reklamacije',
     label: m.nav_reklamacije,
     to: '/reklamacije',
-    // Explicitly the UNFILTERED list. "Mašinska obrada" below points at the same route with a
-    // filter, and without this the sidebar lit both entries at once (see the sidebar's own note).
-    search: { categoryCode: undefined },
+    children: 'claim-categories',
     icon: Briefcase,
     permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
-    // Not a screen of its own: machining is a category a claim carries, so this is the
-    // claims list with that filter applied. It keeps its place in the menu because that
-    // is where people look for the work — but there is nothing behind it to maintain,
-    // and a renamed or retired category needs no change here beyond the code.
-    key: 'masinska-obrada',
-    label: m.nav_masinska_obrada,
-    to: '/reklamacije',
-    search: { categoryCode: MACHINING_CLAIM_CATEGORY_CODE },
-    icon: Cog,
-    permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
-  },
-  {
     key: 'servis',
-    label: m.nav_servis,
+    label: m.nav_prijem_vozila,
     to: '/prijem',
     icon: Car,
     permissions: [...INTAKE_ORDERS_VIEW_PERMISSIONS],

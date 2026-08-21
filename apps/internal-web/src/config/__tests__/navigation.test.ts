@@ -1,6 +1,5 @@
 import {
   CLAIMS_LIST_VIEW_PERMISSIONS,
-  MACHINING_CLAIM_CATEGORY_CODE,
   OPERATOR_PERMISSIONS,
   SERVISER_PERMISSIONS,
   STATISTICS_VIEW_PERMISSIONS,
@@ -13,15 +12,14 @@ function keysFor(permissions: readonly string[]): string[] {
   return filterVisibleNavItems(internalNavItems, permissions).map((item) => item.key)
 }
 
-describe('the machining entry', () => {
-  it('opens the claims list filtered by the machining category', () => {
-    const machining = internalNavItems.find((item) => item.key === 'masinska-obrada')
+describe('the claims entry', () => {
+  it('is a group whose children come from the catalogue, and no category has an entry of its own', () => {
+    const claims = internalNavItems.find((item) => item.key === 'reklamacije')
 
-    // It used to open a screen that said the work was coming. The claims exist now, so the
-    // entry has to land on them — and it must carry the filter, or it opens the whole list
-    // and quietly says the shop does no machining separately at all.
-    expect(machining?.to).toBe('/reklamacije')
-    expect(machining?.search).toEqual({ categoryCode: MACHINING_CLAIM_CATEGORY_CODE })
+    // A category is not a screen someone maintains here. It used to be: machining had its own
+    // hardcoded entry, which is why adding a second kind of work meant editing this file.
+    expect(claims?.children).toBe('claim-categories')
+    expect(internalNavItems.some((item) => item.key === 'masinska-obrada')).toBe(false)
   })
 })
 
