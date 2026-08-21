@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { InternalButton } from '~/components/internal-button'
+import { InternalCard } from '~/components/internal-card'
 import { InternalFieldGroup } from '~/components/internal-field-group'
 import { InternalInput } from '~/components/internal-field'
 
@@ -21,9 +22,9 @@ interface ClaimFindingsSectionProps {
 }
 
 /**
- * Multi-row findings editor shared by both claim kinds (mirrors the fault-rows
- * editor). A finding is free text plus an operator-typed type tag; the whole
- * list is replaced on save.
+ * The Nalazi tab (handoff §5): the shop's own notes on what it found, one card per finding,
+ * ONE green save at the bottom. It is the "interna kuhinja" — what the client is eventually
+ * told is written from these, on the Izveštaj tab, and never from here.
  */
 export function ClaimFindingsSection({
   findings,
@@ -66,108 +67,116 @@ export function ClaimFindingsSection({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
-      <h2 id="claimFindingsHeading" className="text-[15px] font-extrabold text-mri-text">
-        {title ?? m.emotive_claims_detail_section_notes()}
-      </h2>
+    <div className="mx-auto flex w-full max-w-[920px] flex-col gap-[11px]">
+      <p className="text-[12px] text-mri-text2">{m.claim_detail_findings_hint()}</p>
 
-      {canEdit ? (
-        <div className="flex flex-col gap-4">
-          {draft.map((finding, index) => (
-            <div
-              key={`finding-${index}`}
-              className="flex flex-col gap-3 rounded-[13px] border border-mri-border bg-mri-inbg/40 p-4"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mri-redh">
-                  {m.claims_findings_row_title({ index: index + 1 })}
-                </p>
-                <InternalButton
-                  type="button"
-                  variant="ghost"
-                  className="h-8 w-auto gap-1.5 px-2 text-[11.5px]"
-                  disabled={isSaving}
-                  onClick={() => setDraft(draft.filter((_, i) => i !== index))}
-                >
-                  <Trash2 className="size-3.5" aria-hidden="true" />
-                  {m.claims_findings_remove()}
-                </InternalButton>
+      <InternalCard title={title ?? m.emotive_claims_detail_section_notes()}>
+        {canEdit ? (
+          <div className="flex flex-col gap-[13px]">
+            {draft.map((finding, index) => (
+              <div
+                key={`finding-${index}`}
+                className="flex flex-col gap-[11px] rounded-xl border border-mri-border2 p-[15px]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-red">
+                    {m.claims_findings_row_title({ index: index + 1 })}
+                  </p>
+                  <InternalButton
+                    type="button"
+                    variant="ghost"
+                    className="h-7 w-auto gap-1.5 px-1.5 font-mono text-[9px] tracking-[0.1em]"
+                    disabled={isSaving}
+                    onClick={() => setDraft(draft.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 className="size-3" aria-hidden="true" />
+                    {m.claims_findings_remove()}
+                  </InternalButton>
+                </div>
+
+                <InternalFieldGroup id={`finding-type-${index}`} label={m.claims_findings_type()}>
+                  <InternalInput
+                    id={`finding-type-${index}`}
+                    value={finding.type}
+                    disabled={isSaving}
+                    maxLength={FINDING_TYPE_MAX_LENGTH}
+                    onChange={(event) => replaceAt(index, { ...finding, type: event.target.value })}
+                  />
+                </InternalFieldGroup>
+
+                <InternalFieldGroup id={`finding-text-${index}`} label={m.claims_findings_text()}>
+                  <textarea
+                    id={`finding-text-${index}`}
+                    className={TEXTAREA_FIELD_CLASS}
+                    value={finding.text}
+                    disabled={isSaving}
+                    onChange={(event) => replaceAt(index, { ...finding, text: event.target.value })}
+                  />
+                </InternalFieldGroup>
               </div>
+            ))}
 
-              <InternalFieldGroup id={`finding-type-${index}`} label={m.claims_findings_type()}>
-                <InternalInput
-                  id={`finding-type-${index}`}
-                  value={finding.type}
-                  disabled={isSaving}
-                  maxLength={FINDING_TYPE_MAX_LENGTH}
-                  onChange={(event) => replaceAt(index, { ...finding, type: event.target.value })}
-                />
-              </InternalFieldGroup>
+            {draft.length === 0 ? (
+              <p className="text-[12.5px] italic text-mri-text2">
+                {m.claim_detail_findings_empty_hint()}
+              </p>
+            ) : null}
 
-              <InternalFieldGroup id={`finding-text-${index}`} label={m.claims_findings_text()}>
-                <textarea
-                  id={`finding-text-${index}`}
-                  className={TEXTAREA_FIELD_CLASS}
-                  value={finding.text}
-                  disabled={isSaving}
-                  onChange={(event) => replaceAt(index, { ...finding, text: event.target.value })}
-                />
-              </InternalFieldGroup>
-            </div>
-          ))}
-
-          <InternalButton
-            type="button"
-            variant="dashed"
-            className="h-[46px] w-full text-[13px]"
-            disabled={isSaving}
-            onClick={() => setDraft([...draft, { text: '', type: '' }])}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            {m.claims_findings_add()}
-          </InternalButton>
-
-          {saveError ? (
-            <p className="text-sm text-mri-bad" role="alert">
-              {saveError}
-            </p>
-          ) : null}
-
-          <div>
             <InternalButton
               type="button"
-              variant="green"
-              className="h-10 w-auto px-5 text-xs"
-              onClick={handleSave}
+              variant="dashed"
+              className="h-11 w-full text-[12px] uppercase tracking-[0.06em]"
               disabled={isSaving}
+              onClick={() => setDraft([...draft, { text: '', type: '' }])}
             >
-              <span aria-hidden="true" className="font-normal">
-                ✓
-              </span>{' '}
-              {m.emotive_claims_detail_basic_save()}
+              <Plus className="size-4" aria-hidden="true" />
+              {m.claims_findings_add()}
             </InternalButton>
-          </div>
-        </div>
-      ) : findings.length === 0 ? (
-        <p className="text-sm text-mri-text2">{m.emotive_claims_detail_notes_empty()}</p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {findings.map((finding, index) => (
-            <li
-              key={`finding-${index}`}
-              className="flex flex-col gap-1.5 rounded-[13px] border border-mri-border bg-mri-inbg/40 p-4"
-            >
-              {finding.type !== '' ? (
-                <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mri-redh">
-                  {finding.type}
+
+            {saveError ? (
+              <p className="text-[13px] text-mri-bad" role="alert">
+                {saveError}
+              </p>
+            ) : null}
+
+            <div className="flex justify-end">
+              <InternalButton
+                type="button"
+                variant="green"
+                className="h-10 w-auto px-5 text-[11.5px] tracking-[0.06em]"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                <span aria-hidden="true" className="font-normal">
+                  ✓
                 </span>
-              ) : null}
-              <p className="text-sm whitespace-pre-wrap text-mri-text">{finding.text}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+                {m.emotive_claims_detail_basic_save()}
+              </InternalButton>
+            </div>
+          </div>
+        ) : findings.length === 0 ? (
+          <p className="text-[12.5px] italic text-mri-text2">
+            {m.emotive_claims_detail_notes_empty()}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-[13px]">
+            {findings.map((finding, index) => (
+              <li
+                key={`finding-${index}`}
+                className="flex flex-col gap-1.5 rounded-xl border border-mri-border2 p-[15px]"
+              >
+                {finding.type !== '' ? (
+                  <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-red">
+                    {finding.type}
+                  </span>
+                ) : null}
+                <p className="whitespace-pre-wrap text-[13px] text-mri-text">{finding.text}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </InternalCard>
+    </div>
   )
 }
 

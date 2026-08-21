@@ -1,9 +1,12 @@
 import {
   ClaimDetailTab,
+  type ClaimDetailTabValue,
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
   claimCategoriesReferenceOptions,
+  departmentsReferenceOptions,
+  externalPartiesReferenceOptions,
   engineManufacturersReferenceOptions,
   employeesReferenceOptions,
   engineTypesReferenceOptions,
@@ -121,7 +124,10 @@ function makeClaim(overrides: Partial<DomaceClaimDetail> = {}): DomaceClaimDetai
   }
 }
 
-async function renderDetail(claim: DomaceClaimDetail): Promise<void> {
+async function renderDetail(
+  claim: DomaceClaimDetail,
+  tab: ClaimDetailTabValue = ClaimDetailTab.Pregled,
+): Promise<void> {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -136,10 +142,12 @@ async function renderDetail(claim: DomaceClaimDetail): Promise<void> {
   )
   client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  client.setQueryData(departmentsReferenceOptions().queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <DomaceClaimDetailView id={CLAIM_ID} tab={ClaimDetailTab.Pregled} onTabChange={vi.fn()} />
+      <DomaceClaimDetailView id={CLAIM_ID} tab={tab} onTabChange={vi.fn()} />
     </QueryClientProvider>
   )
 
@@ -168,7 +176,7 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows overview, findings and inspection-report saves on accepted claims', async () => {
+  it('opens ONE editor with ONE save on accepted claims', async () => {
     await renderDetail(makeClaim())
 
     expect(
@@ -177,12 +185,16 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
 
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
-    // Overview + findings + the new client-visible inspection report each save separately.
+    // One editor, one save (handoff §5): the findings and the inspection report each moved to
+    // a tab of their own, and the faults come WITH the claim's data.
     await waitFor(() => {
       expect(
         screen.getAllByRole('button', { name: m.emotive_claims_detail_basic_save() }),
-      ).toHaveLength(3)
+      ).toHaveLength(1)
     })
+    expect(
+      screen.getByRole('button', { name: m.emotive_claims_create_fault_add() }),
+    ).toBeInTheDocument()
   })
 
   it('enters overview edit from the header for accepted claims', async () => {
@@ -195,30 +207,9 @@ describe('DomaceClaimDetailView orchestrated edit', () => {
     expect(screen.getByLabelText(m.domace_claims_create_field_parts_amount())).toBeInTheDocument()
   })
 
-  it('shows the faults edit control on the Kvarovi tab for an accepted claim', () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    })
-    client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, makeClaim())
-    client.setQueryData(
-      engineTypesReferenceOptions({ activeOnly: true, manufacturerId: MANUFACTURER_ID }).queryKey,
-      ENGINE_TYPES,
-    )
-    client.setQueryData(
-      engineManufacturersReferenceOptions({ activeOnly: true }).queryKey,
-      MANUFACTURERS,
-    )
-    client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
+  it('puts the findings editor on the Nalazi tab, not on the overview', async () => {
+    await renderDetail(makeClaim(), ClaimDetailTab.Nalazi)
 
-    const node: ReactElement = (
-      <QueryClientProvider client={client}>
-        <DomaceClaimDetailView id={CLAIM_ID} tab={ClaimDetailTab.Kvarovi} onTabChange={vi.fn()} />
-      </QueryClientProvider>
-    )
-    render(node)
-
-    expect(
-      screen.getByRole('button', { name: m.emotive_claims_detail_faults_edit() }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: m.claims_findings_add() })).toBeInTheDocument()
   })
 })

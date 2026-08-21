@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const ClaimDetailTab = {
   Pregled: 'pregled',
-  Kvarovi: 'kvarovi',
+  Nalazi: 'nalazi',
   Prilozi: 'prilozi',
   Izvestaj: 'izvestaj',
 } as const
@@ -11,13 +11,19 @@ export type ClaimDetailTab = (typeof ClaimDetailTab)[keyof typeof ClaimDetailTab
 
 const claimDetailTabValues = [
   ClaimDetailTab.Pregled,
-  ClaimDetailTab.Kvarovi,
+  ClaimDetailTab.Nalazi,
   ClaimDetailTab.Prilozi,
   ClaimDetailTab.Izvestaj,
 ] as const
 
 export const ClaimDetailSearchSchema = z.object({
-  tab: z.enum(claimDetailTabValues).default(ClaimDetailTab.Pregled),
+  /**
+   * A tab slug this build does not know lands on Pregled instead of taking the route down.
+   * The set is not frozen — `kvarovi` was a tab until the faults moved into the claim's own
+   * edit (2026-08-21 handoff §5) — and a link in someone's history or a pinned browser tab
+   * must still open the claim.
+   */
+  tab: z.enum(claimDetailTabValues).default(ClaimDetailTab.Pregled).catch(ClaimDetailTab.Pregled),
   /**
    * Which category's list this claim was opened from, when it was. Not a filter — it is what
    * lets the sidebar keep the right entry lit and the back link return where you came from.

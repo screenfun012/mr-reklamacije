@@ -27,6 +27,12 @@ interface EmployeeSelectFieldProps {
  * Claim-level "Zaduženi radnik" (assigned worker) picker, shared by the EMOTIVE
  * and DOMACE basic-field forms (create + edit). Optional: the empty option maps
  * back to '' so the caller sends `undefined`/`null`.
+ *
+ * When the list comes back EMPTY it says why. The EMOTIVE list is limited to departments the
+ * office marked as providing assigned workers, so a shop full of employees who carry no
+ * department at all offers nothing here — and an empty dropdown beside a screenful of workers
+ * in the admin panel reads as a broken field rather than as a catalogue that needs one setting
+ * (found 2026-08-21: 14 active employees, every one of them without a department).
  */
 export function EmployeeSelectField({
   id,
@@ -39,28 +45,41 @@ export function EmployeeSelectField({
   currentEmployeeName,
 }: EmployeeSelectFieldProps): React.ReactElement {
   const currentIsListed = value.length > 0 && employees.some((employee) => employee.id === value)
+  const noneAssignable = employees.length === 0
+
   return (
-    <Select
-      value={value.length > 0 ? value : SELECT_EMPTY_SENTINEL}
-      onValueChange={(next) => onValueChange(next === SELECT_EMPTY_SENTINEL ? '' : next)}
-      disabled={disabled}
-    >
-      <SelectTrigger id={id} className={FORM_CONTROL_CLASS} aria-label={ariaLabel} onBlur={onBlur}>
-        <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={SELECT_EMPTY_SENTINEL}>
-          {m.emotive_claims_create_select_placeholder()}
-        </SelectItem>
-        {!currentIsListed && value.length > 0 ? (
-          <SelectItem value={value}>{currentEmployeeName ?? value}</SelectItem>
-        ) : null}
-        {employees.map((employee) => (
-          <SelectItem key={employee.id} value={employee.id}>
-            {employee.fullName}
+    <div className="flex flex-col gap-1.5">
+      <Select
+        value={value.length > 0 ? value : SELECT_EMPTY_SENTINEL}
+        onValueChange={(next) => onValueChange(next === SELECT_EMPTY_SENTINEL ? '' : next)}
+        disabled={disabled}
+      >
+        <SelectTrigger
+          id={id}
+          className={FORM_CONTROL_CLASS}
+          aria-label={ariaLabel}
+          onBlur={onBlur}
+        >
+          <SelectValue placeholder={m.emotive_claims_create_select_placeholder()} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={SELECT_EMPTY_SENTINEL}>
+            {m.emotive_claims_create_select_placeholder()}
           </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+          {!currentIsListed && value.length > 0 ? (
+            <SelectItem value={value}>{currentEmployeeName ?? value}</SelectItem>
+          ) : null}
+          {employees.map((employee) => (
+            <SelectItem key={employee.id} value={employee.id}>
+              {employee.fullName}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {noneAssignable ? (
+        <p className="text-[11.5px] italic text-mri-text2">{m.claims_assigned_worker_none()}</p>
+      ) : null}
+    </div>
   )
 }

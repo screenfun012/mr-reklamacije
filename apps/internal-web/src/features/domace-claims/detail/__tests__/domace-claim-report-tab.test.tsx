@@ -2,7 +2,9 @@ import {
   ClaimKind,
   ClaimReportStatus,
   claimReportOptions,
+  ClaimOutcome,
   type ClaimReportResponse,
+  type DomaceClaimDetail,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -44,6 +46,15 @@ function makeReport(): ClaimReportResponse {
   }
 }
 
+/** Only what the tab itself reads — the PDF card is the subject here, not the claim. */
+function makeClaim(): DomaceClaimDetail {
+  return {
+    id: CLAIM_ID,
+    outcome: ClaimOutcome.Pending,
+    inspectionReport: null,
+  } as unknown as DomaceClaimDetail
+}
+
 function renderTab(): void {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -52,7 +63,7 @@ function renderTab(): void {
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <DomaceClaimReportTab claimId={CLAIM_ID} />
+      <DomaceClaimReportTab claim={makeClaim()} canEditInspection={false} />
     </QueryClientProvider>
   )
   render(node)

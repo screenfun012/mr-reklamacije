@@ -1,9 +1,13 @@
-import type { ClaimCategoryFieldValues } from '@mr/shared'
+import type { ClaimCategoryFieldValues, DomaceClaimFaultInput } from '@mr/shared'
 import { z } from 'zod'
 
 import type { DomaceClaimDetail } from '@mr/shared'
 
-import { domaceClaimBasicFieldsSchema } from '../create/domace-claim-create-schemas.js'
+import {
+  domaceClaimBasicFieldsSchema,
+  type DomaceClaimFormValues,
+} from '../create/domace-claim-create-schemas.js'
+import { faultDraftsToInput, faultItemToDraft } from '../../emotive-claims/faults/fault-draft.js'
 import { m } from '@mr/i18n'
 
 /** Client-side validation for basic-field edits on the detail screen. */
@@ -23,6 +27,10 @@ export type DomaceClaimDetailBasicValues = z.infer<typeof domaceClaimDetailBasic
   categoryFieldValues: ClaimCategoryFieldValues
 }
 
+/**
+ * Everything "Izmeni podatke" saves on a DOMAĆA claim: the basic fields, the amounts, the
+ * category's answers and the fault rows (replace-all) — one payload, one transaction.
+ */
 export interface DomaceClaimBasicEdit {
   categoryFieldValues: ClaimCategoryFieldValues
   mrNumber: string | null
@@ -40,6 +48,7 @@ export interface DomaceClaimBasicEdit {
   originalInvoiceAmount: number | null
   partsAmount: number | null
   laborAmount: number | null
+  faults: DomaceClaimFaultInput[]
 }
 
 function amountToInput(value: number | null): string {
@@ -51,8 +60,9 @@ function inputToAmount(value: string): number | null {
   return trimmed === '' ? null : Number(trimmed)
 }
 
-export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimDetailBasicValues {
+export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimFormValues {
   return {
+    faults: claim.faults.map(faultItemToDraft),
     mrNumber: claim.mrNumber ?? '',
     claimNumber: claim.claimNumber ?? '',
     invoiceNumber: claim.invoiceNumber ?? '',
@@ -72,9 +82,7 @@ export function claimToDetailBasicValues(claim: DomaceClaimDetail): DomaceClaimD
   }
 }
 
-export function detailBasicValuesToPatch(
-  values: DomaceClaimDetailBasicValues,
-): DomaceClaimBasicEdit {
+export function detailBasicValuesToPatch(values: DomaceClaimFormValues): DomaceClaimBasicEdit {
   const mrNumber = values.mrNumber.trim()
   const customerName = values.customerName.trim()
   const claimNumber = values.claimNumber.trim()
@@ -103,5 +111,6 @@ export function detailBasicValuesToPatch(
     originalInvoiceAmount: inputToAmount(values.originalInvoiceAmount),
     partsAmount: inputToAmount(values.partsAmount),
     laborAmount: inputToAmount(values.laborAmount),
+    faults: faultDraftsToInput(values.faults),
   }
 }

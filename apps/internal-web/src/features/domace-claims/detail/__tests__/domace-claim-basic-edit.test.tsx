@@ -3,6 +3,8 @@ import {
   ClaimOutcome,
   domaceClaimDetailOptions,
   claimCategoriesReferenceOptions,
+  departmentsReferenceOptions,
+  externalPartiesReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
@@ -19,6 +21,7 @@ import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DomaceClaimBasicSection } from '../domace-claim-basic-section.js'
+import { DomaceClaimOverviewEdit } from '../domace-claim-overview-edit.js'
 
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 const ENGINE_TYPE_ID = '66666666-6666-4666-8666-666666666666'
@@ -113,10 +116,16 @@ function renderSection(canEdit: boolean): void {
   client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+  client.setQueryData(departmentsReferenceOptions().queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <DomaceClaimBasicSection claim={makeClaim()} canEdit={canEdit} />
+      {canEdit ? (
+        <DomaceClaimOverviewEdit claim={makeClaim()} onDone={vi.fn()} />
+      ) : (
+        <DomaceClaimBasicSection claim={makeClaim()} />
+      )}
     </QueryClientProvider>
   )
   render(node)
@@ -132,7 +141,7 @@ function patchCalls(fetchSpy: ReturnType<typeof vi.fn>): unknown[] {
   )
 }
 
-describe('DomaceClaimBasicSection', () => {
+describe('the DOMAĆA claim data card and its edit', () => {
   beforeEach(() => {
     setLocale('sr')
   })
@@ -141,15 +150,15 @@ describe('DomaceClaimBasicSection', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders read-only without an edit button when editing is not allowed', () => {
+  it('renders the read-only card with nothing to save on it', () => {
     renderSection(false)
     expect(
-      screen.queryByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
+      screen.queryByRole('button', { name: m.emotive_claims_detail_basic_save() }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('Auto Stanić')).toBeInTheDocument()
   })
 
-  it('saves a customer name change via PATCH and returns to read-only', async () => {
+  it('saves a customer name change via PATCH', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ ...makeClaim(), customerName: 'Novi Kupac' }),
@@ -157,7 +166,6 @@ describe('DomaceClaimBasicSection', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     renderSection(true)
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
     fireEvent.change(screen.getByLabelText(m.domace_claims_create_field_customer_name()), {
       target: { value: 'Novi Kupac' },
     })

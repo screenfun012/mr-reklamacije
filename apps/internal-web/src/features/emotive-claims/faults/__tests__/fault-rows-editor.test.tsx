@@ -74,14 +74,16 @@ describe('FaultRowsEditor', () => {
     render(<Harness />)
 
     expect(
-      screen.queryByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+      screen.queryByRole('group', { name: m.emotive_claims_create_fault_type() }),
     ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: m.emotive_claims_create_fault_add() }))
 
+    // The blame is three segments now (prototype, wizard step "Kvarovi"); the chosen one is the
+    // pressed button, not a dropdown's text.
     expect(
-      screen.getByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
-    ).toHaveTextContent(m.emotive_claims_create_fault_type_department())
+      screen.getByRole('button', { name: m.emotive_claims_create_fault_type_department() }),
+    ).toHaveAttribute('aria-pressed', 'true')
     expect(
       screen.getByRole('combobox', { name: m.emotive_claims_create_fault_department() }),
     ).toBeInTheDocument()
@@ -99,7 +101,7 @@ describe('FaultRowsEditor', () => {
     )
 
     expect(
-      screen.getAllByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+      screen.getAllByRole('group', { name: m.emotive_claims_create_fault_type() }),
     ).toHaveLength(2)
 
     await user.click(
@@ -107,7 +109,7 @@ describe('FaultRowsEditor', () => {
     )
 
     expect(
-      screen.getAllByRole('combobox', { name: m.emotive_claims_create_fault_type() }),
+      screen.getAllByRole('group', { name: m.emotive_claims_create_fault_type() }),
     ).toHaveLength(1)
   })
 
@@ -152,9 +154,8 @@ describe('FaultRowsEditor', () => {
       screen.getByRole('combobox', { name: m.emotive_claims_create_fault_department() }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: m.emotive_claims_create_fault_type() }))
     await user.click(
-      screen.getByRole('option', { name: m.emotive_claims_create_fault_type_external() }),
+      screen.getByRole('button', { name: m.emotive_claims_create_fault_type_external() }),
     )
 
     expect(

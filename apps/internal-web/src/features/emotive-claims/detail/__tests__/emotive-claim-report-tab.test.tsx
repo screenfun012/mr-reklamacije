@@ -2,7 +2,9 @@ import {
   ClaimKind,
   ClaimReportStatus,
   claimReportOptions,
+  ClaimOutcome,
   type ClaimReportResponse,
+  type EmotiveClaimDetail,
 } from '@mr/shared'
 import { m, setLocale } from '@mr/i18n'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -44,6 +46,17 @@ function makeReport(): ClaimReportResponse {
   }
 }
 
+/** Only what the tab itself reads — the PDF card is the subject here, not the claim. */
+function makeClaim(): EmotiveClaimDetail {
+  return {
+    id: CLAIM_ID,
+    outcome: ClaimOutcome.Pending,
+    inspectionReport: null,
+    clientVisibleAt: null,
+    publishedAt: null,
+  } as unknown as EmotiveClaimDetail
+}
+
 function renderTab(): void {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -52,7 +65,7 @@ function renderTab(): void {
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <EmotiveClaimReportTab claimId={CLAIM_ID} />
+      <EmotiveClaimReportTab claim={makeClaim()} canEditInspection={false} canPublish={false} />
     </QueryClientProvider>
   )
   render(node)

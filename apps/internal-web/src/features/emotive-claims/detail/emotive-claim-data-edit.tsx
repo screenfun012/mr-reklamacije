@@ -1,66 +1,82 @@
 import {
   ApiError,
+  CustomerKind,
+  assignedWorkerReferenceOptions,
+  customersReferenceOptions,
   departmentsReferenceOptions,
-  engineManufacturersReferenceOptions,
   employeesReferenceOptions,
+  engineManufacturersReferenceOptions,
   externalPartiesReferenceOptions,
-  type DomaceClaimDetail,
+  type EmotiveClaimDetail,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { useForm } from '@tanstack/react-form'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 
 import { InternalButton } from '~/components/internal-button'
 import { InternalCard } from '~/components/internal-card'
+import { useState } from 'react'
 
 import { CategoryFieldsGroup } from '../../claims/category-fields/category-fields-group.js'
-import { DomaceBasicFields } from '../create/domace-basic-fields.js'
-import { formatZodFieldErrors } from '../create/domace-claim-create-schemas.js'
-import { validateFaultDrafts } from '../../emotive-claims/faults/fault-draft.js'
-import { FaultRowsEditor } from '../../emotive-claims/faults/fault-rows-editor.js'
 import {
-  claimToDetailBasicValues,
-  detailBasicValuesToPatch,
-  domaceClaimDetailBasicSchema,
-} from './domace-claim-detail-schemas.js'
-import { useUpdateDomaceClaimBasic } from './use-update-domace-claim-basic.js'
+  EMOTIVE_CLAIM_FORM_DEFAULTS,
+  emotiveClaimStepBasicSchema,
+  formatZodFieldErrors,
+  validateFaultDrafts,
+  type EmotiveClaimFormValues,
+} from '../create/emotive-claim-create-schemas.js'
+import { StepBasicFields } from '../create/step-basic-fields.js'
+import { faultDraftsToInput, faultItemToDraft } from '../faults/fault-draft.js'
+import { FaultRowsEditor } from '../faults/fault-rows-editor.js'
+import {
+  useUpdateEmotiveClaimBasic,
+  type EmotiveClaimBasicEdit,
+} from './use-update-emotive-claim-basic.js'
 
-export interface DomaceClaimOverviewEditProps {
-  claim: DomaceClaimDetail
+export interface EmotiveClaimDataEditProps {
+  claim: EmotiveClaimDetail
   onDone: () => void
 }
 
 /**
- * "Izmeni podatke" — the basics, the amounts (docs/23, editable in any outcome state), the
- * category's answers and the faults, in one form and one save. Same shape as EMOTIVE's
- * {@link EmotiveClaimDataEdit}; the two families keep their own file, as the claims rules ask.
+ * "Izmeni podatke" — everything a claim IS, in one form and one save: the basic fields, the
+ * answers its kind of work asks for, and who it blames.
+ *
+ * The faults are here rather than in a tab of their own because they are part of the claim's
+ * data, not a second document about it — the wizard asks for them in the same run, the API
+ * takes them in the same PATCH, and the server writes claim + faults in one transaction
+ * (docs/04). Split across two saves, half a correction could land and the other half not.
  */
-export function DomaceClaimOverviewEdit({
+export function EmotiveClaimDataEdit({
   claim,
   onDone,
-}: DomaceClaimOverviewEditProps): React.ReactElement {
+}: EmotiveClaimDataEditProps): React.ReactElement {
+  const { data: customers } = useSuspenseQuery(
+    customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
+  )
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
-  // DOMACE ZAPOSLENI can be any active employee (not assembly-only), searchable — and a fault
-  // may be pinned on any worker too, so the same list serves both here.
-  const { data: employees } = useSuspenseQuery(employeesReferenceOptions({ activeOnly: true }))
+  // TWO employee lists on purpose: the assigned worker comes from the assembly departments
+  // only, while a fault may be pinned on ANY worker in the shop.
+  const { data: assignedWorkers } = useSuspenseQuery(assignedWorkerReferenceOptions())
+  const { data: employees } = useSuspenseQuery(employeesReferenceOptions())
   const { data: departments } = useSuspenseQuery(departmentsReferenceOptions())
   const { data: externalParties } = useSuspenseQuery(externalPartiesReferenceOptions())
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
-  const mutation = useUpdateDomaceClaimBasic(claim.id)
+
+  const mutation = useUpdateEmotiveClaimBasic(claim.id)
 
   const form = useForm({
-    defaultValues: claimToDetailBasicValues(claim),
+    defaultValues: claimToFormValues(claim),
   })
 
   const handleSave = (): void => {
     const values = form.state.values
 
-    const basics = domaceClaimDetailBasicSchema.safeParse(values)
+    const basics = emotiveClaimStepBasicSchema.safeParse(values)
     const faultErrors = validateFaultDrafts(values.faults)
     if (!basics.success || faultErrors !== null) {
       setFieldErrors({
@@ -72,7 +88,7 @@ export function DomaceClaimOverviewEdit({
 
     setFieldErrors({})
     setSaveError(null)
-    mutation.mutate(detailBasicValuesToPatch(values), {
+    mutation.mutate(formValuesToPatch(values), {
       onSuccess: () => onDone(),
       onError: (error) => {
         setSaveError(
@@ -84,19 +100,14 @@ export function DomaceClaimOverviewEdit({
     })
   }
 
-  const handleCancel = (): void => {
-    setFieldErrors({})
-    setSaveError(null)
-    onDone()
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      <InternalCard title={m.domace_claims_create_section_basic()}>
+      <InternalCard title={m.emotive_claims_detail_section_basic()}>
         <div className="flex flex-col gap-4">
-          <DomaceBasicFields
+          <StepBasicFields
             form={form}
-            employees={employees}
+            customers={customers}
+            employees={assignedWorkers}
             manufacturers={manufacturers}
             orphanEngineType={
               claim.engineTypeId && claim.engineTypeCode
@@ -154,7 +165,11 @@ export function DomaceClaimOverviewEdit({
           variant="outline"
           className="h-10 w-auto px-5 text-[11.5px] tracking-[0.06em]"
           disabled={mutation.isPending}
-          onClick={handleCancel}
+          onClick={() => {
+            setFieldErrors({})
+            setSaveError(null)
+            onDone()
+          }}
         >
           {m.emotive_claims_detail_basic_cancel()}
         </InternalButton>
@@ -173,4 +188,45 @@ export function DomaceClaimOverviewEdit({
       </div>
     </div>
   )
+}
+
+function claimToFormValues(claim: EmotiveClaimDetail): EmotiveClaimFormValues {
+  return {
+    ...EMOTIVE_CLAIM_FORM_DEFAULTS,
+    mrNumber: claim.mrNumber,
+    claimNumber: claim.claimNumber ?? '',
+    customerId: claim.customerId ?? '',
+    manufacturerId: claim.manufacturerId ?? '',
+    categoryId: claim.category?.id ?? '',
+    categoryFieldValues: claim.categoryFieldValues,
+    engineTypeId: claim.engineTypeId,
+    engineCode: claim.engineCode ?? '',
+    dateOfFinish: claim.dateOfFinish ?? '',
+    dateOfClaim: claim.dateOfClaim,
+    warrantyReport: claim.warrantyReport ?? '',
+    employeeId: claim.employeeId ?? '',
+    faults: claim.faults.map(faultItemToDraft),
+  }
+}
+
+function formValuesToPatch(values: EmotiveClaimFormValues): EmotiveClaimBasicEdit {
+  const claimNumber = values.claimNumber.trim()
+  const engineCode = values.engineCode.trim()
+  const dateOfFinish = values.dateOfFinish.trim()
+  const warrantyReport = values.warrantyReport.trim()
+  return {
+    mrNumber: values.mrNumber.trim(),
+    claimNumber: claimNumber === '' ? null : claimNumber,
+    customerId: values.customerId,
+    manufacturerId: values.manufacturerId.trim() === '' ? null : values.manufacturerId,
+    categoryId: values.categoryId,
+    categoryFieldValues: values.categoryFieldValues,
+    engineTypeId: values.engineTypeId,
+    engineCode: engineCode === '' ? null : engineCode,
+    dateOfClaim: values.dateOfClaim,
+    dateOfFinish: dateOfFinish === '' ? null : dateOfFinish,
+    employeeId: values.employeeId.trim() === '' ? null : values.employeeId,
+    faults: faultDraftsToInput(values.faults),
+    ...(warrantyReport !== '' ? { warrantyReport } : {}),
+  }
 }

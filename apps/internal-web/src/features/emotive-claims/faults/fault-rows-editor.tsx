@@ -5,7 +5,7 @@ import {
   type ExternalPartyListItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
+import { cn, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mr/ui'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -13,11 +13,7 @@ import { InternalButton } from '~/components/internal-button'
 import { InternalFieldGroup } from '~/components/internal-field-group'
 import { InternalFieldLabel } from '~/components/internal-field'
 
-import {
-  FORM_CONTROL_CLASS,
-  SELECT_EMPTY_SENTINEL,
-  TEXTAREA_FIELD_CLASS,
-} from '../create/form-field-styles.js'
+import { FORM_CONTROL_CLASS, SELECT_EMPTY_SENTINEL } from '../create/form-field-styles.js'
 import type { EmotiveClaimFaultDraft } from './fault-draft.js'
 
 interface FaultRowsEditorProps {
@@ -40,6 +36,27 @@ interface FaultRowsEditorProps {
  * employee row's department from the employee record so existing faults open
  * with the cascade pre-filled.
  */
+const FAULT_TYPE_SEGMENTS = [
+  { type: FaultType.Employee, label: m.emotive_claims_create_fault_type_employee },
+  { type: FaultType.Department, label: m.emotive_claims_create_fault_type_department },
+  { type: FaultType.External, label: m.emotive_claims_create_fault_type_external },
+] as const
+
+/**
+ * A fresh draft of the chosen kind. Switching the blame CLEARS the old reference on purpose —
+ * a row carries exactly one of employee/department/external (the DB has a CHECK for it), and
+ * keeping the previous id around is how a claim ends up blaming two parties at once.
+ */
+function emptyDraftOf(type: (typeof FAULT_TYPE_SEGMENTS)[number]['type']): EmotiveClaimFaultDraft {
+  if (type === FaultType.Employee) {
+    return { faultType: FaultType.Employee, employeeId: '' }
+  }
+  if (type === FaultType.Department) {
+    return { faultType: FaultType.Department, departmentId: '' }
+  }
+  return { faultType: FaultType.External, externalPartyId: '' }
+}
+
 export function FaultRowsEditor({
   value,
   onChange,
@@ -62,64 +79,81 @@ export function FaultRowsEditor({
       {value.map((fault, index) => (
         <div
           key={`fault-${index}`}
-          className="flex flex-col gap-3 rounded-[13px] border border-mri-border bg-mri-inbg/40 p-4"
+          className="@container/fault flex flex-col gap-3 rounded-xl border border-mri-border2 p-[15px]"
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mri-redh">
+            <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-mri-text2">
               {m.emotive_claims_create_fault_row_title({ index: index + 1 })}
             </p>
             <InternalButton
               type="button"
               variant="ghost"
-              className="h-8 w-auto gap-1.5 px-2 text-[11.5px]"
+              className="h-7 w-auto gap-1.5 px-1.5 font-mono text-[9px] tracking-[0.1em]"
               disabled={disabled}
               onClick={() => {
                 onChange(value.filter((_, i) => i !== index))
                 setEmployeeDepartmentByIndex((prev) => reindexAfterRemoval(prev, index))
               }}
             >
-              <Trash2 className="size-3.5" aria-hidden="true" />
+              <Trash2 className="size-3" aria-hidden="true" />
               {m.emotive_claims_create_fault_remove()}
             </InternalButton>
           </div>
 
-          <div className="flex flex-col gap-[7px]">
-            <InternalFieldLabel htmlFor={`fault-type-${index}`}>
-              {m.emotive_claims_create_fault_type()}
-            </InternalFieldLabel>
-            <Select
-              value={fault.faultType}
-              disabled={disabled}
-              onValueChange={(faultType) => {
-                const nextType = faultType as EmotiveClaimFaultDraft['faultType']
-                if (nextType === FaultType.Employee) {
-                  replaceAt(index, { faultType: nextType, employeeId: '' })
-                } else if (nextType === FaultType.Department) {
-                  replaceAt(index, { faultType: nextType, departmentId: '' })
-                } else {
-                  replaceAt(index, { faultType: nextType, externalPartyId: '' })
-                }
-              }}
+          {/* The prototype's row: what happened on the left, who carries it on the right. The
+              blame is three segments rather than a dropdown — there are exactly three kinds and
+              the choice changes which reference is asked for next, so it has to be visible. */}
+          <div className="grid gap-[12px_16px] @min-[520px]/fault:grid-cols-2">
+            <InternalFieldGroup
+              id={`fault-notes-${index}`}
+              label={m.emotive_claims_create_fault_notes()}
             >
-              <SelectTrigger
-                id={`fault-type-${index}`}
+              <input
+                id={`fault-notes-${index}`}
+                type="text"
                 className={FORM_CONTROL_CLASS}
+                value={fault.notes ?? ''}
+                disabled={disabled}
+                maxLength={4000}
+                onChange={(event) => {
+                  replaceAt(index, { ...fault, notes: event.target.value })
+                }}
+              />
+            </InternalFieldGroup>
+
+            <div className="flex flex-col gap-[7px]">
+              <InternalFieldLabel htmlFor={`fault-type-${index}`}>
+                {m.emotive_claims_create_fault_type()}
+              </InternalFieldLabel>
+              <span
+                role="group"
+                id={`fault-type-${index}`}
                 aria-label={m.emotive_claims_create_fault_type()}
+                className="flex flex-wrap gap-[7px]"
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={FaultType.Department}>
-                  {m.emotive_claims_create_fault_type_department()}
-                </SelectItem>
-                <SelectItem value={FaultType.Employee}>
-                  {m.emotive_claims_create_fault_type_employee()}
-                </SelectItem>
-                <SelectItem value={FaultType.External}>
-                  {m.emotive_claims_create_fault_type_external()}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                {FAULT_TYPE_SEGMENTS.map((segment) => {
+                  const selected = fault.faultType === segment.type
+                  return (
+                    <button
+                      key={segment.type}
+                      type="button"
+                      disabled={disabled}
+                      aria-pressed={selected}
+                      onClick={() => replaceAt(index, emptyDraftOf(segment.type))}
+                      className={cn(
+                        'inline-flex h-[42px] cursor-pointer items-center rounded-lg px-[13px] text-[12.5px] transition-colors',
+                        selected
+                          ? 'border border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] font-bold text-mri-text'
+                          : 'border border-mri-border2 font-semibold text-mri-text2 hover:border-mri-text2',
+                        disabled && 'cursor-not-allowed opacity-60',
+                      )}
+                    >
+                      {segment.label()}
+                    </button>
+                  )
+                })}
+              </span>
+            </div>
           </div>
 
           {fault.faultType === FaultType.Department ? (
@@ -184,29 +218,13 @@ export function FaultRowsEditor({
               }}
             />
           ) : null}
-
-          <InternalFieldGroup
-            id={`fault-notes-${index}`}
-            label={m.emotive_claims_create_fault_notes()}
-          >
-            <textarea
-              id={`fault-notes-${index}`}
-              className={TEXTAREA_FIELD_CLASS}
-              value={fault.notes ?? ''}
-              disabled={disabled}
-              maxLength={4000}
-              onChange={(event) => {
-                replaceAt(index, { ...fault, notes: event.target.value })
-              }}
-            />
-          </InternalFieldGroup>
         </div>
       ))}
 
       <InternalButton
         type="button"
         variant="dashed"
-        className="h-[46px] w-full text-[13px]"
+        className="h-11 w-full text-[12px] uppercase tracking-[0.06em]"
         disabled={disabled}
         onClick={() => {
           onChange([...value, { faultType: FaultType.Department, departmentId: '' }])

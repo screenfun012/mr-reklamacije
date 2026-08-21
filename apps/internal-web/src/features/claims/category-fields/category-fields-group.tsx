@@ -141,7 +141,7 @@ export function CategoryFieldsGroup({
   return (
     <div
       data-testid="category-fields-group"
-      className="flex flex-col gap-[11px] rounded-xl border border-dashed border-mri-border2 p-[15px]"
+      className="@container/catfields flex flex-col gap-[11px] rounded-xl border border-dashed border-mri-border2 p-[15px]"
     >
       <div className="flex items-center gap-[9px]">
         <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-text2">
@@ -150,7 +150,7 @@ export function CategoryFieldsGroup({
         </span>
       </div>
 
-      <div className="grid gap-[11px_16px] sm:grid-cols-2">
+      <div className="grid gap-[11px_16px] @min-[520px]/catfields:grid-cols-2">
         {views.map((field) => (
           <div key={field.code} className="flex flex-col gap-[5px]">
             <span className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">

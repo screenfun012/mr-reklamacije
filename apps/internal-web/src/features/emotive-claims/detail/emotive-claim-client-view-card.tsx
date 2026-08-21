@@ -7,7 +7,10 @@ import {
 } from '@mr/shared'
 import { cn } from '@mr/ui'
 
-import { usePublishEmotiveClaim } from './use-publish-emotive-claim'
+import { InternalCard } from '~/components/internal-card'
+
+import { EmotiveClaimPublishedBadge } from '../emotive-claim-published-badge'
+import { EmotiveClaimPublishAction } from './emotive-claim-publish-action'
 
 export interface EmotiveClaimClientViewCardProps {
   claim: EmotiveClaimDetail
@@ -50,11 +53,13 @@ function stagesOf(claim: EmotiveClaimDetail): Stage[] {
     publishedAt: claim.publishedAt,
   })
 
+  // Blue, not green: the prototype gives each stage its own colour (Primljeno zelena / U obradi
+  // plava / Ishod prazan krug), and three identical dots said nothing about where the claim is.
   const reachedInProgress = phase !== ClientClaimPhase.Received
   const inProgress: Stage = {
     label: m.emotive_claims_client_stage_in_progress(),
     at: stageDate(claim.clientVisibleAt ?? claim.publishedAt),
-    dot: reachedInProgress ? 'done' : 'todo',
+    dot: reachedInProgress ? 'current' : 'todo',
   }
 
   const decided = phase === ClientClaimPhase.Outcome
@@ -81,46 +86,39 @@ export function EmotiveClaimClientViewCard({
   claim,
   canPublish,
 }: EmotiveClaimClientViewCardProps): React.ReactElement {
-  const publish = usePublishEmotiveClaim(claim.id)
   const stages = stagesOf(claim)
-  const showPublish = canPublish && claim.publishedAt === null
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
-      <h2 className="border-b border-mri-border px-[18px] py-[13px] text-[14.5px] font-extrabold text-mri-text">
-        {m.emotive_claims_client_view_title()}
-      </h2>
+    <InternalCard
+      title={m.emotive_claims_client_view_title()}
+      actions={<EmotiveClaimPublishedBadge publishedAt={claim.publishedAt} />}
+      bodyClassName="flex flex-col gap-2.5 px-[18px] py-[15px]"
+    >
+      {stages.map((stage) => (
+        <div
+          key={stage.label}
+          className={cn('flex items-center gap-[9px]', stage.dot === 'todo' && 'opacity-50')}
+        >
+          <span
+            aria-hidden="true"
+            className={cn('size-2 flex-none rounded-full', DOT_CLASSES[stage.dot])}
+          />
+          <span className="text-[12.5px] font-semibold text-mri-text">{stage.label}</span>
+          {stage.at === null ? null : (
+            <span className="ml-auto font-mono text-[10px] font-medium text-mri-text2">
+              {formatListDate(stage.at)}
+            </span>
+          )}
+        </div>
+      ))}
 
-      <div className="flex flex-col gap-2.5 px-[18px] py-[15px]">
-        {stages.map((stage) => (
-          <div
-            key={stage.label}
-            className={cn('flex items-center gap-[9px]', stage.dot === 'todo' && 'opacity-50')}
-          >
-            <span
-              aria-hidden="true"
-              className={cn('size-2 flex-none rounded-full', DOT_CLASSES[stage.dot])}
-            />
-            <span className="text-[12.5px] font-semibold text-mri-text">{stage.label}</span>
-            {stage.at === null ? null : (
-              <span className="ml-auto font-mono text-[10px] font-medium text-mri-text2">
-                {formatListDate(stage.at)}
-              </span>
-            )}
-          </div>
-        ))}
-
-        {showPublish ? (
-          <button
-            type="button"
-            onClick={() => publish.mutate()}
-            disabled={publish.isPending}
-            className="mt-1 inline-flex h-[34px] cursor-pointer items-center self-start rounded-[9px] border border-mri-border2 bg-mri-raised px-[13px] text-[11px] font-bold uppercase tracking-[0.06em] text-mri-text transition-colors hover:border-mri-text2 disabled:opacity-60"
-          >
-            {m.emotive_claims_publish_action()}
-          </button>
-        ) : null}
-      </div>
-    </section>
+      <EmotiveClaimPublishAction
+        claimId={claim.id}
+        outcome={claim.outcome}
+        publishedAt={claim.publishedAt}
+        canPublish={canPublish}
+        className="mt-1 self-start"
+      />
+    </InternalCard>
   )
 }

@@ -1,8 +1,11 @@
 import { claimReportOptions, isClaimReportEmpty, type ClaimKind } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button, Skeleton } from '@mr/ui'
+import { Skeleton } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useState } from 'react'
+import { useState } from 'react'
+
+import { InternalButton } from '~/components/internal-button'
+import { InternalCard } from '~/components/internal-card'
 
 import { ClaimReportContentView } from './claim-report-content-view.js'
 import { ClaimReportSheet } from './claim-report-sheet.js'
@@ -16,18 +19,16 @@ export interface ClaimReportTabProps {
   canExport: boolean
 }
 
-interface ClaimReportTabHeaderProps {
-  children?: ReactNode
-}
+const ACTION_CLASS = 'h-8 w-auto px-3 text-[10.5px] tracking-[0.06em]'
 
-function ClaimReportTabHeader({ children }: ClaimReportTabHeaderProps): React.ReactElement {
-  return (
-    <div className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-mri-border bg-mri-hdr py-2 backdrop-blur-sm">
-      {children}
-    </div>
-  )
-}
-
+/**
+ * The rich report that becomes the client's PDF — the lower card of the Izveštaj tab. The upper
+ * one is the EN inspection report the portal shows; the two are different documents with
+ * different mutations, and are deliberately NOT merged into one save (Nikola, 2026-08-21).
+ *
+ * No solid-red button here: the brandbook keeps red for the brand and for destructive outlines,
+ * and "Napravi izveštaj" is neither (spec §0/§7).
+ */
 export function ClaimReportTab({
   claimKind,
   claimId,
@@ -47,73 +48,71 @@ export function ClaimReportTab({
 
   if (!canView) {
     return (
-      <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-mri-border p-8">
-        <p className="text-sm text-mri-text2">{m.claim_report_no_access()}</p>
-      </div>
+      <InternalCard title={m.claim_detail_report_pdf_title()}>
+        <p className="text-[12.5px] text-mri-text2">{m.claim_report_no_access()}</p>
+      </InternalCard>
     )
   }
 
   const isEmpty = data === undefined || isClaimReportEmpty(data.contentHtml)
   const showExportButtons = canExport && !isEmpty && !isLoading && !isError && data !== undefined
 
-  const exportButtons = showExportButtons ? (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={isExportingPdf}
-        onClick={() => void exportPdf()}
-      >
-        {m.claim_report_download_pdf()}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={isExportingDocx}
-        onClick={() => void exportDocx()}
-      >
-        {m.claim_report_download_word()}
-      </Button>
-    </>
-  ) : null
+  const actions =
+    isLoading || isError ? undefined : (
+      <>
+        {showExportButtons ? (
+          <>
+            <InternalButton
+              type="button"
+              variant="outline"
+              className={ACTION_CLASS}
+              disabled={isExportingPdf}
+              onClick={() => void exportPdf()}
+            >
+              {m.claim_report_download_pdf()}
+            </InternalButton>
+            <InternalButton
+              type="button"
+              variant="outline"
+              className={ACTION_CLASS}
+              disabled={isExportingDocx}
+              onClick={() => void exportDocx()}
+            >
+              {m.claim_report_download_word()}
+            </InternalButton>
+          </>
+        ) : null}
+        {canEdit ? (
+          <InternalButton
+            type="button"
+            variant="primary"
+            className={ACTION_CLASS}
+            onClick={() => setSheetOpen(true)}
+          >
+            {isEmpty ? m.claim_report_create() : m.claim_report_edit()}
+          </InternalButton>
+        ) : null}
+      </>
+    )
 
   return (
-    <div className="flex flex-col gap-4">
-      {isLoading ? (
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-end border-b border-mri-border py-2">
-            <Skeleton className="h-9 w-20 rounded-md" />
-          </div>
+    <InternalCard
+      title={m.claim_detail_report_pdf_title()}
+      {...(actions === undefined ? {} : { actions })}
+    >
+      <div className="flex flex-col gap-[11px]">
+        <p className="text-[12px] text-mri-text2">{m.claim_detail_report_pdf_hint()}</p>
+
+        {isLoading ? (
           <Skeleton className="min-h-48 rounded-lg" />
-        </div>
-      ) : isError || data === undefined ? (
-        <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-mri-border p-8">
-          <p className="text-sm text-mri-text2">{m.claim_report_load_error()}</p>
-        </div>
-      ) : isEmpty ? (
-        <ClaimReportTabHeader>
-          <p className="mr-auto text-sm text-mri-text2">{m.claim_report_empty()}</p>
-          {canEdit ? (
-            <Button type="button" onClick={() => setSheetOpen(true)}>
-              {m.claim_report_create()}
-            </Button>
-          ) : null}
-        </ClaimReportTabHeader>
-      ) : (
-        <div className="flex min-h-0 flex-col gap-3">
-          {canEdit || showExportButtons ? (
-            <ClaimReportTabHeader>
-              {exportButtons}
-              {canEdit ? (
-                <Button type="button" onClick={() => setSheetOpen(true)}>
-                  {m.claim_report_edit()}
-                </Button>
-              ) : null}
-            </ClaimReportTabHeader>
-          ) : null}
+        ) : isError || data === undefined ? (
+          <p className="text-[12.5px] text-mri-text2">{m.claim_report_load_error()}</p>
+        ) : isEmpty ? (
+          <p className="text-[12.5px] italic text-mri-text2">{m.claim_report_empty()}</p>
+        ) : (
           <ClaimReportContentView contentHtml={data.contentHtml} />
-        </div>
-      )}
+        )}
+      </div>
 
       <ClaimReportSheet
         open={sheetOpen}
@@ -122,6 +121,6 @@ export function ClaimReportTab({
         claimId={claimId}
         canEdit={canEdit}
       />
-    </div>
+    </InternalCard>
   )
 }

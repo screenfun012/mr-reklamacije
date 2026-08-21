@@ -2,6 +2,8 @@ import { m } from '@mr/i18n'
 import { FaultType, type ClaimFaultItem } from '@mr/shared'
 import { cn } from '@mr/ui'
 
+import { InternalCard } from '~/components/internal-card'
+
 export interface ClaimFaultsCardProps {
   faults: readonly ClaimFaultItem[]
 }
@@ -11,10 +13,11 @@ export interface ClaimFaultsCardProps {
  * the KIND of blame in its colour — a worker, a department, an outside firm — because that is
  * the distinction the shop actually argues about, and it reads at a glance from across a desk.
  *
- * Editing still lives on the Kvarovi tab: this card is the answer, not the argument.
+ * Read-only by design: the faults are part of the claim's DATA, so they are edited where the
+ * rest of the data is, behind "Izmeni podatke", in one save (handoff §5, Nikola 2026-08-21).
  */
 const PILL_CLASSES: Record<string, string> = {
-  [FaultType.Employee]: 'bg-[rgba(234,179,8,.13)] text-mri-amb',
+  [FaultType.Employee]: 'bg-mri-warn-bg text-mri-warn',
   [FaultType.Department]: 'bg-mri-domace-bg text-mri-domace',
   [FaultType.External]: 'bg-mri-info-bg text-mri-info',
 }
@@ -37,27 +40,33 @@ function blamedName(fault: ClaimFaultItem): string | null {
 
 export function ClaimFaultsCard({ faults }: ClaimFaultsCardProps): React.ReactElement {
   return (
-    <section className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
-      <h2 className="border-b border-mri-border px-[18px] py-[13px] text-[14.5px] font-extrabold text-mri-text">
-        {m.claim_detail_faults_title()}
-      </h2>
-
+    <InternalCard title={m.claim_detail_faults_title()} bodyClassName="px-[18px] py-[14px]">
       {faults.length === 0 ? (
-        <p className="px-[18px] py-[14px] text-[12.5px] italic text-mri-text2">
-          {m.claim_detail_faults_empty()}
-        </p>
+        <p className="text-[12.5px] italic text-mri-text2">{m.claim_detail_faults_empty()}</p>
       ) : (
-        <div className="flex flex-col gap-[9px] px-[18px] py-[14px]">
+        <div className="flex flex-col gap-[9px]">
           {faults.map((fault, index) => {
             const name = blamedName(fault)
+            // A fault's description is optional in this app while the wizard asks for one, so
+            // most rows that exist today carry none. `?? '—'` only covered NULL: an empty
+            // string fell through it and rendered nothing at all, which is how the row came
+            // out as a number and a pill with a hole between them.
+            const description = fault.notes?.trim() ?? ''
             return (
               <div key={fault.id} className="flex flex-wrap items-center gap-3">
                 <span className="font-mono text-[10px] font-semibold text-mri-text2">
                   {index + 1}
                 </span>
-                <span className="text-[13px] font-semibold text-mri-text">
-                  {fault.notes?.trim() ?? '—'}
-                </span>
+                {description === '' ? (
+                  // In words, not the handoff's bare dash: with the description empty the row
+                  // came out as a number, a dash and a pill with a hole between them, and read
+                  // as a screen that failed to load rather than a fault nobody wrote up.
+                  <span className="text-[13px] italic text-mri-text2">
+                    {m.claim_detail_fault_no_description()}
+                  </span>
+                ) : (
+                  <span className="text-[13px] font-semibold text-mri-text">{description}</span>
+                )}
                 <span
                   className={cn(
                     'ml-auto rounded-full px-[9px] py-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]',
@@ -72,6 +81,6 @@ export function ClaimFaultsCard({ faults }: ClaimFaultsCardProps): React.ReactEl
           })}
         </div>
       )}
-    </section>
+    </InternalCard>
   )
 }

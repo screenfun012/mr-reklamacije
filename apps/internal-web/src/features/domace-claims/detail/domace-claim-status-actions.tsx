@@ -11,7 +11,6 @@ import { useChangeDomaceClaimOutcome } from './use-change-domace-claim-outcome.j
 export interface DomaceClaimStatusActionsProps {
   claimId: string
   canChangeOutcome: boolean
-  layout?: 'section' | 'inline'
 }
 
 /** The only two outcomes an operator can move a claim to from this panel. */
@@ -33,10 +32,10 @@ const CONFIRM_TITLE: Record<CompletionOutcome, () => string> = {
   [ClaimOutcome.Rejected]: () => m.internal_claim_outcome_confirm_rejected(),
 }
 
+/** PRIHVATI / ODBIJ, in the claim's title row (handoff §1.2). */
 export function DomaceClaimStatusActions({
   claimId,
   canChangeOutcome,
-  layout = 'section',
 }: DomaceClaimStatusActionsProps): React.ReactElement | null {
   const mutation = useChangeDomaceClaimOutcome(claimId)
   const [pendingOutcome, setPendingOutcome] = useState<CompletionOutcome | null>(null)
@@ -57,37 +56,23 @@ export function DomaceClaimStatusActions({
   }
 
   return (
-    <div
-      className={
-        layout === 'section'
-          ? 'flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6'
-          : 'flex flex-wrap items-center gap-3'
-      }
-    >
-      {layout === 'section' ? (
-        <h2 className="text-[15px] font-extrabold text-mri-text">
-          {m.emotive_claims_detail_status_section()}
-        </h2>
-      ) : null}
-
-      <div className="flex flex-wrap gap-3">
-        {COMPLETION_OUTCOMES.map((outcome) => (
-          <InternalButton
-            key={outcome}
-            type="button"
-            variant={ACTION_VARIANT[outcome]}
-            className="h-10 w-auto px-5 text-xs"
-            disabled={isPending}
-            onClick={() => setPendingOutcome(outcome)}
-          >
-            {outcome === ClaimOutcome.Accepted ? <Check className="size-3.5" aria-hidden /> : null}
-            {ACTION_LABEL[outcome]()}
-          </InternalButton>
-        ))}
-      </div>
+    <>
+      {COMPLETION_OUTCOMES.map((outcome) => (
+        <InternalButton
+          key={outcome}
+          type="button"
+          variant={ACTION_VARIANT[outcome]}
+          className="h-[38px] w-auto px-4 text-[11.5px] tracking-[0.06em]"
+          disabled={isPending}
+          onClick={() => setPendingOutcome(outcome)}
+        >
+          {outcome === ClaimOutcome.Accepted ? <Check className="size-3.5" aria-hidden /> : null}
+          {ACTION_LABEL[outcome]()}
+        </InternalButton>
+      ))}
 
       {mutation.isError ? (
-        <p className="text-sm text-mri-bad" role="alert">
+        <p className="basis-full text-right text-[12.5px] text-mri-bad" role="alert">
           {m.emotive_claims_detail_status_error()}
         </p>
       ) : null}
@@ -103,6 +88,6 @@ export function DomaceClaimStatusActions({
         pending={isPending}
         onConfirm={confirmOutcome}
       />
-    </div>
+    </>
   )
 }

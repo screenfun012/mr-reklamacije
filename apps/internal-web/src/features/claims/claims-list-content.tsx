@@ -110,13 +110,15 @@ export function ClaimsListContent({
             onSearchChange={handleSearchChange}
             showCategoryColumn={mode.kind === 'all'}
             categoryCode={mode.kind === 'category' ? mode.code : undefined}
-          />
-          <ListPagination
-            total={data.total}
-            page={data.page}
-            pageSize={data.pageSize}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
+            footer={
+              <ListPagination
+                total={data.total}
+                page={data.page}
+                pageSize={data.pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            }
           />
         </>
       )}

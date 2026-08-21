@@ -9,6 +9,11 @@ interface DomaceClaimInspectionReportSectionProps {
   canEdit: boolean
 }
 
+/**
+ * The inspection report of a DOMAĆA claim. Its own hint, not EMOTIVE's: there is no portal on
+ * this side, so telling the office the text is "visible to the client on the portal" would be
+ * a plain untruth — and the Izveštaj tab now puts that sentence right under the reader's eye.
+ */
 export function DomaceClaimInspectionReportSection({
   claim,
   canEdit,
@@ -19,7 +24,7 @@ export function DomaceClaimInspectionReportSection({
     <ClaimTextSection
       value={claim.inspectionReport}
       heading={m.claims_detail_section_inspection_report()}
-      hint={m.claims_detail_inspection_report_hint()}
+      hint={m.claims_detail_inspection_report_hint_domace()}
       emptyText={m.claims_detail_inspection_report_empty()}
       textareaId="claimInspectionReport"
       canEdit={canEdit}

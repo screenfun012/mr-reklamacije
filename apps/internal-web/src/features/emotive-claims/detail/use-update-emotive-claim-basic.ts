@@ -7,11 +7,13 @@ import {
   invalidateInternalClaimQueries,
   type ClaimCategoryFieldValues,
   type EmotiveClaimDetail,
+  type EmotiveClaimFaultInput,
 } from '@mr/shared'
 
 /**
- * Editable basic fields of an emotive claim. Optional fields use `null` to
- * clear a stored value (server maps `null` → cleared column).
+ * Everything "Izmeni podatke" saves: the basic fields, the category's answers, and the fault
+ * rows (replace-all). Optional fields use `null` to clear a stored value (server maps `null`
+ * → cleared column). One payload because the server writes claim + faults in one transaction.
  */
 export interface EmotiveClaimBasicEdit {
   /** Answers to the category's own fields — judged by the server against the catalogue. */
@@ -27,6 +29,7 @@ export interface EmotiveClaimBasicEdit {
   dateOfFinish: string | null
   employeeId: string | null
   warrantyReport?: string
+  faults: EmotiveClaimFaultInput[]
 }
 
 /**

@@ -51,14 +51,18 @@
   --color-mri-ok-bg: rgba(31, 169, 113, 0.13);
   --color-mri-bad: #e05c52;
   --color-mri-bad-bg: rgba(224, 92, 82, 0.13);
-  --color-mri-warn: #f5a623;
-  --color-mri-warn-bg: rgba(245, 166, 35, 0.13);
+  /* The prototype's amber (`--amb: #eab308`), not the orange this app carried before it: the
+     claim screens paint every "waiting" mark with it — the menu counts, the "Na čekanju" pill,
+     the "dopuni podatke" badge and the RADNIK fault pill — and two ambers a shade apart read
+     as a mistake rather than a system. */
+  --color-mri-warn: #eab308;
+  --color-mri-warn-bg: rgba(234, 179, 8, 0.13);
   --color-mri-info: #2e90fa;
   --color-mri-info-strong: #1d6fd6;
   --color-mri-info-bg: rgba(46, 144, 250, 0.13);
   --color-mri-domace: #a78bfa;
   --color-mri-domace-strong: #8b5cf6;
-  --color-mri-domace-bg: rgba(139, 92, 246, 0.15);
+  --color-mri-domace-bg: rgba(167, 139, 250, 0.13);
   --color-mri-sil: var(--mri-sil);
   --color-mri-sigink: var(--mri-sigink);
   --color-mri-amb: var(--mri-amb);

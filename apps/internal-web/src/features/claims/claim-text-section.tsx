@@ -1,8 +1,10 @@
 import { ApiError } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 
 import { InternalButton } from '~/components/internal-button'
+import { InternalCard } from '~/components/internal-card'
 
 import { TEXTAREA_FIELD_CLASS } from '../emotive-claims/create/form-field-styles.js'
 
@@ -18,6 +20,8 @@ interface ClaimTextSectionProps {
   canEdit: boolean
   isSaving: boolean
   onSave: (value: string | null) => Promise<unknown>
+  /** Far right of the card header — the published badge and "Objavi klijentu" (handoff §5). */
+  headerActions?: ReactNode
 }
 
 export function ClaimTextSection({
@@ -29,6 +33,7 @@ export function ClaimTextSection({
   canEdit,
   isSaving,
   onSave,
+  headerActions,
 }: ClaimTextSectionProps): React.ReactElement {
   const [input, setInput] = useState(() => value ?? '')
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -63,14 +68,19 @@ export function ClaimTextSection({
   const showReadOnlyEmpty = !canEdit && (value === null || value.trim() === '')
 
   return (
-    <section className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6">
-      <h2 id={headingId} className="text-[15px] font-extrabold text-mri-text">
-        {heading}
-      </h2>
-      {hint !== undefined ? <p className="text-xs text-mri-text2">{hint}</p> : null}
+    <InternalCard
+      title={
+        <span id={headingId} className="text-[14.5px] font-extrabold text-mri-text">
+          {heading}
+        </span>
+      }
+      {...(headerActions === undefined ? {} : { actions: headerActions })}
+      bodyClassName="flex flex-col gap-[11px] px-[18px] py-4"
+    >
+      {hint === undefined ? null : <p className="text-[12px] text-mri-text2">{hint}</p>}
 
       {canEdit ? (
-        <div className="flex flex-col gap-3">
+        <>
           <textarea
             id={textareaId}
             className={TEXTAREA_FIELD_CLASS}
@@ -81,31 +91,31 @@ export function ClaimTextSection({
           />
 
           {saveError ? (
-            <p className="text-sm text-mri-bad" role="alert">
+            <p className="text-[13px] text-mri-bad" role="alert">
               {saveError}
             </p>
           ) : null}
 
-          <div>
+          <div className="flex justify-end">
             <InternalButton
               type="button"
               variant="green"
-              className="h-10 w-auto px-5 text-xs"
+              className="h-10 w-auto px-5 text-[11.5px] tracking-[0.06em]"
               onClick={handleSave}
               disabled={isSaving}
             >
               <span aria-hidden="true" className="font-normal">
                 ✓
-              </span>{' '}
+              </span>
               {m.emotive_claims_detail_basic_save()}
             </InternalButton>
           </div>
-        </div>
+        </>
       ) : showReadOnlyEmpty ? (
-        <p className="text-sm italic text-mri-text2">{emptyText}</p>
+        <p className="text-[12.5px] italic text-mri-text2">{emptyText}</p>
       ) : (
-        <p className="text-sm whitespace-pre-wrap text-mri-text">{value}</p>
+        <p className="whitespace-pre-wrap text-[13px] text-mri-text">{value}</p>
       )}
-    </section>
+    </InternalCard>
   )
 }

@@ -3,6 +3,8 @@ import {
   ClaimOutcome,
   domaceClaimDetailOptions,
   claimCategoriesReferenceOptions,
+  departmentsReferenceOptions,
+  externalPartiesReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
@@ -117,6 +119,8 @@ function renderOverviewEdit(
   client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+  client.setQueryData(departmentsReferenceOptions().queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>

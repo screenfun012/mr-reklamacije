@@ -105,4 +105,31 @@ describe('useClaimPresence', () => {
     expect(leave).toHaveBeenCalledWith({ kind: ClaimKind.Emotive, id: 'claim-1' })
     expect(heartbeat).toHaveBeenLastCalledWith({ kind: ClaimKind.Emotive, id: 'claim-2' })
   })
+
+  it('stops beating while the tab is hidden and picks up again when it returns', async () => {
+    const { unmount } = renderHook(() => useClaimPresence(ClaimKind.Emotive, 'claim-1'))
+    expect(heartbeat).toHaveBeenCalledTimes(1)
+
+    // Hidden: leave once, then no beat for as long as it stays hidden. Every beat costs a
+    // session validation on the API, and a parked background tab must not pay it.
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(leave).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    expect(heartbeat).toHaveBeenCalledTimes(1)
+
+    hidden.mockReturnValue(false)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(heartbeat).toHaveBeenCalledTimes(2)
+
+    hidden.mockRestore()
+    unmount()
+  })
 })

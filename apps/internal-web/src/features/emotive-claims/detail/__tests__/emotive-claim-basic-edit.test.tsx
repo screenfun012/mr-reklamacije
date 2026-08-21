@@ -4,6 +4,8 @@ import {
   CustomerKind,
   customersReferenceOptions,
   claimCategoriesReferenceOptions,
+  departmentsReferenceOptions,
+  externalPartiesReferenceOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
   engineManufacturersReferenceOptions,
@@ -21,6 +23,7 @@ import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EmotiveClaimBasicSection } from '../emotive-claim-basic-section.js'
+import { EmotiveClaimDataEdit } from '../emotive-claim-data-edit.js'
 
 const CLAIM_ID = '11111111-1111-4111-8111-111111111111'
 const CUSTOMER_ID = '55555555-5555-4555-8555-555555555555'
@@ -102,10 +105,12 @@ function renderLegacyOrphanSection(): void {
   client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+  client.setQueryData(departmentsReferenceOptions().queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <EmotiveClaimBasicSection claim={makeLegacyOrphanClaim()} canEdit={true} />
+      <EmotiveClaimDataEdit claim={makeLegacyOrphanClaim()} onDone={vi.fn()} />
     </QueryClientProvider>
   )
   render(node)
@@ -145,7 +150,11 @@ function makeClaim(): EmotiveClaimDetail {
   } as unknown as EmotiveClaimDetail
 }
 
-function renderSection(canEdit: boolean): void {
+/**
+ * Editing is no longer a mode inside the card: "Izmeni podatke" in the title row swaps the
+ * read-only cards for {@link EmotiveClaimDataEdit}, so the two are rendered separately here.
+ */
+function renderSection(canEdit: boolean, onDone: () => void = vi.fn()): void {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -164,10 +173,16 @@ function renderSection(canEdit: boolean): void {
   client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+  client.setQueryData(departmentsReferenceOptions().queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
-      <EmotiveClaimBasicSection claim={makeClaim()} canEdit={canEdit} />
+      {canEdit ? (
+        <EmotiveClaimDataEdit claim={makeClaim()} onDone={onDone} />
+      ) : (
+        <EmotiveClaimBasicSection claim={makeClaim()} />
+      )}
     </QueryClientProvider>
   )
   render(node)
@@ -183,7 +198,7 @@ function patchCalls(fetchSpy: ReturnType<typeof vi.fn>): unknown[] {
   )
 }
 
-describe('EmotiveClaimBasicSection', () => {
+describe('the claim data card and its edit', () => {
   beforeEach(() => {
     setLocale('sr')
   })
@@ -192,11 +207,11 @@ describe('EmotiveClaimBasicSection', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders read-only without an edit button when editing is not allowed', () => {
+  it('renders the read-only card with nothing to save on it', () => {
     renderSection(false)
 
     expect(
-      screen.queryByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
+      screen.queryByRole('button', { name: m.emotive_claims_detail_basic_save() }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('MR-1/26')).toBeInTheDocument()
   })
@@ -208,15 +223,15 @@ describe('EmotiveClaimBasicSection', () => {
     expect(screen.getByText('Report text')).toBeInTheDocument()
   })
 
-  it('saves an updated Razlog via PATCH and returns to read-only', async () => {
+  it('saves an updated Razlog via PATCH and closes the edit', async () => {
+    const onDone = vi.fn()
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ ...makeClaim(), warrantyReport: 'Ažuriran razlog' }),
     })
     vi.stubGlobal('fetch', fetchSpy)
 
-    renderSection(true)
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+    renderSection(true, onDone)
 
     fireEvent.change(screen.getByLabelText(m.emotive_claims_create_field_warranty_report()), {
       target: { value: 'Ažuriran razlog' },
@@ -230,22 +245,18 @@ describe('EmotiveClaimBasicSection', () => {
     }
     expect(body.warrantyReport).toBe('Ažuriran razlog')
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
-      ).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 
-  it('saves an added engine code via PATCH and returns to read-only', async () => {
+  it('saves an added engine code via PATCH and closes the edit', async () => {
+    const onDone = vi.fn()
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ ...makeClaim(), engineCode: 'NEW-CODE' }),
     })
     vi.stubGlobal('fetch', fetchSpy)
 
-    renderSection(true)
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+    renderSection(true, onDone)
 
     fireEvent.change(screen.getByLabelText(m.emotive_claims_create_field_engine_code()), {
       target: { value: 'NEW-CODE' },
@@ -261,19 +272,15 @@ describe('EmotiveClaimBasicSection', () => {
     expect(body.engineCode).toBe('NEW-CODE')
     expect(body.mrNumber).toBe('MR-1/26')
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
-      ).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 
   it('blocks the PATCH and stays in edit mode when a required field is cleared', () => {
+    const onDone = vi.fn()
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
 
-    renderSection(true)
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
+    renderSection(true, onDone)
 
     // exact: false — the required marker (" *") is part of the label now.
     fireEvent.change(
@@ -289,9 +296,7 @@ describe('EmotiveClaimBasicSection', () => {
     expect(
       screen.getByRole('button', { name: m.emotive_claims_detail_basic_save() }),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: m.emotive_claims_detail_basic_edit() }),
-    ).not.toBeInTheDocument()
+    expect(onDone).not.toHaveBeenCalled()
   })
 
   it('shows legacy engine type when manufacturer is missing and preserves it on save', async () => {
@@ -302,7 +307,6 @@ describe('EmotiveClaimBasicSection', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     renderLegacyOrphanSection()
-    fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
     expect(
       screen.getByRole('combobox', { name: m.emotive_claims_create_field_engine_type() }),

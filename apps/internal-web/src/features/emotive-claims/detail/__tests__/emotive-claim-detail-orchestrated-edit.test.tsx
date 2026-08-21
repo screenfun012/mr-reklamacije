@@ -5,6 +5,8 @@ import {
   CustomerKind,
   customersReferenceOptions,
   claimCategoriesReferenceOptions,
+  departmentsReferenceOptions,
+  externalPartiesReferenceOptions,
   emotiveClaimDetailOptions,
   assignedWorkerReferenceOptions,
   employeesReferenceOptions,
@@ -157,6 +159,8 @@ async function renderDetail(
   client.setQueryData(claimCategoriesReferenceOptions({ activeOnly: true }).queryKey, CATEGORIES)
   client.setQueryData(employeesReferenceOptions({ activeOnly: true }).queryKey, [])
   client.setQueryData(assignedWorkerReferenceOptions().queryKey, [])
+  client.setQueryData(departmentsReferenceOptions().queryKey, [])
+  client.setQueryData(externalPartiesReferenceOptions().queryKey, [])
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
@@ -189,24 +193,33 @@ describe('EmotiveClaimDetailView orchestrated edit', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows overview, findings and inspection-report saves on accepted claims', async () => {
+  it('opens ONE editor with ONE save — the claim, its category answers and its faults', async () => {
     await renderDetail(makeClaim())
 
     fireEvent.click(screen.getByRole('button', { name: m.emotive_claims_detail_basic_edit() }))
 
-    // Basic overview + findings + inspection report each save separately.
+    // The whole point of the 21.08. handoff: the overview used to carry three green SAČUVAJ
+    // buttons at once (basics, findings, inspection report). Now the findings and the report
+    // are each on their own tab, and the faults come WITH the claim's data.
     await waitFor(() => {
       expect(
         screen.getAllByRole('button', { name: m.emotive_claims_detail_basic_save() }),
-      ).toHaveLength(3)
+      ).toHaveLength(1)
     })
+    expect(
+      screen.getByRole('button', { name: m.emotive_claims_create_fault_add() }),
+    ).toBeInTheDocument()
   })
 
-  it('shows the faults edit control on the Kvarovi tab for an accepted claim', async () => {
-    await renderDetail(makeClaim(), ClaimDetailTab.Kvarovi)
+  it('keeps the findings editor off the overview', async () => {
+    await renderDetail(makeClaim())
 
-    expect(
-      screen.getByRole('button', { name: m.emotive_claims_detail_faults_edit() }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: m.claims_findings_add() })).not.toBeInTheDocument()
+  })
+
+  it('puts the findings editor on the Nalazi tab', async () => {
+    await renderDetail(makeClaim(), ClaimDetailTab.Nalazi)
+
+    expect(screen.getByRole('button', { name: m.claims_findings_add() })).toBeInTheDocument()
   })
 })

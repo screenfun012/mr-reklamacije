@@ -4,9 +4,10 @@ import {
   type ClaimCategoryFieldValues,
   type ClaimPreviousCategoryFieldValues,
 } from '@mr/shared'
-import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+
+import { InternalCard } from '~/components/internal-card'
 
 import { categoryFieldViews } from './category-field-model'
 
@@ -45,7 +46,9 @@ function ValueRow({
             {m.claim_category_fields_retired()}
           </span>
         ) : null}
-        {marked ? <span aria-hidden="true" className="size-[5px] rounded-full bg-mri-amb" /> : null}
+        {marked ? (
+          <span aria-hidden="true" className="size-[5px] rounded-full bg-mri-warn" />
+        ) : null}
       </span>
       {value === null ? (
         <span className="text-[13px] italic text-mri-text2">{m.claim_category_fields_empty()}</span>
@@ -89,46 +92,44 @@ export function CategoryFieldsCard({
   const isIncomplete = missing.length > 0
 
   return (
-    <div
+    <InternalCard
       data-testid="category-fields-card"
-      className={cn(
-        'overflow-hidden rounded-[14px] border border-dashed bg-mri-surface',
-        isIncomplete ? 'border-[rgba(234,179,8,.4)]' : 'border-mri-border2',
-      )}
+      dashed
+      title={m.claim_category_fields_group()}
+      meta={categoryName}
+      {...(isIncomplete
+        ? {
+            actions: (
+              <span
+                title={m.claim_category_fields_incomplete_hint()}
+                className="rounded-md border border-dashed border-[rgba(234,179,8,.4)] bg-mri-warn-bg px-2 py-[3px] font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] text-mri-warn"
+              >
+                ⚠ {m.claim_category_fields_incomplete()}
+              </span>
+            ),
+          }
+        : {})}
+      className={isIncomplete ? 'border-[rgba(234,179,8,.4)]' : undefined}
+      bodyClassName="contents"
     >
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-mri-border px-[18px] py-[13px]">
-        <span className="text-[14.5px] font-extrabold text-mri-text">
-          {m.claim_category_fields_group()}
-        </span>
-        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
-          {categoryName}
-        </span>
-        {isIncomplete ? (
-          <span
-            title={m.claim_category_fields_incomplete_hint()}
-            className="rounded-md border border-dashed border-[rgba(234,179,8,.4)] bg-[rgba(234,179,8,.1)] px-2 py-[3px] font-mono text-[8.5px] font-bold uppercase tracking-[0.12em] text-mri-amb"
-          >
-            ⚠ {m.claim_category_fields_incomplete()}
-          </span>
-        ) : null}
-      </div>
-
       {views.length > 0 ? (
-        <div className="grid gap-[15px_14px] px-[18px] py-4 sm:grid-cols-2 lg:grid-cols-3">
-          {views.map((view) => {
-            const raw = values[view.code]
-            const option = view.options.find((candidate) => candidate.code === raw)
-            const shown = raw === undefined || raw.length === 0 ? null : (option?.name ?? raw)
-            return (
-              <ValueRow
-                key={view.code}
-                label={view.name}
-                value={shown}
-                marked={missing.includes(view.code)}
-                retired={view.isRetired}
-              />
-            )
-          })}
+        <div className="@container/fields px-[18px] py-4">
+          <div className="grid gap-[15px_14px] @min-[420px]/fields:grid-cols-2 @min-[700px]/fields:grid-cols-3">
+            {views.map((view) => {
+              const raw = values[view.code]
+              const option = view.options.find((candidate) => candidate.code === raw)
+              const shown = raw === undefined || raw.length === 0 ? null : (option?.name ?? raw)
+              return (
+                <ValueRow
+                  key={view.code}
+                  label={view.name}
+                  value={shown}
+                  marked={missing.includes(view.code)}
+                  retired={view.isRetired}
+                />
+              )
+            })}
+          </div>
         </div>
       ) : null}
 
@@ -153,7 +154,7 @@ export function CategoryFieldsCard({
                       {m.claim_category_fields_previous_badge()}
                     </span>
                   </span>
-                  <div className="grid gap-[15px_14px] sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-[15px_14px] @min-[420px]/fields:grid-cols-2 @min-[700px]/fields:grid-cols-3">
                     {section.values.map((value) => (
                       <ValueRow
                         key={value.fieldCode}
@@ -168,6 +169,6 @@ export function CategoryFieldsCard({
             : null}
         </div>
       ) : null}
-    </div>
+    </InternalCard>
   )
 }

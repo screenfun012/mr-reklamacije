@@ -133,7 +133,9 @@ export function ClaimAttachmentsTab({
   }, [])
 
   return (
-    <div className="flex flex-col gap-6">
+    // Centred, like the other two writing tabs — a 920px column hard against the left edge of a
+    // 1140px screen reads as a layout that broke, not as a choice.
+    <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6">
       {canUpload ? (
         <ClaimAttachmentsDropzone
           uploading={uploadMutation.isPending}

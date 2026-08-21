@@ -1,26 +1,17 @@
 import { m } from '@mr/i18n'
-import { ClaimOutcome, type ClaimOutcome as ClaimOutcomeType } from '@mr/shared'
+import { ClaimOutcome } from '@mr/shared'
 import { ConfirmDialog } from '@mr/ui'
 import { Check } from 'lucide-react'
 import { useState } from 'react'
 
 import { InternalButton, type InternalButtonVariant } from '~/components/internal-button'
-import { OUTCOME_LABELS } from '~/components/outcome-pill'
 
-import { EmotiveClaimStageBadge } from '../emotive-claim-stage-badge'
 import { useChangeEmotiveClaimOutcome } from './use-change-emotive-claim-outcome'
-import { usePublishEmotiveClaim } from './use-publish-emotive-claim'
 
 export interface EmotiveClaimStatusActionsProps {
   claimId: string
-  outcome: ClaimOutcomeType
-  clientVisibleAt: string | null
-  publishedAt: string | null
   /** Holder of emotive_claims.change_outcome (operator + admin). */
   canChangeOutcome: boolean
-  /** Holder of emotive_claims.publish (operator + admin). */
-  canPublish: boolean
-  layout?: 'section' | 'inline'
 }
 
 /** The only two outcomes an operator can move a claim to from this panel. */
@@ -42,22 +33,19 @@ const CONFIRM_TITLE: Record<CompletionOutcome, () => string> = {
   [ClaimOutcome.Rejected]: () => m.internal_claim_outcome_confirm_rejected(),
 }
 
+/**
+ * PRIHVATI / ODBIJ, in the claim's title row (handoff §1.2). Publishing to the client is NOT
+ * here: it belongs beside what the client actually sees — the "Klijent vidi" card and the
+ * report tab — and the badge that says whether it happened is a badge, not a button.
+ */
 export function EmotiveClaimStatusActions({
   claimId,
-  outcome,
-  clientVisibleAt,
-  publishedAt,
   canChangeOutcome,
-  canPublish,
-  layout = 'section',
-}: EmotiveClaimStatusActionsProps): React.ReactElement {
+}: EmotiveClaimStatusActionsProps): React.ReactElement | null {
   const outcomeMutation = useChangeEmotiveClaimOutcome(claimId)
-  const publishMutation = usePublishEmotiveClaim(claimId)
   const [pendingOutcome, setPendingOutcome] = useState<CompletionOutcome | null>(null)
-  const [confirmingPublish, setConfirmingPublish] = useState(false)
 
   const isPending = outcomeMutation.isPending
-  const showPublishAction = canPublish && publishedAt === null
 
   // Outcome changes now happen freely at any time (no more edit-lock/reopen),
   // so a confirm dialog is the only guard against an accidental click.
@@ -68,85 +56,30 @@ export function EmotiveClaimStatusActions({
     outcomeMutation.mutate(value)
   }
 
-  // Publishing is a one-way, decided action — always confirm, and never
-  // update the cache optimistically (invalidate-only, see the mutation hook).
-  const confirmPublish = (): void => {
-    setConfirmingPublish(false)
-    publishMutation.mutate()
+  if (!canChangeOutcome) {
+    return null
   }
 
-  const publishDescription =
-    outcome === ClaimOutcome.Pending
-      ? m.emotive_claims_detail_publish_confirm_description_pending({
-          outcome: OUTCOME_LABELS[outcome](),
-        })
-      : m.emotive_claims_detail_publish_confirm_description_decided({
-          outcome: OUTCOME_LABELS[outcome](),
-        })
-
   return (
-    <div
-      className={
-        layout === 'section'
-          ? 'flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface p-6'
-          : 'flex flex-wrap items-center gap-3'
-      }
-    >
-      {layout === 'section' ? (
-        <h2 className="text-[15px] font-extrabold text-mri-text">
-          {m.emotive_claims_detail_status_section()}
-        </h2>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <EmotiveClaimStageBadge clientVisibleAt={clientVisibleAt} publishedAt={publishedAt} />
-        {publishedAt === null ? (
-          <span className="text-[11px] text-mri-text2">
-            {m.emotive_claims_stage_not_published_cue()}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        {canChangeOutcome
-          ? COMPLETION_OUTCOMES.map((completionOutcome) => (
-              <InternalButton
-                key={completionOutcome}
-                type="button"
-                variant={ACTION_VARIANT[completionOutcome]}
-                className="h-10 w-auto px-5 text-xs"
-                disabled={isPending}
-                onClick={() => setPendingOutcome(completionOutcome)}
-              >
-                {completionOutcome === ClaimOutcome.Accepted ? (
-                  <Check className="size-3.5" aria-hidden />
-                ) : null}
-                {ACTION_LABEL[completionOutcome]()}
-              </InternalButton>
-            ))
-          : null}
-
-        {showPublishAction ? (
-          <InternalButton
-            type="button"
-            variant="outline"
-            className="h-10 w-auto px-5 text-xs"
-            disabled={publishMutation.isPending}
-            onClick={() => setConfirmingPublish(true)}
-          >
-            {m.emotive_claims_detail_status_action_publish()}
-          </InternalButton>
-        ) : null}
-      </div>
+    <>
+      {COMPLETION_OUTCOMES.map((completionOutcome) => (
+        <InternalButton
+          key={completionOutcome}
+          type="button"
+          variant={ACTION_VARIANT[completionOutcome]}
+          className="h-[38px] w-auto px-4 text-[11.5px] tracking-[0.06em]"
+          disabled={isPending}
+          onClick={() => setPendingOutcome(completionOutcome)}
+        >
+          {completionOutcome === ClaimOutcome.Accepted ? (
+            <Check className="size-3.5" aria-hidden />
+          ) : null}
+          {ACTION_LABEL[completionOutcome]()}
+        </InternalButton>
+      ))}
 
       {outcomeMutation.isError ? (
-        <p className="text-sm text-mri-bad" role="alert">
-          {m.emotive_claims_detail_status_error()}
-        </p>
-      ) : null}
-
-      {publishMutation.isError ? (
-        <p className="text-sm text-mri-bad" role="alert">
+        <p className="basis-full text-right text-[12.5px] text-mri-bad" role="alert">
           {m.emotive_claims_detail_status_error()}
         </p>
       ) : null}
@@ -162,19 +95,6 @@ export function EmotiveClaimStatusActions({
         pending={isPending}
         onConfirm={confirmOutcome}
       />
-
-      <ConfirmDialog
-        open={confirmingPublish}
-        onOpenChange={(open) => {
-          if (!open) setConfirmingPublish(false)
-        }}
-        title={m.emotive_claims_detail_publish_confirm_title()}
-        description={publishDescription}
-        confirmLabel={m.emotive_claims_detail_status_action_publish()}
-        variant="default"
-        pending={publishMutation.isPending}
-        onConfirm={confirmPublish}
-      />
-    </div>
+    </>
   )
 }

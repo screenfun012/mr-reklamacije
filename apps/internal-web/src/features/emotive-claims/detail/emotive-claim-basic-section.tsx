@@ -1,286 +1,93 @@
-import {
-  ApiError,
-  CustomerKind,
-  customersReferenceOptions,
-  assignedWorkerReferenceOptions,
-  engineManufacturersReferenceOptions,
-  formatListDate,
-  type EmotiveClaimDetail,
-} from '@mr/shared'
+import { formatListDate, type EmotiveClaimDetail } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { Button } from '@mr/ui'
-import { useForm } from '@tanstack/react-form'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { Pencil } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useState } from 'react'
 
-import {
-  EMOTIVE_CLAIM_FORM_DEFAULTS,
-  emotiveClaimStepBasicSchema,
-  formatZodFieldErrors,
-  type EmotiveClaimFormValues,
-} from '../create/emotive-claim-create-schemas.js'
-import { CategoryFieldsGroup } from '../../claims/category-fields/category-fields-group.js'
-import { StepBasicFields } from '../create/step-basic-fields.js'
-import {
-  useUpdateEmotiveClaimBasic,
-  type EmotiveClaimBasicEdit,
-} from './use-update-emotive-claim-basic.js'
+import { InternalCard } from '~/components/internal-card'
+
+import { ClaimDetailItem } from '../../claims/claim-detail-item.js'
 
 const EMPTY = '—'
 
-interface EmotiveClaimBasicSectionProps {
+export interface EmotiveClaimBasicSectionProps {
   claim: EmotiveClaimDetail
-  /** `emotive_claims.update` permission. */
-  canEdit: boolean
-  editing?: boolean
-  onEditingChange?: (editing: boolean) => void
-  /** When false, edit is triggered externally (detail header). Defaults to true. */
-  showSectionEditButton?: boolean
-  /** Hides MR in read-only grid when shown in page header. */
-  hideMrInReadOnly?: boolean
+  /** The MR number is the page title — the grid does not repeat it. */
+  hideMr?: boolean
 }
 
-function useControlledEditing(
-  controlledEditing: boolean | undefined,
-  onEditingChange: ((editing: boolean) => void) | undefined,
-): [boolean, (editing: boolean) => void] {
-  const [internalEditing, setInternalEditing] = useState(false)
-  const editing = controlledEditing ?? internalEditing
-  const setEditing = onEditingChange ?? setInternalEditing
-  return [editing, setEditing]
-}
-
+/**
+ * "Osnovni podaci", read-only (spec §6): a four-column grid of mono labels over their values,
+ * codes and dates in mono. Everything the claim IS, at a glance, with nothing to save.
+ *
+ * Editing lives in {@link EmotiveClaimDataEdit}, behind the title row's "Izmeni podatke" —
+ * one form for the basics, the category's answers and the faults, and one save.
+ */
 export function EmotiveClaimBasicSection({
   claim,
-  canEdit,
-  editing: controlledEditing,
-  onEditingChange,
-  showSectionEditButton = true,
-  hideMrInReadOnly = false,
+  hideMr = false,
 }: EmotiveClaimBasicSectionProps): React.ReactElement {
-  const [editing, setEditing] = useControlledEditing(controlledEditing, onEditingChange)
-
   return (
-    <section className="flex flex-col gap-4 rounded-[14px] border border-mri-border bg-mri-surface p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-extrabold text-mri-text">
-          {m.emotive_claims_detail_section_basic()}
-        </h2>
-        {canEdit && !editing && showSectionEditButton ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1"
-            onClick={() => setEditing(true)}
-          >
-            <Pencil className="size-4" />
-            {m.emotive_claims_detail_basic_edit()}
-          </Button>
-        ) : null}
+    <InternalCard title={m.emotive_claims_detail_section_basic()}>
+      {/* Counted against the space this card actually HAS, not the window's: the sidebar and
+          the 340px right column both eat into it, and `lg:` knows about neither. The container
+          is NAMED so a descendant's own `@min-[…]` query cannot be captured by it. */}
+      <div className="@container/basics">
+        <dl className="grid gap-[15px_14px] @min-[360px]/basics:grid-cols-2 @min-[520px]/basics:grid-cols-3 @min-[700px]/basics:grid-cols-4">
+          {hideMr ? null : (
+            <ClaimDetailItem label={m.emotive_claims_col_mr_number()} value={claim.mrNumber} mono />
+          )}
+          <ClaimDetailItem
+            label={m.emotive_claims_col_claim_number()}
+            value={claim.claimNumber}
+            mono
+          />
+          <ClaimDetailItem label={m.emotive_claims_col_partner()} value={claim.customerName} />
+          <ClaimDetailItem label={m.field_claim_category()} value={claim.category?.name ?? null} />
+          <ClaimDetailItem
+            label={m.emotive_claims_detail_field_manufacturer()}
+            value={claim.manufacturerName ?? claim.engineTypeManufacturer}
+          />
+          <ClaimDetailItem
+            label={m.emotive_claims_col_engine()}
+            value={claim.engineTypeCode}
+            mono
+          />
+          <ClaimDetailItem label={m.emotive_claims_col_employee()} value={claim.employeeName} />
+          <ClaimDetailItem
+            label={m.emotive_claims_col_date_received()}
+            value={formatListDate(claim.dateOfClaim)}
+            mono
+          />
+          <ClaimDetailItem
+            label={m.emotive_claims_detail_field_engine_code()}
+            value={claim.engineCode}
+            mono
+          />
+          <ClaimDetailItem
+            label={m.emotive_claims_detail_field_source()}
+            value={resolveSource(claim)}
+          />
+          <ClaimDetailItem
+            label={m.emotive_claims_col_date_finish()}
+            value={claim.dateOfFinish ? formatListDate(claim.dateOfFinish) : null}
+            mono
+          />
+          <ClaimDetailItem
+            label={m.emotive_claims_detail_field_claim_year()}
+            value={String(claim.claimYear)}
+            mono
+          />
+        </dl>
       </div>
 
-      {editing ? (
-        <BasicEditMode claim={claim} onDone={() => setEditing(false)} />
-      ) : (
-        <BasicReadOnly claim={claim} hideMr={hideMrInReadOnly} />
-      )}
-    </section>
-  )
-}
-
-function BasicReadOnly({
-  claim,
-  hideMr = false,
-}: {
-  claim: EmotiveClaimDetail
-  hideMr?: boolean
-}): React.ReactElement {
-  return (
-    <>
-      <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        {hideMr ? null : (
-          <DetailItem label={m.emotive_claims_col_mr_number()} value={claim.mrNumber} mono />
-        )}
-        <DetailItem label={m.emotive_claims_col_claim_number()} value={claim.claimNumber} />
-        <DetailItem label={m.emotive_claims_col_partner()} value={claim.customerName} />
-        <DetailItem label={m.field_claim_category()} value={claim.category?.name ?? null} />
-        <DetailItem label={m.emotive_claims_col_engine()} value={claim.engineTypeCode} mono />
-        <DetailItem
-          label={m.emotive_claims_detail_field_manufacturer()}
-          value={claim.manufacturerName ?? claim.engineTypeManufacturer}
-        />
-        <DetailItem label={m.emotive_claims_detail_field_engine_code()} value={claim.engineCode} />
-        <DetailItem label={m.emotive_claims_detail_field_source()} value={resolveSource(claim)} />
-        <DetailItem label={m.emotive_claims_col_employee()} value={claim.employeeName} />
-        <DetailItem
-          label={m.emotive_claims_col_date_received()}
-          value={formatListDate(claim.dateOfClaim)}
-        />
-        <DetailItem
-          label={m.emotive_claims_col_date_finish()}
-          value={claim.dateOfFinish ? formatListDate(claim.dateOfFinish) : null}
-        />
-        <DetailItem
-          label={m.emotive_claims_detail_field_claim_year()}
-          value={String(claim.claimYear)}
-        />
-      </dl>
-      <div className="flex flex-col gap-1.5 text-sm">
-        <dt className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+      <div className="mt-[15px] flex flex-col gap-1">
+        <dt className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
           {m.emotive_claims_create_field_warranty_report()}
         </dt>
-        <dd className="whitespace-pre-wrap text-[14.5px] font-semibold text-mri-text">
+        <dd className="whitespace-pre-wrap text-[13px] font-semibold text-mri-text">
           {claim.warrantyReport ?? EMPTY}
         </dd>
       </div>
-    </>
+    </InternalCard>
   )
-}
-
-function BasicEditMode({
-  claim,
-  onDone,
-}: {
-  claim: EmotiveClaimDetail
-  onDone: () => void
-}): React.ReactElement {
-  const { data: customers } = useSuspenseQuery(
-    customersReferenceOptions({ kind: CustomerKind.EmotivePartner, activeOnly: true }),
-  )
-  const { data: manufacturers } = useSuspenseQuery(
-    engineManufacturersReferenceOptions({ activeOnly: true }),
-  )
-  const { data: employees } = useSuspenseQuery(assignedWorkerReferenceOptions())
-
-  const [stepErrors, setStepErrors] = useState<Record<string, string>>({})
-  const [saveError, setSaveError] = useState<string | null>(null)
-
-  const mutation = useUpdateEmotiveClaimBasic(claim.id)
-
-  const form = useForm({
-    defaultValues: claimToFormValues(claim),
-  })
-
-  const handleSave = (): void => {
-    const values = form.state.values
-    const result = emotiveClaimStepBasicSchema.safeParse(values)
-    if (!result.success) {
-      setStepErrors(formatZodFieldErrors(result.error))
-      return
-    }
-    setStepErrors({})
-    setSaveError(null)
-    mutation.mutate(formValuesToBasicEdit(values), {
-      onSuccess: () => onDone(),
-      onError: (error) => {
-        setSaveError(
-          error instanceof ApiError && error.status === 409
-            ? m.emotive_claims_detail_basic_locked_error()
-            : m.emotive_claims_detail_basic_save_error(),
-        )
-      },
-    })
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <StepBasicFields
-        form={form}
-        customers={customers}
-        employees={employees}
-        manufacturers={manufacturers}
-        orphanEngineType={
-          claim.engineTypeId && claim.engineTypeCode
-            ? { id: claim.engineTypeId, code: claim.engineTypeCode }
-            : undefined
-        }
-        currentAssignedWorkerName={claim.employeeName ?? undefined}
-        stepErrors={stepErrors}
-        disabled={mutation.isPending}
-      />
-
-      {claim.category === null ? null : (
-        <form.Subscribe
-          selector={(state) => state.values.categoryFieldValues}
-          children={(values) => (
-            <CategoryFieldsGroup
-              categoryId={claim.category?.id ?? ''}
-              categoryName={claim.category?.name ?? ''}
-              values={values}
-              onChange={(next) => form.setFieldValue('categoryFieldValues', next)}
-              disabled={mutation.isPending}
-            />
-          )}
-        />
-      )}
-
-      {saveError ? (
-        <p className="text-sm text-mri-bad" role="alert">
-          {saveError}
-        </p>
-      ) : null}
-
-      <div className="flex items-center gap-2">
-        <Button type="button" onClick={handleSave} loading={mutation.isPending}>
-          {m.emotive_claims_detail_basic_save()}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={mutation.isPending}
-          onClick={() => {
-            setStepErrors({})
-            setSaveError(null)
-            onDone()
-          }}
-        >
-          {m.emotive_claims_detail_basic_cancel()}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function claimToFormValues(claim: EmotiveClaimDetail): EmotiveClaimFormValues {
-  return {
-    ...EMOTIVE_CLAIM_FORM_DEFAULTS,
-    mrNumber: claim.mrNumber,
-    claimNumber: claim.claimNumber ?? '',
-    customerId: claim.customerId ?? '',
-    manufacturerId: claim.manufacturerId ?? '',
-    categoryId: claim.category?.id ?? '',
-    categoryFieldValues: claim.categoryFieldValues,
-    engineTypeId: claim.engineTypeId,
-    engineCode: claim.engineCode ?? '',
-    dateOfFinish: claim.dateOfFinish ?? '',
-    dateOfClaim: claim.dateOfClaim,
-    warrantyReport: claim.warrantyReport ?? '',
-    employeeId: claim.employeeId ?? '',
-  }
-}
-
-function formValuesToBasicEdit(values: EmotiveClaimFormValues): EmotiveClaimBasicEdit {
-  const claimNumber = values.claimNumber.trim()
-  const engineCode = values.engineCode.trim()
-  const dateOfFinish = values.dateOfFinish.trim()
-  const warrantyReport = values.warrantyReport.trim()
-  return {
-    mrNumber: values.mrNumber.trim(),
-    claimNumber: claimNumber === '' ? null : claimNumber,
-    customerId: values.customerId,
-    manufacturerId: values.manufacturerId.trim() === '' ? null : values.manufacturerId,
-    categoryId: values.categoryId,
-    categoryFieldValues: values.categoryFieldValues,
-    engineTypeId: values.engineTypeId,
-    engineCode: engineCode === '' ? null : engineCode,
-    dateOfClaim: values.dateOfClaim,
-    dateOfFinish: dateOfFinish === '' ? null : dateOfFinish,
-    employeeId: values.employeeId.trim() === '' ? null : values.employeeId,
-    ...(warrantyReport !== '' ? { warrantyReport } : {}),
-  }
 }
 
 function resolveSource(claim: EmotiveClaimDetail): string | null {
@@ -288,31 +95,4 @@ function resolveSource(claim: EmotiveClaimDetail): string | null {
     return `${claim.sourceName} (${claim.sourceCode})`
   }
   return claim.sourceName ?? claim.sourceCode
-}
-
-function DetailItem({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string
-  value: string | null
-  mono?: boolean
-}): ReactNode {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <dt className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
-        {label}
-      </dt>
-      <dd
-        className={
-          mono
-            ? 'font-mono text-[13px] font-semibold text-mri-text'
-            : 'text-[14.5px] font-semibold text-mri-text'
-        }
-      >
-        {value ?? EMPTY}
-      </dd>
-    </div>
-  )
 }

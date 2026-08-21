@@ -19,7 +19,7 @@ import {
 } from '@tanstack/react-table'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { RowSelectionState } from '@tanstack/react-table'
 
 import { KindPill } from '~/components/kind-pill'
@@ -60,6 +60,8 @@ export interface ClaimsTableProps {
   showCategoryColumn: boolean
   /** The category this list is, when it is one: it travels into the detail link. */
   categoryCode?: string | undefined
+  /** Rendered inside the card, under the table — the prototype keeps the pager on the card. */
+  footer?: ReactNode
 }
 
 const columnHelper = createColumnHelper<ClaimListItem>()
@@ -308,6 +310,7 @@ export function ClaimsTable({
   showCategoryColumn,
   categoryCode,
   categoryName,
+  footer,
 }: ClaimsTableProps) {
   const navigate = useNavigate()
   const { authSession } = rootRoute.useRouteContext()
@@ -430,7 +433,7 @@ export function ClaimsTable({
                     return (
                       <th
                         key={header.id}
-                        className="px-4 py-3 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2"
+                        className="whitespace-nowrap px-4 py-3 font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2"
                         aria-sort={ariaSort}
                       >
                         {header.isPlaceholder
@@ -457,10 +460,14 @@ export function ClaimsTable({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={
+                        // One line per cell, as the prototype draws it. Without this a claim
+                        // number broke into three lines and a partner into two, and a ten-row
+                        // page grew to the height of a screen and a half.
+                        className={cn(
+                          'whitespace-nowrap',
                           (cell.column.columnDef.meta as { cellClassName?: string } | undefined)
-                            ?.cellClassName ?? 'px-4 py-3'
-                        }
+                            ?.cellClassName ?? 'px-4 py-3',
+                        )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
@@ -471,6 +478,9 @@ export function ClaimsTable({
             </tbody>
           </table>
         </div>
+        {footer === undefined ? null : (
+          <div className="border-t border-mri-border px-[18px] py-[11px]">{footer}</div>
+        )}
       </div>
       <ClaimDeleteDialog
         open={deleteTarget !== null}

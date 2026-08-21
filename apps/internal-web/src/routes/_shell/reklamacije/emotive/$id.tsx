@@ -38,18 +38,18 @@ function BackLink(): React.ReactElement {
 
 function EmotiveClaimDetailPage(): React.ReactElement {
   const { id } = Route.useParams()
-  const { tab } = Route.useSearch()
+  const { tab, categoryCode } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <BackLink />
+    <div className="flex w-full max-w-[1360px] flex-col gap-6">
       <Suspense fallback={<EmotiveClaimDetailSkeleton />}>
         <EmotiveClaimDetailView
           id={id}
           tab={tab}
+          categoryCode={categoryCode}
           onTabChange={(nextTab) => {
-            void navigate({ search: { tab: nextTab } })
+            void navigate({ search: (prev) => ({ ...prev, tab: nextTab }) })
           }}
         />
       </Suspense>
@@ -59,7 +59,7 @@ function EmotiveClaimDetailPage(): React.ReactElement {
 
 function EmotiveClaimDetailPending(): React.ReactElement {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex w-full max-w-[1360px] flex-col gap-6">
       <Skeleton className="h-5 w-40" />
       <EmotiveClaimDetailSkeleton />
     </div>
@@ -99,7 +99,7 @@ function EmotiveClaimDetailError(): React.ReactElement {
   const router = useRouter()
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex w-full max-w-[1360px] flex-col gap-6">
       <BackLink />
       <div
         className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
@@ -129,7 +129,7 @@ function EmotiveClaimDetailError(): React.ReactElement {
  */
 function EmotiveClaimDetailNotFound(): React.ReactElement {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="flex w-full max-w-[1360px] flex-col gap-6">
       <BackLink />
       <div
         className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"

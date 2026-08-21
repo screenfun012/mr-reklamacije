@@ -1,15 +1,25 @@
-import { ClaimKind } from '@mr/shared'
+import { ClaimKind, type DomaceClaimDetail } from '@mr/shared'
 import { getRouteApi } from '@tanstack/react-router'
 
 import { ClaimReportTab } from '../../claim-reports/claim-report-tab.js'
+import { DomaceClaimInspectionReportSection } from './domace-claim-inspection-report-section.js'
 
 export interface DomaceClaimReportTabProps {
-  claimId: string
+  claim: DomaceClaimDetail
+  /** `domace_claims.update` — who may write the inspection report. */
+  canEditInspection: boolean
 }
 
 const rootRoute = getRouteApi('__root__')
 
-export function DomaceClaimReportTab({ claimId }: DomaceClaimReportTabProps): React.ReactElement {
+/**
+ * "Izveštaj" — the same two cards as EMOTIVE (inspection report, then the document that becomes
+ * the PDF), minus everything about publishing: a DOMAĆA claim has no portal to publish to.
+ */
+export function DomaceClaimReportTab({
+  claim,
+  canEditInspection,
+}: DomaceClaimReportTabProps): React.ReactElement {
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions ?? []
 
@@ -18,12 +28,16 @@ export function DomaceClaimReportTab({ claimId }: DomaceClaimReportTabProps): Re
   const canExport = permissions.includes('claim_reports.export')
 
   return (
-    <ClaimReportTab
-      claimKind={ClaimKind.Domace}
-      claimId={claimId}
-      canView={canView}
-      canEdit={canEdit}
-      canExport={canExport}
-    />
+    <div className="mx-auto flex w-full max-w-[920px] flex-col gap-4">
+      <DomaceClaimInspectionReportSection claim={claim} canEdit={canEditInspection} />
+
+      <ClaimReportTab
+        claimKind={ClaimKind.Domace}
+        claimId={claim.id}
+        canView={canView}
+        canEdit={canEdit}
+        canExport={canExport}
+      />
+    </div>
   )
 }
