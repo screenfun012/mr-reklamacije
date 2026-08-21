@@ -12,7 +12,6 @@ import type { SearchSchemaInput } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useCallback, useEffect, useRef } from 'react'
 
-import { internalRequireRoles } from '~/lib/auth-guard'
 import { ClaimsListContent } from '~/features/claims/claims-list-content'
 import { ClaimsRouteError, ClaimsRoutePending } from '~/features/claims/claims-route-states'
 import { pageSizeToRestore, readRememberedPageSize } from '~/features/claims/remembered-page-size'
@@ -20,7 +19,6 @@ import { pageSizeToRestore, readRememberedPageSize } from '~/features/claims/rem
 export const Route = createFileRoute('/_shell/reklamacije/')({
   // Internal app is for employees + viewers; a client session (possible in dev
   // via shared localhost cookies) must bounce to login, not error-boundary.
-  beforeLoad: internalRequireRoles(['operator', 'viewer', 'admin']),
   // `SearchSchemaInput` is the router's way of saying "a link may omit what has a default":
   // without it every `<Link>` to this route would have to repeat page and pageSize.
   validateSearch: (search: z.input<typeof ClaimsSearchSchema> & SearchSchemaInput) =>

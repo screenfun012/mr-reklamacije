@@ -1,4 +1,4 @@
-import { claimCategoryCountsOptions, CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
+import { claimCategoryCountsOptions, INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS } from '@mr/shared'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 import { InternalShell } from '~/components/layout/internal-shell'
@@ -11,7 +11,9 @@ export const Route = createFileRoute('/_shell')({
   // and would get a 403 here, so the query is not even started for him.
   loader: ({ context: { queryClient, authSession } }) => {
     const permissions = authSession?.user?.permissions ?? []
-    if (CLAIMS_LIST_VIEW_PERMISSIONS.some((permission) => permissions.includes(permission))) {
+    if (
+      INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS.some((permission) => permissions.includes(permission))
+    ) {
       void queryClient.prefetchQuery(claimCategoryCountsOptions())
     }
   },

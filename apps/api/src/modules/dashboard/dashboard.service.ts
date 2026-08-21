@@ -134,8 +134,10 @@ export class DashboardService {
    * internals (actor, IP, before/after rows).
    */
   async getClientSummary(actor: DashboardActor): Promise<ClientPortalSummary> {
-    const hasFullView = actor.permissions.includes('emotive_claims.view')
-    if (!hasFullView && !actor.permissions.includes('emotive_claims.view_own_customer')) {
+    const mayRead =
+      actor.permissions.includes('emotive_claims.view') ||
+      actor.permissions.includes('emotive_claims.view_own_customer')
+    if (!mayRead) {
       throw new ForbiddenError()
     }
 
@@ -147,9 +149,14 @@ export class DashboardService {
 
     const firms = await this.repo.getUserFirms(actor.id)
     const firmNames = firms.map((firm) => firm.name)
-    const customerIds = hasFullView ? null : firms.map((firm) => firm.id)
+    // ALWAYS the actor's own firms — a full-view actor is not exempt. This projection is the
+    // PORTAL's, and the portal is a client-only app: answering an internal reader with the whole
+    // shop's numbers is how a screen meant for one firm came to show 114 claims and somebody
+    // else's MR numbers (found 2026-08-21, the same shape as the /summary leak before it).
+    // An internal reader who wants the whole shop has /api/dashboard/summary.
+    const customerIds = firms.map((firm) => firm.id)
 
-    if (customerIds !== null && customerIds.length === 0) {
+    if (customerIds.length === 0) {
       return {
         stats: { received: 0, inProgress: 0, resolved: 0, total: 0 },
         activity: [],

@@ -4,7 +4,6 @@ import { Suspense, useCallback } from 'react'
 import {
   claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
-  INTERNAL_APP_ROLES,
   STATISTICS_VIEW_PERMISSIONS,
   StatisticsSearchSchema,
   statisticsSummaryOptions,
@@ -15,10 +14,10 @@ import { Heading } from '@mr/ui'
 import { StatistikaAnalyticsSection } from '~/features/statistika/analytics/statistika-analytics-section'
 import { StatisticsTrendChartsSkeleton } from '~/features/statistika/analytics/statistics-trend-charts-skeleton'
 import { StatistikaExportSection } from '~/features/statistika/statistika-export-section'
-import { internalRequireRoles } from '~/lib/auth-guard'
+import { internalRequireStatisticsView } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/_shell/statistika')({
-  beforeLoad: internalRequireRoles(INTERNAL_APP_ROLES),
+  beforeLoad: internalRequireStatisticsView(),
   validateSearch: (search) => StatisticsSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: ({ context: { queryClient, authSession }, deps: search }) => {

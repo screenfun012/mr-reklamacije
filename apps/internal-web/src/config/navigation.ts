@@ -1,5 +1,5 @@
 import {
-  CLAIMS_LIST_VIEW_PERMISSIONS,
+  INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS,
   INTAKE_ORDERS_VIEW_PERMISSIONS,
   STATISTICS_VIEW_PERMISSIONS,
 } from '@mr/shared'
@@ -33,7 +33,7 @@ export const internalNavItems: NavItem[] = [
     label: m.nav_pocetna,
     to: '/',
     icon: LayoutDashboard,
-    permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
+    permissions: [...INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
     key: 'pristiglo',
@@ -50,7 +50,7 @@ export const internalNavItems: NavItem[] = [
     to: '/reklamacije',
     children: 'claim-categories',
     icon: Briefcase,
-    permissions: [...CLAIMS_LIST_VIEW_PERMISSIONS],
+    permissions: [...INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS],
   },
   {
     key: 'servis',

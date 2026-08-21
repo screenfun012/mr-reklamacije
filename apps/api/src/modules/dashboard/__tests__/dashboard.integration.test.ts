@@ -558,10 +558,12 @@ describe('DashboardService integration', () => {
       expect(summary.firmNames).toEqual([secondName, firstName])
     })
 
-    it('never hands an internal full-view actor anyone else’s firm names', async () => {
-      // A full-view actor reaches the same handler and gets UNSCOPED stats; the
-      // firm names must still be their OWN links (normally none). This endpoint's
-      // twin already leaked global data to clients once — guard both directions.
+    it('hands an internal full-view actor NOTHING — not names, not numbers', async () => {
+      // This projection is the portal's, and the portal is client-only. A full-view actor
+      // reaches the same handler (the route accepts `emotive_claims.view`), and used to be
+      // answered with the WHOLE shop's counts and other firms' MR numbers in the activity
+      // feed — which is what an internal account signed in at the portal actually saw on
+      // 2026-08-21. Own links only, for everyone; the whole shop lives at /summary.
       const internalUserId = '88888888-8888-4888-8888-888888888884'
       const clientUserId = '88888888-8888-4888-8888-888888888883'
       await ensureTestUser(ctx.db, internalUserId)
@@ -574,6 +576,8 @@ describe('DashboardService integration', () => {
       })
 
       expect(summary.firmNames).toEqual([])
+      expect(summary.stats).toEqual({ received: 0, inProgress: 0, resolved: 0, total: 0 })
+      expect(summary.activity).toEqual([])
     })
 
     it('gates the routes: client passes /client-summary but NOT the internal /summary', async () => {

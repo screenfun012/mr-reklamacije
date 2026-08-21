@@ -19,11 +19,13 @@ import {
   Heading,
 } from '@mr/ui'
 
-import { internalRequireRoles } from '~/lib/auth-guard'
+import { internalRequireAppAccess } from '~/lib/auth-guard'
 import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/_shell/settings/security')({
-  beforeLoad: internalRequireRoles(['operator', 'admin']),
+  // Everyone who works in this app manages their own password and 2FA — a viewer and a
+  // serviser included. The old role list left them with no way to turn 2FA on at all.
+  beforeLoad: internalRequireAppAccess(),
   staticData: { crumb: m.nav_security },
   component: SecuritySettingsComponent,
 })

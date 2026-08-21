@@ -261,11 +261,53 @@ export const CLAIMS_LIST_VIEW_PERMISSIONS = [
   ...DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS,
 ] as const satisfies readonly Permission[]
 
+/**
+ * Who may open the INTERNAL claim screens.
+ *
+ * Deliberately WITHOUT the `view_own_customer` variants: those exist for the client portal, and
+ * the API must keep accepting them because the portal calls the same endpoints. The internal app
+ * must not. A portal client who signs in at internal.mrclaims.live used to pass the route guard
+ * on the strength of `emotive_claims.view_own_customer`, land on the internal claim screen, and
+ * find every action hidden and every request answered 403/404 — a screen that reads as broken
+ * software rather than as a door that was never theirs (found 2026-08-21).
+ *
+ * Not a role allowlist on purpose: roles are DATA — the office can build new ones in the admin
+ * panel — so the rule has to be written in permissions, which are code.
+ */
+export const INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS = [
+  'emotive_claims.view',
+] as const satisfies readonly Permission[]
+
+export const INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS = [
+  'domace_claims.view',
+] as const satisfies readonly Permission[]
+
+export const INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS = [
+  ...INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
+  ...INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
+] as const satisfies readonly Permission[]
+
 /** Permissions that allow viewing statistics analytics (API + internal-web /statistika). */
 export const STATISTICS_VIEW_PERMISSIONS = [
   'statistics.view_emotive',
   'statistics.view_domace',
   'statistics.view_overall',
+] as const satisfies readonly Permission[]
+
+/**
+ * "This account belongs in the internal app at all" — the union of every permission that opens
+ * one of its screens. Used by the screens that are not about one module (a person's own
+ * security settings), where the alternative would be a role allowlist.
+ *
+ * A role allowlist is wrong here on purpose: roles are DATA (the office builds them in the admin
+ * panel), so a freshly-made "Statistika" role would be refused by a list of role codes written
+ * in code. Permissions are code; a role is a bag of them.
+ */
+export const INTERNAL_APP_PERMISSIONS = [
+  ...INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS,
+  ...INTAKE_ORDERS_VIEW_PERMISSIONS,
+  ...STATISTICS_VIEW_PERMISSIONS,
+  'client_submissions.manage',
 ] as const satisfies readonly Permission[]
 
 export const CLIENT_PERMISSIONS: readonly Permission[] = [

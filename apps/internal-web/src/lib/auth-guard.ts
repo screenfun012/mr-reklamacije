@@ -6,10 +6,12 @@ import {
   resolveSessionPayload,
 } from '@mr/auth/route-guards'
 import {
-  CLAIMS_LIST_VIEW_PERMISSIONS,
-  DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS,
-  EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS,
   INTAKE_ORDERS_VIEW_PERMISSIONS,
+  INTERNAL_APP_PERMISSIONS,
+  STATISTICS_VIEW_PERMISSIONS,
+  INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS,
+  INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
+  INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_APP_ROLES,
 } from '@mr/shared'
 import { redirect } from '@tanstack/react-router'
@@ -23,11 +25,11 @@ export function internalRequireRoles(allowedRoles: readonly string[]) {
 }
 
 export function internalRequireClaimsListView() {
-  return requirePermissions(authClient, CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
+  return requirePermissions(authClient, INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
 }
 
 export function internalRequireEmotiveClaimsView() {
-  return requirePermissions(authClient, EMOTIVE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
+  return requirePermissions(authClient, INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS, loadServerSession)
 }
 
 export function internalRequireEmotiveClaimsCreate() {
@@ -52,7 +54,20 @@ export function internalRequireClaimsCreate() {
 }
 
 export function internalRequireDomaceClaimsView() {
-  return requirePermissions(authClient, DOMACE_CLAIMS_LIST_VIEW_PERMISSIONS, loadServerSession)
+  return requirePermissions(authClient, INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS, loadServerSession)
+}
+
+/**
+ * Any screen that belongs to the internal app but to no single module — a person's own security
+ * settings. Written in permissions rather than role codes so a role the office builds tomorrow
+ * (say "Statistika") is not locked out by a list nobody remembered to extend.
+ */
+export function internalRequireAppAccess() {
+  return requirePermissions(authClient, INTERNAL_APP_PERMISSIONS, loadServerSession)
+}
+
+export function internalRequireStatisticsView() {
+  return requirePermissions(authClient, STATISTICS_VIEW_PERMISSIONS, loadServerSession)
 }
 
 export function internalRequireClientSubmissionsManage() {
@@ -107,7 +122,7 @@ export function internalHomeGuard(): (args: RouteBeforeLoadArgs) => Promise<void
     )
 
     if (
-      !hasAny(permissions, CLAIMS_LIST_VIEW_PERMISSIONS) &&
+      !hasAny(permissions, INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS) &&
       hasAny(permissions, INTAKE_ORDERS_VIEW_PERMISSIONS)
     ) {
       throw redirect({ to: '/prijem' })
