@@ -36,10 +36,13 @@ export function EmotiveClaimDetailHeader({
   canPublish,
   onEditBasic,
 }: EmotiveClaimDetailHeaderProps): React.ReactElement {
+  // The prototype's line, in its order and words: what it IS, whose it is, when it came in and
+  // who has it (§6). The engine type is a column in the card below; it does not need repeating.
   const metaLine = formatClaimDetailMetaLine([
+    claim.claimNumber,
     claim.customerName,
-    claim.engineTypeCode,
-    formatListDate(claim.dateOfClaim),
+    m.claim_detail_meta_received({ date: formatListDate(claim.dateOfClaim) }),
+    claim.employeeName === null ? null : m.claim_detail_meta_worker({ worker: claim.employeeName }),
   ])
 
   const showEdit = canEditBasic && !editingBasic

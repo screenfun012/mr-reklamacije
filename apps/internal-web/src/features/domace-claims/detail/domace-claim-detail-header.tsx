@@ -33,10 +33,14 @@ export function DomaceClaimDetailHeader({
   canChangeOutcome,
   onEditData,
 }: DomaceClaimDetailHeaderProps): React.ReactElement {
+  // Same line as EMOTIVE (prototype §6): what it is, whose it is, when it came in, who has it.
   const metaLine = formatClaimDetailMetaLine([
+    claim.claimNumber,
     claim.customerName,
-    claim.engineTypeCode,
-    claim.dateOfClaim ? formatListDate(claim.dateOfClaim) : null,
+    claim.dateOfClaim === null
+      ? null
+      : m.claim_detail_meta_received({ date: formatListDate(claim.dateOfClaim) }),
+    claim.employeeName === null ? null : m.claim_detail_meta_worker({ worker: claim.employeeName }),
   ])
 
   const showEdit = canEditData && !editingData

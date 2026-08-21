@@ -11,6 +11,9 @@ import {
   SelectValue,
 } from '../primitives/select.js'
 
+/** 30px, radius 8 — the prototype's pager (§4). */
+const PAGER_BUTTON_CLASSES = 'size-[30px] rounded-lg'
+
 export interface ListPaginationProps {
   total: number
   page: number
@@ -79,7 +82,9 @@ export function ListPagination({
           </Select>
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        {/* Mono, uppercase — a page number is technical, and every technical value in these
+            screens is written in the same hand (prototype §0/§4). */}
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
           {m.emotive_claims_pagination_page_of({ page, totalPages })}
         </p>
 
@@ -88,7 +93,7 @@ export function ListPagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8"
+            className={PAGER_BUTTON_CLASSES}
             disabled={isFirstPage}
             aria-label={m.emotive_claims_pagination_first()}
             onClick={() => onPageChange(1)}
@@ -99,7 +104,7 @@ export function ListPagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8"
+            className={PAGER_BUTTON_CLASSES}
             disabled={isFirstPage}
             aria-label={m.emotive_claims_pagination_previous()}
             onClick={() => onPageChange(page - 1)}
@@ -110,7 +115,7 @@ export function ListPagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8"
+            className={PAGER_BUTTON_CLASSES}
             disabled={isLastPage || total === 0}
             aria-label={m.emotive_claims_pagination_next()}
             onClick={() => onPageChange(page + 1)}
@@ -121,7 +126,7 @@ export function ListPagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8"
+            className={PAGER_BUTTON_CLASSES}
             disabled={isLastPage || total === 0}
             aria-label={m.emotive_claims_pagination_last()}
             onClick={() => onPageChange(totalPages)}
