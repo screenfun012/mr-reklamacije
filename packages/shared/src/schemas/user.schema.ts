@@ -33,9 +33,21 @@ export const UserListItemSchema = z.object({
   requestedCompany: z.string().nullable(),
   /** false = deactivated: kept in the list but blocked from signing in. */
   isActive: z.boolean(),
+  /**
+   * The firms a CLIENT account speaks for — empty for staff. This is what the portal's
+   * own-customer scope reads, so it is the difference between a client seeing their engines and
+   * seeing somebody else's; the admin list shows it for that reason.
+   *
+   * Defaulted so a payload from an older server reads as "no links" instead of failing the
+   * whole users screen.
+   */
+  customers: z.array(z.object({ id: z.string().uuid(), name: z.string() })).default([]),
 })
 
 export type UserListItem = z.infer<typeof UserListItemSchema>
+
+/** One firm a client account is linked to. */
+export type UserCustomerLink = UserListItem['customers'][number]
 
 /**
  * Account-status PATCH response: the user plus, when a client was just approved,
@@ -196,3 +208,19 @@ export const UserRolesReplaceInputSchema = z.object({
 })
 
 export type UserRolesReplaceInput = z.infer<typeof UserRolesReplaceInputSchema>
+
+/**
+ * Which firms a CLIENT account speaks for. At least one on purpose: a client with no firm has
+ * no scope at all and opens a portal that shows nothing — the approve transaction refuses the
+ * same thing for the same reason.
+ */
+export const UserCustomerLinksReplaceInputSchema = z.object({
+  customerIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Duplicate customer ids are not allowed',
+    }),
+})
+
+export type UserCustomerLinksReplaceInput = z.infer<typeof UserCustomerLinksReplaceInputSchema>

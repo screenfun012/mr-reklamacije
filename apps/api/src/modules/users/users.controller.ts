@@ -7,6 +7,7 @@ import {
   UserAccountStatusPatchInputSchema,
   UserIdParamSchema,
   UserPasswordResetInputSchema,
+  UserCustomerLinksReplaceInputSchema,
   UserRolesReplaceInputSchema,
   UserSetActiveInputSchema,
   UsersListQuerySchema,
@@ -50,6 +51,24 @@ export function createUsersController(container: Container) {
         ...getActorContext(c, user),
         permissions: user.permissions ?? [],
       })
+
+      return c.json(updated)
+    },
+
+    replaceCustomerLinks: async (c: Context) => {
+      const user = c.get('user')
+      if (user === null) {
+        throw new UnauthorizedError()
+      }
+
+      const { id } = UserIdParamSchema.parse({ id: c.req.param('id') })
+      const body: unknown = await c.req.json()
+      const input = UserCustomerLinksReplaceInputSchema.parse(body)
+      const updated = await container.usersService.replaceCustomerLinks(
+        id,
+        input,
+        getActorContext(c, user),
+      )
 
       return c.json(updated)
     },

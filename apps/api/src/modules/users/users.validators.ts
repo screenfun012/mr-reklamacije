@@ -1,6 +1,7 @@
 export {
   UserAccountStatusPatchInputSchema,
   UserAccountStatusResultSchema,
+  UserCustomerLinksReplaceInputSchema,
   UserIdParamSchema,
   UserListItemSchema,
   UserListResponseSchema,
@@ -10,6 +11,8 @@ export {
   UsersListQuerySchema,
   type UserAccountStatusPatchInput,
   type UserAccountStatusResult,
+  type UserCustomerLink,
+  type UserCustomerLinksReplaceInput,
   type UserIdParam,
   type UserListItem,
   type UserListResponse,

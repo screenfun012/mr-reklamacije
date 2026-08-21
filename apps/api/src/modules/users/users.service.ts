@@ -26,6 +26,7 @@ import type {
   UserListItem,
   UserListResponse,
   UserPasswordResetInput,
+  UserCustomerLinksReplaceInput,
   UserRolesReplaceInput,
   UserSetActiveInput,
   UsersListQuery,
@@ -287,6 +288,61 @@ export class UsersService {
     await this.revokeTargetSessionsAfterRoleChange(id, actor.actorUserId)
 
     return updated
+  }
+
+  /**
+   * Which firms a client account speaks for. The same rules the approve transaction applies, for
+   * the same reason: the links are what the portal's own-customer scope reads, so a wrong one
+   * shows a client somebody else's engines — or, just as bad, nothing at all.
+   *
+   * Client accounts only. A staff account carrying a firm link would hold internal rights and a
+   * customer scope at once, which is exactly the combination `UserAccountStatusPatchInputSchema`
+   * refuses at approval.
+   */
+  async replaceCustomerLinks(
+    id: string,
+    input: UserCustomerLinksReplaceInput,
+    actor: HttpActorContext,
+  ): Promise<UserListItem> {
+    const target = await this.repo.findAccountStatusById(id)
+    if (target === null) {
+      throw new NotFoundError('User', id)
+    }
+
+    if (isProtectedSuperAdminEmail(target.email, this.protectedSuperAdminEmail)) {
+      throw new ForbiddenError('Zaštićeni super-admin nalog ne može biti izmenjen.')
+    }
+
+    if (target.accountStatus !== UserAccountStatus.Approved) {
+      throw new UnprocessableEntityError('Firme se mogu menjati samo odobrenim nalozima.')
+    }
+
+    if (!target.roles.includes(SYSTEM_ROLE_CLIENT)) {
+      throw new UnprocessableEntityError('Samo klijentski nalog može biti vezan za firmu.')
+    }
+
+    const before = await this.repo.findCustomerLinks(id)
+    await this.repo.replaceCustomerLinks(id, input.customerIds, actor.actorUserId)
+    const after = await this.repo.findCustomerLinks(id)
+
+    await this.audit.log({
+      entityType: 'user',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: actor.actorUserId,
+      actorIp: actor.actorIp,
+      actorUserAgent: actor.actorUserAgent,
+      // Names, not ids: the audit screen is read by people, and a row of uuids says nothing
+      // about which firm somebody was moved to.
+      changes: {
+        before: { customers: before.map((firm) => firm.name) },
+        after: { customers: after.map((firm) => firm.name) },
+      },
+    })
+
+    this.eventBus.publishResourceChanged(ResourceChangedKey.Users)
+
+    return target
   }
 
   async resetPassword(

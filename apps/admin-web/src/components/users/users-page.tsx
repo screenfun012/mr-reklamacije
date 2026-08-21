@@ -5,6 +5,7 @@ import {
   formatListDateTime,
   isProtectedSuperAdminEmail,
   patchUserAccountStatus,
+  patchUserCustomerLinks,
   patchUserRoles,
   resendClientActivation,
   resetUserPassword,
@@ -40,6 +41,7 @@ import { UserAccountStatusBadge } from './user-account-status-badge'
 import { UserApproveDialog } from './user-approve-dialog'
 import { UserPasswordResetDialog } from './user-password-reset-dialog'
 import { UserRolesBadges } from './user-roles-badges'
+import { UserCustomersEditDialog } from './user-customers-edit-dialog'
 import { UserRolesEditDialog } from './user-roles-edit-dialog'
 
 function canEditUserRoles(user: UserListItem, currentUserId: string | undefined): boolean {
@@ -62,11 +64,13 @@ function UsersTable({
   items,
   currentUserId,
   onEditRoles,
+  onEditCustomers,
   onResetPassword,
   onResendActivation,
   onDeactivate,
   onReactivate,
   rolesEditDisabled,
+  customersEditDisabled,
   passwordResetDisabled,
   resendActivationDisabled,
   setActiveDisabled,
@@ -77,11 +81,13 @@ function UsersTable({
   items: readonly UserListItem[]
   currentUserId: string | undefined
   onEditRoles: (user: UserListItem) => void
+  onEditCustomers: (user: UserListItem) => void
   onResetPassword: (user: UserListItem) => void
   onResendActivation: (user: UserListItem) => void
   onDeactivate: (user: UserListItem) => void
   onReactivate: (user: UserListItem) => void
   rolesEditDisabled: boolean
+  customersEditDisabled: boolean
   passwordResetDisabled: boolean
   resendActivationDisabled: boolean
   setActiveDisabled: boolean
@@ -159,7 +165,18 @@ function UsersTable({
                       </div>
                     </td>
                     <td className={dataTableCellClassName}>
-                      <UserRolesBadges roles={user.roles} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <UserRolesBadges roles={user.roles} />
+                        {user.customers.map((customer) => (
+                          <span
+                            key={customer.id}
+                            title={m.users_col_customers()}
+                            className="rounded-full bg-adm-teal/15 px-2.5 py-[3px] text-[11px] font-semibold text-adm-teal"
+                          >
+                            {customer.name}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td
                       className={`${dataTableCellClassName} font-mono text-[11px] font-medium text-muted-foreground`}
@@ -187,7 +204,18 @@ function UsersTable({
                           >
                             {m.users_reset_password_button()}
                           </button>
-                          {isClient ? null : (
+                          {isClient ? (
+                            // A client's rights are fixed; what CAN change is which firm the
+                            // account speaks for — and until this button existed that took SQL.
+                            <button
+                              type="button"
+                              className={`${rowActionClassName} bg-adm-inbg`}
+                              disabled={customersEditDisabled}
+                              onClick={() => onEditCustomers(user)}
+                            >
+                              {m.users_customers_edit_button()}
+                            </button>
+                          ) : (
                             <button
                               type="button"
                               className={`${rowActionClassName} bg-adm-inbg`}
@@ -244,6 +272,7 @@ export function UsersPageContent(): ReactElement {
   const { data: users } = useSuspenseQuery(usersListOptions())
   const [approveTarget, setApproveTarget] = useState<UserListItem | null>(null)
   const [rolesEditTarget, setRolesEditTarget] = useState<UserListItem | null>(null)
+  const [customersEditTarget, setCustomersEditTarget] = useState<UserListItem | null>(null)
   const [passwordResetTarget, setPasswordResetTarget] = useState<UserListItem | null>(null)
   const [rejectTarget, setRejectTarget] = useState<UserListItem | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<UserListItem | null>(null)
@@ -354,6 +383,23 @@ export function UsersPageContent(): ReactElement {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: usersListQueryKey() })
+    },
+  })
+
+  const customersMutation = useMutation({
+    mutationFn: ({ userId, customerIds }: { userId: string; customerIds: string[] }) =>
+      patchUserCustomerLinks(userId, { customerIds }),
+    onError: () => {
+      toast.error(m.users_customers_edit_error())
+    },
+    onSuccess: () => {
+      setCustomersEditTarget(null)
+      toast.success(m.users_customers_edit_success())
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: usersListQueryKey() })
+      // The link raises a customer's usageCount, which the catalogue screen prints.
+      void queryClient.invalidateQueries({ queryKey: ['customers'] })
     },
   })
 
@@ -488,6 +534,20 @@ export function UsersPageContent(): ReactElement {
         onConfirm={handleRolesEditConfirm}
       />
 
+      <UserCustomersEditDialog
+        user={customersEditTarget}
+        open={customersEditTarget !== null}
+        pending={customersMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCustomersEditTarget(null)
+          }
+        }}
+        onConfirm={(user, customerIds) =>
+          customersMutation.mutate({ userId: user.id, customerIds })
+        }
+      />
+
       <UserPasswordResetDialog
         user={passwordResetTarget}
         open={passwordResetTarget !== null}
@@ -569,11 +629,13 @@ export function UsersPageContent(): ReactElement {
           items={filteredOtherUsers}
           currentUserId={currentUserId}
           onEditRoles={setRolesEditTarget}
+          onEditCustomers={setCustomersEditTarget}
           onResetPassword={setPasswordResetTarget}
           onResendActivation={handleResendActivation}
           onDeactivate={handleDeactivateClick}
           onReactivate={handleReactivate}
           rolesEditDisabled={rolesMutation.isPending}
+          customersEditDisabled={customersMutation.isPending}
           passwordResetDisabled={passwordMutation.isPending}
           resendActivationDisabled={resendActivationMutation.isPending}
           setActiveDisabled={setActiveMutation.isPending}

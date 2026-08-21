@@ -17,7 +17,12 @@ import {
   userRoles,
   users,
 } from './users.schema.js'
-import type { UserListItem, UserListResponse, UsersListQuery } from './users.validators.js'
+import type {
+  UserCustomerLink,
+  UserListItem,
+  UserListResponse,
+  UsersListQuery,
+} from './users.validators.js'
 
 /**
  * Exact created_at as Postgres text — the keyset cursor value. Comparing text
@@ -47,7 +52,11 @@ interface UserRow {
   isActive: boolean
 }
 
-function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
+function mapUserRow(
+  row: UserRow,
+  roleCodes: readonly string[],
+  customers: readonly UserCustomerLink[] = [],
+): UserListItem {
   return {
     id: row.id,
     email: row.email,
@@ -57,6 +66,10 @@ function mapUserRow(row: UserRow, roleCodes: readonly string[]): UserListItem {
     roles: [...roleCodes],
     requestedCompany: row.requestedCompany,
     isActive: row.isActive,
+    // Which firms a client speaks for. On the LIST because that is where the question is asked:
+    // an account approved onto the wrong firm looked identical to a correct one until somebody
+    // signed in and saw the wrong engines (2026-08-21).
+    customers: [...customers],
   }
 }
 
@@ -103,10 +116,16 @@ export class UsersRepository {
       id: row.id,
     }))
 
-    const roleCodesByUserId = await this.loadRoleCodesByUserIds(page.items.map((row) => row.id))
+    const userIds = page.items.map((row) => row.id)
+    const [roleCodesByUserId, customersByUserId] = await Promise.all([
+      this.loadRoleCodesByUserIds(userIds),
+      this.loadCustomersByUserIds(userIds),
+    ])
 
     return {
-      items: page.items.map((row) => mapUserRow(row, roleCodesByUserId.get(row.id) ?? [])),
+      items: page.items.map((row) =>
+        mapUserRow(row, roleCodesByUserId.get(row.id) ?? [], customersByUserId.get(row.id) ?? []),
+      ),
       nextCursor: page.nextCursor,
       hasMore: page.hasMore,
     }
@@ -123,9 +142,12 @@ export class UsersRepository {
       return null
     }
 
-    const roleCodesByUserId = await this.loadRoleCodesByUserIds([row.id])
+    const [roleCodesByUserId, customersByUserId] = await Promise.all([
+      this.loadRoleCodesByUserIds([row.id]),
+      this.loadCustomersByUserIds([row.id]),
+    ])
 
-    return mapUserRow(row, roleCodesByUserId.get(row.id) ?? [])
+    return mapUserRow(row, roleCodesByUserId.get(row.id) ?? [], customersByUserId.get(row.id) ?? [])
   }
 
   async findActivationUserById(id: string): Promise<ActivatableUser | null> {
@@ -327,6 +349,64 @@ export class UsersRepository {
   }
 
   /**
+   * Replace which firms a client account speaks for. The links are what the own-customer scope
+   * reads, so this is the one thing that decides which claims a portal login sees.
+   *
+   * Until now they could only be written INSIDE the approve transaction, which meant a wrong
+   * pick at approval could be corrected only in SQL (found 2026-08-21: an account approved onto
+   * the wrong firm). Replace-all rather than add/remove: the office thinks in "this account
+   * belongs to these firms", and a diff API invites half-applied states.
+   *
+   * The customers are validated BEFORE any write, so an invalid one leaves the old links intact.
+   */
+  async replaceCustomerLinks(
+    id: string,
+    customerIds: readonly string[],
+    assignedBy: string,
+  ): Promise<readonly string[]> {
+    return this.db.transaction(async (tx) => {
+      const uniqueCustomerIds = [...new Set(customerIds)]
+
+      const linkable = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(
+          and(
+            inArray(customers.id, uniqueCustomerIds),
+            eq(customers.kind, CustomerKind.EmotivePartner),
+            eq(customers.isActive, true),
+            isNull(customers.deletedAt),
+          ),
+        )
+
+      if (linkable.length !== uniqueCustomerIds.length) {
+        throw new ValidationError('Jedna ili više izabranih firmi nije validna.')
+      }
+
+      await tx.delete(customerUsers).where(eq(customerUsers.userId, id))
+      await tx.insert(customerUsers).values(
+        uniqueCustomerIds.map((customerId) => ({
+          customerId,
+          userId: id,
+          assignedBy,
+        })),
+      )
+
+      return uniqueCustomerIds
+    })
+  }
+
+  /** The firms a client account speaks for today — names included, for the audit entry. */
+  async findCustomerLinks(id: string): Promise<readonly { id: string; name: string }[]> {
+    return this.db
+      .select({ id: customers.id, name: customers.name })
+      .from(customerUsers)
+      .innerJoin(customers, eq(customers.id, customerUsers.customerId))
+      .where(eq(customerUsers.userId, id))
+      .orderBy(customers.name)
+  }
+
+  /**
    * Every action the named sets carry, for the "you cannot hand out what you do not hold" check in
    * the service. Live sets only — a soft-deleted one grants nothing, and the two assignment paths
    * refuse an unknown code on their own, so a missing row here simply contributes no actions.
@@ -343,6 +423,30 @@ export class UsersRepository {
       .where(and(inArray(roles.code, [...roleCodes]), isNull(roles.deletedAt)))
 
     return rows.map((row) => row.permissionId)
+  }
+
+  private async loadCustomersByUserIds(
+    userIds: readonly string[],
+  ): Promise<Map<string, UserCustomerLink[]>> {
+    if (userIds.length === 0) {
+      return new Map()
+    }
+
+    const rows = await this.db
+      .select({ userId: customerUsers.userId, id: customers.id, name: customers.name })
+      .from(customerUsers)
+      .innerJoin(customers, eq(customers.id, customerUsers.customerId))
+      .where(inArray(customerUsers.userId, [...userIds]))
+      .orderBy(customers.name)
+
+    const byUserId = new Map<string, UserCustomerLink[]>()
+    for (const row of rows) {
+      const existing = byUserId.get(row.userId) ?? []
+      existing.push({ id: row.id, name: row.name })
+      byUserId.set(row.userId, existing)
+    }
+
+    return byUserId
   }
 
   private async loadRoleCodesByUserIds(userIds: readonly string[]): Promise<Map<string, string[]>> {

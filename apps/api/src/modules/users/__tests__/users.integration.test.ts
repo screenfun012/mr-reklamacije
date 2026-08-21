@@ -306,16 +306,25 @@ const PENDING_CLIENT_NO_CUSTOMER_ID = '22222222-2222-4222-8222-222222222232'
 const PENDING_CLIENT_BAD_CUSTOMER_ID = '22222222-2222-4222-8222-222222222233'
 const PENDING_CLIENT_NO_PERM_ID = '22222222-2222-4222-8222-222222222234'
 const PENDING_OPERATOR_WITH_CUSTOMER_ID = '22222222-2222-4222-8222-222222222235'
+const SECOND_CUSTOMER_ID = '77777777-7777-4777-8777-777777777778'
 
 async function seedLinkableCustomer(db: TestDbContext['db']): Promise<void> {
   await db
     .insert(schema.customers)
-    .values({
-      id: LINKABLE_CUSTOMER_ID,
-      kind: CustomerKind.EmotivePartner,
-      name: 'Bosch GmbH',
-      isActive: true,
-    })
+    .values([
+      {
+        id: LINKABLE_CUSTOMER_ID,
+        kind: CustomerKind.EmotivePartner,
+        name: 'Bosch GmbH',
+        isActive: true,
+      },
+      {
+        id: SECOND_CUSTOMER_ID,
+        kind: CustomerKind.EmotivePartner,
+        name: 'Alfa Motors',
+        isActive: true,
+      },
+    ])
     .onConflictDoNothing()
 }
 
@@ -439,6 +448,151 @@ describe.sequential('Users module', () => {
 
       const firstIds = new Set(firstPage.items.map((item) => item.id))
       expect(secondPage.items.some((item) => firstIds.has(item.id))).toBe(false)
+    })
+  })
+
+  describe('when changing which firms a client speaks for', () => {
+    const CLIENT_ID = '44444444-4444-4444-8444-444444444401'
+
+    async function seedLinkedClient(): Promise<void> {
+      await seedLinkableCustomer(ctx.db)
+      await seedApprovedUserWithId(ctx.db, CLIENT_ID, 'linked-client@mrengines.rs', 'Linked Client')
+      await assignRole(ctx.db, CLIENT_ID, SYSTEM_ROLE_CLIENT, TEST_USER_ID)
+      await ctx.db
+        .insert(schema.customerUsers)
+        .values({ userId: CLIENT_ID, customerId: LINKABLE_CUSTOMER_ID, assignedBy: TEST_USER_ID })
+        .onConflictDoNothing()
+    }
+
+    async function putCustomers(
+      app: ReturnType<typeof createUsersTestApp>,
+      userId: string,
+      customerIds: string[],
+    ): Promise<Response> {
+      return app.request(`/api/users/${userId}/customers`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerIds }),
+      })
+    }
+
+    async function linkedCustomerIds(userId: string): Promise<string[]> {
+      const rows = await ctx.db
+        .select({ customerId: schema.customerUsers.customerId })
+        .from(schema.customerUsers)
+        .where(eq(schema.customerUsers.userId, userId))
+      return rows.map((row) => row.customerId).sort()
+    }
+
+    it('moves a client from one firm to another and audits it by NAME', async () => {
+      await seedLinkedClient()
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await putCustomers(app, CLIENT_ID, [SECOND_CUSTOMER_ID])
+
+      expect(response.status).toBe(200)
+      expect(await linkedCustomerIds(CLIENT_ID)).toEqual([SECOND_CUSTOMER_ID])
+
+      const auditRows = await ctx.db
+        .select()
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, CLIENT_ID))
+      const entry = auditRows.find(
+        (row) =>
+          row.changes !== null &&
+          typeof row.changes === 'object' &&
+          'after' in (row.changes as Record<string, unknown>) &&
+          'customers' in ((row.changes as Record<string, Record<string, unknown>>)['after'] ?? {}),
+      )
+      expect(entry).toBeDefined()
+      const changes = entry?.changes as { before: unknown; after: unknown }
+      // Names, not uuids: the audit screen is read by people.
+      expect(changes.before).toEqual({ customers: ['Bosch GmbH'] })
+      expect(changes.after).toEqual({ customers: ['Alfa Motors'] })
+    })
+
+    it('refuses an unknown firm and leaves the existing link untouched', async () => {
+      await seedLinkedClient()
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await putCustomers(app, CLIENT_ID, [MISSING_CUSTOMER_ID])
+
+      expect(response.status).toBe(400)
+      // A bad pick must not disconnect the client from the firm they already had. What
+      // guarantees it is the TRANSACTION, not the order of the statements inside it — moving
+      // the delete above the check leaves this test green, because the throw rolls it back.
+      expect(await linkedCustomerIds(CLIENT_ID)).toEqual([LINKABLE_CUSTOMER_ID])
+    })
+
+    it('refuses a staff account — a firm link there would mean internal rights AND a customer scope', async () => {
+      await seedLinkableCustomer(ctx.db)
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await putCustomers(app, APPROVED_USER_ID, [LINKABLE_CUSTOMER_ID])
+
+      expect(response.status).toBe(422)
+      expect(await linkedCustomerIds(APPROVED_USER_ID)).toEqual([])
+    })
+
+    it('refuses an empty list — a client with no firm sees an empty portal', async () => {
+      await seedLinkedClient()
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await putCustomers(app, CLIENT_ID, [])
+
+      expect(response.status).toBe(400)
+      expect(await linkedCustomerIds(CLIENT_ID)).toEqual([LINKABLE_CUSTOMER_ID])
+    })
+
+    it('refuses a caller without customers.link_users', async () => {
+      await seedLinkedClient()
+      const app = createUsersTestApp(container, testUser([...ADMIN_USER_PERMISSIONS], TEST_USER_ID))
+
+      const response = await putCustomers(app, CLIENT_ID, [SECOND_CUSTOMER_ID])
+
+      expect(response.status).toBe(403)
+      expect(await linkedCustomerIds(CLIENT_ID)).toEqual([LINKABLE_CUSTOMER_ID])
+    })
+
+    it('refuses the protected super-admin', async () => {
+      await seedLinkableCustomer(ctx.db)
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await putCustomers(app, PROTECTED_SUPER_ADMIN_ID, [LINKABLE_CUSTOMER_ID])
+
+      expect(response.status).toBe(403)
+    })
+
+    it('reports the firms on the users list, so a wrong one is visible without signing in', async () => {
+      await seedLinkedClient()
+      const app = createUsersTestApp(
+        container,
+        testUser([...CLIENT_APPROVE_PERMISSIONS], TEST_USER_ID),
+      )
+
+      const response = await app.request('/api/users?limit=50')
+      expect(response.status).toBe(200)
+
+      const body = (await response.json()) as {
+        items: Array<{ id: string; customers: Array<{ name: string }> }>
+      }
+      const client = body.items.find((item) => item.id === CLIENT_ID)
+      expect(client?.customers.map((firm) => firm.name)).toEqual(['Bosch GmbH'])
     })
   })
 

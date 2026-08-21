@@ -145,6 +145,7 @@ export {
 export {
   buildAccountStatusPatchBody,
   patchUserAccountStatus,
+  patchUserCustomerLinks,
   patchUserRoles,
   resendClientActivation,
   resetUserPassword,

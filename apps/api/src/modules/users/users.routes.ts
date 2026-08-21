@@ -20,6 +20,13 @@ export function registerUsersRoutes(
     controller.updateAccountStatus,
   )
   routes.put('/:id/roles', requirePermission('roles.assign'), controller.replaceRoles)
+  // The firm a client speaks for, after approval. Same key as linking one AT approval
+  // (`customers.link_users`) — one door, one owner.
+  routes.put(
+    '/:id/customers',
+    requirePermission('customers.link_users'),
+    controller.replaceCustomerLinks,
+  )
   routes.patch('/:id/active', requirePermission('users.deactivate'), controller.setActive)
   routes.post(
     '/:id/reset-password',

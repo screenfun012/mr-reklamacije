@@ -10,6 +10,7 @@ import type {
   UserAccountStatusResult,
   UserListItem,
   UserPasswordResetInput,
+  UserCustomerLinksReplaceInput,
   UserRolesReplaceInput,
   UserSetActiveInput,
 } from '../schemas/user.schema.js'
@@ -81,6 +82,18 @@ export async function patchUserRoles(
   input: UserRolesReplaceInput,
 ): Promise<UserListItem> {
   return fetchJson<UserListItem>(`/api/users/${userId}/roles`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+/** Replace which firms a CLIENT account speaks for (admin panel; `customers.link_users`). */
+export async function patchUserCustomerLinks(
+  userId: string,
+  input: UserCustomerLinksReplaceInput,
+): Promise<UserListItem> {
+  return fetchJson<UserListItem>(`/api/users/${userId}/customers`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
