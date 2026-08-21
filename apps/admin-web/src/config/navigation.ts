@@ -15,8 +15,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Tags,
-  TriangleAlert,
-  Truck,
   Users,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -39,7 +37,6 @@ export interface NavItem {
    * The screen exists in the menu but the catalogue behind it does not yet — it opens a page that
    * says so. Two entries carry it (`admin-prototip.dc.html` draws them; Nikola, 19.08.2026).
    */
-  comingSoon?: true
 }
 
 export interface NavGroup {
@@ -161,20 +158,6 @@ export const adminNavGroups: NavGroup[] = [
         label: m.nav_intake_checklist,
         to: '/settings/intake-checklist',
         icon: ClipboardCheck,
-      },
-      {
-        key: 'intake-damage-types',
-        label: m.nav_intake_damage_types,
-        to: '/settings/intake-damage-types',
-        icon: TriangleAlert,
-        comingSoon: true,
-      },
-      {
-        key: 'intake-arrival-modes',
-        label: m.nav_intake_arrival_modes,
-        to: '/settings/intake-arrival-modes',
-        icon: Truck,
-        comingSoon: true,
       },
     ],
   },
