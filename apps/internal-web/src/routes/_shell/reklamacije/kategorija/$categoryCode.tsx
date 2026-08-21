@@ -32,13 +32,17 @@ export const Route = createFileRoute('/_shell/reklamacije/kategorija/$categoryCo
     const filters = { ...claimsFiltersFromSearch(search), categoryCode }
     const { page, pageSize } = claimsPaginationFromSearch(search)
 
-    await Promise.all([
+    const [, counts] = await Promise.all([
       queryClient.ensureQueryData(
         claimsListOptions(filters, page, pageSize, claimsSortFromSearch(search)),
       ),
       queryClient.ensureQueryData(claimCategoryCountsOptions()),
       queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
     ])
+
+    // The trail's last part is data, not a fixed word — a category the reader cannot see leaves
+    // it empty rather than printing a raw code at them.
+    return { crumb: counts.items.find((item) => item.code === categoryCode)?.name ?? '' }
   },
   component: KategorijaComponent,
   pendingComponent: ClaimsRoutePending,

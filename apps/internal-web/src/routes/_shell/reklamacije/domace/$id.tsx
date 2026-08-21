@@ -17,6 +17,7 @@ export const Route = createFileRoute('/_shell/reklamacije/domace/$id')({
     // 6 concurrent requests per claim open, starving the claim's own fetch.
     await ensureFound(queryClient.ensureQueryData(domaceClaimDetailOptions(id)))
   },
+  staticData: { crumb: m.crumb_detail },
   component: DomaceClaimDetailPage,
   pendingComponent: DomaceClaimDetailPending,
   errorComponent: DomaceClaimDetailError,

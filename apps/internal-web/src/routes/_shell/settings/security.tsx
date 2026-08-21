@@ -24,6 +24,7 @@ import { authClient } from '~/lib/auth-client'
 
 export const Route = createFileRoute('/_shell/settings/security')({
   beforeLoad: internalRequireRoles(['operator', 'admin']),
+  staticData: { crumb: m.nav_security },
   component: SecuritySettingsComponent,
 })
 

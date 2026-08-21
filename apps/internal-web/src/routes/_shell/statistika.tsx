@@ -37,6 +37,7 @@ export const Route = createFileRoute('/_shell/statistika')({
 
     return null
   },
+  staticData: { crumb: m.nav_statistika },
   component: StatistikaComponent,
 })
 

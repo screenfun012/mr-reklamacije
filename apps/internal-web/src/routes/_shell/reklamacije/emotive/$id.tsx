@@ -17,6 +17,7 @@ export const Route = createFileRoute('/_shell/reklamacije/emotive/$id')({
     // 6 concurrent requests per claim open, starving the claim's own fetch.
     await ensureFound(queryClient.ensureQueryData(emotiveClaimDetailOptions(id)))
   },
+  staticData: { crumb: m.crumb_detail },
   component: EmotiveClaimDetailPage,
   pendingComponent: EmotiveClaimDetailPending,
   errorComponent: EmotiveClaimDetailError,

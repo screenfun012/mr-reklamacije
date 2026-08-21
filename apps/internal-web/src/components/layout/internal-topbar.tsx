@@ -1,30 +1,11 @@
 import { m } from '@mr/i18n'
-import { useRouterState } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 
 import { InternalLogo } from '~/components/masked-icon'
 import { LocaleThemeControls } from './locale-theme-controls'
 import { InternalUserChip } from './internal-user-chip'
 import { NotificationBell } from '~/features/notifications/notification-bell'
-
-function sectionLabel(pathname: string): string {
-  if (pathname.startsWith('/reklamacije')) {
-    return m.nav_reklamacije()
-  }
-  if (pathname.startsWith('/statistika')) {
-    return m.nav_statistika()
-  }
-  if (pathname.startsWith('/pristiglo')) {
-    return m.nav_pristiglo()
-  }
-  if (pathname.startsWith('/prijem')) {
-    return m.nav_prijem_vozila()
-  }
-  if (pathname.startsWith('/settings')) {
-    return m.nav_security()
-  }
-  return m.nav_pocetna()
-}
+import { InternalBreadcrumbs } from './internal-breadcrumbs'
 
 /**
  * Full-width sticky header: logo + app name (always visible), the current
@@ -48,8 +29,6 @@ export interface InternalTopbarProps {
 }
 
 export function InternalTopbar({ onToggleSidebar, showSidebarToggle, user }: InternalTopbarProps) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
-
   return (
     <header className="sticky top-0 z-30 border-b border-mri-border bg-mri-hdr backdrop-blur-[14px]">
       {/* Inner row = the occupied height minus this header's own 1px bottom border, so
@@ -72,15 +51,7 @@ export function InternalTopbar({ onToggleSidebar, showSidebarToggle, user }: Int
           </span>
         </div>
         <span aria-hidden="true" className="hidden h-5 w-px bg-mri-border sm:block" />
-        {/*
-          Hidden below `sm` like the eyebrow and the divider beside it. It is the one item in
-          this row that neither shrinks nor wraps, and at phone width it pushed the whole
-          header past the viewport — the page scrolled sideways on every screen (measured
-          2026-07-26: 64px over on /reklamacije). The page's own H1 says the same thing.
-        */}
-        <span className="hidden font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] text-mri-text2 sm:inline">
-          {sectionLabel(pathname)}
-        </span>
+        <InternalBreadcrumbs />
         <div className="ml-auto flex items-center gap-1.5">
           <NotificationBell />
           <LocaleThemeControls />

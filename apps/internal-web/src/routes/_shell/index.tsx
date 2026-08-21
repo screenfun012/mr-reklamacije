@@ -14,6 +14,7 @@ import { internalHomeGuard } from '~/lib/auth-guard'
 export const Route = createFileRoute('/_shell/')({
   beforeLoad: internalHomeGuard(),
   loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(dashboardSummaryOptions()),
+  staticData: { crumb: m.nav_pocetna },
   component: HomeComponent,
   pendingComponent: DashboardSkeleton,
   errorComponent: HomeError,

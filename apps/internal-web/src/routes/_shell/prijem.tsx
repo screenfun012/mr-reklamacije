@@ -1,3 +1,4 @@
+import { m } from '@mr/i18n'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 import { internalRequireIntakeOrdersView } from '~/lib/auth-guard'
@@ -9,5 +10,6 @@ import { internalRequireIntakeOrdersView } from '~/lib/auth-guard'
  */
 export const Route = createFileRoute('/_shell/prijem')({
   beforeLoad: internalRequireIntakeOrdersView(),
+  staticData: { crumb: m.nav_prijem_vozila },
   component: Outlet,
 })
