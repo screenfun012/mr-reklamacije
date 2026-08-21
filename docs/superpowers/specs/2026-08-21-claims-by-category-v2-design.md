@@ -1,6 +1,6 @@
 # Reklamacije po kategorijama — V2 (dizajn)
 
-**Status:** predlog v2, čeka Nikolin pregled · **Datum:** 21.08.2026 · **Aplikacije:** `internal-web` + `admin-web` + `api` + `db`
+**Status:** ODOBREN (Nikola, 21.08.2026 — šifarnik polja i seed potvrđeni) · **Datum:** 21.08.2026 · **Aplikacije:** `internal-web` + `admin-web` + `api` + `db`
 
 **Izvori istine, po prvenstvu:**
 
