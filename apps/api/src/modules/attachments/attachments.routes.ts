@@ -22,7 +22,6 @@ export function registerAttachmentsRoutes(
   routes.post('/upload', requirePermission('attachments.upload'), controller.upload)
   routes.get('/raw', controller.raw)
   routes.get('/:id/download', viewAttachmentPermissions, controller.download)
-  routes.get('/:id/signed-url', viewAttachmentPermissions, controller.signedUrl)
   routes.delete(
     '/:id',
     requirePermissions('attachments.delete_own', 'attachments.delete_any'),

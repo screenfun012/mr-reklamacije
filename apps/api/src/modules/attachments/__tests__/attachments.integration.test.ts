@@ -7,6 +7,7 @@ import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
+import { buildSignedAttachmentUrl } from '../../../infrastructure/storage/local-volume-storage.js'
 import {
   ForbiddenError,
   NotFoundError,
@@ -730,13 +731,15 @@ describe('Attachments HTTP integration', () => {
     const attachmentId = uploadBody.items[0]?.id
     expect(attachmentId).toBeDefined()
 
-    const signedResponse = await app.request(`/api/attachments/${attachmentId}/signed-url`, {
-      method: 'GET',
-    })
-    expect(signedResponse.status).toBe(200)
-
-    const signedBody = (await signedResponse.json()) as { url: string }
-    const rawUrl = new URL(signedBody.url)
+    // The URL is built the way the LOCAL-VOLUME storage backend builds it — that backend is the
+    // only thing that hands out `/raw` links, and the endpoint that used to mint one on request
+    // had no caller anywhere in the three apps (removed 2026-08-21).
+    const signed = buildSignedAttachmentUrl(
+      'http://localhost',
+      attachmentId as string,
+      container.env.ATTACHMENT_SIGNING_SECRET ?? container.env.BETTER_AUTH_SECRET,
+    )
+    const rawUrl = new URL(signed.url)
     const rawResponse = await app.request(`${rawUrl.pathname}${rawUrl.search}`)
     expect(rawResponse.status).toBe(200)
     expect(rawResponse.headers.get('content-type')).toBe('image/jpeg')

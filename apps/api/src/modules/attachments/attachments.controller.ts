@@ -41,7 +41,6 @@ export function createAttachmentsController(container: Container): {
   list: (c: Context) => Promise<Response>
   upload: (c: Context) => Promise<Response>
   download: (c: Context) => Promise<Response>
-  signedUrl: (c: Context) => Promise<Response>
   raw: (c: Context) => Promise<Response>
   delete: (c: Context) => Promise<Response>
 } {
@@ -97,13 +96,6 @@ export function createAttachmentsController(container: Container): {
         disposition,
         openStream: (storagePath) => container.attachmentsService.openDownloadStream(storagePath),
       })
-    },
-
-    signedUrl: async (c: Context) => {
-      const user = requireUser(c)
-      const { id } = AttachmentIdParamSchema.parse(c.req.param())
-      const result = await container.attachmentsService.getSignedUrl(id, toActor(user))
-      return c.json(result)
     },
 
     raw: async (c: Context) => {

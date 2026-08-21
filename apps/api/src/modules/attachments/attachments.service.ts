@@ -23,10 +23,7 @@ import {
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
-import {
-  buildSignedAttachmentUrl,
-  verifySignedAttachmentToken,
-} from '../../infrastructure/storage/local-volume-storage.js'
+import { verifySignedAttachmentToken } from '../../infrastructure/storage/local-volume-storage.js'
 import {
   buildAttachmentStoragePath,
   sanitizeUploadFileName,
@@ -59,7 +56,6 @@ import type {
   AttachmentListItem,
   AttachmentListQuery,
   AttachmentListResponse,
-  AttachmentSignedUrlResponse,
   AttachmentUploadResult,
 } from './attachments.validators.js'
 
@@ -167,11 +163,6 @@ export class AttachmentsService {
 
     await this.claimContext.loadClaimContext(attachment.claimKind, attachment.claimId, actor)
     return attachment
-  }
-
-  async getSignedUrl(id: string, actor: AttachmentsActor): Promise<AttachmentSignedUrlResponse> {
-    await this.findById(id, actor)
-    return buildSignedAttachmentUrl(this.apiBaseUrl, id, this.signingSecret)
   }
 
   /**

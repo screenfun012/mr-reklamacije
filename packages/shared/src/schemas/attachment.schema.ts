@@ -39,13 +39,6 @@ export const AttachmentListResponseSchema = z.object({
 
 export type AttachmentListResponse = z.infer<typeof AttachmentListResponseSchema>
 
-export const AttachmentSignedUrlResponseSchema = z.object({
-  url: z.string().url(),
-  expiresAt: z.string(),
-})
-
-export type AttachmentSignedUrlResponse = z.infer<typeof AttachmentSignedUrlResponseSchema>
-
 export const AttachmentUploadResultSchema = z.object({
   items: z.array(AttachmentListItemSchema),
   skippedDuplicates: z.number().int().nonnegative(),
