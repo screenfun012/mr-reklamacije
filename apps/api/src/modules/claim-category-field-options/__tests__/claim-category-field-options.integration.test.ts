@@ -108,11 +108,12 @@ describe('ClaimCategoryFieldOptions module', () => {
       })
       const glava = options.items.find((item) => item.code === 'glava')
 
+      const machiningId = await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
       await ctx.db.insert(schema.domaceClaims).values({
         outcome: 'pending',
         claimYear: 2026,
-        categoryId: await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA'),
-        categoryFieldValues: { obradjeni_deo: 'glava' },
+        categoryId: machiningId,
+        categoryFieldValues: { [machiningId]: { obradjeni_deo: 'glava' } },
         createdBy: TEST_USER_ID,
       })
 

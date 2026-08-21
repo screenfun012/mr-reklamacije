@@ -161,7 +161,8 @@ describe('ClaimCategoryFields module', () => {
         outcome: 'pending',
         claimYear: 2026,
         categoryId,
-        categoryFieldValues: { obradjeni_deo: 'glava' },
+        // Stored keyed by the category the answers were entered under.
+        categoryFieldValues: { [categoryId]: { obradjeni_deo: 'glava' } },
         createdBy: TEST_USER_ID,
       })
 
@@ -172,8 +173,9 @@ describe('ClaimCategoryFields module', () => {
     })
 
     it('counts usage per category, so a same-named field elsewhere is not counted', async () => {
-      // ⚙ drop `ec.category_id = claim_category_fields.category_id` from the usage SQL and this
-      // goes red: the other category's claim would be counted against this field.
+      // ⚙ read the top level of `category_field_values` instead of `-> <field's category id>`
+      // and this goes red: the answers are keyed by category, so a same-named field in another
+      // category would be counted against this one.
       const machiningId = await machiningCategoryId()
       const remontId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
       const field = await seededField()
@@ -186,7 +188,7 @@ describe('ClaimCategoryFields module', () => {
         outcome: 'pending',
         claimYear: 2026,
         categoryId: remontId,
-        categoryFieldValues: { obradjeni_deo: 'glava' },
+        categoryFieldValues: { [remontId]: { obradjeni_deo: 'glava' } },
         createdBy: TEST_USER_ID,
       })
 
@@ -195,6 +197,27 @@ describe('ClaimCategoryFields module', () => {
         (await container.claimCategoryFieldsRepository.findById(elsewhere.id))?.usageCount,
       ).toBe(1)
       expect(machiningId).not.toBe(remontId)
+    })
+
+    it('still counts a claim that was moved to another kind of work', async () => {
+      // The claim answers for the overhaul now, but it still CARRIES what it answered here —
+      // deleting the field would orphan that, so the count has to see it.
+      const machiningId = await machiningCategoryId()
+      const remontId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      const field = await seededField()
+
+      await ctx.db.insert(schema.domaceClaims).values({
+        outcome: 'pending',
+        claimYear: 2026,
+        categoryId: remontId,
+        categoryFieldValues: { [machiningId]: { obradjeni_deo: 'glava' } },
+        createdBy: TEST_USER_ID,
+      })
+
+      expect((await container.claimCategoryFieldsRepository.findById(field.id))?.usageCount).toBe(1)
+      await expect(
+        container.claimCategoryFieldsService.hardDelete(field.id, MANAGER),
+      ).rejects.toBeInstanceOf(ConflictError)
     })
 
     it('audits the change and signals the whole category family', async () => {

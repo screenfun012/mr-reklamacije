@@ -490,6 +490,8 @@ export class EmotiveClaimsService {
       values: input.categoryFieldValues ?? {},
       previousValues: {},
       fields: await this.categoryFields.listForCategory(input.categoryId),
+      // On create the red star has to mean something — a claim is born complete.
+      requireComplete: true,
     })
 
     await this.validateFaults(input.faults)
@@ -606,6 +608,9 @@ export class EmotiveClaimsService {
       values: input.categoryFieldValues ?? previousValues,
       previousValues,
       fields: await this.categoryFields.listForCategory(effectiveCategoryId),
+      // Never on update: moving a claim to another kind of work is exactly the moment it
+      // legitimately lacks the new fields. It is marked instead, and stays editable.
+      requireComplete: false,
     })
   }
 

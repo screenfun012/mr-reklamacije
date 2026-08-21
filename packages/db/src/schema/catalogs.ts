@@ -263,7 +263,12 @@ export const claimCategoryFields = pgTable(
     categoryId: uuid('category_id').notNull(),
     code: text('code').notNull(),
     name: text('name').notNull(),
-    fieldType: text('field_type').$type<'select'>().notNull().default('select'),
+    fieldType: text('field_type').$type<'select' | 'text'>().notNull().default('select'),
+    /**
+     * Drives the red star and the "⚠ DOPUNI PODATKE" mark, never a silent rejection: a claim is
+     * born complete, and may become incomplete only by moving to another kind of work.
+     */
+    isRequired: boolean('is_required').notNull().default(false),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
     deactivatedAt: timestamp('deactivated_at', { withTimezone: true, mode: 'date' }),
@@ -277,7 +282,7 @@ export const claimCategoryFields = pgTable(
   (t) => [
     uniqueIndex('claim_category_fields_category_code_key').on(t.categoryId, t.code),
     index('idx_claim_category_fields_category_id').on(t.categoryId),
-    check('claim_category_fields_field_type_check', sql`${t.fieldType} IN ('select')`),
+    check('claim_category_fields_field_type_check', sql`${t.fieldType} IN ('select', 'text')`),
     foreignKey({
       name: 'claim_category_fields_category_id_fkey',
       columns: [t.categoryId],

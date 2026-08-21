@@ -8,6 +8,12 @@ import {
   initialOutcomeResolvedAt,
   outcomeResolvedAtForTransition,
 } from '../../core/claims/outcome-resolved-at.js'
+import {
+  categoryFieldValuesFor,
+  withCategoryFieldValues,
+} from '../../core/claims/category-field-values-store.js'
+import { missingRequiredCategoryFieldsSql } from '../../core/claims/category-field-usage-sql.js'
+import { describePreviousCategoryFieldValues } from '../../core/claims/previous-category-field-values.js'
 import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import type { MrRegistryService } from '../../core/mr-registry/index.js'
@@ -113,6 +119,7 @@ function mapListItem(row: {
   claimYear: number
   totalAmount: number | null
   categoryId: string | null
+  missingRequiredCategoryFields: string[]
   categoryCode: string | null
   categoryName: string | null
   categoryIsActive: boolean | null
@@ -139,6 +146,7 @@ function mapListItem(row: {
     outcome: row.outcome as DomaceClaimListItem['outcome'],
     claimYear: row.claimYear,
     totalAmount: row.totalAmount,
+    missingRequiredCategoryFields: row.missingRequiredCategoryFields,
     category: mapCategoryRef(
       row.categoryId,
       row.categoryCode,
@@ -270,7 +278,11 @@ export class DomaceClaimsRepository {
           engineTypeId: input.engineTypeId ?? null,
           manufacturerId: input.manufacturerId ?? null,
           categoryId: input.categoryId,
-          categoryFieldValues: input.categoryFieldValues ?? null,
+          categoryFieldValues: withCategoryFieldValues(
+            null,
+            input.categoryId,
+            input.categoryFieldValues ?? {},
+          ),
           engineCode: input.engineCode ?? null,
           dateOfClaim: input.dateOfClaim ?? null,
           dateOfFinish: input.dateOfFinish ?? null,
@@ -389,6 +401,7 @@ export class DomaceClaimsRepository {
         claimYear: domaceClaims.claimYear,
         totalAmount: domaceClaims.totalAmount,
         categoryId: domaceClaims.categoryId,
+        missingRequiredCategoryFields: missingRequiredCategoryFieldsSql('domace_claims'),
         categoryFieldValues: domaceClaims.categoryFieldValues,
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
@@ -455,6 +468,7 @@ export class DomaceClaimsRepository {
         manufacturerName: engineManufacturers.name,
         categoryId: domaceClaims.categoryId,
         categoryFieldValues: domaceClaims.categoryFieldValues,
+        missingRequiredCategoryFields: missingRequiredCategoryFieldsSql('domace_claims'),
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
         categoryIsActive: claimCategories.isActive,
@@ -528,8 +542,17 @@ export class DomaceClaimsRepository {
     return {
       ...mapListItem(listFields),
       engineTypeManufacturer,
-      // See EMOTIVE: NULL is "never asked", the screens work with an object.
-      categoryFieldValues: categoryFieldValues ?? {},
+      // See EMOTIVE: the column is keyed by category, the screen sees only the current one, and
+      // naming the previous ones is the service's job.
+      categoryFieldValues: categoryFieldValuesFor(
+        categoryFieldValues,
+        listFields.categoryId ?? null,
+      ),
+      previousCategoryFieldValues: await describePreviousCategoryFieldValues(
+        this.db,
+        categoryFieldValues,
+        listFields.categoryId ?? null,
+      ),
       invoiceNumber,
       originalInvoiceAmount,
       partsAmount,
@@ -557,6 +580,19 @@ export class DomaceClaimsRepository {
       updatedBy: actorId,
     }
 
+    // See EMOTIVE: `before` carries only the current category's answers, but a write has to merge
+    // into the raw store so a move leaves the old category's answers standing.
+    const effectiveCategoryId = input.categoryId ?? before.category?.id ?? null
+    const [storedRow] =
+      input.categoryFieldValues === undefined
+        ? []
+        : await this.db
+            .select({ values: domaceClaims.categoryFieldValues })
+            .from(domaceClaims)
+            .where(eq(domaceClaims.id, id))
+            .limit(1)
+    const storedCategoryFieldValues = storedRow?.values ?? null
+
     if (input.mrNumber !== undefined) {
       patch.mrNumber = input.mrNumber
     }
@@ -575,11 +611,14 @@ export class DomaceClaimsRepository {
     if (input.categoryId !== undefined) {
       patch.categoryId = input.categoryId
     }
-    if (input.categoryFieldValues !== undefined) {
-      patch.categoryFieldValues = input.categoryFieldValues
-    } else if (input.categoryId !== undefined && input.categoryId !== before.category?.id) {
-      // See EMOTIVE: the old category's answers cannot follow a claim into a new one.
-      patch.categoryFieldValues = null
+    if (input.categoryFieldValues !== undefined && effectiveCategoryId !== null) {
+      // See EMOTIVE: written under the category the claim will have; a move leaves the old
+      // category's answers standing.
+      patch.categoryFieldValues = withCategoryFieldValues(
+        storedCategoryFieldValues,
+        effectiveCategoryId,
+        input.categoryFieldValues,
+      )
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

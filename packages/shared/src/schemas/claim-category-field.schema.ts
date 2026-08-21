@@ -7,9 +7,20 @@ const boolQueryParam = z
   .optional()
   .transform((value: string | undefined) => value === 'true')
 
-export const CLAIM_CATEGORY_FIELD_TYPES = ['select'] as const
+/**
+ * `select` is answered from the field's own options; `text` is typed. How a `select` is DRAWN —
+ * buttons in a row or a dropdown — follows from how many options it has, so it is not a third
+ * type here: one less thing for the office to have to choose correctly.
+ */
+export const CLAIM_CATEGORY_FIELD_TYPES = ['select', 'text'] as const
 
 export type ClaimCategoryFieldType = (typeof CLAIM_CATEGORY_FIELD_TYPES)[number]
+
+/** Up to this many options a select is drawn as a row of buttons (prototype: Glava/Blok/Radilica). */
+export const CLAIM_CATEGORY_FIELD_SEGMENTED_MAX_OPTIONS = 3
+
+/** A typed answer's ceiling — a category field is a label on a part, never a paragraph. */
+export const CLAIM_CATEGORY_FIELD_TEXT_MAX_LENGTH = 200
 
 /**
  * A code is what the jsonb on the claim is keyed by, so it is fixed once created — the same rule
@@ -47,6 +58,7 @@ export const ClaimCategoryFieldListItemSchema = z.object({
   code: z.string(),
   name: z.string(),
   fieldType: z.enum(CLAIM_CATEGORY_FIELD_TYPES),
+  isRequired: z.boolean(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   deactivatedAt: z.string().nullable(),
@@ -65,6 +77,8 @@ export const ClaimCategoryFieldCreateInputSchema = z.object({
   categoryId: z.string().uuid(),
   code: CodeSchema,
   name: z.string().trim().min(1).max(200),
+  fieldType: z.enum(CLAIM_CATEGORY_FIELD_TYPES).optional(),
+  isRequired: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
 })
 
@@ -73,6 +87,9 @@ export type ClaimCategoryFieldCreateInput = z.infer<typeof ClaimCategoryFieldCre
 export const ClaimCategoryFieldUpdateInputSchema = z
   .object({
     name: z.string().trim().min(1).max(200).optional(),
+    // The TYPE is deliberately absent: answers are already stored against it, and switching a
+    // select to text would leave option codes standing in for typed words.
+    isRequired: z.boolean().optional(),
     sortOrder: z.number().int().min(0).optional(),
     isActive: z.boolean().optional(),
   })
@@ -115,14 +132,38 @@ export type ClaimCategoryFieldOptionsListQuery = z.infer<
 >
 
 /**
- * `{ "<field code>": "<option code>" }` on a claim. Zod bounds the SHAPE; which codes are real
- * and still alive is the service's job against the catalogue
- * (`core/claims/validate-category-field-values.ts`) — a schema cannot know that.
+ * `{ "<field code>": "<option code or typed text>" }` for ONE category. This is what crosses the
+ * wire in both directions — the nesting by category id is storage, and stays on the server so no
+ * screen ever handles an id (V2 spec §4.6).
+ *
+ * Zod bounds the SHAPE; which codes are real and still alive is the service's job against the
+ * catalogue (`core/claims/validate-category-field-values.ts`) — a schema cannot know that.
  */
 export const ClaimCategoryFieldValuesSchema = z
-  .record(CodeSchema, CodeSchema)
+  .record(CodeSchema, z.string().trim().min(1).max(CLAIM_CATEGORY_FIELD_TEXT_MAX_LENGTH))
   .refine((values) => Object.keys(values).length <= 50, {
     message: 'Too many category field values',
   })
 
 export type ClaimCategoryFieldValues = z.infer<typeof ClaimCategoryFieldValuesSchema>
+
+/**
+ * What a claim carried under a kind of work it has since been moved away from. Read-only, named
+ * in words only — the claim keeps it so nothing typed is ever lost by a corrected mistake.
+ */
+export const ClaimPreviousCategoryFieldValuesSchema = z.object({
+  categoryCode: z.string(),
+  categoryName: z.string(),
+  values: z.array(
+    z.object({
+      fieldCode: z.string(),
+      fieldName: z.string(),
+      /** The option's name for a select, the typed words for a text field. */
+      display: z.string(),
+    }),
+  ),
+})
+
+export type ClaimPreviousCategoryFieldValues = z.infer<
+  typeof ClaimPreviousCategoryFieldValuesSchema
+>

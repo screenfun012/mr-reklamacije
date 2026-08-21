@@ -1564,7 +1564,7 @@ describe('EmotiveClaimsService integration', () => {
       ).rejects.toBeInstanceOf(ValidationError)
     })
 
-    it("drops the answers when the category changes, and refuses the old category's keys", async () => {
+    it("keeps the old category's answers when a claim is moved, and refuses its keys in the new one", async () => {
       const created = await container.emotiveClaimsService.create(
         await buildCreateInput({
           categoryId: await machiningId(),
@@ -1582,7 +1582,27 @@ describe('EmotiveClaimsService integration', () => {
         FULL_OPERATOR,
         auditContext,
       )
+      // The claim now answers for the overhaul, which asks nothing yet — but what was typed under
+      // machining is still there, named in words, because the correction of a mistake must not
+      // destroy the work that went into it.
       expect(moved.categoryFieldValues).toEqual({})
+      expect(moved.previousCategoryFieldValues).toEqual([
+        {
+          categoryCode: 'MASINSKA_OBRADA',
+          categoryName: expect.any(String),
+          values: [{ fieldCode: 'obradjeni_deo', fieldName: 'Obrađeni deo', display: 'Glava' }],
+        },
+      ])
+
+      // And it comes back untouched if the move is undone.
+      const movedBack = await container.emotiveClaimsService.update(
+        moved.id,
+        { categoryId: await machiningId() },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(movedBack.categoryFieldValues).toEqual({ obradjeni_deo: 'glava' })
+      expect(movedBack.previousCategoryFieldValues).toEqual([])
 
       await expect(
         container.emotiveClaimsService.update(
@@ -1592,6 +1612,101 @@ describe('EmotiveClaimsService integration', () => {
           auditContext,
         ),
       ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('keeps the old answers even when the move brings new ones with it', async () => {
+      // The one-step correction: the office changes the kind of work AND fills the new fields in
+      // the same save. What was answered under the old kind still has to survive that write.
+      const remontId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId: await machiningId(),
+          categoryFieldValues: { obradjeni_deo: 'blok' },
+          mrNumber: `CFV-MOVE1-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      const moved = await container.emotiveClaimsService.update(
+        created.id,
+        { categoryId: remontId, categoryFieldValues: {} },
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(moved.previousCategoryFieldValues).toEqual([
+        {
+          categoryCode: 'MASINSKA_OBRADA',
+          categoryName: expect.any(String),
+          values: [{ fieldCode: 'obradjeni_deo', fieldName: 'Obrađeni deo', display: 'Blok' }],
+        },
+      ])
+    })
+
+    it('refuses to create a claim that leaves a required field empty, and marks one that becomes empty', async () => {
+      const machining = await machiningId()
+      const remontId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      // A unique code: the test database is shared, so a fixed one would collide across runs.
+      const code = `obim_${crypto.randomUUID().slice(0, 8)}`
+      const required = await container.claimCategoryFieldsService.create(
+        {
+          categoryId: remontId,
+          code,
+          name: 'Obim remonta',
+          fieldType: 'text',
+          isRequired: true,
+        },
+        auditContext,
+      )
+
+      // On create the red star means something: the claim cannot be born incomplete.
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({
+            categoryId: remontId,
+            mrNumber: `CFV-REQ-${crypto.randomUUID().slice(0, 8)}/26`,
+          }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+
+      // Moving a claim INTO that category is allowed and marks it instead — refusing here would
+      // make correcting a wrong category impossible.
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId: machining,
+          mrNumber: `CFV-REQ2-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.missingRequiredCategoryFields).toEqual([])
+
+      const moved = await container.emotiveClaimsService.update(
+        created.id,
+        { categoryId: remontId },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(moved.missingRequiredCategoryFields).toEqual([code])
+
+      const filled = await container.emotiveClaimsService.update(
+        moved.id,
+        { categoryFieldValues: { [code]: 'veliki' } },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(filled.missingRequiredCategoryFields).toEqual([])
+
+      // Left switched off, not deleted: a claim now carries a value for it, and the catalogue
+      // refuses to delete a field in use — which is the rule, not an obstacle.
+      await container.claimCategoryFieldsService.update(
+        required.id,
+        { isActive: false },
+        auditContext,
+      )
     })
 
     it("writes the answers inside the claim's own transaction", async () => {

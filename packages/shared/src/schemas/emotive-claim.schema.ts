@@ -3,7 +3,10 @@ import { z } from 'zod'
 import { claimFreshnessValues, ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 import { FindingSchema } from './finding.schema.js'
-import { ClaimCategoryFieldValuesSchema } from './claim-category-field.schema.js'
+import {
+  ClaimCategoryFieldValuesSchema,
+  ClaimPreviousCategoryFieldValuesSchema,
+} from './claim-category-field.schema.js'
 import { ClaimCategoryRefSchema } from './reference-data.schema.js'
 
 const claimOutcomeValues = [
@@ -143,6 +146,15 @@ export const EmotiveClaimListItemSchema = z.object({
   // `null` only for a legacy row outside this feature's write paths. The category is data —
   // nothing in any layer may branch on `code`.
   category: ClaimCategoryRefSchema.nullable(),
+  /**
+   * Live required fields of the claim's category that it has no answer for. Computed from the
+   * catalogue on every read, never a stored flag that could drift from what the office asks for
+   * today. The list only asks whether it is empty (the amber mark); the detail names them.
+   *
+   * Normally empty: a claim is born complete. It fills when a claim is MOVED to another kind of
+   * work, or when the office adds a required field to a category that already has claims.
+   */
+  missingRequiredCategoryFields: z.array(z.string()),
   createdAt: z.string(),
   /**
    * Client-visibility lifecycle timestamps (Phase 2, EMOTIVE only) — INTERNAL,
@@ -182,7 +194,14 @@ export type SectionFreshness = z.infer<typeof SectionFreshnessSchema>
 
 export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
+  /** The answers for the category the claim is in NOW. */
   categoryFieldValues: ClaimCategoryFieldValuesSchema,
+  /**
+   * What it still carries from a kind of work it was moved away from — already in words, so no
+   * screen handles a category id. Empty for a claim that never changed category.
+   */
+  previousCategoryFieldValues: z.array(ClaimPreviousCategoryFieldValuesSchema),
+
   sourceCode: z.string().nullable(),
   sourceName: z.string().nullable(),
   internalNotes: z.string().nullable(),

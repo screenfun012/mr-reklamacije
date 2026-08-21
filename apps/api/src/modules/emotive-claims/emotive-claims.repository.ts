@@ -9,6 +9,12 @@ import {
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
+import {
+  categoryFieldValuesFor,
+  withCategoryFieldValues,
+} from '../../core/claims/category-field-values-store.js'
+import { missingRequiredCategoryFieldsSql } from '../../core/claims/category-field-usage-sql.js'
+import { describePreviousCategoryFieldValues } from '../../core/claims/previous-category-field-values.js'
 import type { ApiClaimTxExecutor, ApiDatabase } from '../../core/database.js'
 import {
   initialOutcomeResolvedAt,
@@ -181,6 +187,7 @@ function mapListItem(row: {
   customerId: string | null
   customerName: string | null
   categoryId: string | null
+  missingRequiredCategoryFields: string[]
   categoryCode: string | null
   categoryName: string | null
   categoryIsActive: boolean | null
@@ -210,6 +217,7 @@ function mapListItem(row: {
     claimYear: row.claimYear,
     customerId: row.customerId,
     customerName: row.customerName,
+    missingRequiredCategoryFields: row.missingRequiredCategoryFields,
     category: mapCategoryRef(
       row.categoryId,
       row.categoryCode,
@@ -467,7 +475,11 @@ export class EmotiveClaimsRepository {
         engineTypeId: input.engineTypeId,
         manufacturerId: input.manufacturerId ?? null,
         categoryId: input.categoryId,
-        categoryFieldValues: input.categoryFieldValues ?? null,
+        categoryFieldValues: withCategoryFieldValues(
+          null,
+          input.categoryId,
+          input.categoryFieldValues ?? {},
+        ),
         engineCode: input.engineCode ?? null,
         dateOfClaim: input.dateOfClaim,
         mrNumber: input.mrNumber,
@@ -587,6 +599,7 @@ export class EmotiveClaimsRepository {
         customerId: emotiveClaims.customerId,
         customerName: customers.name,
         categoryId: emotiveClaims.categoryId,
+        missingRequiredCategoryFields: missingRequiredCategoryFieldsSql('emotive_claims'),
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
         categoryIsActive: claimCategories.isActive,
@@ -649,6 +662,7 @@ export class EmotiveClaimsRepository {
       manufacturerName: engineManufacturers.name,
       categoryId: emotiveClaims.categoryId,
       categoryFieldValues: emotiveClaims.categoryFieldValues,
+      missingRequiredCategoryFields: missingRequiredCategoryFieldsSql('emotive_claims'),
       categoryCode: claimCategories.code,
       categoryName: claimCategories.name,
       categoryIsActive: claimCategories.isActive,
@@ -774,8 +788,18 @@ export class EmotiveClaimsRepository {
     return {
       ...mapListItem(listFields),
       engineTypeManufacturer,
-      // NULL in the column means "nobody was ever asked"; the screens work with an object.
-      categoryFieldValues: categoryFieldValues ?? {},
+      // The column is keyed by category; the screen is only ever shown the one it is in now.
+      // The previous ones and the missing-required mark are the service's to fill in — naming
+      // them takes the catalogue, which a claim repository has no business holding.
+      categoryFieldValues: categoryFieldValuesFor(
+        categoryFieldValues,
+        listFields.categoryId ?? null,
+      ),
+      previousCategoryFieldValues: await describePreviousCategoryFieldValues(
+        this.db,
+        categoryFieldValues,
+        listFields.categoryId ?? null,
+      ),
       sourceCode,
       sourceName,
       internalNotes,
@@ -808,6 +832,20 @@ export class EmotiveClaimsRepository {
       updatedBy: actorId,
     }
 
+    // `before` carries only the answers of the category the claim is in now — the raw store is
+    // what a write has to merge into, so that moving to another kind of work leaves the old
+    // category's answers standing. One indexed read on a path that is already a transaction.
+    const effectiveCategoryId = input.categoryId ?? before.category?.id ?? null
+    const [storedRow] =
+      input.categoryFieldValues === undefined
+        ? []
+        : await this.db
+            .select({ values: emotiveClaims.categoryFieldValues })
+            .from(emotiveClaims)
+            .where(eq(emotiveClaims.id, id))
+            .limit(1)
+    const storedCategoryFieldValues = storedRow?.values ?? null
+
     if (input.warrantyReport !== undefined) {
       patch.warrantyReport = input.warrantyReport
     }
@@ -820,12 +858,15 @@ export class EmotiveClaimsRepository {
     if (input.categoryId !== undefined) {
       patch.categoryId = input.categoryId
     }
-    if (input.categoryFieldValues !== undefined) {
-      patch.categoryFieldValues = input.categoryFieldValues
-    } else if (input.categoryId !== undefined && input.categoryId !== before.category?.id) {
-      // A claim that changes category cannot keep the previous category's answers — they belong
-      // to fields the new one does not have.
-      patch.categoryFieldValues = null
+    if (input.categoryFieldValues !== undefined && effectiveCategoryId !== null) {
+      // Written under the category the claim will HAVE. A move leaves the old category's answers
+      // exactly where they were — the detail shows them as "Prethodna kategorija", and they come
+      // back untouched if the move is undone.
+      patch.categoryFieldValues = withCategoryFieldValues(
+        storedCategoryFieldValues,
+        effectiveCategoryId,
+        input.categoryFieldValues,
+      )
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

@@ -21,6 +21,7 @@ import type {
   ClaimCategoryFieldCreateInput,
   ClaimCategoryFieldListItem,
   ClaimCategoryFieldOptionListItem,
+  ClaimCategoryFieldType,
   ClaimCategoryFieldUpdateInput,
   ClaimCategoryFieldsListQuery,
   ReferenceListResponse,
@@ -32,7 +33,8 @@ interface FieldRow {
   categoryName: string
   code: string
   name: string
-  fieldType: 'select'
+  fieldType: ClaimCategoryFieldType
+  isRequired: boolean
   sortOrder: number
   isActive: boolean
   deactivatedAt: Date | null
@@ -47,6 +49,7 @@ const fieldSelection = {
   code: claimCategoryFields.code,
   name: claimCategoryFields.name,
   fieldType: claimCategoryFields.fieldType,
+  isRequired: claimCategoryFields.isRequired,
   sortOrder: claimCategoryFields.sortOrder,
   isActive: claimCategoryFields.isActive,
   deactivatedAt: claimCategoryFields.deactivatedAt,
@@ -65,6 +68,7 @@ function mapField(
     code: row.code,
     name: row.name,
     fieldType: row.fieldType,
+    isRequired: row.isRequired,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
     deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
@@ -196,6 +200,8 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
         id: claimCategoryFields.id,
         categoryId: claimCategoryFields.categoryId,
         code: claimCategoryFields.code,
+        fieldType: claimCategoryFields.fieldType,
+        isRequired: claimCategoryFields.isRequired,
         isActive: claimCategoryFields.isActive,
       })
       .from(claimCategoryFields)
@@ -266,6 +272,8 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
         categoryId: input.categoryId,
         code: input.code,
         name: input.name,
+        fieldType: input.fieldType ?? 'select',
+        isRequired: input.isRequired ?? false,
         sortOrder: input.sortOrder ?? 0,
         isActive: true,
       })
@@ -290,6 +298,7 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
       .update(claimCategoryFields)
       .set({
         ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.isRequired !== undefined ? { isRequired: input.isRequired } : {}),
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         ...(input.isActive !== undefined
           ? {

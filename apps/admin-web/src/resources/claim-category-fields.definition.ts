@@ -46,6 +46,22 @@ export const claimCategoryFieldsResourceDefinition: ResourceDefinition<
       cell: (item) => item.name,
     },
     {
+      id: 'fieldType',
+      header: () => m.admin_claim_category_fields_type(),
+      cell: (item) =>
+        item.fieldType === 'text'
+          ? m.admin_claim_category_fields_type_text()
+          : m.admin_claim_category_fields_type_select(),
+    },
+    {
+      id: 'isRequired',
+      header: () => m.admin_claim_category_fields_required(),
+      cell: (item) =>
+        item.isRequired
+          ? m.admin_claim_category_fields_answer_yes()
+          : m.admin_claim_category_fields_answer_no(),
+    },
+    {
       id: 'sortOrder',
       header: () => m.field_sort_order(),
       cell: (item) => String(item.sortOrder),
@@ -94,6 +110,29 @@ export const claimCategoryFieldsResourceDefinition: ResourceDefinition<
       required: true,
     },
     {
+      // Fixed once created: answers are already stored against it, and switching a select to a
+      // text field would leave option codes standing in for typed words.
+      key: 'fieldType',
+      label: () => m.admin_claim_category_fields_type(),
+      type: 'select',
+      createOnly: true,
+      options: () => [
+        { value: 'select', label: m.admin_claim_category_fields_type_select() },
+        { value: 'text', label: m.admin_claim_category_fields_type_text() },
+      ],
+      hint: () => m.admin_claim_category_fields_type_hint(),
+    },
+    {
+      key: 'isRequired',
+      label: () => m.admin_claim_category_fields_required(),
+      type: 'select',
+      options: () => [
+        { value: 'false', label: m.admin_claim_category_fields_answer_no() },
+        { value: 'true', label: m.admin_claim_category_fields_answer_yes() },
+      ],
+      hint: () => m.admin_claim_category_fields_required_hint(),
+    },
+    {
       key: 'sortOrder',
       label: () => m.field_sort_order(),
       type: 'number',
@@ -123,16 +162,21 @@ export const claimCategoryFieldsResourceDefinition: ResourceDefinition<
     categoryId: item?.categoryId ?? '',
     code: item?.code ?? '',
     name: item?.name ?? '',
+    fieldType: item?.fieldType ?? 'select',
+    isRequired: item?.isRequired === true ? 'true' : 'false',
     sortOrder: item?.sortOrder !== undefined ? String(item.sortOrder) : '',
   }),
   buildCreateBody: (values) => ({
     categoryId: (values['categoryId'] ?? '').trim(),
     code: (values['code'] ?? '').trim(),
     name: (values['name'] ?? '').trim(),
+    fieldType: values['fieldType'] === 'text' ? 'text' : 'select',
+    isRequired: values['isRequired'] === 'true',
     sortOrder: parseOptionalInt(values['sortOrder'] ?? ''),
   }),
   buildUpdateBody: (values) => ({
     name: (values['name'] ?? '').trim(),
+    isRequired: values['isRequired'] === 'true',
     sortOrder: parseOptionalInt(values['sortOrder'] ?? ''),
   }),
   getDeactivateTargetLabel: (item) => item.name,

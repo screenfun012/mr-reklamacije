@@ -1,3 +1,5 @@
+import type { ClaimCategoryFieldType } from '@mr/shared'
+
 /**
  * What a claim service needs to know about a category's fields in order to judge the answers a
  * claim carries — nothing more.
@@ -15,6 +17,9 @@ export interface CategoryFieldCatalogField {
   id: string
   categoryId: string
   code: string
+  /** `select` is answered from `options`; `text` is typed, and then `options` is empty. */
+  fieldType: ClaimCategoryFieldType
+  isRequired: boolean
   isActive: boolean
   options: CategoryFieldCatalogOption[]
 }

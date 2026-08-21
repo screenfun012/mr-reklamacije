@@ -10,6 +10,7 @@ import {
 } from '@mr/shared'
 import { eq, sql, type SQL } from 'drizzle-orm'
 
+import { missingRequiredCategoryFieldsSql } from '../../core/claims/category-field-usage-sql.js'
 import type { ApiDatabase } from '../../core/database.js'
 import { buildClaimListOrderBy } from './claim-list-order.js'
 import type { ClaimsListScope } from './claims.types.js'
@@ -43,6 +44,7 @@ interface UnifiedListRow {
   manufacturer_id: string | null
   manufacturer_name: string | null
   category_id: string | null
+  missing_required_category_fields: string[]
   category_code: string | null
   category_name: string | null
   category_is_active: boolean | null
@@ -143,6 +145,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
       claimYear: toInt(row.claim_year),
       totalAmount: row.total_amount === null ? null : Number(row.total_amount),
       category: mapCategory(row),
+      missingRequiredCategoryFields: row.missing_required_category_fields,
       createdAt: formatTimestamp(row.created_at),
     }
     return item
@@ -174,6 +177,7 @@ function mapUnifiedRow(row: UnifiedListRow): ClaimListItem {
     customerId: row.customer_id,
     customerName: row.customer_name,
     category: mapCategory(row),
+    missingRequiredCategoryFields: row.missing_required_category_fields,
     createdAt: formatTimestamp(row.created_at),
     clientVisibleAt,
     publishedAt,
@@ -436,6 +440,7 @@ export class ClaimsRepository {
         ec.manufacturer_id,
         em.name AS manufacturer_name,
         ec.category_id,
+        ${missingRequiredCategoryFieldsSql('ec')} AS missing_required_category_fields,
         cc.code AS category_code,
         cc.name AS category_name,
         cc.is_active AS category_is_active,
@@ -529,6 +534,7 @@ export class ClaimsRepository {
         dc.manufacturer_id,
         em.name AS manufacturer_name,
         dc.category_id,
+        ${missingRequiredCategoryFieldsSql('dc')} AS missing_required_category_fields,
         cc.code AS category_code,
         cc.name AS category_name,
         cc.is_active AS category_is_active,

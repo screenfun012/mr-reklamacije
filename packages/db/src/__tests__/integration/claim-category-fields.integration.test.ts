@@ -88,18 +88,43 @@ describe('migration 0046 — category fields catalogue', () => {
     expect(options.map((option) => option.code)).toEqual(['glava', 'blok', 'radilica'])
   })
 
-  it('refuses a second field type until one is added to the CHECK', async () => {
-    // A second type is a row in the CHECK, not a schema migration — but until it is added,
-    // the database says no rather than storing something no screen can render.
+  it('takes a chosen answer or a typed one, and nothing else', async () => {
+    const categoryId = await machiningCategoryId()
+
+    // `text` was added in 0047 for fields like "Mera obrade (mm)" that are written, not picked.
+    await expect(
+      db.insert(schema.claimCategoryFields).values({
+        categoryId,
+        code: 'mera_obrade',
+        name: 'Mera obrade (mm)',
+        fieldType: 'text',
+        isRequired: true,
+      }),
+    ).resolves.toBeDefined()
+
+    // A third type is a row in the CHECK, not a schema migration — but until it is added, the
+    // database says no rather than storing something no screen can render.
     await expectConstraint(
       db.insert(schema.claimCategoryFields).values({
-        categoryId: await machiningCategoryId(),
+        categoryId,
         code: 'nope',
         name: 'Nope',
-        fieldType: 'text' as 'select',
+        fieldType: 'number' as 'text',
       }),
       'claim_category_fields_field_type_check',
     )
+  })
+
+  it('asks for nothing by default — a field becomes required only when the office says so', async () => {
+    const [field] = await db
+      .select({ isRequired: schema.claimCategoryFields.isRequired })
+      .from(schema.claimCategoryFields)
+      .where(eq(schema.claimCategoryFields.code, 'obradjeni_deo'))
+      .limit(1)
+
+    // The seeded field predates `is_required`; a backfill that defaulted it to true would have
+    // marked every machining claim in the shop as incomplete overnight.
+    expect(field?.isRequired).toBe(false)
   })
 
   it('keeps the same code from being used twice inside one category', async () => {
@@ -136,7 +161,7 @@ describe('migration 0046 — category fields catalogue', () => {
     )
   })
 
-  it('lets a claim of either kind carry values keyed by the field code', async () => {
+  it("keys a claim's answers by the category they were entered under", async () => {
     const categoryId = await machiningCategoryId()
     const [user] = await db.select({ id: schema.users.id }).from(schema.users).limit(1)
     if (user === undefined) {
@@ -149,11 +174,13 @@ describe('migration 0046 — category fields catalogue', () => {
         outcome: 'pending',
         claimYear: 2026,
         categoryId,
-        categoryFieldValues: { obradjeni_deo: 'glava' },
+        categoryFieldValues: { [categoryId]: { obradjeni_deo: 'glava' } },
         createdBy: user.id,
       })
       .returning({ values: schema.domaceClaims.categoryFieldValues })
-    expect(domace?.values).toEqual({ obradjeni_deo: 'glava' })
+    // Nested, not flat: this is what lets a claim keep what it answered under a kind of work it
+    // has since been moved away from.
+    expect(domace?.values).toEqual({ [categoryId]: { obradjeni_deo: 'glava' } })
 
     const [emotiveDefault] = await db
       .select({ values: schema.emotiveClaims.categoryFieldValues })

@@ -8,6 +8,7 @@ export {
   type ClaimCategoryFieldCreateInput,
   type ClaimCategoryFieldListItem,
   type ClaimCategoryFieldOptionListItem,
+  type ClaimCategoryFieldType,
   type ClaimCategoryFieldUpdateInput,
   type ClaimCategoryFieldsListQuery,
   type ReferenceListResponse,
