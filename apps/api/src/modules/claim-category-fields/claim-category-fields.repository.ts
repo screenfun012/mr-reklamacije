@@ -5,6 +5,10 @@ import {
   categoryFieldUsageCountSql,
 } from '../../core/claims/category-field-usage-sql.js'
 import type { ApiDatabase } from '../../core/database.js'
+import type {
+  CategoryFieldCatalogField,
+  CategoryFieldsPort,
+} from '../../core/ports/category-fields-port.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
@@ -21,18 +25,6 @@ import type {
   ClaimCategoryFieldsListQuery,
   ReferenceListResponse,
 } from './claim-category-fields.validators.js'
-
-/**
- * What the claim services validate a claim's values against: every field of one category with
- * every option, retired ones included — a claim keeps what the office has since switched off.
- */
-export interface CategoryFieldCatalogField {
-  id: string
-  categoryId: string
-  code: string
-  isActive: boolean
-  options: { code: string; isActive: boolean }[]
-}
 
 interface FieldRow {
   id: string
@@ -82,7 +74,7 @@ function mapField(
   }
 }
 
-export class ClaimCategoryFieldsRepository {
+export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
   constructor(private readonly db: ApiDatabase) {}
 
   async list(

@@ -467,6 +467,7 @@ export class EmotiveClaimsRepository {
         engineTypeId: input.engineTypeId,
         manufacturerId: input.manufacturerId ?? null,
         categoryId: input.categoryId,
+        categoryFieldValues: input.categoryFieldValues ?? null,
         engineCode: input.engineCode ?? null,
         dateOfClaim: input.dateOfClaim,
         mrNumber: input.mrNumber,
@@ -647,6 +648,7 @@ export class EmotiveClaimsRepository {
       manufacturerId: emotiveClaims.manufacturerId,
       manufacturerName: engineManufacturers.name,
       categoryId: emotiveClaims.categoryId,
+      categoryFieldValues: emotiveClaims.categoryFieldValues,
       categoryCode: claimCategories.code,
       categoryName: claimCategories.name,
       categoryIsActive: claimCategories.isActive,
@@ -765,12 +767,15 @@ export class EmotiveClaimsRepository {
       sourceCode,
       sourceName,
       sectionFreshness,
+      categoryFieldValues,
       ...listFields
     } = row
 
     return {
       ...mapListItem(listFields),
       engineTypeManufacturer,
+      // NULL in the column means "nobody was ever asked"; the screens work with an object.
+      categoryFieldValues: categoryFieldValues ?? {},
       sourceCode,
       sourceName,
       internalNotes,
@@ -814,6 +819,13 @@ export class EmotiveClaimsRepository {
     }
     if (input.categoryId !== undefined) {
       patch.categoryId = input.categoryId
+    }
+    if (input.categoryFieldValues !== undefined) {
+      patch.categoryFieldValues = input.categoryFieldValues
+    } else if (input.categoryId !== undefined && input.categoryId !== before.category?.id) {
+      // A claim that changes category cannot keep the previous category's answers — they belong
+      // to fields the new one does not have.
+      patch.categoryFieldValues = null
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { claimFreshnessValues, ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 import { FindingSchema } from './finding.schema.js'
+import { ClaimCategoryFieldValuesSchema } from './claim-category-field.schema.js'
 import { ClaimCategoryRefSchema } from './reference-data.schema.js'
 
 const claimOutcomeValues = [
@@ -27,6 +28,12 @@ export const EmotiveClaimCreateInputSchema = z.object({
   // What kind of work the claim is about (spec §3.3) — required on create AND update so a
   // claim can never leave the edit uncategorised. NULL-able in the DB (Task 1 backfill), not here.
   categoryId: z.string().uuid(),
+  /**
+   * Answers to the fields that category owns; the server checks them against the catalogue.
+   * Optional, not defaulted: a claim with no answers stores NULL, and "no value" is not the
+   * same statement as "an empty set of answers" (the migration test pins that difference).
+   */
+  categoryFieldValues: ClaimCategoryFieldValuesSchema.optional(),
   dateOfClaim: z.coerce.date(),
   /** MR Engines internal work order (e.g. 5376/25). Required on create. */
   mrNumber: z.string().trim().min(1).max(50),
@@ -60,6 +67,8 @@ export const EmotiveClaimUpdateInputSchema = z
      * create demands one, and the basic-fields editor always sends it.
      */
     categoryId: z.string().uuid().optional(),
+    /** Absent = leave the answers as they are; the category's own change clears them. */
+    categoryFieldValues: ClaimCategoryFieldValuesSchema.optional(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().optional(),
     mrNumber: z.string().trim().min(1).max(50).optional(),
@@ -173,6 +182,7 @@ export type SectionFreshness = z.infer<typeof SectionFreshnessSchema>
 
 export const EmotiveClaimDetailSchema = EmotiveClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
+  categoryFieldValues: ClaimCategoryFieldValuesSchema,
   sourceCode: z.string().nullable(),
   sourceName: z.string().nullable(),
   internalNotes: z.string().nullable(),

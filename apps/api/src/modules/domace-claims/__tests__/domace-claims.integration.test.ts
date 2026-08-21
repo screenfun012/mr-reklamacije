@@ -979,6 +979,59 @@ describe('DomaceClaimsService integration', () => {
       expect(filtered.items.every((item) => item.manufacturerId === manufacturerId)).toBe(true)
     })
 
+    it('stores, keeps and refuses category field answers the same way EMOTIVE does', async () => {
+      const machiningId = await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
+
+      const created = await container.domaceClaimsService.create(
+        await baseCreateInput({
+          categoryId: machiningId,
+          categoryFieldValues: { obradjeni_deo: 'blok' },
+          mrNumber: `DOM-CFV-${Date.now()}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(created.categoryFieldValues).toEqual({ obradjeni_deo: 'blok' })
+
+      await expect(
+        container.domaceClaimsService.create(
+          await baseCreateInput({
+            categoryId: machiningId,
+            categoryFieldValues: { obradjeni_deo: 'deklo' },
+            mrNumber: `DOM-CFV-BAD-${Date.now()}/26`,
+          }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+
+      // Retire the option the claim already carries: the claim keeps it, an edit elsewhere works.
+      const fields = await container.claimCategoryFieldsRepository.list({
+        categoryId: machiningId,
+        activeOnly: true,
+        includeOptions: true,
+        limit: 50,
+      })
+      const blok = fields.items
+        .find((item) => item.code === 'obradjeni_deo')
+        ?.options?.find((option) => option.code === 'blok')
+      await container.claimCategoryFieldOptionsRepository.update(blok?.id ?? '', {
+        isActive: false,
+      })
+
+      try {
+        const kept = await container.domaceClaimsService.update(
+          created.id,
+          { customerName: 'Novo ime' },
+          FULL_OPERATOR,
+          auditContext,
+        )
+        expect(kept.categoryFieldValues).toEqual({ obradjeni_deo: 'blok' })
+      } finally {
+        await ctx.db.update(schema.claimCategoryFieldOptions).set({ isActive: true })
+      }
+    })
+
     it('rejects a category that does not exist or has been switched off', async () => {
       // Mirrors the EMOTIVE pair: without this the ghost id reached Postgres as a foreign-key
       // error (a 500), and a retired category was accepted in silence.

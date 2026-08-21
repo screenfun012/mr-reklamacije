@@ -270,6 +270,7 @@ export class DomaceClaimsRepository {
           engineTypeId: input.engineTypeId ?? null,
           manufacturerId: input.manufacturerId ?? null,
           categoryId: input.categoryId,
+          categoryFieldValues: input.categoryFieldValues ?? null,
           engineCode: input.engineCode ?? null,
           dateOfClaim: input.dateOfClaim ?? null,
           dateOfFinish: input.dateOfFinish ?? null,
@@ -388,6 +389,7 @@ export class DomaceClaimsRepository {
         claimYear: domaceClaims.claimYear,
         totalAmount: domaceClaims.totalAmount,
         categoryId: domaceClaims.categoryId,
+        categoryFieldValues: domaceClaims.categoryFieldValues,
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
         categoryIsActive: claimCategories.isActive,
@@ -452,6 +454,7 @@ export class DomaceClaimsRepository {
         manufacturerId: domaceClaims.manufacturerId,
         manufacturerName: engineManufacturers.name,
         categoryId: domaceClaims.categoryId,
+        categoryFieldValues: domaceClaims.categoryFieldValues,
         categoryCode: claimCategories.code,
         categoryName: claimCategories.name,
         categoryIsActive: claimCategories.isActive,
@@ -518,12 +521,15 @@ export class DomaceClaimsRepository {
       originalInvoiceAmount,
       partsAmount,
       laborAmount,
+      categoryFieldValues,
       ...listFields
     } = row
 
     return {
       ...mapListItem(listFields),
       engineTypeManufacturer,
+      // See EMOTIVE: NULL is "never asked", the screens work with an object.
+      categoryFieldValues: categoryFieldValues ?? {},
       invoiceNumber,
       originalInvoiceAmount,
       partsAmount,
@@ -568,6 +574,12 @@ export class DomaceClaimsRepository {
     }
     if (input.categoryId !== undefined) {
       patch.categoryId = input.categoryId
+    }
+    if (input.categoryFieldValues !== undefined) {
+      patch.categoryFieldValues = input.categoryFieldValues
+    } else if (input.categoryId !== undefined && input.categoryId !== before.category?.id) {
+      // See EMOTIVE: the old category's answers cannot follow a claim into a new one.
+      patch.categoryFieldValues = null
     }
     if (input.engineCode !== undefined) {
       patch.engineCode = input.engineCode

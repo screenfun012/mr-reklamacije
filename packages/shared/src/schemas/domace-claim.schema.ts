@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ClaimKind, ClaimOutcome } from '../enums.js'
 import { ClaimFaultInputSchema, ClaimFaultItemSchema } from './claim-fault.schema.js'
 import { FindingSchema } from './finding.schema.js'
+import { ClaimCategoryFieldValuesSchema } from './claim-category-field.schema.js'
 import { ClaimCategoryRefSchema } from './reference-data.schema.js'
 
 const claimOutcomeValues = [
@@ -35,6 +36,12 @@ export const DomaceClaimCreateInputSchema = z
     // What kind of work the claim is about (spec §3.3) — required on create AND update so a
     // claim can never leave the edit uncategorised. NULL-able in the DB (Task 1 backfill), not here.
     categoryId: z.string().uuid(),
+    /**
+     * Answers to the fields that category owns; the server checks them against the catalogue.
+     * Optional, not defaulted: a claim with no answers stores NULL, and "no value" is not the
+     * same statement as "an empty set of answers" (the migration test pins that difference).
+     */
+    categoryFieldValues: ClaimCategoryFieldValuesSchema.optional(),
     engineCode: z.string().trim().max(100).optional(),
     dateOfClaim: z.coerce.date().optional(),
     outcome: z.enum(claimOutcomeValues).default(ClaimOutcome.Pending),
@@ -75,6 +82,8 @@ export const DomaceClaimUpdateInputSchema = z
      * create demands one, and the basic-fields editor always sends it.
      */
     categoryId: z.string().uuid().optional(),
+    /** Absent = leave the answers as they are; the category's own change clears them. */
+    categoryFieldValues: ClaimCategoryFieldValuesSchema.optional(),
     engineCode: z.string().trim().max(100).nullable().optional(),
     dateOfClaim: z.coerce.date().nullable().optional(),
     warrantyReport: z.string().trim().max(8000).nullable().optional(),
@@ -152,6 +161,7 @@ export type DomaceClaimListItem = z.infer<typeof DomaceClaimListItemSchema>
 
 export const DomaceClaimDetailSchema = DomaceClaimListItemSchema.extend({
   engineTypeManufacturer: z.string().nullable(),
+  categoryFieldValues: ClaimCategoryFieldValuesSchema,
   invoiceNumber: z.string().nullable(),
   originalInvoiceAmount: z.coerce.number().nullable(),
   partsAmount: z.coerce.number().nullable(),

@@ -27,6 +27,7 @@ const fullDetail: EmotiveClaimDetail = {
     isActive: true,
     deactivatedAt: null,
   },
+  categoryFieldValues: { obradjeni_deo: 'glava' },
   engineCode: 'EC-1',
   dateOfClaim: '2026-04-17',
   mrNumber: '5376/25',
@@ -150,6 +151,9 @@ describe('toClientClaimListItem', () => {
     // categories it knows with its own strings.
     expect(item.categoryCode).toBe('REMONT_MOTORA')
     expect('category' in item).toBe(false)
+    // The answers to a category's fields are internal: the portal is told what KIND of work the
+    // claim is, never which part came off the bench.
+    expect('categoryFieldValues' in item).toBe(false)
     // Status is derived server-side from clientVisibility (deriveClientClaimPhase),
     // so no redundant `progressPhase` field ships.
     expect('progressPhase' in item).toBe(false)

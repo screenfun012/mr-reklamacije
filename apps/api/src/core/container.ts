@@ -350,6 +350,7 @@ export function buildContainer(
     portalBaseUrl,
     logger,
     notificationsService,
+    claimCategoryFieldsRepository,
   )
 
   const clientSubmissionsRepository = new ClientSubmissionsRepository(db)
@@ -379,6 +380,7 @@ export function buildContainer(
     auditService,
     eventBus,
     notificationsService,
+    claimCategoryFieldsRepository,
   )
 
   const claimsRepository = new ClaimsRepository(db)

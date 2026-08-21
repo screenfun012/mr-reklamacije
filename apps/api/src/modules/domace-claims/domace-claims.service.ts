@@ -6,6 +6,8 @@ import {
 } from '@mr/shared'
 
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
+import { assertCategoryFieldValues } from '../../core/claims/validate-category-field-values.js'
+import type { CategoryFieldsPort } from '../../core/ports/category-fields-port.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
@@ -58,6 +60,7 @@ export class DomaceClaimsService {
     private readonly audit: AuditPort,
     private readonly events: EventBus,
     private readonly notifications: NotificationsPort,
+    private readonly categoryFields: CategoryFieldsPort,
   ) {}
 
   async create(
@@ -120,7 +123,7 @@ export class DomaceClaimsService {
       throw new NotFoundError('Domace claim', id)
     }
 
-    await this.validateUpdateReferences(input, before.category?.id ?? null)
+    await this.validateUpdateReferences(input, before)
 
     const updated = await this.repo.update(id, input, auditContext.actorUserId, before, scope)
 
@@ -275,6 +278,12 @@ export class DomaceClaimsService {
       throw new ValidationError('Invalid or inactive claim category')
     }
 
+    assertCategoryFieldValues({
+      values: input.categoryFieldValues ?? {},
+      previousValues: {},
+      fields: await this.categoryFields.listForCategory(input.categoryId),
+    })
+
     await this.validateFaults(input.faults)
     await this.validateManufacturerEngineTypePair(input.manufacturerId, input.engineTypeId)
   }
@@ -301,8 +310,11 @@ export class DomaceClaimsService {
 
   private async validateUpdateReferences(
     input: DomaceClaimUpdateInput,
-    currentCategoryId: string | null,
+    before: DomaceClaimDetail,
   ): Promise<void> {
+    const currentCategoryId = before.category?.id ?? null
+    await this.assertCategoryFieldValuesFor(input, before)
+
     type ReferenceCheck = { active: Promise<boolean>; message: string }
     const checks: ReferenceCheck[] = []
 
@@ -349,6 +361,26 @@ export class DomaceClaimsService {
     }
 
     await this.validateManufacturerEngineTypePair(input.manufacturerId, input.engineTypeId)
+  }
+
+  /** Mirrors EMOTIVE — see the note there. */
+  private async assertCategoryFieldValuesFor(
+    input: DomaceClaimUpdateInput,
+    before: DomaceClaimDetail,
+  ): Promise<void> {
+    const currentCategoryId = before.category?.id ?? null
+    const categoryChanged = input.categoryId !== undefined && input.categoryId !== currentCategoryId
+    const effectiveCategoryId = input.categoryId ?? currentCategoryId
+    if (effectiveCategoryId === null) {
+      return
+    }
+
+    const previousValues = categoryChanged ? {} : before.categoryFieldValues
+    assertCategoryFieldValues({
+      values: input.categoryFieldValues ?? previousValues,
+      previousValues,
+      fields: await this.categoryFields.listForCategory(effectiveCategoryId),
+    })
   }
 
   private async validateFaults(faults: readonly DomaceClaimFaultInput[]): Promise<void> {

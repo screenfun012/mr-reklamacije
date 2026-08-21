@@ -10,6 +10,8 @@ import type { Logger } from '@mr/logger'
 import type { ApiClaimTxExecutor } from '../../core/database.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import { validateEngineTypeManufacturerPair } from '../../core/claims/validate-engine-type-manufacturer-pair.js'
+import { assertCategoryFieldValues } from '../../core/claims/validate-category-field-values.js'
+import type { CategoryFieldsPort } from '../../core/ports/category-fields-port.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
@@ -71,6 +73,7 @@ export class EmotiveClaimsService {
     private readonly portalBaseUrl: string,
     private readonly logger: Logger,
     private readonly notifications: NotificationsPort,
+    private readonly categoryFields: CategoryFieldsPort,
   ) {}
 
   async create(
@@ -210,7 +213,7 @@ export class EmotiveClaimsService {
       throw new NotFoundError('Emotive claim', id)
     }
 
-    await this.validateUpdateReferences(input, before.category?.id ?? null)
+    await this.validateUpdateReferences(input, before)
 
     const updated = await this.repo.update(id, input, auditContext.actorUserId, before, scope)
 
@@ -483,6 +486,12 @@ export class EmotiveClaimsService {
       throw new ValidationError('Invalid or inactive claim category')
     }
 
+    assertCategoryFieldValues({
+      values: input.categoryFieldValues ?? {},
+      previousValues: {},
+      fields: await this.categoryFields.listForCategory(input.categoryId),
+    })
+
     await this.validateFaults(input.faults)
     await this.validateManufacturerEngineTypePair(input.manufacturerId, input.engineTypeId)
   }
@@ -509,8 +518,11 @@ export class EmotiveClaimsService {
 
   private async validateUpdateReferences(
     input: EmotiveClaimUpdateInput,
-    currentCategoryId: string | null,
+    before: EmotiveClaimDetail,
   ): Promise<void> {
+    const currentCategoryId = before.category?.id ?? null
+    await this.assertCategoryFieldValuesFor(input, before)
+
     type ReferenceCheck = { active: Promise<boolean>; message: string }
     const checks: ReferenceCheck[] = []
 
@@ -570,6 +582,31 @@ export class EmotiveClaimsService {
     }
 
     await this.validateManufacturerEngineTypePair(input.manufacturerId, input.engineTypeId)
+  }
+
+  /**
+   * A claim's answers must belong to the category it will HAVE after the write. Changing the
+   * category wipes the old answers (the repository does that), so from this rule's point of view
+   * there is nothing previous to keep — which also means a leftover key from the old category is
+   * refused rather than silently carried across.
+   */
+  private async assertCategoryFieldValuesFor(
+    input: EmotiveClaimUpdateInput,
+    before: EmotiveClaimDetail,
+  ): Promise<void> {
+    const currentCategoryId = before.category?.id ?? null
+    const categoryChanged = input.categoryId !== undefined && input.categoryId !== currentCategoryId
+    const effectiveCategoryId = input.categoryId ?? currentCategoryId
+    if (effectiveCategoryId === null) {
+      return
+    }
+
+    const previousValues = categoryChanged ? {} : before.categoryFieldValues
+    assertCategoryFieldValues({
+      values: input.categoryFieldValues ?? previousValues,
+      previousValues,
+      fields: await this.categoryFields.listForCategory(effectiveCategoryId),
+    })
   }
 
   private async validateFaults(faults: readonly EmotiveClaimFaultInput[]): Promise<void> {

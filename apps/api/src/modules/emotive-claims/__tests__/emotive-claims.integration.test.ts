@@ -1462,6 +1462,162 @@ describe('EmotiveClaimsService integration', () => {
     })
   })
 
+  describe('category field values', () => {
+    async function machiningId(): Promise<string> {
+      return getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
+    }
+
+    async function retireOption(code: string): Promise<void> {
+      const fields = await container.claimCategoryFieldsRepository.list({
+        categoryId: await machiningId(),
+        activeOnly: true,
+        includeOptions: true,
+        limit: 50,
+      })
+      const option = fields.items
+        .find((item) => item.code === 'obradjeni_deo')
+        ?.options?.find((candidate) => candidate.code === code)
+      await container.claimCategoryFieldOptionsRepository.update(option?.id ?? '', {
+        isActive: false,
+      })
+    }
+
+    afterEach(async () => {
+      await ctx.db.update(schema.claimCategoryFieldOptions).set({ isActive: true })
+    })
+
+    it('stores a valid answer and returns it on the detail', async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId: await machiningId(),
+          categoryFieldValues: { obradjeni_deo: 'glava' },
+          mrNumber: `CFV-OK-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+
+      expect(created.categoryFieldValues).toEqual({ obradjeni_deo: 'glava' })
+      const detail = await container.emotiveClaimsService.findById(created.id, FULL_OPERATOR)
+      expect(detail.categoryFieldValues).toEqual({ obradjeni_deo: 'glava' })
+    })
+
+    it('refuses an unknown field, an unknown value and a retired option on create', async () => {
+      const categoryId = await machiningId()
+      await retireOption('radilica')
+
+      for (const categoryFieldValues of [
+        { tudje_polje: 'glava' },
+        { obradjeni_deo: 'deklo' },
+        { obradjeni_deo: 'radilica' },
+      ]) {
+        await expect(
+          container.emotiveClaimsService.create(
+            await buildCreateInput({
+              categoryId,
+              categoryFieldValues,
+              mrNumber: `CFV-BAD-${crypto.randomUUID().slice(0, 8)}/26`,
+            }),
+            FULL_OPERATOR,
+            auditContext,
+          ),
+        ).rejects.toBeInstanceOf(ValidationError)
+      }
+    })
+
+    it('keeps an unchanged answer whose option was retired, but refuses moving to it', async () => {
+      const categoryId = await machiningId()
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId,
+          categoryFieldValues: { obradjeni_deo: 'radilica' },
+          mrNumber: `CFV-KEEP-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await retireOption('radilica')
+
+      const kept = await container.emotiveClaimsService.update(
+        created.id,
+        { warrantyReport: 'Dopunjen opis' },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(kept.categoryFieldValues).toEqual({ obradjeni_deo: 'radilica' })
+
+      const other = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId,
+          mrNumber: `CFV-MOVE-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      await expect(
+        container.emotiveClaimsService.update(
+          other.id,
+          { categoryFieldValues: { obradjeni_deo: 'radilica' } },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it("drops the answers when the category changes, and refuses the old category's keys", async () => {
+      const created = await container.emotiveClaimsService.create(
+        await buildCreateInput({
+          categoryId: await machiningId(),
+          categoryFieldValues: { obradjeni_deo: 'glava' },
+          mrNumber: `CFV-SWAP-${crypto.randomUUID().slice(0, 8)}/26`,
+        }),
+        FULL_OPERATOR,
+        auditContext,
+      )
+      const remontId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+
+      const moved = await container.emotiveClaimsService.update(
+        created.id,
+        { categoryId: remontId },
+        FULL_OPERATOR,
+        auditContext,
+      )
+      expect(moved.categoryFieldValues).toEqual({})
+
+      await expect(
+        container.emotiveClaimsService.update(
+          moved.id,
+          { categoryId: remontId, categoryFieldValues: { obradjeni_deo: 'glava' } },
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it("writes the answers inside the claim's own transaction", async () => {
+      const mrNumber = `CFV-ROLLBACK-${crypto.randomUUID().slice(0, 8)}/26`
+
+      await expect(
+        container.emotiveClaimsService.create(
+          await buildCreateInput({
+            categoryId: await machiningId(),
+            categoryFieldValues: { obradjeni_deo: 'glava' },
+            mrNumber,
+            faults: [{ faultType: FaultType.Employee, employeeId: crypto.randomUUID() }],
+          }),
+          FULL_OPERATOR,
+          auditContext,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+
+      const rows = await ctx.db
+        .select()
+        .from(schema.emotiveClaims)
+        .where(eq(schema.emotiveClaims.mrNumber, mrNumber))
+      expect(rows).toHaveLength(0)
+    })
+  })
+
   describe('when the claim carries a switched-off category', () => {
     async function switchOffCategory(code: string): Promise<string> {
       const categoryId = await getClaimCategoryIdByCode(ctx.db, code)
