@@ -1,19 +1,23 @@
 import { getLocale, m } from '@mr/i18n'
 import {
   buildIntakeDocumentUrl,
+  buildIntakeQuoteUrl,
   intakeOrderKeys,
   produceIntakeOrderDocument,
+  removeIntakeQuote,
   sendIntakeOrderDocument,
+  sendIntakeQuote,
   type IntakeDocumentKind,
   type IntakeOrderDetail,
 } from '@mr/shared'
 import { cn, ConfirmDialog } from '@mr/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type ReactElement } from 'react'
+import { useRef, useState, type ReactElement } from 'react'
 
 import { InternalButton, internalButtonClasses } from '~/components/internal-button'
 import { formatIntakeReceivedAtLong } from '../intake-status'
 import { showInternalToast } from '~/lib/internal-toast'
+import { uploadIntakeQuote } from '../upload-intake-quote'
 import { CAPTION, CARD, FIELD_KEY } from './detail-styles'
 
 const DOCUMENT_LABELS: Record<IntakeDocumentKind, () => string> = {
@@ -124,10 +128,13 @@ function DocumentRow({
 export function CardDocument({
   order,
   canSend,
+  canAttachQuote,
 }: {
   order: IntakeOrderDetail
   /** `intake_orders.send_document` — its own permission, because this one leaves the shop. */
   canSend: boolean
+  /** `intake_orders.attach_quote` — reading the quote takes nothing; putting one on does. */
+  canAttachQuote: boolean
 }): ReactElement | null {
   const queryClient = useQueryClient()
   /** Which paper is being confirmed — and `null` for "no dialog open". */
@@ -210,6 +217,13 @@ export function CardDocument({
         </div>
       )}
 
+      {/* The third paper, and the only one that is not ours: made in another program and brought
+          back once the work is known. It sits here rather than under Specifikacija because this is
+          where the order's papers are downloaded and sent from, and it needs all three. */}
+      <div className="border-t border-mri-border pt-[13px]">
+        <QuoteRow order={order} canSend={canSend} canAttach={canAttachQuote} />
+      </div>
+
       {/* Confirmed because it leaves the building: an email cannot be recalled, and the office is
           usually pressing this because something already went wrong once. The dialog names WHICH
           paper — with two of them on the card, "the document" is no longer an answer. */}
@@ -226,5 +240,173 @@ export function CardDocument({
         onConfirm={() => (confirmSend === null ? undefined : send.mutate(confirmSend))}
       />
     </section>
+  )
+}
+
+/**
+ * The quote row. Three states and nothing in between: nobody attached one, one is attached, or a
+ * file is on its way up. Whoever may open the order sees it — the office, the intake desk and the
+ * serviser doing the work; a reader who may not attach simply gets no controls, and the server
+ * refuses him again if he finds the route anyway.
+ */
+function QuoteRow({
+  order,
+  canSend,
+  canAttach,
+}: {
+  order: IntakeOrderDetail
+  canSend: boolean
+  canAttach: boolean
+}): ReactElement {
+  const queryClient = useQueryClient()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [confirmSend, setConfirmSend] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+
+  const refresh = async (): Promise<void> => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: intakeOrderKeys.detail(order.id) }),
+      queryClient.invalidateQueries({ queryKey: intakeOrderKeys.history(order.id) }),
+    ])
+  }
+
+  const attach = useMutation({
+    mutationFn: (file: File) => uploadIntakeQuote(order.id, file),
+    onSuccess: async () => {
+      await refresh()
+      showInternalToast(m.intake_quote_attached())
+    },
+    // The server's own sentence: "file too large" and "unsupported type" are both things the
+    // office can act on, and a generic failure would send it looking in the wrong place.
+    onError: (error: Error) => showInternalToast(error.message),
+  })
+
+  const remove = useMutation({
+    mutationFn: () => removeIntakeQuote(order.id),
+    onSuccess: async () => {
+      setConfirmRemove(false)
+      await refresh()
+      showInternalToast(m.intake_quote_removed())
+    },
+    onError: () => {
+      setConfirmRemove(false)
+      showInternalToast(m.intake_detail_action_failed())
+    },
+  })
+
+  const send = useMutation({
+    mutationFn: () => sendIntakeQuote(order.id),
+    onSuccess: async () => {
+      setConfirmSend(false)
+      await refresh()
+      showInternalToast(m.intake_quote_sent())
+    },
+    onError: () => {
+      setConfirmSend(false)
+      showInternalToast(m.intake_detail_action_failed())
+    },
+  })
+
+  const quote = order.quote
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className={CAPTION}>{m.intake_quote_row()}</span>
+        {quote === null ? (
+          <span className="text-[12.5px] italic text-mri-text2">{m.intake_quote_none()}</span>
+        ) : (
+          <a
+            href={buildIntakeQuoteUrl(order.id)}
+            className="min-w-0 truncate text-[13px] font-semibold text-mri-text underline-offset-2 hover:text-mri-redh hover:underline"
+          >
+            {quote.fileName}
+          </a>
+        )}
+      </div>
+
+      {quote === null ? null : (
+        <span className="font-mono text-[11px] text-mri-text2">
+          {m.intake_quote_meta({
+            name: quote.uploadedByName ?? '—',
+            date: formatIntakeReceivedAtLong(quote.uploadedAt, getLocale()),
+          })}
+        </span>
+      )}
+
+      {canAttach || (canSend && quote !== null) ? (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {canAttach ? (
+            <>
+              <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  // Cleared right away, or picking the same file twice fires no change event.
+                  event.target.value = ''
+                  if (file !== undefined) {
+                    attach.mutate(file)
+                  }
+                }}
+              />
+              <InternalButton
+                type="button"
+                variant="outline"
+                disabled={attach.isPending}
+                onClick={() => inputRef.current?.click()}
+                className="h-9 px-3 text-[13px]"
+              >
+                {quote === null ? m.intake_quote_attach() : m.intake_quote_replace()}
+              </InternalButton>
+            </>
+          ) : null}
+          {quote !== null && canSend ? (
+            <InternalButton
+              type="button"
+              variant="ghost"
+              disabled={send.isPending || order.ownerEmail === null}
+              onClick={() => setConfirmSend(true)}
+              className="h-9 px-3 text-[13px]"
+            >
+              {m.intake_quote_send()}
+            </InternalButton>
+          ) : null}
+          {quote !== null && canAttach ? (
+            <InternalButton
+              type="button"
+              variant="ghost"
+              disabled={remove.isPending}
+              onClick={() => setConfirmRemove(true)}
+              className="h-9 px-3 text-[13px]"
+            >
+              {m.intake_quote_remove()}
+            </InternalButton>
+          ) : null}
+        </div>
+      ) : null}
+
+      <ConfirmDialog
+        open={confirmSend}
+        onOpenChange={(open) => (open ? undefined : setConfirmSend(false))}
+        title={m.intake_quote_send_confirm_title()}
+        description={m.intake_quote_send_confirm_body({ email: order.ownerEmail ?? '—' })}
+        confirmLabel={m.intake_quote_send()}
+        pending={send.isPending}
+        onConfirm={() => send.mutate()}
+      />
+
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={(open) => (open ? undefined : setConfirmRemove(false))}
+        title={m.intake_quote_remove_confirm_title()}
+        description={m.intake_quote_remove_confirm_body()}
+        confirmLabel={m.intake_quote_remove()}
+        variant="destructive"
+        pending={remove.isPending}
+        onConfirm={() => remove.mutate()}
+      />
+    </div>
   )
 }

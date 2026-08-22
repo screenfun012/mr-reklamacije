@@ -65,6 +65,7 @@ describe('the document card on a signed order', () => {
           documentReady: true,
           handoverSignedAt: '2026-08-15T10:00:00.000Z',
           archivedAt: null,
+          quote: null,
           handoverDocumentReady: false,
         })}
         canSend

@@ -28,6 +28,7 @@ export {
   type IntakeOrderListQuery,
   type IntakeOrderListResponse,
   type IntakeOrderPhoto,
+  type IntakeOrderQuote,
   type IntakeOrderSignInput,
   type IntakeOrderSummary,
   type IntakeOrderUpdateInput,

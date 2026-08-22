@@ -56,6 +56,21 @@ export function registerIntakeOrdersRoutes(
   // Its own permission, and in no standard package: taking a signed order out of the working list
   // is the office's decision, not the shop floor's. The service refuses an unfinished draft — that
   // one is discarded, and that is what `delete` is for.
+  // The quote: reading it takes no permission of its own — whoever may open the order may read
+  // its papers, the same rule the two sealed ones follow. Attaching is its own right, and sending
+  // it to the customer is the same one that already puts a document in an inbox.
+  routes.get('/:id/quote', canRead, controller.serveQuote)
+  routes.post('/:id/quote', requirePermission('intake_orders.attach_quote'), controller.attachQuote)
+  routes.delete(
+    '/:id/quote',
+    requirePermission('intake_orders.attach_quote'),
+    controller.removeQuote,
+  )
+  routes.post(
+    '/:id/quote/send',
+    requirePermission('intake_orders.send_document'),
+    controller.sendQuote,
+  )
   routes.post('/:id/archive', requirePermission('intake_orders.archive'), controller.archive)
   routes.post('/:id/unarchive', requirePermission('intake_orders.archive'), controller.unarchive)
   // Photos live under the order, never under /api/attachments: that route is gated by

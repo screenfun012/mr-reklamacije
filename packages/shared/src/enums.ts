@@ -103,6 +103,13 @@ export type AttachmentVisibility = (typeof AttachmentVisibility)[keyof typeof At
 export const AttachmentPurpose = {
   ClaimAttachment: 'claim_attachment',
   ReportImage: 'report_image',
+  /**
+   * The quote the serviser attaches to a finished intake — a file made in another program, never
+   * line items. It shares the attachments table with the vehicle's photos, so it needs a purpose
+   * of its own: an intake photo is recognised by nothing but `intake_order_id`, and without this
+   * the quote would land in the photo grid and be counted by `photoCount`, which is a gate.
+   */
+  IntakeQuote: 'intake_quote',
 } as const
 
 export type AttachmentPurpose = (typeof AttachmentPurpose)[keyof typeof AttachmentPurpose]

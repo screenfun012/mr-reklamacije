@@ -1,0 +1,2 @@
+ALTER TABLE "attachments" DROP CONSTRAINT "attachments_purpose_check";--> statement-breakpoint
+ALTER TABLE "attachments" ADD CONSTRAINT "attachments_purpose_check" CHECK ("attachments"."purpose" IN ('claim_attachment', 'report_image', 'intake_quote'));

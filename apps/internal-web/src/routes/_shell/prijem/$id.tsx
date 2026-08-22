@@ -122,6 +122,7 @@ function IntakeDetailPage(): ReactElement {
               order={order}
               canUpdate={permissions.includes('intake_orders.update')}
               canSendDocument={permissions.includes('intake_orders.send_document')}
+              canAttachQuote={permissions.includes('intake_orders.attach_quote')}
             />
           ),
           [IntakeDetailTab.Fotografije]: <TabPhotos order={order} />,

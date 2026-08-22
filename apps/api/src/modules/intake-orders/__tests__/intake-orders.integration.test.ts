@@ -37,6 +37,9 @@ import type { IntakeOrderCreateInput, IntakeOrderUpdateInput } from '../intake-o
 const OFFICE_PERMISSIONS = [...OPERATOR_PERMISSIONS]
 const FLOOR_PERMISSIONS = [...SERVISER_PERMISSIONS]
 
+/** A real PDF header: the pipeline reads magic bytes, never the declared type or the name. */
+const PDF_BYTES = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a, 0x25])
+
 function actorContext(userId: string): HttpActorContext {
   return { actorUserId: userId, actorIp: '203.0.113.7', actorUserAgent: 'vitest-agent' }
 }
@@ -98,6 +101,11 @@ describe('Intake orders integration', () => {
 
   async function officeActor(name = 'Kancelarija'): Promise<IntakeOrdersActor> {
     return { id: await createUser(name), permissions: OFFICE_PERMISSIONS }
+  }
+
+  /** The serviser's package holds it: he is the one who makes the quote and brings it back. */
+  function quoteActor(actor: IntakeOrdersActor): IntakeOrdersActor {
+    return { ...actor, permissions: [...actor.permissions, 'intake_orders.attach_quote'] }
   }
 
   /** Archiving is in no standard package — only an admin, or an account the office was given it. */
@@ -319,6 +327,66 @@ describe('Intake orders integration', () => {
 
       await expect(
         service.setArchived(draft.id, true, archiver, actorContext(archiver.id)),
+      ).rejects.toMatchObject({ status: 400 })
+    })
+
+    it('keeps the quote out of the photos, and out of the count that gates the wizard', async () => {
+      // ⚙ drop the purpose filter in `listPhotos` or in the list's photo counter and this goes red:
+      // an intake photo is recognised by nothing but its order id, so the quote would land in the
+      // grid — and `photoCount` feeds `photosPending`, which is a GATE, not a decoration.
+      const floor = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(floor)
+
+      await service.attachQuote(
+        id,
+        { fileName: 'ponuda.pdf', data: PDF_BYTES },
+        quoteActor(floor),
+        actorContext(floor.id),
+      )
+
+      const detail = await service.findById(id, office)
+      expect(detail.quote?.fileName).toBe('ponuda.pdf')
+      expect(detail.photos).toHaveLength(0)
+
+      const list = await service.list(office, { view: 'active', page: 1, pageSize: 25 })
+      expect(list.items.find((item) => item.id === id)?.photoCount).toBe(0)
+    })
+
+    it('replaces the quote instead of collecting them', async () => {
+      const floor = await floorActor()
+      const office = await officeActor()
+      const id = await signedOrder(floor)
+
+      await service.attachQuote(
+        id,
+        { fileName: 'prva.pdf', data: PDF_BYTES },
+        quoteActor(floor),
+        actorContext(floor.id),
+      )
+      const after = await service.attachQuote(
+        id,
+        { fileName: 'druga.pdf', data: PDF_BYTES },
+        quoteActor(floor),
+        actorContext(floor.id),
+      )
+
+      expect(after.quote?.fileName).toBe('druga.pdf')
+      const detail = await service.findById(id, office)
+      expect(detail.quote?.fileName).toBe('druga.pdf')
+    })
+
+    it('refuses a quote on an unfinished intake — there is no work to quote yet', async () => {
+      const floor = await floorActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+
+      await expect(
+        service.attachQuote(
+          draft.id,
+          { fileName: 'ponuda.pdf', data: PDF_BYTES },
+          quoteActor(floor),
+          actorContext(floor.id),
+        ),
       ).rejects.toMatchObject({ status: 400 })
     })
 

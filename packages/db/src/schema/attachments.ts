@@ -95,7 +95,10 @@ export const attachments = pgTable(
       sql`${t.intakeDamageId} IS NULL OR ${t.intakeOrderId} IS NOT NULL`,
     ),
     check('attachments_visibility_check', sql`${t.visibility} IN ('internal', 'client_visible')`),
-    check('attachments_purpose_check', sql`${t.purpose} IN ('claim_attachment', 'report_image')`),
+    check(
+      'attachments_purpose_check',
+      sql`${t.purpose} IN ('claim_attachment', 'report_image', 'intake_quote')`,
+    ),
     foreignKey({
       name: 'attachments_emotive_claim_id_fkey',
       columns: [t.emotiveClaimId],

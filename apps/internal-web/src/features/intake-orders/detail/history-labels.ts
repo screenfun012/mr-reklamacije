@@ -32,6 +32,9 @@ const TRANSITION_LABELS: Record<string, () => string> = {
   // be — without a line here a row would simply vanish from the office's view with no explanation.
   archive: m.intake_history_archived,
   unarchive: m.intake_history_unarchived,
+  quote_attached: m.intake_history_quote_attached,
+  quote_removed: m.intake_history_quote_removed,
+  quote_sent: m.intake_history_quote_sent,
 }
 
 /**

@@ -35,6 +35,8 @@ export const STANDARD_ROLES = [
       'intake_orders.create',
       'intake_orders.update',
       'intake_orders.advance',
+      // He is the one who makes the quote in another program and brings it back to the order.
+      'intake_orders.attach_quote',
     ],
   },
   {

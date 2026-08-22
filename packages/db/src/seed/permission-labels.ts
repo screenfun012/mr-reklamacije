@@ -210,6 +210,14 @@ export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
     descriptionSr: 'Potpisan nalog se ne briše — on je firmina polovina vlasnikovog papira.',
     descriptionEn: "A signed order is never deleted — it is the shop's half of the owner's paper.",
   },
+  'intake_orders.attach_quote': {
+    nameSr: 'Kači ponudu na završen nalog',
+    nameEn: 'Attaches the quote to a finished intake',
+    descriptionSr:
+      'Ponuda je fajl napravljen u drugom programu. Ko sme da otvori nalog, sme i da je pročita — ovo je dozvola da se okači, zameni ili skloni.',
+    descriptionEn:
+      'The quote is a file made in another program. Whoever may open the order may read it — this is the right to attach, replace or remove it.',
+  },
   'intake_orders.archive': {
     nameSr: 'Sklanja potpisan nalog sa liste',
     nameEn: 'Takes a signed order out of the working list',

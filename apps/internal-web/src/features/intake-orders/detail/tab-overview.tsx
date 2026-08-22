@@ -73,12 +73,15 @@ export function TabOverview({
   order,
   canUpdate,
   canSendDocument,
+  canAttachQuote,
 }: {
   order: IntakeOrderDetail
   /** Gates `IntakeContactPhone`'s own edit affordance below the owner-phone fact. */
   canUpdate: boolean
   /** `intake_orders.send_document` — the office only, because this one leaves the shop. */
   canSendDocument: boolean
+  /** `intake_orders.attach_quote` — reading the quote takes nothing, attaching one does. */
+  canAttachQuote: boolean
 }): ReactElement {
   const [preview, setPreview] = useState<IntakePhotoCell | null>(null)
 
@@ -215,7 +218,7 @@ export function TabOverview({
           </div>
 
           <div className="flex flex-col gap-[14px] @min-[860px]:w-[320px] @min-[860px]:flex-none">
-            <CardDocument order={order} canSend={canSendDocument} />
+            <CardDocument order={order} canSend={canSendDocument} canAttachQuote={canAttachQuote} />
 
             <section className={cn(CARD, 'flex flex-col gap-[11px] px-[18px] py-4')}>
               <h2 className={CAPTION}>

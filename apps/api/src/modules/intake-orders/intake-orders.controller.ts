@@ -289,6 +289,50 @@ export function createIntakeOrdersController(container: Container) {
       })
     },
 
+    attachQuote: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const files = await readUploadFiles(await c.req.formData())
+      const file = files[0]
+      if (file === undefined) {
+        throw new ValidationError('No quote uploaded')
+      }
+
+      const order = await container.intakeOrdersService.attachQuote(
+        id,
+        file,
+        actorOf(user),
+        getActorContext(c, user),
+      )
+      return c.json(order)
+    },
+
+    removeQuote: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      await container.intakeOrdersService.removeQuote(id, actorOf(user), getActorContext(c, user))
+      return c.body(null, 204)
+    },
+
+    sendQuote: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      await container.intakeOrdersService.sendQuote(id, actorOf(user), getActorContext(c, user))
+      return c.body(null, 204)
+    },
+
+    /** The quote, under the name it was attached with. `attachment`, like every other paper here. */
+    serveQuote: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const meta = await container.intakeOrdersService.getQuoteDownloadMeta(id, actorOf(user))
+
+      return serveCachedAttachmentDownload(c, meta, {
+        disposition: 'attachment',
+        openStream: (storagePath) => container.intakeOrdersService.openDocumentStream(storagePath),
+      })
+    },
+
     /** The office making a paper the order was left without, when the seal failed. */
     produceDocumentAgain: async (c: Context) => {
       const user = requireUser(c)

@@ -74,6 +74,14 @@ export const PERMISSIONS = [
    * still DISCARDED, never archived — see `intake_orders.delete`.
    */
   'intake_orders.archive',
+  /**
+   * Attaching the quote to a finished intake, replacing it, or taking it off. Not `update`: the
+   * office package does not hold that one, and `update` is frozen after the signature — while the
+   * quote is attached precisely AFTER, when the services and the materials are known (Nikola,
+   * 2026-08-22). Reading a quote takes no permission of its own: whoever may open the order may
+   * read its papers, which is the rule its two sealed neighbours already follow.
+   */
+  'intake_orders.attach_quote',
 
   // claim_reports
   'claim_reports.view',

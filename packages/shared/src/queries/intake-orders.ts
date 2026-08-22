@@ -279,6 +279,21 @@ export function buildIntakeDocumentUrl(id: string, kind: IntakeDocumentKind): st
   return `/api/intake-orders/${id}/document?kind=${kind}`
 }
 
+/** The quote, served by the intake module like every other paper of an order. */
+export function buildIntakeQuoteUrl(id: string): string {
+  return `/api/intake-orders/${id}/quote`
+}
+
+/** Takes the quote off the order. The bytes stay; the row stops being the order's quote. */
+export function removeIntakeQuote(id: string): Promise<void> {
+  return fetchNoContent(`/api/intake-orders/${id}/quote`, { method: 'DELETE' })
+}
+
+/** Sends the attached quote to the owner. A button, never automatic. */
+export function sendIntakeQuote(id: string): Promise<void> {
+  return fetchNoContent(`/api/intake-orders/${id}/quote/send`, { method: 'POST' })
+}
+
 /**
  * Intake photos are served by the intake module, never by `/api/attachments` — a serviser
  * must not hold a permission that would also reach a claim's files.

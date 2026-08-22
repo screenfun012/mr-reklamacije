@@ -351,6 +351,13 @@
       "when": 1787400069190,
       "tag": "0049_intake_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1787415288032,
+      "tag": "0050_intake_quote",
+      "breakpoints": true
     }
   ]
 }

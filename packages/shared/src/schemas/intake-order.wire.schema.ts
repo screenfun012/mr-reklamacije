@@ -289,6 +289,18 @@ export type IntakeOrderPhoto = z.infer<typeof IntakeOrderPhotoSchema>
  * One aggregate detail fetch, as the claims rule requires — photos come with the order
  * rather than in a second round trip.
  */
+export const IntakeOrderQuoteSchema = z.object({
+  id: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSizeBytes: z.number().int().nonnegative(),
+  uploadedAt: z.string(),
+  /** Null when the account that attached it has since been removed. */
+  uploadedByName: z.string().nullable(),
+})
+
+export type IntakeOrderQuote = z.infer<typeof IntakeOrderQuoteSchema>
+
 export const IntakeOrderDetailSchema = z.object({
   id: z.string().uuid(),
   orderNumber: z.string(),
@@ -342,6 +354,12 @@ export const IntakeOrderDetailSchema = z.object({
   handoverSignedAt: z.string().nullable(),
   /** Out of the working list, still whole. Null is the normal order. */
   archivedAt: z.string().nullable(),
+  /**
+   * The quote the serviser attached after the intake was finished — a file made in another
+   * program. Null until there is one; a new one replaces it. Prices never enter this app: this is
+   * the paper, not its contents.
+   */
+  quote: IntakeOrderQuoteSchema.nullable(),
   /** Whether the sealed handover exists. The storage path never leaves the server. */
   handoverDocumentReady: z.boolean(),
   handoverDocumentEmailedAt: z.string().nullable(),

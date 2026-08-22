@@ -49,7 +49,9 @@ import {
 import {
   intakeDocumentEmailSubject,
   intakeDocumentFileName,
+  intakeQuoteEmailSubject,
   renderIntakeDocumentEmailHtml,
+  renderIntakeQuoteEmailHtml,
 } from './intake-orders.email.js'
 import { extensionForMimeType } from '@mr/shared'
 import {
@@ -1099,6 +1101,166 @@ export class IntakeOrdersService {
    * refusing it would lose the evidence the whole module exists for, purely because the hall's
    * WiFi stalled at the wrong second.
    */
+  /** The order as it now stands, after a write that has already proved it exists. */
+  private async requireOrder(id: string): Promise<IntakeOrderDetail> {
+    const order = await this.repo.findById(id)
+    if (order === null) {
+      throw new NotFoundError('Intake order', id)
+    }
+    return order
+  }
+
+  /**
+   * The quote — a file made in another program and brought back to a FINISHED intake, once the
+   * services and the materials are known (Nikola, 2026-08-22). It is the one thing that may be
+   * added after the signature, and deliberately so: it does not change the paper the owner signed,
+   * it is a new document beside it. A draft has no work to quote yet, so it is refused.
+   *
+   * Attaching again replaces what is there; the old row stays, soft-deleted, like every other
+   * removed file.
+   */
+  async attachQuote(
+    id: string,
+    file: AttachmentUploadFileInput,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderDetail> {
+    const order = await this.loadVisible(id, actor)
+
+    if (order.signedAt === null) {
+      throw new ValidationError('A quote belongs to a finished intake — sign it first')
+    }
+
+    const processed = await processUploadFile(file)
+    const attachmentId = crypto.randomUUID()
+    const storagePath = buildIntakeAttachmentStoragePath({
+      orderId: id,
+      attachmentId,
+      extension: extensionForMimeType(processed.storedMime),
+    })
+
+    await writeStoredFile(this.storage, {
+      storagePath,
+      storedData: processed.storedData,
+      storedMime: processed.storedMime,
+      optimized: processed.optimized,
+    })
+
+    await this.repo.replaceQuote({
+      orderId: id,
+      fileName: file.fileName,
+      storagePath,
+      mimeType: processed.storedMime,
+      fileSizeBytes: processed.storedData.byteLength,
+      contentSha256: processed.contentSha256,
+      uploadedBy: auditContext.actorUserId,
+    })
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { after: { fileName: file.fileName }, transition: 'quote_attached' },
+    })
+
+    this.signalChanged()
+    return this.requireOrder(id)
+  }
+
+  /** Takes the quote off the order. The bytes stay; the row stops being the order's quote. */
+  async removeQuote(
+    id: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderDetail> {
+    const order = await this.loadVisible(id, actor)
+    if (order.quote === null) {
+      throw new NotFoundError('Intake quote', id)
+    }
+
+    await this.repo.removeQuote(id)
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { before: { fileName: order.quote.fileName }, transition: 'quote_removed' },
+    })
+
+    this.signalChanged()
+    return this.requireOrder(id)
+  }
+
+  /**
+   * Sends the quote to the owner. A button, never automatic (Nikola, 2026-08-22): the shop decides
+   * whether this customer gets it by mail at all. Same refusals as the sealed papers, for the same
+   * reasons — 404 when there is nothing to send, 422 when the order carries no address (the request
+   * is fine, the ORDER cannot answer it), 503 when email is not configured.
+   *
+   * ⚠ `owner_email` is frozen after the signature, and a quote only exists after it — so an order
+   * that reached this point without an address has no in-app remedy.
+   */
+  async sendQuote(
+    id: string,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<void> {
+    const order = await this.loadVisible(id, actor)
+    const file = await this.repo.findQuoteFile(id)
+    if (file === null) {
+      throw new NotFoundError('Intake quote', id)
+    }
+    if (order.ownerEmail === null) {
+      throw new UnprocessableEntityError('The owner left no email address for this order')
+    }
+    if (!this.email.enabled) {
+      throw new ServiceUnavailableError('Slanje e-pošte trenutno nije podešeno.')
+    }
+
+    const content = await this.storage.read(file.storagePath)
+    const { supportPhone } = await this.appSettings.resolveAll()
+
+    await this.email.send({
+      to: order.ownerEmail,
+      subject: intakeQuoteEmailSubject(order.orderNumber),
+      html: renderIntakeQuoteEmailHtml(order.orderNumber, supportPhone),
+      // The file the shop attached, under the name it was attached with — never re-made here.
+      attachments: [{ fileName: file.fileName, content, mimeType: file.mimeType }],
+    })
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: { transition: 'quote_sent' },
+    })
+  }
+
+  /**
+   * What the browser needs to hand the quote over as a download — under the name it was attached
+   * with, because that name is the shop's own and nobody should have to guess what the file is.
+   */
+  async getQuoteDownloadMeta(
+    id: string,
+    actor: IntakeOrdersActor,
+  ): Promise<{ storagePath: string; mimeType: string; fileName: string; etag: string | null }> {
+    await this.loadVisible(id, actor)
+    const file = await this.repo.findQuoteFile(id)
+    if (file === null) {
+      throw new NotFoundError('Intake quote', id)
+    }
+    return { ...file, etag: null }
+  }
+
   async uploadPhoto(
     id: string,
     file: AttachmentUploadFileInput,

@@ -1,4 +1,5 @@
 import {
+  AttachmentPurpose,
   IntakeOrderStatus,
   type IntakeChecklist,
   type IntakeDamage,
@@ -33,6 +34,7 @@ import type {
   IntakeOrderListItem,
   IntakeOrderListQuery,
   IntakeOrderPhoto,
+  IntakeOrderQuote,
   IntakeOrderSignInput,
   IntakeOrderSummary,
   IntakeOrderUpdateInput,
@@ -154,7 +156,11 @@ function mapPhotoRow(row: {
   }
 }
 
-function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail {
+function mapDetail(
+  row: OrderRow,
+  photos: IntakeOrderPhoto[],
+  quote: IntakeOrderQuote | null,
+): IntakeOrderDetail {
   return {
     id: row.id,
     orderNumber: row.orderNumber,
@@ -189,6 +195,7 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     ownerSignature: row.ownerSignature,
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
     archivedAt: row.archivedAt === null ? null : row.archivedAt.toISOString(),
+    quote,
     documentReady: row.documentReady,
     documentEmailedAt: row.documentEmailedAt === null ? null : row.documentEmailedAt.toISOString(),
     // Null and NOT `?? ''` like the intake's, because null is a real answer here: an order handed
@@ -307,8 +314,8 @@ export class IntakeOrdersRepository {
       return null
     }
 
-    const photos = await this.listPhotos(id)
-    return mapDetail(row as OrderRow, photos)
+    const [photos, quote] = await Promise.all([this.listPhotos(id), this.findQuote(id)])
+    return mapDetail(row as OrderRow, photos, quote)
   }
 
   async listPhotos(orderId: string): Promise<IntakeOrderPhoto[]> {
@@ -326,7 +333,17 @@ export class IntakeOrdersRepository {
         uploadedAt: attachments.uploadedAt,
       })
       .from(attachments)
-      .where(and(eq(attachments.intakeOrderId, orderId), isNull(attachments.deletedAt)))
+      .where(
+        and(
+          eq(attachments.intakeOrderId, orderId),
+          isNull(attachments.deletedAt),
+          // The quote shares this table with the vehicle's photos, and an intake photo is
+          // recognised by nothing but its order id — so without this it would show up in the photo
+          // grid. Written the positive way, because that is what `insertPhoto` stores (the column
+          // default), and a `!=` would also let a future fourth purpose in by accident.
+          eq(attachments.purpose, AttachmentPurpose.ClaimAttachment),
+        ),
+      )
       .orderBy(asc(attachments.uploadedAt))
 
     return rows.map(mapPhotoRow)
@@ -391,6 +408,7 @@ export class IntakeOrdersRepository {
       SELECT COUNT(*)::int FROM ${attachments}
       WHERE ${attachments.intakeOrderId} = ${intakeOrders.id}
         AND ${attachments.deletedAt} IS NULL
+        AND ${attachments.purpose} = ${AttachmentPurpose.ClaimAttachment}
     )`
 
     const [rows, [totalRow]] = await Promise.all([
@@ -862,6 +880,123 @@ export class IntakeOrdersRepository {
    * An abandoned draft is really deleted — that is what `ODUSTANI` means, and it releases
    * the order number for the pad's next sheet.
    */
+  /**
+   * The order's current quote, or null. One per order by construction: attaching a new one
+   * soft-deletes the old, so this is a `limit(1)` over what is left rather than a "latest" guess.
+   */
+  async findQuote(orderId: string): Promise<IntakeOrderQuote | null> {
+    const [row] = await this.db
+      .select({
+        id: attachments.id,
+        fileName: attachments.fileName,
+        mimeType: attachments.mimeType,
+        fileSizeBytes: attachments.fileSizeBytes,
+        uploadedAt: attachments.uploadedAt,
+        uploadedByName: users.name,
+      })
+      .from(attachments)
+      .leftJoin(users, eq(users.id, attachments.uploadedBy))
+      .where(
+        and(
+          eq(attachments.intakeOrderId, orderId),
+          eq(attachments.purpose, AttachmentPurpose.IntakeQuote),
+          isNull(attachments.deletedAt),
+        ),
+      )
+      .orderBy(desc(attachments.uploadedAt))
+      .limit(1)
+
+    if (row === undefined) {
+      return null
+    }
+
+    return {
+      id: row.id,
+      fileName: row.fileName,
+      mimeType: row.mimeType,
+      fileSizeBytes: Number(row.fileSizeBytes),
+      uploadedAt: row.uploadedAt.toISOString(),
+      uploadedByName: row.uploadedByName,
+    }
+  }
+
+  /**
+   * The bytes behind the quote — for the download and for the email. Separate from `findQuote`
+   * because the storage path is not the client's business and never crosses the wire, exactly as
+   * `findDocument` keeps the sealed papers' paths on this side.
+   */
+  async findQuoteFile(
+    orderId: string,
+  ): Promise<{ storagePath: string; fileName: string; mimeType: string } | null> {
+    const [row] = await this.db
+      .select({
+        storagePath: attachments.storagePath,
+        fileName: attachments.fileName,
+        mimeType: attachments.mimeType,
+      })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.intakeOrderId, orderId),
+          eq(attachments.purpose, AttachmentPurpose.IntakeQuote),
+          isNull(attachments.deletedAt),
+        ),
+      )
+      .orderBy(desc(attachments.uploadedAt))
+      .limit(1)
+
+    return row ?? null
+  }
+
+  /** Attaching a new quote replaces the current one; the old row stays, soft-deleted. */
+  async replaceQuote(values: {
+    orderId: string
+    fileName: string
+    storagePath: string
+    mimeType: string
+    fileSizeBytes: number
+    contentSha256: string
+    uploadedBy: string
+  }): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(attachments)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            eq(attachments.intakeOrderId, values.orderId),
+            eq(attachments.purpose, AttachmentPurpose.IntakeQuote),
+            isNull(attachments.deletedAt),
+          ),
+        )
+
+      await tx.insert(attachments).values({
+        intakeOrderId: values.orderId,
+        purpose: AttachmentPurpose.IntakeQuote,
+        fileName: values.fileName,
+        storagePath: values.storagePath,
+        mimeType: values.mimeType,
+        fileSizeBytes: values.fileSizeBytes,
+        contentSha256: values.contentSha256,
+        uploadedBy: values.uploadedBy,
+      })
+    })
+  }
+
+  /** Soft delete, like a photo: the bytes stay, the row stops being the order's quote. */
+  async removeQuote(orderId: string): Promise<void> {
+    await this.db
+      .update(attachments)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(attachments.intakeOrderId, orderId),
+          eq(attachments.purpose, AttachmentPurpose.IntakeQuote),
+          isNull(attachments.deletedAt),
+        ),
+      )
+  }
+
   /**
    * Out of the working list, or back into it. One UPDATE, both columns together — an `archived_at`
    * without an `archived_by` would be a change with nobody's name on it.
