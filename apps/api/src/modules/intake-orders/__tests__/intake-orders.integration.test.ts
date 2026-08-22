@@ -116,6 +116,14 @@ describe('Intake orders integration', () => {
     }
   }
 
+  /** Erasing a signed order is in no package either — a mistake made at intake is the office's. */
+  async function eraseActor(name = 'Brisac'): Promise<IntakeOrdersActor> {
+    return {
+      id: await createUser(name),
+      permissions: [...OFFICE_PERMISSIONS, 'intake_orders.delete_signed'],
+    }
+  }
+
   /**
    * A finished intake: created, filled in, both signatures.
    *
@@ -586,6 +594,39 @@ describe('Intake orders integration', () => {
           actorContext(serviser.id),
         ),
       ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('erases a signed order for whoever holds delete_signed — with its files and its number', async () => {
+      const serviser = await floorActor()
+      const eraser = await eraseActor()
+      const signed = await signedOrderExpecting(serviser, 1)
+      const before = await service.findById(signed, eraser)
+
+      // A photograph, so the sweep has a real file to remove — until this feature nothing in the
+      // API ever called storage.delete(), and every discarded intake orphaned its bytes.
+      const photo = await service.uploadPhoto(
+        signed,
+        photoInput(),
+        null,
+        serviser,
+        actorContext(serviser.id),
+      )
+      const [stored] = await ctx.db
+        .select({ path: schema.attachments.storagePath })
+        .from(schema.attachments)
+        .where(eq(schema.attachments.id, photo.id))
+      const storedPath = stored?.path ?? ''
+      expect(await container.storageService.exists(storedPath)).toBe(true)
+
+      await service.delete(signed, eraser, actorContext(eraser.id))
+
+      expect(await container.storageService.exists(storedPath)).toBe(false)
+      await expect(service.findById(signed, eraser)).rejects.toBeInstanceOf(NotFoundError)
+      // The number goes back into circulation — that is the whole point of erasing a mistake
+      // made at intake, as opposed to archiving it.
+      expect((await service.checkNumber(before.orderNumber, eraser)).status).toBe(
+        IntakeNumberCheckStatus.Free,
+      )
     })
 
     it('refuses to remove a signed order, and still discards a draft', async () => {

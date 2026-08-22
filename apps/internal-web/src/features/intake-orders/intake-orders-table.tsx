@@ -36,6 +36,12 @@ export interface IntakeRowAction {
 export interface IntakeOrdersTableProps {
   items: readonly IntakeOrderListItem[]
   rowAction: (item: IntakeOrderListItem) => IntakeRowAction | null
+  /**
+   * Whether an empty result should point at the archive. Archived orders are filtered OUT of
+   * every other view, so a search for a vehicle that was archived comes back empty with no hint
+   * that the order exists at all — which is exactly how the archive stayed invisible.
+   */
+  suggestArchived?: boolean
 }
 
 /**
@@ -63,13 +69,20 @@ export interface IntakeOrdersTableProps {
  * wrong. `@min-[1078px]` resolves against this box's content width, which is exactly the space
  * the row needs — so the row appears precisely when it fits, whatever the sidebar is doing.
  */
-export function IntakeOrdersTable({ items, rowAction }: IntakeOrdersTableProps): ReactElement {
+export function IntakeOrdersTable({
+  items,
+  rowAction,
+  suggestArchived = false,
+}: IntakeOrdersTableProps): ReactElement {
   const locale = getLocale()
 
   if (items.length === 0) {
     return (
       <div className="min-h-[300px] rounded-[14px] border border-mri-border bg-mri-surface px-4 py-14 text-center">
         <p className="italic text-mri-text2">{m.intake_list_empty()}</p>
+        {suggestArchived ? (
+          <p className="mt-2 text-[12.5px] text-mri-text2">{m.intake_list_empty_try_archived()}</p>
+        ) : null}
       </div>
     )
   }

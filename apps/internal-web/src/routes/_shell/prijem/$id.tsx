@@ -19,6 +19,7 @@ import {
   IntakeDetailTabs,
   visibleIntakeDetailTab,
 } from '~/features/intake-orders/detail/intake-detail-tabs'
+import { IntakeSignedAdminBar } from '~/features/intake-orders/detail/intake-signed-admin-bar'
 import { IntakeDraftBar } from '~/features/intake-orders/detail/intake-draft-bar'
 import { IntakePrintDialog } from '~/features/intake-orders/print/intake-print-dialog'
 import { IntakePhotosPendingNote } from '~/features/intake-orders/detail/intake-photos-pending-note'
@@ -94,7 +95,13 @@ function IntakeDetailPage(): ReactElement {
         onPrint={() => setPrintOpen(true)}
       />
 
-      {signed ? null : (
+      {signed ? (
+        <IntakeSignedAdminBar
+          order={order}
+          canArchive={permissions.includes('intake_orders.archive')}
+          canErase={permissions.includes('intake_orders.delete_signed')}
+        />
+      ) : (
         <IntakeDraftBar
           order={order}
           currentUserId={session?.user?.id}

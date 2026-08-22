@@ -1012,6 +1012,34 @@ export class IntakeOrdersRepository {
       .where(eq(intakeOrders.id, id))
   }
 
+  /**
+   * Every file this order put in storage: the photographs, their thumbnails, the quote (including
+   * the ones a replacement soft-deleted), and both sealed PDFs.
+   *
+   * Deliberately reads soft-deleted and every purpose — the point is a sweep before the row goes,
+   * and a row nobody can see any more still has its bytes on the disk we pay for.
+   */
+  async listAllStoragePaths(id: string): Promise<string[]> {
+    const [order] = await this.db
+      .select({
+        document: intakeOrders.documentStoragePath,
+        handover: intakeOrders.handoverDocumentStoragePath,
+      })
+      .from(intakeOrders)
+      .where(eq(intakeOrders.id, id))
+
+    const files = await this.db
+      .select({ path: attachments.storagePath, thumbnail: attachments.thumbnailPath })
+      .from(attachments)
+      .where(eq(attachments.intakeOrderId, id))
+
+    return [
+      order?.document ?? null,
+      order?.handover ?? null,
+      ...files.flatMap((file) => [file.path, file.thumbnail]),
+    ].filter((path): path is string => path !== null && path.length > 0)
+  }
+
   async hardDelete(id: string): Promise<void> {
     await this.db.delete(intakeOrders).where(eq(intakeOrders.id, id))
   }

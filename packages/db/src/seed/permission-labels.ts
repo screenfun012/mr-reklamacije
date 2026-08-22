@@ -226,6 +226,14 @@ export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
     descriptionEn:
       'Archives and restores. The order stays in the database, in its history and holding its number — nothing is deleted.',
   },
+  'intake_orders.delete_signed': {
+    nameSr: 'Trajno briše potpisan nalog',
+    nameEn: 'Permanently deletes a signed intake order',
+    descriptionSr:
+      'Za grešku načinjenu pri prijemu. Nestaju nalog, fotografije, ponuda i oba potpisana papira, a broj naloga se oslobađa. Ne može da se poništi.',
+    descriptionEn:
+      'For a mistake made during intake. The order, its photographs, its quote and both signed papers are gone, and the number goes back into circulation. It cannot be undone.',
+  },
   'intake_orders.send_document': {
     nameSr: 'Šalje papir vlasniku na mejl',
     nameEn: 'Emails the document to the owner',

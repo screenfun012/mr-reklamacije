@@ -1,4 +1,4 @@
-import { setLocale } from '@mr/i18n'
+import { m, setLocale } from '@mr/i18n'
 import { IntakeOrderStatus, IntakeVehicleType, type IntakeOrderListItem } from '@mr/shared'
 import {
   createMemoryHistory,
@@ -161,5 +161,21 @@ describe('IntakeOrdersTable — an archived order is a place, not a state', () =
     await userEvent.click(screen.getByRole('button', { name: 'Vrati na listu' }))
 
     expect(picked).toEqual([order.id])
+  })
+})
+
+describe('the empty result and the archive', () => {
+  it('points at the archive when a search finds nothing in the working list', () => {
+    render(<IntakeOrdersTable items={[]} rowAction={() => null} suggestArchived />)
+
+    // Archived orders are filtered OUT of every other view, so an empty result is exactly the
+    // moment the reader has no way of knowing the order still exists.
+    expect(screen.getByText(m.intake_list_empty_try_archived())).toBeInTheDocument()
+  })
+
+  it('says nothing of the sort inside the archive itself', () => {
+    render(<IntakeOrdersTable items={[]} rowAction={() => null} />)
+
+    expect(screen.queryByText(m.intake_list_empty_try_archived())).toBeNull()
   })
 })

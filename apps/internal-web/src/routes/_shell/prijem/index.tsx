@@ -245,7 +245,15 @@ function TableSection({
 
   return (
     <div className="flex flex-col gap-3">
-      <IntakeOrdersTable items={data.items} rowAction={rowAction} />
+      <IntakeOrdersTable
+        items={data.items}
+        rowAction={rowAction}
+        // Only where the archive is actually the missing place to look: in the archived view
+        // itself the sentence would send the reader where they already are.
+        suggestArchived={
+          (search.view ?? 'active') !== 'archived' && permissions.includes('intake_orders.view')
+        }
+      />
       {/*
         The shop does ~10 intakes a day, so page 1 fills within days. Without a pager the
         office would be locked to the newest page with no way back — the same component the

@@ -1016,16 +1016,26 @@ export class IntakeOrdersService {
 
     /**
      * The signature closes the record, and that includes whether it exists: a signed order is the
-     * shop's half of a document the owner is holding. Only an unfinished draft can be discarded,
-     * and that is a HARD delete — its number goes back into circulation.
+     * shop's half of a document the owner is holding. Taking one off the list is ARCHIVING.
+     *
+     * Erasing one is for the other case — a mistake made during the intake itself, where the right
+     * answer is that it never happened: the row, its files and its NUMBER all go (Nikola,
+     * 2026-08-22). That takes its own permission, which no ready-made package holds.
      */
-    if (before.signedAt !== null) {
+    const isSigned = before.signedAt !== null
+    if (isSigned && !actor.permissions.includes('intake_orders.delete_signed')) {
       throw new ValidationError('A signed intake order cannot be removed')
     }
 
-    if (before.technicianId !== actor.id && !actor.permissions.includes('intake_orders.delete')) {
+    if (
+      !isSigned &&
+      before.technicianId !== actor.id &&
+      !actor.permissions.includes('intake_orders.delete')
+    ) {
       throw new ForbiddenError("Discarding another serviser's unfinished intake requires delete")
     }
+
+    await this.eraseStoredFiles(id)
     await this.repo.hardDelete(id)
 
     await this.audit.log({
@@ -1035,12 +1045,34 @@ export class IntakeOrdersService {
       actorUserId: auditContext.actorUserId,
       actorIp: auditContext.actorIp,
       actorUserAgent: auditContext.actorUserAgent,
-      // Only a draft reaches this line, so there is one transition left to write. The row it
-      // belongs to is gone (hard delete), which is why the history projection never shows it.
-      changes: { before, transition: 'discard_draft' },
+      // The row is gone (hard delete), so the history projection never shows this entry — the
+      // audit log is the only place that still remembers the order existed at all.
+      changes: { before, transition: isSigned ? 'erase_signed' : 'discard_draft' },
     })
 
     this.signalChanged()
+  }
+
+  /**
+   * Removes every byte the order put in storage before its row goes: photographs, thumbnails, the
+   * quote (replaced ones included) and both sealed PDFs.
+   *
+   * Best-effort per file, and deliberately BEFORE the row: a storage error must not leave the
+   * order half-deleted, and a file that is already missing must not stop the erasure. What could
+   * not be removed is logged with its path, because the alternative is bytes nobody can reach and
+   * everybody keeps paying for. Until this method existed nothing in the API called
+   * `storage.delete()` at all, and discarding a draft orphaned its photographs.
+   */
+  private async eraseStoredFiles(id: string): Promise<void> {
+    const paths = await this.repo.listAllStoragePaths(id)
+
+    for (const path of paths) {
+      try {
+        await this.storage.delete(path)
+      } catch (error) {
+        this.logger.error({ err: error, intakeOrderId: id, path }, 'intake file left in storage')
+      }
+    }
   }
 
   /**

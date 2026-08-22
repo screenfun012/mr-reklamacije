@@ -82,6 +82,15 @@ export const PERMISSIONS = [
    * read its papers, which is the rule its two sealed neighbours already follow.
    */
   'intake_orders.attach_quote',
+  /**
+   * Removing a SIGNED order for good — the row, its photographs, its quote and both sealed PDFs,
+   * with its number going back into circulation. Not `intake_orders.delete`, which discards an
+   * unfinished draft: this one destroys the firm's half of a paper the owner is holding, and it
+   * cannot be undone. Its own permission, and in no standard package — a mistake made during
+   * intake is the office's to erase, and by default only an admin can (Nikola, 2026-08-22).
+   * Archiving stays the normal way to take an order off the list.
+   */
+  'intake_orders.delete_signed',
 
   // claim_reports
   'claim_reports.view',
