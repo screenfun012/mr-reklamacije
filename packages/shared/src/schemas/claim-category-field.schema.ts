@@ -45,6 +45,11 @@ export const ClaimCategoryFieldOptionListItemSchema = z.object({
   deactivatedAt: z.string().nullable(),
   createdAt: z.string(),
   usageCount: z.number().int().nonnegative(),
+  /** The option this one hangs off — null when it is always offered. */
+  parentOptionId: z.string().uuid().nullable(),
+  /** Its field's and its own CODE, so no screen has to resolve an id to filter by it. */
+  parentFieldCode: z.string().nullable(),
+  parentOptionCode: z.string().nullable(),
 })
 
 export type ClaimCategoryFieldOptionListItem = z.infer<
@@ -104,13 +109,25 @@ export const ClaimCategoryFieldOptionCreateInputSchema = z.object({
   code: CodeSchema,
   name: z.string().trim().min(1).max(200),
   sortOrder: z.number().int().min(0).optional(),
+  parentOptionId: z.string().uuid().optional(),
 })
 
 export type ClaimCategoryFieldOptionCreateInput = z.infer<
   typeof ClaimCategoryFieldOptionCreateInputSchema
 >
 
-export const ClaimCategoryFieldOptionUpdateInputSchema = ClaimCategoryFieldUpdateInputSchema
+// Its own object, not the field's: an option has no `isRequired`, and never had one on the form.
+export const ClaimCategoryFieldOptionUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    sortOrder: z.number().int().min(0).optional(),
+    isActive: z.boolean().optional(),
+    /** `null` clears the dependency; omitting the key leaves it as it is. */
+    parentOptionId: z.string().uuid().nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field must be provided',
+  })
 
 export type ClaimCategoryFieldOptionUpdateInput = z.infer<
   typeof ClaimCategoryFieldOptionUpdateInputSchema
