@@ -5,6 +5,7 @@ import {
   categoryFieldViews,
   clearOrphanedCategoryFieldAnswers,
   hasAnswers,
+  hasUnansweredSelectFields,
   prunedCategoryFieldValues,
 } from '../category-field-model.js'
 
@@ -224,5 +225,35 @@ describe('clearOrphanedCategoryFieldAnswers', () => {
         dependentFields(),
       ),
     ).toEqual({ sklop_u_kvaru: 'glava', uzrok_kvara: 'glava_ventili' })
+  })
+})
+
+describe('hasUnansweredSelectFields', () => {
+  it('is true while a picked question has no answer', () => {
+    const fields = dependentFields()
+    expect(hasUnansweredSelectFields(categoryFieldViews(fields, {}), {})).toBe(true)
+    expect(
+      hasUnansweredSelectFields(categoryFieldViews(fields, { sklop_u_kvaru: 'glava' }), {
+        sklop_u_kvaru: 'glava',
+      }),
+    ).toBe(true)
+  })
+
+  it('is false once every picked question is answered', () => {
+    const values = { sklop_u_kvaru: 'glava', uzrok_kvara: 'glava_ventili' }
+    expect(hasUnansweredSelectFields(categoryFieldViews(dependentFields(), values), values)).toBe(
+      false,
+    )
+  })
+
+  it('ignores a typed field and a retired one — neither is a question being asked today', () => {
+    const typed = field({ code: 'predjeno_km', name: 'Pređeno km', fieldType: 'text', options: [] })
+    const retired = field({ code: 'stari', name: 'Stari', isActive: false })
+    expect(hasUnansweredSelectFields(categoryFieldViews([typed], {}), {})).toBe(false)
+    expect(
+      hasUnansweredSelectFields(categoryFieldViews([retired], { stari: 'glava' }), {
+        stari: 'glava',
+      }),
+    ).toBe(false)
   })
 })

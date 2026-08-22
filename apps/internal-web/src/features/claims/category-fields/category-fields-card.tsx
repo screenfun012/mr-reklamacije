@@ -2,6 +2,7 @@ import { m } from '@mr/i18n'
 import {
   claimCategoryFieldsForCategoryOptions,
   type ClaimCategoryFieldValues,
+  type ClaimKind,
   type ClaimPreviousCategoryFieldValues,
 } from '@mr/shared'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +10,8 @@ import { useState } from 'react'
 
 import { InternalCard } from '~/components/internal-card'
 
-import { categoryFieldViews } from './category-field-model'
+import { categoryFieldViews, hasUnansweredSelectFields } from './category-field-model'
+import { CategoryFieldsQuickEdit } from './category-fields-quick-edit'
 
 export interface CategoryFieldsCardProps {
   categoryId: string
@@ -23,6 +25,11 @@ export interface CategoryFieldsCardProps {
    * taking the whole claim screen down — a false alarm is the wrong way to fail here.
    */
   missing?: readonly string[]
+  /**
+   * The claim these answers belong to. Present only where they can be WRITTEN — that is what
+   * turns the card from a read-only panel into the one place the cause gets filled in.
+   */
+  claim?: { id: string; kind: ClaimKind }
 }
 
 function ValueRow({
@@ -77,6 +84,7 @@ export function CategoryFieldsCard({
   values,
   previous = [],
   missing = [],
+  claim,
 }: CategoryFieldsCardProps): React.ReactElement | null {
   const { data: fields } = useQuery({
     ...claimCategoryFieldsForCategoryOptions(categoryId),
@@ -112,6 +120,18 @@ export function CategoryFieldsCard({
       className={isIncomplete ? 'border-[rgba(234,179,8,.4)]' : undefined}
       bodyClassName="contents"
     >
+      {claim !== undefined && hasUnansweredSelectFields(views, values) ? (
+        <div className="px-[18px] pt-4">
+          <CategoryFieldsQuickEdit
+            claimId={claim.id}
+            kind={claim.kind}
+            categoryId={categoryId}
+            categoryName={categoryName}
+            values={values}
+          />
+        </div>
+      ) : null}
+
       {views.length > 0 ? (
         <div className="@container/fields px-[18px] py-4">
           <div className="grid gap-[15px_14px] @min-[420px]/fields:grid-cols-2 @min-[700px]/fields:grid-cols-3">

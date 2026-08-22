@@ -127,6 +127,7 @@ export function DomaceClaimDetailView({
                       values={claim.categoryFieldValues}
                       previous={claim.previousCategoryFieldValues}
                       missing={claim.missingRequiredCategoryFields}
+                      {...(canEditBasic ? { claim: { id: claim.id, kind: ClaimKind.Domace } } : {})}
                     />
                   )}
 

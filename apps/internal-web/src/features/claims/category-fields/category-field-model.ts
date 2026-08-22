@@ -155,3 +155,22 @@ export function prunedCategoryFieldValues(
 export function hasAnswers(values: ClaimCategoryFieldValues): boolean {
   return Object.values(values).some((value) => value.length > 0)
 }
+
+/**
+ * Does this claim still owe an answer to a question its kind of work asks?
+ *
+ * Only picked fields count. A typed one (`Pređeno km`) is often genuinely unknown and nagging
+ * about it would train everyone to ignore the band; a retired one is history, not a question.
+ */
+export function hasUnansweredSelectFields(
+  views: readonly CategoryFieldView[],
+  values: ClaimCategoryFieldValues,
+): boolean {
+  return views.some((view) => {
+    if (view.isRetired || view.control === 'text') {
+      return false
+    }
+    const value = values[view.code]
+    return value === undefined || value.length === 0
+  })
+}
