@@ -63,8 +63,8 @@ async function machiningCategoryId(): Promise<string> {
   return category.id
 }
 
-describe('migration 0046 — category fields catalogue', () => {
-  it('seeds "Obrađeni deo" with three options on MASINSKA_OBRADA, and nothing is deactivated', async () => {
+describe('migrations 0046 + 0048 — category fields catalogue', () => {
+  it('seeds "Obrađeni deo" with the parts the shop machines, and nothing is deactivated', async () => {
     const [field] = await db
       .select()
       .from(schema.claimCategoryFields)
@@ -85,18 +85,28 @@ describe('migration 0046 — category fields catalogue', () => {
       .from(schema.claimCategoryFieldOptions)
       .where(eq(schema.claimCategoryFieldOptions.fieldId, field?.id ?? ''))
       .orderBy(schema.claimCategoryFieldOptions.sortOrder)
-    expect(options.map((option) => option.code)).toEqual(['glava', 'blok', 'radilica'])
+    // 0046 opened it with the three big ones; 0048 added what the shop's own departments say it
+    // also machines. Order is the office's `sort_order`, not insertion order.
+    expect(options.map((option) => option.code)).toEqual([
+      'glava',
+      'blok',
+      'radilica',
+      'klipnjaca',
+      'zamajac',
+      'ostalo',
+    ])
   })
 
   it('takes a chosen answer or a typed one, and nothing else', async () => {
     const categoryId = await machiningCategoryId()
 
-    // `text` was added in 0047 for fields like "Mera obrade (mm)" that are written, not picked.
+    // `text` is for fields that are written rather than picked — "Mera obrade" is the seeded one,
+    // so this proves the type on a code the catalogue does not already hold.
     await expect(
       db.insert(schema.claimCategoryFields).values({
         categoryId,
-        code: 'mera_obrade',
-        name: 'Mera obrade (mm)',
+        code: 'mera_zazora',
+        name: 'Mera zazora (mm)',
         fieldType: 'text',
         isRequired: true,
       }),
@@ -188,5 +198,67 @@ describe('migration 0046 — category fields catalogue', () => {
       .limit(1)
     // Existing rows are untouched by the migration: no value is not an empty object.
     expect(emotiveDefault?.values ?? null).toBeNull()
+  })
+
+  it('gives every kind of work its own starting fields, and asks nothing of them (0048)', async () => {
+    const fields = await db
+      .select({
+        categoryCode: schema.claimCategories.code,
+        id: schema.claimCategoryFields.id,
+        code: schema.claimCategoryFields.code,
+        fieldType: schema.claimCategoryFields.fieldType,
+        isRequired: schema.claimCategoryFields.isRequired,
+      })
+      .from(schema.claimCategoryFields)
+      .innerJoin(
+        schema.claimCategories,
+        eq(schema.claimCategories.id, schema.claimCategoryFields.categoryId),
+      )
+      .orderBy(schema.claimCategories.sortOrder, schema.claimCategoryFields.sortOrder)
+
+    // Only the seeded codes are compared, in their `sort_order`: the office adds fields of its own
+    // from the admin panel, and another suite's leftovers must not decide whether this one passes.
+    function seededOrder(categoryCode: string, expected: string[]): string[] {
+      return fields
+        .filter((field) => field.categoryCode === categoryCode && expected.includes(field.code))
+        .map((field) => field.code)
+    }
+
+    const catalogue: [string, string[]][] = [
+      ['REMONT_MOTORA', ['sklop_u_kvaru', 'pojava_kvara', 'predjeno_km', 'ko_je_ugradio']],
+      ['MASINSKA_OBRADA', ['obradjeni_deo', 'vrsta_obrade', 'mera_obrade', 'prijavljena_pojava']],
+      ['NOVI_DELOVI', ['vrsta_dela', 'kataloski_broj', 'razlog_reklamacije']],
+      ['AUTO_SERVIS', ['vrsta_usluge', 'pojava_kvara', 'predjeno_km']],
+    ]
+    for (const [categoryCode, expected] of catalogue) {
+      expect(seededOrder(categoryCode, expected)).toEqual(expected)
+    }
+
+    const seeded = fields.filter((field) =>
+      catalogue.some(
+        ([categoryCode, codes]) =>
+          field.categoryCode === categoryCode && codes.includes(field.code),
+      ),
+    )
+
+    // A required field refuses the whole create, and the wizard reports that as one banner at the
+    // end. The office turns one on when it wants that — the migration never does it for them.
+    expect(seeded.filter((field) => field.isRequired)).toEqual([])
+
+    const options = await db
+      .select({
+        fieldId: schema.claimCategoryFieldOptions.fieldId,
+        code: schema.claimCategoryFieldOptions.code,
+      })
+      .from(schema.claimCategoryFieldOptions)
+
+    // Every picked field has something to pick; every written one has nothing hanging off it.
+    for (const field of seeded) {
+      const count = options.filter((option) => option.fieldId === field.id).length
+      expect({ code: field.code, hasOptions: count > 1 }).toEqual({
+        code: field.code,
+        hasOptions: field.fieldType === 'select',
+      })
+    }
   })
 })

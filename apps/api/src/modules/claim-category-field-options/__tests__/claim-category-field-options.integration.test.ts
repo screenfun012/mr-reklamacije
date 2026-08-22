@@ -60,7 +60,14 @@ describe('ClaimCategoryFieldOptions module', () => {
         limit: 50,
       })
 
-      expect(result.items.map((item) => item.code)).toEqual(['glava', 'blok', 'radilica'])
+      expect(result.items.map((item) => item.code)).toEqual([
+        'glava',
+        'blok',
+        'radilica',
+        'klipnjaca',
+        'zamajac',
+        'ostalo',
+      ])
       expect(result.items[0]?.fieldName).toBe('Obrađeni deo')
     })
   })

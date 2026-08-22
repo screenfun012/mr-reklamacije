@@ -71,7 +71,14 @@ describe('ClaimCategoryFields module', () => {
       })
       const field = withOptions.items.find((item) => item.code === 'obradjeni_deo')
       expect(field?.categoryName).toBe('Mašinska obrada')
-      expect(field?.options?.map((option) => option.code)).toEqual(['glava', 'blok', 'radilica'])
+      expect(field?.options?.map((option) => option.code)).toEqual([
+        'glava',
+        'blok',
+        'radilica',
+        'klipnjaca',
+        'zamajac',
+        'ostalo',
+      ])
 
       const bare = await container.claimCategoryFieldsRepository.list({
         categoryId,
@@ -117,7 +124,10 @@ describe('ClaimCategoryFields module', () => {
       expect(machining?.options.map((option) => option.code).sort()).toEqual([
         'blok',
         'glava',
+        'klipnjaca',
+        'ostalo',
         'radilica',
+        'zamajac',
       ])
     })
   })

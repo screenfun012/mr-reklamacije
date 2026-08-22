@@ -337,6 +337,13 @@
       "when": 1787305361577,
       "tag": "0047_dark_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1787383719461,
+      "tag": "0048_shop_category_fields",
+      "breakpoints": true
     }
   ]
 }
