@@ -160,7 +160,10 @@ function BreakdownRankCard({
           </div>
           <div className="rounded-[10px] border border-mri-border bg-mri-inbg px-2 py-3">
             <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
-              {m.statistika_analytics_breakdown_claims()}
+              {/* How many bars this chart draws — NOT how many claims. It counts the rows AFTER
+                  the top-10 collapse, so "Ostali" and "Nepoznato" are one each; it said
+                  "Reklamacije" until 22.08. and read as a second, contradicting claim count. */}
+              {m.statistika_analytics_breakdown_rows()}
             </p>
             <p className="mt-1.5 font-mono text-xl font-bold tabular-nums text-mri-text">
               {chartRows.length}
