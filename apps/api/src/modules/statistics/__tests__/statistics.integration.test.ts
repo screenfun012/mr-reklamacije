@@ -5,7 +5,7 @@ import {
   ExternalPartyKind,
   FaultType,
   normalizeName,
-  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+  STATISTICS_UNKNOWN_CODE,
   type EmotiveClaimCreateInput,
 } from '@mr/shared'
 import { eq } from 'drizzle-orm'
@@ -275,7 +275,7 @@ describe('Statistics module integration', () => {
 
       const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
       const unknown = summary.byManufacturer.items.find(
-        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+        (row) => row.code === STATISTICS_UNKNOWN_CODE,
       )
 
       expect(unknown).toMatchObject({
@@ -694,9 +694,7 @@ describe('Statistics module integration', () => {
       )
 
       const summary = await container.statisticsService.getSummary(WITH_ANALYTICS)
-      const unknown = summary.byEmployee?.items.find(
-        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
-      )
+      const unknown = summary.byEmployee?.items.find((row) => row.code === STATISTICS_UNKNOWN_CODE)
 
       expect(unknown).toMatchObject({ employeeId: null })
       expect(unknown?.total).toBeGreaterThanOrEqual(1)
@@ -711,9 +709,7 @@ describe('Statistics module integration', () => {
 
       const summary = await container.statisticsService.getSummary(FULL_STATISTICS)
       const typed = summary.byEngineType.items.find((row) => row.engineTypeId === engineType.id)
-      const unknown = summary.byEngineType.items.find(
-        (row) => row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE,
-      )
+      const unknown = summary.byEngineType.items.find((row) => row.code === STATISTICS_UNKNOWN_CODE)
 
       expect(typed?.total).toBeGreaterThanOrEqual(1)
       expect(unknown?.total).toBeGreaterThanOrEqual(1)

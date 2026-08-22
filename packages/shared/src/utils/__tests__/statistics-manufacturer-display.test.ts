@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  STATISTICS_MANUFACTURER_OTHERS_CODE,
-  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
-} from '../../constants/statistics-manufacturer-colors.js'
+  STATISTICS_OTHERS_CODE,
+  STATISTICS_UNKNOWN_CODE,
+} from '../../constants/statistics-rank-colors.js'
 import type { StatisticsManufacturerRow } from '../../schemas/statistics.schema.js'
 import {
   collapseManufacturerRowsForDisplay,
@@ -28,7 +28,7 @@ describe('isStatisticsUnknownManufacturer', () => {
   it('detects null manufacturer id', () => {
     expect(
       isStatisticsUnknownManufacturer(
-        row({ manufacturerId: null, code: STATISTICS_UNKNOWN_MANUFACTURER_CODE, total: 2 }),
+        row({ manufacturerId: null, code: STATISTICS_UNKNOWN_CODE, total: 2 }),
       ),
     ).toBe(true)
   })
@@ -48,7 +48,7 @@ describe('collapseManufacturerRowsForDisplay', () => {
 
     expect(collapsed).toHaveLength(11)
     expect(collapsed.slice(0, 10).every((entry) => entry.segment === 'known')).toBe(true)
-    expect(collapsed[10]?.code).toBe(STATISTICS_MANUFACTURER_OTHERS_CODE)
+    expect(collapsed[10]?.code).toBe(STATISTICS_OTHERS_CODE)
     expect(collapsed[10]?.total).toBe(3)
   })
 
@@ -57,7 +57,7 @@ describe('collapseManufacturerRowsForDisplay', () => {
       row({ code: 'BMW', total: 5 }),
       row({
         manufacturerId: null,
-        code: STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+        code: STATISTICS_UNKNOWN_CODE,
         name: 'Nepoznato',
         total: 2,
         accepted: 1,
@@ -67,7 +67,7 @@ describe('collapseManufacturerRowsForDisplay', () => {
 
     expect(collapsed).toHaveLength(2)
     expect(collapsed[1]?.segment).toBe('unknown')
-    expect(collapsed[1]?.code).toBe(STATISTICS_UNKNOWN_MANUFACTURER_CODE)
+    expect(collapsed[1]?.code).toBe(STATISTICS_UNKNOWN_CODE)
   })
 
   it('does not merge catalog OSTALO into others roll-up', () => {
@@ -77,9 +77,7 @@ describe('collapseManufacturerRowsForDisplay', () => {
     ])
 
     expect(collapsed.some((entry) => entry.code === 'OSTALO')).toBe(true)
-    expect(collapsed.some((entry) => entry.code === STATISTICS_MANUFACTURER_OTHERS_CODE)).toBe(
-      false,
-    )
+    expect(collapsed.some((entry) => entry.code === STATISTICS_OTHERS_CODE)).toBe(false)
   })
 })
 

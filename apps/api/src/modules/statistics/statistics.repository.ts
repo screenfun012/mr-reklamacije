@@ -5,7 +5,6 @@ import {
   FaultType,
   roundStatisticsDays,
   STATISTICS_UNKNOWN_CODE,
-  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
   type StatisticsAcceptanceRateMonth,
   type StatisticsByFaults,
   type StatisticsCategoryRow,
@@ -295,11 +294,11 @@ export class StatisticsRepository {
 
     return result.rows.map((row) => ({
       manufacturerId: row.manufacturer_id,
-      code: row.manufacturer_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : (row.code ?? ''),
+      code: row.manufacturer_id === null ? STATISTICS_UNKNOWN_CODE : (row.code ?? ''),
       name:
         row.manufacturer_id === null
           ? 'Nepoznato'
-          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_CODE),
       total: toInt(row.total),
       pending: toInt(row.pending),
       accepted: toInt(row.accepted),
@@ -572,9 +571,8 @@ export class StatisticsRepository {
 
     return result.rows.map((row) => ({
       employeeId: row.employee_id,
-      code: row.employee_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : row.employee_id,
-      name:
-        row.employee_id === null ? 'Nepoznato' : (row.name ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+      code: row.employee_id === null ? STATISTICS_UNKNOWN_CODE : row.employee_id,
+      name: row.employee_id === null ? 'Nepoznato' : (row.name ?? STATISTICS_UNKNOWN_CODE),
       total: toInt(row.total),
     }))
   }
@@ -621,11 +619,11 @@ export class StatisticsRepository {
 
     return result.rows.map((row) => ({
       engineTypeId: row.engine_type_id,
-      code: row.engine_type_id === null ? STATISTICS_UNKNOWN_MANUFACTURER_CODE : (row.code ?? ''),
+      code: row.engine_type_id === null ? STATISTICS_UNKNOWN_CODE : (row.code ?? ''),
       name:
         row.engine_type_id === null
           ? 'Nepoznato'
-          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_MANUFACTURER_CODE),
+          : (row.name ?? row.code ?? STATISTICS_UNKNOWN_CODE),
       total: toInt(row.total),
     }))
   }

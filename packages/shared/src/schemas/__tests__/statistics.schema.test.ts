@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  STATISTICS_MANUFACTURER_OTHERS_CODE,
-  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
-} from '../../constants/statistics-manufacturer-colors.js'
-import { STATISTICS_UNKNOWN_CODE } from '../../constants/statistics-rank-colors.js'
+  STATISTICS_OTHERS_CODE,
+  STATISTICS_UNKNOWN_CODE,
+} from '../../constants/statistics-rank-colors.js'
 import { StatisticsSummarySchema, StatisticsVolumeTrendDirection } from '../statistics.schema.js'
 
 const emptyOutcomes = {
@@ -49,7 +48,7 @@ describe('StatisticsSummarySchema', () => {
           },
           {
             manufacturerId: null,
-            code: STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+            code: STATISTICS_UNKNOWN_CODE,
             name: 'Nepoznato',
             total: 2,
             pending: 0,
@@ -90,7 +89,7 @@ describe('StatisticsSummarySchema', () => {
         items: [
           {
             engineTypeId: null,
-            code: STATISTICS_UNKNOWN_MANUFACTURER_CODE,
+            code: STATISTICS_UNKNOWN_CODE,
             name: 'Nepoznato',
             total: 1,
           },
@@ -126,7 +125,7 @@ describe('StatisticsSummarySchema', () => {
 
     expect(parsed.trends.byMonth).toHaveLength(1)
     expect(parsed.trends.volumeTrend.direction).toBe('rising')
-    expect(parsed.byManufacturer.items[1]?.code).toBe(STATISTICS_UNKNOWN_MANUFACTURER_CODE)
+    expect(parsed.byManufacturer.items[1]?.code).toBe(STATISTICS_UNKNOWN_CODE)
     expect(parsed.outcomes.processingTime.sampleSize).toBe(6)
     expect(parsed.byEmployee?.items[0]?.name).toBe('Marko Marković')
     expect(parsed.byCategory.items[0]?.name).toBe('Generalni remont motora')
@@ -201,6 +200,6 @@ describe('StatisticsSummarySchema', () => {
     })
 
     expect(parsed.byManufacturer.items[0]?.code).toBe('OSTALO')
-    expect(parsed.byManufacturer.items[0]?.code).not.toBe(STATISTICS_MANUFACTURER_OTHERS_CODE)
+    expect(parsed.byManufacturer.items[0]?.code).not.toBe(STATISTICS_OTHERS_CODE)
   })
 })

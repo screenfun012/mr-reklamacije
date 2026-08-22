@@ -1,8 +1,8 @@
 import {
-  STATISTICS_MANUFACTURER_OTHERS_CODE,
-  STATISTICS_MANUFACTURER_TOP_N,
-  STATISTICS_UNKNOWN_MANUFACTURER_CODE,
-} from '../constants/statistics-manufacturer-colors.js'
+  STATISTICS_OTHERS_CODE,
+  STATISTICS_RANK_TOP_N,
+  STATISTICS_UNKNOWN_CODE,
+} from '../constants/statistics-rank-colors.js'
 import type { StatisticsManufacturerRow } from '../schemas/statistics.schema.js'
 
 export const StatisticsManufacturerDisplaySegment = {
@@ -25,7 +25,7 @@ export interface ManufacturerOutcomePercents {
 }
 
 export function isStatisticsUnknownManufacturer(row: StatisticsManufacturerRow): boolean {
-  return row.manufacturerId === null || row.code === STATISTICS_UNKNOWN_MANUFACTURER_CODE
+  return row.manufacturerId === null || row.code === STATISTICS_UNKNOWN_CODE
 }
 
 function sumManufacturerCounts(
@@ -60,7 +60,7 @@ export function computeManufacturerOutcomePercents(
 
 export function collapseManufacturerRowsForDisplay(
   items: readonly StatisticsManufacturerRow[],
-  topN: number = STATISTICS_MANUFACTURER_TOP_N,
+  topN: number = STATISTICS_RANK_TOP_N,
 ): StatisticsManufacturerDisplayRow[] {
   const unknown = items.find(isStatisticsUnknownManufacturer)
   const known = items.filter((row) => !isStatisticsUnknownManufacturer(row))
@@ -77,7 +77,7 @@ export function collapseManufacturerRowsForDisplay(
     if (rolledUp.total > 0) {
       result.push({
         manufacturerId: null,
-        code: STATISTICS_MANUFACTURER_OTHERS_CODE,
+        code: STATISTICS_OTHERS_CODE,
         name: '',
         ...rolledUp,
         segment: StatisticsManufacturerDisplaySegment.Others,
