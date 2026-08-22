@@ -32,3 +32,11 @@ describe('body limit — which paths get the upload window', () => {
     ).toBe(false)
   })
 })
+
+describe('the intake quote', () => {
+  it('is an upload path, like the photos beside it', () => {
+    // It is a file made in another program — a scanned A4 is routinely 2-8 MB and nothing on the
+    // way in compresses it. Falling to the 2 MB default answered 413 with no size in the message.
+    expect(isUploadPath('/api/intake-orders/2f1c4e6a-0a3f-4d2e-9c11-7b0c9e5b4a10/quote')).toBe(true)
+  })
+})

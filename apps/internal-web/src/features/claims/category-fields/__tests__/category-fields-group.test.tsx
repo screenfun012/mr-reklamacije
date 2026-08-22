@@ -21,6 +21,9 @@ function option(code: string, name: string, sortOrder: number, isActive = true) 
     deactivatedAt: null,
     createdAt: '2026-08-21T00:00:00.000Z',
     usageCount: 0,
+    parentOptionId: null,
+    parentFieldCode: null,
+    parentOptionCode: null,
   }
 }
 

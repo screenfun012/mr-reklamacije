@@ -257,3 +257,26 @@ describe('hasUnansweredSelectFields', () => {
     ).toBe(false)
   })
 })
+
+describe('a dependent field whose parent was switched off', () => {
+  it('disappears instead of waiting forever for a question nobody asks any more', () => {
+    const [part, cause] = dependentFields()
+    const retiredParent = { ...(part as ClaimCategoryFieldListItem), isActive: false }
+    const views = categoryFieldViews([retiredParent, cause as ClaimCategoryFieldListItem], {})
+
+    // The parent is retired and unanswered, so it is not drawn — and a child pointing at it would
+    // sit there as "Prvo izaberi: Sklop u kvaru" over a field that is not on the page.
+    expect(views.map((view) => view.code)).toEqual([])
+  })
+
+  it('stays when this claim already answered it — a retired question keeps its answer', () => {
+    const [part, cause] = dependentFields()
+    const retiredParent = { ...(part as ClaimCategoryFieldListItem), isActive: false }
+    const views = categoryFieldViews([retiredParent, cause as ClaimCategoryFieldListItem], {
+      sklop_u_kvaru: 'glava',
+      uzrok_kvara: 'glava_ventili',
+    })
+
+    expect(views.map((view) => view.code)).toEqual(['sklop_u_kvaru', 'uzrok_kvara'])
+  })
+})

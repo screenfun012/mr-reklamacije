@@ -116,6 +116,15 @@ export class ClaimCategoryFieldOptionsService {
       throw new ConflictError('Opcija se koristi na reklamacijama i ne može se obrisati.')
     }
 
+    // Same shape one level down again: dependent options hold this one by a RESTRICT key, and
+    // without this the database refuses and the office reads a 500 instead of a sentence.
+    const childCount = await this.repo.countChildren(id)
+    if (childCount > 0) {
+      throw new ConflictError(
+        'Opcija ima zavisne opcije i ne može se obrisati. Prvo obriši opcije koje zavise od nje.',
+      )
+    }
+
     await this.repo.hardDelete(id)
 
     await this.audit.log({

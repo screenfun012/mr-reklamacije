@@ -235,6 +235,26 @@ export class ClaimCategoryFieldOptionsRepository {
     return found
   }
 
+  /**
+   * How many options hang off this one (`parent_option_id`). The FK is RESTRICT, so without this
+   * check Postgres refuses the DELETE and the office reads a 500 — the same shape the categories
+   * and the fields already guard one level up. Every seeded `sklop_u_kvaru` option is a parent of
+   * four to six causes from the day migration 0052 runs, so this is the ordinary case, not an edge.
+   */
+  async countChildren(id: string): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(claimCategoryFieldOptions)
+      .where(
+        and(
+          eq(claimCategoryFieldOptions.parentOptionId, id),
+          isNull(claimCategoryFieldOptions.deletedAt),
+        ),
+      )
+
+    return row?.count ?? 0
+  }
+
   async hardDelete(id: string): Promise<void> {
     const [deleted] = await this.db
       .delete(claimCategoryFieldOptions)

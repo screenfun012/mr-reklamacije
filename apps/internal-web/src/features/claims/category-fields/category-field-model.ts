@@ -28,15 +28,23 @@ export interface CategoryFieldView {
   options: CategoryFieldOption[]
 }
 
-/** The answer an option hangs off, or `null` when it is always offered. */
+/**
+ * The answer an option hangs off, or `null` when it is always offered.
+ *
+ * `?? null` and not `=== null`: an object built before these keys existed carries `undefined`,
+ * and treating that as "has a parent" strands the whole field off the screen. The wire always
+ * sends null — this is about every other object that reaches here.
+ */
 function parentOf(option: {
-  parentFieldCode: string | null
-  parentOptionCode: string | null
+  parentFieldCode?: string | null
+  parentOptionCode?: string | null
 }): { fieldCode: string; optionCode: string } | null {
-  if (option.parentFieldCode === null || option.parentOptionCode === null) {
+  const fieldCode = option.parentFieldCode ?? null
+  const optionCode = option.parentOptionCode ?? null
+  if (fieldCode === null || optionCode === null) {
     return null
   }
-  return { fieldCode: option.parentFieldCode, optionCode: option.parentOptionCode }
+  return { fieldCode, optionCode }
 }
 
 /**
@@ -54,8 +62,10 @@ export function categoryFieldViews(
   fields: readonly ClaimCategoryFieldListItem[],
   values: ClaimCategoryFieldValues,
 ): CategoryFieldView[] {
-  return fields
-    .filter((field) => field.isActive || values[field.code] !== undefined)
+  const answerable = fields.filter((field) => field.isActive || values[field.code] !== undefined)
+
+  return answerable
+    .filter((field) => !isStrandedByRetiredParent(field, answerable, values))
     .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
     .map((field) => {
       const chosen = values[field.code]
@@ -88,13 +98,29 @@ export function categoryFieldViews(
 }
 
 /**
- * The name of the field this one waits for — set only when EVERY option hangs off one field that
- * has no answer yet. A field with some independent options can still be answered, so it does not
- * wait for anything.
+ * A field every one of whose options hangs off a question the screen no longer asks, and that
+ * nobody answered while it was still asked.
+ *
+ * Without this it renders forever as "Prvo izaberi: Sklop u kvaru" — pointing at a field that is
+ * not on the page and cannot be put there, so the claim shows a question nobody can ever answer.
+ * A field that DOES carry an answer is kept, like every other retired thing on this screen.
  */
-function awaitingParentName(
+function isStrandedByRetiredParent(
   field: ClaimCategoryFieldListItem,
-  fields: readonly ClaimCategoryFieldListItem[],
+  visible: readonly ClaimCategoryFieldListItem[],
+  values: ClaimCategoryFieldValues,
+): boolean {
+  if (values[field.code] !== undefined) {
+    return false
+  }
+
+  const waitingFor = awaitingParentCode(field, values)
+  return waitingFor !== null && !visible.some((candidate) => candidate.code === waitingFor)
+}
+
+/** The CODE of the field this one waits for, or null when it is answerable as it stands. */
+function awaitingParentCode(
+  field: ClaimCategoryFieldListItem,
   values: ClaimCategoryFieldValues,
 ): string | null {
   const options = field.options ?? []
@@ -108,11 +134,25 @@ function awaitingParentName(
     return null
   }
 
-  if (values[first.fieldCode] !== undefined) {
+  return values[first.fieldCode] === undefined ? first.fieldCode : null
+}
+
+/**
+ * The name of the field this one waits for — set only when EVERY option hangs off one field that
+ * has no answer yet. A field with some independent options can still be answered, so it does not
+ * wait for anything.
+ */
+function awaitingParentName(
+  field: ClaimCategoryFieldListItem,
+  fields: readonly ClaimCategoryFieldListItem[],
+  values: ClaimCategoryFieldValues,
+): string | null {
+  const waitingFor = awaitingParentCode(field, values)
+  if (waitingFor === null) {
     return null
   }
 
-  return fields.find((candidate) => candidate.code === first.fieldCode)?.name ?? null
+  return fields.find((candidate) => candidate.code === waitingFor)?.name ?? null
 }
 
 /**

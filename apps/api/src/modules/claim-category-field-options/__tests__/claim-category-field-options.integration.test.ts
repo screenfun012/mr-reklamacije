@@ -160,6 +160,37 @@ describe('ClaimCategoryFieldOptions module', () => {
       ).toBe(1)
     })
 
+    it('refuses to delete an option that other options hang off, with a sentence not a 500', async () => {
+      const fieldId = await seededFieldId()
+      const options = await container.claimCategoryFieldOptionsService.list({
+        fieldId,
+        activeOnly: true,
+        limit: 50,
+      })
+      const parent = options.items.find((item) => item.code === 'glava')
+
+      // A second field of the same category whose option hangs off that one — the shape migration
+      // 0052 seeds for every assembly, so on day one every `sklop_u_kvaru` option is a parent
+      // while its usage count is still zero and the delete button is enabled.
+      const child = await container.claimCategoryFieldsService.create(
+        {
+          categoryId: await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA'),
+          code: 'kvar_test',
+          name: 'Kvar',
+        },
+        MANAGER,
+      )
+      await container.claimCategoryFieldOptionsService.create(
+        { fieldId: child.id, code: 'pukla', name: 'Pukla', parentOptionId: parent?.id ?? '' },
+        MANAGER,
+      )
+
+      // Without the guard Postgres refuses the DELETE (FK RESTRICT) and the office reads a 500.
+      await expect(
+        container.claimCategoryFieldOptionsService.hardDelete(parent?.id ?? '', MANAGER),
+      ).rejects.toBeInstanceOf(ConflictError)
+    })
+
     it('audits the change and signals the whole category family', async () => {
       const bus = new RecordingEventBus()
       const recording = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, bus)

@@ -25,6 +25,10 @@ const UPLOAD_PATHS = new Set(['/api/attachments/upload', '/api/claim-reports/ima
 const UPLOAD_PATH_PATTERNS = [
   /^\/api\/client-submissions\/[^/]+\/attachments$/,
   /^\/api\/intake-orders\/[^/]+\/photos$/,
+  // The quote is a file the serviser made in another program — a scanned or exported A4 PDF is
+  // routinely 2-8 MB, and nothing compresses it on the way in. Left out of this list it fell to
+  // the 2 MB default and answered 413 with no size in the message, while the module documents 25.
+  /^\/api\/intake-orders\/[^/]+\/quote$/,
 ]
 
 /** Exported for the regression test — a path silently falling to the 2 MB default is invisible. */

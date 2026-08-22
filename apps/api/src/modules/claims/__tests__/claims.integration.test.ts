@@ -214,6 +214,18 @@ describe('ClaimsService integration', () => {
       )
       expect(forbidden.status).toBe(403)
     })
+
+    it('is refused to a portal client, who would otherwise read decisions before they are published', async () => {
+      // The counts are unscoped and unmasked. A client holding only `view_own_customer` would
+      // learn how many of his claims are no longer pending — the one thing the private→published
+      // masking exists to withhold — plus the whole category catalogue, ids and Serbian names.
+      const client = await createClaimsTestApp(
+        container,
+        testUser(['emotive_claims.view_own_customer']),
+      ).request('/api/claims/category-counts')
+
+      expect(client.status).toBe(403)
+    })
   })
 
   describe('when listing unified claims', () => {

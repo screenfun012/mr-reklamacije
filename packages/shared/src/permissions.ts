@@ -257,6 +257,11 @@ export const SERVISER_PERMISSIONS: readonly Permission[] = [
   'intake_orders.create',
   'intake_orders.update',
   'intake_orders.advance',
+  // He is the one who makes the quote, so he is the one who brings it back (CLAUDE.md §2). The
+  // composable `intake_field` package has carried it from the start; this legacy system role had
+  // not, and the seed prunes any grant the code does not name — so a serviser set up before the
+  // packages existed would have lost the quote card at the next seed.
+  'intake_orders.attach_quote',
 ] as const
 
 /**
