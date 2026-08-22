@@ -82,6 +82,16 @@ export class ClaimCategoriesService {
       throw new ConflictError('Kategorija se koristi u reklamacijama i ne može se obrisati.')
     }
 
+    // Its fields hold it by a RESTRICT key, so without this Postgres refuses the DELETE and the
+    // office sees a 500. Since migration 0048 every category ships with fields, so this is the
+    // ordinary case, not the exotic one — and deleting them along with it is not ours to decide.
+    const fieldCount = await this.repo.countFields(id)
+    if (fieldCount > 0) {
+      throw new ConflictError(
+        'Kategorija ima svoja polja i ne može se obrisati. Prvo obriši polja te kategorije.',
+      )
+    }
+
     await this.repo.hardDelete(id)
 
     await this.audit.log({

@@ -325,6 +325,18 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
     return found
   }
 
+  /** Same reason as the category's own count: options hang off a field by a RESTRICT key. */
+  async countOptions(id: string): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(claimCategoryFieldOptions)
+      .where(
+        and(eq(claimCategoryFieldOptions.fieldId, id), isNull(claimCategoryFieldOptions.deletedAt)),
+      )
+
+    return row?.count ?? 0
+  }
+
   async hardDelete(id: string): Promise<void> {
     const [deleted] = await this.db
       .delete(claimCategoryFields)

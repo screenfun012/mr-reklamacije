@@ -87,6 +87,14 @@ export class ClaimCategoryFieldsService {
       throw new ConflictError('Polje se koristi na reklamacijama i ne može se obrisati.')
     }
 
+    // Same shape one level down: the options hold the field by a RESTRICT key.
+    const optionCount = await this.repo.countOptions(id)
+    if (optionCount > 0) {
+      throw new ConflictError(
+        'Polje ima svoje opcije i ne može se obrisati. Prvo obriši opcije tog polja.',
+      )
+    }
+
     await this.repo.hardDelete(id)
 
     await this.audit.log({

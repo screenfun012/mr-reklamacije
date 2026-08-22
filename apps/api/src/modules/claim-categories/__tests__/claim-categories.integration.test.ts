@@ -299,6 +299,33 @@ describe('ClaimCategories reference module', () => {
       ).rejects.toMatchObject({ status: 409 })
     })
 
+    it('refuses a category that still owns fields, in Serbian rather than as a 500', async () => {
+      // ⚙ drop the countFields guard in the service and this stops being a 409: the fields hold
+      // the category by a RESTRICT key, so Postgres refuses the DELETE and the office is shown an
+      // unhandled server error. Since migration 0048 every category ships with fields, so the
+      // admin panel's delete button reaches this on the ordinary row, not an exotic one.
+      const created = await container.claimCategoriesRepository.create({
+        code: 'DEL-CAT-FIELDS',
+        name: 'Ima polja',
+      })
+      await ctx.db.insert(schema.claimCategoryFields).values({
+        categoryId: created.id,
+        code: 'probno_polje',
+        name: 'Probno polje',
+      })
+
+      await expect(
+        container.claimCategoriesService.hardDelete(created.id, {
+          actorUserId: testUser(['settings.claim_categories.manage']).id,
+          actorIp: null,
+          actorUserAgent: null,
+        }),
+      ).rejects.toMatchObject({ status: 409 })
+
+      // Still there: a refused delete must not have half-happened.
+      expect(await container.claimCategoriesRepository.findById(created.id)).not.toBeNull()
+    })
+
     it('emits resource_changed on hard delete', async () => {
       const eventBus = new RecordingEventBus()
       const scopedContainer = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, eventBus)

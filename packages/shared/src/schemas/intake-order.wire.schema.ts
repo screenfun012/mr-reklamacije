@@ -247,6 +247,9 @@ export const IntakeOrderListItemSchema = z.object({
   plate: z.string(),
   vehicle: z.string(),
   ownerName: z.string(),
+  /** Whose intake this is. The list needs it to know whether a draft is the reader's own: his own
+      he may discard with `intake_orders.update`, a colleague's takes `intake_orders.delete`. */
+  technicianId: z.string().uuid(),
   technicianName: z.string(),
   /** The shop's working note beside the signed number — null until someone writes one (docs/25 §5). */
   contactPhone: z.string().nullable(),

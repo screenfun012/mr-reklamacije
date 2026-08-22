@@ -230,6 +230,24 @@ describe('ClaimCategoryFields module', () => {
       ).rejects.toBeInstanceOf(ConflictError)
     })
 
+    it('refuses a field that still owns options, in Serbian rather than as a 500', async () => {
+      // ⚙ drop the countOptions guard and this becomes an unhandled constraint error: the options
+      // hold the field by a RESTRICT key. Same shape as the category one level up.
+      const field = await container.claimCategoryFieldsService.create(
+        { categoryId: await machiningCategoryId(), code: 'polje_sa_opcijama', name: 'Sa opcijama' },
+        MANAGER,
+      )
+      await container.claimCategoryFieldOptionsService.create(
+        { fieldId: field.id, code: 'jedna', name: 'Jedna' },
+        MANAGER,
+      )
+
+      await expect(
+        container.claimCategoryFieldsService.hardDelete(field.id, MANAGER),
+      ).rejects.toMatchObject({ status: 409 })
+      expect(await container.claimCategoryFieldsRepository.findById(field.id)).not.toBeNull()
+    })
+
     it('audits the change and signals the whole category family', async () => {
       const bus = new RecordingEventBus()
       const recording = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, bus)

@@ -4,7 +4,7 @@ import type { ApiDatabase } from '../../core/database.js'
 import { ConflictError, InternalError, NotFoundError } from '../../core/errors/domain-errors.js'
 import { keysetAfter } from '../../core/utils/drizzle-keyset.js'
 import { buildPaginatedSlice, parseOptionalKeysetCursor } from '../../core/utils/pagination.js'
-import { claimCategories } from './claim-categories.schema.js'
+import { claimCategories, claimCategoryFields } from './claim-categories.schema.js'
 import type {
   ClaimCategoryCreateInput,
   ClaimCategoryListItem,
@@ -201,6 +201,20 @@ export class ClaimCategoriesRepository {
       .limit(1)
 
     return row?.usageCount ?? 0
+  }
+
+  /**
+   * Fields hang off a category by a RESTRICT foreign key, so deleting one that still owns them is
+   * refused by Postgres — as an unhandled constraint error, i.e. a 500. The count is what lets the
+   * service refuse it in Serbian instead. Retired fields count too: the row is still there.
+   */
+  async countFields(id: string): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(claimCategoryFields)
+      .where(and(eq(claimCategoryFields.categoryId, id), isNull(claimCategoryFields.deletedAt)))
+
+    return row?.count ?? 0
   }
 
   async hardDelete(id: string): Promise<void> {
