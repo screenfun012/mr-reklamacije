@@ -322,4 +322,49 @@ describe('migrations 0046 + 0048 — category fields catalogue', () => {
       'claim_category_field_options_parent_option_id_fkey',
     )
   })
+
+  it('offers a cause for every assembly, and every cause hangs off its assembly (0052)', async () => {
+    const [overhaul] = await db
+      .select({ id: schema.claimCategories.id })
+      .from(schema.claimCategories)
+      .where(eq(schema.claimCategories.code, 'REMONT_MOTORA'))
+    const fields = await db
+      .select({
+        id: schema.claimCategoryFields.id,
+        code: schema.claimCategoryFields.code,
+        isRequired: schema.claimCategoryFields.isRequired,
+      })
+      .from(schema.claimCategoryFields)
+      .where(eq(schema.claimCategoryFields.categoryId, overhaul?.id ?? ''))
+
+    const cause = fields.find((field) => field.code === 'uzrok_kvara')
+    const part = fields.find((field) => field.code === 'sklop_u_kvaru')
+    expect(cause).toBeDefined()
+    // Like everything 0048 seeded: a required field refuses the whole create, and the office
+    // turns that on from the admin panel when it wants it.
+    expect(cause?.isRequired).toBe(false)
+
+    const parts = await db
+      .select({
+        id: schema.claimCategoryFieldOptions.id,
+        code: schema.claimCategoryFieldOptions.code,
+      })
+      .from(schema.claimCategoryFieldOptions)
+      .where(eq(schema.claimCategoryFieldOptions.fieldId, part?.id ?? ''))
+    const causes = await db
+      .select({
+        code: schema.claimCategoryFieldOptions.code,
+        parentOptionId: schema.claimCategoryFieldOptions.parentOptionId,
+      })
+      .from(schema.claimCategoryFieldOptions)
+      .where(eq(schema.claimCategoryFieldOptions.fieldId, cause?.id ?? ''))
+
+    // Not one cause is offered on its own: a cause with no assembly would be a question the
+    // screen could never narrow, and the server would have nothing to check it against.
+    expect(causes.filter((option) => option.parentOptionId === null)).toEqual([])
+
+    const partById = new Map(parts.map((option) => [option.id, option.code]))
+    const covered = new Set(causes.map((option) => partById.get(option.parentOptionId ?? '')))
+    expect(covered).toEqual(new Set(parts.map((option) => option.code)))
+  })
 })
