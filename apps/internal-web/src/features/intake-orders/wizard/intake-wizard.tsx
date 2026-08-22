@@ -119,6 +119,14 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
   const [values, setValues] = useState<IntakeWizardValues>(emptyIntakeWizardValues)
   const [step, setStep] = useState(1)
   const [orderId, setOrderId] = useState<string | null>(null)
+  /**
+   * The id this screen is already working on. A ref, not a dependency: the resume effect below
+   * must be able to tell "the list sent me to an order" from "the address bar now names the order
+   * I am standing in", and a dependency on the state would re-fire the effect on the very render
+   * that put the id there.
+   */
+  const orderIdRef = useRef<string | null>(orderId)
+  orderIdRef.current = orderId
   const [numberTaken, setNumberTaken] = useState(false)
   const [saving, setSaving] = useState(false)
   const [discarding, setDiscarding] = useState(false)
@@ -295,6 +303,13 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
     if (resumeOrderId === undefined) {
       return
     }
+    // The wizard puts its own id in the address bar (see `goForward`) so that a refresh lands back
+    // in this intake instead of on step 1. That makes this effect fire on an order already on
+    // screen — where re-fetching would toast again and drop the serviser back to the last step the
+    // server heard about, over live typing.
+    if (resumeOrderId === orderIdRef.current) {
+      return
+    }
     resumeServerOrder(resumeOrderId)
   }, [resumeOrderId, resumeServerOrder])
 
@@ -306,9 +321,22 @@ export function IntakeWizard({ resumeOrderId }: IntakeWizardProps = {}): ReactEl
         if (orderId === null) {
           const created = await createIntakeOrder(toCreateInput(values))
           setOrderId(created.id)
+          orderIdRef.current = created.id
           // Create stamps draft_step = 1, so without this follow-up the server would think the
           // intake is still on step 1 and the resume offer would send him a step backwards.
           await updateIntakeOrder(created.id, toUpdateInput(values, step + 1, checklistItems))
+          // The id goes into the address bar, and that is the whole fix for a refresh: until now
+          // the URL stayed a bare `/prijem/novi`, so F5 rebuilt an empty wizard on step 1 and the
+          // serviser had to notice an amber bar and tap NASTAVI to get his own intake back. The
+          // list's own "continue" link has always used this same `?resume=`; only the reload never
+          // did. `replace` so BACK does not walk through it, and the route id does not change, so
+          // the component keeps its state, its signatures and its photo queue.
+          await navigate({
+            to: '/prijem/novi',
+            search: { resume: created.id },
+            replace: true,
+            resetScroll: false,
+          })
         } else {
           await updateIntakeOrder(orderId, toUpdateInput(values, step + 1, checklistItems))
         }

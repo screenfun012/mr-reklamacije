@@ -31,6 +31,14 @@ export const INTAKE_WIZARD_STEPS = {
 
 export const INTAKE_WIZARD_STEP_COUNT = INTAKE_WIZARD_STEPS.Signatures
 
+/**
+ * The step to PRINT for a stored draft. The column still allows 1..5 from the wizard's earlier
+ * shape, and the dev database holds such rows — without this the list says "Nedovršen · 5/4".
+ */
+export function displayDraftStep(step: number | null): number {
+  return Math.min(Math.max(step ?? 1, 1), INTAKE_WIZARD_STEP_COUNT)
+}
+
 /** Everything the wizard collects, as the form holds it (numbers stay strings while typing). */
 export interface IntakeWizardValues {
   orderNumber: string
