@@ -4,9 +4,13 @@ import {
   computeAcceptanceRatePercent,
   FaultType,
   roundStatisticsDays,
+  STATISTICS_FIELD_PREDATES_CODE,
+  STATISTICS_FIELD_UNFILLED_CODE,
   STATISTICS_UNKNOWN_CODE,
   type StatisticsAcceptanceRateMonth,
   type StatisticsByFaults,
+  type StatisticsCategoryField,
+  type StatisticsCategoryFieldGroup,
   type StatisticsCategoryRow,
   type StatisticsCustomerRow,
   type StatisticsDomaceAmounts,
@@ -62,6 +66,19 @@ interface CategoryRow extends Record<string, unknown> {
   pending: number | string
   accepted: number | string
   rejected: number | string
+}
+
+interface CategoryFieldBucketRow extends Record<string, unknown> {
+  category_code: string
+  category_name: string
+  field_code: string
+  field_name: string
+  field_is_active: boolean
+  field_sort_order: number | string
+  bucket: string
+  total: number | string
+  option_name: string
+  option_is_active: boolean
 }
 
 interface OutcomeDistributionRow extends Record<string, unknown> {
@@ -124,6 +141,73 @@ interface FaultAttributionRow extends Record<string, unknown> {
 
 function toInt(value: number | string): number {
   return typeof value === 'number' ? value : Number.parseInt(value, 10)
+}
+
+/** The two buckets that are not catalogue rows: nobody answered, and the question is younger. */
+function isSyntheticBucket(code: string): boolean {
+  return code === STATISTICS_FIELD_UNFILLED_CODE || code === STATISTICS_FIELD_PREDATES_CODE
+}
+
+/**
+ * The only shaping the server does for this section: the rows arrive already ordered, and this
+ * walks them once into category → field → bucket, keeping that order.
+ */
+function groupCategoryFieldRows(
+  rows: readonly CategoryFieldBucketRow[],
+): StatisticsCategoryFieldGroup[] {
+  const groups: StatisticsCategoryFieldGroup[] = []
+  const groupByCode = new Map<string, StatisticsCategoryFieldGroup>()
+  const fieldByKey = new Map<string, StatisticsCategoryField>()
+
+  for (const row of rows) {
+    let group = groupByCode.get(row.category_code)
+    if (group === undefined) {
+      group = {
+        categoryCode: row.category_code,
+        categoryName: row.category_name,
+        total: 0,
+        fields: [],
+      }
+      groupByCode.set(row.category_code, group)
+      groups.push(group)
+    }
+
+    const fieldKey = `${row.category_code}\u0000${row.field_code}`
+    let field = fieldByKey.get(fieldKey)
+    if (field === undefined) {
+      field = {
+        fieldCode: row.field_code,
+        fieldName: row.field_name,
+        isActive: row.field_is_active,
+        items: [],
+      }
+      fieldByKey.set(fieldKey, field)
+      group.fields.push(field)
+    }
+
+    field.items.push({
+      code: row.bucket,
+      name: isSyntheticBucket(row.bucket) ? '' : row.option_name,
+      total: toInt(row.total),
+      isActive: row.option_is_active,
+    })
+  }
+
+  for (const group of groups) {
+    // Every field of a category counts the same claims exactly once, so ONE field's buckets add
+    // up to the group's claim count; summing them all would multiply it by the field count.
+    // Read before the drop below, so retiring a field can never change the claim count.
+    group.total = group.fields[0]?.items.reduce((sum, item) => sum + item.total, 0) ?? 0
+
+    // A field the office switched off with nothing but empty buckets under it: it stopped asking
+    // and nobody had answered, so a card of "Nije upisano" would be noise. One somebody DID
+    // answer stays — a claim carries what it was given.
+    group.fields = group.fields.filter(
+      (field) => field.isActive || field.items.some((item) => !isSyntheticBucket(item.code)),
+    )
+  }
+
+  return groups
 }
 
 function toFloat(value: number | string | null): number | null {
@@ -360,6 +444,65 @@ export class StatisticsRepository {
       accepted: toInt(row.accepted),
       rejected: toInt(row.rejected),
     }))
+  }
+
+  async fetchByCategoryFields(
+    ctx: StatisticsQueryContext,
+  ): Promise<StatisticsCategoryFieldGroup[]> {
+    const branches: SQL[] = []
+
+    if (ctx.effectiveScope.includeEmotive) {
+      branches.push(sql`
+        SELECT ec.category_id, ec.created_at, ec.category_field_values
+        FROM emotive_claims ec
+        WHERE ${buildActiveClaimWhere('ec', ctx)}
+      `)
+    }
+
+    if (ctx.effectiveScope.includeDomace) {
+      branches.push(sql`
+        SELECT dc.category_id, dc.created_at, dc.category_field_values
+        FROM domace_claims dc
+        WHERE ${buildActiveClaimWhere('dc', ctx)}
+      `)
+    }
+
+    if (branches.length === 0) {
+      return []
+    }
+
+    const unionSql = sql.join(branches, sql` UNION ALL `)
+
+    // Every (claim, select field of its category) pair yields exactly one row, so a claim that
+    // answered nothing is still counted — in one of the two honest buckets. The option join
+    // deliberately filters neither `deleted_at` nor `is_active`: a claim keeps what it was given,
+    // and a retired option must still be able to say its own name.
+    const result = await this.db.execute<CategoryFieldBucketRow>(sql`
+      SELECT
+        cc.code AS category_code, cc.name AS category_name,
+        f.code AS field_code, f.name AS field_name,
+        f.is_active AS field_is_active, f.sort_order AS field_sort_order,
+        CASE
+          WHEN c.category_field_values -> c.category_id::text ->> f.code IS NOT NULL
+            THEN c.category_field_values -> c.category_id::text ->> f.code
+          WHEN c.created_at < f.created_at THEN ${STATISTICS_FIELD_PREDATES_CODE}
+          ELSE ${STATISTICS_FIELD_UNFILLED_CODE}
+        END AS bucket,
+        COUNT(*)::int AS total,
+        COALESCE(MAX(o.name), '') AS option_name,
+        COALESCE(bool_and(o.is_active), true) AS option_is_active
+      FROM (${unionSql}) AS c
+      JOIN claim_categories cc ON cc.id = c.category_id
+      JOIN claim_category_fields f
+        ON f.category_id = c.category_id AND f.field_type = 'select' AND f.deleted_at IS NULL
+      LEFT JOIN claim_category_field_options o
+        ON o.field_id = f.id
+       AND o.code = c.category_field_values -> c.category_id::text ->> f.code
+      GROUP BY 1, 2, 3, 4, 5, 6, 7
+      ORDER BY cc.name ASC, f.sort_order ASC, f.code ASC, total DESC, bucket ASC
+    `)
+
+    return groupCategoryFieldRows(result.rows)
   }
 
   async fetchOutcomeDistribution(

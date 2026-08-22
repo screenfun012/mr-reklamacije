@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  STATISTICS_FIELD_PREDATES_CODE,
+  STATISTICS_FIELD_UNFILLED_CODE,
   STATISTICS_OTHERS_CODE,
   STATISTICS_UNKNOWN_CODE,
 } from '../../constants/statistics-rank-colors.js'
@@ -19,6 +21,7 @@ const emptyBreakdowns = {
   domaceAmounts: { totalAmount: 0, claimCount: 0 },
   byCustomer: { items: [] },
   byFaults: { byEmployee: [], byDepartment: [], byExternalParty: [] },
+  byCategoryFields: [],
 }
 
 describe('StatisticsSummarySchema', () => {
@@ -121,6 +124,7 @@ describe('StatisticsSummarySchema', () => {
         byDepartment: [],
         byExternalParty: [],
       },
+      byCategoryFields: [],
     })
 
     expect(parsed.trends.byMonth).toHaveLength(1)
@@ -167,6 +171,56 @@ describe('StatisticsSummarySchema', () => {
     expect(parsed.byFaults.byEmployee).toBeNull()
     // Not everything goes: what is not about a named person still parses as a list.
     expect(parsed.byFaults.byDepartment).toEqual([])
+  })
+
+  /**
+   * The section is an array and never `null`: nothing about an answer to a category field is
+   * withheld — it is not a named person and not money. The two synthetic buckets arrive with an
+   * EMPTY name, because the server never writes a Serbian label for something that is not a row
+   * in the catalogue; the client is what labels them.
+   */
+  it('parses the category-field section, with the two synthetic buckets unnamed', () => {
+    const parsed = StatisticsSummarySchema.parse({
+      trends: {
+        byMonth: [],
+        byYear: [],
+        volumeTrend: {
+          direction: StatisticsVolumeTrendDirection.Stable,
+          currentPeriodTotal: 0,
+          previousPeriodTotal: 0,
+          delta: 0,
+          deltaPercent: null,
+        },
+      },
+      byManufacturer: { items: [] },
+      outcomes: emptyOutcomes,
+      ...emptyBreakdowns,
+      byCategoryFields: [
+        {
+          categoryCode: 'REMONT_MOTORA',
+          categoryName: 'Generalni remont motora',
+          total: 3,
+          fields: [
+            {
+              fieldCode: 'sklop_u_kvaru',
+              fieldName: 'Sklop u kvaru',
+              isActive: true,
+              items: [
+                { code: 'glava', name: 'Glava', total: 1, isActive: true },
+                { code: 'turbina', name: 'Turbina', total: 1, isActive: false },
+                { code: STATISTICS_FIELD_UNFILLED_CODE, name: '', total: 1, isActive: true },
+                { code: STATISTICS_FIELD_PREDATES_CODE, name: '', total: 0, isActive: true },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(parsed.byCategoryFields[0]?.total).toBe(3)
+    expect(parsed.byCategoryFields[0]?.fields[0]?.items).toHaveLength(4)
+    expect(parsed.byCategoryFields[0]?.fields[0]?.items[1]?.isActive).toBe(false)
+    expect(parsed.byCategoryFields[0]?.fields[0]?.items[2]?.name).toBe('')
   })
 
   it('parses catalog OSTALO separately from UI others roll-up code', () => {

@@ -166,6 +166,7 @@ export class StatisticsService {
       domaceAmounts,
       customerItems,
       byFaults,
+      byCategoryFields,
     ] = await Promise.all([
       this.repo.fetchTrendsByMonth(queryContext),
       this.repo.fetchTrendsByYear(queryContext),
@@ -179,6 +180,7 @@ export class StatisticsService {
       this.repo.fetchDomaceAmounts(queryContext),
       this.repo.fetchByCustomer(queryContext),
       this.repo.fetchFaultAttribution(queryContext),
+      this.repo.fetchByCategoryFields(queryContext),
     ])
 
     return {
@@ -209,6 +211,9 @@ export class StatisticsService {
         items: customerItems,
       },
       byFaults,
+      // Nothing here is withheld: an answer to a category field is neither a named person nor
+      // money, so it does not join the two sections that are stripped on the way out.
+      byCategoryFields,
     }
   }
 }

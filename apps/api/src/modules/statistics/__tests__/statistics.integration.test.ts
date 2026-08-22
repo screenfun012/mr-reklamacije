@@ -5,10 +5,13 @@ import {
   ExternalPartyKind,
   FaultType,
   normalizeName,
+  STATISTICS_FIELD_PREDATES_CODE,
+  STATISTICS_FIELD_UNFILLED_CODE,
   STATISTICS_UNKNOWN_CODE,
   type EmotiveClaimCreateInput,
+  type StatisticsSummary,
 } from '@mr/shared'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -626,6 +629,222 @@ describe('Statistics module integration', () => {
       expect(blok.outcomes.distribution.accepted).toBe(0)
       expect(blok.outcomes.distribution.pending).toBe(1)
       expect(entries.size).toBe(2)
+    })
+  })
+
+  describe('when counting what the category fields answered', () => {
+    async function fieldIdByCode(code: string): Promise<string> {
+      const [field] = await ctx.db
+        .select({ id: schema.claimCategoryFields.id })
+        .from(schema.claimCategoryFields)
+        .where(
+          and(
+            eq(schema.claimCategoryFields.categoryId, defaultCategoryId),
+            eq(schema.claimCategoryFields.code, code),
+          ),
+        )
+        .limit(1)
+
+      if (field === undefined) {
+        throw new Error(`Category field ${code} not found — run the category-field migrations`)
+      }
+
+      return field.id
+    }
+
+    async function retireField(code: string): Promise<void> {
+      await ctx.db
+        .update(schema.claimCategoryFields)
+        .set({ isActive: false, deactivatedAt: new Date() })
+        .where(eq(schema.claimCategoryFields.id, await fieldIdByCode(code)))
+    }
+
+    async function retireOption(fieldCode: string, optionCode: string): Promise<void> {
+      await ctx.db
+        .update(schema.claimCategoryFieldOptions)
+        .set({ isActive: false, deactivatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.claimCategoryFieldOptions.fieldId, await fieldIdByCode(fieldCode)),
+            eq(schema.claimCategoryFieldOptions.code, optionCode),
+          ),
+        )
+    }
+
+    /** The claim was opened before the office invented the question — its own bucket, not "empty". */
+    async function moveCreatedAtBeforeTheCatalogue(claimId: string): Promise<void> {
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ createdAt: new Date('2015-01-01T00:00:00.000Z') })
+        .where(eq(schema.emotiveClaims.id, claimId))
+    }
+
+    function fieldOf(
+      summary: { byCategoryFields: StatisticsSummary['byCategoryFields'] },
+      categoryCode: string,
+      fieldCode: string,
+    ) {
+      return summary.byCategoryFields
+        .find((group) => group.categoryCode === categoryCode)
+        ?.fields.find((field) => field.fieldCode === fieldCode)
+    }
+
+    it('counts answers per field, and says separately what was not filled and what predates it', async () => {
+      const manufacturerId = await createEngineManufacturer(`STAT-CF-${Date.now()}`, 'Field Stats')
+      await createEmotiveClaim(
+        'STAT-CF-ANSWERED/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+        'SELMAN',
+        { sklop_u_kvaru: 'glava' },
+      )
+      // TWO left empty against ONE that predates: equal counts would let the two buckets swap
+      // places without a single assertion noticing, and they are different statements.
+      await createEmotiveClaim(
+        'STAT-CF-EMPTY-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(9),
+        manufacturerId,
+      )
+      await createEmotiveClaim(
+        'STAT-CF-EMPTY-2/26',
+        ClaimOutcome.Accepted,
+        daysAgo(9),
+        manufacturerId,
+      )
+      const oldClaimId = await createEmotiveClaim(
+        'STAT-CF-OLD/26',
+        ClaimOutcome.Accepted,
+        daysAgo(8),
+        manufacturerId,
+      )
+      await moveCreatedAtBeforeTheCatalogue(oldClaimId)
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+      const group = summary.byCategoryFields.find((row) => row.categoryCode === 'REMONT_MOTORA')
+
+      expect(group?.total).toBe(4)
+      expect(fieldOf(summary, 'REMONT_MOTORA', 'sklop_u_kvaru')?.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'glava', name: 'Glava', total: 1, isActive: true }),
+          expect.objectContaining({ code: STATISTICS_FIELD_UNFILLED_CODE, total: 2, name: '' }),
+          expect.objectContaining({ code: STATISTICS_FIELD_PREDATES_CODE, total: 1, name: '' }),
+        ]),
+      )
+      // A text field is not counted: there is nothing to rank when every answer is its own value.
+      expect(fieldOf(summary, 'REMONT_MOTORA', 'predjeno_km')).toBeUndefined()
+    })
+
+    it('obeys the manufacturer and the category like every other section', async () => {
+      const mineId = await createEngineManufacturer(`STAT-CF-MINE-${Date.now()}`, 'Field Mine')
+      const theirsId = await createEngineManufacturer(
+        `STAT-CF-THEIRS-${Date.now()}`,
+        'Field Theirs',
+      )
+      await createEmotiveClaim(
+        'STAT-CF-MINE-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        mineId,
+        'SELMAN',
+        {
+          sklop_u_kvaru: 'glava',
+        },
+      )
+      await createEmotiveClaim(
+        'STAT-CF-THEIRS-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        theirsId,
+        'SELMAN',
+        {
+          sklop_u_kvaru: 'blok',
+        },
+      )
+
+      const mine = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId: mineId,
+      })
+      const machining = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId: mineId,
+        categoryCode: 'MASINSKA_OBRADA',
+      })
+
+      expect(mine.byCategoryFields.map((group) => group.categoryCode)).toEqual(['REMONT_MOTORA'])
+      expect(fieldOf(mine, 'REMONT_MOTORA', 'sklop_u_kvaru')?.items).toEqual([
+        expect.objectContaining({ code: 'glava', total: 1 }),
+      ])
+      expect(machining.byCategoryFields).toEqual([])
+    })
+
+    it('names a retired option a claim still carries, and marks it inactive', async () => {
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-CF-RETOPT-${Date.now()}`,
+        'Field Retired Option',
+      )
+      await createEmotiveClaim(
+        'STAT-CF-RETOPT-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+        'SELMAN',
+        { sklop_u_kvaru: 'turbina' },
+      )
+      await retireOption('sklop_u_kvaru', 'turbina')
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(fieldOf(summary, 'REMONT_MOTORA', 'sklop_u_kvaru')?.items).toEqual([
+        expect.objectContaining({ code: 'turbina', name: 'Turbina', total: 1, isActive: false }),
+      ])
+    })
+
+    it('drops a retired FIELD nobody answered, and keeps one somebody did', async () => {
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-CF-RETFLD-${Date.now()}`,
+        'Field Retired',
+      )
+      await createEmotiveClaim(
+        'STAT-CF-RETFLD-1/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+        'SELMAN',
+        { pojava_kvara: 'gubi_ulje' },
+      )
+      await retireField('pojava_kvara')
+      await retireField('ko_je_ugradio')
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+      const answered = fieldOf(summary, 'REMONT_MOTORA', 'pojava_kvara')
+
+      expect(answered?.isActive).toBe(false)
+      expect(answered?.items).toEqual([
+        expect.objectContaining({ code: 'gubi_ulje', total: 1, isActive: true }),
+      ])
+      // Switched off with nothing but empty buckets under it: the office stopped asking, and
+      // nobody had answered — drawing a card of "Nije upisano" would be noise.
+      expect(fieldOf(summary, 'REMONT_MOTORA', 'ko_je_ugradio')).toBeUndefined()
+    })
+
+    it('is empty, not null, for a scope with no claims', async () => {
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-CF-NONE-${Date.now()}`,
+        'Field None',
+      )
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+      })
+
+      expect(summary.byCategoryFields).toEqual([])
     })
   })
 

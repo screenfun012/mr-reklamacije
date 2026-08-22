@@ -192,6 +192,36 @@ export const StatisticsByFaultsSchema = z.object({
 
 export type StatisticsByFaults = z.infer<typeof StatisticsByFaultsSchema>
 
+export const StatisticsCategoryFieldBucketSchema = z.object({
+  /** An option code, or one of the two synthetic buckets the client labels itself. */
+  code: z.string().min(1),
+  /** The option's name; EMPTY for a synthetic bucket — the server never writes Serbian. */
+  name: z.string(),
+  total: z.coerce.number().int().nonnegative(),
+  /** false for a retired option some claim still carries — drawn with †. */
+  isActive: z.boolean(),
+})
+
+export type StatisticsCategoryFieldBucket = z.infer<typeof StatisticsCategoryFieldBucketSchema>
+
+export const StatisticsCategoryFieldSchema = z.object({
+  fieldCode: z.string().min(1),
+  fieldName: z.string().min(1),
+  isActive: z.boolean(),
+  items: z.array(StatisticsCategoryFieldBucketSchema),
+})
+
+export type StatisticsCategoryField = z.infer<typeof StatisticsCategoryFieldSchema>
+
+export const StatisticsCategoryFieldGroupSchema = z.object({
+  categoryCode: z.string().min(1),
+  categoryName: z.string().min(1),
+  total: z.coerce.number().int().nonnegative(),
+  fields: z.array(StatisticsCategoryFieldSchema),
+})
+
+export type StatisticsCategoryFieldGroup = z.infer<typeof StatisticsCategoryFieldGroupSchema>
+
 export const StatisticsTrendsSchema = z.object({
   byMonth: z.array(StatisticsTrendMonthSchema),
   byYear: z.array(StatisticsTrendYearSchema),
@@ -216,6 +246,11 @@ export const StatisticsSummarySchema = z.object({
   domaceAmounts: StatisticsDomaceAmountsSchema.nullable(),
   byCustomer: StatisticsByCustomerSchema,
   byFaults: StatisticsByFaultsSchema,
+  /**
+   * An array, never `null`: what a category field was answered is neither a named person nor
+   * money, so nothing about it is withheld. An empty array means the scope holds no claims.
+   */
+  byCategoryFields: z.array(StatisticsCategoryFieldGroupSchema),
 })
 
 export type StatisticsSummary = z.infer<typeof StatisticsSummarySchema>
