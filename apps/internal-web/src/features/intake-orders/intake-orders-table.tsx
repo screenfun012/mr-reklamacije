@@ -1,13 +1,13 @@
 import { getLocale, m } from '@mr/i18n'
 import { IntakeOrderStatus, type IntakeOrderListItem } from '@mr/shared'
-import { cn } from '@mr/ui'
+import { cn, dataTableIconActionClassName } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
-import { FileWarning } from 'lucide-react'
+import { FileWarning, Trash2 } from 'lucide-react'
 import type { ReactElement } from 'react'
 
 import { InternalPill } from '~/components/internal-pill'
 import { INTAKE_STATUS_LABELS, INTAKE_STATUS_TONES, formatIntakeReceivedAt } from './intake-status'
-import { INTAKE_WIZARD_STEP_COUNT } from './wizard/intake-wizard-state'
+import { displayDraftStep, INTAKE_WIZARD_STEP_COUNT } from './wizard/intake-wizard-state'
 
 /**
  * Column widths, gap and padding are the prototype's, to the pixel
@@ -15,27 +15,34 @@ import { INTAKE_WIZARD_STEP_COUNT } from './wizard/intake-wizard-state'
  * them produced a row 42px too wide, which dragged the table sideways on the serviser's tablet.
  *
  * The display is NOT in here: under a narrow container the same values render as a card
- * instead, so each consumer says `hidden @min-[1038px]:grid` itself rather than relying on
+ * instead, so each consumer says `hidden @min-[1078px]:grid` itself rather than relying on
  * class order to undo a `grid`.
  */
 const COLUMN_CLASSES =
-  'hidden @min-[1038px]:grid grid-cols-[126px_124px_minmax(210px,1fr)_160px_74px_118px_112px] items-center gap-[13px] px-[18px]'
+  'hidden @min-[1078px]:grid grid-cols-[126px_124px_minmax(210px,1fr)_160px_74px_118px_112px] items-center gap-[13px] px-[18px]'
+
+export interface IntakeOrdersTableDeleteConfig {
+  /** True only for an unfinished intake this reader may discard — the server decides again. */
+  canDelete: (item: IntakeOrderListItem) => boolean
+  onDeleteRequest: (item: IntakeOrderListItem) => void
+}
 
 export interface IntakeOrdersTableProps {
   items: readonly IntakeOrderListItem[]
+  deleteConfig: IntakeOrdersTableDeleteConfig
 }
 
 /**
  * Wide enough: one horizontal scroll container for header AND rows — two separate scrollers
  * drift apart the moment a tablet is turned sideways.
  *
- * "Wide enough" is **1038px, the sum of the row's own parts**: columns 126+124+210+160+74+118+112
- * = 924, six 13px gaps = 78, two 18px paddings = 36. The container used to demand `1080px`,
- * which is the figure the prototype states for its scroll container (the handoff text quotes
- * 1060) — but the prototype's own columns never needed it, and those 42px of slack are the same
- * 42 the comment above records as having dragged the table sideways once before. No column
- * changes; only a minimum that was over-stated by 42px is corrected, so at any width the
- * prototype rendered, this renders identically.
+ * "Wide enough" is **1078px, the sum of the row's own parts**: columns 126+124+210+160+74+118+112
+ * = 924, six 13px gaps = 78, two 18px paddings = 36 — and since 2026-08-22 a 40px action slot
+ * beside the link, which is why the number went from 1038 to 1078. It is a sum, never a figure
+ * taken on faith: the container once demanded `1080px` (the prototype's stated scroll width) and
+ * those 42px of slack are the same 42 the comment above records as having dragged the table
+ * sideways before. Change a column, a gap or the slot, and change this in the four places that
+ * carry it — the test parses them out precisely so they cannot drift apart.
  *
  * Otherwise: a card per order. The row does not fit a phone (430) or a tablet held
  * upright (820), and a sideways-scrolling table on either is present rather than usable. The
@@ -47,10 +54,10 @@ export interface IntakeOrdersTableProps {
  * room this table actually has. The same 1366px desktop gives it 1066px with the sidebar open
  * (a horizontal scrollbar), ~1230px with the sidebar collapsed to its icon rail, and more again
  * for a serviser, who has no sidebar at all. A viewport breakpoint gets two of those three
- * wrong. `@min-[1038px]` resolves against this box's content width, which is exactly the space
+ * wrong. `@min-[1078px]` resolves against this box's content width, which is exactly the space
  * the row needs — so the row appears precisely when it fits, whatever the sidebar is doing.
  */
-export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactElement {
+export function IntakeOrdersTable({ items, deleteConfig }: IntakeOrdersTableProps): ReactElement {
   const locale = getLocale()
 
   if (items.length === 0) {
@@ -62,10 +69,10 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
   }
 
   return (
-    <div className="@container min-h-[300px] rounded-[14px] border border-mri-border bg-mri-surface @min-[1038px]:overflow-x-auto">
+    <div className="@container min-h-[300px] rounded-[14px] border border-mri-border bg-mri-surface @min-[1078px]:overflow-x-auto">
       {/* overflow-x stays as insurance against sub-pixel rounding at the exact switch point;
-          by construction the row only renders once the container can hold all 1038px of it. */}
-      <div className="@min-[1038px]:min-w-[1038px]">
+          by construction the row only renders once the container can hold all 1078px of it. */}
+      <div className="@min-[1078px]:min-w-[1078px]">
         <div
           className={cn(
             COLUMN_CLASSES,
@@ -93,7 +100,7 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                   {item.draftStep === null
                     ? m.intake_row_draft()
                     : m.intake_row_draft_step({
-                        step: item.draftStep,
+                        step: displayDraftStep(item.draftStep),
                         total: INTAKE_WIZARD_STEP_COUNT,
                       })}
                 </InternalPill>
@@ -116,12 +123,15 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
             const received = formatIntakeReceivedAt(item.receivedAt, locale)
 
             return (
-              <li key={item.id}>
+              // The action sits BESIDE the link, never inside it: a button inside an anchor is
+              // invalid, and a tap on it would follow the row as well. The 40px slot is rendered
+              // for every row, empty or not, so the columns line up down the whole list.
+              <li key={item.id} className="flex items-stretch">
                 <Link
                   to="/prijem/$id"
                   params={{ id: item.id }}
                   className={cn(
-                    'block transition-colors hover:bg-mri-rowhv',
+                    'block min-w-0 flex-1 transition-colors hover:bg-mri-rowhv',
                     item.status === IntakeOrderStatus.PickedUp && 'opacity-[.62]',
                   )}
                 >
@@ -157,7 +167,7 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
 
                   {/* Narrow: the order number and its status on top, then what the car is, then
                       who took it in and when. Nothing scrolls sideways. */}
-                  <div className="flex flex-col gap-1.5 px-4 py-3 @min-[1038px]:hidden">
+                  <div className="flex flex-col gap-1.5 px-4 py-3 @min-[1078px]:hidden">
                     <div className="flex items-center justify-between gap-3">
                       <span className="truncate font-mono text-[13.5px] font-semibold text-mri-text">
                         {item.orderNumber}
@@ -185,6 +195,20 @@ export function IntakeOrdersTable({ items }: IntakeOrdersTableProps): ReactEleme
                     </div>
                   </div>
                 </Link>
+
+                <span className="flex w-10 flex-none items-center justify-center">
+                  {deleteConfig.canDelete(item) ? (
+                    <button
+                      type="button"
+                      className={cn(dataTableIconActionClassName, 'hover:text-mri-bad')}
+                      aria-label={m.intake_draft_discard()}
+                      title={m.intake_draft_discard()}
+                      onClick={() => deleteConfig.onDeleteRequest(item)}
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </span>
               </li>
             )
           })}

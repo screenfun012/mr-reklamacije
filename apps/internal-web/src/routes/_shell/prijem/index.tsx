@@ -4,19 +4,25 @@ import {
   intakeFiltersFromSearch,
   intakeOrderSummaryOptions,
   intakeOrdersListOptions,
+  type IntakeOrderListItem,
   type IntakeOrdersSearch,
 } from '@mr/shared'
-import { Heading, ListPagination } from '@mr/ui'
+import { ConfirmDialog, Heading, ListPagination } from '@mr/ui'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
-import { Suspense, useCallback, type ReactElement } from 'react'
+import { Suspense, useCallback, useState, type ReactElement } from 'react'
 
 import { internalButtonClasses } from '~/components/internal-button'
 import { InternalPage } from '~/components/layout/internal-page'
 import { formatInternalDateEyebrow } from '~/lib/internal-format'
+import { authClient } from '~/lib/auth-client'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
-import { INTAKE_WIZARD_STEP_COUNT } from '~/features/intake-orders/wizard/intake-wizard-state'
+import { useDiscardIntakeOrder } from '~/features/intake-orders/use-discard-intake-order'
+import {
+  displayDraftStep,
+  INTAKE_WIZARD_STEP_COUNT,
+} from '~/features/intake-orders/wizard/intake-wizard-state'
 import { IntakeFilterBar } from '~/features/intake-orders/intake-filter-bar'
 import { IntakeKpiCards, IntakeKpiCardsSkeleton } from '~/features/intake-orders/intake-kpi-cards'
 import {
@@ -150,7 +156,7 @@ export function UnfinishedBanner({
           number: draft.orderNumber,
           vehicle: draft.vehicle,
           plate: draft.plate,
-          step: Math.min(draft.draftStep ?? 1, INTAKE_WIZARD_STEP_COUNT),
+          step: displayDraftStep(draft.draftStep),
           total: INTAKE_WIZARD_STEP_COUNT,
         })}
       </span>
@@ -180,10 +186,34 @@ function TableSection({
   onPatchSearch: (next: Partial<IntakeOrdersSearch>) => void
 }): ReactElement {
   const { data } = useSuspenseQuery(intakeOrdersListOptions(intakeFiltersFromSearch(search)))
+  const { authSession } = rootRoute.useRouteContext()
+  const permissions = authSession?.user?.permissions ?? []
+  const { data: session } = authClient.useSession()
+  const currentUserId = session?.user?.id
+  const [deleteTarget, setDeleteTarget] = useState<IntakeOrderListItem | null>(null)
+  const discard = useDiscardIntakeOrder(() => {
+    setDeleteTarget(null)
+  })
+
+  // Only an unfinished intake, and only for the person the server would also let through: his own
+  // draft goes with `update`, a colleague's takes `delete`. A signed order has no action at all —
+  // it is the firm's half of the owner's paper, and the server refuses it to everybody.
+  const canDelete = (item: IntakeOrderListItem): boolean => {
+    if (item.signedAt !== null) {
+      return false
+    }
+    const mine = currentUserId !== undefined && currentUserId === item.technicianId
+    return mine
+      ? permissions.includes('intake_orders.update')
+      : permissions.includes('intake_orders.delete')
+  }
 
   return (
     <div className="flex flex-col gap-3">
-      <IntakeOrdersTable items={data.items} />
+      <IntakeOrdersTable
+        items={data.items}
+        deleteConfig={{ canDelete, onDeleteRequest: setDeleteTarget }}
+      />
       {/*
         The shop does ~10 intakes a day, so page 1 fills within days. Without a pager the
         office would be locked to the newest page with no way back — the same component the
@@ -195,6 +225,25 @@ function TableSection({
         pageSize={data.pageSize}
         onPageChange={(page) => onPatchSearch({ page })}
         onPageSizeChange={(pageSize) => onPatchSearch({ pageSize, page: 1 })}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+          }
+        }}
+        title={m.intake_list_discard_title()}
+        description={m.intake_discard_description()}
+        confirmLabel={m.intake_draft_discard()}
+        variant="destructive"
+        pending={discard.isPending}
+        onConfirm={() => {
+          if (deleteTarget !== null) {
+            discard.mutate(deleteTarget.id)
+          }
+        }}
       />
     </div>
   )

@@ -1,13 +1,12 @@
 import { m } from '@mr/i18n'
-import { deleteIntakeOrder, intakeOrderKeys, type IntakeOrderDetail } from '@mr/shared'
+import { type IntakeOrderDetail } from '@mr/shared'
 import { ConfirmDialog } from '@mr/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState, type ReactElement } from 'react'
 
-import { showInternalToast } from '~/lib/internal-toast'
+import { useDiscardIntakeOrder } from '../use-discard-intake-order'
 
-import { INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
+import { displayDraftStep, INTAKE_WIZARD_STEP_COUNT } from '../wizard/intake-wizard-state'
 
 export interface IntakeDraftBarProps {
   order: IntakeOrderDetail
@@ -29,26 +28,14 @@ export function IntakeDraftBar({
   currentUserId,
   canDelete,
 }: IntakeDraftBarProps): ReactElement {
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const isOwner = currentUserId !== undefined && currentUserId === order.technicianId
 
-  const discard = useMutation({
-    mutationFn: () => deleteIntakeOrder(order.id),
-    onSuccess: async () => {
-      setConfirmDiscard(false)
-      // Drop this order's own query rather than invalidating it. Discarding a draft is a HARD
-      // delete, so invalidating `all` refetches the row we just removed, gets a 404, retries it
-      // three times with backoff — and the awaited invalidation holds the serviser on a red
-      // "Nalog nije pronađen" over a discard that in fact succeeded.
-      queryClient.removeQueries({ queryKey: intakeOrderKeys.detail(order.id) })
-      await navigate({ to: '/prijem' })
-      await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.lists() })
-      await queryClient.invalidateQueries({ queryKey: intakeOrderKeys.summary() })
-    },
-    onError: () => showInternalToast(m.intake_discard_failed()),
+  const discard = useDiscardIntakeOrder(async () => {
+    setConfirmDiscard(false)
+    await navigate({ to: '/prijem' })
   })
 
   return (
@@ -58,7 +45,7 @@ export function IntakeDraftBar({
       </span>
       <span className="min-w-0 flex-1 text-[13.5px] text-mri-text">
         {m.intake_detail_draft_step({
-          step: order.draftStep ?? 1,
+          step: displayDraftStep(order.draftStep),
           total: INTAKE_WIZARD_STEP_COUNT,
         })}
       </span>
@@ -91,7 +78,7 @@ export function IntakeDraftBar({
         description={m.intake_discard_description()}
         confirmLabel={m.intake_action_discard()}
         pending={discard.isPending}
-        onConfirm={() => discard.mutate()}
+        onConfirm={() => discard.mutate(order.id)}
       />
     </div>
   )

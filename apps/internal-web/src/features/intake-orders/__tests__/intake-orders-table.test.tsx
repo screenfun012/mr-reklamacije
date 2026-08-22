@@ -8,6 +8,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import { IntakeOrdersTable } from '../intake-orders-table.js'
@@ -22,6 +23,7 @@ const order: IntakeOrderListItem = {
   vehicle: 'Opel Astra',
   ownerName: 'Brzi kurir doo',
   contactPhone: null,
+  technicianId: '99999999-9999-4999-8999-999999999999',
   technicianName: 'Nikola Admin',
   damageCount: 1,
   photoCount: 3,
@@ -30,8 +32,16 @@ const order: IntakeOrderListItem = {
   photosPending: 0,
 }
 
-async function renderTable(items: readonly IntakeOrderListItem[]): Promise<void> {
-  const rootRoute = createRootRoute({ component: () => <IntakeOrdersTable items={items} /> })
+async function renderTable(
+  items: readonly IntakeOrderListItem[],
+  deleteConfig: {
+    canDelete: (item: IntakeOrderListItem) => boolean
+    onDeleteRequest: (item: IntakeOrderListItem) => void
+  } = { canDelete: () => false, onDeleteRequest: () => undefined },
+): Promise<void> {
+  const rootRoute = createRootRoute({
+    component: () => <IntakeOrdersTable items={items} deleteConfig={deleteConfig} />,
+  })
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/prijem/$id',
@@ -45,8 +55,8 @@ async function renderTable(items: readonly IntakeOrderListItem[]): Promise<void>
   render(<RouterProvider router={router as never} />)
 }
 
-/** The width both layouts must agree on: see the table's own arithmetic (924 + 78 + 36). */
-const SWITCH_WIDTH = 1038
+/** The width both layouts must agree on: the table's own arithmetic (924 + 78 + 36 + 40 slot). */
+const SWITCH_WIDTH = 1078
 
 function switchWidthOf(className: string, variant: 'grid' | 'hidden'): number | null {
   const match = new RegExp(`@min-\\[(\\d+)px\\]:${variant}\\b`).exec(className)
@@ -107,5 +117,32 @@ describe('IntakeOrdersTable — the row and the card are one list in two shapes'
     await renderTable([{ ...order, signedAt: null, draftStep: 3 }])
 
     expect(screen.queryAllByText(/PRIMLJENO/i)).toHaveLength(0)
+  })
+})
+
+describe('IntakeOrdersTable — discarding an unfinished intake from the list', () => {
+  it('offers the bin on a draft and asks the list, not itself, who may', async () => {
+    setLocale('sr')
+    const seen: string[] = []
+    await renderTable([{ ...order, signedAt: null, draftStep: 2 }], {
+      canDelete: () => true,
+      onDeleteRequest: (item) => seen.push(item.id),
+    })
+
+    const bin = screen.getByRole('button', { name: 'Odbaci' })
+    await userEvent.click(bin)
+
+    // The row does NOT delete: it hands the order up, and the page owns the confirm dialog and
+    // the mutation — the same division the claims list uses.
+    expect(seen).toEqual([order.id])
+  })
+
+  it('shows no bin where the reader may not discard', async () => {
+    setLocale('sr')
+    // ⚙ this is the whole guard on a SIGNED order: the page's `canDelete` returns false for one,
+    // and the server refuses it to everybody anyway — it is the firm's half of the owner's paper.
+    await renderTable([order], { canDelete: () => false, onDeleteRequest: () => undefined })
+
+    expect(screen.queryByRole('button', { name: 'Odbaci' })).not.toBeInTheDocument()
   })
 })
