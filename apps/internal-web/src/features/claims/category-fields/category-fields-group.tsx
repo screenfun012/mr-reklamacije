@@ -7,7 +7,11 @@ import {
 import { cn, SearchableSelect } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 
-import { categoryFieldViews, type CategoryFieldView } from './category-field-model'
+import {
+  categoryFieldViews,
+  clearOrphanedCategoryFieldAnswers,
+  type CategoryFieldView,
+} from './category-field-model'
 
 export interface CategoryFieldsGroupProps {
   categoryId: string
@@ -85,6 +89,15 @@ function FieldControl({
     )
   }
 
+  if (field.awaitingParent !== null) {
+    // Nothing to offer yet, and saying so beats an empty control that reads as broken.
+    return (
+      <span className="flex h-[38px] items-center rounded-[9px] border border-dashed border-mri-border2 px-3 text-[12.5px] text-mri-text2">
+        {m.claim_category_field_awaiting_parent({ field: field.awaitingParent })}
+      </span>
+    )
+  }
+
   if (field.control === 'dropdown') {
     return (
       <SearchableSelect
@@ -135,7 +148,11 @@ export function CategoryFieldsGroup({
   function setValue(code: string, next: string): void {
     const trimmed = next.trim()
     const rest = Object.fromEntries(Object.entries(values).filter(([key]) => key !== code))
-    onChange(trimmed.length === 0 ? rest : { ...rest, [code]: trimmed })
+    const merged = trimmed.length === 0 ? rest : { ...rest, [code]: trimmed }
+    // Changing the assembly drops the cause that hung off the old one. Without this the form
+    // would keep a pair the server refuses, and the person would read a 400 about a field they
+    // did not touch.
+    onChange(clearOrphanedCategoryFieldAnswers(merged, fields ?? []))
   }
 
   return (

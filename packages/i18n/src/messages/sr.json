@@ -420,6 +420,7 @@
   "claim_category_discard_confirm": "Promeni ipak",
   "claim_category_discard_description": "Polja kategorije „{from}\" su popunjena. Prelaskom na „{to}\" ta se polja neće sačuvati.",
   "claim_category_discard_title": "Promena kategorije",
+  "claim_category_field_awaiting_parent": "Prvo izaberi: {field}",
   "claim_category_fields_empty": "Nije popunjeno",
   "claim_category_fields_group": "Polja kategorije",
   "claim_category_fields_incomplete": "Dopuni podatke",

@@ -420,6 +420,7 @@
   "claim_category_discard_confirm": "Change anyway",
   "claim_category_discard_description": "The fields of \"{from}\" are filled in. Moving to \"{to}\" will not keep them.",
   "claim_category_discard_title": "Change category",
+  "claim_category_field_awaiting_parent": "Choose {field} first",
   "claim_category_fields_empty": "Not filled in",
   "claim_category_fields_group": "Category fields",
   "claim_category_fields_incomplete": "Fill in the details",

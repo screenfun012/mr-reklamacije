@@ -20,7 +20,23 @@ export interface CategoryFieldView {
   isRequired: boolean
   /** Retired, but still shown because THIS claim carries an answer for it. */
   isRetired: boolean
+  /**
+   * The NAME of the field this one hangs off, while that field has no answer — the moment when
+   * this field can offer nothing and has to say why instead of looking broken.
+   */
+  awaitingParent: string | null
   options: CategoryFieldOption[]
+}
+
+/** The answer an option hangs off, or `null` when it is always offered. */
+function parentOf(option: {
+  parentFieldCode: string | null
+  parentOptionCode: string | null
+}): { fieldCode: string; optionCode: string } | null {
+  if (option.parentFieldCode === null || option.parentOptionCode === null) {
+    return null
+  }
+  return { fieldCode: option.parentFieldCode, optionCode: option.parentOptionCode }
 }
 
 /**
@@ -45,18 +61,78 @@ export function categoryFieldViews(
       const chosen = values[field.code]
       const options = (field.options ?? [])
         .filter((option) => option.isActive || option.code === chosen)
+        // A dependent option is offered only under the answer it hangs off. The chosen one stays
+        // visible whatever the parent now says, so the claim can still name what it carries.
+        .filter((option) => {
+          const parent = parentOf(option)
+          return (
+            parent === null ||
+            values[parent.fieldCode] === parent.optionCode ||
+            option.code === chosen
+          )
+        })
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map((option) => ({ code: option.code, name: option.name, isActive: option.isActive }))
 
       return {
         code: field.code,
         name: field.name,
+        // AFTER narrowing: four causes that become two under the chosen assembly are two buttons.
         control: controlFor(field.fieldType, options.length),
         isRequired: field.isRequired,
         isRetired: !field.isActive,
+        awaitingParent: awaitingParentName(field, fields, values),
         options,
       }
     })
+}
+
+/**
+ * The name of the field this one waits for — set only when EVERY option hangs off one field that
+ * has no answer yet. A field with some independent options can still be answered, so it does not
+ * wait for anything.
+ */
+function awaitingParentName(
+  field: ClaimCategoryFieldListItem,
+  fields: readonly ClaimCategoryFieldListItem[],
+  values: ClaimCategoryFieldValues,
+): string | null {
+  const options = field.options ?? []
+  if (options.length === 0) {
+    return null
+  }
+
+  const parents = options.map((option) => parentOf(option))
+  const first = parents[0]
+  if (first === undefined || first === null || parents.some((parent) => parent === null)) {
+    return null
+  }
+
+  if (values[first.fieldCode] !== undefined) {
+    return null
+  }
+
+  return fields.find((candidate) => candidate.code === first.fieldCode)?.name ?? null
+}
+
+/**
+ * Answers whose option no longer hangs off the current parent answer — what changing the assembly
+ * throws away. Without this the form would keep a pair the server refuses with a 400 the person
+ * cannot read, at the moment they changed something else entirely.
+ */
+export function clearOrphanedCategoryFieldAnswers(
+  values: ClaimCategoryFieldValues,
+  fields: readonly ClaimCategoryFieldListItem[],
+): ClaimCategoryFieldValues {
+  return Object.fromEntries(
+    Object.entries(values).filter(([code, value]) => {
+      const option = fields
+        .find((field) => field.code === code)
+        ?.options?.find((candidate) => candidate.code === value)
+      const parent = option === undefined ? null : parentOf(option)
+      return parent === null || values[parent.fieldCode] === parent.optionCode
+    }),
+  )
 }
 
 function controlFor(fieldType: 'select' | 'text', optionCount: number): CategoryFieldControl {
