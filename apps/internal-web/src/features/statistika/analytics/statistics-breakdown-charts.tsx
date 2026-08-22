@@ -13,7 +13,16 @@ import {
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { StatCard, StatCardContent, StatCardHeader, StatCardTitle } from './statistics-card.js'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 import { STATISTICS_AXIS_TICK, STATISTICS_MONO_GRADIENTS } from './chart-theme.js'
 import {
@@ -101,6 +110,13 @@ interface BreakdownRankCardProps {
   rollupOthers: boolean
   /** Omitted by every card whose bars answer nothing the screen could filter by. */
   onSelect?: (row: BreakdownChartRow) => void
+  /**
+   * Which bars of a selectable card actually lead somewhere. It decides the cursor AND the
+   * click, so the two can never disagree — a bar that says "click me" and does nothing reads as
+   * broken software, and today the biggest bar in the shop ("Uvedeno posle unosa", 121 claims)
+   * is exactly such a bar.
+   */
+  canSelect?: (row: BreakdownChartRow) => boolean
 }
 
 function BreakdownRankCard({
@@ -110,8 +126,14 @@ function BreakdownRankCard({
   gradient,
   rollupOthers,
   onSelect,
+  canSelect,
 }: BreakdownRankCardProps): React.ReactElement | null {
   const chartRows = buildBreakdownChartRows(items, rollupOthers)
+  // ONE function decides both the cursor and the click, so they cannot disagree. jsdom does not
+  // render recharts' shapes, so the cursor itself is unassertable there — this is what guards it,
+  // together with the click test on the two buckets that lead nowhere.
+  const isSelectable = (row: BreakdownChartRow): boolean =>
+    onSelect !== undefined && (canSelect === undefined || canSelect(row))
 
   if (chartRows.length === 0) {
     return null
@@ -184,14 +206,21 @@ function BreakdownRankCard({
                 fill={`url(#${breakdownGradientId(prefix)})`}
                 radius={[0, 6, 6, 0]}
                 maxBarSize={28}
-                cursor={onSelect === undefined ? 'default' : 'pointer'}
                 onClick={(_bar, index: number) => {
                   const row = chartRows[index]
-                  if (row !== undefined && onSelect !== undefined) {
+                  if (row !== undefined && onSelect !== undefined && isSelectable(row)) {
                     onSelect(row)
                   }
                 }}
-              />
+              >
+                {chartRows.map((row) => (
+                  <Cell
+                    key={row.code}
+                    fill={`url(#${breakdownGradientId(prefix)})`}
+                    cursor={isSelectable(row) ? 'pointer' : 'default'}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -284,11 +313,8 @@ export function StatisticsBreakdownCharts({
                     items={field.items}
                     gradient={STATISTICS_MONO_GRADIENTS.teal}
                     rollupOthers
+                    canSelect={(row) => !NON_FILTERABLE_BUCKET_CODES.has(row.code)}
                     onSelect={(row) => {
-                      if (NON_FILTERABLE_BUCKET_CODES.has(row.code)) {
-                        return
-                      }
-
                       onAnswerSelect({
                         categoryCode: group.categoryCode,
                         fieldCode: field.fieldCode,
