@@ -54,16 +54,16 @@ export function IntakeSignedAdminBar({
     <>
       <div
         data-testid="intake-signed-admin-bar"
-        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 ${
           archived
-            ? 'border-dashed border-[rgba(234,179,8,.4)] bg-mri-warn-bg'
-            : 'border-mri-border bg-mri-inbg'
+            ? 'border-dashed border-[rgba(234,179,8,.4)] bg-mri-warn-bg py-3'
+            : 'border-transparent py-0'
         }`}
       >
-        <span
-          className={`text-[12.5px] font-semibold ${archived ? 'text-mri-warn' : 'text-mri-text2'}`}
-        >
-          {archived ? `⚠ ${m.intake_archived_banner()}` : m.intake_erase_description()}
+        {/* Only the archived state has something to say. On a healthy signed order the warning
+            belongs in the confirmation, not standing on the screen every day. */}
+        <span className="text-[12.5px] font-semibold text-mri-warn">
+          {archived ? `⚠ ${m.intake_archived_banner()}` : ''}
         </span>
 
         <span className="flex flex-wrap items-center gap-2">

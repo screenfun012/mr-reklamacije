@@ -40,12 +40,15 @@ describe('IntakeSignedAdminBar', () => {
     expect(screen.getByRole('button', { name: m.intake_erase_action() })).toBeInTheDocument()
   })
 
-  it('names the order number in the confirmation, and says what is lost', async () => {
+  it('keeps the warning in the confirmation, not on the screen every day', async () => {
     await renderDetailUi(<IntakeSignedAdminBar order={signed} canArchive canErase />)
 
+    // The button, and nothing else. A sentence about everything being destroyed, sitting over a
+    // perfectly healthy order all day, reads as something being wrong with that order.
+    expect(screen.getByRole('button', { name: m.intake_erase_action() })).toBeInTheDocument()
+    expect(screen.queryByText(m.intake_erase_description())).toBeNull()
     // The number, because "are you sure" on a screen full of orders is not a question anybody
     // can answer safely.
     expect(m.intake_erase_title({ number: signed.orderNumber })).toContain(signed.orderNumber)
-    expect(screen.getByText(m.intake_erase_description())).toBeInTheDocument()
   })
 })
