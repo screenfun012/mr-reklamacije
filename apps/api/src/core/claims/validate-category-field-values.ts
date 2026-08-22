@@ -18,7 +18,12 @@ export interface CategoryFieldValuesCheck {
   requireComplete: boolean
 }
 
-function assertValue(field: CategoryFieldCatalogField, value: string, isUnchanged: boolean): void {
+function assertValue(
+  field: CategoryFieldCatalogField,
+  value: string,
+  isUnchanged: boolean,
+  values: ClaimCategoryFieldValues,
+): void {
   if (field.fieldType === 'text') {
     if (value.length > CLAIM_CATEGORY_FIELD_TEXT_MAX_LENGTH) {
       throw new ValidationError(`Invalid category field value: ${field.code} is too long`)
@@ -39,6 +44,14 @@ function assertValue(field: CategoryFieldCatalogField, value: string, isUnchange
 
   if (!option.isActive) {
     throw new ValidationError(`Invalid category field value: ${value} is retired`)
+  }
+
+  // A dependent option is only ever offered under its parent answer (migration 0051). Storing it
+  // without that answer would leave a pair no screen can draw again — and a count nobody can read.
+  if (option.parent !== null && values[option.parent.fieldCode] !== option.parent.optionCode) {
+    throw new ValidationError(
+      `Invalid category field value: ${value} requires ${option.parent.fieldCode} = ${option.parent.optionCode}`,
+    )
   }
 }
 
@@ -68,7 +81,7 @@ export function assertCategoryFieldValues({
       throw new ValidationError(`Invalid category field value: ${code} is retired`)
     }
 
-    assertValue(field, value, isUnchanged)
+    assertValue(field, value, isUnchanged, values)
   }
 
   if (requireComplete) {

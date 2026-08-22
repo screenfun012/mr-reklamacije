@@ -194,3 +194,87 @@ describe('missingRequiredFields', () => {
     expect(missingRequiredFields({}, FIELDS)).toEqual([])
   })
 })
+
+/** A dependent pair: the cause hangs off the assembly, the way migration 0052 seeds it. */
+const DEPENDENT_FIELDS: CategoryFieldCatalogField[] = [
+  {
+    id: 'f10',
+    categoryId: 'cat',
+    code: 'sklop_u_kvaru',
+    fieldType: 'select',
+    isRequired: false,
+    isActive: true,
+    options: [
+      { code: 'glava', isActive: true, parent: null },
+      { code: 'blok', isActive: true, parent: null },
+    ],
+  },
+  {
+    id: 'f11',
+    categoryId: 'cat',
+    code: 'uzrok_kvara',
+    fieldType: 'select',
+    isRequired: false,
+    isActive: true,
+    options: [
+      {
+        code: 'glava_ventili',
+        isActive: true,
+        parent: { fieldCode: 'sklop_u_kvaru', optionCode: 'glava' },
+      },
+      {
+        code: 'blok_pukao',
+        isActive: true,
+        parent: { fieldCode: 'sklop_u_kvaru', optionCode: 'blok' },
+      },
+    ],
+  },
+]
+
+describe('assertCategoryFieldValues — a dependent answer', () => {
+  it('is refused when the answer it hangs off was not given', () => {
+    expect(() =>
+      assertCategoryFieldValues({
+        values: { uzrok_kvara: 'glava_ventili' },
+        previousValues: {},
+        fields: DEPENDENT_FIELDS,
+        requireComplete: false,
+      }),
+    ).toThrow(ValidationError)
+  })
+
+  it('is refused when it contradicts the answer it hangs off', () => {
+    expect(() =>
+      assertCategoryFieldValues({
+        values: { sklop_u_kvaru: 'blok', uzrok_kvara: 'glava_ventili' },
+        previousValues: {},
+        fields: DEPENDENT_FIELDS,
+        requireComplete: false,
+      }),
+    ).toThrow(/requires sklop_u_kvaru = glava/)
+  })
+
+  it('is accepted with the answer it belongs to', () => {
+    expect(() =>
+      assertCategoryFieldValues({
+        values: { sklop_u_kvaru: 'glava', uzrok_kvara: 'glava_ventili' },
+        previousValues: {},
+        fields: DEPENDENT_FIELDS,
+        requireComplete: false,
+      }),
+    ).not.toThrow()
+  })
+
+  it('is kept when it was already there, even after the assembly was changed under it', () => {
+    // The same reason a retired option survives: correcting an unrelated field must not fail
+    // because someone moved the answer this one hangs off.
+    expect(() =>
+      assertCategoryFieldValues({
+        values: { sklop_u_kvaru: 'blok', uzrok_kvara: 'glava_ventili' },
+        previousValues: { uzrok_kvara: 'glava_ventili' },
+        fields: DEPENDENT_FIELDS,
+        requireComplete: false,
+      }),
+    ).not.toThrow()
+  })
+})
