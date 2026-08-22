@@ -1,20 +1,44 @@
 import {
   collapseRankRowsForDisplay,
+  STATISTICS_FIELD_PREDATES_CODE,
+  STATISTICS_FIELD_UNFILLED_CODE,
+  STATISTICS_OTHERS_CODE,
   type StatisticsByCategory,
   type StatisticsByCustomer,
   type StatisticsByEmployee,
   type StatisticsByEngineType,
   type StatisticsByFaults,
+  type StatisticsCategoryFieldGroup,
   type StatisticsRankDisplayRow,
-  type StatisticsRankRow,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
 import { StatCard, StatCardContent, StatCardHeader, StatCardTitle } from './statistics-card.js'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { STATISTICS_AXIS_TICK, STATISTICS_MONO_GRADIENTS } from './chart-theme.js'
-import { resolveBreakdownDisplayName } from './statistics-breakdown-formatters.js'
+import {
+  resolveBreakdownDisplayName,
+  type StatisticsRetirableRankRow,
+} from './statistics-breakdown-formatters.js'
 import { StatisticsManufacturerRankTooltip } from './statistics-manufacturer-chart-tooltip.js'
+
+/** The three codes a click carries, and the only thing this section asks the screen to do. */
+export interface StatisticsAnswerSelection {
+  categoryCode: string
+  fieldCode: string
+  optionCode: string
+}
+
+/**
+ * Neither of these is an answer a claim carries: `OTHERS` is this screen's own roll-up, and the two
+ * synthetic buckets are what the server says when there is nothing written down. Filtering by any
+ * of them would ask the server a question with no rows behind it.
+ */
+const NON_FILTERABLE_BUCKET_CODES: ReadonlySet<string> = new Set([
+  STATISTICS_OTHERS_CODE,
+  STATISTICS_FIELD_UNFILLED_CODE,
+  STATISTICS_FIELD_PREDATES_CODE,
+])
 
 export interface StatisticsBreakdownChartsProps {
   byCategory: StatisticsByCategory
@@ -23,9 +47,11 @@ export interface StatisticsBreakdownChartsProps {
   byEngineType: StatisticsByEngineType
   byCustomer: StatisticsByCustomer
   byFaults: StatisticsByFaults
+  byCategoryFields: StatisticsCategoryFieldGroup[]
+  onAnswerSelect: (answer: StatisticsAnswerSelection) => void
 }
 
-interface BreakdownChartRow extends StatisticsRankDisplayRow<StatisticsRankRow> {
+interface BreakdownChartRow extends StatisticsRankDisplayRow<StatisticsRetirableRankRow> {
   label: string
 }
 
@@ -54,7 +80,7 @@ function BreakdownChartGradient({
 }
 
 function buildBreakdownChartRows(
-  items: readonly StatisticsRankRow[],
+  items: readonly StatisticsRetirableRankRow[],
   rollupOthers: boolean,
 ): BreakdownChartRow[] {
   return collapseRankRowsForDisplay(items, 10, { rollupOthers }).map((row) => ({
@@ -70,9 +96,11 @@ function computeChartHeight(rowCount: number): number {
 interface BreakdownRankCardProps {
   prefix: string
   title: string
-  items: readonly StatisticsRankRow[]
+  items: readonly StatisticsRetirableRankRow[]
   gradient: MonoGradient
   rollupOthers: boolean
+  /** Omitted by every card whose bars answer nothing the screen could filter by. */
+  onSelect?: (row: BreakdownChartRow) => void
 }
 
 function BreakdownRankCard({
@@ -81,6 +109,7 @@ function BreakdownRankCard({
   items,
   gradient,
   rollupOthers,
+  onSelect,
 }: BreakdownRankCardProps): React.ReactElement | null {
   const chartRows = buildBreakdownChartRows(items, rollupOthers)
 
@@ -155,6 +184,13 @@ function BreakdownRankCard({
                 fill={`url(#${breakdownGradientId(prefix)})`}
                 radius={[0, 6, 6, 0]}
                 maxBarSize={28}
+                cursor={onSelect === undefined ? 'default' : 'pointer'}
+                onClick={(_bar, index: number) => {
+                  const row = chartRows[index]
+                  if (row !== undefined && onSelect !== undefined) {
+                    onSelect(row)
+                  }
+                }}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -170,6 +206,8 @@ export function StatisticsBreakdownCharts({
   byEngineType,
   byCustomer,
   byFaults,
+  byCategoryFields,
+  onAnswerSelect,
 }: StatisticsBreakdownChartsProps): React.ReactElement | null {
   /**
    * Withheld and empty are different things and must look different. A reader without
@@ -178,6 +216,8 @@ export function StatisticsBreakdownCharts({
    * the screen already tells him.
    */
   const showCategory = byCategory.items.length > 0
+  // A category whose fields nobody defined has nothing to draw — the block is its cards.
+  const categoryFieldGroups = byCategoryFields.filter((group) => group.fields.length > 0)
   const showEmployee = byEmployee !== null && byEmployee.items.length > 0
   const faultsByEmployee = byFaults.byEmployee
   const showEngineType = byEngineType.items.length > 0
@@ -187,7 +227,14 @@ export function StatisticsBreakdownCharts({
     byFaults.byDepartment.length > 0 ||
     byFaults.byExternalParty.length > 0
 
-  if (!showCategory && !showEmployee && !showEngineType && !showCustomer && !showFaults) {
+  if (
+    !showCategory &&
+    !showEmployee &&
+    !showEngineType &&
+    !showCustomer &&
+    !showFaults &&
+    categoryFieldGroups.length === 0
+  ) {
     return null
   }
 
@@ -210,6 +257,49 @@ export function StatisticsBreakdownCharts({
             gradient={STATISTICS_MONO_GRADIENTS.teal}
             rollupOthers
           />
+        </>
+      ) : null}
+
+      {categoryFieldGroups.length > 0 ? (
+        <>
+          <div>
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mri-redh">
+              {m.statistika_category_fields_section_title()}
+            </h3>
+            <p className="mt-1.5 text-sm text-mri-text2">
+              {m.statistika_category_fields_section_description()}
+            </p>
+          </div>
+          {categoryFieldGroups.map((group) => (
+            <div key={group.categoryCode} className="flex flex-col gap-3">
+              <h4 className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-mri-text2">
+                {group.categoryName}
+              </h4>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {group.fields.map((field) => (
+                  <BreakdownRankCard
+                    key={field.fieldCode}
+                    prefix={`category-field-${group.categoryCode}-${field.fieldCode}`}
+                    title={field.fieldName}
+                    items={field.items}
+                    gradient={STATISTICS_MONO_GRADIENTS.teal}
+                    rollupOthers
+                    onSelect={(row) => {
+                      if (NON_FILTERABLE_BUCKET_CODES.has(row.code)) {
+                        return
+                      }
+
+                      onAnswerSelect({
+                        categoryCode: group.categoryCode,
+                        fieldCode: field.fieldCode,
+                        optionCode: row.code,
+                      })
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </>
       ) : null}
 

@@ -3,6 +3,7 @@ import {
   claimCategoriesReferenceOptions,
   engineManufacturersReferenceOptions,
   useDebouncedValue,
+  type StatisticsCategoryFieldGroup,
   type StatisticsSearch,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
@@ -52,14 +53,40 @@ function defaultCustomDateRange(): { dateFrom: string; dateTo: string } {
   }
 }
 
+/**
+ * The chip has to NAME the answer holding the screen down, and only the summary knows the names —
+ * the URL carries codes. Codes are the fallback: an empty period leaves the section with nothing to
+ * read the names from, and a chip that cannot name the answer must still say which one is set.
+ */
+function resolveAnswerFilterLabel(
+  groups: readonly StatisticsCategoryFieldGroup[],
+  search: StatisticsSearch,
+): string | null {
+  const { categoryCode, fieldCode, optionCode } = search
+
+  if (categoryCode === undefined || fieldCode === undefined || optionCode === undefined) {
+    return null
+  }
+
+  const field = groups
+    .find((group) => group.categoryCode === categoryCode)
+    ?.fields.find((candidate) => candidate.fieldCode === fieldCode)
+  const bucket = field?.items.find((item) => item.code === optionCode)
+
+  return `${field?.fieldName ?? fieldCode} › ${bucket?.name ?? optionCode}`
+}
+
 export interface StatisticsAnalyticsFiltersProps {
   search: StatisticsSearch
   onSearchChange: (next: StatisticsSearch) => void
+  /** Only to name the chip — the filter itself travels by code in the URL. */
+  byCategoryFields: StatisticsCategoryFieldGroup[]
 }
 
 export function StatisticsAnalyticsFilters({
   search,
   onSearchChange,
+  byCategoryFields,
 }: StatisticsAnalyticsFiltersProps): React.ReactElement {
   const { locale } = useLocale()
   const periodValue = resolvePeriodValue(search)
@@ -76,6 +103,7 @@ export function StatisticsAnalyticsFilters({
   )
 
   const yearOptions = useMemo(() => buildYearOptions(), [])
+  const answerFilterLabel = resolveAnswerFilterLabel(byCategoryFields, search)
 
   const periodOptions = useMemo(
     () => [
@@ -172,6 +200,9 @@ export function StatisticsAnalyticsFilters({
               kind: search.kind,
               manufacturerId: search.manufacturerId,
               categoryCode: search.categoryCode,
+              // Without these two the answer filter would silently vanish on every period change.
+              fieldCode: search.fieldCode,
+              optionCode: search.optionCode,
             }
 
             if (value === STATISTICS_PERIOD_ROLLING) {
@@ -255,6 +286,10 @@ export function StatisticsAnalyticsFilters({
             onSearchChange({
               ...search,
               categoryCode: categoryCode.length > 0 ? categoryCode : undefined,
+              // A field code is unique per category, not across the shop: kept across a category
+              // change it would name a question the new category never asks.
+              fieldCode: undefined,
+              optionCode: undefined,
             })
           }}
         />
@@ -294,6 +329,33 @@ export function StatisticsAnalyticsFilters({
           ))}
         </div>
       </div>
+
+      {answerFilterLabel === null ? null : (
+        <div className="flex flex-col justify-end gap-[7px] text-sm">
+          <span
+            className="flex h-11 items-center gap-2 rounded-[9px] border border-dashed border-[rgba(14,147,132,.45)] bg-[rgba(14,147,132,.09)] px-3 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-mri-text"
+            data-testid="statistics-answer-chip"
+          >
+            {answerFilterLabel}
+            <button
+              type="button"
+              aria-label={m.statistika_answer_filter_clear()}
+              title={m.statistika_answer_filter_clear()}
+              className="cursor-pointer text-xs text-mri-redh"
+              onClick={() => {
+                onSearchChange({
+                  ...search,
+                  categoryCode: undefined,
+                  fieldCode: undefined,
+                  optionCode: undefined,
+                })
+              }}
+            >
+              ✕
+            </button>
+          </span>
+        </div>
+      )}
 
       <InternalButton
         type="button"

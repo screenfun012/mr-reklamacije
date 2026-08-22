@@ -40,7 +40,11 @@ function StatistikaAnalyticsContent({
 
   return (
     <>
-      <StatisticsAnalyticsFilters search={search} onSearchChange={onSearchChange} />
+      <StatisticsAnalyticsFilters
+        search={search}
+        onSearchChange={onSearchChange}
+        byCategoryFields={data.byCategoryFields}
+      />
 
       <p className="font-mono text-[11px] tracking-[0.06em] text-mri-text2">
         {formatStatisticsPeriodSubtitle(search)}
@@ -60,6 +64,11 @@ function StatistikaAnalyticsContent({
         <LazyStatisticsAnalyticsCharts
           summary={data}
           showManufacturerSection={showManufacturerSection}
+          // One click on a bar asks the WHOLE screen about that answer — every section reads the
+          // same filter, so nothing here has to know which sections exist.
+          onAnswerSelect={(answer) => {
+            onSearchChange({ ...search, ...answer })
+          }}
         />
       </Suspense>
     </>
