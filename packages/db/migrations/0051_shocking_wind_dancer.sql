@@ -1,0 +1,3 @@
+ALTER TABLE "claim_category_field_options" ADD COLUMN "parent_option_id" uuid;--> statement-breakpoint
+ALTER TABLE "claim_category_field_options" ADD CONSTRAINT "claim_category_field_options_parent_option_id_fkey" FOREIGN KEY ("parent_option_id") REFERENCES "public"."claim_category_field_options"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_claim_category_field_options_parent_option_id" ON "claim_category_field_options" USING btree ("parent_option_id");

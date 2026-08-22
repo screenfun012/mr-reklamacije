@@ -261,4 +261,65 @@ describe('migrations 0046 + 0048 — category fields catalogue', () => {
       })
     }
   })
+
+  it('lets an option hang off an option of another field of the same category', async () => {
+    const categoryId = await machiningCategoryId()
+    const [partField] = await db
+      .select({ id: schema.claimCategoryFields.id })
+      .from(schema.claimCategoryFields)
+      .where(eq(schema.claimCategoryFields.code, 'obradjeni_deo'))
+    const [parent] = await db
+      .select({ id: schema.claimCategoryFieldOptions.id })
+      .from(schema.claimCategoryFieldOptions)
+      .where(eq(schema.claimCategoryFieldOptions.fieldId, partField?.id ?? ''))
+      .limit(1)
+
+    const [childField] = await db
+      .insert(schema.claimCategoryFields)
+      .values({ categoryId, code: 'kvar_na_delu', name: 'Kvar na delu' })
+      .returning({ id: schema.claimCategoryFields.id })
+    const [child] = await db
+      .insert(schema.claimCategoryFieldOptions)
+      .values({
+        fieldId: childField?.id ?? '',
+        code: 'pukla',
+        name: 'Pukla',
+        parentOptionId: parent?.id ?? null,
+      })
+      .returning({ parentOptionId: schema.claimCategoryFieldOptions.parentOptionId })
+
+    // The dependency lives on the option: this answer is offered only under that part.
+    expect(child?.parentOptionId).toBe(parent?.id)
+  })
+
+  it('keeps an option that something still hangs off (RESTRICT)', async () => {
+    const categoryId = await machiningCategoryId()
+    const [partField] = await db
+      .select({ id: schema.claimCategoryFields.id })
+      .from(schema.claimCategoryFields)
+      .where(eq(schema.claimCategoryFields.code, 'obradjeni_deo'))
+    const [parent] = await db
+      .select({ id: schema.claimCategoryFieldOptions.id })
+      .from(schema.claimCategoryFieldOptions)
+      .where(eq(schema.claimCategoryFieldOptions.fieldId, partField?.id ?? ''))
+      .limit(1)
+    const [childField] = await db
+      .insert(schema.claimCategoryFields)
+      .values({ categoryId, code: 'kvar_na_delu_2', name: 'Kvar na delu' })
+      .returning({ id: schema.claimCategoryFields.id })
+    await db.insert(schema.claimCategoryFieldOptions).values({
+      fieldId: childField?.id ?? '',
+      code: 'pukla',
+      name: 'Pukla',
+      parentOptionId: parent?.id ?? null,
+    })
+
+    // Removing the part would leave a cause hanging off nothing — the database refuses first.
+    await expectConstraint(
+      db
+        .delete(schema.claimCategoryFieldOptions)
+        .where(eq(schema.claimCategoryFieldOptions.id, parent?.id ?? '')),
+      'claim_category_field_options_parent_option_id_fkey',
+    )
+  })
 })

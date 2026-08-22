@@ -297,6 +297,12 @@ export const claimCategoryFieldOptions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     fieldId: uuid('field_id').notNull(),
+    /**
+     * The option this one hangs off — always an option of ANOTHER field of the SAME category
+     * (glava → ventili ne zaptivaju). NULL means the option is always offered. The dependency
+     * lives on the option and not on the field: a field's dependency is whatever its children say.
+     */
+    parentOptionId: uuid('parent_option_id'),
     code: text('code').notNull(),
     name: text('name').notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
@@ -312,10 +318,16 @@ export const claimCategoryFieldOptions = pgTable(
   (t) => [
     uniqueIndex('claim_category_field_options_field_code_key').on(t.fieldId, t.code),
     index('idx_claim_category_field_options_field_id').on(t.fieldId),
+    index('idx_claim_category_field_options_parent_option_id').on(t.parentOptionId),
     foreignKey({
       name: 'claim_category_field_options_field_id_fkey',
       columns: [t.fieldId],
       foreignColumns: [claimCategoryFields.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'claim_category_field_options_parent_option_id_fkey',
+      columns: [t.parentOptionId],
+      foreignColumns: [t.id],
     }).onDelete('restrict'),
   ],
 )
