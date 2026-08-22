@@ -140,6 +140,7 @@ describe('Statistics module integration', () => {
     dateOfClaim: Date = daysAgo(10),
     manufacturerId?: string,
     sourceCode: string = 'SELMAN',
+    categoryFieldValues?: Record<string, string>,
   ): Promise<string> {
     const engineType = await createTestEngineType(
       container,
@@ -160,6 +161,7 @@ describe('Statistics module integration', () => {
         faults: [],
         findings: [],
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
+        ...(categoryFieldValues !== undefined ? { categoryFieldValues } : {}),
       },
       {
         id: TEST_USER_ID,
@@ -178,6 +180,7 @@ describe('Statistics module integration', () => {
     engineTypeId?: string | null,
     outcome: (typeof ClaimOutcome)[keyof typeof ClaimOutcome] = ClaimOutcome.Accepted,
     employeeId?: string,
+    categoryFieldValues?: Record<string, string>,
   ): Promise<string> {
     const claim = await container.domaceClaimsService.create(
       {
@@ -192,6 +195,7 @@ describe('Statistics module integration', () => {
         ...(manufacturerId !== undefined ? { manufacturerId } : {}),
         ...(engineTypeId !== undefined ? { engineTypeId: engineTypeId ?? undefined } : {}),
         ...(employeeId !== undefined ? { employeeId } : {}),
+        ...(categoryFieldValues !== undefined ? { categoryFieldValues } : {}),
       },
       {
         id: TEST_USER_ID,
@@ -494,6 +498,133 @@ describe('Statistics module integration', () => {
 
       expect(unfiltered.outcomes.distribution.total).toBe(2)
       expect(filtered.outcomes.distribution.total).toBe(1)
+      expect(entries.size).toBe(2)
+    })
+  })
+
+  describe('when filtering by an answer to a category field', () => {
+    /**
+     * The point of this block: the answer filter lives in `buildActiveClaimWhere`, which every
+     * one of the twelve sections calls. Assert it through a section that knows nothing about
+     * category fields — put the condition in the field section alone and these go red.
+     */
+    async function answeredClaims(): Promise<{ manufacturerId: string; otherEmployeeId: string }> {
+      const manufacturerId = await createEngineManufacturer(
+        `STAT-ANS-${Date.now()}`,
+        'Answer Filter',
+      )
+      const otherEmployeeId = await getEmployeeIdByNormalizedName(
+        ctx.db,
+        normalizeName('Nikola Jović'),
+      )
+
+      await createEmotiveClaim(
+        'STAT-ANS-GLAVA/26',
+        ClaimOutcome.Accepted,
+        daysAgo(10),
+        manufacturerId,
+        'SELMAN',
+        { sklop_u_kvaru: 'glava' },
+      )
+      await createDomaceClaim(
+        'STAT-ANS-BLOK/26',
+        daysAgo(11),
+        manufacturerId,
+        undefined,
+        ClaimOutcome.Pending,
+        otherEmployeeId,
+        { sklop_u_kvaru: 'blok' },
+      )
+
+      return { manufacturerId, otherEmployeeId }
+    }
+
+    it('narrows a section that knows nothing about category fields', async () => {
+      const { manufacturerId } = await answeredClaims()
+
+      const all = await container.statisticsService.getSummary(WITH_ANALYTICS, { manufacturerId })
+      const glava = await container.statisticsService.getSummary(WITH_ANALYTICS, {
+        manufacturerId,
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'glava',
+      })
+
+      expect(all.byEmployee?.items.length).toBe(2)
+      expect(all.outcomes.distribution.total).toBe(2)
+      expect(glava.byEmployee?.items.length).toBe(1)
+      expect(glava.outcomes.distribution.total).toBe(1)
+      expect(glava.outcomes.distribution.accepted).toBe(1)
+    })
+
+    it('counts nothing for an answer nobody gave', async () => {
+      const { manufacturerId } = await answeredClaims()
+
+      const summary = await container.statisticsService.getSummary(WITH_ANALYTICS, {
+        manufacturerId,
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'turbina',
+      })
+
+      expect(summary.outcomes.distribution.total).toBe(0)
+      expect(summary.byEmployee?.items).toEqual([])
+    })
+
+    it('still withholds byEmployee from a reader without employees.view_analytics', async () => {
+      const { manufacturerId } = await answeredClaims()
+
+      const summary = await container.statisticsService.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'glava',
+      })
+
+      expect(summary.byEmployee).toBeNull()
+      expect(summary.outcomes.distribution.total).toBe(1)
+    })
+
+    it('gives each answer its own cache entry', async () => {
+      // The summary cache is shared by every reader and keyed by scope + filters, so an answer
+      // missing from that key means the first person to ask for `glava` decides what the next
+      // person sees for `blok`. Redis is off in tests, so the key is only observable through a
+      // live fake — same shape as the category-cache test above.
+      const { manufacturerId } = await answeredClaims()
+
+      const entries = new Map<string, unknown>()
+      const liveCache = {
+        enabled: true,
+        get: async (key: string) => entries.get(key) ?? null,
+        set: async (key: string, value: unknown) => {
+          entries.set(key, value)
+        },
+        incr: async () => 1,
+        getNumber: async () => 1,
+      } as unknown as RedisCache
+
+      const cached = new StatisticsService(
+        container.statisticsRepository,
+        new SummaryCache(liveCache),
+      )
+
+      const glava = await cached.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'glava',
+      })
+      const blok = await cached.getSummary(FULL_STATISTICS, {
+        manufacturerId,
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'blok',
+      })
+
+      expect(glava.outcomes.distribution.accepted).toBe(1)
+      expect(glava.outcomes.distribution.pending).toBe(0)
+      expect(blok.outcomes.distribution.accepted).toBe(0)
+      expect(blok.outcomes.distribution.pending).toBe(1)
       expect(entries.size).toBe(2)
     })
   })

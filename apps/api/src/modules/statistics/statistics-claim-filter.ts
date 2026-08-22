@@ -32,6 +32,9 @@ export interface StatisticsQueryContext {
   period: StatisticsPeriod
   manufacturerId?: string
   categoryCode?: string
+  /** One answer to one category field; only ever set together, and only with `categoryCode`. */
+  fieldCode?: string
+  optionCode?: string
 }
 
 function toIsoDate(value: Date): string {
@@ -119,6 +122,14 @@ export function buildStatisticsQueryContext(
     ctx.categoryCode = filters.categoryCode
   }
 
+  if (filters.fieldCode !== undefined) {
+    ctx.fieldCode = filters.fieldCode
+  }
+
+  if (filters.optionCode !== undefined) {
+    ctx.optionCode = filters.optionCode
+  }
+
   return ctx
 }
 
@@ -146,6 +157,20 @@ export function buildActiveClaimWhere(alias: string, ctx: StatisticsQueryContext
     conditions.push(sql`${sql.raw(alias)}.category_id IN (
       SELECT id FROM claim_categories WHERE code = ${ctx.categoryCode} AND deleted_at IS NULL
     )`)
+  }
+
+  if (
+    ctx.fieldCode !== undefined &&
+    ctx.optionCode !== undefined &&
+    ctx.categoryCode !== undefined
+  ) {
+    // The answers are nested by the FIELD'S OWN category id (migration 0047), which is the
+    // category being filtered — the same key `category-field-usage-sql.ts` reads. Because every
+    // section is built on this function, one condition here is the whole of the cross-tab.
+    // ponytail: no index on category_field_values; at this size it is a scan nobody feels.
+    conditions.push(sql`${sql.raw(alias)}.category_field_values
+      -> (SELECT cc.id::text FROM claim_categories cc WHERE cc.code = ${ctx.categoryCode} AND cc.deleted_at IS NULL)
+      ->> ${ctx.fieldCode} = ${ctx.optionCode}`)
   }
 
   return sql.join(conditions, sql` AND `)

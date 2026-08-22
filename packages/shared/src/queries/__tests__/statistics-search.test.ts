@@ -76,6 +76,30 @@ describe('StatisticsSearchSchema', () => {
       }),
     ).toThrow()
   })
+
+  /**
+   * A field code is unique per CATEGORY, not across the shop — `pojava_kvara` exists under engine
+   * overhaul AND under auto service. Without the category the pair names two different questions,
+   * so the schema refuses it rather than letting the server pick one.
+   */
+  it('refuses an answer filter without a category, and needs both halves of the answer', () => {
+    expect(() =>
+      StatisticsSearchSchema.parse({ fieldCode: 'sklop_u_kvaru', optionCode: 'glava' }),
+    ).toThrow()
+    expect(() =>
+      StatisticsSearchSchema.parse({ categoryCode: 'REMONT_MOTORA', fieldCode: 'sklop_u_kvaru' }),
+    ).toThrow()
+    expect(() =>
+      StatisticsSearchSchema.parse({ categoryCode: 'REMONT_MOTORA', optionCode: 'glava' }),
+    ).toThrow()
+    expect(
+      StatisticsSearchSchema.parse({
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'glava',
+      }).optionCode,
+    ).toBe('glava')
+  })
 })
 
 describe('statisticsFiltersFromSearch', () => {
@@ -126,6 +150,22 @@ describe('statisticsSearchFromFilters', () => {
     expect(statisticsFiltersFromSearch(statisticsSearchFromFilters(filters))).toEqual(filters)
   })
 
+  it('round-trips the answer filter with its category', () => {
+    const filters: StatisticsSummaryFilters = {
+      categoryCode: 'REMONT_MOTORA',
+      fieldCode: 'sklop_u_kvaru',
+      optionCode: 'glava',
+    }
+
+    expect(statisticsSearchFromFilters(filters)).toEqual({
+      categoryCode: 'REMONT_MOTORA',
+      fieldCode: 'sklop_u_kvaru',
+      optionCode: 'glava',
+    })
+
+    expect(statisticsFiltersFromSearch(statisticsSearchFromFilters(filters))).toEqual(filters)
+  })
+
   it('round-trips custom date range filters', () => {
     const filters: StatisticsSummaryFilters = {
       dateFrom: new Date('2025-02-01T00:00:00.000Z'),
@@ -153,6 +193,20 @@ describe('serializeStatisticsSummaryParams', () => {
     expect(params.get('year')).toBe('2025')
     expect(params.get('manufacturerId')).toBe(MANUFACTURER_ID)
     expect(params.get('kind')).toBe(ClaimKind.Domace)
+  })
+
+  it('serializes the answer filter alongside its category', () => {
+    const params = new URLSearchParams(
+      serializeStatisticsSummaryParams({
+        categoryCode: 'REMONT_MOTORA',
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'glava',
+      }),
+    )
+
+    expect(params.get('categoryCode')).toBe('REMONT_MOTORA')
+    expect(params.get('fieldCode')).toBe('sklop_u_kvaru')
+    expect(params.get('optionCode')).toBe('glava')
   })
 
   it('returns empty string for default rolling filters', () => {

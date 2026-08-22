@@ -22,6 +22,12 @@ export function serializeStatisticsSummaryParams(filters: StatisticsSummaryFilte
   if (normalized.categoryCode !== undefined) {
     params.set('categoryCode', normalized.categoryCode)
   }
+  if (normalized.fieldCode !== undefined) {
+    params.set('fieldCode', normalized.fieldCode)
+  }
+  if (normalized.optionCode !== undefined) {
+    params.set('optionCode', normalized.optionCode)
+  }
   if (normalized.year !== undefined) {
     params.set('year', String(normalized.year))
   }

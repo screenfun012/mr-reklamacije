@@ -105,6 +105,8 @@ export class StatisticsService {
         filters.kind,
         filters.manufacturerId,
         filters.categoryCode,
+        filters.fieldCode,
+        filters.optionCode,
         filters.year,
         filters.dateFrom?.toISOString(),
         filters.dateTo?.toISOString(),

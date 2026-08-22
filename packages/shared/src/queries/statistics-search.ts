@@ -17,11 +17,29 @@ export const StatisticsSearchSchema = z
     kind: z.enum(claimKindValues).optional(),
     manufacturerId: z.string().uuid().optional(),
     categoryCode: z.string().trim().min(1).optional(),
+    fieldCode: z.string().trim().min(1).optional(),
+    optionCode: z.string().trim().min(1).optional(),
     year: z.coerce.number().int().min(2000).max(2100).optional(),
     dateFrom: z.string().regex(isoDatePattern).optional(),
     dateTo: z.string().regex(isoDatePattern).optional(),
   })
   .superRefine((data, ctx) => {
+    const hasAnswer = data.fieldCode !== undefined || data.optionCode !== undefined
+    if (
+      hasAnswer &&
+      (data.fieldCode === undefined ||
+        data.optionCode === undefined ||
+        data.categoryCode === undefined)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        // A field code is unique per category, not across the shop: `pojava_kvara` exists under
+        // engine overhaul AND under auto service. Without the category it names two questions.
+        message: 'fieldCode and optionCode require categoryCode',
+        path: ['fieldCode'],
+      })
+    }
+
     const hasFrom = data.dateFrom !== undefined
     const hasTo = data.dateTo !== undefined
 
@@ -93,6 +111,12 @@ export function statisticsFiltersFromSearch(search: StatisticsSearch): Statistic
   if (search.categoryCode !== undefined) {
     filters.categoryCode = search.categoryCode
   }
+  if (search.fieldCode !== undefined) {
+    filters.fieldCode = search.fieldCode
+  }
+  if (search.optionCode !== undefined) {
+    filters.optionCode = search.optionCode
+  }
 
   if (hasCustomRange && search.dateFrom !== undefined && search.dateTo !== undefined) {
     const dateFrom = parseIsoDate(search.dateFrom)
@@ -122,6 +146,12 @@ export function statisticsSearchFromFilters(filters: StatisticsSummaryFilters): 
   }
   if (normalized.categoryCode !== undefined) {
     search.categoryCode = normalized.categoryCode
+  }
+  if (normalized.fieldCode !== undefined) {
+    search.fieldCode = normalized.fieldCode
+  }
+  if (normalized.optionCode !== undefined) {
+    search.optionCode = normalized.optionCode
   }
   if (normalized.dateFrom !== undefined && normalized.dateTo !== undefined) {
     search.dateFrom = normalized.dateFrom.toISOString().slice(0, 10)
