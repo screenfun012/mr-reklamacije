@@ -31,6 +31,7 @@ const ADMIN_ONLY: readonly Permission[] = [
   'settings.app_settings.view',
   'settings.app_settings.update',
   'settings.app_settings.manage_secrets',
+  'intake_orders.archive',
 ]
 
 describe('the standard privilege sets', () => {

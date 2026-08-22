@@ -67,6 +67,7 @@ const SIGNED_ORDER = {
   handoverTechnicianSignature: null,
   handoverOwnerSignature: null,
   handoverSignedAt: null,
+  archivedAt: null,
   handoverDocumentReady: false,
   handoverDocumentEmailedAt: null,
   photosPending: 0,

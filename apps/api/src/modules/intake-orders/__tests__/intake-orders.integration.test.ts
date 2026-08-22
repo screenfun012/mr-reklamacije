@@ -100,6 +100,14 @@ describe('Intake orders integration', () => {
     return { id: await createUser(name), permissions: OFFICE_PERMISSIONS }
   }
 
+  /** Archiving is in no standard package — only an admin, or an account the office was given it. */
+  async function archiveActor(name = 'Arhivar'): Promise<IntakeOrdersActor> {
+    return {
+      id: await createUser(name),
+      permissions: [...OFFICE_PERMISSIONS, 'intake_orders.archive'],
+    }
+  }
+
   /**
    * A finished intake: created, filled in, both signatures.
    *
@@ -248,6 +256,70 @@ describe('Intake orders integration', () => {
       expect(list.items.map((item) => item.id)).toEqual(
         expect.arrayContaining([first.id, second.id]),
       )
+    })
+
+    it('takes an archived order out of the list and out of the KPI cards', async () => {
+      const office = await officeActor()
+      const archiver = await archiveActor()
+      const id = await signedOrder(await floorActor())
+
+      const before = await service.summary(office)
+      await service.setArchived(id, true, archiver, actorContext(archiver.id))
+
+      const list = await service.list(office, { view: 'active', page: 1, pageSize: 25 })
+      const archived = await service.list(office, { view: 'archived', page: 1, pageSize: 25 })
+      const after = await service.summary(office)
+
+      expect(list.items.map((item) => item.id)).not.toContain(id)
+      expect(archived.items.map((item) => item.id)).toContain(id)
+      // ⚙ leave the exclusion out of `summary` and this stays equal: the row leaves the list while
+      // the number above it does not, and the screen contradicts itself in one viewport.
+      expect(after.primljeno).toBe(before.primljeno - 1)
+    })
+
+    it("hides an archived order from its own serviser's list too", async () => {
+      // ⚙ the archived predicate must sit OUTSIDE `scopeCondition`, which returns early for a
+      // serviser — inside it, his own archived orders keep showing.
+      const floor = await floorActor()
+      const archiver = await archiveActor()
+      const id = await signedOrder(floor)
+
+      await service.setArchived(id, true, archiver, actorContext(archiver.id))
+
+      const list = await service.list(floor, { view: 'active', page: 1, pageSize: 25 })
+      expect(list.items.map((item) => item.id)).not.toContain(id)
+    })
+
+    it('brings an archived order back, and writes both moves to the history', async () => {
+      const office = await officeActor()
+      const archiver = await archiveActor()
+      const id = await signedOrder(await floorActor())
+
+      await service.setArchived(id, true, archiver, actorContext(archiver.id))
+      const restored = await service.setArchived(id, false, archiver, actorContext(archiver.id))
+      expect(restored.archivedAt).toBeNull()
+
+      const list = await service.list(office, { view: 'active', page: 1, pageSize: 25 })
+      expect(list.items.map((item) => item.id)).toContain(id)
+
+      const rows = await ctx.db
+        .select({ changes: schema.auditLog.changes })
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, id))
+      const transitions = rows
+        .map((row) => (row.changes as { transition?: string } | null)?.transition)
+        .filter((transition) => transition === 'archive' || transition === 'unarchive')
+      expect(transitions).toEqual(['archive', 'unarchive'])
+    })
+
+    it('refuses to archive an unfinished intake — that one is discarded', async () => {
+      const floor = await floorActor()
+      const archiver = await archiveActor()
+      const draft = await service.create(createInput(), actorContext(floor.id))
+
+      await expect(
+        service.setArchived(draft.id, true, archiver, actorContext(archiver.id)),
+      ).rejects.toMatchObject({ status: 400 })
     })
 
     it('still gives a serviser his own drafts under the default view', async () => {

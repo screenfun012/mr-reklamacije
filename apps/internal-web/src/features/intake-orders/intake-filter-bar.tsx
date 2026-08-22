@@ -18,6 +18,7 @@ const SEARCH_DEBOUNCE_MS = 300
 const VIEW_LABELS: Record<IntakeOrderListView, () => string> = {
   active: m.intake_filter_view_active,
   unfinished: m.intake_filter_view_unfinished,
+  archived: m.intake_filter_view_archived,
 }
 
 export interface IntakeFilterBarProps {

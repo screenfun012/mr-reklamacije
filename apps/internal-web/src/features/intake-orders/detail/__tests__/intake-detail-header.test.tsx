@@ -101,6 +101,7 @@ describe('IntakeDetailHeader', () => {
         order={intakeOrderDetailFixture({
           status: IntakeOrderStatus.PickedUp,
           handoverSignedAt: '2026-08-14T10:00:00.000Z',
+          archivedAt: null,
         })}
         canAdvance
         canChangeStatus

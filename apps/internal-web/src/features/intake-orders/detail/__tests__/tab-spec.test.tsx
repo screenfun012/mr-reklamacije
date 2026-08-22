@@ -206,6 +206,7 @@ describe('TabSpec', () => {
           services: ['Pranje'],
           materials: ['Filter'],
           handoverSignedAt: '2026-08-14T10:00:00.000Z',
+          archivedAt: null,
         })}
       />,
     )

@@ -28,6 +28,10 @@ const TRANSITION_LABELS: Record<string, () => string> = {
   // "Nalog izmenjen" the whole time. Named now because the two buttons sit on one card, and one of
   // them having a line while the other does not is the kind of gap that reads as a missing row.
   send_document: m.intake_history_document_sent,
+  // Archiving hides the order from the working list, so the History tab is where the trace has to
+  // be — without a line here a row would simply vanish from the office's view with no explanation.
+  archive: m.intake_history_archived,
+  unarchive: m.intake_history_unarchived,
 }
 
 /**

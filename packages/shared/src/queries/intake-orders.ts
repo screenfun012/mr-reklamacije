@@ -240,6 +240,17 @@ export function deleteIntakeOrder(id: string): Promise<void> {
   return fetchNoContent(`/api/intake-orders/${id}`, { method: 'DELETE' })
 }
 
+/**
+ * Takes a SIGNED order out of the working list, or puts it back. Nothing is deleted: the row, its
+ * sealed document and its history stay, and its number stays taken — an archived order still
+ * answers "broj zauzet" in the wizard, because it is still there.
+ */
+export function setIntakeOrderArchived(id: string, archived: boolean): Promise<void> {
+  return fetchNoContent(`/api/intake-orders/${id}/${archived ? 'archive' : 'unarchive'}`, {
+    method: 'POST',
+  })
+}
+
 export function deleteIntakeOrderPhoto(id: string, attachmentId: string): Promise<void> {
   return fetchNoContent(`/api/intake-orders/${id}/photos/${attachmentId}`, { method: 'DELETE' })
 }

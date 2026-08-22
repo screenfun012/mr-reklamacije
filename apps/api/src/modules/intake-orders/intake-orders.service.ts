@@ -1042,6 +1042,57 @@ export class IntakeOrdersService {
   }
 
   /**
+   * Takes a SIGNED order out of the working list, or puts it back (Nikola, 2026-08-22). Nothing is
+   * deleted and nothing is released: the row, its sealed document and its history stay, and the
+   * order number stays taken — the wizard still answers "broj zauzet" for it, because it is still
+   * there. That is the whole difference from `delete`, which is for drafts and is final.
+   */
+  async setArchived(
+    id: string,
+    archived: boolean,
+    actor: IntakeOrdersActor,
+    auditContext: HttpActorContext,
+  ): Promise<IntakeOrderDetail> {
+    const before = await this.loadVisible(id, actor)
+
+    /**
+     * An unfinished intake is DISCARDED, never archived: it holds a number the shop needs back and
+     * it is nobody's record yet. 400 rather than 409 — this record cannot be in this state at all.
+     */
+    if (before.signedAt === null) {
+      throw new ValidationError('An unfinished intake is discarded, not archived')
+    }
+
+    // Nothing to write, nothing to audit, nothing to signal.
+    if ((before.archivedAt !== null) === archived) {
+      return before
+    }
+
+    await this.repo.setArchived(id, archived, actor.id)
+    const after = await this.repo.findById(id)
+    if (after === null) {
+      throw new NotFoundError('Intake order', id)
+    }
+
+    await this.audit.log({
+      entityType: 'intake_order',
+      entityId: id,
+      action: AuditAction.Update,
+      actorUserId: auditContext.actorUserId,
+      actorIp: auditContext.actorIp,
+      actorUserAgent: auditContext.actorUserAgent,
+      changes: {
+        before: { archivedAt: before.archivedAt },
+        after: { archivedAt: after.archivedAt },
+        transition: archived ? 'archive' : 'unarchive',
+      },
+    })
+
+    this.signalChanged()
+    return after
+  }
+
+  /**
    * A photo arriving for an order that is ALREADY SIGNED is accepted, not rejected (Nikola,
    * 2026-07-27). The tablet uploads in the background while the serviser works through the last
    * steps, so a photo can legitimately land after the signature — it was taken before it, and

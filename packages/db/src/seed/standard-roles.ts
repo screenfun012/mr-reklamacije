@@ -240,6 +240,10 @@ export const STANDARD_ROLES = [
  * gives him a role, so it gives him rights), `users.deactivate`, and
  * `settings.app_settings.view`/`update`.
  *
+ * `intake_orders.archive` is here for the same reason from 2026-08-22: a signed order is the
+ * firm's half of a paper the owner is holding, so taking it out of the list is the office's call.
+ * The office can still be given it from the admin panel — it is simply in no ready-made package.
+ *
  * The seven portal actions are not sets either: `view_own_customer` is not "sees less", it is
  * "sees the rows of his own firm" — and a person from the firm has no firm.
  */

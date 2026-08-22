@@ -2,7 +2,8 @@ import { getLocale, m } from '@mr/i18n'
 import { IntakeOrderStatus, type IntakeOrderListItem } from '@mr/shared'
 import { cn, dataTableIconActionClassName } from '@mr/ui'
 import { Link } from '@tanstack/react-router'
-import { FileWarning, Trash2 } from 'lucide-react'
+import { FileWarning } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { ReactElement } from 'react'
 
 import { InternalPill } from '~/components/internal-pill'
@@ -21,15 +22,20 @@ import { displayDraftStep, INTAKE_WIZARD_STEP_COUNT } from './wizard/intake-wiza
 const COLUMN_CLASSES =
   'hidden @min-[1078px]:grid grid-cols-[126px_124px_minmax(210px,1fr)_160px_74px_118px_112px] items-center gap-[13px] px-[18px]'
 
-export interface IntakeOrdersTableDeleteConfig {
-  /** True only for an unfinished intake this reader may discard — the server decides again. */
-  canDelete: (item: IntakeOrderListItem) => boolean
-  onDeleteRequest: (item: IntakeOrderListItem) => void
+/**
+ * What the row's one action is, decided by the page — a draft is discarded, a signed order is
+ * archived or brought back, and which of those a reader may do is a permission question the list
+ * screen owns. The table only draws what it is handed, and `null` draws an empty slot.
+ */
+export interface IntakeRowAction {
+  icon: LucideIcon
+  label: string
+  onSelect: () => void
 }
 
 export interface IntakeOrdersTableProps {
   items: readonly IntakeOrderListItem[]
-  deleteConfig: IntakeOrdersTableDeleteConfig
+  rowAction: (item: IntakeOrderListItem) => IntakeRowAction | null
 }
 
 /**
@@ -57,7 +63,7 @@ export interface IntakeOrdersTableProps {
  * wrong. `@min-[1078px]` resolves against this box's content width, which is exactly the space
  * the row needs — so the row appears precisely when it fits, whatever the sidebar is doing.
  */
-export function IntakeOrdersTable({ items, deleteConfig }: IntakeOrdersTableProps): ReactElement {
+export function IntakeOrdersTable({ items, rowAction }: IntakeOrdersTableProps): ReactElement {
   const locale = getLocale()
 
   if (items.length === 0) {
@@ -121,6 +127,7 @@ export function IntakeOrdersTable({ items, deleteConfig }: IntakeOrdersTableProp
               ) : null
 
             const received = formatIntakeReceivedAt(item.receivedAt, locale)
+            const action = rowAction(item)
 
             return (
               // The action sits BESIDE the link, never inside it: a button inside an anchor is
@@ -197,17 +204,17 @@ export function IntakeOrdersTable({ items, deleteConfig }: IntakeOrdersTableProp
                 </Link>
 
                 <span className="flex w-10 flex-none items-center justify-center">
-                  {deleteConfig.canDelete(item) ? (
+                  {action === null ? null : (
                     <button
                       type="button"
                       className={cn(dataTableIconActionClassName, 'hover:text-mri-bad')}
-                      aria-label={m.intake_draft_discard()}
-                      title={m.intake_draft_discard()}
-                      onClick={() => deleteConfig.onDeleteRequest(item)}
+                      aria-label={action.label}
+                      title={action.label}
+                      onClick={action.onSelect}
                     >
-                      <Trash2 className="size-4" aria-hidden="true" />
+                      <action.icon className="size-4" aria-hidden="true" />
                     </button>
-                  ) : null}
+                  )}
                 </span>
               </li>
             )

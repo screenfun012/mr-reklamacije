@@ -189,7 +189,7 @@ describe('Roles module', () => {
     const catalog = await container.rolesRepository.listPermissionCatalog()
     const sendDocument = catalog.find((item) => item.id === 'intake_orders.send_document')
 
-    expect(catalog).toHaveLength(85)
+    expect(catalog).toHaveLength(86)
     expect(sendDocument?.nameSr).toBe('Šalje papir vlasniku na mejl')
     expect(sendDocument?.module).toBe('intake_orders')
   })

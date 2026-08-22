@@ -183,6 +183,30 @@ export function createIntakeOrdersController(container: Container) {
       )
     },
 
+    archive: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const order = await container.intakeOrdersService.setArchived(
+        id,
+        true,
+        actorOf(user),
+        getActorContext(c, user),
+      )
+      return c.json(order)
+    },
+
+    unarchive: async (c: Context) => {
+      const user = requireUser(c)
+      const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })
+      const order = await container.intakeOrdersService.setArchived(
+        id,
+        false,
+        actorOf(user),
+        getActorContext(c, user),
+      )
+      return c.json(order)
+    },
+
     delete: async (c: Context) => {
       const user = requireUser(c)
       const { id } = IntakeOrderIdParamSchema.parse({ id: c.req.param('id') })

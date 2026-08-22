@@ -159,9 +159,11 @@ export const IntakeOrderChangeStatusInputSchema = z.object({
 export type IntakeOrderChangeStatusInput = z.infer<typeof IntakeOrderChangeStatusInputSchema>
 
 /**
- * The two ways the list can be read: the shop's signed work, or the drafts still being filled in.
+ * The three ways the list can be read: the shop's signed work, the drafts still being filled in,
+ * and what the office has taken out of the way. `archived` is a place, not a state of the vehicle
+ * — the order is whole, it is simply not in today's work.
  */
-export const intakeOrderListViewValues = ['active', 'unfinished'] as const
+export const intakeOrderListViewValues = ['active', 'unfinished', 'archived'] as const
 
 export type IntakeOrderListView = (typeof intakeOrderListViewValues)[number]
 
@@ -257,6 +259,8 @@ export const IntakeOrderListItemSchema = z.object({
   photoCount: z.number().int().nonnegative(),
   /** NULL while the intake is still being filled in — the row renders as "Nedovršen". */
   signedAt: z.string().nullable(),
+  /** Set only on a signed order the office took out of the working list; null is the normal row. */
+  archivedAt: z.string().nullable(),
   /** 1–5 while unfinished, so the list can say where it stopped. */
   draftStep: z.number().int().nullable(),
   /** How many of the tablet's photos never arrived; 0 when everything is in. */
@@ -336,6 +340,8 @@ export const IntakeOrderDetailSchema = z.object({
   handoverTechnicianSignature: z.string().nullable(),
   handoverOwnerSignature: z.string().nullable(),
   handoverSignedAt: z.string().nullable(),
+  /** Out of the working list, still whole. Null is the normal order. */
+  archivedAt: z.string().nullable(),
   /** Whether the sealed handover exists. The storage path never leaves the server. */
   handoverDocumentReady: z.boolean(),
   handoverDocumentEmailedAt: z.string().nullable(),

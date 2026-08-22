@@ -172,6 +172,7 @@ export {
   changeIntakeOrderStatus,
   createIntakeOrder,
   deleteIntakeOrder,
+  setIntakeOrderArchived,
   deleteIntakeOrderPhoto,
   handOverIntakeOrder,
   intakeFiltersFromSearch,

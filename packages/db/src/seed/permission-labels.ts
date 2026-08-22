@@ -210,6 +210,14 @@ export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
     descriptionSr: 'Potpisan nalog se ne briše — on je firmina polovina vlasnikovog papira.',
     descriptionEn: "A signed order is never deleted — it is the shop's half of the owner's paper.",
   },
+  'intake_orders.archive': {
+    nameSr: 'Sklanja potpisan nalog sa liste',
+    nameEn: 'Takes a signed order out of the working list',
+    descriptionSr:
+      'Arhivira i vraća nazad. Nalog ostaje u bazi, u istoriji i sa svojim brojem — ne briše se.',
+    descriptionEn:
+      'Archives and restores. The order stays in the database, in its history and holding its number — nothing is deleted.',
+  },
   'intake_orders.send_document': {
     nameSr: 'Šalje papir vlasniku na mejl',
     nameEn: 'Emails the document to the owner',

@@ -176,6 +176,14 @@ export const intakeOrders = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    /**
+     * Out of the working list, still in the database and in the history — the owner's decision of
+     * 2026-08-22. Only a SIGNED order is ever archived: an unfinished draft is deleted outright and
+     * its number released, and that stays true. Reversible on purpose — an archive that cannot be
+     * undone is a delete with extra steps, and this one hides the firm's half of a signed paper.
+     */
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
+    archivedBy: uuid('archived_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -208,6 +216,11 @@ export const intakeOrders = pgTable(
     foreignKey({
       name: 'intake_orders_handover_technician_id_fkey',
       columns: [t.handoverTechnicianId],
+      foreignColumns: [users.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'intake_orders_archived_by_fkey',
+      columns: [t.archivedBy],
       foreignColumns: [users.id],
     }).onDelete('restrict'),
     // A number is taken by any existing row; hard-deleting a draft releases it,

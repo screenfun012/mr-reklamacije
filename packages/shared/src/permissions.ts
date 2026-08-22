@@ -66,6 +66,14 @@ export const PERMISSIONS = [
    * is not something every hand that may correct a specification should be able to do.
    */
   'intake_orders.send_document',
+  /**
+   * Taking a SIGNED order out of the working list — and putting it back. Not a delete: the row,
+   * its document and its history stay, and its number stays taken. Its own permission, and in no
+   * standard package, because a signed order is the firm's half of the owner's paper and hiding
+   * it is the office's decision, not the shop floor's (Nikola, 2026-08-22). An unfinished draft is
+   * still DISCARDED, never archived — see `intake_orders.delete`.
+   */
+  'intake_orders.archive',
 
   // claim_reports
   'claim_reports.view',

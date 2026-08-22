@@ -11,7 +11,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
-import { IntakeOrdersTable } from '../intake-orders-table.js'
+import { ArchiveRestore, Trash2 } from 'lucide-react'
+
+import { IntakeOrdersTable, type IntakeRowAction } from '../intake-orders-table.js'
 
 const order: IntakeOrderListItem = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -25,6 +27,7 @@ const order: IntakeOrderListItem = {
   contactPhone: null,
   technicianId: '99999999-9999-4999-8999-999999999999',
   technicianName: 'Nikola Admin',
+  archivedAt: null,
   damageCount: 1,
   photoCount: 3,
   signedAt: '2026-07-27T19:10:00.000Z',
@@ -34,13 +37,10 @@ const order: IntakeOrderListItem = {
 
 async function renderTable(
   items: readonly IntakeOrderListItem[],
-  deleteConfig: {
-    canDelete: (item: IntakeOrderListItem) => boolean
-    onDeleteRequest: (item: IntakeOrderListItem) => void
-  } = { canDelete: () => false, onDeleteRequest: () => undefined },
+  rowAction: (item: IntakeOrderListItem) => IntakeRowAction | null = () => null,
 ): Promise<void> {
   const rootRoute = createRootRoute({
-    component: () => <IntakeOrdersTable items={items} deleteConfig={deleteConfig} />,
+    component: () => <IntakeOrdersTable items={items} rowAction={rowAction} />,
   })
   const detailRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -124,10 +124,11 @@ describe('IntakeOrdersTable — discarding an unfinished intake from the list', 
   it('offers the bin on a draft and asks the list, not itself, who may', async () => {
     setLocale('sr')
     const seen: string[] = []
-    await renderTable([{ ...order, signedAt: null, draftStep: 2 }], {
-      canDelete: () => true,
-      onDeleteRequest: (item) => seen.push(item.id),
-    })
+    await renderTable([{ ...order, signedAt: null, draftStep: 2 }], (item) => ({
+      icon: Trash2,
+      label: 'Odbaci',
+      onSelect: () => seen.push(item.id),
+    }))
 
     const bin = screen.getByRole('button', { name: 'Odbaci' })
     await userEvent.click(bin)
@@ -139,10 +140,26 @@ describe('IntakeOrdersTable — discarding an unfinished intake from the list', 
 
   it('shows no bin where the reader may not discard', async () => {
     setLocale('sr')
-    // ⚙ this is the whole guard on a SIGNED order: the page's `canDelete` returns false for one,
-    // and the server refuses it to everybody anyway — it is the firm's half of the owner's paper.
-    await renderTable([order], { canDelete: () => false, onDeleteRequest: () => undefined })
+    // ⚙ this is the whole guard: the page hands back no action for a row this reader may not
+    // touch, and the server refuses it again anyway.
+    await renderTable([order], () => null)
 
     expect(screen.queryByRole('button', { name: 'Odbaci' })).not.toBeInTheDocument()
+  })
+})
+
+describe('IntakeOrdersTable — an archived order is a place, not a state', () => {
+  it('draws whatever action the page hands back, including the one that brings an order back', async () => {
+    setLocale('sr')
+    const picked: string[] = []
+    await renderTable([{ ...order, archivedAt: '2026-08-22T10:00:00.000Z' }], (item) => ({
+      icon: ArchiveRestore,
+      label: 'Vrati na listu',
+      onSelect: () => picked.push(item.id),
+    }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Vrati na listu' }))
+
+    expect(picked).toEqual([order.id])
   })
 })

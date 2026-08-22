@@ -10,13 +10,14 @@ import {
 import { ConfirmDialog, Heading, ListPagination } from '@mr/ui'
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Archive, ArchiveRestore, Plus, Trash2 } from 'lucide-react'
 import { Suspense, useCallback, useState, type ReactElement } from 'react'
 
 import { internalButtonClasses } from '~/components/internal-button'
 import { InternalPage } from '~/components/layout/internal-page'
 import { formatInternalDateEyebrow } from '~/lib/internal-format'
 import { authClient } from '~/lib/auth-client'
+import { useArchiveIntakeOrder } from '~/features/intake-orders/use-archive-intake-order'
 import { IntakeErrorState } from '~/features/intake-orders/intake-error-state'
 import { useDiscardIntakeOrder } from '~/features/intake-orders/use-discard-intake-order'
 import {
@@ -28,6 +29,7 @@ import { IntakeKpiCards, IntakeKpiCardsSkeleton } from '~/features/intake-orders
 import {
   IntakeOrdersTable,
   IntakeOrdersTableSkeleton,
+  type IntakeRowAction,
 } from '~/features/intake-orders/intake-orders-table'
 
 export const Route = createFileRoute('/_shell/prijem/')({
@@ -191,9 +193,15 @@ function TableSection({
   const { data: session } = authClient.useSession()
   const currentUserId = session?.user?.id
   const [deleteTarget, setDeleteTarget] = useState<IntakeOrderListItem | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<IntakeOrderListItem | null>(null)
   const discard = useDiscardIntakeOrder(() => {
     setDeleteTarget(null)
   })
+  const archive = useArchiveIntakeOrder(() => {
+    setArchiveTarget(null)
+  })
+  const canArchive = permissions.includes('intake_orders.archive')
+  const archiving = archiveTarget !== null && archiveTarget.archivedAt === null
 
   // Only an unfinished intake, and only for the person the server would also let through: his own
   // draft goes with `update`, a colleague's takes `delete`. A signed order has no action at all —
@@ -208,12 +216,36 @@ function TableSection({
       : permissions.includes('intake_orders.delete')
   }
 
+  /**
+   * One action per row, and which one the row's own state decides: a draft is discarded and its
+   * number released, a signed order is taken out of the working list or brought back. A signed
+   * order is never deleted — it is the firm's half of the paper the owner signed.
+   */
+  const rowAction = (item: IntakeOrderListItem): IntakeRowAction | null => {
+    if (item.signedAt === null) {
+      return canDelete(item)
+        ? { icon: Trash2, label: m.intake_draft_discard(), onSelect: () => setDeleteTarget(item) }
+        : null
+    }
+    if (!canArchive) {
+      return null
+    }
+    return item.archivedAt === null
+      ? {
+          icon: Archive,
+          label: m.intake_archive_action(),
+          onSelect: () => setArchiveTarget(item),
+        }
+      : {
+          icon: ArchiveRestore,
+          label: m.intake_unarchive_action(),
+          onSelect: () => setArchiveTarget(item),
+        }
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <IntakeOrdersTable
-        items={data.items}
-        deleteConfig={{ canDelete, onDeleteRequest: setDeleteTarget }}
-      />
+      <IntakeOrdersTable items={data.items} rowAction={rowAction} />
       {/*
         The shop does ~10 intakes a day, so page 1 fills within days. Without a pager the
         office would be locked to the newest page with no way back — the same component the
@@ -242,6 +274,26 @@ function TableSection({
         onConfirm={() => {
           if (deleteTarget !== null) {
             discard.mutate(deleteTarget.id)
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setArchiveTarget(null)
+          }
+        }}
+        title={archiving ? m.intake_archive_title() : m.intake_unarchive_title()}
+        description={archiving ? m.intake_archive_description() : m.intake_unarchive_description()}
+        confirmLabel={archiving ? m.intake_archive_action() : m.intake_unarchive_action()}
+        // Not destructive: nothing is deleted, and the same dialog brings the order back.
+        variant="default"
+        pending={archive.isPending}
+        onConfirm={() => {
+          if (archiveTarget !== null) {
+            archive.mutate({ id: archiveTarget.id, archived: archiveTarget.archivedAt === null })
           }
         }}
       />

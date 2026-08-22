@@ -14,6 +14,7 @@ const HANDED_OVER = {
   handoverTechnicianSignature: 'M 0 0 L 10 10',
   handoverOwnerSignature: 'M 0 0 L 20 20',
   handoverSignedAt: '2026-08-14T10:00:00.000Z',
+  archivedAt: null,
 }
 
 const document = async (): Promise<string> =>

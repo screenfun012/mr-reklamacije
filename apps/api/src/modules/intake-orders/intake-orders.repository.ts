@@ -107,6 +107,7 @@ interface OrderRow {
   technicianSignature: string | null
   ownerSignature: string | null
   signedAt: Date | null
+  archivedAt: Date | null
   documentReady: boolean
   documentEmailedAt: Date | null
   handoverTechnicianName: string | null
@@ -187,6 +188,7 @@ function mapDetail(row: OrderRow, photos: IntakeOrderPhoto[]): IntakeOrderDetail
     technicianSignature: row.technicianSignature,
     ownerSignature: row.ownerSignature,
     signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
+    archivedAt: row.archivedAt === null ? null : row.archivedAt.toISOString(),
     documentReady: row.documentReady,
     documentEmailedAt: row.documentEmailedAt === null ? null : row.documentEmailedAt.toISOString(),
     // Null and NOT `?? ''` like the intake's, because null is a real answer here: an order handed
@@ -275,6 +277,7 @@ export class IntakeOrdersRepository {
       technicianSignature: intakeOrders.technicianSignature,
       ownerSignature: intakeOrders.ownerSignature,
       signedAt: intakeOrders.signedAt,
+      archivedAt: intakeOrders.archivedAt,
       // The presence of the file, not its key: the screen decides whether to offer a download.
       documentReady: sql<boolean>`${intakeOrders.documentStoragePath} IS NOT NULL`,
       documentEmailedAt: intakeOrders.documentEmailedAt,
@@ -340,14 +343,29 @@ export class IntakeOrdersRepository {
       return eq(intakeOrders.technicianId, scope.userId)
     }
 
-    return view === 'unfinished' ? isNull(intakeOrders.signedAt) : isNotNull(intakeOrders.signedAt)
+    if (view === 'unfinished') {
+      return isNull(intakeOrders.signedAt)
+    }
+
+    return isNotNull(intakeOrders.signedAt)
+  }
+
+  /**
+   * Archived rows leave the working list — and this is deliberately OUTSIDE `scopeCondition`,
+   * because that one returns early for a serviser and would let his archived orders keep showing.
+   * `view=archived` is the one place they are the whole point.
+   */
+  private archivedCondition(view: IntakeOrderListView) {
+    return view === 'archived'
+      ? isNotNull(intakeOrders.archivedAt)
+      : isNull(intakeOrders.archivedAt)
   }
 
   async list(
     scope: IntakeOrdersListScope,
     query: IntakeOrderListQuery,
   ): Promise<{ items: IntakeOrderListItem[]; total: number }> {
-    const conditions = [this.scopeCondition(scope, query.view)]
+    const conditions = [this.scopeCondition(scope, query.view), this.archivedCondition(query.view)]
 
     if (query.status !== undefined) {
       conditions.push(eq(intakeOrders.status, query.status))
@@ -392,6 +410,7 @@ export class IntakeOrdersRepository {
           damageCount: sql<number>`COALESCE(jsonb_array_length(${intakeOrders.damages}), 0)::int`,
           photoCount,
           signedAt: intakeOrders.signedAt,
+          archivedAt: intakeOrders.archivedAt,
           draftStep: intakeOrders.draftStep,
           photosExpected: intakeOrders.photosExpected,
         })
@@ -419,6 +438,7 @@ export class IntakeOrdersRepository {
       damageCount: row.damageCount,
       photoCount: row.photoCount,
       signedAt: row.signedAt === null ? null : row.signedAt.toISOString(),
+      archivedAt: row.archivedAt === null ? null : row.archivedAt.toISOString(),
       draftStep: row.draftStep,
       photosPending: pendingPhotoCount(row.photosExpected, row.photoCount),
     }))
@@ -426,9 +446,14 @@ export class IntakeOrdersRepository {
     return { items, total: totalRow?.value ?? 0 }
   }
 
-  /** KPI cards: signed orders only, so a half-entered intake never inflates "Primljeno". */
+  /**
+   * KPI cards: signed orders only, so a half-entered intake never inflates "Primljeno" — and never
+   * archived ones, or archiving a row would leave the number above it unchanged and the screen
+   * would contradict itself in one viewport. These are always the working list's numbers; the
+   * cards take no view.
+   */
   async summary(scope: IntakeOrdersListScope): Promise<IntakeOrderSummary> {
-    const conditions = [isNotNull(intakeOrders.signedAt)]
+    const conditions = [isNotNull(intakeOrders.signedAt), isNull(intakeOrders.archivedAt)]
     if (scope.type === 'own') {
       conditions.push(eq(intakeOrders.technicianId, scope.userId))
     }
@@ -837,6 +862,21 @@ export class IntakeOrdersRepository {
    * An abandoned draft is really deleted — that is what `ODUSTANI` means, and it releases
    * the order number for the pad's next sheet.
    */
+  /**
+   * Out of the working list, or back into it. One UPDATE, both columns together — an `archived_at`
+   * without an `archived_by` would be a change with nobody's name on it.
+   */
+  async setArchived(id: string, archived: boolean, actorId: string): Promise<void> {
+    await this.db
+      .update(intakeOrders)
+      .set(
+        archived
+          ? { archivedAt: new Date(), archivedBy: actorId }
+          : { archivedAt: null, archivedBy: null },
+      )
+      .where(eq(intakeOrders.id, id))
+  }
+
   async hardDelete(id: string): Promise<void> {
     await this.db.delete(intakeOrders).where(eq(intakeOrders.id, id))
   }

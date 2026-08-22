@@ -53,6 +53,11 @@ export function registerIntakeOrdersRoutes(
     requirePermission('intake_orders.change_status'),
     controller.changeStatus,
   )
+  // Its own permission, and in no standard package: taking a signed order out of the working list
+  // is the office's decision, not the shop floor's. The service refuses an unfinished draft — that
+  // one is discarded, and that is what `delete` is for.
+  routes.post('/:id/archive', requirePermission('intake_orders.archive'), controller.archive)
+  routes.post('/:id/unarchive', requirePermission('intake_orders.archive'), controller.unarchive)
   // Photos live under the order, never under /api/attachments: that route is gated by
   // `attachments.view_internal`, and a serviser holding it could read a claim's files.
   // The same gate as the order it belongs to: whoever may open the order may take its paper.
