@@ -28,8 +28,15 @@ export function IntakeStepperStrip({
        which kept this strip — and with it the order-number field — on screen the whole way
        through; now that the page scrolls normally, `sticky` is what preserves that. Offset and
        surface are borrowed rather than guessed: --mri-topbar-h is the one place the header
-       height lives, and bg/blur match the footer so content passes under both the same way. */
-    <div className="sticky top-[var(--mri-topbar-h)] z-10 flex items-center gap-0 border-b border-mri-border bg-mri-hdr px-4 py-3.5 backdrop-blur-[14px] sm:px-[26px]">
+       height lives, and bg/blur match the footer so content passes under both the same way.
+
+       `flex-wrap`: four 34px circles, four connectors whose 12px margins never shrink and the
+       132px order-number field need 422px before a single glyph of label, and a phone offers ~326.
+       `min-w-0` on the steps turned that deficit into overlap — the circles sat on top of each
+       other and the fourth ran over the field's label (photographed at 395px, 2026-08-22).
+       Wrapped, the field takes its own line and the steps space out evenly; wherever the row
+       fits, the class is inert. */
+    <div className="sticky top-[var(--mri-topbar-h)] z-10 flex flex-wrap items-center gap-x-0 gap-y-3 border-b border-mri-border bg-mri-hdr px-4 py-3.5 backdrop-blur-[14px] sm:px-[26px]">
       {steps.map((label, index) => {
         const number = index + 1
         const done = currentStep > number

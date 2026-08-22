@@ -140,7 +140,10 @@ export function IntakeDetailHeader({
         </p>
       </div>
 
-      <div className="ml-auto flex flex-wrap items-start justify-end gap-2.5">
+      {/* `[&>*]:grow`, not `[&>button]:grow` as the claim detail has it: one of these three is a
+          Link. It only ever fires on a line narrower than the buttons' own width — a phone, where
+          the row wrapped and left PRIMOPREDAJA alone against the right edge. */}
+      <div className="ml-auto flex flex-wrap items-start justify-end gap-2.5 [&>*]:grow">
         {/* Signed orders only: the paper is the signed record handed to the owner, and a draft has
             nothing signed to hand over. */}
         {order.signedAt === null ? null : (

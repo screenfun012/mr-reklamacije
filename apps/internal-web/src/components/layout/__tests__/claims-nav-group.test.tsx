@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NavItem } from '~/config/navigation'
 
 import { buildClaimsNavChildren, ClaimsNavGroup } from '../claims-nav-group.js'
+import { InternalSidebar } from '../internal-sidebar.js'
 
 const COUNTS = {
   items: [
@@ -165,5 +166,58 @@ describe('ClaimsNavGroup', () => {
 
     await user.click(trigger)
     expect(await screen.findByRole('link', { name: /Mašinska obrada/ })).toBeInTheDocument()
+  })
+})
+
+/*
+ * The rail is a desktop shape and `collapsed` is a desktop preference. It reaches this component
+ * as a plain boolean with no breakpoint in it, so the guard has to live at the call site — and a
+ * test of this component alone cannot see that. This one renders the sidebar itself.
+ */
+describe('InternalSidebar — the drawer is never a rail', () => {
+  it('keeps the claims group a list when a collapsed sidebar is opened as a drawer', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(claimCategoryCountsOptions().queryKey, COUNTS)
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <QueryClientProvider client={queryClient}>
+          <InternalSidebar
+            items={[CLAIMS_ITEM]}
+            userName="QA"
+            userEmail="qa@local.test"
+            onLogout={vi.fn()}
+            collapsed
+            mobileOpen
+            onCloseMobile={vi.fn()}
+          />
+        </QueryClientProvider>
+      ),
+    })
+    const listRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reklamacije',
+      component: () => null,
+    })
+    const categoryRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reklamacije/kategorija/$categoryCode',
+      component: () => null,
+    })
+    const securityRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/settings/security',
+      component: () => null,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([listRoute, categoryRoute, securityRoute]),
+      history: createMemoryHistory({ initialEntries: ['/reklamacije'] }),
+    })
+    render(<RouterProvider router={router as never} />)
+
+    // ⚙ drop `&& !mobileOpen` at the call site and this goes red: the group becomes a bare 38px
+    // icon between entries that all kept their labels, with its categories behind a popover.
+    expect(await screen.findByRole('button', { name: /Reklamacije/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Sve reklamacije/ })).toBeInTheDocument()
   })
 })

@@ -81,7 +81,12 @@ export function InternalSidebar({
                 key={item.key}
                 item={item}
                 index={navIndex(items, item.key)}
-                collapsed={collapsed}
+                // The rail is a DESKTOP shape. Every plain entry says so in CSS
+                // (`collapsed && 'lg:hidden'`); this group branches in JS, which has no
+                // breakpoint — so a sidebar collapsed once on the desktop turned entry 03 into a
+                // bare 38px icon inside the phone drawer, its categories reachable only through a
+                // popover over the page. Reproduced at 395px, 2026-08-22.
+                collapsed={collapsed && !mobileOpen}
                 onNavigate={onCloseMobile}
               />
             ) : (

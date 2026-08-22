@@ -52,52 +52,58 @@ export function IntakeWizardFooter({
         {hint}
       </span>
 
-      <button
-        type="button"
-        onClick={onDiscard}
-        className="ml-auto h-[52px] cursor-pointer rounded-[11px] border border-mri-border2 bg-transparent px-5 text-[13.5px] font-bold uppercase tracking-[0.06em] text-mri-text2 transition-colors hover:text-mri-redh"
-      >
-        {m.intake_action_discard()}
-      </button>
-
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={backDisabled}
-        className="h-[52px] cursor-pointer rounded-[11px] border border-mri-border2 bg-mri-inbg px-6 text-sm font-bold uppercase tracking-[0.06em] text-mri-text2 transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {m.intake_action_back()}
-      </button>
-
-      {finish === undefined ? (
+      {/* One group, not three loose buttons: `ml-auto` used to sit on DISCARD, so once the row
+          wrapped that auto margin ate the second line's free space and pushed DISCARD+BACK to the
+          right edge while NEXT sat alone on the left. `grow` is inert on a line that already holds
+          all three — it only fires on a phone, where it splits them evenly instead. */}
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-3 [&>button]:grow">
         <button
           type="button"
-          onClick={onNext}
-          disabled={nextDisabled}
-          className="h-[52px] cursor-pointer rounded-[11px] border-0 bg-mri-btn px-8 text-sm font-extrabold uppercase tracking-[0.06em] text-mri-btnfg shadow-[0_8px_22px_rgba(0,0,0,0.35)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={onDiscard}
+          className="h-[52px] cursor-pointer rounded-[11px] border border-mri-border2 bg-transparent px-5 text-[13.5px] font-bold uppercase tracking-[0.06em] text-mri-text2 transition-colors hover:text-mri-redh"
         >
-          {m.intake_action_next()}
+          {m.intake_action_discard()}
         </button>
-      ) : (
-        /*
+
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={backDisabled}
+          className="h-[52px] cursor-pointer rounded-[11px] border border-mri-border2 bg-mri-inbg px-6 text-sm font-bold uppercase tracking-[0.06em] text-mri-text2 transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {m.intake_action_back()}
+        </button>
+
+        {finish === undefined ? (
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={nextDisabled}
+            className="h-[52px] cursor-pointer rounded-[11px] border-0 bg-mri-btn px-8 text-sm font-extrabold uppercase tracking-[0.06em] text-mri-btnfg shadow-[0_8px_22px_rgba(0,0,0,0.35)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {m.intake_action_next()}
+          </button>
+        ) : (
+          /*
           Never `disabled`: it refuses in the handler and says why. A dead button in front of a
           waiting customer tells the serviser nothing, and the two reasons it can refuse — a
           missing signature, a photo still going up — are both things he can act on.
         */
-        <button
-          type="button"
-          onClick={finish.onClick}
-          className={cn(
-            'h-[52px] cursor-pointer rounded-[11px] border px-[26px] text-sm font-extrabold uppercase tracking-[0.06em] transition-opacity motion-reduce:transition-none',
-            finish.waiting
-              ? 'border-[rgba(245,165,36,0.45)] bg-[rgba(245,165,36,0.14)] text-mri-amb'
-              : 'border-[rgba(31,169,113,0.45)] bg-[rgba(31,169,113,0.16)] text-mri-grn',
-            finish.ready ? 'opacity-100' : 'opacity-50',
-          )}
-        >
-          {finish.label}
-        </button>
-      )}
+          <button
+            type="button"
+            onClick={finish.onClick}
+            className={cn(
+              'h-[52px] cursor-pointer rounded-[11px] border px-[26px] text-sm font-extrabold uppercase tracking-[0.06em] transition-opacity motion-reduce:transition-none',
+              finish.waiting
+                ? 'border-[rgba(245,165,36,0.45)] bg-[rgba(245,165,36,0.14)] text-mri-amb'
+                : 'border-[rgba(31,169,113,0.45)] bg-[rgba(31,169,113,0.16)] text-mri-grn',
+              finish.ready ? 'opacity-100' : 'opacity-50',
+            )}
+          >
+            {finish.label}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

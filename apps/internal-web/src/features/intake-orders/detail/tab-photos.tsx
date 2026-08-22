@@ -42,7 +42,9 @@ export function TabPhotos({ order }: { order: IntakeOrderDetail }): ReactElement
         {cells.length === 0 ? (
           <p className="text-[13.5px] italic text-mri-text2">{m.intake_detail_no_photos()}</p>
         ) : (
-          <div className="grid grid-cols-4 gap-[14px]">
+          /* Four across a 363px phone gave 68px thumbnails with captions wider than the cell.
+             Two there, four where the body is wide — the same 860 the rest of the detail uses. */
+          <div className="@container/photos grid grid-cols-2 gap-[14px] @min-[860px]/photos:grid-cols-4">
             {cells.map((cell, index) => (
               <div key={cell.key} className="flex min-w-0 flex-col gap-[7px]">
                 <button

@@ -37,13 +37,15 @@ export function IntakeStatusBar({ order }: { order: IntakeOrderDetail }): ReactE
         {m.intake_status_bar_caption()}
       </span>
 
-      {/* `max-w-full` + `overflow-x-auto` for the same reason as the list's status filter: four
-          joined segments are wider than a phone, and `overflow-hidden` would clip the last one out of
-          reach instead of letting it be swiped to. Inert wherever the row fits. */}
+      {/* The ROW is allowed to wrap; a LABEL is not — the same pair the list's status filter
+          carries. Without `whitespace-nowrap` the four segments fit a phone by breaking "PREUZETO"
+          across two lines inside its own button, which then set the height of the whole group and
+          made the others look stretched. `max-w-full` + `overflow-x-auto` stay only as the backstop
+          for a single segment wider than the whole box; wherever the row fits, all of it is inert. */}
       <div
         role="group"
         aria-label={m.intake_status_bar_caption()}
-        className="flex max-w-full overflow-x-auto rounded-[9px] border border-mri-border2"
+        className="flex max-w-full flex-wrap overflow-x-auto rounded-[9px] border border-mri-border2"
       >
         {INTAKE_STATUS_ORDER.map((status) => (
           <button
@@ -53,7 +55,7 @@ export function IntakeStatusBar({ order }: { order: IntakeOrderDetail }): ReactE
             disabled={status === order.status || change.isPending}
             onClick={() => change.mutate(status)}
             className={cn(
-              'cursor-pointer px-[15px] py-2.5 font-mono text-[11.5px] font-extrabold uppercase tracking-[0.06em] transition-colors disabled:cursor-default',
+              'cursor-pointer whitespace-nowrap px-[15px] py-2.5 font-mono text-[11.5px] font-extrabold uppercase tracking-[0.06em] transition-colors disabled:cursor-default',
               status === order.status
                 ? 'bg-mri-red text-white'
                 : 'bg-transparent text-mri-text2 hover:text-mri-text',

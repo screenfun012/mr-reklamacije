@@ -55,17 +55,20 @@ export function TabSpec({
   const frozen = !canUpdate || update.isPending || !specStillOpen
 
   return (
-    // Two equal cards side by side at every width, as the prototype has it (`:616-631`). No
-    // viewport breakpoint: the shell's sidebar collapses, so one viewport gives this body three
-    // different widths — the reason `tab-overview.tsx` breaks on the container instead.
-    <div className="flex flex-col gap-2.5">
+    // Two equal cards side by side as the prototype has it (`:616-631`) — but only where two of
+    // them fit. Everything in a panel that is not the input measures 186px (130px ADD button +
+    // 10 gap + 44 padding + 2 border), so two panels plus their gap eat 388px before one character
+    // can be typed; at a 363px phone the input was clamped to zero and the button spilled out.
+    // The switch is 860, the number `tab-overview.tsx` already derived on this same body, so the
+    // whole detail changes shape at one width rather than two.
+    <div className="@container/spec flex flex-col gap-2.5">
       {/* Controls that vanish without a word read as a broken screen — the same rule the wizard's
           footer follows. This one sentence is the whole difference between "closed" and "gone". */}
       {specStillOpen ? null : (
         <p className="text-[13px] italic text-mri-text2">{m.intake_spec_frozen_handover()}</p>
       )}
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 @min-[860px]/spec:flex-row">
         <IntakeSpecList
           title={m.intake_card_services()}
           items={order.services}
