@@ -75,3 +75,52 @@ describe('claimCategoryFieldOptionsResourceDefinition', () => {
     )
   })
 })
+
+describe('claimCategoryFieldOptionsResourceDefinition — the dependency', () => {
+  it('lets the office correct the parent later, unlike the field the option belongs to', () => {
+    const editFields = claimCategoryFieldOptionsResourceDefinition.formFields.filter(
+      (field) => !field.createOnly,
+    )
+    // The field an option belongs to is what its stored answers are keyed by, so it is fixed.
+    // Which option it hangs off is a judgement about the shop, and judgements get corrected.
+    expect(editFields.some((field) => field.key === 'fieldId')).toBe(false)
+    expect(editFields.some((field) => field.key === 'parentOptionId')).toBe(true)
+  })
+
+  it('omits the parent on create when none was picked, and CLEARS it on update', () => {
+    expect(
+      claimCategoryFieldOptionsResourceDefinition.buildCreateBody({
+        fieldId: 'f1',
+        code: ' glava_ventili ',
+        name: ' Ventili ne zaptivaju ',
+        sortOrder: '10',
+        parentOptionId: '',
+      }),
+    ).toEqual({ fieldId: 'f1', code: 'glava_ventili', name: 'Ventili ne zaptivaju', sortOrder: 10 })
+
+    expect(
+      claimCategoryFieldOptionsResourceDefinition.buildCreateBody({
+        fieldId: 'f1',
+        code: 'glava_ventili',
+        name: 'Ventili',
+        sortOrder: '10',
+        parentOptionId: 'o-glava',
+      }),
+    ).toEqual({
+      fieldId: 'f1',
+      code: 'glava_ventili',
+      name: 'Ventili',
+      sortOrder: 10,
+      parentOptionId: 'o-glava',
+    })
+
+    // An absent key means "leave it alone", so removing a dependency has to send `null`.
+    expect(
+      claimCategoryFieldOptionsResourceDefinition.buildUpdateBody({
+        name: 'Ventili',
+        sortOrder: '10',
+        parentOptionId: '',
+      }),
+    ).toEqual({ name: 'Ventili', sortOrder: 10, parentOptionId: null })
+  })
+})

@@ -1,11 +1,13 @@
 import {
   EMOTIVE_PARTNER_CUSTOMERS_REFERENCE,
   claimCategoriesReferenceOptions,
+  claimCategoryFieldOptionsReferenceOptions,
   claimCategoryFieldsReferenceOptions,
   customersReferenceOptions,
   departmentsReferenceOptions,
   engineManufacturersReferenceOptions,
   type ClaimCategoryFieldListItem,
+  type ClaimCategoryFieldOptionListItem,
   type ClaimCategoryListItem,
   type CustomerListItem,
   type DepartmentListItem,
@@ -19,6 +21,7 @@ export type ResourceReferenceSelectKey =
   | 'departments'
   | 'claim-categories'
   | 'claim-category-fields'
+  | 'claim-category-field-options'
 
 export interface ReferenceSelectOption {
   value: string
@@ -72,6 +75,18 @@ const REFERENCE_SELECT_CONFIGS: Record<ResourceReferenceSelectKey, ReferenceSele
       items.map((item) => ({
         value: item.id,
         label: `${item.categoryName} › ${item.name}`,
+        keywords: item.code,
+      })),
+  }),
+  'claim-category-field-options': defineReferenceSelect<ClaimCategoryFieldOptionListItem>({
+    queryOptions: () => claimCategoryFieldOptionsReferenceOptions({ activeOnly: true }),
+    // "Sklop u kvaru › Glava" — an option's name alone repeats across fields. The list is
+    // deliberately unfiltered: the registry has no way for one form field to narrow another, and
+    // the server refuses a parent from another category or from the same field anyway.
+    toOptions: (items) =>
+      items.map((item) => ({
+        value: item.id,
+        label: `${item.fieldName} › ${item.name}`,
         keywords: item.code,
       })),
   }),

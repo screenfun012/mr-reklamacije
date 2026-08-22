@@ -35,6 +35,11 @@ export const claimCategoryFieldOptionsResourceDefinition: ResourceDefinition<
       cell: (item) => item.fieldName,
     },
     {
+      id: 'parent',
+      header: () => m.field_claim_category_field_option_parent(),
+      cell: (item) => item.parentOptionCode ?? m.admin_claim_category_field_options_parent_none(),
+    },
+    {
       id: 'code',
       header: () => m.field_code(),
       cell: (item) => item.code,
@@ -93,6 +98,13 @@ export const claimCategoryFieldOptionsResourceDefinition: ResourceDefinition<
       required: true,
     },
     {
+      key: 'parentOptionId',
+      label: () => m.field_claim_category_field_option_parent(),
+      type: 'reference-select',
+      referenceKey: 'claim-category-field-options',
+      hint: () => m.admin_claim_category_field_options_parent_hint(),
+    },
+    {
       key: 'sortOrder',
       label: () => m.field_sort_order(),
       type: 'number',
@@ -120,6 +132,7 @@ export const claimCategoryFieldOptionsResourceDefinition: ResourceDefinition<
   editActionLabel: () => m.action_edit(),
   getInitialFormValues: (item) => ({
     fieldId: item?.fieldId ?? '',
+    parentOptionId: item?.parentOptionId ?? '',
     code: item?.code ?? '',
     name: item?.name ?? '',
     sortOrder: item?.sortOrder !== undefined ? String(item.sortOrder) : '',
@@ -129,10 +142,20 @@ export const claimCategoryFieldOptionsResourceDefinition: ResourceDefinition<
     code: (values['code'] ?? '').trim(),
     name: (values['name'] ?? '').trim(),
     sortOrder: parseOptionalInt(values['sortOrder'] ?? ''),
+    // Absent, not null: an option that hangs off nothing is simply always offered.
+    ...(values['parentOptionId'] !== undefined && values['parentOptionId'].length > 0
+      ? { parentOptionId: values['parentOptionId'] }
+      : {}),
   }),
   buildUpdateBody: (values) => ({
     name: (values['name'] ?? '').trim(),
     sortOrder: parseOptionalInt(values['sortOrder'] ?? ''),
+    // `null`, not absent: clearing the picker has to be able to REMOVE a dependency, and an
+    // absent key means "leave it as it is".
+    parentOptionId:
+      values['parentOptionId'] !== undefined && values['parentOptionId'].length > 0
+        ? values['parentOptionId']
+        : null,
   }),
   getDeactivateTargetLabel: (item) => item.name,
   listConfig: {
