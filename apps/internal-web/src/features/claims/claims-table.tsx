@@ -28,8 +28,11 @@ import { EmotiveClaimStageBadge } from '~/features/emotive-claims/emotive-claim-
 
 import { claimDetailTarget } from '~/features/command-palette/claim-target'
 
+import { ClaimCategoryChip } from './claim-category-chip'
 import { ClaimDeleteDialog } from './claim-delete-dialog'
+import { ClaimsCardList } from './claims-card-list'
 import { ClaimsSelectionCheckbox } from './claims-selection-checkbox'
+import { ClaimsSortSelect } from './claims-sort-select'
 import {
   claimsTableSortingFromSearch,
   createNextSortSearch,
@@ -198,27 +201,7 @@ function createClaimsTableColumns(
       header: () => m.field_claim_category(),
       // Data, never a fork: the name is printed, nothing reads the code to decide anything.
       // A retired category is drawn apart — the claim keeps it, and the row says so.
-      cell: ({ row }) => {
-        const category = row.original.category
-        if (category === null) {
-          return '—'
-        }
-        return (
-          <span
-            title={category.name}
-            className={cn(
-              // Never wraps: a two-word category used to break across three lines and push every
-              // row in the list from 48px to 76px (measured in the browser, 2026-08-21).
-              'inline-block max-w-[170px] truncate whitespace-nowrap rounded-md border bg-mri-inbg px-2 py-[3px] font-mono text-[10px]',
-              category.isActive
-                ? 'border-mri-border2 text-mri-text'
-                : 'border-dashed border-mri-border2 text-mri-text2',
-            )}
-          >
-            {category.isActive ? category.name : `${category.name} †`}
-          </span>
-        )
-      },
+      cell: ({ row }) => <ClaimCategoryChip category={row.original.category} />,
       meta: { cellClassName: 'px-4 py-3' },
     }),
     columnHelper.display({
@@ -388,7 +371,18 @@ export function ClaimsTable({
 
   return (
     <>
-      <div className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
+      {/* The switch is on the CONTAINER, not the viewport: the same 1440px laptop gives this card
+          1140px with the sidebar open and ~1310px with it collapsed, and a serviser has no sidebar
+          at all — a viewport breakpoint gets two of those three wrong.
+
+          960px, and it is not the table's own width: the thirteen cells are `whitespace-nowrap`,
+          so the row's real min-content is 1715–1764px depending on which rows the page holds
+          (measured in the browser, 2026-08-22) — the declared `min-w-[1160px]` is a floor the
+          content passes anyway. "Does it fit" is therefore never true and cannot be the question;
+          the question is whether reading this list through a sideways slot still beats a card, and
+          under 960 it does not — you would see three columns of thirteen at a time. Every width
+          that renders a table today keeps it: 1280 with the sidebar open is 980. */}
+      <div className="@container/claims overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
         <div className="flex items-center justify-between border-b border-mri-border px-5 py-4">
           {/* "Reklamacije — Mašinska obrada" inside a category, "Sve reklamacije" outside one:
               the card says what it is a list OF, not that it is a list (prototype §4). */}
@@ -416,7 +410,10 @@ export function ClaimsTable({
             </span>
           )}
         </div>
-        <div className="overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-mri-border px-5 py-3 @min-[960px]/claims:hidden">
+          <ClaimsSortSelect search={search} onSearchChange={onSearchChange} />
+        </div>
+        <div className="hidden overflow-x-auto @min-[960px]/claims:block">
           <table className="w-full min-w-[1160px] text-sm">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -477,6 +474,15 @@ export function ClaimsTable({
               })}
             </tbody>
           </table>
+        </div>
+        <div className="@min-[960px]/claims:hidden">
+          <ClaimsCardList
+            rows={table.getRowModel().rows}
+            showCategory={showCategoryColumn}
+            categoryCode={categoryCode}
+            canDelete={canDelete}
+            onDeleteRequest={onDeleteRequest}
+          />
         </div>
         {footer === undefined ? null : (
           <div className="border-t border-mri-border px-[18px] py-[11px]">{footer}</div>

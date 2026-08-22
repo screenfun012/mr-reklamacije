@@ -8,7 +8,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -69,10 +69,13 @@ describe('InboxTable', () => {
   it('renders a row per submission with firm, reason, attachment count and the total badge', async () => {
     await renderWithRouter(<InboxTable items={ITEMS} total={2} />)
 
-    expect(await screen.findByText('SELMAN')).toBeInTheDocument()
-    expect(screen.getByText('Auto Stanić')).toBeInTheDocument()
-    expect(screen.getByText('Motor lupa na hladno')).toBeInTheDocument()
-    expect(screen.getByText('Curi ulje')).toBeInTheDocument()
+    // The list renders in two shapes at once — the table and, for a narrow box, cards — and only
+    // CSS picks one, so a query that means "the row" has to say so.
+    const table = within(screen.getByRole('table'))
+    expect(await screen.findAllByText('SELMAN')).toHaveLength(2)
+    expect(table.getByText('Auto Stanić')).toBeInTheDocument()
+    expect(table.getByText('Motor lupa na hladno')).toBeInTheDocument()
+    expect(table.getByText('Curi ulje')).toBeInTheDocument()
 
     // Header count caption reflects the total.
     expect(screen.getByText('2 zahteva')).toBeInTheDocument()
@@ -81,5 +84,25 @@ describe('InboxTable', () => {
     const links = screen.getAllByRole('link')
     expect(links[0]).toHaveAttribute('href', '/pristiglo/11111111-1111-4111-8111-111111111111')
     expect(links[1]).toHaveAttribute('href', '/pristiglo/33333333-3333-4333-8333-333333333333')
+  })
+})
+
+/*
+ * jsdom evaluates no container query, so this asserts the declaration. Which shape shows is a
+ * CSS-only decision: a half-finished edit renders both at once, or neither, and every test above
+ * would still pass.
+ */
+describe('InboxTable — one list in two shapes', () => {
+  const SWITCH_WIDTH = 720
+
+  it('hides one shape at exactly the width the other starts at', async () => {
+    await renderWithRouter(<InboxTable items={ITEMS} total={2} />)
+
+    const scroller = screen.getByRole('table').parentElement
+    const cards = screen.getByRole('list')
+    expect(scroller?.className).toContain('hidden')
+    expect(scroller?.className).toContain(`@min-[${SWITCH_WIDTH}px]/inbox:block`)
+    expect(cards.className).toContain(`@min-[${SWITCH_WIDTH}px]/inbox:hidden`)
+    expect(screen.getByRole('table').closest('.\\@container\\/inbox')).not.toBeNull()
   })
 })

@@ -42,7 +42,7 @@ function DomaceClaimDetailPage(): React.ReactElement {
   const navigate = useNavigate({ from: Route.fullPath })
 
   return (
-    <div className="flex w-full max-w-[1360px] flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
       <Suspense fallback={<DomaceClaimDetailSkeleton />}>
         <DomaceClaimDetailView
           id={id}
@@ -59,7 +59,7 @@ function DomaceClaimDetailPage(): React.ReactElement {
 
 function DomaceClaimDetailPending(): React.ReactElement {
   return (
-    <div className="flex w-full max-w-[1360px] flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
       <Skeleton className="h-5 w-40" />
       <DomaceClaimDetailSkeleton />
     </div>
@@ -99,7 +99,7 @@ function DomaceClaimDetailError(): React.ReactElement {
   const router = useRouter()
 
   return (
-    <div className="flex w-full max-w-[1360px] flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
       <BackLink />
       <div
         className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"
@@ -129,7 +129,7 @@ function DomaceClaimDetailError(): React.ReactElement {
  */
 function DomaceClaimDetailNotFound(): React.ReactElement {
   return (
-    <div className="flex w-full max-w-[1360px] flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
       <BackLink />
       <div
         className="rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-8 text-center"

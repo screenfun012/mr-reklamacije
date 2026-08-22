@@ -8,7 +8,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -118,6 +118,15 @@ async function renderWithRouter(node: ReactElement): Promise<void> {
   )
 }
 
+/**
+ * The list renders in two shapes at once — the wide table and the narrow card — and CSS decides
+ * which one a person sees. jsdom applies no CSS, so both are always in this DOM: a query that
+ * means "the row" has to say so, or it counts each value twice.
+ */
+function inTable(): ReturnType<typeof within> {
+  return within(screen.getByRole('table'))
+}
+
 describe('ClaimsTable', () => {
   beforeEach(() => {
     setLocale('sr')
@@ -151,12 +160,12 @@ describe('ClaimsTable', () => {
       />,
     )
 
-    expect(await screen.findByText('5376/26')).toBeInTheDocument()
-    expect(screen.getByText('1234/26')).toBeInTheDocument()
-    expect(screen.getByText('SELMAN')).toBeInTheDocument()
-    expect(screen.getByText('Auto Stanić')).toBeInTheDocument()
-    expect(screen.getByText('EMOTIVE')).toBeInTheDocument()
-    expect(screen.getByText('Domaća')).toBeInTheDocument()
+    expect(await screen.findAllByText('5376/26')).not.toHaveLength(0)
+    expect(inTable().getByText('1234/26')).toBeInTheDocument()
+    expect(inTable().getByText('SELMAN')).toBeInTheDocument()
+    expect(inTable().getByText('Auto Stanić')).toBeInTheDocument()
+    expect(inTable().getByText('EMOTIVE')).toBeInTheDocument()
+    expect(inTable().getByText('Domaća')).toBeInTheDocument()
 
     const viewLinks = screen.getAllByRole('link', { name: 'Pregled' })
     expect(viewLinks[0]).toHaveAttribute(
@@ -256,7 +265,7 @@ describe('ClaimsTable', () => {
       />,
     )
 
-    const deleteButtons = screen.getAllByRole('button', { name: 'Obriši' })
+    const deleteButtons = inTable().getAllByRole('button', { name: 'Obriši' })
     expect(deleteButtons).toHaveLength(1)
 
     await user.click(deleteButtons[0]!)
@@ -358,7 +367,7 @@ describe('ClaimsTable', () => {
         onSearchChange={vi.fn()}
       />,
     )
-    expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
+    expect(inTable().getByText('Mašinska obrada')).toBeInTheDocument()
   })
 
   it('marks a retired category so the row says what the claim still carries', async () => {
@@ -373,8 +382,8 @@ describe('ClaimsTable', () => {
     )
 
     // The claim keeps the category the office switched off; the dagger is how the row admits it.
-    expect(screen.getByText('Kompresori †')).toBeInTheDocument()
-    expect(screen.getByText('Mašinska obrada')).toBeInTheDocument()
+    expect(inTable().getByText('Kompresori †')).toBeInTheDocument()
+    expect(inTable().getByText('Mašinska obrada')).toBeInTheDocument()
   })
 
   it('marks a claim whose new kind of work is still missing something — in BOTH modes', async () => {
@@ -389,7 +398,7 @@ describe('ClaimsTable', () => {
         onSearchChange={vi.fn()}
       />,
     )
-    expect(screen.getAllByLabelText(label)).toHaveLength(1)
+    expect(inTable().getAllByLabelText(label)).toHaveLength(1)
 
     cleanup()
 
@@ -405,7 +414,7 @@ describe('ClaimsTable', () => {
         onSearchChange={vi.fn()}
       />,
     )
-    expect(screen.getAllByLabelText(label)).toHaveLength(1)
+    expect(inTable().getAllByLabelText(label)).toHaveLength(1)
   })
 
   it('keeps a two-word category on one line', async () => {
@@ -421,6 +430,93 @@ describe('ClaimsTable', () => {
 
     // Measured in the browser: "Generalni remont motora" broke across three lines and pushed
     // every row from 48px to 76px.
-    expect(screen.getByText('Mašinska obrada').className).toContain('whitespace-nowrap')
+    expect(inTable().getByText('Mašinska obrada').className).toContain('whitespace-nowrap')
+  })
+})
+
+/** The one width the table's two shapes must agree on. */
+const SWITCH_WIDTH = 960
+
+function switchWidthOf(className: string, variant: 'block' | 'hidden'): number | null {
+  const match = new RegExp(`@min-\\[(\\d+)px\\]/claims:${variant}\\b`).exec(className)
+  return match?.[1] === undefined ? null : Number(match[1])
+}
+
+/*
+ * jsdom does not do layout and does not evaluate container queries, so these assert the
+ * declarations rather than the rendered result — deliberately. Which shape a person sees is
+ * decided only by CSS, so a half-finished edit shows BOTH at once, or neither, while every
+ * behavioural test above stays green. The measured proof that the switch works is in the
+ * browser run of 2026-08-22: cards at 390/768/1024, table at 1280/1440.
+ */
+describe('ClaimsTable — the table and the cards are one list in two shapes', () => {
+  it('renders the same claim in both shapes, so neither can be deleted unnoticed', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    // Once in the row, once in the card. Drop either layout and this goes to 1.
+    expect(screen.getAllByText('5376/26')).toHaveLength(2)
+    expect(screen.getAllByText('SELMAN')).toHaveLength(2)
+  })
+
+  it('hides one shape at exactly the width the other starts at', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    const scroller = screen.getByRole('table').parentElement
+    const cards = screen.getByRole('list').parentElement
+    expect(scroller?.className).toContain('hidden')
+    expect(switchWidthOf(scroller?.className ?? '', 'block')).toBe(SWITCH_WIDTH)
+    expect(switchWidthOf(cards?.className ?? '', 'hidden')).toBe(SWITCH_WIDTH)
+  })
+
+  it('establishes the named container the queries resolve against', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    // Without the container every `@min-[…]` silently never matches and the list shows cards
+    // forever, at any width, with nothing in the console to say so. It is NAMED so a descendant
+    // cannot capture the query.
+    const box = screen.getByRole('table').closest('.\\@container\\/claims')
+    expect(box).not.toBeNull()
+  })
+
+  it('offers sorting where the column headers are not', async () => {
+    await renderWithRouter(
+      <ClaimsTable
+        showCategoryColumn
+        total={2}
+        items={sampleItems}
+        search={defaultSearch}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    // The card list has no header row, so without this the two sortable columns would simply be
+    // unreachable on a phone.
+    const sort = screen.getByLabelText('Sortiranje')
+    expect(sort).toBeInTheDocument()
+    expect(sort.closest(`[class*="@min-[${SWITCH_WIDTH}px]/claims:hidden"]`)).not.toBeNull()
   })
 })

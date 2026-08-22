@@ -1,6 +1,6 @@
 import { formatListDateTime, type ClientSubmissionListItem } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { dataTableRowNavigableClassName } from '@mr/ui'
+import { cn, dataTableRowNavigableClassName } from '@mr/ui'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowRight, Paperclip } from 'lucide-react'
 
@@ -30,7 +30,7 @@ export function InboxTable({ items, total }: InboxTableProps): React.ReactElemen
   }
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
+    <div className="@container/inbox overflow-hidden rounded-[14px] border border-mri-border bg-mri-surface">
       <div className="flex items-center justify-between border-b border-mri-border px-5 py-4">
         <h2 className="text-[15px] font-extrabold text-mri-text">
           {m.internal_inbox_list_title()}
@@ -39,7 +39,7 @@ export function InboxTable({ items, total }: InboxTableProps): React.ReactElemen
           {m.internal_inbox_count({ count: total })}
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="hidden overflow-x-auto @min-[720px]/inbox:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-mri-border bg-mri-inbg text-left">
@@ -90,6 +90,39 @@ export function InboxTable({ items, total }: InboxTableProps): React.ReactElemen
           </tbody>
         </table>
       </div>
+
+      {/* Narrow: the firm on top, then what they wrote, then the count and when. The switch is on
+          the CONTAINER — the sidebar decides how much room this card really has, and the viewport
+          does not know about the sidebar. */}
+      <ul className="@min-[720px]/inbox:hidden">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className={cn(
+              dataTableRowNavigableClassName,
+              'flex flex-col gap-1.5 border-b border-mri-border px-4 py-3 last:border-b-0',
+            )}
+            onClick={() => {
+              void navigate({ to: '/pristiglo/$id', params: { id: item.id } })
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate text-[13.5px] font-semibold text-mri-text">
+                {item.customerName}
+              </span>
+              <ArrowRight className="size-4 flex-none text-mri-text2" aria-hidden="true" />
+            </div>
+            <p className="line-clamp-2 text-[13px] text-mri-text2">{item.message}</p>
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[12px] text-mri-text2">
+              <span className="inline-flex items-center gap-1.5">
+                <Paperclip className="size-3.5" aria-hidden="true" />
+                {item.attachmentCount}
+              </span>
+              <span>{formatListDateTime(item.createdAt)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
