@@ -16,7 +16,11 @@ const CIRCLE_CLASSES: Record<WizardStepperVariant, string> = {
 
 const LABEL_CLASSES: Record<WizardStepperVariant, string> = {
   intake: 'text-[13.5px]',
-  claims: 'font-mono text-[9.5px] uppercase tracking-[0.13em]',
+  // Hidden below md, like the intake strip beside it: the four Serbian labels need ~440px and a
+  // 390px phone offers 358, so the fourth step ("Pregled") was clipped away entirely — the shell
+  // clips, it does not scroll, so it could not even be swiped to. The step name is not lost: the
+  // wizard prints it as the H1 directly above this strip.
+  claims: 'hidden font-mono text-[9.5px] uppercase tracking-[0.13em] md:inline',
 }
 
 const ROW_CLASSES: Record<WizardStepperVariant, string> = {

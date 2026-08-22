@@ -35,12 +35,14 @@ export function PortalHeader({ maxWidthClass = 'max-w-[1280px]' }: { maxWidthCla
   return (
     <div className="sticky top-0 z-20 border-b border-mrp-border bg-mrp-hdr backdrop-blur-[14px]">
       <div
-        className={cn('mx-auto flex h-16 items-center justify-between px-5 sm:px-8', maxWidthClass)}
+        className={cn('mx-auto flex h-16 items-center justify-between px-4 sm:px-8', maxWidthClass)}
       >
         <Link to="/claims" aria-label="MR Engines">
-          <PortalLogo className="h-[34px] w-[126px]" />
+          {/* The prototype's 126px wordmark from sm up; below it the header has to seat the
+              firm, the sign-out and the language too, and 350px does not hold all of it. */}
+          <PortalLogo className="h-[28px] w-[104px] sm:h-[34px] sm:w-[126px]" />
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/report"
             aria-label={m.portal_submit_nav()}

@@ -46,15 +46,17 @@ export function InternalTopbar({ onToggleSidebar, showSidebarToggle, user }: Int
         ) : null}
         <div className="flex items-center gap-2.5">
           <InternalLogo className="h-[30px] w-[113px]" />
-          <span className="hidden font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-mri-text2 sm:inline">
+          {/* Decoration that repeats what the first breadcrumb already says. At sm it took ~140px
+              and the trail — the part that carries information — ellipsised every crumb instead. */}
+          <span className="hidden font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-mri-text2 lg:inline">
             {m.internal_app_eyebrow()}
           </span>
         </div>
-        <span aria-hidden="true" className="hidden h-5 w-px bg-mri-border sm:block" />
+        <span aria-hidden="true" className="hidden h-5 w-px bg-mri-border lg:block" />
         <InternalBreadcrumbs />
         <div className="ml-auto flex items-center gap-1.5">
           <NotificationBell />
-          <LocaleThemeControls />
+          <LocaleThemeControls compact={user !== undefined} />
           {user !== undefined ? (
             <>
               <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-mri-border sm:block" />

@@ -62,16 +62,22 @@ export function IntakeFilterBar({
   }, [draft, search, onSearchChange])
 
   return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface px-[17px] py-[15px] lg:flex-row lg:items-center">
+    <div className="flex flex-col gap-3 rounded-[14px] border border-mri-border bg-mri-surface px-[17px] py-[15px] lg:flex-row lg:flex-wrap lg:items-center">
       {/* One joined segmented control, not separate pills — the prototype wraps the buttons in a
           single bordered span with the border between them coming from the container.
 
-          `max-w-full` + `overflow-x-auto`, not `overflow-hidden`: the five segments measure 447px,
-          and on a 430px phone the group sat at right=481 with `Preuzeto` past the edge — clipped,
-          with no scrollbar, so that filter could not be reached at all (measured 2026-08-08). At
-          every width where the content fits, both classes are inert. */}
+          `flex-wrap` is what actually fits the five segments on a phone (measured 2026-08-22: two
+          rows, nothing past the edge, every filter reachable with no gesture). The 2026-08-08 pass
+          reached for `max-w-full` + `overflow-x-auto` instead, which does clamp — but macOS and iOS
+          paint no scrollbar at rest, so `Gotovo` was cut mid-word and `Preuzeto` looked absent
+          rather than swipeable. Those two classes stay as the backstop for a single segment wider
+          than the whole box; at every width where the content fits, all three are inert.
+
+          The `lg:flex-wrap` on the card above is the same fault one level up: `lg:` fires at a
+          1024px VIEWPORT, but with the sidebar open that leaves 688px of content and the `Prikaz`
+          select was pushed out of the clipped row — gone, not scrollable. */}
       <span
-        className="flex max-w-full flex-none self-start overflow-x-auto rounded-[9px] border border-mri-border2"
+        className="flex max-w-full flex-none flex-wrap self-start overflow-x-auto rounded-[9px] border border-mri-border2"
         role="group"
         aria-label={m.intake_filter_status()}
       >

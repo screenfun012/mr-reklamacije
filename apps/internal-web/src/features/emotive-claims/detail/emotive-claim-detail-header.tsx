@@ -74,7 +74,10 @@ export function EmotiveClaimDetailHeader({
           <OutcomePill outcome={claim.outcome} />
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-[9px]">
+        {/* [&>button]:grow only ever fires on a line narrower than the buttons' own 397px, i.e.
+              on a phone, where the row wrapped and left ODBIJ alone against the right edge. Above
+              that the group keeps its max-content width and ml-auto parks it right, untouched. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-[9px] [&>button]:grow">
           {showEdit ? (
             <InternalButton
               type="button"

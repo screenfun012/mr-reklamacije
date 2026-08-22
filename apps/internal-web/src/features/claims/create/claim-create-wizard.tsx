@@ -184,10 +184,12 @@ export function ClaimCreateWizard({
   return (
     <div className="mx-auto flex w-full max-w-[820px] flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3.5">
+        {/* Its own line below sm: beside the title it pushed the heading ~120px in from the left
+            while the card under it stayed at the edge, which reads as a broken layout. */}
         <button
           type="button"
           onClick={onLeave}
-          className="cursor-pointer text-xs font-bold uppercase tracking-[0.06em] text-mri-text2 transition-colors hover:text-mri-text"
+          className="basis-full cursor-pointer text-left text-xs font-bold uppercase tracking-[0.06em] text-mri-text2 transition-colors hover:text-mri-text sm:basis-auto"
         >
           ← {m.emotive_claims_create_back()}
         </button>
