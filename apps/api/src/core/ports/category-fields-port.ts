@@ -11,6 +11,8 @@ import type { ClaimCategoryFieldType } from '@mr/shared'
 export interface CategoryFieldCatalogOption {
   code: string
   isActive: boolean
+  /** The answer this option depends on — an option of another field of the same category. */
+  parent: { fieldCode: string; optionCode: string } | null
 }
 
 export interface CategoryFieldCatalogField {

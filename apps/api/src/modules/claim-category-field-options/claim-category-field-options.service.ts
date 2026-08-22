@@ -1,6 +1,6 @@
 import { AuditAction, ResourceChangedKey } from '@mr/shared'
 
-import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
+import { ConflictError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
@@ -12,6 +12,9 @@ import type {
   ClaimCategoryFieldOptionsListQuery,
   ReferenceListResponse,
 } from './claim-category-field-options.validators.js'
+
+const INVALID_PARENT_MESSAGE =
+  'Invalid parent option: it must be an option of another field of the same category'
 
 export class ClaimCategoryFieldOptionsService {
   constructor(
@@ -26,10 +29,32 @@ export class ClaimCategoryFieldOptionsService {
     return this.repo.list(query)
   }
 
+  /**
+   * A parent has to be an option of ANOTHER field of the SAME category — a field cannot depend on
+   * itself, and an answer in one kind of work can never gate an answer in another. The rule needs
+   * a subquery, so it lives here and not in a CHECK constraint.
+   */
+  private async assertParentOption(parentOptionId: string, fieldId: string): Promise<void> {
+    const parent = await this.repo.findById(parentOptionId)
+    if (parent === null || parent.fieldId === fieldId) {
+      throw new ValidationError(INVALID_PARENT_MESSAGE)
+    }
+
+    const categoryId = await this.repo.findFieldCategoryId(fieldId)
+    const parentCategoryId = await this.repo.findFieldCategoryId(parent.fieldId)
+    if (categoryId === null || parentCategoryId !== categoryId) {
+      throw new ValidationError(INVALID_PARENT_MESSAGE)
+    }
+  }
+
   async create(
     input: ClaimCategoryFieldOptionCreateInput,
     actor: HttpActorContext,
   ): Promise<ClaimCategoryFieldOptionListItem> {
+    if (input.parentOptionId !== undefined) {
+      await this.assertParentOption(input.parentOptionId, input.fieldId)
+    }
+
     const created = await this.repo.create(input)
 
     await this.audit.log({
@@ -56,6 +81,10 @@ export class ClaimCategoryFieldOptionsService {
     const before = await this.repo.findById(id)
     if (before === null) {
       throw new NotFoundError('Claim category field option', id)
+    }
+
+    if (input.parentOptionId !== undefined && input.parentOptionId !== null) {
+      await this.assertParentOption(input.parentOptionId, before.fieldId)
     }
 
     const updated = await this.repo.update(id, input)

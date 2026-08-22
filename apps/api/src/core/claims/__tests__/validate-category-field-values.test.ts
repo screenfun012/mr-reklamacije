@@ -16,8 +16,8 @@ const FIELDS: CategoryFieldCatalogField[] = [
     isRequired: false,
     isActive: true,
     options: [
-      { code: 'glava', isActive: true },
-      { code: 'karter', isActive: false },
+      { code: 'glava', isActive: true, parent: null },
+      { code: 'karter', isActive: false, parent: null },
     ],
   },
   {
@@ -27,7 +27,7 @@ const FIELDS: CategoryFieldCatalogField[] = [
     fieldType: 'select',
     isRequired: false,
     isActive: false,
-    options: [{ code: 'p2', isActive: true }],
+    options: [{ code: 'p2', isActive: true, parent: null }],
   },
 ]
 

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { ConflictError } from '../../../core/errors/domain-errors.js'
+import { ConflictError, ValidationError } from '../../../core/errors/domain-errors.js'
 import {
   ensureTestUser,
   getClaimCategoryIdByCode,
@@ -50,6 +50,34 @@ describe('ClaimCategoryFieldOptions module', () => {
       throw new Error('seeded field missing — migration 0046 did not run')
     }
     return field.id
+  }
+
+  /** A field of a seeded category, by code — the dependency tests need two fields of one category. */
+  async function seededFieldIdIn(categoryCode: string, fieldCode: string): Promise<string> {
+    const result = await container.claimCategoryFieldsRepository.list({
+      categoryId: await getClaimCategoryIdByCode(ctx.db, categoryCode),
+      activeOnly: false,
+      includeOptions: false,
+      limit: 50,
+    })
+    const field = result.items.find((item) => item.code === fieldCode)
+    if (field === undefined) {
+      throw new Error(`seeded field ${fieldCode} missing — migration 0048 did not run`)
+    }
+    return field.id
+  }
+
+  async function seededOptionIdIn(fieldId: string, optionCode: string): Promise<string> {
+    const result = await container.claimCategoryFieldOptionsRepository.list({
+      fieldId,
+      activeOnly: false,
+      limit: 50,
+    })
+    const option = result.items.find((item) => item.code === optionCode)
+    if (option === undefined) {
+      throw new Error(`seeded option ${optionCode} missing — migration 0048 did not run`)
+    }
+    return option.id
   }
 
   describe('when listing', () => {
@@ -153,6 +181,116 @@ describe('ClaimCategoryFieldOptions module', () => {
         type: 'resource_changed',
         resource: ResourceChangedKey.ClaimCategories,
       })
+    })
+  })
+
+  describe('when an option hangs off another option', () => {
+    it('refuses a parent from another category', async () => {
+      const machiningPart = await seededFieldIdIn('MASINSKA_OBRADA', 'obradjeni_deo')
+
+      await expect(
+        container.claimCategoryFieldOptionsService.create(
+          {
+            fieldId: await seededFieldIdIn('REMONT_MOTORA', 'pojava_kvara'),
+            code: 'ventili',
+            name: 'Ventili ne zaptivaju',
+            parentOptionId: await seededOptionIdIn(machiningPart, 'glava'),
+          },
+          MANAGER,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('refuses a parent from the SAME field', async () => {
+      const partField = await seededFieldIdIn('REMONT_MOTORA', 'sklop_u_kvaru')
+
+      await expect(
+        container.claimCategoryFieldOptionsService.create(
+          {
+            fieldId: partField,
+            code: 'polomljen',
+            name: 'Polomljen',
+            parentOptionId: await seededOptionIdIn(partField, 'glava'),
+          },
+          MANAGER,
+        ),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('refuses an option as its own parent on update', async () => {
+      const faultField = await seededFieldIdIn('REMONT_MOTORA', 'pojava_kvara')
+      const own = await seededOptionIdIn(faultField, 'buka')
+
+      await expect(
+        container.claimCategoryFieldOptionsService.update(own, { parentOptionId: own }, MANAGER),
+      ).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('serves the parent field and option CODES on the list, and lets an update clear them', async () => {
+      const partField = await seededFieldIdIn('REMONT_MOTORA', 'sklop_u_kvaru')
+      const faultField = await seededFieldIdIn('REMONT_MOTORA', 'pojava_kvara')
+      const glava = await seededOptionIdIn(partField, 'glava')
+
+      const created = await container.claimCategoryFieldOptionsService.create(
+        {
+          fieldId: faultField,
+          code: 'ventili',
+          name: 'Ventili ne zaptivaju',
+          parentOptionId: glava,
+          sortOrder: 90,
+        },
+        MANAGER,
+      )
+      expect(created).toMatchObject({
+        parentOptionId: glava,
+        parentFieldCode: 'sklop_u_kvaru',
+        parentOptionCode: 'glava',
+      })
+
+      const listed = await container.claimCategoryFieldOptionsRepository.list({
+        fieldId: faultField,
+        activeOnly: false,
+        limit: 50,
+      })
+      expect(listed.items.find((item) => item.code === 'ventili')).toMatchObject({
+        parentFieldCode: 'sklop_u_kvaru',
+        parentOptionCode: 'glava',
+      })
+      expect(listed.items.find((item) => item.code === 'buka')?.parentOptionId).toBeNull()
+
+      const cleared = await container.claimCategoryFieldOptionsService.update(
+        created.id,
+        { parentOptionId: null },
+        MANAGER,
+      )
+      expect(cleared.parentOptionId).toBeNull()
+      expect(cleared.parentOptionCode).toBeNull()
+    })
+
+    it('gives the claims port the parent, retired parents included', async () => {
+      const categoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
+      const partField = await seededFieldIdIn('REMONT_MOTORA', 'sklop_u_kvaru')
+      const glava = await seededOptionIdIn(partField, 'glava')
+
+      await container.claimCategoryFieldOptionsService.create(
+        {
+          fieldId: await seededFieldIdIn('REMONT_MOTORA', 'pojava_kvara'),
+          code: 'ventili',
+          name: 'Ventili ne zaptivaju',
+          parentOptionId: glava,
+        },
+        MANAGER,
+      )
+      // The parent goes out of the catalogue: a claim that carries the child still has to read.
+      await container.claimCategoryFieldOptionsService.update(glava, { isActive: false }, MANAGER)
+
+      const fields = await container.claimCategoryFieldsRepository.listForCategory(categoryId)
+      const faultOptions = fields.find((field) => field.code === 'pojava_kvara')?.options ?? []
+      expect(faultOptions.find((option) => option.code === 'ventili')?.parent).toEqual({
+        fieldCode: 'sklop_u_kvaru',
+        optionCode: 'glava',
+      })
+      expect(faultOptions.find((option) => option.code === 'buka')?.parent).toBeNull()
     })
   })
 

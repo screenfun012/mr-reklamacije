@@ -1,4 +1,5 @@
 import { and, asc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import { categoryFieldOptionUsageCountSql } from '../../core/claims/category-field-usage-sql.js'
 import type { ApiDatabase } from '../../core/database.js'
@@ -28,7 +29,18 @@ interface OptionRow {
   deactivatedAt: Date | null
   createdAt: Date
   usageCount: number
+  parentOptionId: string | null
+  parentFieldCode: string | null
+  parentOptionCode: string | null
 }
+
+/**
+ * The option this one hangs off, and the field that option belongs to — resolved in one read.
+ * Neither join filters on `is_active`/`deleted_at`: an option a claim carries has to keep naming
+ * what it hangs off long after the office stopped offering either of them.
+ */
+const parentOption = alias(claimCategoryFieldOptions, 'parent_option')
+const parentField = alias(claimCategoryFields, 'parent_field')
 
 const optionSelection = {
   id: claimCategoryFieldOptions.id,
@@ -41,6 +53,9 @@ const optionSelection = {
   deactivatedAt: claimCategoryFieldOptions.deactivatedAt,
   createdAt: claimCategoryFieldOptions.createdAt,
   usageCount: categoryFieldOptionUsageCountSql,
+  parentOptionId: claimCategoryFieldOptions.parentOptionId,
+  parentFieldCode: parentField.code,
+  parentOptionCode: parentOption.code,
 }
 
 function mapOption(row: OptionRow): ClaimCategoryFieldOptionListItem {
@@ -55,6 +70,9 @@ function mapOption(row: OptionRow): ClaimCategoryFieldOptionListItem {
     deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     usageCount: row.usageCount,
+    parentOptionId: row.parentOptionId,
+    parentFieldCode: row.parentFieldCode,
+    parentOptionCode: row.parentOptionCode,
   }
 }
 
@@ -99,6 +117,8 @@ export class ClaimCategoryFieldOptionsRepository {
       .select(optionSelection)
       .from(claimCategoryFieldOptions)
       .innerJoin(claimCategoryFields, eq(claimCategoryFields.id, claimCategoryFieldOptions.fieldId))
+      .leftJoin(parentOption, eq(parentOption.id, claimCategoryFieldOptions.parentOptionId))
+      .leftJoin(parentField, eq(parentField.id, parentOption.fieldId))
       .where(and(...conditions))
       .orderBy(asc(claimCategoryFieldOptions.sortOrder), asc(claimCategoryFieldOptions.id))
       .limit(query.limit + 1)
@@ -120,10 +140,23 @@ export class ClaimCategoryFieldOptionsRepository {
       .select(optionSelection)
       .from(claimCategoryFieldOptions)
       .innerJoin(claimCategoryFields, eq(claimCategoryFields.id, claimCategoryFieldOptions.fieldId))
+      .leftJoin(parentOption, eq(parentOption.id, claimCategoryFieldOptions.parentOptionId))
+      .leftJoin(parentField, eq(parentField.id, parentOption.fieldId))
       .where(and(eq(claimCategoryFieldOptions.id, id), isNull(claimCategoryFieldOptions.deletedAt)))
       .limit(1)
 
     return row === undefined ? null : mapOption(row)
+  }
+
+  /** The category a field belongs to — the parent rule is judged in the service against it. */
+  async findFieldCategoryId(fieldId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ categoryId: claimCategoryFields.categoryId })
+      .from(claimCategoryFields)
+      .where(and(eq(claimCategoryFields.id, fieldId), isNull(claimCategoryFields.deletedAt)))
+      .limit(1)
+
+    return row?.categoryId ?? null
   }
 
   async create(
@@ -153,6 +186,7 @@ export class ClaimCategoryFieldOptionsRepository {
         name: input.name,
         sortOrder: input.sortOrder ?? 0,
         isActive: true,
+        parentOptionId: input.parentOptionId ?? null,
       })
       .returning({ id: claimCategoryFieldOptions.id })
 
@@ -176,6 +210,8 @@ export class ClaimCategoryFieldOptionsRepository {
       .set({
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+        // `null` clears the dependency; an absent key leaves it alone.
+        ...(input.parentOptionId !== undefined ? { parentOptionId: input.parentOptionId } : {}),
         ...(input.isActive !== undefined
           ? {
               isActive: input.isActive,

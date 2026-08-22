@@ -1,4 +1,5 @@
 import { and, asc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import {
   categoryFieldOptionUsageCountSql,
@@ -41,6 +42,14 @@ interface FieldRow {
   createdAt: Date
   usageCount: number
 }
+
+/**
+ * An option's parent and the field that parent belongs to. Neither join filters on
+ * `is_active`/`deleted_at` — `listForCategory` deliberately returns retired rows, and an option a
+ * claim carries has to keep naming what it hangs off.
+ */
+const parentOption = alias(claimCategoryFieldOptions, 'parent_option')
+const parentField = alias(claimCategoryFields, 'parent_field')
 
 const fieldSelection = {
   id: claimCategoryFields.id,
@@ -162,9 +171,14 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
         deactivatedAt: claimCategoryFieldOptions.deactivatedAt,
         createdAt: claimCategoryFieldOptions.createdAt,
         usageCount: categoryFieldOptionUsageCountSql,
+        parentOptionId: claimCategoryFieldOptions.parentOptionId,
+        parentFieldCode: parentField.code,
+        parentOptionCode: parentOption.code,
       })
       .from(claimCategoryFieldOptions)
       .innerJoin(claimCategoryFields, eq(claimCategoryFields.id, claimCategoryFieldOptions.fieldId))
+      .leftJoin(parentOption, eq(parentOption.id, claimCategoryFieldOptions.parentOptionId))
+      .leftJoin(parentField, eq(parentField.id, parentOption.fieldId))
       .where(
         and(
           inArray(claimCategoryFieldOptions.fieldId, fieldIds),
@@ -186,6 +200,9 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
         deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
         createdAt: row.createdAt.toISOString(),
         usageCount: row.usageCount,
+        parentOptionId: row.parentOptionId,
+        parentFieldCode: row.parentFieldCode,
+        parentOptionCode: row.parentOptionCode,
       })
       grouped.set(row.fieldId, list)
     }
@@ -218,8 +235,12 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
         fieldId: claimCategoryFieldOptions.fieldId,
         code: claimCategoryFieldOptions.code,
         isActive: claimCategoryFieldOptions.isActive,
+        parentFieldCode: parentField.code,
+        parentOptionCode: parentOption.code,
       })
       .from(claimCategoryFieldOptions)
+      .leftJoin(parentOption, eq(parentOption.id, claimCategoryFieldOptions.parentOptionId))
+      .leftJoin(parentField, eq(parentField.id, parentOption.fieldId))
       .where(
         and(
           inArray(
@@ -234,7 +255,14 @@ export class ClaimCategoryFieldsRepository implements CategoryFieldsPort {
       ...field,
       options: options
         .filter((option) => option.fieldId === field.id)
-        .map((option) => ({ code: option.code, isActive: option.isActive })),
+        .map((option) => ({
+          code: option.code,
+          isActive: option.isActive,
+          parent:
+            option.parentFieldCode === null || option.parentOptionCode === null
+              ? null
+              : { fieldCode: option.parentFieldCode, optionCode: option.parentOptionCode },
+        })),
     }))
   }
 
