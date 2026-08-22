@@ -129,7 +129,11 @@ function DashboardContent(): ReactElement {
         <ClaimsTrendCard months={summary.chart} />
       </div>
 
-      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+      {/* auto-fit, not lg:grid-cols-3: `lg:` fires on a 1024 VIEWPORT, but the sidebar takes 236
+          of it and three columns then leave each ledger row 199px — the actor name got 19px
+          for 138px of text and read as empty (measured 2026-08-22). The row is the prototype's
+          and is fine at the ~340px it was drawn for; what was wrong is being handed 199. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3.5">
         <RecentChangesCard items={recentChanges} />
         <RecentClaimsCard items={summary.recent} />
         <OverdueClaimsCard items={summary.overdue} />
@@ -155,7 +159,7 @@ function DashboardSkeleton(): ReactElement {
         <Skeleton className="h-[300px] w-full" />
         <Skeleton className="h-[300px] w-full" />
       </div>
-      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3.5">
         <Skeleton className="h-[220px] w-full" />
         <Skeleton className="h-[220px] w-full" />
         <Skeleton className="h-[220px] w-full" />
