@@ -1,12 +1,91 @@
+import { queryOptions } from '@tanstack/react-query'
+
+import { fetchNoContent } from '../api/fetch-no-content.js'
+import { fetchParsed } from '../api/fetch-json.js'
+import {
+  ChatConversationListResponseSchema,
+  ChatMessageSchema,
+  ChatMessagesPageSchema,
+  type ChatMessage,
+  type ChatMessagesPage,
+  type ChatSendInput,
+} from '../schemas/chat.schema.js'
+
 /**
- * Query keys for the chat. Only the keys live here for now — the fetchers land with the screen.
+ * The list is refreshed by the SSE signal, not by the clock — this only stops a burst of
+ * navigations from asking three times in a second.
+ */
+const CHAT_CONVERSATIONS_STALE_MS = 15_000
+
+/**
+ * Query keys for the chat.
  *
- * They exist this early because the SSE handler needs something to invalidate the moment the
- * server starts publishing `chat_message_created`, and a signal nobody acts on is the quiet way
- * a realtime feature ends up not being realtime.
+ * They exist separately from the fetchers because the SSE handler needs something to invalidate
+ * the moment the server publishes `chat_message_created`, and a signal nobody acts on is the
+ * quiet way a realtime feature ends up not being realtime.
  */
 export const chatKeys = {
   all: ['chat'] as const,
   conversations: () => [...chatKeys.all, 'conversations'] as const,
   messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
+}
+
+/** Every conversation this person may enter, plus the ONE unread number the sidebar shows. */
+export function chatConversationsOptions() {
+  return queryOptions({
+    queryKey: chatKeys.conversations(),
+    queryFn: () => fetchParsed('/api/chat/conversations', ChatConversationListResponseSchema),
+    staleTime: CHAT_CONVERSATIONS_STALE_MS,
+  })
+}
+
+/**
+ * The newest page of a conversation. Older pages are asked for with `beforeSeq` from this
+ * page's cursor; this call takes none, so it always means "what is at the bottom right now".
+ *
+ * ⚠ `staleTime: 0` because a chat is never stale, and `refetchOnWindowFocus: false` because
+ * recovery — refetching from `maxSeen - CHAT_RECOVERY_OVERLAP` on reconnect and on the tab
+ * becoming visible — is the mechanism that guarantees nothing was missed. Leaving focus-refetch
+ * on would double-fetch AND hide a broken recovery behind it, which is the one failure this
+ * design cannot afford to make invisible.
+ */
+export function chatMessagesOptions(conversationId: string) {
+  return queryOptions({
+    queryKey: chatKeys.messages(conversationId),
+    queryFn: () =>
+      fetchParsed<ChatMessagesPage>(
+        `/api/chat/conversations/${conversationId}/messages`,
+        ChatMessagesPageSchema,
+      ),
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Sends one message. The server answers 201 with the new row and 200 with the row a retry of
+ * the same `clientMsgId` already created — both are the same shape, so the caller replaces its
+ * optimistic row either way and a retry can never post twice.
+ */
+export function sendChatMessage(
+  conversationId: string,
+  input: ChatSendInput,
+): Promise<ChatMessage> {
+  return fetchParsed(`/api/chat/conversations/${conversationId}/messages`, ChatMessageSchema, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+/**
+ * Marks everything up to `lastSeq` read. `seq` is a Postgres bigint and travels as a string —
+ * turning it into a JS number here is the one place it could silently lose precision.
+ */
+export function markChatRead(conversationId: string, lastSeq: string): Promise<void> {
+  return fetchNoContent(`/api/chat/conversations/${conversationId}/read`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lastSeq }),
+  })
 }
