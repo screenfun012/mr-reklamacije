@@ -1,6 +1,7 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 import type * as schema from '../schema/index.js'
+import { seedGeneralChannel } from './chat.js'
 import { seedClaimSources } from './claim-sources.js'
 import { seedDepartments } from './departments.js'
 import { seedEngineManufacturers } from './engine-manufacturers.js'
@@ -35,5 +36,6 @@ export async function runSystemSeeds(
     await seedClaimSources(tx)
     await seedEngineManufacturers(tx)
     await seedIntakeCatalogs(tx)
+    await seedGeneralChannel(tx)
   })
 }

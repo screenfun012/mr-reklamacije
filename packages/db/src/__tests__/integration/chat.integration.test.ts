@@ -9,6 +9,7 @@ import type pg from 'pg'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { createDb, createPool } from '../../client.js'
+import { seedGeneralChannel } from '../../seed/chat.js'
 import * as schema from '../../schema/index.js'
 import { getIntegrationDatabaseUrl } from '../../test-helpers/integration-db.js'
 
@@ -146,15 +147,19 @@ describe('migration 0053 — the chat tables', () => {
     )
   })
 
-  it('allows only one general channel', async () => {
-    const createdBy = await anyUserId()
-    await db
-      .insert(schema.chatConversations)
-      .values({ type: 'general', name: 'Opšti kanal', createdBy })
+  it('allows only one general channel — the seeded one', async () => {
+    // The system seed already made it (`seedGeneralChannel`), so this asserts the real state of
+    // every environment: a second general channel cannot stand next to it, whoever tries.
+    const [seeded] = await db
+      .select({ name: schema.chatConversations.name })
+      .from(schema.chatConversations)
+      .where(eq(schema.chatConversations.type, 'general'))
+    expect(seeded?.name).toBe('Opšti kanal')
+
     await expectConstraint(
       db
         .insert(schema.chatConversations)
-        .values({ type: 'general', name: 'Drugi opšti', createdBy }),
+        .values({ type: 'general', name: 'Drugi opšti', createdBy: await anyUserId() }),
       'uq_chat_conversations_general',
     )
   })
@@ -244,5 +249,24 @@ describe('migration 0053 — the chat tables', () => {
       .where(eq(schema.chatMessages.id, message?.id ?? ''))
     // SET NULL, never CASCADE (spec §4): a person leaves, what was said about a claim stays.
     expect(kept).toEqual({ body: 'dokaz', authorId: null })
+  })
+})
+
+describe('the general channel seed', () => {
+  it('creates exactly one, and a second run creates none', async () => {
+    // The suite's own transaction already holds whatever globalSetup seeded, so start from clean.
+    await db.delete(schema.chatConversations).where(eq(schema.chatConversations.type, 'general'))
+
+    await seedGeneralChannel(db)
+    await seedGeneralChannel(db)
+
+    const rows = await db
+      .select({ name: schema.chatConversations.name })
+      .from(schema.chatConversations)
+      .where(eq(schema.chatConversations.type, 'general'))
+
+    // Idempotent — a system seed runs on every deploy someone types it, and on every fresh
+    // environment. A second general channel is not a duplicate row, it is a split shop.
+    expect(rows).toEqual([{ name: 'Opšti kanal' }])
   })
 })
