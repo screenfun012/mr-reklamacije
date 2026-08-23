@@ -37,6 +37,7 @@ import {
   IntakeChecklistItemsService,
 } from '../modules/intake-checklist-items/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
+import { ChatRepository, ChatService } from '../modules/chat/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { DashboardRepository, DashboardService } from '../modules/dashboard/index.js'
 import { StatisticsRepository, StatisticsService } from '../modules/statistics/index.js'
@@ -118,6 +119,8 @@ export interface Container {
   engineTypesService: EngineTypesService
   engineManufacturersRepository: EngineManufacturersRepository
   engineManufacturersService: EngineManufacturersService
+  chatRepository: ChatRepository
+  chatService: ChatService
   claimCategoriesRepository: ClaimCategoriesRepository
   claimCategoriesService: ClaimCategoriesService
   claimCategoryFieldsRepository: ClaimCategoryFieldsRepository
@@ -241,6 +244,9 @@ export function buildContainer(
     eventBus,
     notificationsService,
   )
+
+  const chatRepository = new ChatRepository(db)
+  const chatService = new ChatService(chatRepository)
 
   const claimCategoriesRepository = new ClaimCategoriesRepository(db)
   const claimCategoriesService = new ClaimCategoriesService(
@@ -480,6 +486,8 @@ export function buildContainer(
     engineTypesService,
     engineManufacturersRepository,
     engineManufacturersService,
+    chatRepository,
+    chatService,
     claimCategoriesRepository,
     claimCategoriesService,
     claimCategoryFieldsRepository,

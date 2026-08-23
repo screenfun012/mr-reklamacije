@@ -32,6 +32,7 @@ import { registerClaimsRoutes } from '../modules/claims/index.js'
 import { registerDashboardRoutes } from '../modules/dashboard/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
 import { registerEngineManufacturersRoutes } from '../modules/engine-manufacturers/index.js'
+import { registerChatRoutes } from '../modules/chat/index.js'
 import { registerClaimCategoriesRoutes } from '../modules/claim-categories/index.js'
 import { registerClaimCategoryFieldsRoutes } from '../modules/claim-category-fields/index.js'
 import { registerClaimCategoryFieldOptionsRoutes } from '../modules/claim-category-field-options/index.js'
@@ -330,6 +331,24 @@ export function createNotificationsTestApp(
   })
 
   registerNotificationsRoutes(app, container)
+
+  return app
+}
+
+export function createChatTestApp(
+  container: Container,
+  user: MRSessionUser | null,
+): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>()
+  registerGlobalErrorHandler(app, container.logger)
+
+  app.use('*', async (c, next) => {
+    c.set('user', user)
+    c.set('session', null)
+    await next()
+  })
+
+  registerChatRoutes(app, container)
 
   return app
 }
