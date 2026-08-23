@@ -24,14 +24,19 @@ describe('the claims entry', () => {
 })
 
 describe('internal navigation gating', () => {
-  it('shows a serviser nothing but Servis', () => {
-    expect(keysFor([...SERVISER_PERMISSIONS])).toEqual(['servis'])
+  it('shows a serviser Servis and Razgovori, and nothing else', () => {
+    // Razgovori joined on 2026-08-23. It is gated on INTERNAL_APP_PERMISSIONS on purpose — the
+    // chat is the whole internal shop, the serviser included (chat spec §3.4, Nikola's N4).
+    expect(keysFor([...SERVISER_PERMISSIONS])).toEqual(['razgovori', 'servis'])
   })
 
-  it('is what makes the sidebar disappear for him — a single entry has nothing to navigate between', () => {
-    // The shell renders the sidebar only above one item; this pins the input to that rule
-    // so a stray ungated nav entry cannot silently give a serviser a sidebar back.
-    expect(keysFor([...SERVISER_PERMISSIONS]).length).toBeLessThan(2)
+  it('names his entries exactly, so a stray ungated one cannot slip in beside them', () => {
+    // This used to assert "fewer than two", because one entry means the shell draws no sidebar.
+    // The chat legitimately gave him a second, so counting no longer says anything — but the
+    // reason the guard exists does: an entry that forgot its `permissions` would appear HERE,
+    // and an exact list still catches it. The serviser having a sidebar is now expected.
+    expect(keysFor([...SERVISER_PERMISSIONS])).toEqual(['razgovori', 'servis'])
+    expect(keysFor([])).toEqual([])
   })
 
   it('gives the office the whole menu, Servis included', () => {
@@ -47,6 +52,9 @@ describe('internal navigation gating', () => {
     // Regression: both were ungated, so a serviser would have seen a claim-shaped dashboard
     // and a statistics screen he holds no permission to read (docs/25 §3.1).
     expect(keysFor([])).toEqual([])
-    expect(keysFor([...STATISTICS_VIEW_PERMISSIONS])).toEqual(['statistika'])
+    // `statistics.view_*` is part of INTERNAL_APP_PERMISSIONS, so this account reaches the chat
+    // too — that is the point of gating chat on "may enter the internal app" rather than on a
+    // permission of its own (Nikola, 2026-08-23).
+    expect(keysFor([...STATISTICS_VIEW_PERMISSIONS])).toEqual(['razgovori', 'statistika'])
   })
 })
