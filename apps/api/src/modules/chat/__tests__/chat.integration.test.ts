@@ -5,6 +5,7 @@ import {
   ChatEventType,
   ChatMessageSchema,
   ChatMessagesPageSchema,
+  ChatSystemKind,
   type Permission,
 } from '@mr/shared'
 import { eq } from 'drizzle-orm'
@@ -36,6 +37,9 @@ const PORTAL_CLIENT_PERMISSIONS = [
   'emotive_claims.view_own_customer',
 ] as const satisfies readonly Permission[]
 
+/** Somebody else in the shop. Unread is only ever what SOMEONE ELSE said. */
+const OTHER_USER_ID = '00000000-0000-4000-8000-0000000000ff'
+
 describe('Chat', () => {
   let ctx: TestDbContext
   let container: Container
@@ -49,6 +53,7 @@ describe('Chat', () => {
     bus = new RecordingEventBus()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, bus)
     await ensureTestUser(ctx.db)
+    await ensureTestUser(ctx.db, OTHER_USER_ID)
 
     const [manufacturer] = await ctx.db
       .insert(schema.engineManufacturers)
@@ -99,13 +104,22 @@ describe('Chat', () => {
     await ctx.cleanup()
   })
 
-  async function sendRaw(conversationId: string, body: string): Promise<void> {
-    await ctx.db.insert(schema.chatMessages).values({
-      conversationId,
-      clientMsgId: crypto.randomUUID(),
-      authorId: TEST_USER_ID,
-      body,
-    })
+  async function sendRaw(
+    conversationId: string,
+    body: string,
+    authorId = TEST_USER_ID,
+  ): Promise<bigint> {
+    const [row] = await ctx.db
+      .insert(schema.chatMessages)
+      .values({ conversationId, clientMsgId: crypto.randomUUID(), authorId, body })
+      .returning({ seq: schema.chatMessages.seq })
+
+    return row?.seq ?? 0n
+  }
+
+  async function unreadOf(conversationId: string): Promise<number> {
+    const list = await container.chatService.listConversations(CLAIM_READER)
+    return list.items.find((item) => item.id === conversationId)?.unreadCount ?? -1
   }
 
   it('lists the general channel for anyone who may enter the internal app', async () => {
@@ -293,6 +307,86 @@ describe('Chat', () => {
       body: 'ne bih smeo ovde',
     })
     expect(res.status).toBe(404)
+  })
+
+  it('counts what other people said, and never my own', async () => {
+    await sendRaw(generalId, 'moja poruka')
+    await sendRaw(generalId, 'tuđa prva', OTHER_USER_ID)
+    await sendRaw(generalId, 'tuđa druga', OTHER_USER_ID)
+
+    const list = await container.chatService.listConversations(CLAIM_READER)
+    expect(list.items.find((item) => item.id === generalId)?.unreadCount).toBe(2)
+    expect(list.unreadTotal).toBe(2)
+  })
+
+  it('never counts a system message — it is a record, not somebody talking', async () => {
+    await ctx.db.insert(schema.chatMessages).values({
+      conversationId: generalId,
+      clientMsgId: crypto.randomUUID(),
+      authorId: null,
+      body: '',
+      systemKind: ChatSystemKind.OutcomeChanged,
+    })
+
+    expect(await unreadOf(generalId)).toBe(0)
+  })
+
+  it('never counts a deleted message', async () => {
+    await sendRaw(generalId, 'povučeno', OTHER_USER_ID)
+    await ctx.db.update(schema.chatMessages).set({ deletedAt: new Date() })
+
+    expect(await unreadOf(generalId)).toBe(0)
+  })
+
+  it('never moves a read marker backwards', async () => {
+    const first = await sendRaw(generalId, 'prva', OTHER_USER_ID)
+    await sendRaw(generalId, 'druga', OTHER_USER_ID)
+    const last = await sendRaw(generalId, 'treća', OTHER_USER_ID)
+
+    await container.chatService.markRead(generalId, last, CLAIM_READER)
+    // The late one: sent before the other, arriving after it. It must change nothing.
+    await container.chatService.markRead(generalId, first, CLAIM_READER)
+
+    expect(await unreadOf(generalId)).toBe(0)
+  })
+
+  it('counts only what came after the marker', async () => {
+    const first = await sendRaw(generalId, 'prva', OTHER_USER_ID)
+    await sendRaw(generalId, 'druga', OTHER_USER_ID)
+    await sendRaw(generalId, 'treća', OTHER_USER_ID)
+
+    await container.chatService.markRead(generalId, first, CLAIM_READER)
+
+    expect(await unreadOf(generalId)).toBe(2)
+  })
+
+  it('keeps a muted conversation out of the sum but not out of its own badge', async () => {
+    await sendRaw(generalId, 'tuđa', OTHER_USER_ID)
+    await ctx.db
+      .insert(schema.chatMutes)
+      .values({ conversationId: generalId, userId: TEST_USER_ID })
+
+    const list = await container.chatService.listConversations(CLAIM_READER)
+    expect(list.items.find((item) => item.id === generalId)?.unreadCount).toBe(1)
+    expect(list.unreadTotal).toBe(0)
+  })
+
+  it('answers 204 to a read marker, and 404 where the conversation is not his', async () => {
+    const reader = createChatTestApp(container, testUser([...CLAIM_READER_PERMISSIONS]))
+    const ok = await reader.request(`/api/chat/conversations/${generalId}/read`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lastSeq: '1' }),
+    })
+    expect(ok.status).toBe(204)
+
+    const serviser = createChatTestApp(container, testUser([...SERVISER_PERMISSIONS]))
+    const hidden = await serviser.request(`/api/chat/conversations/${emotiveThreadId}/read`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lastSeq: '1' }),
+    })
+    expect(hidden.status).toBe(404)
   })
 
   it('answers both reads in the shape the client is promised', async () => {

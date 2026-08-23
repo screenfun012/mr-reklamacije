@@ -103,6 +103,13 @@ export class ChatService {
     return { message, created: stored.created }
   }
 
+  /** No audit entry: how far someone has read is view-tracking, not a business state change. */
+  async markRead(conversationId: string, lastSeq: bigint, actor: ChatActor): Promise<void> {
+    const scope = await this.requireVisible(conversationId, actor)
+
+    await this.repo.markRead(conversationId, scope.userId, lastSeq)
+  }
+
   /**
    * Best-effort, after the write, and it never throws back at the sender: the message is stored,
    * and a bus that is down must not turn a delivered message into a 500. The listeners recover on

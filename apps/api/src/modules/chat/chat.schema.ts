@@ -4,6 +4,7 @@ export const chatConversations = schema.chatConversations
 export const chatMembers = schema.chatMembers
 export const chatMessages = schema.chatMessages
 export const chatMutes = schema.chatMutes
+export const chatReads = schema.chatReads
 export const chatReactions = schema.chatReactions
 export const emotiveClaims = schema.emotiveClaims
 export const domaceClaims = schema.domaceClaims

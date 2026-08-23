@@ -2,6 +2,7 @@ import { ChatConversationListResponseSchema } from '@mr/shared'
 import { z } from 'zod'
 
 export {
+  ChatMarkReadInputSchema,
   ChatMessagesQuerySchema,
   ChatSendInputSchema,
   type ChatConversationListItem,

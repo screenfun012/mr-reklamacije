@@ -8,6 +8,7 @@ import {
   chatMessages,
   chatMutes,
   chatReactions,
+  chatReads,
   customers,
   domaceClaims,
   emotiveClaims,
@@ -42,6 +43,7 @@ interface ConversationRow {
   domaceClaimNumber: string | null
   domaceCustomerName: string | null
   isMuted: boolean
+  unreadCount: number
   lastMessageAt: string | null
 }
 
@@ -112,6 +114,33 @@ const lastMessageAtSql = sql<string | null>`(
   WHERE ${chatMessages.conversationId} = ${chatConversations.id}
 )`
 
+/**
+ * The ONE unread number (spec §3.2): everything after this person's marker in `chat_reads`, and
+ * nothing else. No marker yet means nothing has been read, so the count starts from zero.
+ *
+ * Three exclusions, and the third is deliberate rather than incidental:
+ *  - a deleted message has no words left to read;
+ *  - my own message is not news to me;
+ *  - a SYSTEM message never counts — it is a record, not somebody talking. `author_id` is NULL
+ *    there, so `author_id <> me` would already drop it (NULL comparisons are never true), but the
+ *    rule is written out because relying on that is how it comes back the day the comparison is
+ *    rewritten.
+ */
+function unreadCountSql(userId: string): SQL<number> {
+  return sql<number>`(
+    SELECT COUNT(*)::int FROM ${chatMessages}
+    WHERE ${chatMessages.conversationId} = ${chatConversations.id}
+      AND ${chatMessages.deletedAt} IS NULL
+      AND ${chatMessages.authorId} IS NOT NULL
+      AND ${chatMessages.authorId} <> ${userId}
+      AND ${chatMessages.seq} > COALESCE((
+        SELECT ${chatReads.lastSeq} FROM ${chatReads}
+        WHERE ${chatReads.conversationId} = ${chatConversations.id}
+          AND ${chatReads.userId} = ${userId}
+      ), 0)
+  )`.mapWith(Number)
+}
+
 function mapConversationRow(row: ConversationRow): ChatConversationListItem {
   const isClaimThread = row.type === ChatConversationType.Claim
   const title = isClaimThread
@@ -130,8 +159,7 @@ function mapConversationRow(row: ConversationRow): ChatConversationListItem {
           ? ClaimKind.Domace
           : null,
     claimId: row.emotiveClaimId ?? row.domaceClaimId,
-    // Task 5 computes this from `chat_reads`; until then nothing has been read and nothing counts.
-    unreadCount: 0,
+    unreadCount: row.unreadCount,
     isMuted: row.isMuted,
     lastMessageAt: row.lastMessageAt === null ? null : new Date(row.lastMessageAt).toISOString(),
   }
@@ -271,6 +299,25 @@ export class ChatRepository {
     return existing === undefined ? null : { id: existing.id, created: false }
   }
 
+  /**
+   * ⚠ `GREATEST`, never a plain assignment. Read receipts are throttled and fired from a screen
+   * that scrolls, so two of them race routinely — and the late one carries the OLDER seq. A plain
+   * `SET last_seq = EXCLUDED.last_seq` would walk the marker backwards and make messages the
+   * person has already read light up again as unread.
+   */
+  async markRead(conversationId: string, userId: string, lastSeq: bigint): Promise<void> {
+    await this.db
+      .insert(chatReads)
+      .values({ conversationId, userId, lastSeq })
+      .onConflictDoUpdate({
+        target: [chatReads.conversationId, chatReads.userId],
+        set: {
+          lastSeq: sql`GREATEST(${chatReads.lastSeq}, excluded.last_seq)`,
+          updatedAt: new Date(),
+        },
+      })
+  }
+
   async findMessageById(id: string, userId: string): Promise<ChatMessage | null> {
     const [row] = await this.messageSelect(userId).where(eq(chatMessages.id, id)).limit(1)
     return row === undefined ? null : mapMessageRow(row)
@@ -321,6 +368,7 @@ export class ChatRepository {
         domaceMrNumber: domaceClaims.mrNumber,
         domaceClaimNumber: domaceClaims.claimNumber,
         domaceCustomerName: domaceClaims.customerName,
+        unreadCount: unreadCountSql(scope.userId),
         isMuted: sql<boolean>`EXISTS (
           SELECT 1 FROM ${chatMutes}
           WHERE ${chatMutes.conversationId} = ${chatConversations.id}
