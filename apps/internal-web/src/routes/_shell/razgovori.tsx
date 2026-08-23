@@ -11,7 +11,9 @@ import { Suspense, useState } from 'react'
 
 import { KindPill } from '~/components/kind-pill'
 import { ConversationList } from '~/features/chat/conversation-list'
+import { ConversationPane } from '~/features/chat/conversation-pane'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
+import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 
 export const Route = createFileRoute('/_shell/razgovori')({
   // Whoever may enter the internal app may talk in it — written in permissions, exactly like the
@@ -91,9 +93,21 @@ function ConversationHeading({
   )
 }
 
+/** The pane's own waiting state — switching conversations must never blank the list beside it. */
+function MessagesSkeleton(): React.ReactElement {
+  return (
+    <div className="flex flex-1 flex-col gap-3.5 p-4" aria-hidden="true">
+      <SkeletonBlock className="h-10 w-2/3" />
+      <SkeletonBlock className="h-10 w-1/2" />
+      <SkeletonBlock className="h-10 w-3/5" />
+    </div>
+  )
+}
+
 function RazgovoriColumns(): React.ReactElement {
   const { data } = useSuspenseQuery(chatConversationsOptions())
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { userName } = useInternalAuthUser()
 
   // The general channel is where a person lands: it is the one conversation that always exists.
   const fallback =
@@ -112,9 +126,18 @@ function RazgovoriColumns(): React.ReactElement {
         <header className="flex h-[52px] flex-none items-center gap-2.5 border-b border-mri-border bg-mri-surface px-4">
           {current === null ? null : <ConversationHeading conversation={current} />}
         </header>
-        <div className="flex flex-1 items-center justify-center p-4 text-center text-[12px] text-mri-text2">
-          {m.chat_messages_placeholder()}
-        </div>
+        {current === null ? null : (
+          // Keyed by the conversation: the NOVO rule, the scroll position and anything still in
+          // flight belong to the one that is open, and none of them may follow it to the next.
+          <Suspense key={current.id} fallback={<MessagesSkeleton />}>
+            <ConversationPane
+              conversationId={current.id}
+              unreadCount={current.unreadCount}
+              authorName={userName}
+              isThread={current.type === ChatConversationType.Claim}
+            />
+          </Suspense>
+        )}
       </section>
     </div>
   )

@@ -56,3 +56,32 @@ export function formatChartMonth(isoMonth: string, locale: 'sr' | 'en'): string 
     .replace('.', '')
     .toUpperCase()
 }
+
+/**
+ * "10:42" for a message written today, "22.08. 16:20" for one written before it.
+ *
+ * Same clock as everything else on these screens, and for the same reason: the wire carries UTC,
+ * Railway runs in UTC, and a message sent at 00:30 Belgrade would otherwise be filed under the
+ * previous day for everybody reading it.
+ *
+ * Numbers only, so there is nothing here to translate — and deliberately no "JUČE": that word in
+ * the prototype is typed into a fixture, not computed, and a relative day needs a translated
+ * string this package has no access to.
+ */
+export function formatChatTime(iso: string, now: Date = new Date()): string {
+  const at = new Date(iso)
+  const dayOf = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: SHOP_TIME_ZONE,
+  })
+  const clock = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: SHOP_TIME_ZONE,
+  }).format(at)
+
+  const day = dayOf.format(at)
+  return day === dayOf.format(now) ? clock : `${day.replace('/', '.')}. ${clock}`
+}
