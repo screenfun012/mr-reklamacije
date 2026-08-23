@@ -19,7 +19,7 @@ Legenda: ✅ urađeno · 🔄 u izradi · ⏳ čeka svoj korak · ❌ svesno van
 | 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 | ⏳ |
 | 4 | Poruka: avatar, vreme, izmenjeno, link-ikonica, citat, slike, PDF/XLS kartica, reakcija ✓, viđeno | 2, 4, 7 | ⏳ |
 | 5 | Čip niti u kanalu + podeljena kartica reklamacije + „Podeli u razgovor" na detalju | 3 | ⏳ |
-| 6 | Sistemske poruke (pilula, amber ↻) + NOVO separator | 2, 5 | 🔄 *(server strana gotova u koraku 1)* |
+| 6 | Sistemske poruke (pilula, amber ↻) + NOVO separator | 2, 5 | 🔄 *(server ih piše od koraka 1: ishod, objava, promena kategorije)* |
 | 7 | Composer: brzi odgovori, prilog, kamera, placeholder po režimu, POŠALJI primarno, Enter | 2, 4 | ⏳ |
 | 8 | Kontekst panel: kartica reklamacije, OTVORI REKLAMACIJU, prikačeno, prilozi | 3, 4, 7 | ⏳ |
 | 9 | Oba dijaloga (nit sa pretragom i NAPRAVI +/NIT POSTOJI; kanal sa članovima) | 3, 6 | ⏳ |
@@ -45,9 +45,9 @@ Ovo su odluke iz našeg spec-a §5 i §10 — nisu u handoff-ovoj listi, ali se 
 | Klijent sa portala ne vidi ništa od četa | 1 | ✅ |
 | Citat ostaje u svom razgovoru | 1 | ✅ |
 | Opšti kanal postoji u svakom okruženju (seed) | 1 | ✅ |
-| Nit reklamacije = ista kroz sva tri ulaza | 1 | 🔄 |
-| Sistemski događaj **ne pravi** nit | 1 | 🔄 |
-| Izmena samo 15 minuta, brisanje meko | 1 | ⏳ *(korak 1, zadatak 7)* |
+| Nit reklamacije = ista kroz sva tri ulaza | 1 | ✅ |
+| Sistemski događaj **ne pravi** nit | 1 | ✅ |
+| Izmena samo 15 minuta, brisanje meko | 1 | 🔄 |
 | Oporavak propuštenog (`afterSeq` + preklapanje) — klijentska polovina | 2 | ⏳ |
 | Čuvar tišine 45 s + imenovan `ping` | 2 | ⏳ |
 | Prilozi iz četa se **ne vide klijentu** (`chat_attachment`) | 4 | ⏳ |
