@@ -32,14 +32,14 @@ isporučio je drugi spisak ispod, i on je temelj na kome ekran stoji.
 | 1 | Tri kolone tačnih širina (252 / flex / 250), panel samo u niti, ⓘ toggle | 2, 3 | ✅ *(dokazano u pregledaču 23.08.)* |
 | 2 | Lista: DND, pretraga, KANALI + „+", NITI + „+", badge/MUTE/aktivno stanje, kind tačke | 2, 3, 6 | 🔄 *(sve stoji; pretraga zasivljena do koraka 7, „+" dijalozi su koraci 3 i 6)* |
 | 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 | ✅ *(oba, dokazano u pregledaču 23.08.)* |
-| 4 | Poruka: avatar, vreme, izmenjeno, link-ikonica, citat, slike, PDF/XLS kartica, reakcija ✓, viđeno | 2, 4, 7 | 🔄 *(avatar, vreme, izmenjeno gotovi; ostalo su koraci 4 i 7)* |
+| 4 | Poruka: avatar, vreme, izmenjeno, link-ikonica, citat, slike, PDF/XLS kartica, reakcija ✓, viđeno | 2, 4, 7 | 🔄 *(avatar, vreme, izmenjeno, **citat**, **kvačice** gotovi; slike/PDF su korak 4, reakcija korak 7; „link-ikonica" iz prototipa nije napravljena)* |
 | 5 | Čip niti u kanalu + podeljena kartica reklamacije + „Podeli u razgovor“ na detalju | 3 | ❗ *(NIJE napravljeno — a `chat_threads_footer` na ekranu već pominje to dugme)* |
 | 6 | Sistemske poruke (pilula, amber ↻) + NOVO separator | 2, 5 | 🔄 *(server ih piše od koraka 1: ishod, objava, promena kategorije)* |
 | 7 | Composer: brzi odgovori, prilog, kamera, placeholder po režimu, POŠALJI primarno, Enter | 2, 4 | 🔄 *(sve osim priloga i kamere, koji su nacrtani i namerno neaktivni do koraka 4)* |
 | 7b | **@ autocomplete** — kucanje `@` otvara meni članova, strelice + Enter biraju (handoff §5) | pomen | ✅ *(meni, sužavanje, strelice, Enter, Escape — dokazano u pregledaču)* |
 | 8 | Kontekst panel: kartica reklamacije, OTVORI REKLAMACIJU, prikačeno, prilozi | 3, 4, 7 | 🔄 *(kartica i OTVORI REKLAMACIJU dokazani u pregledaču; prilozi = korak 4, prikačeno = korak 7)* |
 | 9 | Oba dijaloga (nit sa pretragom i NAPRAVI +/NIT POSTOJI; kanal sa članovima) | 3, 6 | 🔄 *(dijalog niti stoji i dokazan u pregledaču; kanal sa članovima je korak 6)* |
-| 10 | Obaveštenja: popup + zvono, @pomen kroz mute, DND, zbir na meniju, viđeno | pomen, 5 | 🔄 *(zvono i popup za @pomen rade i probijaju utišanu nit; „viđeno" je korak 7)* |
+| 10 | Obaveštenja: popup + zvono, @pomen kroz mute, DND, zbir na meniju, viđeno | pomen, 5 | 🔄 *(zvono, popup i DND rade; „viđeno" je isporučeno kao KVAČICE — vidi dodatak; push je korak 5)* |
 | 11 | Tab „Razgovor“ u detalju = ista nit | 3 | ✅ *(dokazano u pregledaču: poruka napisana u niti vidi se i na tabu)* |
 | 12 | BEZ „kuca…" indikatora i online tačke | — | ✅ *(ne pravi se; nema ga ni u modelu)* |
 | 13 | Nijedno dugme puna crvena ispuna | 2 | ✅ |
@@ -114,6 +114,40 @@ razgovora iz `/api/chat`, ne iz korisnika.
 ⚠ I još jedno: fusnota kontekst panela **već danas piše** da pomeni idu u zvono i popup. To je
 tačan opis dogovora, ali ne i onoga što aplikacija trenutno radi — rečenica je obećanje dok se
 pomen ne napravi.
+
+## Nikolina lista „hoću da ovo bude moćan messenger" (23.08.)
+
+Posle pomena je pogledao čet i naveo šta još hoće. Ovo nije iz handoff-a — to je novi obim, i ovde
+stoji da se ne izgubi.
+
+| stavka | stanje |
+| --- | --- |
+| U polju ne sme da piše `@[ime](uuid)` — nego ime, kao u poruci | ✅ `7d3e6af` |
+| Odgovor na određenu poruku (WhatsApp reply) | ✅ `8cb7c6d` |
+| Kvačice: jedna dok ide, dve kad je poslata, dve plave kad su svi videli | ✅ `6303b2f` |
+| Nit se zatvara kad reklamacija dobije ishod; čita se samo na reklamaciji; vraćanje je otvara | ✅ `d964195` |
+| Admin briše sobu napravljenu greškom, „kao da nikada nije bila" | ✅ `5d458b1` |
+| Reakcije i pin **na ekranu** (server je gotov od koraka 1) | ⏳ sledeće |
+| Prilozi i kamera | ⏳ korak 4 |
+| Push na telefon | ⏳ korak 5 — **nula linija u repou** |
+| Kanali po temi | ⏳ korak 6 — kanal se danas ne može ni napraviti |
+
+**Odgovori na dva pitanja koja je postavio:**
+
+- **Obaveštenja u aplikaciji rade** — dokazano u pregledaču sa dva naloga.
+- **Push ne postoji.** Nema service workera, pretplate ni ključeva.
+
+**Ispravka koju je tražio i koja je prihvaćena:** nit se ne „arhivira ali ostaje otvorena" (moj
+predlog) nego se **zaključava** čim reklamacija dobije ishod. Njegov razlog je jači: zatvorena
+reklamacija nema šta da se dopisuje, a razgovor ostaje uz nju kao dokaz.
+
+**Odgovor na brigu o memoriji, brojevima:** godina ćaskanja ≈ 22 MB, cela produkciona baza je danas
+12,6 MB, deset godina ≈ 250 MB. Masu imaju prilozi, ne tekst. Zato brisanje sobe postoji **za
+grešku**, a ne kao alat za čišćenje istorije.
+
+⚠ **Čeka Nikolu:** dva naloga imenom „Nikola Admin" daju dva ista reda u meniju pomena. Razlikuje ih
+samo mejl, a prikazivanje mejla znači da svaki interni nalog vidi tuđe adrese. Predlog: preimenovati
+jedan u admin panelu.
 
 ## Svesno van obima ovog posla (piše se u primopredaji, ne prećutkuje se)
 
