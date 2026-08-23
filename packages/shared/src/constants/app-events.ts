@@ -47,3 +47,10 @@ export type AppEvent =
   | ClientSubmissionAppEvent
   | NotificationAppEvent
   | ChatAppEvent
+
+/**
+ * The stream's own pulse. Named rather than an SSE comment, so the browser can SEE it: a comment
+ * line is discarded by `EventSource`, which is why a dead connection used to look alive on both
+ * sides. It carries no data — its arrival is the whole message.
+ */
+export const SSE_PING_EVENT = 'ping'

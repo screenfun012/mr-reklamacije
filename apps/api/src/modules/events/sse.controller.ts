@@ -1,3 +1,4 @@
+import { SSE_PING_EVENT } from '@mr/shared'
 import type { Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
 
@@ -32,11 +33,21 @@ export function createSseController(container: Container) {
           customerIds,
         )
 
+        /**
+         * A NAMED event, not the `:heartbeat` comment it used to be.
+         *
+         * `EventSource` discards comment lines entirely, so the old heartbeat was invisible to the
+         * browser — and Hono's `stream.write` swallows the error on a dead socket, so it was
+         * invisible to us too. When TCP dies without an RST (Wi-Fi handing over to mobile, a VPN
+         * dropping, a laptop lid closing) neither side noticed: the page sat there looking
+         * connected and silent. For a claim badge that is a nuisance; for a chat it is a message
+         * that never arrives. Named, the client can watch for it and reconnect on silence.
+         */
         const heartbeat = setInterval(() => {
           if (stream.aborted) {
             return
           }
-          void stream.write(':heartbeat\n\n')
+          void stream.writeSSE({ data: '', event: SSE_PING_EVENT })
         }, SSE_HEARTBEAT_MS)
 
         // Resolve on client disconnect OR when the lifetime cap elapses; the
