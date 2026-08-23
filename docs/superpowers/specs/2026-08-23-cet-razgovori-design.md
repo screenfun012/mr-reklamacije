@@ -200,6 +200,12 @@ Osam pravila. Svako imenuje fajl. Ko izmisli alternativu, greši — alternative
 | registracija + prekidač za dozvolu | `_shell.tsx` + nov ekran u podešavanjima |
 | pretplata, čuvanje, slanje, čišćenje | nov modul `apps/api/src/modules/push/` + migracija |
 
+**Prečica na telefonu je CELA interna aplikacija, ne čet** (Nikola, 23.08.). Manifest se zove „MR Interna", `start_url: '/'` — ikonica otvara Početnu ako je nalog prijavljen. Čet je stavka u meniju kao i svaki drugi modul. **Klik na obaveštenje je druga stvar:** vodi pravo u taj razgovor (`data.url` → ako je aplikacija već otvorena u nekom tabu, prebacuje se na njega preko `clients.matchAll`, inače otvara nov).
+
+**Ikonica čeka Nikolin vektor** (23.08.) — iz njega se izvoze 192, 512, 512-maskable i **neprovidna** 180×180 za iPhone. Do tada Android „predlog za instalaciju" ne iskače; ručno dodavanje i ceo iOS put rade i bez toga.
+
+**`web-push` je odobrena zavisnost** (Nikola, 23.08.) — potpisivanje i `aes128gcm` šifrovanje se ne pišu ručno.
+
 **Ključne činjenice, proverene u našem buildu, ne po sećanju:**
 - `public/**` se kopira u koren sajta (dokaz: `favicon.png`, `internal/logo-white.png`) i nitro sam dodeljuje ispravan MIME i `.webmanifest`-u i `.js`-u.
 - CSP nam **ne smeta**: `worker-src` pada na `script-src 'self'`.
