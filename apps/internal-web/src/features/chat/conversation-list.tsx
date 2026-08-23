@@ -130,23 +130,32 @@ function SectionHeader({
   label,
   addTitle,
   className,
+  onAdd,
 }: {
   label: string
   addTitle: string
   className?: string
+  /** Absent while the dialog behind it does not exist yet — the button then says so. */
+  onAdd?: (() => void) | undefined
 }): React.ReactElement {
   return (
     <div className={cn('flex items-center px-[10px] pb-[5px] pt-0.5', className)}>
       <span className="font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2">
         {label}
       </span>
-      {/* Drawn because the prototype draws it; inert until the two dialogs land, and it says so
-          rather than swallowing a click. */}
       <button
         type="button"
-        disabled
+        disabled={onAdd === undefined}
+        onClick={onAdd}
         title={addTitle}
-        className="ml-auto grid size-5 place-items-center rounded-md border border-mri-border2 text-[13px] leading-none text-mri-text2 opacity-60"
+        className={cn(
+          'ml-auto grid size-5 place-items-center rounded-md border border-mri-border2 text-[13px] leading-none text-mri-text2',
+          // Inert where the dialog behind it does not exist yet — and saying so in its tooltip
+          // rather than swallowing a click.
+          onAdd === undefined
+            ? 'opacity-60'
+            : 'transition-colors hover:border-mri-text2 hover:text-mri-text',
+        )}
       >
         +
       </button>
@@ -158,6 +167,8 @@ export interface ConversationListProps {
   items: readonly ChatConversationListItem[]
   activeId: string | null
   onSelect: (id: string) => void
+  /** Opens the „Nova nit" dialog. */
+  onNewThread: () => void
 }
 
 /** The left column: DND, search, the channels, the claim threads, and how a thread comes to be. */
@@ -165,6 +176,7 @@ export function ConversationList({
   items,
   activeId,
   onSelect,
+  onNewThread,
 }: ConversationListProps): React.ReactElement {
   const [dnd, setDnd] = useStoredFlag(DND_STORAGE_KEY, false)
 
@@ -219,6 +231,7 @@ export function ConversationList({
           label={m.chat_section_threads()}
           addTitle={m.chat_new_thread_title()}
           className="pt-3"
+          onAdd={onNewThread}
         />
         {threads.length === 0 ? (
           <p role="status" className="px-[10px] py-1.5 text-[11px] text-mri-text2">

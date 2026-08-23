@@ -6,7 +6,7 @@ import {
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { ConfirmDialog } from '@mr/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 
 import { showInternalToast } from '~/lib/internal-toast'
 
@@ -22,6 +22,27 @@ export function findClaimThread(
   claimId: string,
 ): ChatConversationListItem | null {
   return items.find((item) => item.claimId === claimId) ?? null
+}
+
+/**
+ * Makes a claim's thread and opens what came back — the one write both doors share (the chip in
+ * a message, and the „Nova nit" dialog).
+ */
+export function useCreateClaimThread(
+  onOpened: (conversationId: string) => void,
+): UseMutationResult<ChatConversationListItem, Error, MrRegistryExistingClaim> {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (claim: MrRegistryExistingClaim) => openChatClaimThread(claim.kind, claim.claimId),
+    onSuccess: async (conversation) => {
+      // Awaited: the screen picks the open conversation out of this list, so opening the new
+      // thread before the list carries it would land back on the general channel.
+      await queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+      onOpened(conversation.id)
+      showInternalToast(m.chat_thread_created_toast())
+    },
+  })
 }
 
 export interface ClaimThreadConfirmProps {
@@ -43,18 +64,7 @@ export function ClaimThreadConfirm({
   onCancel,
   onOpened,
 }: ClaimThreadConfirmProps): React.ReactElement {
-  const queryClient = useQueryClient()
-
-  const create = useMutation({
-    mutationFn: (claim: MrRegistryExistingClaim) => openChatClaimThread(claim.kind, claim.claimId),
-    onSuccess: async (conversation) => {
-      // Awaited: the screen picks the open conversation out of this list, so opening the new
-      // thread before the list carries it would land back on the general channel.
-      await queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
-      onOpened(conversation.id)
-      showInternalToast(m.chat_thread_created_toast())
-    },
-  })
+  const create = useCreateClaimThread(onOpened)
 
   return (
     <ConfirmDialog

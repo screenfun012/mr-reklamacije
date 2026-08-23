@@ -13,6 +13,7 @@ import { Suspense, useState } from 'react'
 import { KindPill } from '~/components/kind-pill'
 import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
+import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
 import { ClaimThreadConfirm, findClaimThread } from '~/features/chat/open-claim-thread'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
@@ -110,6 +111,7 @@ function RazgovoriColumns(): React.ReactElement {
   const { data } = useSuspenseQuery(chatConversationsOptions())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
+  const [newThreadOpen, setNewThreadOpen] = useState(false)
   const { userName } = useInternalAuthUser()
 
   /**
@@ -136,6 +138,7 @@ function RazgovoriColumns(): React.ReactElement {
         items={data.items}
         activeId={current?.id ?? null}
         onSelect={setSelectedId}
+        onNewThread={() => setNewThreadOpen(true)}
       />
 
       <section className="flex min-w-0 flex-1 flex-col bg-mri-bg">
@@ -156,6 +159,13 @@ function RazgovoriColumns(): React.ReactElement {
           </Suspense>
         )}
       </section>
+
+      <NewThreadDialog
+        open={newThreadOpen}
+        onOpenChange={setNewThreadOpen}
+        conversations={data.items}
+        onOpened={setSelectedId}
+      />
 
       <ClaimThreadConfirm
         target={pendingThread}

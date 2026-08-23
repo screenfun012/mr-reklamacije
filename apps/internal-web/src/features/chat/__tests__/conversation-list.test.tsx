@@ -109,7 +109,12 @@ describe('ConversationList', () => {
 
   it('lists the threads unread first, newest next', () => {
     render(
-      <ConversationList items={[GENERAL, ...THREADS]} activeId={GENERAL.id} onSelect={vi.fn()} />,
+      <ConversationList
+        items={[GENERAL, ...THREADS]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+      />,
     )
 
     expect(mrNumbers()).toEqual(['MR 7167/25', 'MR 7102/25', 'MR 7195/25', 'MR 7089/25'])
@@ -134,7 +139,14 @@ describe('ConversationList', () => {
   })
 
   it('marks a muted thread and hides its count', () => {
-    render(<ConversationList items={[GENERAL, ...THREADS]} activeId={null} onSelect={vi.fn()} />)
+    render(
+      <ConversationList
+        items={[GENERAL, ...THREADS]}
+        activeId={null}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+      />,
+    )
 
     const mutedRow = threadRows().find((row) => row.textContent?.includes('MR 7089/25'))
     expect(within(mutedRow as HTMLElement).getByText('MUTE')).toBeInTheDocument()
@@ -144,7 +156,12 @@ describe('ConversationList', () => {
 
   it('lights exactly one row — the conversation you are in', () => {
     render(
-      <ConversationList items={[GENERAL, ...THREADS]} activeId={UNREAD.id} onSelect={vi.fn()} />,
+      <ConversationList
+        items={[GENERAL, ...THREADS]}
+        activeId={UNREAD.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+      />,
     )
 
     const current = screen
@@ -156,14 +173,28 @@ describe('ConversationList', () => {
   })
 
   it('says the threads section is empty instead of drawing nothing', () => {
-    render(<ConversationList items={[GENERAL]} activeId={GENERAL.id} onSelect={vi.fn()} />)
+    render(
+      <ConversationList
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+      />,
+    )
 
     expect(screen.getByRole('status')).toHaveTextContent('Još nema nijedne niti.')
     expect(threadRows()).toHaveLength(0)
   })
 
   it('says what the search box will do rather than pretending to do it', () => {
-    render(<ConversationList items={[GENERAL]} activeId={GENERAL.id} onSelect={vi.fn()} />)
+    render(
+      <ConversationList
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+      />,
+    )
 
     const search = screen.getByPlaceholderText('Pretraga poruka…')
     expect(search).toBeDisabled()
@@ -172,7 +203,14 @@ describe('ConversationList', () => {
 
   it('remembers Do Not Disturb in this browser, and says that is what it means', async () => {
     const user = userEvent.setup()
-    render(<ConversationList items={[GENERAL]} activeId={GENERAL.id} onSelect={vi.fn()} />)
+    render(
+      <ConversationList
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+      />,
+    )
 
     const dnd = screen.getByRole('button', { name: 'DND' })
     expect(dnd).toHaveAttribute(
@@ -184,5 +222,26 @@ describe('ConversationList', () => {
 
     expect(dnd).toHaveAttribute('aria-pressed', 'true')
     expect(localStorage.getItem('mrr:internal:chat:dnd')).toBe('1')
+  })
+
+  it('opens the „Nova nit" dialog from the + beside the threads', async () => {
+    const user = userEvent.setup()
+    const onNewThread = vi.fn()
+    render(
+      <ConversationList
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={onNewThread}
+      />,
+    )
+
+    // The accessible name of both + buttons is "+", so the tooltip is what tells them apart.
+    const add = screen.getByTitle('Nova nit — izaberi reklamaciju')
+    expect(add).toBeEnabled()
+
+    await user.click(add)
+
+    expect(onNewThread).toHaveBeenCalled()
   })
 })
