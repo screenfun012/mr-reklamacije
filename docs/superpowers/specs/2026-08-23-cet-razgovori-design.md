@@ -202,7 +202,9 @@ Osam pravila. Svako imenuje fajl. Ko izmisli alternativu, greši — alternative
 
 **Prečica na telefonu je CELA interna aplikacija, ne čet** (Nikola, 23.08.). Manifest se zove „MR Interna", `start_url: '/'` — ikonica otvara Početnu ako je nalog prijavljen. Čet je stavka u meniju kao i svaki drugi modul. **Klik na obaveštenje je druga stvar:** vodi pravo u taj razgovor (`data.url` → ako je aplikacija već otvorena u nekom tabu, prebacuje se na njega preko `clients.matchAll`, inače otvara nov).
 
-**Ikonica čeka Nikolin vektor** (23.08.) — iz njega se izvoze 192, 512, 512-maskable i **neprovidna** 180×180 za iPhone. Do tada Android „predlog za instalaciju" ne iskače; ručno dodavanje i ceo iOS put rade i bez toga.
+**Ikonice su napravljene (23.08.)** — `apps/internal-web/public/icons/`: `icon-192`, `icon-512`, `icon-512-maskable`, `apple-touch-icon` (180, **neprovidna**, jer iOS providnu podlaže crnom). Izvor je Nikolin `MR` znak 512×512 (`design_handoff_chat/mr-mark-512-source.png`), na brend tamnoj `#0b0b0d`.
+⚠ **Pun amblem (majstor u zupčaniku) NIJE upotrebljen, i to je merena odluka:** na 180px je čitak, na **60px — a to je veličina na telefonu — pretvara se u mrlju**, jer se „SINCE 1968" i lik izgube. Jednostavan `MR` znak se čita na svakoj veličini. Amblem ostaje logo, nije ikonica.
+⚠ **Maskable je zaseban fajl sa znakom na 58% širine**, ne isti fajl: Android podrazumevanu ikonicu seče u krug i odseca ivice; maskable ima sadržaj unutar bezbednog kruga.
 
 **`web-push` je odobrena zavisnost** (Nikola, 23.08.) — potpisivanje i `aes128gcm` šifrovanje se ne pišu ručno.
 
