@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { findMentions, MENTION_EVERYONE_ID } from '../find-mentions.js'
+import { findMentions, MENTION_EVERYONE_ID, uniqueMentions } from '../find-mentions.js'
 
 const UUID = 'a1b2c3d4-1111-4111-8111-abcdefabcdef'
 
@@ -52,6 +52,24 @@ describe('findMentions', () => {
   it('normalises the id, so the same person is one recipient however it was written', () => {
     const upper = UUID.toUpperCase()
     expect(findMentions(`@[Ana](${upper})`)[0]?.id).toBe(UUID)
+  })
+
+  it('mentions a person whose name is long — an account may carry 200 characters', () => {
+    // At 80 the cap silently un-mentioned anybody with a long name: no error, no bell, and the
+    // raw `@[Ime](uuid)` markup left sitting in the message.
+    const long = 'A'.repeat(150)
+    expect(findMentions(`@[${long}](${UUID})`)[0]?.id).toBe(UUID)
+
+    // Past the cap it is words again, not a half-drawn chip.
+    expect(findMentions(`@[${'A'.repeat(201)}](${UUID})`)).toEqual([])
+  })
+
+  it('uniqueMentions keeps the first of each person, in writing order', () => {
+    const OTHER = 'b1b2c3d4-1111-4111-8111-abcdefabcdef'
+    const found = uniqueMentions(`@[Prvi](${UUID}) @[Drugi](${OTHER}) @[Opet](${UUID})`)
+
+    expect(found.map((mention) => mention.id)).toEqual([UUID, OTHER])
+    expect(found[0]?.label).toBe('Prvi')
   })
 
   it('gives back offsets that cut the text exactly', () => {

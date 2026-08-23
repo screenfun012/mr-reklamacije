@@ -4,7 +4,10 @@ import {
   findMentions,
   getInitials,
   INTERNAL_APP_PERMISSIONS,
+  INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
+  INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
   MENTION_EVERYONE_ID,
+  uniqueMentions,
   SYSTEM_ROLE_ADMIN,
   UserAccountStatus,
   type ChatMention,
@@ -42,6 +45,31 @@ export interface ChatPersonRow {
   id: string
   name: string
   email: string
+}
+
+/**
+ * Which permission opens this conversation — the same sets `scopeFor` reads, never a literal.
+ *
+ * ⚠ A `switch` with `never` on the end rather than an `if`: a fourth conversation type (a direct
+ * message is the obvious one) would otherwise land in the general branch and offer the WHOLE
+ * internal office as mentionable in a two-person room, with typecheck still green.
+ */
+function claimReaderPermissions(conversation: ChatConversationListItem): Permission[] {
+  switch (conversation.type) {
+    case ChatConversationType.Claim:
+      return conversation.claimKind === ClaimKind.Domace
+        ? [...INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS]
+        : [...INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS]
+    case ChatConversationType.General:
+      return [...INTERNAL_APP_PERMISSIONS]
+    case ChatConversationType.Channel:
+      // Handled by its own branch above — a channel's people are its member rows, not a permission.
+      return []
+    default: {
+      const unreachable: never = conversation.type
+      return unreachable
+    }
+  }
 }
 
 /**
@@ -201,35 +229,29 @@ function mapConversationRow(row: ConversationRow): ChatConversationListItem {
 }
 
 /**
+ * Every person a message names, once each, in writing order.
+ *
+ * ⚠ The once-each rule is `uniqueMentions` from `@mr/shared`, not a `Set` here: the composer has to
+ * produce this same field for the row it shows before the server answers, and the one time this
+ * rule lived in two places the second copy forgot it.
+ *
+ * An id that resolves to nobody keeps the label that was typed — and nobody means nobody LIVE, so
+ * a colleague whose account is closed reads under the name he had when the sentence was written.
+ * That is both true and kinder than blanking the word out of somebody's message.
+ */
+function mentionsOf(body: string, names: ReadonlyMap<string, string>): ChatMention[] {
+  return uniqueMentions(body).map((mention) => ({
+    id: mention.id,
+    // Empty for `@svi`: the server does not write Serbian, the screen names that one.
+    name: mention.id === MENTION_EVERYONE_ID ? '' : (names.get(mention.id) ?? mention.label),
+  }))
+}
+
+/**
  * ⚠ Mentions are read from the body this function PUBLISHES, not from the stored one. A deleted
  * message publishes empty words, so it publishes no mentions either — otherwise the row would keep
  * naming people out of a sentence nobody can read any more.
  */
-/**
- * Every person a message names, once each, in writing order.
- *
- * A name that resolves to nothing keeps the label that was typed: an account can be deleted, and
- * blanking the word out of somebody's sentence is worse than an old name.
- */
-function mentionsOf(body: string, names: ReadonlyMap<string, string>): ChatMention[] {
-  const seen = new Set<string>()
-  const mentions: ChatMention[] = []
-
-  for (const mention of findMentions(body)) {
-    if (seen.has(mention.id)) {
-      continue
-    }
-    seen.add(mention.id)
-    mentions.push({
-      id: mention.id,
-      // Empty for `@svi`: the server does not write Serbian, the screen names that one.
-      name: mention.id === MENTION_EVERYONE_ID ? '' : (names.get(mention.id) ?? mention.label),
-    })
-  }
-
-  return mentions
-}
-
 function mapMessageRow(row: MessageRow, names: ReadonlyMap<string, string>): ChatMessage {
   const body = row.deletedAt === null ? row.body : ''
   return {
@@ -276,20 +298,21 @@ export class ChatRepository {
   }
 
   /**
-   * The people who may see this conversation, and therefore the only people a mention here may
-   * name. Three different questions, one per type: the general channel is the whole internal
-   * office, a claim thread is whoever may read that claim, a channel is its members.
-   *
-   * ⚠ The `admin` branch matches by role CODE, not by `role_permissions`. The permission resolver
-   * hard-codes ALL_PERMISSIONS for admins, so an admin may own zero junction rows and a plain join
-   * would drop the one account that can always be reached. Same reason, same shape as the
-   * notifications fan-out — the two must agree or a mention promises what the bell cannot keep.
-   */
-  /**
    * The names behind every id mentioned across these bodies — ONE query for a whole page.
    *
    * Per message it would be one request per chip, and a busy channel draws fifty of them. The
    * reserved `@svi` id belongs to nobody and is never looked up.
+   *
+   * ⚠ Only LIVE accounts, the same filter the mention menu uses. Without it, writing any uuid into
+   * a message published that account's current name to the room — a closed account, a rejected
+   * one, a portal client. The menu offers nobody who is not live, so an id that is not live was
+   * either typed by hand or belongs to somebody who has since left; both read better as the name
+   * that was written at the time.
+   *
+   * ⚠ `inArray` emits one bind parameter per id, so a page whose bodies carry ~9,500 distinct
+   * mentions plans a 9,500-element `IN`. That is far under libpq's 65,535 and needs somebody to
+   * paste ~95 mentions into a single message, so it is left as it is — but if a page ever feels
+   * slow with a wall of mentions in it, this is the line, and `= ANY($1::uuid[])` is the shape.
    */
   private async resolveMentionNames(bodies: readonly string[]): Promise<Map<string, string>> {
     const ids = new Set<string>()
@@ -307,11 +330,26 @@ export class ChatRepository {
     const rows = await this.db
       .select({ id: users.id, name: users.name })
       .from(users)
-      .where(inArray(users.id, [...ids]))
+      .where(and(isLiveAccount(), inArray(users.id, [...ids])))
 
     return new Map(rows.map((row) => [row.id, row.name]))
   }
 
+  /**
+   * The people who may see this conversation, and therefore the only people a mention here may
+   * name. Three different questions, one per type: the general channel is the whole internal
+   * office, a claim thread is whoever may read that claim, a channel is its members.
+   *
+   * ⚠ The `admin` branch matches by role CODE, not by `role_permissions`. The permission resolver
+   * hard-codes ALL_PERMISSIONS for admins, so an admin may own zero junction rows and a plain join
+   * would drop the one account that can always be reached. Same reason, same shape as the
+   * notifications fan-out — the two must agree or a mention promises what the bell cannot keep.
+   *
+   * ⚠ The claim branch reads the INTERNAL_* SETS, never the permission strings. `scopeFor` decides
+   * who is IN the room from those same sets; typing the literal here means the day a set gains a
+   * member, somebody standing in the room cannot be found in its mention menu — and both halves
+   * stay green, because each is consistent with itself.
+   */
   async listPeopleFor(conversation: ChatConversationListItem): Promise<ChatPersonRow[]> {
     if (conversation.type === ChatConversationType.Channel) {
       return this.db
@@ -322,14 +360,7 @@ export class ChatRepository {
         .orderBy(users.name)
     }
 
-    const permissions: Permission[] =
-      conversation.type === ChatConversationType.Claim
-        ? [
-            conversation.claimKind === ClaimKind.Domace
-              ? 'domace_claims.view'
-              : 'emotive_claims.view',
-          ]
-        : [...INTERNAL_APP_PERMISSIONS]
+    const permissions: Permission[] = claimReaderPermissions(conversation)
 
     return this.db
       .selectDistinct({ id: users.id, name: users.name, email: users.email })

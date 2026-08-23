@@ -31,7 +31,12 @@ export { isIntakeConditionRecorded } from './utils/intake-condition-recorded.js'
 export { freeFieldsFor } from './utils/intake-free-fields.js'
 export { normalizeMrKey } from './utils/normalize-mr-key.js'
 export { findMrCandidates, type MrCandidate } from './utils/find-mr-candidates.js'
-export { findMentions, MENTION_EVERYONE_ID, type MentionMatch } from './utils/find-mentions.js'
+export {
+  findMentions,
+  MENTION_EVERYONE_ID,
+  uniqueMentions,
+  type MentionMatch,
+} from './utils/find-mentions.js'
 export { normalizeName, toAsciiDisplay } from './utils/normalize-name.js'
 export { parseExcelDate } from './utils/parse-excel-date.js'
 export {

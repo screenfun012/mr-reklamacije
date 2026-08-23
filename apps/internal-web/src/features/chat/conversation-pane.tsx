@@ -1,8 +1,8 @@
 import {
   CHAT_READ_THROTTLE_MS,
   chatKeys,
-  findMentions,
   MENTION_EVERYONE_ID,
+  uniqueMentions,
   chatMessagesOptions,
   markChatRead,
   sendChatMessage,
@@ -138,7 +138,9 @@ export function ConversationPane({
         // Read straight off what was just typed, so the chip is there from the first paint. The
         // server's own row replaces this one a moment later with the name the database holds —
         // which is the same name, unless somebody was renamed between typing and sending.
-        mentions: findMentions(body).map((mention) => ({
+        // ⚠ `uniqueMentions`, the SAME rule the server applies: the wire promises each person
+        // once, and a row that names somebody twice renders two chips under one key.
+        mentions: uniqueMentions(body).map((mention) => ({
           id: mention.id,
           name: mention.id === MENTION_EVERYONE_ID ? '' : mention.label,
         })),

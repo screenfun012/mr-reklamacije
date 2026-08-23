@@ -562,6 +562,41 @@ describe('Chat', () => {
       expect(ids).not.toContain(gone)
     })
 
+    it('answers the weakest internal account too — the general channel is the whole shop', async () => {
+      // A serviser holds intake permissions and nothing else. He passes the chat door, so he is in
+      // the general channel, so he must be able to name the people standing in it with him. This
+      // IS the endpoint's widest exposure and it is deliberate: to mention somebody you have to be
+      // able to find them. Nothing else in the app would tell him these names.
+      const reader = await makeUser('Citalac Reklamacija', 'claims_view')
+
+      const { status, ids } = await peopleIn(generalId, SERVISER_PERMISSIONS)
+
+      expect(status).toBe(200)
+      expect(ids).toContain(reader)
+    })
+
+    it('offers a channel to its members and to nobody else', async () => {
+      // Channels cannot be created yet (that is step 6), so this builds one directly — otherwise
+      // the branch ships the day channels do, having never once run.
+      const member = await makeUser('Clan Kanala', 'claims_view')
+      const outsider = await makeUser('Nije Clan', 'claims_view')
+      const [channel] = await ctx.db
+        .insert(schema.chatConversations)
+        .values({ type: ChatConversationType.Channel, name: 'Nabavka' })
+        .returning({ id: schema.chatConversations.id })
+      const channelId = channel?.id ?? ''
+      await ctx.db.insert(schema.chatMembers).values([
+        { conversationId: channelId, userId: member },
+        { conversationId: channelId, userId: TEST_USER_ID },
+      ])
+
+      const { status, ids } = await peopleIn(channelId, CLAIM_READER_PERMISSIONS)
+
+      expect(status).toBe(200)
+      expect(ids).toContain(member)
+      expect(ids).not.toContain(outsider)
+    })
+
     it('answers 404 for a conversation the caller cannot see', async () => {
       // Not 403: a thread he may not read is, for him, not there.
       const { status } = await peopleIn(emotiveThreadId, SERVISER_PERMISSIONS)
@@ -576,6 +611,18 @@ describe('Chat', () => {
    * somebody typed (§5 row 7).
    */
   describe('a message carries its mentions', () => {
+    /**
+     * Only a LIVE account is offered by the mention menu, and only a live account has its name
+     * published. `ensureTestUser` leaves the status at `pending`, so every test that expects a
+     * name back has to say so.
+     */
+    async function makeLive(userId: string, name?: string): Promise<void> {
+      await ctx.db
+        .update(schema.users)
+        .set({ isActive: true, accountStatus: 'approved', ...(name === undefined ? {} : { name }) })
+        .where(eq(schema.users.id, userId))
+    }
+
     async function readNewestMentions(conversationId: string) {
       const app = createChatTestApp(container, testUser([...CLAIM_READER_PERMISSIONS]))
       const res = await app.request(`/api/chat/conversations/${conversationId}/messages?limit=10`)
@@ -584,6 +631,7 @@ describe('Chat', () => {
     }
 
     it('resolves the mention to the name the database holds NOW, not the one that was typed', async () => {
+      await makeLive(OTHER_USER_ID)
       await sendRaw(generalId, `zdravo @[Staro Ime](${OTHER_USER_ID}), pogledaj`)
       await ctx.db
         .update(schema.users)
@@ -599,15 +647,24 @@ describe('Chat', () => {
       expect(await readNewestMentions(generalId)).toEqual([{ id: 'all', name: '' }])
     })
 
-    it('keeps the typed label when the account behind the id is gone', async () => {
-      const vanished = '00000000-0000-4000-8000-0000000000aa'
-      await sendRaw(generalId, `hvala @[Bivši Kolega](${vanished})`)
+    it('keeps the typed label for a colleague whose account has since been closed', async () => {
+      // The row is still there — this app soft-deletes people — so the ONLY thing keeping his
+      // current name out of the room is the live-account filter on the lookup. Without it, closing
+      // an account still publishes its name to everyone who scrolls back.
+      await makeLive(OTHER_USER_ID, 'Ime Posle Odlaska')
+      await sendRaw(generalId, `hvala @[Bivši Kolega](${OTHER_USER_ID})`)
+      await ctx.db
+        .update(schema.users)
+        .set({ isActive: false })
+        .where(eq(schema.users.id, OTHER_USER_ID))
 
-      // A deleted account must not blank the sentence — the words a person wrote stay readable.
-      expect(await readNewestMentions(generalId)).toEqual([{ id: vanished, name: 'Bivši Kolega' }])
+      expect(await readNewestMentions(generalId)).toEqual([
+        { id: OTHER_USER_ID, name: 'Bivši Kolega' },
+      ])
     })
 
     it('names each person once, however many times they were written', async () => {
+      await makeLive(OTHER_USER_ID, 'Jedan Covek')
       await sendRaw(generalId, `@[A](${OTHER_USER_ID}) i opet @[B](${OTHER_USER_ID})`)
 
       expect(await readNewestMentions(generalId)).toHaveLength(1)

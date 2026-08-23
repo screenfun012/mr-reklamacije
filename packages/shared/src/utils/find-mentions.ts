@@ -19,7 +19,11 @@ export interface MentionMatch {
   id: string
 }
 
-const MENTION_PATTERN = /@\[([^\]\n]{1,80})\]\(([0-9a-fA-F-]{36}|all)\)/g
+// 200 to match the longest name an account can be created with (`ClientRegistrationInputSchema`).
+// At 80 a person with a long name simply stopped being mentionable — no error, no bell, and the
+// raw `@[Ime](uuid)` markup sitting in the message. The cap counts UTF-16 units, so a name with
+// emoji costs two per glyph; 200 leaves room for that too.
+const MENTION_PATTERN = /@\[([^\]\n]{1,200})\]\(([0-9a-fA-F-]{36}|all)\)/g
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
@@ -56,4 +60,23 @@ export function findMentions(text: string): MentionMatch[] {
   }
 
   return found
+}
+
+/**
+ * The same list, with each person only once — in the order they were first written.
+ *
+ * It lives beside the parser because BOTH producers of the wire need it: the server when it reads a
+ * page, and the composer for the row it shows before the server answers. The rule was written twice
+ * once already, and the second copy forgot it.
+ */
+export function uniqueMentions(text: string): MentionMatch[] {
+  const seen = new Set<string>()
+
+  return findMentions(text).filter((mention) => {
+    if (seen.has(mention.id)) {
+      return false
+    }
+    seen.add(mention.id)
+    return true
+  })
 }
