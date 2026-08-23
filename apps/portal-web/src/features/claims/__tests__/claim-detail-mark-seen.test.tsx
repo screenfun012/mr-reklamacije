@@ -141,6 +141,13 @@ async function renderDetail(queryClient: QueryClient): Promise<ReturnType<typeof
     getParentRoute: () => rootRoute,
     path: '/claims/$id',
     component,
+    // Copied so the first paint is synchronous. buildQueryClient seeds the detail and the
+    // attachments, but the component also reads the portal summary — un-seeded, that one query
+    // suspended the whole screen inside the assertion's 1000 ms window.
+    loader: Route.options.loader as never,
+    // Without a pending component the match gets no Suspense boundary of its own, so anything
+    // still loading renders as a blank document instead of the skeleton production paints.
+    pendingComponent: Route.options.pendingComponent as never,
   })
   const claimsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -150,6 +157,7 @@ async function renderDetail(queryClient: QueryClient): Promise<ReturnType<typeof
   const router = createRouter({
     routeTree: rootRoute.addChildren([idRoute, claimsRoute]),
     history: createMemoryHistory({ initialEntries: [`/claims/${CLAIM_ID}`] }),
+    context: { queryClient } as never,
   })
   await router.load()
 
@@ -169,7 +177,7 @@ describe('claim detail mark-seen on open', () => {
     const queryClient = buildQueryClient()
 
     await renderDetail(queryClient)
-    expect(await screen.findByText('MR-7167')).toBeInTheDocument()
+    expect(screen.getByText('MR-7167')).toBeInTheDocument()
 
     await waitFor(() => {
       const markSeenCalls = fetchMock.mock.calls.filter(
@@ -199,7 +207,7 @@ describe('claim detail mark-seen on open', () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
     await renderDetail(queryClient)
-    await screen.findByText('MR-7167')
+    expect(screen.getByText('MR-7167')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith(
@@ -233,7 +241,7 @@ describe('claim detail mark-seen on open', () => {
 
     const { unmount } = await renderDetail(queryClient)
 
-    expect(await screen.findByText('MR-7167')).toBeInTheDocument()
+    expect(screen.getByText('MR-7167')).toBeInTheDocument()
     expect(queryClient.getQueryData(clientClaimKeys.detail(CLAIM_ID))).toBeDefined()
 
     unmount()

@@ -89,6 +89,8 @@ function stubFetch(): ReturnType<typeof vi.fn> {
 
 async function renderDashboard(): Promise<void> {
   const component = Route.options.component as () => React.JSX.Element
+  // Built before the router, because the router is what hands it to the loader.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const rootRoute = createRootRoute()
   // The component reads its deps through getRouteApi('/claims/'), so the harness has to
   // reproduce that id — an index child under /claims, not a plain /claims route.
@@ -99,6 +101,12 @@ async function renderDashboard(): Promise<void> {
     component,
     validateSearch: Route.options.validateSearch as never,
     loaderDeps: Route.options.loaderDeps as never,
+    // The loader is what makes the first paint synchronous — without it the component itself
+    // fetches, and the wait lands inside the assertion's window instead of inside router.load().
+    loader: Route.options.loader as never,
+    // Without a pending component the match gets no Suspense boundary of its own, so anything
+    // still loading renders as a blank document instead of the skeleton production paints.
+    pendingComponent: Route.options.pendingComponent as never,
   })
   const detailRoute = createRoute({
     getParentRoute: () => claimsLayout,
@@ -108,10 +116,10 @@ async function renderDashboard(): Promise<void> {
   const router = createRouter({
     routeTree: rootRoute.addChildren([claimsLayout.addChildren([claimsIndex, detailRoute])]),
     history: createMemoryHistory({ initialEntries: ['/claims'] }),
+    context: { queryClient } as never,
   })
   await router.load()
 
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router as never} />
@@ -130,7 +138,12 @@ describe('portal dashboard service filter', () => {
     const user = userEvent.setup()
 
     await renderDashboard()
-    expect(await screen.findByText('MR-7167')).toBeInTheDocument()
+    // Synchronous on purpose: router.load() already ran the loader, so the list is on the FIRST
+    // paint. It is also the guard — drop the loader from the harness again and this line goes red
+    // immediately, instead of becoming a race a loaded CI runner loses. It lost one: the component
+    // suspends twice in series and React defers each suspense retry by 300 ms while testing-library
+    // has `act` switched off, which spent 707 ms of findBy's 1000 ms budget on an idle laptop.
+    expect(screen.getByText('MR-7167')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Mašinska obrada' }))
 

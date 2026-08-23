@@ -248,6 +248,22 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 **Testing (03, 10):** TDD expected. **Real Postgres in tests** — never mock DB/Zod/domain services/Hono. Always mock time (`vi.setSystemTime`), randomness, external APIs (OpenAI mocked except `[real-api]`). **Exception — SQL-driven time:** when the window under test is computed in Postgres (`CURRENT_DATE`/`now()`, e.g. the statistics rolling-24-month trend), `vi.setSystemTime` can't move it (it mocks only the JS clock) — so mocking would just desync JS-built fixture dates from the DB window. Instead **clamp fixture dates to stay inside the current period** (see `statistics.integration.test.ts` `daysAgo` — clamps to the 1st of the current month). Not a mistake; it's the root-cause fix for SQL-driven time. No `skip`/`only`/commented tests. Coverage (CI-enforced): services 90%, repos 85%, controllers 80%, utils 100%, overall API 85%, excel 95%, auth 95%, web components 70% (warn). E2E single-worker, stable selectors (`getByRole`), never `waitForTimeout`. Every bug fix ships a regression test. Test DB must end in `_test` (`assertIntegrationDatabase` refuses dev/non-`_test`).
 
+**⚠ Ekranski test ne sme da ČEKA na prvu sliku (2026-08-23).** `@testing-library`-jev podrazumevani
+prozor je **1000 ms** i pisan je za ovakav laptop; CI je trkač sa 2 jezgra i više vitest radnika, gde
+isti posao traje višestruko duže. Test koji sklapa **pravu rutu** mora da prepiše i njen `loader` i
+da ruteru preda `context: { queryClient }` — a `QueryClient` se pravi PRE rutera, jer ga ruter dodaje
+loader-u. Bez toga komponenta sama dovlači podatke i **suspenduje se dvaput uzastopno** (lista, pa
+`summary`), a React svaki povratak iz suspenzije odlaže za `FALLBACK_THROTTLE_MS` = 300 ms, jer
+testing-library za vreme `findBy` **gasi `act` režim**. Izmereno: 707 ms od 1000 ms na praznom
+laptopu, i pad na CI-ju. ⚠ Pad se javlja kao **prazan dokument** (`<body><div /></body>`) i izgleda
+kao pokvaren ekran, a nije: harness ne prepisuje `errorComponent`, pa bi svaka greška ispisala
+„Something went wrong!" — prazno DOKAZUJE da je tree još visio, dakle sporo, ne pokvareno. Zato se
+prva tvrdnja piše **sinhrono** (`getByText`, ne `findByText`): ona je jedini čuvar ovog pravila —
+skloni `loader` iz harnessa i pada za 30 ms umesto da postane trka. Uz to je prozor podignut na
+**5 s** u sve tri `vitest.setup.ts` (`configure({ asyncUtilTimeout })`), jer 211 mesta u testovima
+čeka na mrežni krug, debounce od 300 ms ili ulančane zahteve; zaglavljen test i dalje pada, na
+vitest-ovom `testTimeout` od 15 s. Ne popravlja se dizanjem brojeva po pojedinačnoj tvrdnji.
+
 **Security (05) — a security bug is SEV-1:** every route `requirePermission` (only `/api/health` exempt). Defense in depth (CF WAF → rate limit → auth → permission → service → repo → Zod) — never remove a layer. Validate every input with Zod (parse `:id` too). **Never leak** `password_hash`, secret `app_settings`, internal notes/attachments to client role. Row-level filtering for `view_own_customer`. Return **404 not 403** when a user lacks row-level access (don't leak existence). Drizzle parameterized only; `sql\`${param}\``ok, never`sql.raw`with user input. Secrets only in env /`app_settings(is_secret)`; gitleaks in CI. Files: magic-byte MIME check, size limits, paths from UUIDs, `Content-Disposition: attachment`+`nosniff`, signed URLs 5 min. Audit every state change (actor+IP+UA, action, entity, diff) — even admin. Session revoked on deactivate / password / 2FA change.
 
 **API design (07):** `/api/<resource>/<id>/<sub>/<verb>`; paths kebab-case, query/JSON camelCase, DB snake_case. `GET`/`POST`/`PATCH`(preferred)/`PUT`(rare)/`DELETE`(soft). Status codes per table (201+`Location` on create, 204 on delete, 422 semantic, 409 conflict, 429 rate). List response `{ items, total, page, pageSize }`; single = bare object; error `{ error, message, code, details }`. Verb endpoints for non-CRUD (`/:id/change-outcome`, `/:id/approve`). Whitelist sort fields. Audit in the **service** layer (so direct calls audit too).
@@ -419,6 +435,17 @@ Empty DB needs these extensions first (the app's integration setup installs them
 
 **Open (from the health audit — not yet approved/done):**
 
+- **Vitest `collect` je i18n barel, ne rute (izmereno 2026-08-23, NIJE dirano).** CI je prijavio
+  `collect 250.99s` uz `transform 18.87s` za sedam portalskih fajlova. Uzrok nije težina ruta:
+  `packages/i18n/src/index.ts` re-eksportuje `m` iz paraglide-a, koji je **1709 zasebnih modula**
+  (jedan fajl po poruci, 6.9 MB), pa **svaki** test koji uvozi bilo šta iz `@mr/i18n` — i onaj kome
+  treba samo `setLocale` — izvrši svih 1709. Vitest podrazumevano izoluje fajlove, pa se to plaća
+  **po fajlu**: repo-wide ~195.000 izvršavanja modula po jednom `pnpm test`. Paraglide ima
+  `outputStructure: 'locale-modules'` (2 fajla umesto 1709), i njihov Vite plugin ga sam koristi u
+  dev-u. ⚠ **Ne prebacivati usput:** `message-modules` postoji zbog tree-shaking-a, `packages/i18n`
+  deklariše ceo paraglide kao `sideEffects`, a ovde se isti izlaz čita i za gejt i za build — pa to
+  dira produkcioni bundle, gde portal ima budžet od **150 KB gzip**. Zaseban zadatak sa merenjem
+  bundle-a pre i posle, ne uzgredna izmena.
 - nice-to-have: `~117 @ts-nocheck` in vendored TipTap components (confirmed **leave as-is**). The few remaining `any`/`eslint-disable` in internal-web are vendored TipTap support hooks (`use-throttled-callback.ts`, `use-unmount.ts` — already `@ts-nocheck`'d), **not our code** — `api`/`shared`/`admin-web` are `any`-free.
 - attachment signing secret: code now reads `env.ATTACHMENT_SIGNING_SECRET` with fallback to `BETTER_AUTH_SECRET` (so behaviour is unchanged until set). **To activate defense-in-depth, Nikola must add `ATTACHMENT_SIGNING_SECRET` (≥32 chars) to the API env** — introducing/rotating it invalidates outstanding signed URLs (5-min TTL, negligible). (`turbo.json` web-output cache miss resolved in commit `e611738`.)
 - Roadmap: project is past Phase 0/1 foundations; admin user/role management is in active build (Phase 3 territory). Custom outcomes are explicitly a **Phase 2 big project** (6-place hardcoding) — don't start casually.
