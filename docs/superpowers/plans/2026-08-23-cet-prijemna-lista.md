@@ -8,6 +8,10 @@ sa dizajnom pa neke stvari nisu urađene"*. Stavka koja nema svoj korak je stavk
 
 Legenda: ✅ urađeno · 🔄 u izradi · ⏳ čeka svoj korak · ❌ svesno van obima (sa razlogom)
 
+**Korak 1 (model, API, SSE) je ZAVRŠEN 23.08.** — devet zadataka, pun gejt zelen. Nijedna stavka
+handoff-ove liste nije mogla biti zatvorena u njemu, jer su sve ekranske; ono što je korak 1
+isporučio je drugi spisak ispod, i on je temelj na kome ekran stoji.
+
 ---
 
 ## Handoff §12 — prijemna lista
@@ -47,13 +51,16 @@ Ovo su odluke iz našeg spec-a §5 i §10 — nisu u handoff-ovoj listi, ali se 
 | Opšti kanal postoji u svakom okruženju (seed) | 1 | ✅ |
 | Nit reklamacije = ista kroz sva tri ulaza | 1 | ✅ |
 | Sistemski događaj **ne pravi** nit | 1 | ✅ |
-| Izmena samo 15 minuta, brisanje meko | 1 | 🔄 |
+| Izmena samo 15 minuta, brisanje meko | 1 | ✅ |
 | Oporavak propuštenog (`afterSeq` + preklapanje) — klijentska polovina | 2 | ⏳ |
 | Čuvar tišine 45 s + imenovan `ping` | 2 | ⏳ |
 | Prilozi iz četa se **ne vide klijentu** (`chat_attachment`) | 4 | ⏳ |
 | Push: manifest, SW, pretplata, slanje, čišćenje | 5 | ⏳ |
 | Prekidač po čoveku: sve poruke · samo pomeni · bez teksta | 5 | ⏳ |
 | Vreme uvek `Europe/Belgrade` | 2 | ⏳ |
+| Pin (najviše 20), reakcija ✓, utišavanje niti — server | 1 | ✅ |
+| Citat ostaje u svom razgovoru | 1 | ✅ |
+| Obrisana poruka se ne može izmeniti nazad | 1 | ✅ |
 
 ---
 
