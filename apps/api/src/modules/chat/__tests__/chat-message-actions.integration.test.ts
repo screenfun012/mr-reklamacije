@@ -4,6 +4,7 @@ import {
   CHAT_PINS_MAX,
   ChatConversationType,
   ChatMessageSchema,
+  ChatPinsResponseSchema,
   ChatSystemKind,
   SYSTEM_ROLE_ADMIN,
   type Permission,
@@ -313,6 +314,67 @@ describe('Chat message actions', () => {
 
       await expect(container.chatService.unpin(id, ME)).resolves.toBeUndefined()
     })
+
+    it('reads the shortlist back with who said it, who pinned it, and the first words', async () => {
+      const id = await insertMessage(generalId, 'Zapisnik obavezan pre slanja partneru')
+      await container.chatService.pin(id, ME)
+
+      const [pin, ...rest] = await container.chatService.listPins(generalId, ME)
+
+      expect(rest).toHaveLength(0)
+      expect(pin).toMatchObject({
+        id,
+        excerpt: 'Zapisnik obavezan pre slanja partneru',
+        isDeleted: false,
+        pinnedBy: ME.id,
+      })
+      // The author is read at read time, like everywhere else — never stored on the pin.
+      expect(pin?.authorName).not.toBe('')
+    })
+
+    it('keeps a withdrawn message on the shortlist and lets none of its words out', async () => {
+      const id = await insertMessage(generalId, 'ovo se povlači')
+      await container.chatService.pin(id, ME)
+      await container.chatService.deleteMessage(id, ME)
+
+      const [pin] = await container.chatService.listPins(generalId, ME)
+
+      expect(pin).toMatchObject({ id, excerpt: '', isDeleted: true })
+    })
+
+    it('refuses the shortlist of a room the actor may not see — 404, never 403', async () => {
+      const serviser: ChatActor = {
+        id: OTHER_USER_ID,
+        permissions: SERVISER_PERMISSIONS,
+        roles: ['serviser'],
+      }
+
+      await expect(
+        container.chatService.listPins(emotiveThreadId, serviser),
+      ).rejects.toBeInstanceOf(NotFoundError)
+    })
+
+    /**
+     * ⚠ A pin and a tick create no message, and they still have to reach the other desks. They
+     * publish the SAME signal a message does, because the only thing any listener does with it is
+     * re-read the room. Without this the screen next door keeps showing yesterday's count until
+     * somebody happens to say something.
+     */
+    it('tells the other desks — a tick and a pin publish, both ways', async () => {
+      const bus = container.eventBus as RecordingEventBus
+      const id = await insertMessage(generalId, 'javi signal')
+      const before = bus.chatEvents.length
+
+      await container.chatService.react(id, ME)
+      await container.chatService.unreact(id, ME)
+      await container.chatService.pin(id, ME)
+      await container.chatService.unpin(id, ME)
+
+      expect(bus.chatEvents.slice(before)).toHaveLength(4)
+      expect(
+        bus.chatEvents.slice(before).every((event) => event.conversationId === generalId),
+      ).toBe(true)
+    })
   })
 
   describe('reaction', () => {
@@ -385,6 +447,21 @@ describe('Chat message actions', () => {
       expect((await reader.request(`/api/chat/messages/${id}`, { method: 'DELETE' })).status).toBe(
         204,
       )
+    })
+
+    it('serves the shortlist over the wire, and hides its existence from whoever may not read it', async () => {
+      const id = await insertMessage(generalId, 'preko žice zakačeno')
+      await container.chatService.pin(id, ME)
+
+      const reader = app(CLAIM_READER_PERMISSIONS)
+      const res = await reader.request(`/api/chat/conversations/${generalId}/pins`)
+      expect(res.status).toBe(200)
+      expect(ChatPinsResponseSchema.parse(await res.json()).items).toHaveLength(1)
+
+      const serviser = app(SERVISER_PERMISSIONS, ['serviser'])
+      expect(
+        (await serviser.request(`/api/chat/conversations/${emotiveThreadId}/pins`)).status,
+      ).toBe(404)
     })
 
     it('404s every action on a conversation the actor may not see, and never 403', async () => {

@@ -1,5 +1,5 @@
 import { setLocale } from '@mr/i18n'
-import { ChatSystemKind, type ChatMessage, type ChatMessagesPage } from '@mr/shared'
+import { ChatSystemKind, type ChatMessage, type ChatMessagesPage, type ChatPin } from '@mr/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -48,6 +48,9 @@ let calls: FetchCall[] = []
 let sendReply: (message: ChatMessage) => void = () => undefined
 let sendFails = false
 let initialPage: ChatMessagesPage = page([message({ seq: '41' })])
+let pins: ChatPin[] = []
+/** The tick and the pin both answer 204; flip this to make the next one fail instead. */
+let actionFails = false
 
 function installFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -57,6 +60,14 @@ function installFetch(): void {
 
     if (url.includes('/read')) {
       return new Response(null, { status: 204 })
+    }
+    if (url.endsWith('/pins')) {
+      return Response.json({ items: pins })
+    }
+    if (url.includes('/reaction') || url.endsWith('/pin')) {
+      return actionFails
+        ? new Response(JSON.stringify({ message: 'nope' }), { status: 500 })
+        : new Response(null, { status: 204 })
     }
     if (init?.method === 'POST') {
       if (sendFails) {
@@ -73,7 +84,7 @@ function installFetch(): void {
 /** The fixture's author. Passing this makes the fixture message "mine", which is what ticks need. */
 const SLAVKO_ID = uuid(900)
 
-function renderPane(unreadCount = 0, authorId = SLAVKO_ID) {
+function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const result = render(
     <QueryClientProvider client={queryClient}>
@@ -83,6 +94,7 @@ function renderPane(unreadCount = 0, authorId = SLAVKO_ID) {
           unreadCount={unreadCount}
           authorName="Marko Petrović"
           authorId={authorId}
+          isAdmin={isAdmin}
         />
       </Suspense>
     </QueryClientProvider>,
@@ -101,6 +113,8 @@ describe('ConversationPane', () => {
     vi.setSystemTime(new Date('2026-08-23T09:00:00.000Z'))
     calls = []
     sendFails = false
+    actionFails = false
+    pins = []
     initialPage = page([message({ seq: '41' })])
     installFetch()
   })
@@ -416,6 +430,98 @@ describe('ConversationPane', () => {
 
       // The optimistic row is mine by construction — one tick, not none.
       expect(screen.getByTitle(/[Ššs]alje/)).toBeInTheDocument()
+    })
+  })
+  describe('the tick', () => {
+    it('shows straight away and only then asks — and the chip counts everybody', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      renderPane()
+
+      await user.click(await screen.findByRole('button', { name: 'Označi ✓' }))
+
+      // Optimistic: the chip is there before the server has said anything.
+      expect(screen.getByText('✓ 1')).toBeInTheDocument()
+      await waitFor(() => expect(calls.some((call) => call.url.endsWith('/reaction'))).toBe(true))
+    })
+
+    it('takes it back on the second press, and asks the server to as well', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      initialPage = page([message({ seq: '41', reactionCount: 1, reactedByMe: true })])
+      renderPane()
+
+      expect(await screen.findByText('✓ 1')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Skloni svoj ✓' }))
+
+      expect(screen.queryByText('✓ 1')).not.toBeInTheDocument()
+      await waitFor(() => {
+        const call = calls.find((item) => item.url.endsWith('/reaction'))
+        expect(call).toBeDefined()
+      })
+    })
+
+    /**
+     * ⚠ An optimistic update without a rollback is a lie the screen keeps telling. The count is
+     * everybody's, so one that went up on a request the server refused would stay wrong until the
+     * next read — and a person would swear they had ticked it.
+     */
+    it('puts the tick back where it was when the request fails', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      actionFails = true
+      renderPane()
+
+      await user.click(await screen.findByRole('button', { name: 'Označi ✓' }))
+
+      await waitFor(() => expect(screen.queryByText('✓ 1')).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Označi ✓' })).toBeInTheDocument()
+    })
+  })
+
+  describe('the pin', () => {
+    it('offers to pin, and asks the server rather than guessing the shortlist', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      renderPane()
+
+      await user.click(await screen.findByRole('button', { name: 'Prikači poruku' }))
+
+      await waitFor(() => expect(calls.some((call) => call.url.endsWith('/pin'))).toBe(true))
+    })
+
+    /**
+     * ⚠ Taking a pin down belongs to whoever put it up, or to an admin — the same rule the server
+     * enforces. A ✕ that answers 403 is worse than no ✕.
+     */
+    it('offers to take it down only to the person who put it there', async () => {
+      pins = [
+        {
+          id: uuid(41),
+          authorName: 'Slavko Jović',
+          excerpt: 'Stigao motor',
+          isDeleted: false,
+          pinnedBy: uuid(777),
+        },
+      ]
+      renderPane()
+
+      expect(await screen.findByText('Slavko Jović')).toBeInTheDocument()
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Prikači poruku' })).not.toBeInTheDocument(),
+      )
+      expect(screen.queryByRole('button', { name: 'Skini sa prikačenih' })).not.toBeInTheDocument()
+    })
+
+    it('offers it to an admin, whoever put it there', async () => {
+      pins = [
+        {
+          id: uuid(41),
+          authorName: 'Slavko Jović',
+          excerpt: 'Stigao motor',
+          isDeleted: false,
+          pinnedBy: uuid(777),
+        },
+      ]
+      renderPane(0, SLAVKO_ID, true)
+
+      expect(await screen.findByRole('button', { name: 'Skini sa prikačenih' })).toBeInTheDocument()
     })
   })
 })

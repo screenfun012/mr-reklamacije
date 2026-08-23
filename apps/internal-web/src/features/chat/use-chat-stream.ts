@@ -28,6 +28,11 @@ export function recoveryCursor(items: readonly ChatMessage[]): string {
  * Puts the overlap back together: by message id, because that is the only identity the server and
  * this cache agree on for a row neither of them wrote twice.
  *
+ * ⚠ A row that arrives again REPLACES the one held, it is not skipped. The overlap of twenty was
+ * always going to bring back rows this cache already had; treating them as duplicates threw away
+ * the only news they carried — a tick given, a pin put up, a message edited or taken back since.
+ * That is how a reaction from the next desk stayed invisible until somebody said something.
+ *
  * `nextCursor` and `hasMore` are left exactly as they were — they describe the way OLDER, and
  * recovery only ever reads forward.
  */
@@ -35,13 +40,18 @@ export function mergeChatMessages(
   page: ChatMessagesPage,
   incoming: readonly ChatMessage[],
 ): ChatMessagesPage {
-  const known = new Set(page.items.map((item) => item.id))
-  const added = incoming.filter((item) => !known.has(item.id))
-  if (added.length === 0) {
+  if (incoming.length === 0) {
     return page
   }
 
-  return { ...page, items: [...page.items, ...added].sort((a, b) => Number(a.seq) - Number(b.seq)) }
+  const fresh = new Map(incoming.map((item) => [item.id, item]))
+  const kept = page.items.map((item) => fresh.get(item.id) ?? item)
+  const added = incoming.filter((item) => !page.items.some((held) => held.id === item.id))
+  if (added.length === 0) {
+    return { ...page, items: kept }
+  }
+
+  return { ...page, items: [...kept, ...added].sort((a, b) => Number(a.seq) - Number(b.seq)) }
 }
 
 /**

@@ -9,9 +9,11 @@ import {
   ChatMessageSchema,
   ChatMessagesPageSchema,
   ChatPeopleResponseSchema,
+  ChatPinsResponseSchema,
   type ChatConversationListItem,
   type ChatMessage,
   type ChatMessagesPage,
+  type ChatPin,
   type ChatSendInput,
 } from '../schemas/chat.schema.js'
 
@@ -35,6 +37,7 @@ export const chatKeys = {
   conversations: () => [...chatKeys.all, 'conversations'] as const,
   messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
   people: (conversationId: string) => [...chatKeys.all, 'people', conversationId] as const,
+  pins: (conversationId: string) => [...chatKeys.all, 'pins', conversationId] as const,
 }
 
 /** Every conversation this person may enter, plus the ONE unread number the sidebar shows. */
@@ -156,4 +159,35 @@ export function markChatRead(conversationId: string, lastSeq: string): Promise<v
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lastSeq }),
   })
+}
+
+/**
+ * What is pinned in this conversation. At most `CHAT_PINS_MAX` rows, so there is no paging and no
+ * stale time worth setting: the list is invalidated by the pin that changed it, and by the same
+ * `chat_message_created` signal every other reader gets.
+ */
+export function chatPinsOptions(conversationId: string) {
+  return queryOptions({
+    queryKey: chatKeys.pins(conversationId),
+    queryFn: () =>
+      fetchParsed<{ items: ChatPin[] }>(
+        `/api/chat/conversations/${conversationId}/pins`,
+        ChatPinsResponseSchema,
+      ),
+  })
+}
+
+/**
+ * The tick and the pin, both ways. All four answer 204 — what changed is one row the caller
+ * already holds, which is why these are the small actions an optimistic update is allowed for
+ * (CLAUDE.md §8 drift note).
+ */
+export function reactToChatMessage(messageId: string, on: boolean): Promise<void> {
+  return fetchNoContent(`/api/chat/messages/${messageId}/reaction`, {
+    method: on ? 'POST' : 'DELETE',
+  })
+}
+
+export function pinChatMessage(messageId: string, on: boolean): Promise<void> {
+  return fetchNoContent(`/api/chat/messages/${messageId}/pin`, { method: on ? 'POST' : 'DELETE' })
 }

@@ -34,6 +34,7 @@ export function createChatController(container: Container): {
   deleteMessage: (c: Context) => Promise<Response>
   mute: (c: Context) => Promise<Response>
   unmute: (c: Context) => Promise<Response>
+  listPins: (c: Context) => Promise<Response>
   pin: (c: Context) => Promise<Response>
   unpin: (c: Context) => Promise<Response>
   react: (c: Context) => Promise<Response>
@@ -118,6 +119,12 @@ export function createChatController(container: Container): {
       const { id } = ChatConversationIdParamSchema.parse(c.req.param())
       await container.chatService.unmute(id, toActor(c))
       return c.body(null, 204)
+    },
+
+    listPins: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse(c.req.param())
+      const items = await container.chatService.listPins(id, toActor(c))
+      return c.json({ items })
     },
 
     pin: async (c: Context) => {

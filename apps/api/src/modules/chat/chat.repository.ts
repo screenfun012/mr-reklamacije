@@ -14,6 +14,7 @@ import {
   SYSTEM_ROLE_ADMIN,
   UserAccountStatus,
   type ChatMention,
+  type ChatPin,
   type ChatQuote,
   type ChatSystemKind,
   type Permission,
@@ -787,6 +788,38 @@ export class ChatRepository {
       .limit(1)
 
     return row ?? null
+  }
+
+  /**
+   * The whole shortlist, newest pin first — at most `CHAT_PINS_MAX` rows, so it is not paged.
+   *
+   * The excerpt is cut the same way a quoted block is cut, by the same constant: a pin and a quote
+   * are the same sentence shown somewhere else, and two lengths would be two answers to one
+   * question. A withdrawn message keeps its place and loses its words.
+   */
+  async listPins(conversationId: string): Promise<ChatPin[]> {
+    const rows = await this.db
+      .select({
+        id: chatMessages.id,
+        body: chatMessages.body,
+        deletedAt: chatMessages.deletedAt,
+        authorName: users.name,
+        pinnedBy: chatPins.pinnedBy,
+      })
+      .from(chatPins)
+      .innerJoin(chatMessages, eq(chatMessages.id, chatPins.messageId))
+      .leftJoin(users, eq(users.id, chatMessages.authorId))
+      .where(eq(chatPins.conversationId, conversationId))
+      .orderBy(desc(chatPins.createdAt))
+
+    return rows.map((row) => ({
+      id: row.id,
+      authorName: row.authorName ?? '',
+      excerpt:
+        row.deletedAt === null ? stripMentionMarkup(row.body).slice(0, CHAT_QUOTE_EXCERPT_MAX) : '',
+      isDeleted: row.deletedAt !== null,
+      pinnedBy: row.pinnedBy,
+    }))
   }
 
   async countPins(conversationId: string): Promise<number> {

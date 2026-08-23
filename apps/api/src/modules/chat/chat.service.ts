@@ -14,6 +14,7 @@ import {
   stripMentionMarkup,
   SYSTEM_ROLE_ADMIN,
   uniqueMentions,
+  type ChatPin,
 } from '@mr/shared'
 
 import {
@@ -362,6 +363,7 @@ export class ChatService implements ChatPort {
     }
 
     await this.repo.insertPin(message.conversationId, messageId, actor.id)
+    this.announce(message.conversationId, messageId)
   }
 
   /**
@@ -382,19 +384,29 @@ export class ChatService implements ChatPort {
     }
 
     await this.repo.deletePin(message.conversationId, messageId)
+    this.announce(message.conversationId, messageId)
   }
 
   /** One tick, one person, one message. There is no emoji to choose (spec §5 row 10). */
   async react(messageId: string, actor: ChatActor): Promise<void> {
-    await this.requireVisibleMessage(messageId, actor)
+    const { message } = await this.requireVisibleMessage(messageId, actor)
 
     await this.repo.insertReaction(messageId, actor.id)
+    this.announce(message.conversationId, messageId)
   }
 
   async unreact(messageId: string, actor: ChatActor): Promise<void> {
-    await this.requireVisibleMessage(messageId, actor)
+    const { message } = await this.requireVisibleMessage(messageId, actor)
 
     await this.repo.deleteReaction(messageId, actor.id)
+    this.announce(message.conversationId, messageId)
+  }
+
+  /** The shortlist. Whoever may read the room may read what is pinned in it — nothing else to say. */
+  async listPins(conversationId: string, actor: ChatActor): Promise<ChatPin[]> {
+    await this.requireVisible(conversationId, actor)
+
+    return this.repo.listPins(conversationId)
   }
 
   /** No audit entry: how far someone has read is view-tracking, not a business state change. */
@@ -405,10 +417,17 @@ export class ChatService implements ChatPort {
   }
 
   /**
-   * Best-effort, after the write, and it never throws back at the sender: the message is stored,
-   * and a bus that is down must not turn a delivered message into a 500. The listeners recover on
-   * their next read anyway — that is what the overlapping recovery window is for. Same rule as
+   * Best-effort, after the write, and it never throws back at the sender: the write is already
+   * stored, and a bus that is down must not turn it into a 500. The listeners recover on their
+   * next read anyway — that is what the overlapping recovery window is for. Same rule as
    * `fanOut()` in the notifications service.
+   *
+   * ⚠ Also published by a tick and by a pin, which create no message. It is deliberately the SAME
+   * signal: the client's only reaction to it is "re-read this room", which is exactly right for
+   * all three, and a second event type for a checkmark would be nine files (CLAUDE.md §2 counts
+   * five of them, and the ports and buses are the rest) for something no listener would treat
+   * differently. Nothing downstream infers "a message arrived" from it — unread is counted from
+   * `chat_reads`, and the bell is the notifications module's own.
    */
   private announce(conversationId: string, messageId: string): void {
     try {

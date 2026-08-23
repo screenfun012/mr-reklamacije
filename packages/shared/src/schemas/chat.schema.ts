@@ -64,6 +64,26 @@ export const ChatQuoteSchema = z.object({
 
 export type ChatQuote = z.infer<typeof ChatQuoteSchema>
 
+/**
+ * One message on a conversation's shortlist.
+ *
+ * It is a quote plus who put it there: a pin row draws exactly what a quoted block draws — author,
+ * first words, and "withdrawn" when the message was taken back — so it carries the same shape
+ * rather than a second one that would drift from it. `id` is the message's.
+ *
+ * `pinnedBy` is on the wire so the screen knows whether to offer the ✕; the server refuses anybody
+ * but that person and an admin regardless. NULL once that account is gone.
+ */
+export const ChatPinSchema = ChatQuoteSchema.extend({
+  pinnedBy: z.string().uuid().nullable(),
+})
+
+export type ChatPin = z.infer<typeof ChatPinSchema>
+
+export const ChatPinsResponseSchema = z.object({ items: z.array(ChatPinSchema) })
+
+export type ChatPinsResponse = z.infer<typeof ChatPinsResponseSchema>
+
 export const ChatMessageSchema = z.object({
   id: z.string().uuid(),
   conversationId: z.string().uuid(),

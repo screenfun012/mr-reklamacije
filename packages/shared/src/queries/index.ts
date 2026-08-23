@@ -168,10 +168,13 @@ export {
   chatKeys,
   chatMessagesOptions,
   chatPeopleOptions,
+  chatPinsOptions,
   deleteChatConversation,
   fetchChatMessagesSince,
   markChatRead,
   openChatClaimThread,
+  pinChatMessage,
+  reactToChatMessage,
   sendChatMessage,
 } from './chat.js'
 export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'

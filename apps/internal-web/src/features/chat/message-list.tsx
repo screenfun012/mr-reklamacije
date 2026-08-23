@@ -30,6 +30,15 @@ export interface MessageListProps {
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
   /** Absent where there is no composer to answer in. */
   onReply?: ((message: ChatMessage) => void) | undefined
+  onReact?: ((message: ChatMessage) => void) | undefined
+  onPin?: ((message: ChatMessage) => void) | undefined
+  /**
+   * The message ids on the room's shortlist, and which of them THIS person may take down. Passed
+   * as sets rather than a flag per message: pins live on the conversation, not on the message, so
+   * the row cannot read its own state.
+   */
+  pinnedIds?: ReadonlySet<string>
+  unpinnableIds?: ReadonlySet<string>
   /** Whose messages get the ticks. */
   currentUserId?: string | undefined
 }
@@ -54,6 +63,10 @@ export function MessageList({
   onRetry,
   onOpenClaim,
   onReply,
+  onReact,
+  onPin,
+  pinnedIds,
+  unpinnableIds,
   currentUserId,
 }: MessageListProps): React.ReactElement {
   // One resolution pass for everything on screen, the message being written included.
@@ -115,6 +128,10 @@ export function MessageList({
               resolutions={resolutions}
               onOpenClaim={onOpenClaim}
               onReply={onReply}
+              onReact={onReact}
+              onPin={onPin}
+              isPinned={pinnedIds?.has(message.id) ?? false}
+              canUnpin={unpinnableIds?.has(message.id) ?? false}
               currentUserId={currentUserId}
             />
           </div>

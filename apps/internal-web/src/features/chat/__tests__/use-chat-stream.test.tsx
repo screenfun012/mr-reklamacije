@@ -77,6 +77,21 @@ describe('mergeChatMessages', () => {
     expect(merged.items.map((item) => item.seq)).toEqual(['40', '41', '42'])
   })
 
+  /**
+   * ⚠ The overlap of twenty ALWAYS brings back rows the cache already holds. Skipping them as
+   * duplicates threw away the only news they carried — this is how a tick given at the next desk
+   * stayed invisible until somebody happened to say something.
+   */
+  it('takes the fresher copy of a message it already holds', () => {
+    const held = message(42)
+    const ticked: ChatMessage = { ...held, reactionCount: 3, reactedByMe: true }
+
+    const merged = mergeChatMessages(page([message(41), held]), [ticked])
+
+    expect(merged.items).toHaveLength(2)
+    expect(merged.items.at(-1)).toMatchObject({ reactionCount: 3, reactedByMe: true })
+  })
+
   it('leaves the older-page cursor alone — recovery only ever reads forward', () => {
     const current: ChatMessagesPage = { items: [message(42)], nextCursor: '42', hasMore: true }
 

@@ -1,18 +1,24 @@
 import { m } from '@mr/i18n'
 import {
+  CHAT_PINS_MAX,
   CHAT_READ_THROTTLE_MS,
   chatKeys,
   MENTION_EVERYONE_ID,
   uniqueMentions,
   chatMessagesOptions,
+  chatPinsOptions,
   markChatRead,
+  pinChatMessage,
+  reactToChatMessage,
   sendChatMessage,
   type ChatMessage,
   type ChatMessagesPage,
   type MrRegistryExistingClaim,
 } from '@mr/shared'
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+
+import { showInternalToast } from '~/lib/internal-toast'
 
 import { Composer } from './composer'
 import { MessageList, type PendingChatMessage } from './message-list'
@@ -59,6 +65,28 @@ export function firstUnreadId(items: readonly ChatMessage[], unreadCount: number
   return id
 }
 
+/**
+ * Your tick, added or taken back, everywhere the page holds that message.
+ *
+ * Written as a pure function because it is the whole optimistic update: the count moves by one in
+ * the direction `reactedByMe` just went, and nothing else about the row changes. Rolling back is
+ * the same call again.
+ */
+export function toggleReaction(page: ChatMessagesPage, messageId: string): ChatMessagesPage {
+  return {
+    ...page,
+    items: page.items.map((item) =>
+      item.id === messageId
+        ? {
+            ...item,
+            reactedByMe: !item.reactedByMe,
+            reactionCount: Math.max(0, item.reactionCount + (item.reactedByMe ? -1 : 1)),
+          }
+        : item,
+    ),
+  }
+}
+
 function appendMessage(page: ChatMessagesPage, message: ChatMessage): ChatMessagesPage {
   if (page.items.some((item) => item.id === message.id)) {
     return page
@@ -73,6 +101,8 @@ export interface ConversationPaneProps {
   authorName: string
   /** Whose messages get the ticks — passed in like the name, so the pane needs no router. */
   authorId: string
+  /** Whether this person may take down somebody else's pin. Passed in for the same reason. */
+  isAdmin?: boolean
   /** The claim is decided: the words stay readable and no new ones are taken. */
   isLocked?: boolean | undefined
   isThread?: boolean
@@ -93,6 +123,7 @@ export function ConversationPane({
   unreadCount,
   authorName,
   authorId,
+  isAdmin = false,
   isLocked = false,
   isThread = false,
   onOpenClaim,
@@ -134,6 +165,47 @@ export function ConversationPane({
         ),
       )
     },
+  })
+
+  // What is pinned in this room. `useQuery`, not suspense, on purpose: a shortlist that is slow
+  // to arrive must never hold up the conversation it belongs to.
+  const pins = useQuery(chatPinsOptions(conversationId))
+  const pinnedIds = new Set((pins.data?.items ?? []).map((pin) => pin.id))
+  const unpinnableIds = new Set(
+    (pins.data?.items ?? [])
+      .filter((pin) => isAdmin || pin.pinnedBy === authorId)
+      .map((pin) => pin.id),
+  )
+
+  /**
+   * The tick. Optimistic and rolled back by calling the same toggle again — the one thing this
+   * mutation does is reversible by repeating it, so there is no snapshot to keep.
+   */
+  const react = useMutation({
+    mutationFn: (message: ChatMessage) => reactToChatMessage(message.id, !message.reactedByMe),
+    onMutate: (message) => {
+      queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
+        toggleReaction(page, message.id),
+      )
+    },
+    onError: (_error, message) => {
+      queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
+        toggleReaction(page, message.id),
+      )
+    },
+  })
+
+  /**
+   * The pin. NOT optimistic: the shortlist row carries the author and the first words, which this
+   * screen would have to reassemble to guess at, and a pin is a deliberate act nobody types twenty
+   * of in a row. It waits for the answer and re-reads.
+   */
+  const pin = useMutation({
+    mutationFn: (message: ChatMessage) => pinChatMessage(message.id, !pinnedIds.has(message.id)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chatKeys.pins(conversationId) }),
+    // The cap is the only refusal a person can walk into (20 per room), and it must say so rather
+    // than look like nothing happened.
+    onError: () => showInternalToast(m.chat_pins_full({ count: CHAT_PINS_MAX })),
   })
 
   const handleSend = (body: string): void => {
@@ -227,6 +299,10 @@ export function ConversationPane({
         onRetry={handleRetry}
         onOpenClaim={onOpenClaim}
         onReply={setReplyTo}
+        onReact={(message) => react.mutate(message)}
+        onPin={(message) => pin.mutate(message)}
+        pinnedIds={pinnedIds}
+        unpinnableIds={unpinnableIds}
         currentUserId={authorId}
       />
       {isLocked ? (

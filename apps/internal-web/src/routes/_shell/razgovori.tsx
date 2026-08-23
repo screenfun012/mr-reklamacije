@@ -23,6 +23,7 @@ import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
 import { ClaimThreadConfirm, findClaimThread } from '~/features/chat/open-claim-thread'
+import { PinListButton } from '~/features/chat/pin-list'
 import { ThreadContextPanel, ThreadContextToggle } from '~/features/chat/thread-context-panel'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
@@ -190,6 +191,11 @@ function RazgovoriColumns(): React.ReactElement {
             <>
               <ConversationHeading conversation={current} />
               <span className="ml-auto flex items-center gap-[7px]">
+                <PinListButton
+                  conversationId={current.id}
+                  currentUserId={userId}
+                  isAdmin={isAdmin}
+                />
                 {isAdmin && current.type !== ChatConversationType.General ? (
                   <button
                     type="button"
@@ -219,6 +225,7 @@ function RazgovoriColumns(): React.ReactElement {
               unreadCount={current.unreadCount}
               authorName={userName}
               authorId={userId}
+              isAdmin={isAdmin}
               isThread={current.type === ChatConversationType.Claim}
               onOpenClaim={openClaim}
               onOpenConversation={openConversation}
@@ -227,7 +234,9 @@ function RazgovoriColumns(): React.ReactElement {
         )}
       </section>
 
-      {current === null || !contextOpen ? null : <ThreadContextPanel conversation={current} />}
+      {current === null || !contextOpen ? null : (
+        <ThreadContextPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+      )}
 
       <NewThreadDialog
         open={newThreadOpen}

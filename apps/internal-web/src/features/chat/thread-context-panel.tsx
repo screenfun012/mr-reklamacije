@@ -4,6 +4,7 @@ import {
   ClaimDetailTab,
   ClaimKind,
   domaceClaimDetailOptions,
+  chatPinsOptions,
   emotiveClaimDetailOptions,
   type ChatConversationListItem,
   type ClaimOutcome,
@@ -11,6 +12,8 @@ import {
 import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+
+import { PinList } from './pin-list'
 
 import { KindPill } from '~/components/kind-pill'
 import { OutcomePill } from '~/components/outcome-pill'
@@ -128,9 +131,16 @@ function ClaimFacts({
  */
 export function ThreadContextPanel({
   conversation,
+  currentUserId,
+  isAdmin,
 }: {
   conversation: ChatConversationListItem
+  currentUserId: string
+  isAdmin: boolean
 }): React.ReactElement | null {
+  const pins = useQuery(chatPinsOptions(conversation.id))
+  const pinCount = pins.data?.items.length ?? 0
+
   const claim = claimOf(conversation)
   if (claim === null) {
     return null
@@ -177,9 +187,17 @@ export function ThreadContextPanel({
         </Link>
       </div>
 
-      {/* L167–L171 draw PRIKAČENO only when the thread has pins. Nothing carries them yet: the
-          API pins and unpins a message, but no read returns them, so the section would have to
-          invent its own truth. It arrives with the pins themselves. */}
+      {/* L167–L171: the shortlist, drawn only when the thread has one. */}
+      {pinCount === 0 ? null : (
+        <div className="flex flex-col gap-2 border-b border-mri-border px-[14px] py-3">
+          <span className={EYEBROW_CLASSES}>{m.chat_pins_title({ count: pinCount })}</span>
+          <PinList
+            conversationId={conversation.id}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+          />
+        </div>
+      )}
 
       {/* L173 */}
       <div className="flex flex-col gap-2 px-[14px] py-3">

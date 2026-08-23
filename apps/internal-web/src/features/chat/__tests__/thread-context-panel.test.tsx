@@ -5,8 +5,10 @@ import {
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
+  chatPinsOptions,
   emotiveClaimDetailOptions,
   type ChatConversationListItem,
+  type ChatPin,
   type DomaceClaimDetail,
   type EmotiveClaimDetail,
 } from '@mr/shared'
@@ -18,7 +20,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -71,15 +73,21 @@ const DOMACE_CLAIM = {
   employeeName: null,
 } as unknown as DomaceClaimDetail
 
-async function renderPanel(conversation: ChatConversationListItem): Promise<void> {
+const ME = '00000000-0000-4000-8000-0000000000aa'
+
+async function renderPanel(
+  conversation: ChatConversationListItem,
+  pins: ChatPin[] = [],
+): Promise<void> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(emotiveClaimDetailOptions(EMOTIVE_CLAIM_ID).queryKey, EMOTIVE_CLAIM)
   queryClient.setQueryData(domaceClaimDetailOptions(DOMACE_CLAIM_ID).queryKey, DOMACE_CLAIM)
+  queryClient.setQueryData(chatPinsOptions(conversation.id).queryKey, { items: pins })
 
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <ThreadContextPanel conversation={conversation} />
+        <ThreadContextPanel conversation={conversation} currentUserId={ME} isAdmin={false} />
       </QueryClientProvider>
     ),
   })
@@ -190,5 +198,28 @@ describe('ThreadContextToggle', () => {
     render(<ThreadContextToggle conversation={channel()} open={false} onToggle={vi.fn()} />)
 
     expect(screen.queryByRole('button', { name: m.chat_context_toggle() })).not.toBeInTheDocument()
+  })
+
+  /**
+   * The prototype's PRIKAČENO block (L167–L171) is drawn only when the thread has a shortlist —
+   * an empty eyebrow over nothing reads as a section that failed to load.
+   */
+  it('carries the shortlist when there is one, and no heading when there is not', async () => {
+    await renderPanel(thread())
+    expect(screen.queryByText(/PRIKAČENO/)).not.toBeInTheDocument()
+    cleanup()
+
+    await renderPanel(thread(), [
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        authorName: 'Marko Petrović',
+        excerpt: 'Zapisnik obavezan pre slanja partneru',
+        isDeleted: false,
+        pinnedBy: ME,
+      },
+    ])
+
+    expect(screen.getByText('PRIKAČENO · 1')).toBeInTheDocument()
+    expect(screen.getByText('Zapisnik obavezan pre slanja partneru')).toBeInTheDocument()
   })
 })

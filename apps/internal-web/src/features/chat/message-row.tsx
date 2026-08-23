@@ -6,7 +6,7 @@ import {
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { cn } from '@mr/ui'
-import { Check, CheckCheck, Reply } from 'lucide-react'
+import { Check, CheckCheck, Pin, PinOff, Reply } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
 import { MessageBody } from './message-body'
@@ -94,6 +94,14 @@ export interface MessageRowProps {
   onRetry?: () => void
   /** Absent where a reply cannot be written — a message on a screen with no composer. */
   onReply?: ((message: ChatMessage) => void) | undefined
+  /** Toggles your own tick. Absent where the screen has nothing to send it with. */
+  onReact?: ((message: ChatMessage) => void) | undefined
+  /** Toggles this message on the room's shortlist. */
+  onPin?: ((message: ChatMessage) => void) | undefined
+  /** Whether this message is on that shortlist right now — read from the pins, not the message. */
+  isPinned?: boolean
+  /** Whether taking it down is this person's to do: they put it there, or they are an admin. */
+  canUnpin?: boolean
   /** Whose messages get the ticks: yours. Empty before the session resolves, so nothing shows. */
   currentUserId?: string | undefined
 }
@@ -136,6 +144,50 @@ function MessageTicks({
 }
 
 /**
+ * The tick, once anybody has given it.
+ *
+ * Read from `cet-prototip.dc.html:132`: mono `600 10px`, `--grn` on `rgba(31,169,113,.12)` over a
+ * `rgba(31,169,113,.35)` border, `padding:3px 8px`, `border-radius:20px`. Clicking adds or removes
+ * YOUR tick — the count is everybody's.
+ *
+ * ⚠ Drawn only when the count is above zero, exactly as the prototype does (`hasReact`). The first
+ * tick is given from the ✓ beside the reply arrow: a chip under every line, most of them reading
+ * zero, is noise in a room that is mostly one-line messages.
+ */
+function ReactionChip({
+  count,
+  mine,
+  onToggle,
+}: {
+  count: number
+  mine: boolean
+  onToggle: (() => void) | undefined
+}): React.ReactElement | null {
+  if (count === 0) {
+    return null
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={onToggle === undefined}
+      aria-pressed={mine}
+      title={mine ? m.chat_unreact() : m.chat_react()}
+      onClick={onToggle}
+      className={cn(
+        'inline-flex w-fit items-center gap-[5px] rounded-[20px] border px-2 py-[3px] font-mono text-[10px] font-semibold transition-colors',
+        'border-[rgba(31,169,113,.35)] bg-[rgba(31,169,113,.12)] text-mri-grn',
+        onToggle === undefined ? 'cursor-default' : 'cursor-pointer hover:border-mri-grn',
+        // Yours reads a shade stronger, so a person can tell at a glance whether they already gave it.
+        mine ? 'font-bold' : 'font-medium',
+      )}
+    >
+      {m.chat_reactions_count({ count })}
+    </button>
+  )
+}
+
+/**
  * The message being answered, above the answer.
  *
  * Read from `cet-prototip.dc.html:112-114`: `padding:7px 10px`, `border-left:2px solid --border2`,
@@ -160,11 +212,44 @@ function QuotedMessage({
   )
 }
 
+/** One 11px action beside the author's name — the idiom reply set, now shared by three. */
+function ActionGlyph({
+  label,
+  onClick,
+  pressed,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  pressed?: boolean
+  children: React.ReactNode
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        'inline-flex cursor-pointer transition-opacity hover:text-mri-text hover:opacity-100',
+        pressed === true ? 'text-mri-text opacity-100' : 'text-mri-text2 opacity-50',
+      )}
+    >
+      {children}
+      <span className="sr-only">{label}</span>
+    </button>
+  )
+}
+
 /** One thing somebody said — or, without an author, one thing the shop did. */
 export function MessageRow({
   message,
   resolutions,
   onReply,
+  onReact,
+  onPin,
+  isPinned = false,
+  canUnpin = true,
   currentUserId,
   onOpenClaim,
   pending = false,
@@ -203,16 +288,41 @@ export function MessageRow({
               {m.chat_message_edited()}
             </span>
           )}
-          {onReply === undefined || message.deletedAt !== null ? null : (
-            <button
-              type="button"
-              title={m.chat_reply()}
-              onClick={() => onReply(message)}
-              className="inline-flex cursor-pointer text-mri-text2 opacity-50 transition-opacity hover:text-mri-text hover:opacity-100"
-            >
-              <Reply aria-hidden="true" className="size-[11px]" />
-              <span className="sr-only">{m.chat_reply()}</span>
-            </button>
+          {message.deletedAt !== null ? null : (
+            <>
+              {/* The prototype gives a message no actions of its own but the copy-link glyph
+                  (L111). Reply landed here first and set the idiom — an 11px glyph at half
+                  opacity — so the tick and the pin join it rather than inventing a hover bar. */}
+              {onReact === undefined ? null : (
+                <ActionGlyph
+                  label={message.reactedByMe ? m.chat_unreact() : m.chat_react()}
+                  pressed={message.reactedByMe}
+                  onClick={() => onReact(message)}
+                >
+                  <Check aria-hidden="true" className="size-[11px]" />
+                </ActionGlyph>
+              )}
+              {onReply === undefined ? null : (
+                <ActionGlyph label={m.chat_reply()} onClick={() => onReply(message)}>
+                  <Reply aria-hidden="true" className="size-[11px]" />
+                </ActionGlyph>
+              )}
+              {/* Taking a pin down belongs to whoever put it up, or to an admin — the same rule
+                  the server enforces. Offering a ✕ that answers 403 is worse than not offering it. */}
+              {onPin === undefined || (isPinned && !canUnpin) ? null : (
+                <ActionGlyph
+                  label={isPinned ? m.chat_unpin() : m.chat_pin()}
+                  pressed={isPinned}
+                  onClick={() => onPin(message)}
+                >
+                  {isPinned ? (
+                    <PinOff aria-hidden="true" className="size-[11px]" />
+                  ) : (
+                    <Pin aria-hidden="true" className="size-[11px]" />
+                  )}
+                </ActionGlyph>
+              )}
+            </>
           )}
         </span>
         {message.quote === null ? null : <QuotedMessage quote={message.quote} />}
@@ -228,11 +338,20 @@ export function MessageRow({
             {m.chat_message_deleted()}
           </span>
         )}
-        {message.author?.id !== undefined &&
-        message.author.id !== null &&
-        message.author.id === currentUserId ? (
-          <MessageTicks pending={pending} seenByAll={message.seenByAll} />
-        ) : null}
+        {/* L132: the tick chip and „viđeno" share one footer row. Ours carries the ticks instead
+            of the prototype's initials list — Nikola's call, 2026-08-23. */}
+        <span className="flex items-center gap-2">
+          <ReactionChip
+            count={message.reactionCount}
+            mine={message.reactedByMe}
+            onToggle={onReact === undefined ? undefined : () => onReact(message)}
+          />
+          {message.author?.id !== undefined &&
+          message.author.id !== null &&
+          message.author.id === currentUserId ? (
+            <MessageTicks pending={pending} seenByAll={message.seenByAll} />
+          ) : null}
+        </span>
         {failed ? (
           <span className="flex items-center gap-2 font-mono text-[9px] font-medium text-mri-bad">
             {m.chat_message_failed()}
