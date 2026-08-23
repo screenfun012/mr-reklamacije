@@ -156,3 +156,102 @@ Isti kao handoff §11, sa dve izmene koje nameće kod:
 ## 8. Primopredaja
 
 Prijemna lista iz handoff-a §12 se prenosi **doslovno** i svaka stavka se dokazuje snimkom ekrana. Uz nju ide i spisak iz §5 ovog dokumenta — svaka odluka koju sam doneo van handoff-a, izričito, da se vidi šta je odlučeno a ne prećutano.
+
+---
+
+## 9. Realtime ugovor — šta čet čini ispravnim
+
+Osam pravila. Svako imenuje fajl. Ko izmisli alternativu, greši — alternative su razmotrene i stoje u §11 kao zamke.
+
+**9.1 Redosled: `seq` rastuće — i rupa koju `seq` ima.** `bigserial` se dodeljuje pri upisu a vidi tek pri potvrdi, pa dva istovremena pošiljaoca mogu da naprave da čitalac vidi `42` dok je `41` još neupisan. Klijent koji zapamti 42 i posle traži „> 42" **trajno gubi 41**. Ne rešava se zaključavanjem: klijent **uvek traži `> maxSeen − 20`** i odbacuje id-jeve koje već ima. Preklapanje je besplatno, a isti ključ ionako treba za §9.4.
+
+**9.2 Oporavak propuštenog — jedan endpoint, tri okidača.** Danas ga NEMA: `sse.controller.ts` ne šalje `id:`, a klijent na `open` samo resetuje odbroj. Jedini slučajni oporavak je `refetchOnWindowFocus` — dakle radi samo ako se korisnik vrati na prozor. Ista rupa postoji sloj niže: `postgres-event-bus.ts` zna da gubi signale objavljene tokom svog ponovnog povezivanja — jedan deploy = svaka poruka iz tog prozora nevidljiva svima.
+`GET /api/chat/conversations/:id/messages?afterSeq=|beforeSeq=&limit=` → `{ items, nextCursor, hasMore }` (oblik iz `audit-log.repository.ts`, **ne** `{items,total,page,pageSize}` — beskonačan skrol nema broj strane). Klijent ga zove sa `afterSeq = maxSeen − 20` na: otvaranje SSE · povratak taba u vidljivo · okidanje čuvara iz §9.3.
+
+**9.3 Živost — nijedna strana ne vidi polumrtvu vezu.** Server: otkucaj ide kroz `stream.write` koji **guta grešku na mrtvom soketu**, pa mrtav slušalac visi do granice od 30 minuta. Klijent: `EventSource` **ignoriše redove komentara**, pa otkucaj ne vidi; kad TCP umre bez RST-a (prelaz Wi-Fi→mobilna, VPN, uspavan laptop) `onerror` se nikad ne javi. Popravka, ~15 linija: otkucaj postaje **imenovan događaj** (`event: 'ping'`), klijent pamti vreme poslednjeg događaja i posle **45 s tišine sam ruši i ponovo otvara** vezu. Granica od 30 minuta OSTAJE — ona je ono što ponovo proverava opozvanu sesiju.
+⚠ **Ne dodavati `id:` na SSE okvire** — niko ne čita `Last-Event-ID`, a §9.2 ionako pokriva i tu i `pg_notify` rupu jednim mehanizmom.
+
+**9.4 Idempotentno slanje — `client_msg_id`.** Klijent kuje UUID pre slanja; kolona + parcijalni unique `(author_id, client_msg_id)`; upis `ON CONFLICT DO NOTHING`, prazan povratak → ponovo pročitaj i vrati **200** umesto 201. Isplati se triput: ponovljeno slanje je bezbedno, isti ključ je dedupe za §9.1, i on je ono što sprečava da se optimistički red iscrta dvaput.
+
+**9.5 Stanja isporuke — optimističko slanje je ovde DOZVOLJENO** (zabrana iz CLAUDE.md važi za kreiranje/izmenu reklamacije; „optimistično je u redu za male radnje sa povratkom"). Tri stanja, ni jedno više: `pending` → `sent` → `failed` sa dugmetom za ponovno slanje **istog** `clientMsgId`.
+
+**9.6 Stranice: keyset po `seq`, nikad offset.** 50 po strani.
+
+**9.7 Viđeno: prigušeno na 5 s, i upis kroz `GREATEST`** — dva zahteva van redosleda ne smeju da vrate pročitanost unazad.
+
+**9.8 Poništavanje kеša mora da bude prigušeno.** Bez toga svaka poruka u kanalu od 9 ljudi okida refetch kod svih — a sesijski limiter je **120 zahteva u minutu, deljen sa celom aplikacijom**.
+
+**9.9 Nov SSE događaj ćuti ako se promaši ijedno od pet mesta** — spisak je u §12.
+
+---
+
+## 10. Push obaveštenja na telefon
+
+**Odluke (Nikola, 23.08.):** push za **svaku** poruku u razgovoru čiji si član · na ekranu stoji **ime autora i početak poruke** · poštuju se utišana nit i DND · ne zvoni za sopstvenu poruku ni dok gledaš baš taj razgovor.
+
+**Šta push traži da postoji, a nemamo ništa od toga:**
+
+| korak | fajl |
+| --- | --- |
+| manifest (`display: standalone` — to je iOS kapija) | `apps/internal-web/public/manifest.webmanifest` |
+| ikonice 192 / 512 / 512-maskable | `apps/internal-web/public/icons/` |
+| veza iz zaglavlja | `apps/internal-web/src/routes/__root.tsx` (`links`) |
+| service worker (`push` + `notificationclick`) | `apps/internal-web/public/sw.js` — **piše se ručno**, ništa ga ne prevodi ni ne pakuje |
+| registracija + prekidač za dozvolu | `_shell.tsx` + nov ekran u podešavanjima |
+| pretplata, čuvanje, slanje, čišćenje | nov modul `apps/api/src/modules/push/` + migracija |
+
+**Ključne činjenice, proverene u našem buildu, ne po sećanju:**
+- `public/**` se kopira u koren sajta (dokaz: `favicon.png`, `internal/logo-white.png`) i nitro sam dodeljuje ispravan MIME i `.webmanifest`-u i `.js`-u.
+- CSP nam **ne smeta**: `worker-src` pada na `script-src 'self'`.
+- ⚠ `/sw.js` danas ide **bez ijednog `Cache-Control`**, a `.js` je ekstenzija koju Cloudflare podrazumevano kešira. Bez pravila na oba kraja, radnici bi mesecima vukli **stari** service worker.
+- ⚠ `apple-touch-icon` je danas `favicon.png` — **providan**, a iOS providnu ikonicu podlaže **crnom**. Treba mu neprovidna 180×180.
+- Push **ne prolazi kroz Cloudflare** (pregledač ↔ Apple/Google ↔ naš API), pa geo-blokada i limiti ne smetaju; pretplata/odjava idu kroz `/api/*` i broje se u 60/min.
+
+**Šta Apple i Google mogu da pročitaju:** sadržaj je šifrovan ključevima pregledača, oni ga **ne vide**. Ali stoji na **zaključanom ekranu** telefona i preslikava se na upareni sat i laptop. Aplikacija ne ume da razlikuje osetljiv tekst od bezazlenog — zato §13 nosi prekidač po čoveku.
+
+**Odjava i gašenje naloga:** pretplata je vezana za nalog; deaktiviran ili obrisan nalog gubi pretplate, a odgovor `404/410` sa servisa znači „pretplata je mrtva, obriši je". ⚠ `403` **ne** znači to (to su pogrešni VAPID ključevi) i ne sme da briše.
+
+---
+
+## 11. Šta se NE sme raditi
+
+- ❌ `vite-plugin-pwa` / Workbox — tukli bi se sa nitro cevovodom i keširali `/assets/**` koji već ima trajni keš; aplikaciji offline rad ne treba.
+- ❌ `id:` na SSE okvirima i replay događaja na serveru — drugi izvor istine za problem koji `seq` već rešava.
+- ❌ Push sa praznim telom („silent push") — iOS posle nekoliko takvih **oduzme dozvolu**; svaka grana `push` rukovaoca, uključujući `catch`, mora da pozove `showNotification`.
+- ❌ Slanje push-a iz putanje zahteva sinhrono — best-effort, kao `fanOut()` kod obaveštenja.
+- ❌ Brisanje pretplate na `403`.
+- ❌ Offset stranice za poruke.
+- ❌ Traženje dozvole za obaveštenja pri učitavanju — mora iz dodira, inače je pregledač trajno odbije.
+
+---
+
+## 12. Šta se menja u postojećem kodu
+
+`sse.controller.ts` (imenovan otkucaj) · `use-realtime-event-stream.ts` (čuvar tišine + `ping`) · `handle-app-event.ts` + `app-events.ts` + `event-bus-port.ts` + oba autobusa + `NotifyMessageSchema` (nov događaj — **pet mesta, promašiš jedno i ćuti**) · `__root.tsx` (manifest + ikonica) · `_shell.tsx` (registracija SW) · `env.ts` (VAPID) · `internal-sidebar.tsx` (stavka + zbir) · `resource-query-map.ts` · claim detail (tab „Razgovor") · `attachments` (nova svrha) · i18n.
+
+---
+
+## 13. Prekidač po čoveku (odluka van handoff-a)
+
+Push za svaku poruku znači, pri 200 poruka dnevno i 9 ljudi, **oko 200 zvukova dnevno po čoveku**. Tako rade Viber i WhatsApp — ali ko se prezasiti, ugasi obaveštenja u telefonu, i tada **gubi i pomene**, pa feature umire. Zato u podešavanjima stoji jedan red po čoveku:
+
+**Obaveštenja na telefonu:** `sve poruke` (podrazumevano) · `samo pomeni` · `bez teksta na ekranu`
+
+Tri vrednosti, jedna kolona. Pokriva i zabrinutost oko zaključanog ekrana — ko ne želi tekst napolju, isključi ga sam.
+
+---
+
+## 14. Šta se ne može dokazati bez telefona
+
+Sve osim jednog se automatizuje: potpisivanje i šifrovanje (integracija protiv lažnog endpointa), ko dobija push (integracija, prava baza — ugašen nalog ne dobija, klijent se ne pojavljuje), čišćenje na `404/410` i **ne**-čišćenje na `403`, skraćivanje teksta, prigušenje, `GREATEST`, prozor oporavka. **Tri stvari se dokazuju mutacijom** (svaka je ovaj repo već ujela): izbaci `is_active` iz kruga primalaca · dodaj `403` u brisanje · zameni `GREATEST` običnim upisom.
+
+**Ne može bez telefona samo jedno, i tu feature i pada:** iPhone od početka do kraja — Podeli → Dodaj na početni ekran → pokreni sa ikonice → **prijavi se ponovo** (instalirana aplikacija ima svoju korpu kolačića, odvojenu od Safarija) → uključi prekidač → primi push sa zaključanim ekranom.
+⚠ Za to treba **pravi HTTPS**: `localhost` iOS-u ne važi, a grane se ne deploj-uju (Railway prati `main`). Znači ili ide na `main` sa isključenim VAPID promenljivim, ili traži privremeno Railway okruženje.
+**Desktop Chrome dokazuje ceo serverski deo** — ključeve, šifrovanje, izlaz ka `fcm.googleapis.com`, primaoce, čišćenje — pre nego što iko dodirne telefon. To se radi prvo.
+
+---
+
+## 15. Prijavljeno, ne popravljeno
+
+`permissions-policy: camera=()` u `tooling/vite/security-headers.ts` gasi `getUserMedia` u sve tri aplikacije. Handoff §7 korak 4 je „Prilozi + **kamera**". Ako se misli na `<input capture>` (predaje se sistemskoj kameri) — radi. Ako se misli na **pregled kamere u stranici** — ne radi, i to zaglavlje traži svoju odluku i svoju izmenu.
+
