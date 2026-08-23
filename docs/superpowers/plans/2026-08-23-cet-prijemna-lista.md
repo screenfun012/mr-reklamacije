@@ -24,11 +24,12 @@ isporučio je drugi spisak ispod, i on je temelj na kome ekran stoji.
 | --- | --- | --- | --- |
 | 1 | Tri kolone tačnih širina (252 / flex / 250), panel samo u niti, ⓘ toggle | 2, 3 | 🔄 *(dve kolone stoje; panel i ⓘ su korak 3)* |
 | 2 | Lista: DND, pretraga, KANALI + „+", NITI + „+", badge/MUTE/aktivno stanje, kind tačke | 2, 3, 6 | 🔄 *(sve stoji; pretraga zasivljena do koraka 7, „+" dijalozi su koraci 3 i 6)* |
-| 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 | ⏳ |
+| 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 (MR), **neraspoređeno** (@pomen) | 🔄 *(MR pola gotovo; @pomen NIJE — vidi rupu ispod)* |
 | 4 | Poruka: avatar, vreme, izmenjeno, link-ikonica, citat, slike, PDF/XLS kartica, reakcija ✓, viđeno | 2, 4, 7 | 🔄 *(avatar, vreme, izmenjeno gotovi; ostalo su koraci 4 i 7)* |
 | 5 | Čip niti u kanalu + podeljena kartica reklamacije + „Podeli u razgovor" na detalju | 3 | ⏳ |
 | 6 | Sistemske poruke (pilula, amber ↻) + NOVO separator | 2, 5 | 🔄 *(server ih piše od koraka 1: ishod, objava, promena kategorije)* |
 | 7 | Composer: brzi odgovori, prilog, kamera, placeholder po režimu, POŠALJI primarno, Enter | 2, 4 | 🔄 *(sve osim priloga i kamere, koji su nacrtani i namerno neaktivni do koraka 4)* |
+| 7b | **@ autocomplete** — kucanje `@` otvara meni članova, strelice + Enter biraju (handoff §5) | **neraspoređeno** | ❗ *(nije bilo ni u jednoj listi — vidi rupu ispod)* |
 | 8 | Kontekst panel: kartica reklamacije, OTVORI REKLAMACIJU, prikačeno, prilozi | 3, 4, 7 | ⏳ |
 | 9 | Oba dijaloga (nit sa pretragom i NAPRAVI +/NIT POSTOJI; kanal sa članovima) | 3, 6 | ⏳ |
 | 10 | Obaveštenja: popup + zvono, @pomen kroz mute, DND, zbir na meniju, viđeno | 5 | ⏳ |
@@ -61,6 +62,7 @@ Ovo su odluke iz našeg spec-a §5 i §10 — nisu u handoff-ovoj listi, ali se 
 | Optimističko slanje sa ponovnim pokušajem | 2 | ✅ |
 | Pomeranje na dno samo ako već gledaš dno | 2 | ✅ |
 | Živa isporuka drugom nalogu (dokazano u pregledaču, ~0,5 s) | 2 | ✅ |
+| Predlog nad poljem: prepoznat MR broj nudi NIT POSTOJI / NAPRAVI, a sam ne pravi ništa (Nikola, 23.08.) | 3 | ✅ |
 | Prilozi iz četa se **ne vide klijentu** (`chat_attachment`) | 4 | ⏳ |
 | Push: manifest, SW, pretplata, slanje, čišćenje | 5 | ⏳ |
 | Prekidač po čoveku: sve poruke · samo pomeni · bez teksta | 5 | ⏳ |
@@ -70,6 +72,26 @@ Ovo su odluke iz našeg spec-a §5 i §10 — nisu u handoff-ovoj listi, ali se 
 | Obrisana poruka se ne može izmeniti nazad | 1 | ✅ |
 
 ---
+
+## ❗ Rupa u praćenju, nađena 23.08. kad je Nikola prvi put seo za čet
+
+Pomen (`@`) je jedina stvar koja je ispala **između** spiskova, i to na dva načina:
+
+- **Crveni čip pomena** je u prijemnoj listi upisan pod korak 3 (red 3), a spec ga drži uz korak 5
+  (§7, zvono i popup). Plan koraka 3 **nema nijedan zadatak za njega** — pa ga nijedan korak nije
+  ni pravio.
+- **Meni koji se sužava dok kucaš ime** postoji u **jednoj rečenici handoff-a §5** i nigde više: ni
+  u spec-u, ni u planovima, ni u ovoj listi. Ni prototip ga ne radi — njegov composer sluša samo
+  Enter. Da Nikola nije seo i probao, ovo bi otišlo u primopredaju kao „urađeno".
+
+⚠ **Pre nego što se pomen pravi, treba rešiti jednu stvar koje nema:** nijedan endpoint ne sme da
+izlista ljude nalogu koji ima samo čet. `/api/users` traži `users.view`, koja **nije** u
+`INTERNAL_APP_PERMISSIONS` — a čet je namerno bez svoje dozvole. Meni pomena mora da vuče članove
+razgovora iz `/api/chat`, ne iz korisnika.
+
+⚠ I još jedno: fusnota kontekst panela **već danas piše** da pomeni idu u zvono i popup. To je
+tačan opis dogovora, ali ne i onoga što aplikacija trenutno radi — rečenica je obećanje dok se
+pomen ne napravi.
 
 ## Svesno van obima ovog posla (piše se u primopredaji, ne prećutkuje se)
 

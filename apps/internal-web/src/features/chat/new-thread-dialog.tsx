@@ -31,7 +31,7 @@ const CARD_CLASSES = cn(
 )
 
 /** L372, the two states of the right-hand badge. */
-const BADGE_CLASSES =
+export const THREAD_BADGE_CLASSES =
   'ml-auto flex-none rounded-[6px] px-2 py-[3px] font-mono text-[8.5px] font-bold tracking-[0.1em]'
 
 function claimTitle(claim: ClaimListItem): string {
@@ -74,7 +74,7 @@ function ClaimRow({
       </span>
       <span
         className={cn(
-          BADGE_CLASSES,
+          THREAD_BADGE_CLASSES,
           threadId === null
             ? 'border border-[rgba(31,169,113,.4)] bg-[rgba(31,169,113,.1)] text-mri-ok'
             : 'border border-mri-border2 text-mri-text2',

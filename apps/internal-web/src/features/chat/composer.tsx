@@ -1,7 +1,9 @@
 import { m } from '@mr/i18n'
-import { CHAT_MESSAGE_MAX_LENGTH } from '@mr/shared'
+import { CHAT_MESSAGE_MAX_LENGTH, type MrRegistryExistingClaim } from '@mr/shared'
 import { Camera, Paperclip } from 'lucide-react'
 import { useState } from 'react'
+
+import { ComposerMrSuggestion } from './composer-mr-suggestion'
 
 /** The four the prototype offers. Whole sentences of this shop's day, not a phrasebook. */
 const QUICK_REPLIES = [
@@ -17,10 +19,22 @@ const INERT_BUTTON_CLASSES =
 export interface ComposerProps {
   isThread: boolean
   onSend: (body: string) => void
+  /** The conversation being written in — so the offer never points at the room you are in. */
+  conversationId?: string | undefined
+  /**
+   * What happens when somebody takes up the offer above the field. Absent where there is nowhere
+   * to go, and then no offer is made — the same rule the MR chip in a message follows.
+   */
+  onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
 }
 
 /** What a person writes, and the two buttons beside it that do not work yet and say so. */
-export function Composer({ isThread, onSend }: ComposerProps): React.ReactElement {
+export function Composer({
+  isThread,
+  onSend,
+  conversationId,
+  onOpenClaim,
+}: ComposerProps): React.ReactElement {
   const [text, setText] = useState('')
 
   const submit = (): void => {
@@ -34,6 +48,13 @@ export function Composer({ isThread, onSend }: ComposerProps): React.ReactElemen
 
   return (
     <div className="flex flex-none flex-col border-t border-mri-border bg-mri-surface">
+      {onOpenClaim === undefined ? null : (
+        <ComposerMrSuggestion
+          draft={text}
+          conversationId={conversationId}
+          onOpenClaim={onOpenClaim}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-[7px] px-4 pt-2.5">
         <span className="font-mono text-[8px] font-semibold tracking-[0.16em] text-mri-text2">
           {m.chat_composer_quick()}

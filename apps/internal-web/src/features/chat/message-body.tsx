@@ -8,7 +8,7 @@ import { cn } from '@mr/ui'
  * border-radius:6px; white-space:nowrap`. `--blu` is `#2e90fa` (L14) — the app already carries
  * both as `mri-info` / `mri-info-bg`.
  */
-const CHIP_CLASSES =
+export const MR_CHIP_CLASSES =
   'rounded-[6px] bg-mri-info-bg px-[7px] py-0.5 font-mono text-[11.5px] font-semibold whitespace-nowrap text-mri-info'
 
 export interface MessageBodyProps {
@@ -33,7 +33,7 @@ function Chip({
   onOpenClaim: ((target: MrRegistryExistingClaim) => void) | undefined
 }): React.ReactElement {
   if (onOpenClaim === undefined) {
-    return <span className={CHIP_CLASSES}>{raw}</span>
+    return <span className={MR_CHIP_CLASSES}>{raw}</span>
   }
 
   return (
@@ -41,7 +41,7 @@ function Chip({
       type="button"
       title={m.chat_mr_open_thread()}
       onClick={() => onOpenClaim(target)}
-      className={cn(CHIP_CLASSES, 'cursor-pointer align-baseline')}
+      className={cn(MR_CHIP_CLASSES, 'cursor-pointer align-baseline')}
     >
       {raw}
     </button>

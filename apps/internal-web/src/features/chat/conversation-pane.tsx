@@ -190,7 +190,12 @@ export function ConversationPane({
         onRetry={handleRetry}
         onOpenClaim={onOpenClaim}
       />
-      <Composer isThread={isThread} onSend={handleSend} />
+      <Composer
+        isThread={isThread}
+        onSend={handleSend}
+        conversationId={conversationId}
+        onOpenClaim={onOpenClaim}
+      />
     </>
   )
 }
