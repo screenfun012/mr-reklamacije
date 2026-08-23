@@ -8,6 +8,7 @@ import {
   ChatConversationListResponseSchema,
   ChatMessageSchema,
   ChatMessagesPageSchema,
+  ChatPeopleResponseSchema,
   type ChatConversationListItem,
   type ChatMessage,
   type ChatMessagesPage,
@@ -19,6 +20,8 @@ import {
  * navigations from asking three times in a second.
  */
 const CHAT_CONVERSATIONS_STALE_MS = 15_000
+/** The office roster changes when somebody is hired, not while a sentence is being typed. */
+const CHAT_PEOPLE_STALE_MS = 5 * 60_000
 
 /**
  * Query keys for the chat.
@@ -31,6 +34,7 @@ export const chatKeys = {
   all: ['chat'] as const,
   conversations: () => [...chatKeys.all, 'conversations'] as const,
   messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
+  people: (conversationId: string) => [...chatKeys.all, 'people', conversationId] as const,
 }
 
 /** Every conversation this person may enter, plus the ONE unread number the sidebar shows. */
@@ -39,6 +43,22 @@ export function chatConversationsOptions() {
     queryKey: chatKeys.conversations(),
     queryFn: () => fetchParsed('/api/chat/conversations', ChatConversationListResponseSchema),
     staleTime: CHAT_CONVERSATIONS_STALE_MS,
+  })
+}
+
+/**
+ * Who a mention in this conversation may name — the people who can actually see it.
+ *
+ * Per conversation, not per app: the general channel is the whole internal office, a claim thread
+ * is whoever may read that claim. Fetched once and narrowed in the browser, because the office is
+ * a handful of people and a search endpoint for nine rows is a moving part nobody needs.
+ */
+export function chatPeopleOptions(conversationId: string) {
+  return queryOptions({
+    queryKey: chatKeys.people(conversationId),
+    queryFn: () =>
+      fetchParsed(`/api/chat/conversations/${conversationId}/people`, ChatPeopleResponseSchema),
+    staleTime: CHAT_PEOPLE_STALE_MS,
   })
 }
 

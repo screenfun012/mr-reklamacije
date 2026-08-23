@@ -5,6 +5,7 @@ import {
   ChatEventType,
   ChatMessageSchema,
   ChatMessagesPageSchema,
+  ChatPeopleResponseSchema,
   ChatSystemKind,
   type Permission,
 } from '@mr/shared'
@@ -457,5 +458,115 @@ describe('Chat', () => {
     const page = ChatMessagesPageSchema.parse(await messages.json())
     expect(page.items[0]?.body).toBe('zdravo')
     expect(page.items[0]?.author?.name).toBe('Test Operator')
+  })
+
+  /**
+   * Who a mention here may name. Three different questions wearing one endpoint: the general
+   * channel is the whole internal office, a claim thread is whoever may read that claim, and a
+   * channel is its members. Offering somebody who cannot see the room would promise a mention
+   * that never arrives (spec §5 row 7).
+   */
+  describe('the people who may be mentioned', () => {
+    async function makeUser(name: string, roleCode: string | null): Promise<string> {
+      const id = crypto.randomUUID()
+      await ctx.db.insert(schema.users).values({
+        id,
+        email: `chat-people-${id}@mrengines.rs`,
+        name,
+        isActive: true,
+        accountStatus: 'approved',
+      })
+      if (roleCode !== null) {
+        const [role] = await ctx.db
+          .select({ id: schema.roles.id })
+          .from(schema.roles)
+          .where(eq(schema.roles.code, roleCode))
+          .limit(1)
+        if (role === undefined) {
+          throw new Error(`Role ${roleCode} not found — system seeds must run in integration setup`)
+        }
+        await ctx.db
+          .insert(schema.userRoles)
+          .values({ userId: id, roleId: role.id, assignedBy: id })
+          .onConflictDoNothing()
+      }
+      return id
+    }
+
+    async function peopleIn(conversationId: string, permissions: readonly Permission[]) {
+      const app = createChatTestApp(container, testUser([...permissions]))
+      const res = await app.request(`/api/chat/conversations/${conversationId}/people`)
+      if (res.status !== 200) {
+        return { status: res.status, ids: [] as string[] }
+      }
+      // Parsed, not cast: the shape the client is promised is part of what this endpoint owes.
+      const body = ChatPeopleResponseSchema.parse(await res.json())
+      return { status: res.status, ids: body.items.map((person: { id: string }) => person.id) }
+    }
+
+    it('offers the whole internal office in the general channel', async () => {
+      const reader = await makeUser('Citalac Reklamacija', 'claims_view')
+      const fielder = await makeUser('Serviser Prijem', 'intake_view')
+
+      const { status, ids } = await peopleIn(generalId, CLAIM_READER_PERMISSIONS)
+
+      expect(status).toBe(200)
+      // The serviser reads no claims at all, and still belongs here: the general channel is the
+      // whole shop, which is the point of it.
+      expect(ids).toEqual(expect.arrayContaining([reader, fielder]))
+    })
+
+    it('offers only claim readers in a claim thread', async () => {
+      const reader = await makeUser('Citalac Reklamacija', 'claims_view')
+      const fielder = await makeUser('Serviser Prijem', 'intake_view')
+
+      const { ids } = await peopleIn(emotiveThreadId, CLAIM_READER_PERMISSIONS)
+
+      expect(ids).toContain(reader)
+      expect(ids).not.toContain(fielder)
+    })
+
+    it('includes an admin who holds no role_permissions rows', async () => {
+      const admin = await makeUser('Admin Bez Redova', 'admin')
+      // The bypass lives in the resolver, not in the junction table. A plain join would drop this
+      // person silently, and the one account that can always be reached would be unreachable.
+      const [adminRole] = await ctx.db
+        .select({ id: schema.roles.id })
+        .from(schema.roles)
+        .where(eq(schema.roles.code, 'admin'))
+        .limit(1)
+      if (adminRole === undefined) throw new Error('admin role missing')
+      await ctx.db
+        .delete(schema.rolePermissions)
+        .where(eq(schema.rolePermissions.roleId, adminRole.id))
+
+      const { ids } = await peopleIn(emotiveThreadId, CLAIM_READER_PERMISSIONS)
+
+      expect(ids).toContain(admin)
+    })
+
+    it('never offers a portal client', async () => {
+      const client = await makeUser('Klijent Sa Portala', 'client')
+
+      const { ids } = await peopleIn(generalId, CLAIM_READER_PERMISSIONS)
+
+      expect(ids).not.toContain(client)
+    })
+
+    it('never offers a deactivated account', async () => {
+      const gone = await makeUser('Ugasen Nalog', 'claims_view')
+      await ctx.db.update(schema.users).set({ isActive: false }).where(eq(schema.users.id, gone))
+
+      const { ids } = await peopleIn(generalId, CLAIM_READER_PERMISSIONS)
+
+      expect(ids).not.toContain(gone)
+    })
+
+    it('answers 404 for a conversation the caller cannot see', async () => {
+      // Not 403: a thread he may not read is, for him, not there.
+      const { status } = await peopleIn(emotiveThreadId, SERVISER_PERMISSIONS)
+
+      expect(status).toBe(404)
+    })
   })
 })

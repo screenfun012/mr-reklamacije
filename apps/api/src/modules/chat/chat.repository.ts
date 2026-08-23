@@ -1,5 +1,14 @@
-import { ChatConversationType, ClaimKind, getInitials, type ChatSystemKind } from '@mr/shared'
-import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm'
+import {
+  ChatConversationType,
+  ClaimKind,
+  getInitials,
+  INTERNAL_APP_PERMISSIONS,
+  SYSTEM_ROLE_ADMIN,
+  UserAccountStatus,
+  type ChatSystemKind,
+  type Permission,
+} from '@mr/shared'
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
@@ -13,6 +22,9 @@ import {
   customers,
   domaceClaims,
   emotiveClaims,
+  rolePermissions,
+  roles,
+  userRoles,
   users,
 } from './chat.schema.js'
 import type {
@@ -21,6 +33,25 @@ import type {
   ChatMessagesPage,
   ChatMessagesQuery,
 } from './chat.validators.js'
+
+/** One row of the mention menu, before initials are computed for it. */
+export interface ChatPersonRow {
+  id: string
+  name: string
+  email: string
+}
+
+/**
+ * Only a live, approved account. The same gate the login uses and the same one the notifications
+ * fan-out uses — a name in this menu that cannot receive a mention is a lie with a click on it.
+ */
+function isLiveAccount(): SQL | undefined {
+  return and(
+    eq(users.isActive, true),
+    eq(users.accountStatus, UserAccountStatus.Approved),
+    isNull(users.deletedAt),
+  )
+}
 
 /**
  * What this actor is allowed to see, resolved ONCE from his permissions and then carried into
@@ -207,6 +238,57 @@ export class ChatRepository {
       )
 
     return rows.map(mapConversationRow)
+  }
+
+  /**
+   * The people who may see this conversation, and therefore the only people a mention here may
+   * name. Three different questions, one per type: the general channel is the whole internal
+   * office, a claim thread is whoever may read that claim, a channel is its members.
+   *
+   * ⚠ The `admin` branch matches by role CODE, not by `role_permissions`. The permission resolver
+   * hard-codes ALL_PERMISSIONS for admins, so an admin may own zero junction rows and a plain join
+   * would drop the one account that can always be reached. Same reason, same shape as the
+   * notifications fan-out — the two must agree or a mention promises what the bell cannot keep.
+   */
+  async listPeopleFor(conversation: ChatConversationListItem): Promise<ChatPersonRow[]> {
+    if (conversation.type === ChatConversationType.Channel) {
+      return this.db
+        .select({ id: users.id, name: users.name, email: users.email })
+        .from(users)
+        .innerJoin(chatMembers, eq(chatMembers.userId, users.id))
+        .where(and(isLiveAccount(), eq(chatMembers.conversationId, conversation.id)))
+        .orderBy(users.name)
+    }
+
+    const permissions: Permission[] =
+      conversation.type === ChatConversationType.Claim
+        ? [
+            conversation.claimKind === ClaimKind.Domace
+              ? 'domace_claims.view'
+              : 'emotive_claims.view',
+          ]
+        : [...INTERNAL_APP_PERMISSIONS]
+
+    return this.db
+      .selectDistinct({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .innerJoin(userRoles, eq(userRoles.userId, users.id))
+      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.roleId, roles.id),
+          inArray(rolePermissions.permissionId, permissions),
+        ),
+      )
+      .where(
+        and(
+          isLiveAccount(),
+          isNull(roles.deletedAt),
+          or(eq(roles.code, SYSTEM_ROLE_ADMIN), isNotNull(rolePermissions.permissionId)),
+        ),
+      )
+      .orderBy(users.name)
   }
 
   async findVisibleConversation(

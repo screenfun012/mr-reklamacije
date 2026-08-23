@@ -43,6 +43,22 @@ export const ChatMessageSchema = z.object({
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
 
+/**
+ * Somebody a mention in this conversation may name. Nothing beyond what one row of a menu draws —
+ * a chat picker is not a user directory, and this endpoint is reachable by every internal account.
+ */
+export const ChatPersonSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  initials: z.string(),
+})
+
+export type ChatPerson = z.infer<typeof ChatPersonSchema>
+
+export const ChatPeopleResponseSchema = z.object({ items: z.array(ChatPersonSchema) })
+
+export type ChatPeopleResponse = z.infer<typeof ChatPeopleResponseSchema>
+
 export const ChatConversationListItemSchema = z.object({
   id: z.string().uuid(),
   type: z.enum(chatConversationTypeValues),

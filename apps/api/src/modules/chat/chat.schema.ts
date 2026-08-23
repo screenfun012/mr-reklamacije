@@ -11,3 +11,7 @@ export const emotiveClaims = schema.emotiveClaims
 export const domaceClaims = schema.domaceClaims
 export const customers = schema.customers
 export const users = schema.users
+// Read only to answer "who may see this conversation" — the mention picker's whole question.
+export const userRoles = schema.userRoles
+export const roles = schema.roles
+export const rolePermissions = schema.rolePermissions

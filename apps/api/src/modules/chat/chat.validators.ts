@@ -11,6 +11,7 @@ export {
   type ChatMessage,
   type ChatMessagesPage,
   type ChatMessagesQuery,
+  type ChatPeopleResponse,
 } from '@mr/shared'
 
 export type ChatConversationListResponse = z.infer<typeof ChatConversationListResponseSchema>

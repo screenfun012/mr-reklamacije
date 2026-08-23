@@ -25,6 +25,7 @@ function toActor(c: Context): ChatActor {
 export function createChatController(container: Container): {
   listConversations: (c: Context) => Promise<Response>
   listMessages: (c: Context) => Promise<Response>
+  listPeople: (c: Context) => Promise<Response>
   sendMessage: (c: Context) => Promise<Response>
   markRead: (c: Context) => Promise<Response>
   openClaimThread: (c: Context) => Promise<Response>
@@ -40,6 +41,12 @@ export function createChatController(container: Container): {
   return {
     listConversations: async (c: Context) => {
       const result = await container.chatService.listConversations(toActor(c))
+      return c.json(result)
+    },
+
+    listPeople: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const result = await container.chatService.listPeople(id, toActor(c))
       return c.json(result)
     },
 

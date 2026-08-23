@@ -4,6 +4,7 @@ import {
   CHAT_PINS_MAX,
   ChatSystemKind,
   ClaimKind,
+  getInitials,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
   SYSTEM_ROLE_ADMIN,
@@ -23,6 +24,7 @@ import type {
   ChatConversationListItem,
   ChatConversationListResponse,
   ChatMessage,
+  ChatPeopleResponse,
   ChatMessagesPage,
   ChatMessagesQuery,
   ChatSendInput,
@@ -81,9 +83,9 @@ export class ChatService implements ChatPort {
     query: ChatMessagesQuery,
     actor: ChatActor,
   ): Promise<ChatMessagesPage> {
-    const scope = await this.requireVisible(conversationId, actor)
+    await this.requireVisible(conversationId, actor)
 
-    return this.repo.listMessages(conversationId, query, scope.userId)
+    return this.repo.listMessages(conversationId, query, actor.id)
   }
 
   /**
@@ -254,15 +256,15 @@ export class ChatService implements ChatPort {
 
   /** Per account, not per browser: it has to survive the tablet being swapped (spec §5). */
   async mute(conversationId: string, actor: ChatActor): Promise<void> {
-    const scope = await this.requireVisible(conversationId, actor)
+    await this.requireVisible(conversationId, actor)
 
-    await this.repo.insertMute(conversationId, scope.userId)
+    await this.repo.insertMute(conversationId, actor.id)
   }
 
   async unmute(conversationId: string, actor: ChatActor): Promise<void> {
-    const scope = await this.requireVisible(conversationId, actor)
+    await this.requireVisible(conversationId, actor)
 
-    await this.repo.deleteMute(conversationId, scope.userId)
+    await this.repo.deleteMute(conversationId, actor.id)
   }
 
   /**
@@ -319,9 +321,9 @@ export class ChatService implements ChatPort {
 
   /** No audit entry: how far someone has read is view-tracking, not a business state change. */
   async markRead(conversationId: string, lastSeq: bigint, actor: ChatActor): Promise<void> {
-    const scope = await this.requireVisible(conversationId, actor)
+    await this.requireVisible(conversationId, actor)
 
-    await this.repo.markRead(conversationId, scope.userId, lastSeq)
+    await this.repo.markRead(conversationId, actor.id, lastSeq)
   }
 
   /**
@@ -335,6 +337,28 @@ export class ChatService implements ChatPort {
       this.events.publishChatMessageCreated(conversationId, messageId)
     } catch (error) {
       this.logger.error({ err: error }, 'Chat message signal failed')
+    }
+  }
+
+  /**
+   * Who a mention in this conversation may name.
+   *
+   * Behind the same door as everything else in the module (`INTERNAL_APP_PERMISSIONS`) and behind
+   * the same 404 — asking who is in a room you cannot enter tells you the room exists. It exists
+   * at all because no other endpoint in the app may be called by an account that only has chat:
+   * `users`, `employees`, `roles` and `audit` each demand a permission outside that set, so a
+   * serviser could pass the chat door and reach no name anywhere.
+   */
+  async listPeople(conversationId: string, actor: ChatActor): Promise<ChatPeopleResponse> {
+    const conversation = await this.requireVisible(conversationId, actor)
+    const rows = await this.repo.listPeopleFor(conversation)
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        initials: getInitials(row.name, row.email),
+      })),
     }
   }
 
@@ -353,17 +377,22 @@ export class ChatService implements ChatPort {
     return message
   }
 
-  /** 404, never 403: a conversation he may not read is one that, for him, is not there. */
+  /**
+   * 404, never 403: a conversation he may not read is one that, for him, is not there.
+   *
+   * It hands back the conversation it had to fetch anyway — the mention picker needs to know
+   * WHICH room it is answering for, and fetching it a second time to learn that would be two
+   * reads and two chances to disagree.
+   */
   private async requireVisible(
     conversationId: string,
     actor: ChatActor,
-  ): Promise<ChatVisibilityScope> {
-    const scope = scopeFor(actor)
-    const conversation = await this.repo.findVisibleConversation(conversationId, scope)
+  ): Promise<ChatConversationListItem> {
+    const conversation = await this.repo.findVisibleConversation(conversationId, scopeFor(actor))
     if (conversation === null) {
       throw new NotFoundError('Chat conversation', conversationId)
     }
 
-    return scope
+    return conversation
   }
 }
