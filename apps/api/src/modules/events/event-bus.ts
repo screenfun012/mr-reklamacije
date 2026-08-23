@@ -31,6 +31,11 @@ export class NoOpEventBus implements EventBus {
     void _notificationId
   }
 
+  publishChatMessageCreated(_conversationId: string, _messageId: string): void {
+    void _conversationId
+    void _messageId
+  }
+
   subscribeUser(
     _userId: string,
     _roleCodes: readonly string[],

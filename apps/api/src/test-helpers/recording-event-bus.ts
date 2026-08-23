@@ -1,4 +1,9 @@
-import type { AppEvent, ClaimEventPayload, ResourceChangedKey } from '@mr/shared'
+import {
+  ChatEventType,
+  type AppEvent,
+  type ClaimEventPayload,
+  type ResourceChangedKey,
+} from '@mr/shared'
 
 import type { EventBus } from '../core/ports/event-bus-port.js'
 
@@ -13,11 +18,18 @@ export type RecordedClientSubmissionEvent = { type: 'client_submission_changed';
 
 export type RecordedNotificationEvent = { type: 'notification_created'; userId: string; id: string }
 
+export type RecordedChatEvent = {
+  type: typeof ChatEventType.MessageCreated
+  conversationId: string
+  messageId: string
+}
+
 export class RecordingEventBus implements EventBus {
   readonly events: RecordedClaimEvent[] = []
   readonly resourceEvents: RecordedResourceEvent[] = []
   readonly clientSubmissionEvents: RecordedClientSubmissionEvent[] = []
   readonly notificationEvents: RecordedNotificationEvent[] = []
+  readonly chatEvents: RecordedChatEvent[] = []
 
   publishClaimCreated(payload: ClaimEventPayload, customerId: string | null = null): void {
     this.events.push({ type: 'created', payload, customerId })
@@ -41,6 +53,10 @@ export class RecordingEventBus implements EventBus {
 
   publishNotificationCreated(userId: string, notificationId: string): void {
     this.notificationEvents.push({ type: 'notification_created', userId, id: notificationId })
+  }
+
+  publishChatMessageCreated(conversationId: string, messageId: string): void {
+    this.chatEvents.push({ type: ChatEventType.MessageCreated, conversationId, messageId })
   }
 
   subscribeUser(

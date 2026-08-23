@@ -22,6 +22,7 @@ export function registerChatRoutes(
 
   routes.get('/conversations', controller.listConversations)
   routes.get('/conversations/:id/messages', controller.listMessages)
+  routes.post('/conversations/:id/messages', controller.sendMessage)
 
   app.route('/api/chat', routes)
 }

@@ -3,7 +3,9 @@ import { z } from 'zod'
 
 export {
   ChatMessagesQuerySchema,
+  ChatSendInputSchema,
   type ChatConversationListItem,
+  type ChatSendInput,
   type ChatMessage,
   type ChatMessagesPage,
   type ChatMessagesQuery,

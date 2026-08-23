@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 
 import {
+  ChatEventType,
   ClaimEventType,
   ClientSubmissionEventType,
   NotificationEventType,
@@ -8,8 +9,10 @@ import {
   ResourceEventType,
   SYSTEM_ROLE_ADMIN,
   SYSTEM_ROLE_OPERATOR,
+  SYSTEM_ROLE_SERVISER,
   SYSTEM_ROLE_VIEWER,
   type AppEvent,
+  type ChatAppEvent,
   type ClaimAppEvent,
   type ClaimEventPayload,
   type ClientSubmissionAppEvent,
@@ -25,6 +28,21 @@ const CLAIM_LIST_ROLE_CHANNELS = [
 ] as const
 
 const RESOURCE_SYNC_ROLE_CHANNELS = CLAIM_LIST_ROLE_CHANNELS
+
+/**
+ * Chat is the whole internal shop, the serviser included (spec §3.4) — and never a portal client,
+ * who would otherwise learn that a conversation he cannot open exists.
+ *
+ * ponytail: role channels are all this bus can address, so a role the office invents in the admin
+ * panel hears nothing live until it reconnects or refetches; the upgrade path is an `internal`
+ * broadcast channel joined by anyone whose roles are not just `client`.
+ */
+const CHAT_ROLE_CHANNELS = [
+  SYSTEM_ROLE_OPERATOR,
+  SYSTEM_ROLE_VIEWER,
+  SYSTEM_ROLE_ADMIN,
+  SYSTEM_ROLE_SERVISER,
+] as const
 
 function userChannel(userId: string): string {
   return `user:${userId}`
@@ -95,6 +113,16 @@ export class InProcessEventBus implements EventBus {
       type: NotificationEventType.Created,
       payload: { id: notificationId },
     })
+  }
+
+  publishChatMessageCreated(conversationId: string, messageId: string): void {
+    const event: ChatAppEvent = {
+      type: ChatEventType.MessageCreated,
+      payload: { conversationId, messageId },
+    }
+    for (const role of CHAT_ROLE_CHANNELS) {
+      this.publishToRole(role, event)
+    }
   }
 
   publishToUser(userId: string, event: AppEvent): void {

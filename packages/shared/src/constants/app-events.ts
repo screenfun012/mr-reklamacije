@@ -1,3 +1,4 @@
+import { ChatEventType, type ChatMessageEventPayload } from './chat-events.js'
 import { ClaimEventType, type ClaimEventPayload } from './claim-events.js'
 import {
   ClientSubmissionEventType,
@@ -30,6 +31,12 @@ export type NotificationAppEvent = {
   payload: NotificationEventPayload
 }
 
+/** Server → client SSE payload when a chat message lands in a conversation. */
+export type ChatAppEvent = {
+  type: typeof ChatEventType.MessageCreated
+  payload: ChatMessageEventPayload
+}
+
 /**
  * Union of all SSE events the API may push. Extended in later phases
  * (permissions_changed, session_invalidated, …).
@@ -39,3 +46,4 @@ export type AppEvent =
   | ResourceChangedAppEvent
   | ClientSubmissionAppEvent
   | NotificationAppEvent
+  | ChatAppEvent

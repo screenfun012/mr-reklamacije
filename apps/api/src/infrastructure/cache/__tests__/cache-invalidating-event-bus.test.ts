@@ -25,6 +25,9 @@ class RecordingBus implements EventBus {
   publishNotificationCreated(): void {
     this.calls.push('notification')
   }
+  publishChatMessageCreated(): void {
+    this.calls.push('chat')
+  }
   subscribeUser(): () => void {
     this.calls.push('subscribe')
     return () => {}

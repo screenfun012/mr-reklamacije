@@ -34,6 +34,12 @@ export interface EventBus {
   publishNotificationCreated(userId: string, notificationId: string): void
 
   /**
+   * Signal-only notification that a message landed in a conversation; fans out to the internal
+   * role channels. Carries two ids and never the text — the client invalidates and re-asks.
+   */
+  publishChatMessageCreated(conversationId: string, messageId: string): void
+
+  /**
    * Registers an SSE listener for direct user events, role-scoped broadcasts
    * and — for portal clients — the channels of their linked customers.
    * Returns unsubscribe; must be called on disconnect to avoid leaks.

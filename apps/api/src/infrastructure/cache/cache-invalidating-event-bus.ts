@@ -47,6 +47,10 @@ export class CacheInvalidatingEventBus implements EventBus {
     this.inner.publishNotificationCreated(userId, notificationId)
   }
 
+  publishChatMessageCreated(conversationId: string, messageId: string): void {
+    this.inner.publishChatMessageCreated(conversationId, messageId)
+  }
+
   subscribeUser(
     userId: string,
     roleCodes: readonly string[],

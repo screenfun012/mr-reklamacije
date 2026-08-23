@@ -45,6 +45,15 @@ interface ConversationRow {
   lastMessageAt: string | null
 }
 
+/** What a person's message is made of. A system message is written by the port, not from here. */
+export interface ChatMessageInsert {
+  conversationId: string
+  authorId: string
+  clientMsgId: string
+  body: string
+  quoteOf: string | null
+}
+
 interface MessageRow {
   id: string
   conversationId: string
@@ -209,7 +218,67 @@ export class ChatRepository {
     // the NEWEST messages, so it reads backwards and is turned around below.
     const forward = query.afterSeq !== undefined
 
-    const rows = await this.db
+    const rows = await this.messageSelect(userId)
+      .where(and(...conditions))
+      .orderBy(forward ? asc(chatMessages.seq) : desc(chatMessages.seq))
+      .limit(query.limit + 1)
+
+    const hasMore = rows.length > query.limit
+    const page = hasMore ? rows.slice(0, query.limit) : rows
+    const items = (forward ? page : [...page].reverse()).map(mapMessageRow)
+    const edge = forward ? items.at(-1) : items.at(0)
+
+    return {
+      items,
+      nextCursor: hasMore ? (edge?.seq ?? null) : null,
+      hasMore,
+    }
+  }
+
+  /**
+   * Stores a message, or discovers it was already stored. `ON CONFLICT DO NOTHING` on
+   * `(author_id, client_msg_id)` is what makes a retried POST from a flaky tablet safe: the
+   * second attempt writes nothing, the empty return says so, and the first message is read back
+   * by the same key. Returns `null` only if that key then finds nothing — which the unique index
+   * makes impossible, so the service treats it as a conflict rather than inventing a message.
+   */
+  async insertMessage(input: ChatMessageInsert): Promise<{ id: string; created: boolean } | null> {
+    const [inserted] = await this.db
+      .insert(chatMessages)
+      .values(input)
+      .onConflictDoNothing({
+        target: [chatMessages.authorId, chatMessages.clientMsgId],
+        // The index is PARTIAL, so Postgres only infers it when the predicate is repeated.
+        where: sql`${chatMessages.authorId} IS NOT NULL`,
+      })
+      .returning({ id: chatMessages.id })
+
+    if (inserted !== undefined) {
+      return { id: inserted.id, created: true }
+    }
+
+    const [existing] = await this.db
+      .select({ id: chatMessages.id })
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.authorId, input.authorId),
+          eq(chatMessages.clientMsgId, input.clientMsgId),
+        ),
+      )
+      .limit(1)
+
+    return existing === undefined ? null : { id: existing.id, created: false }
+  }
+
+  async findMessageById(id: string, userId: string): Promise<ChatMessage | null> {
+    const [row] = await this.messageSelect(userId).where(eq(chatMessages.id, id)).limit(1)
+    return row === undefined ? null : mapMessageRow(row)
+  }
+
+  /** One shape for a message, wherever it is read from — a page, or the one just written. */
+  private messageSelect(userId: string) {
+    return this.db
       .select({
         id: chatMessages.id,
         conversationId: chatMessages.conversationId,
@@ -237,20 +306,6 @@ export class ChatRepository {
       })
       .from(chatMessages)
       .leftJoin(users, eq(users.id, chatMessages.authorId))
-      .where(and(...conditions))
-      .orderBy(forward ? asc(chatMessages.seq) : desc(chatMessages.seq))
-      .limit(query.limit + 1)
-
-    const hasMore = rows.length > query.limit
-    const page = hasMore ? rows.slice(0, query.limit) : rows
-    const items = (forward ? page : [...page].reverse()).map(mapMessageRow)
-    const edge = forward ? items.at(-1) : items.at(0)
-
-    return {
-      items,
-      nextCursor: hasMore ? (edge?.seq ?? null) : null,
-      hasMore,
-    }
   }
 
   private conversationSelect(scope: ChatVisibilityScope) {

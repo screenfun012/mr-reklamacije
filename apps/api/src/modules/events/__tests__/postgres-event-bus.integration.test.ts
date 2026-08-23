@@ -1,5 +1,6 @@
 import { assertIntegrationDatabase, createPool, getIntegrationDatabaseUrl } from '@mr/db'
 import {
+  ChatEventType,
   ResourceChangedKey,
   ResourceEventType,
   SYSTEM_ROLE_OPERATOR,
@@ -82,6 +83,30 @@ describe('PostgresEventBus (real Postgres LISTEN/NOTIFY)', () => {
       await expect(onB.promise).resolves.toEqual({
         type: ResourceEventType.Changed,
         payload: { resource: ResourceChangedKey.EngineManufacturers },
+      })
+    } finally {
+      unsubB()
+    }
+  })
+
+  /**
+   * A new event kind has to be added in five places, and four of them fail loudly. The fifth —
+   * this bus's `NotifyMessageSchema` — fails SILENTLY: the payload is published, validated, found
+   * unknown, and dropped with a log line nobody reads. So the chat signal is asserted end to end,
+   * across two instances, exactly where the silence would be.
+   */
+  it('validates and replays a chat message signal across instances', async () => {
+    const conversationId = '3f6ad2c0-0000-4000-8000-00000000c0de'
+    const messageId = '3f6ad2c0-0000-4000-8000-00000000beef'
+    const onB = waitForEvent()
+    const unsubB = b.subscribeUser('u4', [SYSTEM_ROLE_OPERATOR], onB.listener)
+
+    try {
+      a.publishChatMessageCreated(conversationId, messageId)
+
+      await expect(onB.promise).resolves.toEqual({
+        type: ChatEventType.MessageCreated,
+        payload: { conversationId, messageId },
       })
     } finally {
       unsubB()

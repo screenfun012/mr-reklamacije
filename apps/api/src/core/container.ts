@@ -246,7 +246,7 @@ export function buildContainer(
   )
 
   const chatRepository = new ChatRepository(db)
-  const chatService = new ChatService(chatRepository)
+  const chatService = new ChatService(chatRepository, eventBus, logger)
 
   const claimCategoriesRepository = new ClaimCategoriesRepository(db)
   const claimCategoriesService = new ClaimCategoriesService(

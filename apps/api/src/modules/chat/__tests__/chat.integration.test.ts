@@ -2,6 +2,8 @@ import { schema } from '@mr/db'
 import {
   ChatConversationListResponseSchema,
   ChatConversationType,
+  ChatEventType,
+  ChatMessageSchema,
   ChatMessagesPageSchema,
   type Permission,
 } from '@mr/shared'
@@ -10,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
+import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer, createChatTestApp, testUser } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
 import type { ChatActor } from '../chat.validators.js'
@@ -33,16 +36,18 @@ const PORTAL_CLIENT_PERMISSIONS = [
   'emotive_claims.view_own_customer',
 ] as const satisfies readonly Permission[]
 
-describe('Chat reads', () => {
+describe('Chat', () => {
   let ctx: TestDbContext
   let container: Container
+  let bus: RecordingEventBus
   let generalId: string
   let emotiveClaimId: string
   let emotiveThreadId: string
 
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl)
+    bus = new RecordingEventBus()
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, bus)
     await ensureTestUser(ctx.db)
 
     const [manufacturer] = await ctx.db
@@ -211,6 +216,83 @@ describe('Chat reads', () => {
     expect(page.items).toHaveLength(1)
     expect(page.items[0]?.body).toBe('')
     expect(page.items[0]?.deletedAt).not.toBeNull()
+  })
+
+  async function postMessage(
+    app: ReturnType<typeof createChatTestApp>,
+    conversationId: string,
+    payload: Record<string, unknown>,
+  ): Promise<Response> {
+    return app.request(`/api/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  }
+
+  it('accepts the same client id twice and stores one message', async () => {
+    const clientMsgId = crypto.randomUUID()
+    const first = await container.chatService.send(
+      generalId,
+      { clientMsgId, body: 'zdravo' },
+      CLAIM_READER,
+    )
+    const second = await container.chatService.send(
+      generalId,
+      { clientMsgId, body: 'zdravo' },
+      CLAIM_READER,
+    )
+
+    expect(first.created).toBe(true)
+    expect(second.created).toBe(false)
+    expect(second.message.id).toBe(first.message.id)
+
+    const page = await container.chatService.listMessages(generalId, { limit: 50 }, CLAIM_READER)
+    expect(page.items).toHaveLength(1)
+  })
+
+  it('answers 201 the first time and 200 to the retry — a flaky tablet may resend', async () => {
+    const app = createChatTestApp(container, testUser([...CLAIM_READER_PERMISSIONS]))
+    const payload = { clientMsgId: crypto.randomUUID(), body: 'ponovljeno' }
+
+    const first = await postMessage(app, generalId, payload)
+    expect(first.status).toBe(201)
+    const second = await postMessage(app, generalId, payload)
+    expect(second.status).toBe(200)
+
+    expect(ChatMessageSchema.parse(await second.json()).id).toBe(
+      ChatMessageSchema.parse(await first.json()).id,
+    )
+  })
+
+  it('publishes one signal, and it carries no words', async () => {
+    const clientMsgId = crypto.randomUUID()
+    const { message } = await container.chatService.send(
+      generalId,
+      { clientMsgId, body: 'tajna koja ne sme na žicu' },
+      CLAIM_READER,
+    )
+
+    expect(bus.chatEvents).toEqual([
+      { type: ChatEventType.MessageCreated, conversationId: generalId, messageId: message.id },
+    ])
+
+    // The retry stored nothing, so it announces nothing.
+    await container.chatService.send(
+      generalId,
+      { clientMsgId, body: 'tajna koja ne sme na žicu' },
+      CLAIM_READER,
+    )
+    expect(bus.chatEvents).toHaveLength(1)
+  })
+
+  it('404s a post into a conversation the actor may not see — existence is not leaked', async () => {
+    const app = createChatTestApp(container, testUser([...SERVISER_PERMISSIONS]))
+    const res = await postMessage(app, emotiveThreadId, {
+      clientMsgId: crypto.randomUUID(),
+      body: 'ne bih smeo ovde',
+    })
+    expect(res.status).toBe(404)
   })
 
   it('answers both reads in the shape the client is promised', async () => {

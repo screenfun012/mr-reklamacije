@@ -22,6 +22,7 @@ const NotifyKind = {
   ResourceChanged: 'resourceChanged',
   ClientSubmissionChanged: 'clientSubmissionChanged',
   NotificationCreated: 'notificationCreated',
+  ChatMessageCreated: 'chatMessageCreated',
 } as const
 
 const claimEventPayloadSchema = z.object({
@@ -59,6 +60,13 @@ const NotifyMessageSchema = z.discriminatedUnion('kind', [
     kind: z.literal(NotifyKind.NotificationCreated),
     userId: z.string(),
     notificationId: z.string(),
+  }),
+  // ⚠ A kind missing from this union is dropped SILENTLY on the receiving replica — validated,
+  // found unknown, logged, gone. That is the fifth place a new event has to be added.
+  z.object({
+    kind: z.literal(NotifyKind.ChatMessageCreated),
+    conversationId: z.string(),
+    messageId: z.string(),
   }),
 ])
 
@@ -111,6 +119,10 @@ export class PostgresEventBus implements EventBus {
 
   publishNotificationCreated(userId: string, notificationId: string): void {
     void this.notify({ kind: NotifyKind.NotificationCreated, userId, notificationId })
+  }
+
+  publishChatMessageCreated(conversationId: string, messageId: string): void {
+    void this.notify({ kind: NotifyKind.ChatMessageCreated, conversationId, messageId })
   }
 
   subscribeUser(
@@ -234,6 +246,9 @@ export class PostgresEventBus implements EventBus {
         return
       case NotifyKind.NotificationCreated:
         this.local.publishNotificationCreated(message.userId, message.notificationId)
+        return
+      case NotifyKind.ChatMessageCreated:
+        this.local.publishChatMessageCreated(message.conversationId, message.messageId)
         return
       default: {
         const _exhaustive: never = message
