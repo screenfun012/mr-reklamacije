@@ -15,6 +15,8 @@ import { useState } from 'react'
 
 import { InternalTabCount, InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
+import { ClaimConversationTab, useClaimThread } from '../../chat/claim-conversation-tab'
+
 import { DomaceClaimAmountSection } from './domace-claim-amount-section.js'
 import { ClaimAttachmentsCard } from '../../claims/claim-attachments-card'
 import { ClaimFaultsCard } from '../../claims/claim-faults-card'
@@ -46,6 +48,9 @@ export function DomaceClaimDetailView({
   const { data: claim } = useSuspenseQuery(domaceClaimDetailOptions(id))
   // Only for the tab's counter — the same query the photo card already runs.
   const { data: attachments } = useQuery(attachmentsListOptions(ClaimKind.Domace, id))
+  // Only for the tab's counter — the conversation list is already in the cache (the menu's own
+  // unread badge reads it), so this costs nothing and carries the number the thread has.
+  const { thread: chatThread } = useClaimThread(id)
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('domace_claims.change_outcome') === true
@@ -99,6 +104,10 @@ export function DomaceClaimDetailView({
           </InternalTabsTrigger>
           <InternalTabsTrigger value={ClaimDetailTab.Izvestaj}>
             {m.claim_detail_tab_report()}
+          </InternalTabsTrigger>
+          <InternalTabsTrigger value={ClaimDetailTab.Razgovor}>
+            {m.claim_detail_tab_conversation()}
+            <InternalTabCount count={chatThread?.unreadCount ?? 0} />
           </InternalTabsTrigger>
         </InternalTabsList>
 
@@ -164,6 +173,12 @@ export function DomaceClaimDetailView({
 
         <TabsContent value={ClaimDetailTab.Izvestaj}>
           <DomaceClaimReportTab claim={claim} canEditInspection={canEditFindings} />
+        </TabsContent>
+
+        {/* The claim's own conversation — the same thread the „Razgovori" screen mounts, with no
+            context panel beside it: this screen IS the context (spec §8.5). */}
+        <TabsContent value={ClaimDetailTab.Razgovor}>
+          <ClaimConversationTab kind={ClaimKind.Domace} claimId={claim.id} />
         </TabsContent>
       </Tabs>
     </div>

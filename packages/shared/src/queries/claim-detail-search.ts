@@ -5,6 +5,7 @@ export const ClaimDetailTab = {
   Nalazi: 'nalazi',
   Prilozi: 'prilozi',
   Izvestaj: 'izvestaj',
+  Razgovor: 'razgovor',
 } as const
 
 export type ClaimDetailTab = (typeof ClaimDetailTab)[keyof typeof ClaimDetailTab]
@@ -14,6 +15,7 @@ const claimDetailTabValues = [
   ClaimDetailTab.Nalazi,
   ClaimDetailTab.Prilozi,
   ClaimDetailTab.Izvestaj,
+  ClaimDetailTab.Razgovor,
 ] as const
 
 export const ClaimDetailSearchSchema = z.object({

@@ -14,6 +14,8 @@ import { useState } from 'react'
 
 import { InternalTabCount, InternalTabsList, InternalTabsTrigger } from '~/components/internal-tabs'
 
+import { ClaimConversationTab, useClaimThread } from '../../chat/claim-conversation-tab'
+
 import { ClaimPresenceBar } from '../../claims/claim-presence-bar'
 import { ClaimAttachmentsCard } from '../../claims/claim-attachments-card'
 import { ClaimFaultsCard } from '../../claims/claim-faults-card'
@@ -56,6 +58,9 @@ export function EmotiveClaimDetailView({
   // Only for the tab's counter — the same query the photo card already runs, so it costs
   // nothing extra, and a claim still opens when the attachment list is slow.
   const { data: attachments } = useQuery(attachmentsListOptions(ClaimKind.Emotive, id))
+  // Only for the tab's counter — the conversation list is already in the cache (the menu's own
+  // unread badge reads it), so this costs nothing and carries the number the thread has.
+  const { thread: chatThread } = useClaimThread(id)
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('emotive_claims.change_outcome') === true
@@ -106,6 +111,10 @@ export function EmotiveClaimDetailView({
           </InternalTabsTrigger>
           <InternalTabsTrigger value={ClaimDetailTab.Izvestaj}>
             {m.claim_detail_tab_report()}
+          </InternalTabsTrigger>
+          <InternalTabsTrigger value={ClaimDetailTab.Razgovor}>
+            {m.claim_detail_tab_conversation()}
+            <InternalTabCount count={chatThread?.unreadCount ?? 0} />
           </InternalTabsTrigger>
         </InternalTabsList>
 
@@ -177,6 +186,12 @@ export function EmotiveClaimDetailView({
             canEditInspection={canEditFindings}
             canPublish={canPublish}
           />
+        </TabsContent>
+
+        {/* The claim's own conversation — the same thread the „Razgovori" screen mounts, with no
+            context panel beside it: this screen IS the context (spec §8.5). */}
+        <TabsContent value={ClaimDetailTab.Razgovor}>
+          <ClaimConversationTab kind={ClaimKind.Emotive} claimId={claim.id} />
         </TabsContent>
       </Tabs>
     </div>

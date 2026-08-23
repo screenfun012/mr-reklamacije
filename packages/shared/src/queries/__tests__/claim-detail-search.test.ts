@@ -11,6 +11,7 @@ describe('ClaimDetailSearchSchema', () => {
     expect(ClaimDetailSearchSchema.parse({ tab: 'nalazi' }).tab).toBe(ClaimDetailTab.Nalazi)
     expect(ClaimDetailSearchSchema.parse({ tab: 'prilozi' }).tab).toBe(ClaimDetailTab.Prilozi)
     expect(ClaimDetailSearchSchema.parse({ tab: 'izvestaj' }).tab).toBe(ClaimDetailTab.Izvestaj)
+    expect(ClaimDetailSearchSchema.parse({ tab: 'razgovor' }).tab).toBe(ClaimDetailTab.Razgovor)
   })
 
   it('falls back to pregled for a tab slug this build does not have', () => {
