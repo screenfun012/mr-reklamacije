@@ -1,5 +1,6 @@
 import {
   AuditAction,
+  ChatSystemKind,
   ClaimKind,
   type ClaimEventPayload,
   type DomaceClaimFaultInput,
@@ -11,6 +12,7 @@ import type { CategoryFieldsPort } from '../../core/ports/category-fields-port.j
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { HttpActorContext } from '../../core/http/actor-context.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { ChatPort } from '../../core/ports/chat-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type {
   ClaimNotificationContext,
@@ -61,6 +63,7 @@ export class DomaceClaimsService {
     private readonly events: EventBus,
     private readonly notifications: NotificationsPort,
     private readonly categoryFields: CategoryFieldsPort,
+    private readonly chat: ChatPort,
   ) {}
 
   async create(
@@ -144,6 +147,16 @@ export class DomaceClaimsService {
       await this.notifications.notifyClaimAssigned(
         auditContext.actorUserId,
         notificationContext(updated),
+      )
+    }
+
+    // The CODE travels, never the Serbian name — the office renames a category, and the thread
+    // must not end up saying something that was never true.
+    if (updated.category?.id !== before.category?.id) {
+      await this.chat.postSystemMessage(
+        { kind: ClaimKind.Domace, claimId: id },
+        ChatSystemKind.CategoryChanged,
+        { from: before.category?.code ?? '', to: updated.category?.code ?? '' },
       )
     }
 
@@ -243,6 +256,12 @@ export class DomaceClaimsService {
     await this.notifications.notifyOutcomeChanged(
       auditContext.actorUserId,
       notificationContext(updated),
+    )
+
+    await this.chat.postSystemMessage(
+      { kind: ClaimKind.Domace, claimId: id },
+      ChatSystemKind.OutcomeChanged,
+      { outcome: updated.outcome },
     )
 
     return updated

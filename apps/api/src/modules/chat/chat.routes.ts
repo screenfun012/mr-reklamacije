@@ -24,6 +24,7 @@ export function registerChatRoutes(
   routes.get('/conversations/:id/messages', controller.listMessages)
   routes.post('/conversations/:id/messages', controller.sendMessage)
   routes.post('/conversations/:id/read', controller.markRead)
+  routes.post('/claims/:kind/:id/thread', controller.openClaimThread)
 
   app.route('/api/chat', routes)
 }

@@ -1,14 +1,18 @@
 import type { Logger } from '@mr/logger'
 import {
+  ChatSystemKind,
+  ClaimKind,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
 } from '@mr/shared'
 
 import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
+import type { ChatPort, ChatSystemMessageTarget } from '../../core/ports/chat-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
   ChatActor,
+  ChatConversationListItem,
   ChatConversationListResponse,
   ChatMessage,
   ChatMessagesPage,
@@ -19,6 +23,12 @@ import type {
 /** `created` is what separates 201 from 200 — a retry stored nothing and must not claim it did. */
 export interface ChatSendResult {
   message: ChatMessage
+  created: boolean
+}
+
+/** Same distinction for a thread: 201 the first time somebody opens it, 200 every time after. */
+export interface ChatThreadResult {
+  conversation: ChatConversationListItem
   created: boolean
 }
 
@@ -41,7 +51,7 @@ function scopeFor(actor: ChatActor): ChatVisibilityScope {
   }
 }
 
-export class ChatService {
+export class ChatService implements ChatPort {
   constructor(
     private readonly repo: ChatRepository,
     private readonly events: EventBus,
@@ -113,6 +123,80 @@ export class ChatService {
     }
 
     return { message, created: stored.created }
+  }
+
+  /**
+   * The claim's one thread, opened if it is not there yet — whatever door you came through, the
+   * detail's tab or an MR number in somebody's message, this is the same room.
+   */
+  async threadForClaim(
+    kind: ClaimKind,
+    claimId: string,
+    actor: ChatActor,
+  ): Promise<ChatThreadResult> {
+    const scope = scopeFor(actor)
+
+    /**
+     * ⚠ The whole guard of this endpoint. A thread is an internal conversation ABOUT a claim, so
+     * whoever may not open the claim on an internal screen may not open its thread — and gets a
+     * 404 rather than a 403, because a 403 would tell him the claim is there.
+     */
+    const mayRead =
+      kind === ClaimKind.Emotive ? scope.canReadEmotiveClaims : scope.canReadDomaceClaims
+    if (!mayRead || !(await this.repo.claimExists(kind, claimId))) {
+      throw new NotFoundError('Claim', claimId)
+    }
+
+    const opened = await this.repo.openClaimThread(kind, claimId, actor.id)
+    if (opened === null) {
+      throw new ConflictError('Chat thread could not be opened')
+    }
+
+    if (opened.created) {
+      await this.writeSystemMessage(opened.id, ChatSystemKind.ThreadCreated, {})
+    }
+
+    const conversation = await this.repo.findVisibleConversation(opened.id, scope)
+    if (conversation === null) {
+      throw new NotFoundError('Chat conversation', opened.id)
+    }
+
+    return { conversation, created: opened.created }
+  }
+
+  /**
+   * `ChatPort`: what the shop did, recorded in the claim's thread. Never throws back at the caller
+   * — the claim is already written, audited and announced, and a note about it is not worth
+   * turning that into a 500.
+   */
+  async postSystemMessage(
+    target: ChatSystemMessageTarget,
+    systemKind: ChatSystemKind,
+    meta: Record<string, string>,
+  ): Promise<void> {
+    try {
+      const conversationId = await this.repo.findClaimThreadId(target.kind, target.claimId)
+      // ⚠ No thread, no message. A system event NEVER creates one (spec §5 row 9): nothing in
+      // this app appears without somebody asking for it, so the event is dropped on purpose.
+      if (conversationId === null) {
+        return
+      }
+
+      await this.writeSystemMessage(conversationId, systemKind, meta)
+    } catch (error) {
+      this.logger.error({ err: error }, 'Chat system message failed')
+    }
+  }
+
+  private async writeSystemMessage(
+    conversationId: string,
+    systemKind: ChatSystemKind,
+    meta: Record<string, string>,
+  ): Promise<void> {
+    const message = await this.repo.insertSystemMessage(conversationId, systemKind, meta)
+    if (message !== null) {
+      this.announce(conversationId, message.id)
+    }
   }
 
   /** No audit entry: how far someone has read is view-tracking, not a business state change. */

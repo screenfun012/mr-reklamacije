@@ -4,6 +4,7 @@ import type { Container } from '../../core/container.js'
 import type { MRSessionUser } from '../../core/auth/session-types.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import {
+  ChatClaimThreadParamSchema,
   ChatConversationIdParamSchema,
   ChatMarkReadInputSchema,
   ChatMessagesQuerySchema,
@@ -24,6 +25,7 @@ export function createChatController(container: Container): {
   listMessages: (c: Context) => Promise<Response>
   sendMessage: (c: Context) => Promise<Response>
   markRead: (c: Context) => Promise<Response>
+  openClaimThread: (c: Context) => Promise<Response>
 } {
   return {
     listConversations: async (c: Context) => {
@@ -51,6 +53,17 @@ export function createChatController(container: Container): {
       const { lastSeq } = ChatMarkReadInputSchema.parse(await c.req.json())
       await container.chatService.markRead(id, lastSeq, toActor(c))
       return c.body(null, 204)
+    },
+
+    openClaimThread: async (c: Context) => {
+      const { kind, id } = ChatClaimThreadParamSchema.parse(c.req.param())
+      const { conversation, created } = await container.chatService.threadForClaim(
+        kind,
+        id,
+        toActor(c),
+      )
+      // 200 says the thread was already there — opening it twice opens the same room.
+      return c.json(conversation, created ? 201 : 200)
     },
   }
 }

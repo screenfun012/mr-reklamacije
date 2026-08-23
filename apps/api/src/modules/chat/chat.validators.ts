@@ -1,4 +1,4 @@
-import { ChatConversationListResponseSchema } from '@mr/shared'
+import { ChatConversationListResponseSchema, ClaimKind } from '@mr/shared'
 import { z } from 'zod'
 
 export {
@@ -15,6 +15,12 @@ export {
 export type ChatConversationListResponse = z.infer<typeof ChatConversationListResponseSchema>
 
 export const ChatConversationIdParamSchema = z.object({
+  id: z.string().uuid(),
+})
+
+/** Which claim's thread. The kind is in the path because the two families are two tables. */
+export const ChatClaimThreadParamSchema = z.object({
+  kind: z.enum([ClaimKind.Emotive, ClaimKind.Domace]),
   id: z.string().uuid(),
 })
 

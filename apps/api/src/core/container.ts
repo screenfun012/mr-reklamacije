@@ -357,6 +357,7 @@ export function buildContainer(
     logger,
     notificationsService,
     claimCategoryFieldsRepository,
+    chatService,
   )
 
   const clientSubmissionsRepository = new ClientSubmissionsRepository(db)
@@ -387,6 +388,7 @@ export function buildContainer(
     eventBus,
     notificationsService,
     claimCategoryFieldsRepository,
+    chatService,
   )
 
   const claimsRepository = new ClaimsRepository(db)

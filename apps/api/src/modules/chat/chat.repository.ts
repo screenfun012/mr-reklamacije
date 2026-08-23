@@ -299,6 +299,90 @@ export class ChatRepository {
     return existing === undefined ? null : { id: existing.id, created: false }
   }
 
+  /** Is there a claim here at all, and is it still alive? A deleted claim gets no thread. */
+  async claimExists(kind: ClaimKind, claimId: string): Promise<boolean> {
+    const claims = kind === ClaimKind.Emotive ? emotiveClaims : domaceClaims
+    const [row] = await this.db
+      .select({ id: claims.id })
+      .from(claims)
+      .where(and(eq(claims.id, claimId), isNull(claims.deletedAt)))
+      .limit(1)
+
+    return row !== undefined
+  }
+
+  /** The claim's thread, or null. A soft-deleted one does not count — the claim is free again. */
+  async findClaimThreadId(kind: ClaimKind, claimId: string): Promise<string | null> {
+    const column =
+      kind === ClaimKind.Emotive
+        ? chatConversations.emotiveClaimId
+        : chatConversations.domaceClaimId
+    const [row] = await this.db
+      .select({ id: chatConversations.id })
+      .from(chatConversations)
+      .where(and(eq(column, claimId), isNull(chatConversations.deletedAt)))
+      .limit(1)
+
+    return row?.id ?? null
+  }
+
+  /**
+   * Get-or-create, in that order of outcomes but not of statements: it inserts first and lets the
+   * partial unique index decide. Two people opening the claim at the same instant both reach this,
+   * and `ON CONFLICT DO NOTHING` is what makes the loser read the winner's thread instead of
+   * failing — the same shape `insertMessage` uses. No target: the only unique index a `claim` row
+   * can collide with is its own claim's.
+   */
+  async openClaimThread(
+    kind: ClaimKind,
+    claimId: string,
+    createdBy: string,
+  ): Promise<{ id: string; created: boolean } | null> {
+    const [inserted] = await this.db
+      .insert(chatConversations)
+      .values({
+        type: ChatConversationType.Claim,
+        emotiveClaimId: kind === ClaimKind.Emotive ? claimId : null,
+        domaceClaimId: kind === ClaimKind.Domace ? claimId : null,
+        createdBy,
+      })
+      .onConflictDoNothing()
+      .returning({ id: chatConversations.id })
+
+    if (inserted !== undefined) {
+      return { id: inserted.id, created: true }
+    }
+
+    const existing = await this.findClaimThreadId(kind, claimId)
+
+    return existing === null ? null : { id: existing, created: false }
+  }
+
+  /**
+   * What the shop did, written into the thread. No author (it is nobody talking) and no body —
+   * the screen draws the sentence from `system_kind` + `system_meta`, so a rename or a
+   * translation later does not have to rewrite history.
+   */
+  async insertSystemMessage(
+    conversationId: string,
+    systemKind: ChatSystemKind,
+    systemMeta: Record<string, string>,
+  ): Promise<{ id: string } | null> {
+    const [inserted] = await this.db
+      .insert(chatMessages)
+      .values({
+        conversationId,
+        clientMsgId: crypto.randomUUID(),
+        authorId: null,
+        body: '',
+        systemKind,
+        systemMeta,
+      })
+      .returning({ id: chatMessages.id })
+
+    return inserted ?? null
+  }
+
   /**
    * ⚠ `GREATEST`, never a plain assignment. Read receipts are throttled and fired from a screen
    * that scrolls, so two of them race routinely — and the late one carries the OLDER seq. A plain

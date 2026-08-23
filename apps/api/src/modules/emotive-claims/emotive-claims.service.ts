@@ -1,5 +1,6 @@
 import {
   AuditAction,
+  ChatSystemKind,
   ClaimKind,
   ClaimOutcome,
   type ClaimEventPayload,
@@ -14,6 +15,7 @@ import { assertCategoryFieldValues } from '../../core/claims/validate-category-f
 import type { CategoryFieldsPort } from '../../core/ports/category-fields-port.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
+import type { ChatPort } from '../../core/ports/chat-port.js'
 import type { EmailPort } from '../../core/ports/email-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type {
@@ -74,6 +76,7 @@ export class EmotiveClaimsService {
     private readonly logger: Logger,
     private readonly notifications: NotificationsPort,
     private readonly categoryFields: CategoryFieldsPort,
+    private readonly chat: ChatPort,
   ) {}
 
   async create(
@@ -237,6 +240,16 @@ export class EmotiveClaimsService {
       )
     }
 
+    // The category is what kind of work this is — moving a claim is news for the thread. The CODE
+    // travels, never the Serbian name: the office renames a category, and history must not lie.
+    if (updated.category?.id !== before.category?.id) {
+      await this.chat.postSystemMessage(
+        { kind: ClaimKind.Emotive, claimId: id },
+        ChatSystemKind.CategoryChanged,
+        { from: before.category?.code ?? '', to: updated.category?.code ?? '' },
+      )
+    }
+
     return updated
   }
 
@@ -335,6 +348,12 @@ export class EmotiveClaimsService {
       notificationContext(updated),
     )
 
+    await this.chat.postSystemMessage(
+      { kind: ClaimKind.Emotive, claimId: id },
+      ChatSystemKind.OutcomeChanged,
+      { outcome: updated.outcome },
+    )
+
     // Best-effort notification — fire-and-settle so a slow Resend call never
     // adds latency to the outcome change (already persisted, audited, emitted).
     void this.notifyClientOutcomeChanged(updated).catch((error) => {
@@ -383,6 +402,12 @@ export class EmotiveClaimsService {
     if (updated === null) {
       throw new NotFoundError('Emotive claim', id)
     }
+
+    await this.chat.postSystemMessage(
+      { kind: ClaimKind.Emotive, claimId: id },
+      ChatSystemKind.PublishedToClient,
+      {},
+    )
 
     // Best-effort notification — fire-and-settle (see changeOutcome). The guard inside
     // notifyClientOutcomeChanged only sends when the outcome is decided, so publishing a
