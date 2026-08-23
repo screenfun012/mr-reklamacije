@@ -30,6 +30,8 @@ export interface MessageListProps {
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
   /** Absent where there is no composer to answer in. */
   onReply?: ((message: ChatMessage) => void) | undefined
+  /** Whose messages get the ticks. */
+  currentUserId?: string | undefined
 }
 
 function NovoSeparator(): React.ReactElement {
@@ -52,6 +54,7 @@ export function MessageList({
   onRetry,
   onOpenClaim,
   onReply,
+  currentUserId,
 }: MessageListProps): React.ReactElement {
   // One resolution pass for everything on screen, the message being written included.
   const bodies = useMemo(
@@ -112,6 +115,7 @@ export function MessageList({
               resolutions={resolutions}
               onOpenClaim={onOpenClaim}
               onReply={onReply}
+              currentUserId={currentUserId}
             />
           </div>
         ))}
@@ -125,6 +129,7 @@ export function MessageList({
             pending={!row.failed}
             failed={row.failed}
             onRetry={() => onRetry(row.message.clientMsgId)}
+            currentUserId={currentUserId}
           />
         ))}
       </div>

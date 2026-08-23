@@ -71,6 +71,7 @@ const MESSAGES: ChatMessagesPage = {
       editedAt: null,
       deletedAt: null,
       createdAt: '2026-08-23T08:42:00.000Z',
+      seenByAll: false,
       reactionCount: 0,
       mentions: [],
       reactedByMe: false,

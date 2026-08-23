@@ -278,6 +278,7 @@ function mapMessageRow(
   row: MessageRow,
   names: ReadonlyMap<string, string>,
   quotes: ReadonlyMap<string, ChatQuote>,
+  seenByAll: (row: MessageRow) => boolean,
 ): ChatMessage {
   const body = row.deletedAt === null ? row.body : ''
   return {
@@ -302,6 +303,7 @@ function mapMessageRow(
     editedAt: row.editedAt?.toISOString() ?? null,
     deletedAt: row.deletedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
+    seenByAll: seenByAll(row),
     reactionCount: row.reactionCount,
     reactedByMe: row.reactedByMe,
   }
@@ -356,6 +358,42 @@ export class ChatRepository {
       .where(and(isLiveAccount(), mentionedUserIds([...ids])))
 
     return new Map(rows.map((row) => [row.id, row.name]))
+  }
+
+  /**
+   * Who has got how far — the ≤9 marker rows for this conversation, once.
+   *
+   * ⚠ Derived, not stored. A receipt row per person per message would be ~1,600 rows a day that
+   * nothing ever cleans, to answer a question nine markers already answer exactly: `chat_reads`
+   * holds a high-water mark, so "has this person got past message X" is one comparison. The spec
+   * refused a notification row per message for the same reason (§3.2).
+   */
+  private async readMarkers(conversationId: string): Promise<Map<string, bigint>> {
+    const rows = await this.db
+      .select({ userId: chatReads.userId, lastSeq: chatReads.lastSeq })
+      .from(chatReads)
+      .where(eq(chatReads.conversationId, conversationId))
+
+    return new Map(rows.map((row) => [row.userId, BigInt(row.lastSeq)]))
+  }
+
+  /**
+   * The test behind the two coloured ticks: has EVERYBODY who can see this room got at least this
+   * far? Somebody with no marker at all has not — never "assume yes" — and the person who wrote
+   * the message is not waited on, because he never marks his own words read.
+   */
+  private async seenByAllTest(
+    conversation: ChatConversationListItem,
+  ): Promise<(row: MessageRow) => boolean> {
+    const [audience, markers] = await Promise.all([
+      this.listPeopleFor(conversation),
+      this.readMarkers(conversation.id),
+    ])
+
+    return (row: MessageRow) =>
+      audience.every(
+        (person) => person.id === row.authorId || (markers.get(person.id) ?? 0n) >= row.seq,
+      )
   }
 
   /**
@@ -471,10 +509,11 @@ export class ChatRepository {
    * way the page was asked for, because that is the one order the screen draws them in.
    */
   async listMessages(
-    conversationId: string,
+    conversation: ChatConversationListItem,
     query: ChatMessagesQuery,
     userId: string,
   ): Promise<ChatMessagesPage> {
+    const conversationId = conversation.id
     const conditions: SQL[] = [eq(chatMessages.conversationId, conversationId)]
     if (query.afterSeq !== undefined) {
       conditions.push(sql`${chatMessages.seq} > ${query.afterSeq.toString()}::bigint`)
@@ -501,7 +540,8 @@ export class ChatRepository {
     const quotes = await this.resolveQuotes(
       ordered.map((row) => row.quoteOf).filter((id): id is string => id !== null),
     )
-    const items = ordered.map((row) => mapMessageRow(row, names, quotes))
+    const seenByAll = await this.seenByAllTest(conversation)
+    const items = ordered.map((row) => mapMessageRow(row, names, quotes, seenByAll))
     const edge = forward ? items.at(-1) : items.at(0)
 
     return {
@@ -657,8 +697,8 @@ export class ChatRepository {
     }
     const names = await this.resolveMentionNames([row.deletedAt === null ? row.body : ''])
     const quotes = await this.resolveQuotes(row.quoteOf === null ? [] : [row.quoteOf])
-
-    return mapMessageRow(row, names, quotes)
+    // A single message is read for an ACTION (edit, pin, react), never to be drawn with ticks.
+    return mapMessageRow(row, names, quotes, () => false)
   }
 
   /** The correction goes into the row itself — the previous text is not kept (spec §5 row 4). */

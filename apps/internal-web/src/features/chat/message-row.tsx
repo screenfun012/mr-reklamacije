@@ -6,7 +6,7 @@ import {
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { cn } from '@mr/ui'
-import { Reply } from 'lucide-react'
+import { Check, CheckCheck, Reply } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
 import { MessageBody } from './message-body'
@@ -94,6 +94,45 @@ export interface MessageRowProps {
   onRetry?: () => void
   /** Absent where a reply cannot be written — a message on a screen with no composer. */
   onReply?: ((message: ChatMessage) => void) | undefined
+  /** Whose messages get the ticks: yours. Empty before the session resolves, so nothing shows. */
+  currentUserId?: string | undefined
+}
+
+/**
+ * One tick while it is going, two when it is stored, two coloured when everybody who can see the
+ * room has got that far — WhatsApp's idiom, which is what Nikola asked for over the prototype's
+ * „VIĐENO: SJ, DI" list (2026-08-23).
+ *
+ * ⚠ Only on your OWN messages, like WhatsApp: ticks under somebody else's line answer a question
+ * nobody asked and invite the one nobody wants ("you saw it and did not reply").
+ *
+ * ⚠ In a nine-person channel the coloured pair will rarely light — one man on the road is enough
+ * to hold it. In a claim thread with two or three people it does its job. That is the same
+ * behaviour group chats have everywhere, not a defect.
+ */
+function MessageTicks({
+  pending,
+  seenByAll,
+}: {
+  pending: boolean
+  seenByAll: boolean
+}): React.ReactElement {
+  if (pending) {
+    return (
+      <span title={m.chat_message_sending()} className="text-mri-text2">
+        <Check aria-hidden="true" className="size-[13px]" />
+        <span className="sr-only">{m.chat_message_sending()}</span>
+      </span>
+    )
+  }
+
+  const label = seenByAll ? m.chat_ticks_seen_by_all() : m.chat_ticks_sent()
+  return (
+    <span title={label} className={seenByAll ? 'text-mri-info' : 'text-mri-text2'}>
+      <CheckCheck aria-hidden="true" className="size-[13px]" />
+      <span className="sr-only">{label}</span>
+    </span>
+  )
 }
 
 /**
@@ -126,6 +165,7 @@ export function MessageRow({
   message,
   resolutions,
   onReply,
+  currentUserId,
   onOpenClaim,
   pending = false,
   failed = false,
@@ -188,10 +228,10 @@ export function MessageRow({
             {m.chat_message_deleted()}
           </span>
         )}
-        {pending ? (
-          <span className="font-mono text-[9px] font-medium text-mri-text2">
-            {m.chat_message_sending()}
-          </span>
+        {message.author?.id !== undefined &&
+        message.author.id !== null &&
+        message.author.id === currentUserId ? (
+          <MessageTicks pending={pending} seenByAll={message.seenByAll} />
         ) : null}
         {failed ? (
           <span className="flex items-center gap-2 font-mono text-[9px] font-medium text-mri-bad">

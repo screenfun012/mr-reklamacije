@@ -63,7 +63,7 @@ export function ClaimConversationTab({
   claimId: string
 }): React.ReactElement {
   const { thread, isPending } = useClaimThread(claimId)
-  const { userName } = useInternalAuthUser()
+  const { userId, userName } = useInternalAuthUser()
   // The same write both other doors use (the MR chip in a message, the „Nova nit" dialog): the
   // endpoint is get-or-create, so two people pressing at once land in the same room.
   const create = useCreateClaimThread(() => undefined)
@@ -103,6 +103,7 @@ export function ClaimConversationTab({
           conversationId={thread.id}
           unreadCount={thread.unreadCount}
           authorName={userName}
+          authorId={userId}
           isThread
         />
       </Suspense>

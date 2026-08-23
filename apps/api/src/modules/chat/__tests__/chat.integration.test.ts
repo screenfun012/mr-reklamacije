@@ -126,6 +126,21 @@ describe('Chat', () => {
     await ctx.cleanup()
   })
 
+  async function giveRoleTo(userId: string, roleCode: string): Promise<void> {
+    const [role] = await ctx.db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, roleCode))
+      .limit(1)
+    if (role === undefined) {
+      throw new Error(`Role ${roleCode} not found — system seeds must run in integration setup`)
+    }
+    await ctx.db
+      .insert(schema.userRoles)
+      .values({ userId, roleId: role.id, assignedBy: userId })
+      .onConflictDoNothing()
+  }
+
   async function makeLiveUser(userId: string): Promise<void> {
     await ctx.db
       .update(schema.users)
@@ -747,6 +762,68 @@ describe('Chat', () => {
       })
 
       expect(res.status).toBe(201)
+    })
+  })
+
+  /**
+   * The two ticks. Nikola asked for WhatsApp's model rather than the prototype's "VIĐENO: SJ, DI"
+   * list: one tick while it is going, two when it is stored, two coloured when EVERYBODY who can
+   * see the conversation has got that far.
+   */
+  describe('whether everybody has got this far', () => {
+    async function newestSeenByAll(): Promise<boolean | undefined> {
+      const page = await container.chatService.listMessages(generalId, { limit: 50 }, CLAIM_READER)
+      return page.items.at(-1)?.seenByAll
+    }
+
+    beforeEach(async () => {
+      await makeLiveUser(TEST_USER_ID)
+      await makeLiveUser(OTHER_USER_ID)
+      await giveRoleTo(TEST_USER_ID, 'claims_view')
+      await giveRoleTo(OTHER_USER_ID, 'claims_view')
+    })
+
+    it('is false while somebody has not got there', async () => {
+      const seq = await sendRaw(generalId, 'jesi video')
+
+      // Nobody has a marker yet — and no marker means not seen, never "assume yes".
+      expect(await newestSeenByAll()).toBe(false)
+      expect(seq).toBeGreaterThan(0n)
+    })
+
+    it('turns true once everybody else is past it', async () => {
+      const seq = await sendRaw(generalId, 'jesi video')
+      await container.chatService.markRead(generalId, seq, {
+        id: OTHER_USER_ID,
+        permissions: ['emotive_claims.view'],
+        roles: ['operator'],
+      })
+
+      expect(await newestSeenByAll()).toBe(true)
+    })
+
+    it('does not wait on the person who wrote it', async () => {
+      // The author never marks his own message read, and it would be absurd to wait for him.
+      const seq = await sendRaw(generalId, 'pisao sam ja', TEST_USER_ID)
+      await container.chatService.markRead(generalId, seq, {
+        id: OTHER_USER_ID,
+        permissions: ['emotive_claims.view'],
+        roles: ['operator'],
+      })
+
+      expect(await newestSeenByAll()).toBe(true)
+    })
+
+    it('goes back to false for a message written after everybody last looked', async () => {
+      const first = await sendRaw(generalId, 'prva')
+      await container.chatService.markRead(generalId, first, {
+        id: OTHER_USER_ID,
+        permissions: ['emotive_claims.view'],
+        roles: ['operator'],
+      })
+      await sendRaw(generalId, 'druga')
+
+      expect(await newestSeenByAll()).toBe(false)
     })
   })
 })

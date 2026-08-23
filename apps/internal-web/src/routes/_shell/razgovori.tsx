@@ -131,7 +131,7 @@ function RazgovoriColumns(): React.ReactElement {
   // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
   // conversation wants it beside the next one too — and a channel simply has none to show.
   const [contextOpen, setContextOpen] = useState(false)
-  const { userName } = useInternalAuthUser()
+  const { userId, userName } = useInternalAuthUser()
 
   /**
    * A claim number clicked in a message. It opens the claim's thread — and when there is none,
@@ -183,6 +183,7 @@ function RazgovoriColumns(): React.ReactElement {
               conversationId={current.id}
               unreadCount={current.unreadCount}
               authorName={userName}
+              authorId={userId}
               isThread={current.type === ChatConversationType.Claim}
               onOpenClaim={openClaim}
               onOpenConversation={openConversation}

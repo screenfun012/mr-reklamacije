@@ -27,6 +27,7 @@ function message(over: Partial<ChatMessage> & { seq: string }): ChatMessage {
     editedAt: null,
     deletedAt: null,
     createdAt: '2026-08-23T08:42:00.000Z',
+    seenByAll: false,
     reactionCount: 0,
     mentions: [],
     reactedByMe: false,
@@ -69,7 +70,10 @@ function installFetch(): void {
   }) as unknown as typeof fetch
 }
 
-function renderPane(unreadCount = 0) {
+/** The fixture's author. Passing this makes the fixture message "mine", which is what ticks need. */
+const SLAVKO_ID = uuid(900)
+
+function renderPane(unreadCount = 0, authorId = SLAVKO_ID) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const result = render(
     <QueryClientProvider client={queryClient}>
@@ -78,6 +82,7 @@ function renderPane(unreadCount = 0) {
           conversationId={CONVERSATION_ID}
           unreadCount={unreadCount}
           authorName="Marko Petrović"
+          authorId={authorId}
         />
       </Suspense>
     </QueryClientProvider>,
@@ -370,6 +375,47 @@ describe('ConversationPane', () => {
 
       // Otherwise the next sentence quietly answers the same message again.
       expect(screen.queryByText(/Odgovaraš/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('the two ticks', () => {
+    it('says a message is stored on my own line', async () => {
+      renderPane()
+      await screen.findByText('Slavko Jović')
+
+      expect(screen.getByTitle('Poslato')).toBeInTheDocument()
+    })
+
+    it('colours them once everybody has got that far', async () => {
+      initialPage = page([message({ seq: '41', seenByAll: true })])
+      renderPane()
+      await screen.findByText('Slavko Jović')
+
+      const ticks = screen.getByTitle('Svi videli')
+      expect(ticks).toBeInTheDocument()
+      expect(ticks.className).toContain('text-mri-info')
+    })
+
+    it("never puts them under somebody else's line", async () => {
+      // WhatsApp does the same, and for the same reason: a tick under another person's message
+      // answers a question nobody asked and invites the one nobody wants.
+      renderPane(0, uuid(777))
+      await screen.findByText('Slavko Jović')
+
+      expect(screen.queryByTitle('Poslato')).not.toBeInTheDocument()
+      expect(screen.queryByTitle('Svi videli')).not.toBeInTheDocument()
+    })
+
+    it('shows one tick while a message is still going', async () => {
+      const user = userEvent.setup()
+      renderPane()
+      await screen.findByText('Slavko Jović')
+
+      await user.type(composer(), 'ide')
+      await user.keyboard('{Enter}')
+
+      // The optimistic row is mine by construction — one tick, not none.
+      expect(screen.getByTitle(/[Ššs]alje/)).toBeInTheDocument()
     })
   })
 })

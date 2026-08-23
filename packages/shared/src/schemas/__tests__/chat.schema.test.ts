@@ -16,6 +16,7 @@ const MESSAGE = {
   editedAt: null,
   deletedAt: null,
   createdAt: '2026-08-23T09:00:00.000Z',
+  seenByAll: false,
   reactionCount: 0,
   mentions: [],
   reactedByMe: false,

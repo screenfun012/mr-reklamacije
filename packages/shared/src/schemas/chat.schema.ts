@@ -81,6 +81,13 @@ export const ChatMessageSchema = z.object({
   editedAt: z.string().nullable(),
   deletedAt: z.string().nullable(),
   createdAt: z.string(),
+  /**
+   * Everybody who can see this conversation has got at least this far — the two coloured ticks.
+   *
+   * ⚠ "Got this far", not "read it": the marker moves when a person has the conversation open,
+   * which is exactly as much as WhatsApp's blue ticks ever meant. The author is never waited on.
+   */
+  seenByAll: z.boolean(),
   reactionCount: z.number().int().nonnegative(),
   reactedByMe: z.boolean(),
 })

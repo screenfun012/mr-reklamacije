@@ -70,6 +70,8 @@ export interface ConversationPaneProps {
   /** What was unread when this conversation was opened — read once, on purpose (see below). */
   unreadCount: number
   authorName: string
+  /** Whose messages get the ticks — passed in like the name, so the pane needs no router. */
+  authorId: string
   isThread?: boolean
   /** What happens when somebody clicks an MR number written in a message. */
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
@@ -87,6 +89,7 @@ export function ConversationPane({
   conversationId,
   unreadCount,
   authorName,
+  authorId,
   isThread = false,
   onOpenClaim,
   onOpenConversation,
@@ -138,7 +141,9 @@ export function ConversationPane({
         // No `seq` until the server hands one out — that is what makes this row provisional.
         seq: '',
         clientMsgId: crypto.randomUUID(),
-        author: { id: null, name: authorName, initials: initialsOf(authorName) },
+        // ⚠ My own id, not null: the ticks key on it, and a row that claims no author is
+        // nobody's — it would sit there without the one tick that says it is going.
+        author: { id: authorId, name: authorName, initials: initialsOf(authorName) },
         // Read straight off what was just typed, so the chip is there from the first paint. The
         // server's own row replaces this one a moment later with the name the database holds —
         // which is the same name, unless somebody was renamed between typing and sending.
@@ -163,6 +168,7 @@ export function ConversationPane({
         editedAt: null,
         deletedAt: null,
         createdAt: new Date().toISOString(),
+        seenByAll: false,
         reactionCount: 0,
         reactedByMe: false,
       },
@@ -217,6 +223,7 @@ export function ConversationPane({
         onRetry={handleRetry}
         onOpenClaim={onOpenClaim}
         onReply={setReplyTo}
+        currentUserId={authorId}
       />
       <Composer
         isThread={isThread}

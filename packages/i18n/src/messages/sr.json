@@ -457,6 +457,8 @@
   "chat_thread_created_toast": "Nit napravljena",
   "chat_threads_empty": "Još nema nijedne niti.",
   "chat_threads_footer": "Nit nastaje iz poruke sa MR brojem, iz detalja reklamacije (tab „Razgovor“), ili automatski uz sistemske događaje.",
+  "chat_ticks_seen_by_all": "Svi videli",
+  "chat_ticks_sent": "Poslato",
   "claim_attachments_delete_cancel": "Otkaži",
   "claim_attachments_delete_confirm_action": "Obriši",
   "claim_attachments_delete_confirm_message": "Da li ste sigurni da želite da obrišete „{fileName}“?",

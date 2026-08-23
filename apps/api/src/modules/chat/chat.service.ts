@@ -89,9 +89,9 @@ export class ChatService implements ChatPort {
     query: ChatMessagesQuery,
     actor: ChatActor,
   ): Promise<ChatMessagesPage> {
-    await this.requireVisible(conversationId, actor)
+    const conversation = await this.requireVisible(conversationId, actor)
 
-    return this.repo.listMessages(conversationId, query, actor.id)
+    return this.repo.listMessages(conversation, query, actor.id)
   }
 
   /**

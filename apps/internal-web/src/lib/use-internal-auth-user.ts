@@ -5,6 +5,8 @@ import { authClient } from '~/lib/auth-client'
 const rootRoute = getRouteApi('__root__')
 
 export interface InternalAuthUser {
+  /** Empty only before the session is resolved — used to tell your own messages from everybody's. */
+  userId: string
   userName: string
   userEmail: string
 }
@@ -27,6 +29,11 @@ export function useInternalAuthUser(): InternalAuthUser {
 
   const userEmail = liveEmail || contextEmail
   const userName = liveName || contextName || userEmail
+  // ⚠ From the router context first, like the name: the live session resolves differently on the
+  // server and on the first client render, and a value that differs across those two costs the
+  // whole server tree (CLAUDE.md §5).
+  const liveId = typeof liveSession?.user?.id === 'string' ? liveSession.user.id : ''
+  const userId = authSession?.user?.id ?? liveId
 
-  return { userName, userEmail }
+  return { userId, userName, userEmail }
 }
