@@ -139,15 +139,21 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
   }
 
   /**
-   * Somebody said something. The signal carries only ids — never the text (CLAUDE.md §2) — so the
-   * conversation list refreshes for its unread count, and the open conversation refetches from
+   * Something happened in a room. The signal carries only ids — never the text (CLAUDE.md §2) — so
+   * the conversation list refreshes for its unread count, and the open conversation refetches from
    * where it left off.
+   *
+   * ⚠ The shortlist too. The same signal is published by a pin and by a like, and without this
+   * line somebody else's pin left MY pinned bar showing yesterday's message — the mutation
+   * invalidates only for the person who made it. Found in the browser with two accounts side by
+   * side, 2026-08-24, which is the only place it could be found.
    */
   if (event.type === ChatEventType.MessageCreated) {
     void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
     void queryClient.invalidateQueries({
       queryKey: chatKeys.messages(event.payload.conversationId),
     })
+    void queryClient.invalidateQueries({ queryKey: chatKeys.pins(event.payload.conversationId) })
     return
   }
 

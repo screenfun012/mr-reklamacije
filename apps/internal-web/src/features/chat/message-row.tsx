@@ -3,10 +3,11 @@ import {
   ChatSystemKind,
   formatChatTime,
   type ChatMessage,
+  type ChatReactor,
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { cn } from '@mr/ui'
-import { Check, CheckCheck, Pin, PinOff, Reply } from 'lucide-react'
+import { Check, CheckCheck, CornerUpLeft, Pin, PinOff, Reply, ThumbsUp } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
 import { MessageBody } from './message-body'
@@ -144,26 +145,37 @@ function MessageTicks({
 }
 
 /**
- * The tick, once anybody has given it.
+ * Who liked it — the names, not a number.
  *
- * Read from `cet-prototip.dc.html:132`: mono `600 10px`, `--grn` on `rgba(31,169,113,.12)` over a
- * `rgba(31,169,113,.35)` border, `padding:3px 8px`, `border-radius:20px`. Clicking adds or removes
- * YOUR tick — the count is everybody's.
+ * Nikola, 2026-08-24: „da lajkujemo poruku pa kada se pojavi ono zeleno ispod da vidimo ko je sve
+ * lajkovao". So the chip prints them. In a shop of nine people a message collects two or three
+ * likes, which fits on the line; past `NAMED_REACTORS` it says how many more rather than wrapping
+ * a paragraph of names under a one-line message.
  *
- * ⚠ Drawn only when the count is above zero, exactly as the prototype does (`hasReact`). The first
- * tick is given from the ✓ beside the reply arrow: a chip under every line, most of them reading
- * zero, is noise in a room that is mostly one-line messages.
+ * The prototype's own values are kept (`cet-prototip.dc.html:132`): mono `600 10px`, `--grn` on
+ * `rgba(31,169,113,.12)` over a `rgba(31,169,113,.35)` border, `padding:3px 8px`, radius 20.
+ * Drawn only once somebody has liked it — a chip under every line reading zero is noise.
  */
+const NAMED_REACTORS = 3
+
+export function reactionLabel(people: readonly { name: string }[]): string {
+  const named = people.slice(0, NAMED_REACTORS).map((person) => person.name)
+  const rest = people.length - named.length
+  return rest > 0
+    ? `${named.join(', ')} ${m.chat_reactions_more({ count: rest })}`
+    : named.join(', ')
+}
+
 function ReactionChip({
-  count,
+  people,
   mine,
   onToggle,
 }: {
-  count: number
+  people: readonly ChatReactor[]
   mine: boolean
   onToggle: (() => void) | undefined
 }): React.ReactElement | null {
-  if (count === 0) {
+  if (people.length === 0) {
     return null
   }
 
@@ -172,17 +184,18 @@ function ReactionChip({
       type="button"
       disabled={onToggle === undefined}
       aria-pressed={mine}
-      title={mine ? m.chat_unreact() : m.chat_react()}
+      // Everybody, however many are printed — the hover says what the line had to leave out.
+      title={people.map((person) => person.name).join(', ')}
       onClick={onToggle}
       className={cn(
-        'inline-flex w-fit items-center gap-[5px] rounded-[20px] border px-2 py-[3px] font-mono text-[10px] font-semibold transition-colors',
+        'inline-flex w-fit max-w-full items-center gap-[5px] rounded-[20px] border px-2 py-[3px] font-mono text-[10px] transition-colors',
         'border-[rgba(31,169,113,.35)] bg-[rgba(31,169,113,.12)] text-mri-grn',
         onToggle === undefined ? 'cursor-default' : 'cursor-pointer hover:border-mri-grn',
-        // Yours reads a shade stronger, so a person can tell at a glance whether they already gave it.
         mine ? 'font-bold' : 'font-medium',
       )}
     >
-      {m.chat_reactions_count({ count })}
+      <ThumbsUp aria-hidden="true" className="size-[11px] flex-none" />
+      <span className="truncate">{reactionLabel(people)}</span>
     </button>
   )
 }
@@ -190,9 +203,20 @@ function ReactionChip({
 /**
  * The message being answered, above the answer.
  *
- * Read from `cet-prototip.dc.html:112-114`: `padding:7px 10px`, `border-left:2px solid --border2`,
- * `background:--inbg`, `border-radius:0 8px 8px 0`, who in mono 600 9.5px and the line at 11.5px,
- * both `--text2`. It hugs its content (`align-self:flex-start`) rather than filling the row.
+ * Read from `cet-prototip.dc.html:112-114`: `padding:7px 10px`, `background:--inbg`,
+ * `border-radius:0 8px 8px 0`, hugging its content rather than filling the row.
+ *
+ * ⚠ Several values are deliberately NOT the prototype's. It drew the rule in `--border2` and both
+ * lines in `--text2`, and Nikola, 2026-08-24: „previše je monohrom, stapa se u pozadinu". He is
+ * right — a grey rule against a grey block on a grey surface has nothing to see. The accent is the
+ * softer red (the one hue the message stream does not already spend on something else — blue is
+ * an MR number, green is a like), it carries the little reply arrow and the name, and the quoted
+ * words come up to `--text` so they can actually be read.
+ *
+ * Then „sredi ovaj reply, tu je sve samo malo lepše": a hairline closes the other three sides so
+ * the block is a card instead of a stripe running off into the background, the corners follow the
+ * rule (tight at the accent, round away from it), and the quote is clamped to two lines — a long
+ * message being answered used to tower over the one-line answer under it.
  */
 function QuotedMessage({
   quote,
@@ -200,11 +224,12 @@ function QuotedMessage({
   quote: NonNullable<ChatMessage['quote']>
 }): React.ReactElement {
   return (
-    <span className="flex flex-col gap-[3px] self-start rounded-[0_8px_8px_0] border-l-2 border-mri-border2 bg-mri-inbg px-[10px] py-[7px]">
-      <span className="font-mono text-[9.5px] font-semibold text-mri-text2">
+    <span className="flex max-w-[520px] flex-col gap-[3px] self-start rounded-[3px_10px_10px_3px] border border-l-2 border-mri-border border-l-mri-redh bg-mri-inbg py-[7px] pl-[11px] pr-3">
+      <span className="flex items-center gap-1.5 font-mono text-[9.5px] font-semibold text-mri-redh">
+        <CornerUpLeft aria-hidden="true" className="size-[10px]" />
         {quote.authorName}
       </span>
-      <span className="text-[11.5px] text-mri-text2">
+      <span className="line-clamp-2 text-[11.5px] leading-[1.45] text-mri-text">
         {/* A withdrawn message says so here too — its words do not travel anywhere. */}
         {quote.isDeleted ? <em>{m.chat_message_deleted()}</em> : quote.excerpt}
       </span>
@@ -212,16 +237,31 @@ function QuotedMessage({
   )
 }
 
-/** One 11px action beside the author's name — the idiom reply set, now shared by three. */
+/**
+ * One action beside the author's name.
+ *
+ * Two sizes at once, and that is the whole trick. Nikola asked twice, 2026-08-24: first „previše
+ * su mali, jedva ih pritisnem" (they were an 11px glyph with no padding — the glyph WAS the
+ * target), then „nisam mislio na ovaj nacin, uzasno izgleda" about the 28px boxes that answered
+ * it. He is right both times: what has to be big is the area a thumb lands on, and what has to
+ * stay small is the mark on the screen.
+ *
+ * So the glyph is 15px and the padding around it is invisible — `p-[7px]` pulled back out with an
+ * equal negative margin, so the button occupies 29×29 for a finger and nothing at all for the
+ * layout. No box, no border, no hover fill: colour is the only thing that moves.
+ */
 function ActionGlyph({
   label,
   onClick,
   pressed,
+  tone,
   children,
 }: {
   label: string
   onClick: () => void
   pressed?: boolean
+  /** What the glyph turns once it is on — the same colour its result wears elsewhere. */
+  tone?: string
   children: React.ReactNode
 }): React.ReactElement {
   return (
@@ -231,8 +271,9 @@ function ActionGlyph({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        'inline-flex cursor-pointer transition-opacity hover:text-mri-text hover:opacity-100',
-        pressed === true ? 'text-mri-text opacity-100' : 'text-mri-text2 opacity-50',
+        'inline-flex flex-none cursor-pointer p-[7px] transition-colors',
+        '-my-[7px] -mr-[3px] -ml-[4px]',
+        pressed === true ? (tone ?? 'text-mri-text') : 'text-mri-text2 hover:text-mri-text',
       )}
     >
       {children}
@@ -262,6 +303,9 @@ export function MessageRow({
 
   const name = message.author?.name ?? ''
   const initials = message.author?.initials ?? initialsOf(name)
+  // Derived, not a second field on the wire: the list of who liked it is the whole truth.
+  const likedByMe =
+    currentUserId !== undefined && message.reactedBy.some((person) => person.id === currentUserId)
 
   return (
     <article
@@ -295,16 +339,17 @@ export function MessageRow({
                   opacity — so the tick and the pin join it rather than inventing a hover bar. */}
               {onReact === undefined ? null : (
                 <ActionGlyph
-                  label={message.reactedByMe ? m.chat_unreact() : m.chat_react()}
-                  pressed={message.reactedByMe}
+                  label={likedByMe ? m.chat_unreact() : m.chat_react()}
+                  pressed={likedByMe}
+                  tone="text-mri-grn"
                   onClick={() => onReact(message)}
                 >
-                  <Check aria-hidden="true" className="size-[11px]" />
+                  <ThumbsUp aria-hidden="true" className="size-[15px]" />
                 </ActionGlyph>
               )}
               {onReply === undefined ? null : (
                 <ActionGlyph label={m.chat_reply()} onClick={() => onReply(message)}>
-                  <Reply aria-hidden="true" className="size-[11px]" />
+                  <Reply aria-hidden="true" className="size-[15px]" />
                 </ActionGlyph>
               )}
               {/* Taking a pin down belongs to whoever put it up, or to an admin — the same rule
@@ -313,12 +358,13 @@ export function MessageRow({
                 <ActionGlyph
                   label={isPinned ? m.chat_unpin() : m.chat_pin()}
                   pressed={isPinned}
+                  tone="text-mri-red"
                   onClick={() => onPin(message)}
                 >
                   {isPinned ? (
-                    <PinOff aria-hidden="true" className="size-[11px]" />
+                    <PinOff aria-hidden="true" className="size-[15px]" />
                   ) : (
-                    <Pin aria-hidden="true" className="size-[11px]" />
+                    <Pin aria-hidden="true" className="size-[15px]" />
                   )}
                 </ActionGlyph>
               )}
@@ -342,8 +388,8 @@ export function MessageRow({
             of the prototype's initials list — Nikola's call, 2026-08-23. */}
         <span className="flex items-center gap-2">
           <ReactionChip
-            count={message.reactionCount}
-            mine={message.reactedByMe}
+            people={message.reactedBy}
+            mine={likedByMe}
             onToggle={onReact === undefined ? undefined : () => onReact(message)}
           />
           {message.author?.id !== undefined &&

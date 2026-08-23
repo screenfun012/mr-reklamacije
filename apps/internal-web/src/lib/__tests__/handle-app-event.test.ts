@@ -223,7 +223,12 @@ describe('handleAppEvent', () => {
     })
   })
 
-  it('refreshes the conversation list and the open conversation on a chat message', () => {
+  /**
+   * ⚠ The pins as well. A pin and a like publish this same signal, and without that key somebody
+   * else's pin leaves MY pinned bar showing the message before it — the mutation invalidates only
+   * for the person who made it. Found in the browser with two accounts open, 2026-08-24.
+   */
+  it('refreshes the list, the open conversation AND its shortlist on a chat signal', () => {
     const queryClient = new QueryClient()
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -234,5 +239,6 @@ describe('handleAppEvent', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'conversations'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'messages', 'conv-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'pins', 'conv-1'] })
   })
 })

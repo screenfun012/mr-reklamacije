@@ -109,7 +109,7 @@ export class ChatService implements ChatPort {
   ): Promise<ChatMessagesPage> {
     const conversation = await this.requireVisible(conversationId, actor)
 
-    return this.repo.listMessages(conversation, query, actor.id)
+    return this.repo.listMessages(conversation, query)
   }
 
   /**
@@ -130,7 +130,7 @@ export class ChatService implements ChatPort {
      * would then carry a pointer nothing can render and nobody meant to make.
      */
     if (input.quoteOf !== undefined) {
-      const quoted = await this.repo.findMessageById(input.quoteOf, actor.id)
+      const quoted = await this.repo.findMessageById(input.quoteOf)
       if (quoted === null || quoted.conversationId !== conversationId) {
         throw new NotFoundError('Chat message', input.quoteOf)
       }
@@ -147,7 +147,7 @@ export class ChatService implements ChatPort {
       throw new ConflictError('Chat message could not be stored')
     }
 
-    const message = await this.repo.findMessageById(stored.id, actor.id)
+    const message = await this.repo.findMessageById(stored.id)
     if (message === null) {
       throw new NotFoundError('Chat message', stored.id)
     }
@@ -303,7 +303,7 @@ export class ChatService implements ChatPort {
 
     await this.repo.updateMessageBody(messageId, body)
 
-    const updated = await this.repo.findMessageById(messageId, actor.id)
+    const updated = await this.repo.findMessageById(messageId)
     if (updated === null) {
       throw new NotFoundError('Chat message', messageId)
     }
@@ -512,7 +512,7 @@ export class ChatService implements ChatPort {
     messageId: string,
     actor: ChatActor,
   ): Promise<{ message: ChatMessage; conversation: ChatConversationListItem }> {
-    const message = await this.repo.findMessageById(messageId, actor.id)
+    const message = await this.repo.findMessageById(messageId)
     if (message === null) {
       throw new NotFoundError('Chat message', messageId)
     }

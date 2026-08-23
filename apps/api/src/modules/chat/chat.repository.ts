@@ -15,6 +15,7 @@ import {
   UserAccountStatus,
   type ChatMention,
   type ChatPin,
+  type ChatReactor,
   type ChatQuote,
   type ChatSystemKind,
   type Permission,
@@ -157,8 +158,6 @@ interface MessageRow {
   editedAt: Date | null
   deletedAt: Date | null
   createdAt: Date
-  reactionCount: number
-  reactedByMe: boolean
 }
 
 /**
@@ -294,6 +293,7 @@ function mapMessageRow(
   names: ReadonlyMap<string, string>,
   quotes: ReadonlyMap<string, ChatQuote>,
   seenByAll: (row: MessageRow) => boolean,
+  reactors: ReadonlyMap<string, ChatReactor[]>,
 ): ChatMessage {
   const body = row.deletedAt === null ? row.body : ''
   return {
@@ -319,8 +319,7 @@ function mapMessageRow(
     deletedAt: row.deletedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     seenByAll: seenByAll(row),
-    reactionCount: row.reactionCount,
-    reactedByMe: row.reactedByMe,
+    reactedBy: reactors.get(row.id) ?? [],
   }
 }
 
@@ -461,6 +460,44 @@ export class ChatRepository {
     )
   }
 
+  /**
+   * Who liked what, for a whole page at once — ONE query, like the quotes above.
+   *
+   * ⚠ It used to be two scalar sub-selects on the page query (a count and an EXISTS). Both were
+   * correct and neither could say who, which is the only thing the green chip is for.
+   *
+   * ⚠ The order is STABLE, not chronological: two people liking within the same transaction share
+   * a timestamp, so the id breaks the tie. It is here only so a refetch does not reshuffle the
+   * names under somebody's eyes — nothing reads meaning into the sequence.
+   */
+  private async resolveReactors(
+    messageIds: readonly string[],
+  ): Promise<Map<string, ChatReactor[]>> {
+    const ids = [...new Set(messageIds)]
+    if (ids.length === 0) {
+      return new Map()
+    }
+
+    const rows = await this.db
+      .select({
+        messageId: chatReactions.messageId,
+        userId: chatReactions.userId,
+        name: users.name,
+      })
+      .from(chatReactions)
+      .innerJoin(users, eq(users.id, chatReactions.userId))
+      .where(inArray(chatReactions.messageId, ids))
+      .orderBy(asc(chatReactions.createdAt), asc(chatReactions.userId))
+
+    const byMessage = new Map<string, ChatReactor[]>()
+    for (const row of rows) {
+      const held = byMessage.get(row.messageId) ?? []
+      held.push({ id: row.userId, name: row.name })
+      byMessage.set(row.messageId, held)
+    }
+    return byMessage
+  }
+
   /** Every message id in this room — needed before it goes, to let the bell forget them. */
   async listMessageIds(conversationId: string): Promise<string[]> {
     const rows = await this.db
@@ -557,7 +594,6 @@ export class ChatRepository {
   async listMessages(
     conversation: ChatConversationListItem,
     query: ChatMessagesQuery,
-    userId: string,
   ): Promise<ChatMessagesPage> {
     const conversationId = conversation.id
     const conditions: SQL[] = [eq(chatMessages.conversationId, conversationId)]
@@ -572,7 +608,7 @@ export class ChatRepository {
     // the NEWEST messages, so it reads backwards and is turned around below.
     const forward = query.afterSeq !== undefined
 
-    const rows = await this.messageSelect(userId)
+    const rows = await this.messageSelect()
       .where(and(...conditions))
       .orderBy(forward ? asc(chatMessages.seq) : desc(chatMessages.seq))
       .limit(query.limit + 1)
@@ -587,7 +623,8 @@ export class ChatRepository {
       ordered.map((row) => row.quoteOf).filter((id): id is string => id !== null),
     )
     const seenByAll = await this.seenByAllTest(conversation)
-    const items = ordered.map((row) => mapMessageRow(row, names, quotes, seenByAll))
+    const reactors = await this.resolveReactors(ordered.map((row) => row.id))
+    const items = ordered.map((row) => mapMessageRow(row, names, quotes, seenByAll, reactors))
     const edge = forward ? items.at(-1) : items.at(0)
 
     return {
@@ -736,15 +773,16 @@ export class ChatRepository {
       })
   }
 
-  async findMessageById(id: string, userId: string): Promise<ChatMessage | null> {
-    const [row] = await this.messageSelect(userId).where(eq(chatMessages.id, id)).limit(1)
+  async findMessageById(id: string): Promise<ChatMessage | null> {
+    const [row] = await this.messageSelect().where(eq(chatMessages.id, id)).limit(1)
     if (row === undefined) {
       return null
     }
     const names = await this.resolveMentionNames([row.deletedAt === null ? row.body : ''])
     const quotes = await this.resolveQuotes(row.quoteOf === null ? [] : [row.quoteOf])
+    const reactors = await this.resolveReactors([row.id])
     // A single message is read for an ACTION (edit, pin, react), never to be drawn with ticks.
-    return mapMessageRow(row, names, quotes, () => false)
+    return mapMessageRow(row, names, quotes, () => false, reactors)
   }
 
   /** The correction goes into the row itself — the previous text is not kept (spec §5 row 4). */
@@ -855,8 +893,14 @@ export class ChatRepository {
       .where(and(eq(chatReactions.messageId, messageId), eq(chatReactions.userId, userId)))
   }
 
-  /** One shape for a message, wherever it is read from — a page, or the one just written. */
-  private messageSelect(userId: string) {
+  /**
+   * One shape for a message, wherever it is read from — a page, or the one just written.
+   *
+   * ⚠ It takes no reader any more. It used to, for a `reactedByMe` EXISTS sub-select; who liked a
+   * message is now read once per page by `resolveReactors`, and the same rows answer both "how
+   * many" and "which of them is me".
+   */
+  private messageSelect() {
     return this.db
       .select({
         id: chatMessages.id,
@@ -873,15 +917,6 @@ export class ChatRepository {
         editedAt: chatMessages.editedAt,
         deletedAt: chatMessages.deletedAt,
         createdAt: chatMessages.createdAt,
-        reactionCount: sql<number>`(
-          SELECT COUNT(*)::int FROM ${chatReactions}
-          WHERE ${chatReactions.messageId} = ${chatMessages.id}
-        )`.mapWith(Number),
-        reactedByMe: sql<boolean>`EXISTS (
-          SELECT 1 FROM ${chatReactions}
-          WHERE ${chatReactions.messageId} = ${chatMessages.id}
-            AND ${chatReactions.userId} = ${userId}
-        )`,
       })
       .from(chatMessages)
       .leftJoin(users, eq(users.id, chatMessages.authorId))

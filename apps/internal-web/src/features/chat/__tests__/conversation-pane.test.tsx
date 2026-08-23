@@ -28,9 +28,8 @@ function message(over: Partial<ChatMessage> & { seq: string }): ChatMessage {
     deletedAt: null,
     createdAt: '2026-08-23T08:42:00.000Z',
     seenByAll: false,
-    reactionCount: 0,
+    reactedBy: [],
     mentions: [],
-    reactedByMe: false,
     ...over,
   }
 }
@@ -432,47 +431,68 @@ describe('ConversationPane', () => {
       expect(screen.getByTitle(/[Ššs]alje/)).toBeInTheDocument()
     })
   })
-  describe('the tick', () => {
-    it('shows straight away and only then asks — and the chip counts everybody', async () => {
+  describe('the like', () => {
+    /** „da vidimo ko je sve lajkovao" — the chip prints names, so it must print MINE. */
+    it('shows my name straight away and only then asks', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderPane()
 
-      await user.click(await screen.findByRole('button', { name: 'Označi ✓' }))
+      await user.click(await screen.findByRole('button', { name: 'Sviđa mi se' }))
 
       // Optimistic: the chip is there before the server has said anything.
-      expect(screen.getByText('✓ 1')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Marko Petrović/ })).toBeInTheDocument()
       await waitFor(() => expect(calls.some((call) => call.url.endsWith('/reaction'))).toBe(true))
+    })
+
+    it('names everybody who liked it, and says how many more it could not fit', async () => {
+      initialPage = page([
+        message({
+          seq: '41',
+          reactedBy: [
+            { id: uuid(901), name: 'Ana Anić' },
+            { id: uuid(902), name: 'Bora Borić' },
+            { id: uuid(903), name: 'Cveta Cvetić' },
+            { id: uuid(904), name: 'Dragan Ilić' },
+          ],
+        }),
+      ])
+      renderPane()
+
+      const chip = await screen.findByRole('button', { name: /Ana Anić/ })
+      expect(chip).toHaveTextContent('Ana Anić, Bora Borić, Cveta Cvetić +1')
+      // The hover carries the ones the line dropped — nobody is lost, only shortened.
+      expect(chip).toHaveAttribute('title', expect.stringContaining('Dragan Ilić'))
     })
 
     it('takes it back on the second press, and asks the server to as well', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      initialPage = page([message({ seq: '41', reactionCount: 1, reactedByMe: true })])
+      initialPage = page([
+        message({ seq: '41', reactedBy: [{ id: SLAVKO_ID, name: 'Slavko Jović' }] }),
+      ])
       renderPane()
 
-      expect(await screen.findByText('✓ 1')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Skloni svoj ✓' }))
+      await user.click(await screen.findByRole('button', { name: 'Skloni lajk' }))
 
-      expect(screen.queryByText('✓ 1')).not.toBeInTheDocument()
-      await waitFor(() => {
-        const call = calls.find((item) => item.url.endsWith('/reaction'))
-        expect(call).toBeDefined()
-      })
+      expect(screen.queryByRole('button', { name: /Slavko Jović/ })).not.toBeInTheDocument()
+      await waitFor(() => expect(calls.some((call) => call.url.endsWith('/reaction'))).toBe(true))
     })
 
     /**
-     * ⚠ An optimistic update without a rollback is a lie the screen keeps telling. The count is
-     * everybody's, so one that went up on a request the server refused would stay wrong until the
-     * next read — and a person would swear they had ticked it.
+     * ⚠ An optimistic update without a rollback is a lie the screen keeps telling. The chip is a
+     * list of NAMES, so one that kept mine after a refused request would leave a person's name
+     * standing under a message he never liked.
      */
-    it('puts the tick back where it was when the request fails', async () => {
+    it('puts the like back where it was when the request fails', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       actionFails = true
       renderPane()
 
-      await user.click(await screen.findByRole('button', { name: 'Označi ✓' }))
+      await user.click(await screen.findByRole('button', { name: 'Sviđa mi se' }))
 
-      await waitFor(() => expect(screen.queryByText('✓ 1')).not.toBeInTheDocument())
-      expect(screen.getByRole('button', { name: 'Označi ✓' })).toBeInTheDocument()
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: /Marko Petrović/ })).not.toBeInTheDocument(),
+      )
+      expect(screen.getByRole('button', { name: 'Sviđa mi se' })).toBeInTheDocument()
     })
   })
 

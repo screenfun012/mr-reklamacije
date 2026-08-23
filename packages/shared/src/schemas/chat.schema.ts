@@ -84,6 +84,15 @@ export const ChatPinsResponseSchema = z.object({ items: z.array(ChatPinSchema) }
 
 export type ChatPinsResponse = z.infer<typeof ChatPinsResponseSchema>
 
+/** One person who liked a message. Nothing beyond what the green chip prints. */
+export const ChatReactorSchema = z.object({
+  id: z.string().uuid(),
+  /** Read at read time, like every other name here — a rename never rewrites history. */
+  name: z.string(),
+})
+
+export type ChatReactor = z.infer<typeof ChatReactorSchema>
+
 export const ChatMessageSchema = z.object({
   id: z.string().uuid(),
   conversationId: z.string().uuid(),
@@ -108,8 +117,15 @@ export const ChatMessageSchema = z.object({
    * which is exactly as much as WhatsApp's blue ticks ever meant. The author is never waited on.
    */
   seenByAll: z.boolean(),
-  reactionCount: z.number().int().nonnegative(),
-  reactedByMe: z.boolean(),
+  /**
+   * Everybody who liked it, in the order they did.
+   *
+   * ⚠ The names, not a number: „da vidimo ko je sve lajkovao" (Nikola, 2026-08-24). A count and a
+   * flag beside it were two more facts about one thing, and the way they drift is the optimistic
+   * update forgetting one of them — the list is the whole truth, so `count` is its length and
+   * „did I" is whether my id is in it.
+   */
+  reactedBy: z.array(ChatReactorSchema),
 })
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>

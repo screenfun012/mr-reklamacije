@@ -13,6 +13,7 @@ import {
   sendChatMessage,
   type ChatMessage,
   type ChatMessagesPage,
+  type ChatReactor,
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -21,6 +22,7 @@ import { useEffect, useRef, useState } from 'react'
 import { showInternalToast } from '~/lib/internal-toast'
 
 import { Composer } from './composer'
+import { PinnedBar } from './pin-list'
 import { MessageList, type PendingChatMessage } from './message-list'
 import { initialsOf } from './message-row'
 import { useChatRecovery } from './use-chat-stream'
@@ -66,24 +68,30 @@ export function firstUnreadId(items: readonly ChatMessage[], unreadCount: number
 }
 
 /**
- * Your tick, added or taken back, everywhere the page holds that message.
+ * Your like, added or taken back, everywhere the page holds that message.
  *
- * Written as a pure function because it is the whole optimistic update: the count moves by one in
- * the direction `reactedByMe` just went, and nothing else about the row changes. Rolling back is
- * the same call again.
+ * Written as a pure function because it is the whole optimistic update: your name joins the list
+ * or leaves it, and nothing else about the row changes. Rolling back is the same call again.
  */
-export function toggleReaction(page: ChatMessagesPage, messageId: string): ChatMessagesPage {
+export function toggleReaction(
+  page: ChatMessagesPage,
+  messageId: string,
+  me: ChatReactor,
+): ChatMessagesPage {
   return {
     ...page,
-    items: page.items.map((item) =>
-      item.id === messageId
-        ? {
-            ...item,
-            reactedByMe: !item.reactedByMe,
-            reactionCount: Math.max(0, item.reactionCount + (item.reactedByMe ? -1 : 1)),
-          }
-        : item,
-    ),
+    items: page.items.map((item) => {
+      if (item.id !== messageId) {
+        return item
+      }
+      const mine = item.reactedBy.some((person) => person.id === me.id)
+      return {
+        ...item,
+        reactedBy: mine
+          ? item.reactedBy.filter((person) => person.id !== me.id)
+          : [...item.reactedBy, me],
+      }
+    }),
   }
 }
 
@@ -178,19 +186,21 @@ export function ConversationPane({
   )
 
   /**
-   * The tick. Optimistic and rolled back by calling the same toggle again — the one thing this
+   * The like. Optimistic and rolled back by calling the same toggle again — the one thing this
    * mutation does is reversible by repeating it, so there is no snapshot to keep.
    */
+  const me: ChatReactor = { id: authorId, name: authorName }
   const react = useMutation({
-    mutationFn: (message: ChatMessage) => reactToChatMessage(message.id, !message.reactedByMe),
+    mutationFn: (message: ChatMessage) =>
+      reactToChatMessage(message.id, !message.reactedBy.some((person) => person.id === authorId)),
     onMutate: (message) => {
       queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
-        toggleReaction(page, message.id),
+        toggleReaction(page, message.id, me),
       )
     },
     onError: (_error, message) => {
       queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
-        toggleReaction(page, message.id),
+        toggleReaction(page, message.id, me),
       )
     },
   })
@@ -245,8 +255,7 @@ export function ConversationPane({
         deletedAt: null,
         createdAt: new Date().toISOString(),
         seenByAll: false,
-        reactionCount: 0,
-        reactedByMe: false,
+        reactedBy: [],
       },
     }
     setPending((current) => [...current, row])
@@ -292,6 +301,8 @@ export function ConversationPane({
 
   return (
     <>
+      {/* Above the messages, not behind a button: a pin exists so nobody has to go looking. */}
+      <PinnedBar conversationId={conversationId} />
       <MessageList
         messages={data.items}
         pending={visiblePending(data.items, pending)}

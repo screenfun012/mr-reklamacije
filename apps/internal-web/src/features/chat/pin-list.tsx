@@ -129,3 +129,51 @@ export function PinListButton({
     </details>
   )
 }
+
+/**
+ * The pinned message, in a bar under the conversation header, where it can be READ.
+ *
+ * Nikola, 2026-08-24: „nemamo kako da pinujemo poruku da se uvek vidi u smislu šta piše". The
+ * `PIN · N` button opens a shortlist, which answers "what is pinned" only for somebody who
+ * already went looking — and a pin exists precisely so that nobody has to.
+ *
+ * The NEWEST one is the one on the bar: a pin is put up because it matters now, and a bar that
+ * grew a line per pin would push the conversation off the screen. When there are more, the bar
+ * says so and opening it is the `PIN · N` button's job — one line, one truth, no second control
+ * that has to agree with the first.
+ */
+export function PinnedBar({
+  conversationId,
+}: {
+  conversationId: string
+}): React.ReactElement | null {
+  const { data } = useQuery(chatPinsOptions(conversationId))
+  const items = data?.items ?? []
+  const newest = items[0]
+
+  if (newest === undefined) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-none items-center gap-2.5 border-b border-mri-border bg-mri-inbg px-4 py-2">
+      <Pin aria-hidden="true" className="size-[13px] flex-none text-mri-red" />
+      <span className="flex min-w-0 flex-col">
+        <span className="font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2">
+          {m.chat_pinned_bar()}
+          {items.length > 1 ? ` · ${String(items.length)}` : ''}
+        </span>
+        {/* One line, cut with an ellipsis: the bar is a reminder, and the whole message is three
+            centimetres below it in the conversation itself. */}
+        <span className="truncate text-[12px] leading-[1.5] text-mri-text">
+          <span className="font-semibold text-mri-text2">{newest.authorName}: </span>
+          {newest.isDeleted ? (
+            <em className="text-mri-text2">{m.chat_message_deleted()}</em>
+          ) : (
+            newest.excerpt
+          )}
+        </span>
+      </span>
+    </div>
+  )
+}

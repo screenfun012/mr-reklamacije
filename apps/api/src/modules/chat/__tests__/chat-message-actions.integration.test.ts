@@ -381,7 +381,8 @@ describe('Chat message actions', () => {
     async function reactionOf(messageId: string, actor: ChatActor): Promise<[number, boolean]> {
       const page = await container.chatService.listMessages(generalId, { limit: 100 }, actor)
       const message = page.items.find((item) => item.id === messageId)
-      return [message?.reactionCount ?? -1, message?.reactedByMe ?? false]
+      const liked = message?.reactedBy ?? []
+      return [liked.length, liked.some((person) => person.id === actor.id)]
     }
 
     it('gives one tick per person, and the second tick is the same tick', async () => {
@@ -394,6 +395,41 @@ describe('Chat message actions', () => {
       await container.chatService.react(id, OTHER)
       expect(await reactionOf(id, ME)).toEqual([2, true])
       expect(await reactionOf(id, OTHER)).toEqual([2, true])
+    })
+
+    /**
+     * ⚠ The names, not a count — that is the whole reason this replaced two scalar sub-selects.
+     * The fixture users are renamed here on purpose: `ensureTestUser` gives every account the same
+     * name, so an assertion on names alone would pass against a repository returning either of
+     * them twice.
+     *
+     * ⚠ Compared as a SET. `now()` is frozen for the test transaction's whole life, so both rows
+     * carry the same timestamp and no order can be proven here — asserting one would be a claim
+     * the test cannot keep (mutation-checked: reversing the sort changed nothing).
+     */
+    it('names everybody who liked it, and the same person only once', async () => {
+      await ctx.db
+        .update(schema.users)
+        .set({ name: 'Marko Petrović' })
+        .where(eq(schema.users.id, ME.id))
+      await ctx.db
+        .update(schema.users)
+        .set({ name: 'Slavko Jović' })
+        .where(eq(schema.users.id, OTHER.id))
+      const id = await insertMessage(generalId, 'slažem se?')
+
+      await container.chatService.react(id, ME)
+      await container.chatService.react(id, OTHER)
+      await container.chatService.react(id, ME)
+
+      const page = await container.chatService.listMessages(generalId, { limit: 100 }, ME)
+      const liked = [...(page.items.find((item) => item.id === id)?.reactedBy ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      )
+      expect(liked).toEqual([
+        { id: ME.id, name: 'Marko Petrović' },
+        { id: OTHER.id, name: 'Slavko Jović' },
+      ])
     })
 
     it('takes the tick back, twice if asked twice', async () => {

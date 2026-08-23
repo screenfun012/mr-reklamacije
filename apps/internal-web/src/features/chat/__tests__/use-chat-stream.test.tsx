@@ -34,9 +34,8 @@ function message(seq: number, body = `poruka ${seq}`): ChatMessage {
     deletedAt: null,
     createdAt: '2026-08-23T08:42:00.000Z',
     seenByAll: false,
-    reactionCount: 0,
+    reactedBy: [],
     mentions: [],
-    reactedByMe: false,
   }
 }
 
@@ -79,17 +78,17 @@ describe('mergeChatMessages', () => {
 
   /**
    * ⚠ The overlap of twenty ALWAYS brings back rows the cache already holds. Skipping them as
-   * duplicates threw away the only news they carried — this is how a tick given at the next desk
+   * duplicates threw away the only news they carried — this is how a like given at the next desk
    * stayed invisible until somebody happened to say something.
    */
   it('takes the fresher copy of a message it already holds', () => {
     const held = message(42)
-    const ticked: ChatMessage = { ...held, reactionCount: 3, reactedByMe: true }
+    const liked: ChatMessage = { ...held, reactedBy: [{ id: uuid(900), name: 'Slavko Jović' }] }
 
-    const merged = mergeChatMessages(page([message(41), held]), [ticked])
+    const merged = mergeChatMessages(page([message(41), held]), [liked])
 
     expect(merged.items).toHaveLength(2)
-    expect(merged.items.at(-1)).toMatchObject({ reactionCount: 3, reactedByMe: true })
+    expect(merged.items.at(-1)?.reactedBy).toEqual([{ id: uuid(900), name: 'Slavko Jović' }])
   })
 
   it('leaves the older-page cursor alone — recovery only ever reads forward', () => {

@@ -5,7 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PinListButton } from '~/features/chat/pin-list'
+import { PinListButton, PinnedBar } from '~/features/chat/pin-list'
 
 const CONVERSATION_ID = '99999999-9999-4999-8999-999999999999'
 const ME = '00000000-0000-4000-8000-000000000001'
@@ -36,6 +36,15 @@ function renderButton(isAdmin = false) {
   return render(
     <QueryClientProvider client={queryClient}>
       <PinListButton conversationId={CONVERSATION_ID} currentUserId={ME} isAdmin={isAdmin} />
+    </QueryClientProvider>,
+  )
+}
+
+function renderBar() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <PinnedBar conversationId={CONVERSATION_ID} />
     </QueryClientProvider>,
   )
 }
@@ -115,5 +124,47 @@ describe('PinListButton', () => {
     renderButton(true)
     await user.click(await screen.findByText('PIN · 1'))
     expect(screen.getByRole('button', { name: 'Skini sa prikačenih' })).toBeInTheDocument()
+  })
+})
+
+/**
+ * Nikola, 2026-08-24: „nemamo kako da pinujemo poruku da se uvek vidi u smislu šta piše". The
+ * shortlist behind a button answers that only for somebody who already went looking.
+ */
+describe('PinnedBar', () => {
+  beforeEach(() => {
+    setLocale('sr', { reload: false })
+    pins = []
+    calls = []
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      calls.push({ url: String(input), method: 'GET' })
+      return Response.json({ items: pins })
+    }) as unknown as typeof fetch
+  })
+
+  it('takes no room when nothing is pinned', async () => {
+    renderBar()
+
+    await waitFor(() => expect(calls.some((call) => call.url.endsWith('/pins'))).toBe(true))
+    expect(screen.queryByText('Prikačeno')).not.toBeInTheDocument()
+  })
+
+  it('reads out the newest pin without anybody opening anything', async () => {
+    pins = [pin({ id: uuid(1), excerpt: 'Partner traži odgovor do petka' })]
+    renderBar()
+
+    expect(await screen.findByText('Prikačeno')).toBeInTheDocument()
+    expect(screen.getByText(/Partner traži odgovor do petka/)).toBeInTheDocument()
+    expect(screen.getByText(/Marko Petrović/)).toBeInTheDocument()
+  })
+
+  /** One line, however many are pinned — a bar that grew per pin would push the room off screen. */
+  it('shows one line and says how many there are in total', async () => {
+    pins = [pin({ id: uuid(1), excerpt: 'Najnovije' }), pin({ id: uuid(2), excerpt: 'Starije' })]
+    renderBar()
+
+    expect(await screen.findByText('Prikačeno · 2')).toBeInTheDocument()
+    expect(screen.getByText(/Najnovije/)).toBeInTheDocument()
+    expect(screen.queryByText(/Starije/)).not.toBeInTheDocument()
   })
 })
