@@ -1,0 +1,200 @@
+import { m } from '@mr/i18n'
+import {
+  ChatConversationType,
+  ClaimDetailTab,
+  ClaimKind,
+  domaceClaimDetailOptions,
+  emotiveClaimDetailOptions,
+  type ChatConversationListItem,
+  type ClaimOutcome,
+} from '@mr/shared'
+import { cn } from '@mr/ui'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
+
+import { KindPill } from '~/components/kind-pill'
+import { OutcomePill } from '~/components/outcome-pill'
+
+/**
+ * The claim a thread is about, as read from the conversation row.
+ *
+ * `null` for everything else — the general channel and every topic channel. This ONE function is
+ * the "only in a thread" rule (prototype L388: `showCtx:!isGeneral&&s.ctxOpen`, where the
+ * prototype's `isGeneral` means "has no claim behind it", channels included).
+ */
+function claimOf(
+  conversation: ChatConversationListItem,
+): { kind: ClaimKind; claimId: string } | null {
+  if (
+    conversation.type !== ChatConversationType.Claim ||
+    conversation.claimId === null ||
+    conversation.claimKind === null
+  ) {
+    return null
+  }
+  return { kind: conversation.claimKind, claimId: conversation.claimId }
+}
+
+/** L161/L174: the section eyebrows, all three identical. */
+const EYEBROW_CLASSES = 'font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2'
+
+/**
+ * The ⓘ in the conversation header (L90), which is the only way this panel opens.
+ *
+ * L390 for both states: 30×30, `border-radius:8px`, and on = `rgba(237,28,36,.5)` border over a
+ * `rgba(237,28,36,.13)` fill with `var(--text)` on the glyph; off = `var(--border2)` over nothing
+ * with `var(--text2)`.
+ */
+export function ThreadContextToggle({
+  conversation,
+  open,
+  onToggle,
+}: {
+  conversation: ChatConversationListItem
+  open: boolean
+  onToggle: () => void
+}): React.ReactElement | null {
+  if (claimOf(conversation) === null) {
+    return null
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={open}
+      title={m.chat_context_toggle()}
+      aria-label={m.chat_context_toggle()}
+      className={cn(
+        'flex size-[30px] flex-none items-center justify-center rounded-lg border text-[13px] transition-colors',
+        open
+          ? 'border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] text-mri-text'
+          : 'border-mri-border2 bg-transparent text-mri-text2 hover:text-mri-text',
+      )}
+    >
+      <span aria-hidden="true">ⓘ</span>
+    </button>
+  )
+}
+
+function ClaimFacts({
+  kind,
+  claimId,
+  fallbackPartner,
+}: {
+  kind: ClaimKind
+  claimId: string
+  fallbackPartner: string
+}): React.ReactElement {
+  // One of the two is fetched, never both. The claim's own detail already carries the outcome and
+  // the assigned worker the panel needs, and whoever may read the thread may read the claim
+  // (spec §3.3) — so this needs no wire of its own.
+  const emotive = useQuery({
+    ...emotiveClaimDetailOptions(claimId),
+    enabled: kind === ClaimKind.Emotive,
+  })
+  const domace = useQuery({
+    ...domaceClaimDetailOptions(claimId),
+    enabled: kind === ClaimKind.Domace,
+  })
+  const claim = kind === ClaimKind.Emotive ? emotive.data : domace.data
+
+  return (
+    <>
+      {claim === undefined ? (
+        <div className="h-5 w-24 animate-pulse rounded-full bg-mri-inbg" aria-hidden="true" />
+      ) : (
+        <span>
+          <OutcomePill outcome={claim.outcome as ClaimOutcome} />
+        </span>
+      )}
+      {/* L164 — partner and who is on it, one block of two lines. */}
+      <span className="text-[11.5px] leading-[1.5] text-mri-text2">
+        <span className="block">{claim?.customerName ?? fallbackPartner}</span>
+        <span className="block">
+          {m.chat_context_assigned({ name: claim?.employeeName ?? '—' })}
+        </span>
+      </span>
+    </>
+  )
+}
+
+/**
+ * The third column: the claim, beside the conversation about it (prototype L159–L177).
+ *
+ * It is drawn ONLY for a claim thread. A channel has no claim, so the frame would come out with
+ * empty fields and a button that opens nothing — which reads as a broken screen rather than an
+ * empty one.
+ */
+export function ThreadContextPanel({
+  conversation,
+}: {
+  conversation: ChatConversationListItem
+}): React.ReactElement | null {
+  const claim = claimOf(conversation)
+  if (claim === null) {
+    return null
+  }
+
+  return (
+    <aside
+      aria-label={m.chat_context_claim()}
+      // L159: 250px, hairline on the left, the surface colour, and it scrolls on its own.
+      className={cn(
+        'flex w-[250px] flex-none flex-col overflow-auto border-l border-mri-border bg-mri-surface',
+        'animate-in fade-in-0 slide-in-from-bottom-[9px] duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
+      )}
+    >
+      {/* L160 */}
+      <div className="flex flex-col gap-2 border-b border-mri-border px-[14px] pb-3 pt-[14px]">
+        <span className={EYEBROW_CLASSES}>{m.chat_context_claim()}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          {/* L162 — the number is the title the list already carries. */}
+          <span className="font-mono text-[15px] font-bold text-mri-text">
+            {conversation.title}
+          </span>
+          <KindPill kind={claim.kind} />
+        </span>
+
+        <ClaimFacts
+          kind={claim.kind}
+          claimId={claim.claimId}
+          fallbackPartner={conversation.subtitle}
+        />
+
+        {/* L165 */}
+        <Link
+          to={
+            claim.kind === ClaimKind.Emotive
+              ? '/reklamacije/emotive/$id'
+              : '/reklamacije/domace/$id'
+          }
+          params={{ id: claim.claimId }}
+          search={{ tab: ClaimDetailTab.Pregled }}
+          className="mt-0.5 inline-flex h-8 items-center justify-center rounded-lg border border-mri-border2 bg-mri-raised text-[10.5px] font-bold tracking-[0.06em] text-mri-text transition-colors hover:border-mri-text2"
+        >
+          {m.chat_context_open_claim()}
+        </Link>
+      </div>
+
+      {/* L167–L171 draw PRIKAČENO only when the thread has pins. Nothing carries them yet: the
+          API pins and unpins a message, but no read returns them, so the section would have to
+          invent its own truth. It arrives with the pins themselves. */}
+
+      {/* L173 */}
+      <div className="flex flex-col gap-2 px-[14px] py-3">
+        <span className={EYEBROW_CLASSES}>{m.chat_context_attachments({ count: 0 })}</span>
+        {/* The prototype's three squares are a gallery this build cannot open (step 4). An honest
+            sentence beats grey placeholders that look like broken images. */}
+        <p className="text-[11.5px] leading-[1.5] text-mri-text2">
+          {m.chat_context_attachments_empty()}
+        </p>
+      </div>
+
+      {/* L177 — verbatim, at the bottom of the column whatever else is in it. */}
+      <p className="mt-auto border-t border-mri-border px-[14px] py-3 text-[10.5px] italic leading-[1.5] text-mri-text2">
+        {m.chat_context_footer()}
+      </p>
+    </aside>
+  )
+}

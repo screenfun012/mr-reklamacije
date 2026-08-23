@@ -15,6 +15,7 @@ import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
 import { ClaimThreadConfirm, findClaimThread } from '~/features/chat/open-claim-thread'
+import { ThreadContextPanel, ThreadContextToggle } from '~/features/chat/thread-context-panel'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 
@@ -112,6 +113,9 @@ function RazgovoriColumns(): React.ReactElement {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
   const [newThreadOpen, setNewThreadOpen] = useState(false)
+  // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
+  // conversation wants it beside the next one too — and a channel simply has none to show.
+  const [contextOpen, setContextOpen] = useState(false)
   const { userName } = useInternalAuthUser()
 
   /**
@@ -143,7 +147,18 @@ function RazgovoriColumns(): React.ReactElement {
 
       <section className="flex min-w-0 flex-1 flex-col bg-mri-bg">
         <header className="flex h-[52px] flex-none items-center gap-2.5 border-b border-mri-border bg-mri-surface px-4">
-          {current === null ? null : <ConversationHeading conversation={current} />}
+          {current === null ? null : (
+            <>
+              <ConversationHeading conversation={current} />
+              <span className="ml-auto flex items-center gap-[7px]">
+                <ThreadContextToggle
+                  conversation={current}
+                  open={contextOpen}
+                  onToggle={() => setContextOpen((open) => !open)}
+                />
+              </span>
+            </>
+          )}
         </header>
         {current === null ? null : (
           // Keyed by the conversation: the NOVO rule, the scroll position and anything still in
@@ -159,6 +174,8 @@ function RazgovoriColumns(): React.ReactElement {
           </Suspense>
         )}
       </section>
+
+      {current === null || !contextOpen ? null : <ThreadContextPanel conversation={current} />}
 
       <NewThreadDialog
         open={newThreadOpen}
