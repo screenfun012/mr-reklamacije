@@ -2,10 +2,9 @@ import { m } from '@mr/i18n'
 import { ChatConversationType, ClaimKind, type ChatConversationListItem } from '@mr/shared'
 import { cn } from '@mr/ui'
 
-import { useStoredFlag } from '~/lib/use-stored-flag'
+import { useChatDnd } from './chat-dnd'
 
 /** Per browser, deliberately: it is "not now, here", not a setting that follows a person around. */
-const DND_STORAGE_KEY = 'mrr:internal:chat:dnd'
 
 /**
  * A muted conversation's unread is not shown and does not count (the server leaves it out of
@@ -178,7 +177,7 @@ export function ConversationList({
   onSelect,
   onNewThread,
 }: ConversationListProps): React.ReactElement {
-  const [dnd, setDnd] = useStoredFlag(DND_STORAGE_KEY, false)
+  const [dnd, setDnd] = useChatDnd()
 
   const general = items.filter((item) => item.type === ChatConversationType.General)
   const channels = sortChatConversations(

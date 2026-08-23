@@ -68,24 +68,6 @@ export function mentionOptions(people: readonly ChatPerson[], query: string): Ch
   return [...everyone, ...people.filter((person) => matchesMentionQuery(person.name, query))]
 }
 
-/** What choosing a person writes into the field, and where the caret lands after it. */
-export function applyMention(
-  text: string,
-  mention: MentionQuery,
-  caret: number,
-  person: ChatPerson,
-): { text: string; caret: number } {
-  const label = person.id === MENTION_EVERYONE_ID ? m.chat_mention_everyone() : person.name
-  // The trailing space is not cosmetic: without it the very next character would extend the
-  // mention's own token and reopen the menu over a finished name.
-  const written = `@[${label}](${person.id}) `
-
-  return {
-    text: text.slice(0, mention.start) + written + text.slice(caret),
-    caret: mention.start + written.length,
-  }
-}
-
 export interface MentionMenuProps {
   options: readonly ChatPerson[]
   activeIndex: number

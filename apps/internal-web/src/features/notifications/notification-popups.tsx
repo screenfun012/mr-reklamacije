@@ -13,6 +13,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useChatDnd } from '~/features/chat/chat-dnd'
+
 import {
   notificationEyebrow,
   notificationIcon,
@@ -59,6 +61,8 @@ export function NotificationPopups(): React.ReactElement | null {
     return () => window.clearInterval(timer)
   }, [])
 
+  const [dnd] = useChatDnd()
+
   useEffect(() => {
     if (items === undefined) {
       return
@@ -76,6 +80,12 @@ export function NotificationPopups(): React.ReactElement | null {
     const fresh: Popup[] = []
     for (const item of items) {
       if (item.isRead) {
+        continue
+      }
+      if (popupIsSilenced(item, dnd)) {
+        // Marked as seen so it does not pop the moment the switch goes off — a mention from an
+        // hour ago arriving as a card is not what "Ne uznemiravaj" meant.
+        surfacedRef.current.add(item.id)
         continue
       }
       const snoozedUntil = item.snoozedUntil === null ? null : new Date(item.snoozedUntil).getTime()
@@ -99,7 +109,7 @@ export function NotificationPopups(): React.ReactElement | null {
     if (fresh.length > 0) {
       setPopups((prev) => [...fresh, ...prev].slice(0, NOTIFICATION_POPUP_MAX_VISIBLE))
     }
-  }, [items, now])
+  }, [items, now, dnd])
 
   const dismiss = useCallback((id: string) => {
     setPopups((prev) => prev.filter((popup) => popup.item.id !== id))
@@ -126,6 +136,20 @@ export function NotificationPopups(): React.ReactElement | null {
       ))}
     </div>
   )
+}
+
+/**
+ * Whether „Ne uznemiravaj" keeps this one off the screen.
+ *
+ * ⚠ It silences the POPUP and nothing else: the row is still written, the bell still carries it,
+ * the counts still count (handoff §7). And only CHAT — the switch lives on the chat screen and its
+ * tooltip promises exactly that; a claim outcome is not something a person mutes by being busy.
+ *
+ * Until this existed the switch wrote a flag into the browser that nobody ever read, while its own
+ * tooltip said "pauzira popup obaveštenja". It promised silence and delivered none.
+ */
+export function popupIsSilenced(item: NotificationItem, dnd: boolean): boolean {
+  return dnd && item.type === NotificationType.ChatMention
 }
 
 const ACCENT_BY_TYPE: Record<NotificationType, string> = {

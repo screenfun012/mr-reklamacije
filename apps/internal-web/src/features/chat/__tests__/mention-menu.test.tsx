@@ -85,15 +85,21 @@ describe('typing @ offers the people who can read the room', () => {
     expect(options[0]).toHaveTextContent(m.chat_mention_everyone())
   })
 
-  it('writes the id, not the name that was typed', async () => {
+  it('shows the WORDS in the field and sends the ADDRESS', async () => {
     const user = userEvent.setup()
-    renderComposer()
+    const { onSend } = renderComposer()
 
     await user.type(field(), 'zdravo @an')
     await screen.findByRole('option', { name: /Ana/ })
     await user.keyboard('{Enter}')
 
-    expect(field().value).toBe(`zdravo @[Ana Anić](${ANA_ID}) `)
+    // Nobody writing a sentence should have to look at `@[Ana Anić](a1a1…)`.
+    expect(field().value).toBe('zdravo @Ana Anić ')
+
+    await user.keyboard('{Enter}')
+    // But the id is what leaves — it is the only thing that survives a rename, and the only thing
+    // that tells two colleagues with the same name apart.
+    expect(onSend).toHaveBeenCalledWith(`zdravo @[Ana Anić](${ANA_ID})`)
   })
 
   it('arrows move the choice and Enter takes it', async () => {
@@ -105,7 +111,7 @@ describe('typing @ offers the people who can read the room', () => {
     await user.keyboard('{ArrowDown}{Enter}')
 
     // svi is first, so one step down is the first person.
-    expect(field().value).toBe(`@[Ana Anić](${ANA_ID}) `)
+    expect(field().value).toBe('@Ana Anić ')
   })
 
   it('Enter sends the message when the menu is shut', async () => {
@@ -128,6 +134,52 @@ describe('typing @ offers the people who can read the room', () => {
 
     // Otherwise picking somebody posts an unfinished sentence to the whole shop.
     expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('an edited name stops addressing the person it used to name', async () => {
+    const user = userEvent.setup()
+    const { onSend } = renderComposer()
+
+    await user.type(field(), '@an')
+    await screen.findByRole('option', { name: /Ana/ })
+    await user.keyboard('{Enter}')
+    // Rub out the last letter of the name. It is words now, not an address.
+    await user.keyboard('{Backspace}{Backspace}')
+    await user.keyboard('{Enter}')
+
+    expect(onSend).toHaveBeenCalledWith('@Ana Ani')
+  })
+
+  it('paints the chosen name in the field, and only the name', async () => {
+    const user = userEvent.setup()
+    renderComposer()
+
+    await user.type(field(), 'zdravo @an')
+    await screen.findByRole('option', { name: /Ana/ })
+    await user.keyboard('{Enter}')
+
+    const mirror = screen.getByTestId('composer-mirror')
+    const painted = mirror.querySelectorAll('span')
+    expect(painted).toHaveLength(1)
+    expect(painted[0]?.textContent).toBe('@Ana Anić')
+    // ⚠ That a span exists proves nothing — it has to carry the colour, or an empty className
+    // passes the test while the field looks exactly as it did before.
+    expect(painted[0]?.className).toContain('text-mri-redh')
+    // ⚠ Colour and background only. Padding or a heavier weight would make the copy's letters a
+    // different width from the real ones and the caret would drift away from the cursor.
+    expect(painted[0]?.className).not.toMatch(/\bp[xy]?-|font-(bold|semibold)/)
+  })
+
+  it('stops painting a name once it has been edited', async () => {
+    const user = userEvent.setup()
+    renderComposer()
+
+    await user.type(field(), '@an')
+    await screen.findByRole('option', { name: /Ana/ })
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Backspace}{Backspace}')
+
+    expect(screen.getByTestId('composer-mirror').querySelectorAll('span')).toHaveLength(0)
   })
 
   it('Escape shuts the menu and leaves the words alone', async () => {
