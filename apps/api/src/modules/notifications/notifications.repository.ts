@@ -1,7 +1,8 @@
 import {
   SYSTEM_ROLE_ADMIN,
   UserAccountStatus,
-  type NotificationEntityType,
+  NotificationEntityType,
+  NotificationType,
   type Permission,
 } from '@mr/shared'
 import { and, count, desc, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
@@ -212,6 +213,28 @@ export class NotificationsRepository {
       )
 
     return rows.map((row) => row.id)
+  }
+
+  /**
+   * Who already has a mention notification for this message.
+   *
+   * An edit inside the 15-minute window may ADD a mention, and that must ring — but the people the
+   * first version already named must not hear it twice. The notification rows ARE that record, so
+   * there is no second table to keep in step with them.
+   */
+  async findMentionRecipients(messageId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: notifications.userId })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.entityType, NotificationEntityType.ChatMessage),
+          eq(notifications.entityId, messageId),
+          eq(notifications.type, NotificationType.ChatMention),
+        ),
+      )
+
+    return [...new Set(rows.map((row) => row.userId))]
   }
 
   /** The account behind an employee record, or null when nobody is linked / it is the actor. */

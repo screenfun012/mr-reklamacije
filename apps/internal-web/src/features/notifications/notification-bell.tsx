@@ -162,8 +162,7 @@ function NotificationRow({
               item.isRead && 'opacity-75',
             )}
           >
-            {notificationEyebrow(item.type)} ·{' '}
-            {formatTimeAgo(item.createdAt, getLocale(), new Date())}
+            {notificationEyebrow(item)} · {formatTimeAgo(item.createdAt, getLocale(), new Date())}
           </span>
         </span>
       </button>

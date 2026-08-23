@@ -379,6 +379,13 @@
       "when": 1787472722672,
       "tag": "0053_faulty_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1787511261939,
+      "tag": "0054_ordinary_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

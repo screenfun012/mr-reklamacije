@@ -10,6 +10,19 @@ export interface ClaimNotificationContext {
   readonly outcome: ClaimOutcome
 }
 
+/** What the bell needs to say "X mentioned you" and to open the room it happened in. */
+export interface ChatMentionNotification {
+  readonly messageId: string
+  readonly conversationId: string
+  /** The channel's name or the thread's MR number. */
+  readonly conversationTitle: string
+  readonly authorName: string
+  /** The first words, already stripped of mention markup. */
+  readonly excerpt: string
+  /** Everybody to ring, resolved by the chat module against who may see the conversation. */
+  readonly recipientIds: readonly string[]
+}
+
 /**
  * The slice of the notifications service other domain modules call for fan-out. A core
  * port so those modules depend on core, not a sibling module (depcruise
@@ -46,6 +59,15 @@ export interface NotificationsPort {
     submissionId: string,
     claim: ClaimNotificationContext,
   ): Promise<void>
+
+  /**
+   * Somebody was named in a chat message.
+   *
+   * The chat module resolves the recipients, because it is the only place that knows who can see a
+   * conversation. What is decided HERE is who has already been rung for this message: an edit may
+   * add a mention (15-minute window) and must not ring anybody a second time.
+   */
+  notifyChatMention(actorUserId: string, mention: ChatMentionNotification): Promise<void>
 
   /** A submission was rejected → replace its new_submission notifications with submission_rejected. */
   notifySubmissionRejected(

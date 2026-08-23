@@ -10,6 +10,7 @@ import {
 import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type {
+  ChatMentionNotification,
   ClaimNotificationContext,
   NotificationsPort,
 } from '../../core/ports/notifications-port.js'
@@ -280,6 +281,28 @@ export class NotificationsService implements NotificationsPort {
    * design: the caller has already persisted and audited the business change, so a failure
    * here is logged and swallowed rather than rolled onto the user.
    */
+  async notifyChatMention(actorUserId: string, mention: ChatMentionNotification): Promise<void> {
+    return this.fanOut(async () => {
+      // Already rung for THIS message — an edit that adds a mention must reach only the new names.
+      const alreadyRung = new Set(await this.repo.findMentionRecipients(mention.messageId))
+
+      return mention.recipientIds
+        .filter((userId) => userId !== actorUserId && !alreadyRung.has(userId))
+        .map((userId) => ({
+          userId,
+          type: NotificationType.ChatMention,
+          entityType: NotificationEntityType.ChatMessage,
+          entityId: mention.messageId,
+          data: {
+            authorName: mention.authorName,
+            conversationId: mention.conversationId,
+            conversationTitle: mention.conversationTitle,
+            excerpt: mention.excerpt,
+          },
+        }))
+    })
+  }
+
   private async fanOut(build: () => Promise<readonly NotificationInsert[]>): Promise<void> {
     try {
       const rows = await build()

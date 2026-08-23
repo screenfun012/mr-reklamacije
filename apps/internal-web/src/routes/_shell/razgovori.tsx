@@ -7,8 +7,9 @@ import {
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
+import { z } from 'zod'
 
 import { KindPill } from '~/components/kind-pill'
 import { ConversationList } from '~/features/chat/conversation-list'
@@ -19,7 +20,17 @@ import { ThreadContextPanel, ThreadContextToggle } from '~/features/chat/thread-
 import { internalRequireAppAccess } from '~/lib/auth-guard'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 
+/**
+ * The open conversation lives in the address, not in component state.
+ *
+ * Two things need it there: a mention notification has to land in the room it happened in, and a
+ * person has to be able to send a colleague a link to a conversation. An id that matches nothing
+ * falls back to the general channel rather than showing an error — a stale link is not a fault.
+ */
+const razgovoriSearchSchema = z.object({ razgovor: z.string().uuid().optional() })
+
 export const Route = createFileRoute('/_shell/razgovori')({
+  validateSearch: (search) => razgovoriSearchSchema.parse(search),
   // Whoever may enter the internal app may talk in it — written in permissions, exactly like the
   // API's own gate on the whole chat module.
   beforeLoad: internalRequireAppAccess(),
@@ -110,7 +121,11 @@ function MessagesSkeleton(): React.ReactElement {
 
 function RazgovoriColumns(): React.ReactElement {
   const { data } = useSuspenseQuery(chatConversationsOptions())
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { razgovor: selectedId } = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
+  const openConversation = (conversationId: string): void => {
+    void navigate({ search: { razgovor: conversationId } })
+  }
   const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
   const [newThreadOpen, setNewThreadOpen] = useState(false)
   // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
@@ -128,7 +143,7 @@ function RazgovoriColumns(): React.ReactElement {
       setPendingThread(target)
       return
     }
-    setSelectedId(existing.id)
+    openConversation(existing.id)
   }
 
   // The general channel is where a person lands: it is the one conversation that always exists.
@@ -141,7 +156,7 @@ function RazgovoriColumns(): React.ReactElement {
       <ConversationList
         items={data.items}
         activeId={current?.id ?? null}
-        onSelect={setSelectedId}
+        onSelect={openConversation}
         onNewThread={() => setNewThreadOpen(true)}
       />
 
@@ -170,7 +185,7 @@ function RazgovoriColumns(): React.ReactElement {
               authorName={userName}
               isThread={current.type === ChatConversationType.Claim}
               onOpenClaim={openClaim}
-              onOpenConversation={setSelectedId}
+              onOpenConversation={openConversation}
             />
           </Suspense>
         )}
@@ -182,7 +197,7 @@ function RazgovoriColumns(): React.ReactElement {
         open={newThreadOpen}
         onOpenChange={setNewThreadOpen}
         conversations={data.items}
-        onOpened={setSelectedId}
+        onOpened={openConversation}
       />
 
       <ClaimThreadConfirm
@@ -190,7 +205,7 @@ function RazgovoriColumns(): React.ReactElement {
         onCancel={() => setPendingThread(null)}
         onOpened={(conversationId) => {
           setPendingThread(null)
-          setSelectedId(conversationId)
+          openConversation(conversationId)
         }}
       />
     </div>

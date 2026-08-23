@@ -80,3 +80,22 @@ export function uniqueMentions(text: string): MentionMatch[] {
     return true
   })
 }
+
+/**
+ * The message as a person reads it: every `@[Ime](id)` becomes `@Ime`.
+ *
+ * For anywhere the raw body would be shown outside the chat — a notification's excerpt, a push, an
+ * export. Inside the chat the renderer draws chips instead and needs the offsets, so it uses
+ * `findMentions` directly.
+ */
+export function stripMentionMarkup(text: string): string {
+  let plain = ''
+  let cursor = 0
+
+  for (const mention of findMentions(text)) {
+    plain += text.slice(cursor, mention.start) + `@${mention.label}`
+    cursor = mention.end
+  }
+
+  return plain + text.slice(cursor)
+}

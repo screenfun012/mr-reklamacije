@@ -8,11 +8,18 @@ export const NotificationType = {
   CatalogAdded: 'catalog_added',
   /** A client submission was rejected — replaces the original new_submission for the team. */
   SubmissionRejected: 'submission_rejected',
+  /**
+   * Somebody was named in a chat message. The ONLY chat event that reaches the bell — new messages
+   * are counted in the conversation list instead (spec §3.2), because a row per message would be
+   * thousands a day and two counters that disagree.
+   */
+  ChatMention: 'chat_mention',
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
 
 export const notificationTypeValues = [
+  NotificationType.ChatMention,
   NotificationType.NewSubmission,
   NotificationType.OutcomeChanged,
   NotificationType.ClaimCreated,
@@ -27,12 +34,15 @@ export const NotificationEntityType = {
   EmotiveClaim: 'emotive_claim',
   DomaceClaim: 'domace_claim',
   Catalog: 'catalog',
+  /** The message somebody was named in — precise enough to open the room AND to ring only once. */
+  ChatMessage: 'chat_message',
 } as const
 
 export type NotificationEntityType =
   (typeof NotificationEntityType)[keyof typeof NotificationEntityType]
 
 export const notificationEntityTypeValues = [
+  NotificationEntityType.ChatMessage,
   NotificationEntityType.ClientSubmission,
   NotificationEntityType.EmotiveClaim,
   NotificationEntityType.DomaceClaim,

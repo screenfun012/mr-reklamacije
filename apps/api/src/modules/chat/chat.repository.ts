@@ -48,6 +48,23 @@ export interface ChatPersonRow {
 }
 
 /**
+ * `id = ANY($1::uuid[])` — one bind parameter, whatever the list holds.
+ *
+ * ⚠ It must be `sql.param`. Interpolating a bare array into an `sql` template does NOT bind an
+ * array: drizzle walks the array and emits `($1, $2, $3)` (`drizzle-orm/sql/sql.js`, the
+ * `Array.isArray(chunk)` branch), which is a row constructor — `ANY(($1, $2, $3))` is a syntax
+ * error no cast can rescue. `sql.param` wraps the value so it is handled as a single `Param`
+ * before that branch is ever reached.
+ *
+ * Why not `inArray`: it emits one placeholder per id. A message body may carry ~95 mentions and a
+ * page 100 bodies, so a pathological conversation would plan a ~9,500-element `IN` on every read,
+ * for every reader, forever.
+ */
+export function mentionedUserIds(ids: readonly string[]): SQL {
+  return sql`${users.id} = ANY(${sql.param([...ids])}::uuid[])`
+}
+
+/**
  * Which permission opens this conversation — the same sets `scopeFor` reads, never a literal.
  *
  * ⚠ A `switch` with `never` on the end rather than an `if`: a fourth conversation type (a direct
@@ -309,10 +326,7 @@ export class ChatRepository {
    * either typed by hand or belongs to somebody who has since left; both read better as the name
    * that was written at the time.
    *
-   * ⚠ `inArray` emits one bind parameter per id, so a page whose bodies carry ~9,500 distinct
-   * mentions plans a 9,500-element `IN`. That is far under libpq's 65,535 and needs somebody to
-   * paste ~95 mentions into a single message, so it is left as it is — but if a page ever feels
-   * slow with a wall of mentions in it, this is the line, and `= ANY($1::uuid[])` is the shape.
+   * ⚠ ONE bind parameter whatever the page holds — see `mentionedUserIds`.
    */
   private async resolveMentionNames(bodies: readonly string[]): Promise<Map<string, string>> {
     const ids = new Set<string>()
@@ -330,7 +344,7 @@ export class ChatRepository {
     const rows = await this.db
       .select({ id: users.id, name: users.name })
       .from(users)
-      .where(and(isLiveAccount(), inArray(users.id, [...ids])))
+      .where(and(isLiveAccount(), mentionedUserIds([...ids])))
 
     return new Map(rows.map((row) => [row.id, row.name]))
   }

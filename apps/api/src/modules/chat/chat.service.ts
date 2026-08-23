@@ -1,13 +1,17 @@
 import type { Logger } from '@mr/logger'
 import {
   CHAT_EDIT_WINDOW_MS,
+  CHAT_MENTION_EXCERPT_MAX,
   CHAT_PINS_MAX,
   ChatSystemKind,
   ClaimKind,
   getInitials,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
+  MENTION_EVERYONE_ID,
+  stripMentionMarkup,
   SYSTEM_ROLE_ADMIN,
+  uniqueMentions,
 } from '@mr/shared'
 
 import {
@@ -18,6 +22,7 @@ import {
 } from '../../core/errors/domain-errors.js'
 import type { ChatPort, ChatSystemMessageTarget } from '../../core/ports/chat-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { NotificationsPort } from '../../core/ports/notifications-port.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
   ChatActor,
@@ -66,6 +71,7 @@ export class ChatService implements ChatPort {
     private readonly repo: ChatRepository,
     private readonly events: EventBus,
     private readonly logger: Logger,
+    private readonly notifications: NotificationsPort,
   ) {}
 
   async listConversations(actor: ChatActor): Promise<ChatConversationListResponse> {
@@ -97,7 +103,7 @@ export class ChatService implements ChatPort {
     input: ChatSendInput,
     actor: ChatActor,
   ): Promise<ChatSendResult> {
-    await this.requireVisible(conversationId, actor)
+    const conversation = await this.requireVisible(conversationId, actor)
 
     /**
      * A quote must point INSIDE this conversation. The foreign key only proves the message
@@ -130,9 +136,57 @@ export class ChatService implements ChatPort {
     // A retry wrote nothing, so it announces nothing — one message, one signal.
     if (stored.created) {
       this.announce(conversationId, message.id)
+      await this.ringMentions(conversation, message, actor)
     }
 
     return { message, created: stored.created }
+  }
+
+  /**
+   * Rings everybody this message names.
+   *
+   * ⚠ Named AND able to see the room. A mention of somebody who cannot read this conversation is
+   * written down and simply not delivered (spec §5 row 7) — the message is never refused over an
+   * address, because permissions change after words are written and the words are the point.
+   *
+   * `@svi` means everybody who can see it. Somebody caught by both `@svi` and their own name is
+   * one recipient, not two — and the author is never one of them.
+   *
+   * Best-effort by construction: `notifyChatMention` swallows its own failures, because a bell is
+   * not worth failing a message over.
+   */
+  private async ringMentions(
+    conversation: ChatConversationListItem,
+    message: ChatMessage,
+    actor: ChatActor,
+  ): Promise<void> {
+    const mentions = uniqueMentions(message.body)
+    if (mentions.length === 0) {
+      return
+    }
+
+    const people = await this.repo.listPeopleFor(conversation)
+    const namesEverybody = mentions.some((mention) => mention.id === MENTION_EVERYONE_ID)
+    const reachable = new Set(people.map((person) => person.id))
+    // ⚠ The author is NOT dropped here. Every `NotificationsPort` method promises to exclude the
+    // acting user, and that promise is worth more as one place than as two — with the filter in
+    // both, breaking either leaves the other standing and no test can tell which one works.
+    const recipientIds = namesEverybody
+      ? people.map((person) => person.id)
+      : mentions.map((mention) => mention.id).filter((id) => reachable.has(id))
+
+    if (recipientIds.length === 0) {
+      return
+    }
+
+    await this.notifications.notifyChatMention(actor.id, {
+      messageId: message.id,
+      conversationId: conversation.id,
+      conversationTitle: conversation.title,
+      authorName: message.author?.name ?? '',
+      excerpt: stripMentionMarkup(message.body).slice(0, CHAT_MENTION_EXCERPT_MAX),
+      recipientIds: [...new Set(recipientIds)],
+    })
   }
 
   /**
@@ -214,7 +268,7 @@ export class ChatService implements ChatPort {
    * a rewritten record — the messages are evidence for a claim (spec §5 row 4).
    */
   async editMessage(messageId: string, body: string, actor: ChatActor): Promise<ChatMessage> {
-    const message = await this.requireVisibleMessage(messageId, actor)
+    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
 
     // A system message has no author, so it fails here too — and that is exactly the intent.
     if (message.author?.id !== actor.id) {
@@ -234,6 +288,11 @@ export class ChatService implements ChatPort {
       throw new NotFoundError('Chat message', messageId)
     }
 
+    // A correction may ADD a name (Nikola, 23.08.), and that name has not heard anything yet.
+    // Anybody the first version already rang is skipped inside the fan-out, so the same person
+    // never hears the same message twice however often it is corrected.
+    await this.ringMentions(conversation, updated, actor)
+
     return updated
   }
 
@@ -242,7 +301,7 @@ export class ChatService implements ChatPort {
    * window is counted against — and the words stop being served. Twice in a row is once.
    */
   async deleteMessage(messageId: string, actor: ChatActor): Promise<void> {
-    const message = await this.requireVisibleMessage(messageId, actor)
+    const { message } = await this.requireVisibleMessage(messageId, actor)
 
     if (message.author?.id !== actor.id) {
       throw new ForbiddenError('A message is taken back only by the person who wrote it')
@@ -272,7 +331,7 @@ export class ChatService implements ChatPort {
    * NOT refused at the cap: a retry must not be the one request that fails.
    */
   async pin(messageId: string, actor: ChatActor): Promise<void> {
-    const message = await this.requireVisibleMessage(messageId, actor)
+    const { message } = await this.requireVisibleMessage(messageId, actor)
 
     if ((await this.repo.findPin(message.conversationId, messageId)) !== null) {
       return
@@ -293,7 +352,7 @@ export class ChatService implements ChatPort {
    * directly where the concept IS the role.
    */
   async unpin(messageId: string, actor: ChatActor): Promise<void> {
-    const message = await this.requireVisibleMessage(messageId, actor)
+    const { message } = await this.requireVisibleMessage(messageId, actor)
 
     const pin = await this.repo.findPin(message.conversationId, messageId)
     if (pin === null) {
@@ -367,14 +426,19 @@ export class ChatService implements ChatPort {
    * touch it, so every action goes through the same visible set the reads use. 404 either way — a
    * message in a conversation he cannot open is, for him, not there.
    */
-  private async requireVisibleMessage(messageId: string, actor: ChatActor): Promise<ChatMessage> {
+  private async requireVisibleMessage(
+    messageId: string,
+    actor: ChatActor,
+  ): Promise<{ message: ChatMessage; conversation: ChatConversationListItem }> {
     const message = await this.repo.findMessageById(messageId, actor.id)
     if (message === null) {
       throw new NotFoundError('Chat message', messageId)
     }
-    await this.requireVisible(message.conversationId, actor)
+    // The room comes back with the message: an edit may add a mention, and ringing it needs to
+    // know who can see the room — asking a second time would be a second answer to one question.
+    const conversation = await this.requireVisible(message.conversationId, actor)
 
-    return message
+    return { message, conversation }
   }
 
   /**

@@ -25,6 +25,14 @@ export const NotificationDataSchema = z.object({
   outcome: z.enum(claimOutcomeValues).nullable().optional(),
   catalog: z.enum(notificationCatalogValues).nullable().optional(),
   itemName: z.string().nullable().optional(),
+  /** Who wrote it — the eyebrow reads "POMENUO TE {ime}". */
+  authorName: z.string().nullable().optional(),
+  /** Which room to open. The screen needs it because a message id alone cannot address one. */
+  conversationId: z.string().nullable().optional(),
+  /** The channel's name or the thread's MR number, so the row says where it happened. */
+  conversationTitle: z.string().nullable().optional(),
+  /** The first words of the message, so the row says something without opening it. */
+  excerpt: z.string().nullable().optional(),
 })
 
 export type NotificationData = z.infer<typeof NotificationDataSchema>

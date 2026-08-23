@@ -34,6 +34,7 @@ export { findMrCandidates, type MrCandidate } from './utils/find-mr-candidates.j
 export {
   findMentions,
   MENTION_EVERYONE_ID,
+  stripMentionMarkup,
   uniqueMentions,
   type MentionMatch,
 } from './utils/find-mentions.js'

@@ -67,3 +67,6 @@ export const CHAT_PINS_MAX = 20
 
 /** Read receipts are throttled to this — one write per open, not one per rendered frame. */
 export const CHAT_READ_THROTTLE_MS = 5_000
+
+/** How much of a message the bell repeats. Enough to recognise it, not enough to replace opening it. */
+export const CHAT_MENTION_EXCERPT_MAX = 140

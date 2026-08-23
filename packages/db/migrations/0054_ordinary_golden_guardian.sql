@@ -1,0 +1,4 @@
+ALTER TABLE "notifications" DROP CONSTRAINT "notifications_type_check";--> statement-breakpoint
+ALTER TABLE "notifications" DROP CONSTRAINT "notifications_entity_type_check";--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_type_check" CHECK ("notifications"."type" IN ('new_submission', 'outcome_changed', 'claim_created', 'assigned_to_me', 'catalog_added', 'submission_rejected', 'chat_mention'));--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_entity_type_check" CHECK ("notifications"."entity_type" IN ('client_submission', 'emotive_claim', 'domace_claim', 'catalog', 'chat_message'));

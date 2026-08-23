@@ -7,7 +7,7 @@ import {
   type NotificationItem,
 } from '@mr/shared'
 import { m } from '@mr/i18n'
-import { FilePlus, Inbox, RefreshCw, User, type LucideIcon } from 'lucide-react'
+import { FilePlus, Inbox, MessageSquare, RefreshCw, User, type LucideIcon } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
 
@@ -24,13 +24,19 @@ const ICON_BY_TYPE: Record<NotificationType, LucideIcon> = {
   [NotificationType.AssignedToMe]: User,
   [NotificationType.CatalogAdded]: FilePlus,
   [NotificationType.SubmissionRejected]: Inbox,
+  [NotificationType.ChatMention]: MessageSquare,
 }
 
 export function notificationIcon(type: NotificationType): LucideIcon {
   return ICON_BY_TYPE[type]
 }
 
-const EYEBROW_BY_TYPE: Record<NotificationType, () => string> = {
+/**
+ * Every eyebrow but the mention's, which names a person and therefore cannot be a constant. The
+ * type excludes it rather than parking a placeholder here — an unreachable entry is dead code, and
+ * the next reader cannot tell it is unreachable.
+ */
+const EYEBROW_BY_TYPE: Record<Exclude<NotificationType, 'chat_mention'>, () => string> = {
   [NotificationType.NewSubmission]: m.notifications_eyebrow_new_submission,
   [NotificationType.OutcomeChanged]: m.notifications_eyebrow_outcome_changed,
   [NotificationType.ClaimCreated]: m.notifications_eyebrow_claim_created,
@@ -39,8 +45,17 @@ const EYEBROW_BY_TYPE: Record<NotificationType, () => string> = {
   [NotificationType.SubmissionRejected]: m.notifications_eyebrow_submission_rejected,
 }
 
-export function notificationEyebrow(type: NotificationType): string {
-  return EYEBROW_BY_TYPE[type]()
+/**
+ * ⚠ Takes the ITEM, not the type. Every other eyebrow is a constant, but a mention's says who
+ * wrote it — and the popups used to carry a second copy of this map for want of the argument,
+ * which is how the two drifted apart waiting to happen.
+ */
+export function notificationEyebrow(item: NotificationItem): string {
+  if (item.type === NotificationType.ChatMention) {
+    return m.notifications_eyebrow_chat_mention({ name: item.data.authorName ?? DASH })
+  }
+
+  return EYEBROW_BY_TYPE[item.type]()
 }
 
 const CATALOG_LABEL: Record<NotificationCatalog, () => string> = {
@@ -79,6 +94,11 @@ export function notificationTitle(item: NotificationItem): string {
         itemName: item.data.itemName ?? DASH,
       })
     }
+    case NotificationType.ChatMention:
+      return m.notifications_title_chat_mention({
+        conversationTitle: item.data.conversationTitle ?? DASH,
+        excerpt: item.data.excerpt ?? DASH,
+      })
     default:
       return assertNever(item.type)
   }
@@ -92,6 +112,7 @@ export type NotificationTarget =
   | { to: '/pristiglo/$id'; params: { id: string } }
   | { to: '/reklamacije/emotive/$id'; params: { id: string }; search: ClaimDetailSearch }
   | { to: '/reklamacije/domace/$id'; params: { id: string }; search: ClaimDetailSearch }
+  | { to: '/razgovori'; search: { razgovor: string } }
 
 /**
  * Where a click leads, keyed on `entityType` (never inferred from the payload).
@@ -114,6 +135,14 @@ export function notificationTarget(item: NotificationItem): NotificationTarget |
         params: { id: item.entityId },
         search: CLAIM_DETAIL_DEFAULT_SEARCH,
       }
+    case NotificationEntityType.ChatMessage: {
+      // The message id addresses nothing on screen — the ROOM is what opens, and the room's id
+      // travels in the notification's data because a message alone cannot name it.
+      const conversationId = item.data.conversationId
+      return conversationId === null || conversationId === undefined
+        ? null
+        : { to: '/razgovori', search: { razgovor: conversationId } }
+    }
     case NotificationEntityType.Catalog:
       return null
     default:

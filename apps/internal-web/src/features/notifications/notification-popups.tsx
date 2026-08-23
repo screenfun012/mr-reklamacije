@@ -14,6 +14,7 @@ import { X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  notificationEyebrow,
   notificationIcon,
   notificationTarget,
   notificationTitle,
@@ -134,6 +135,7 @@ const ACCENT_BY_TYPE: Record<NotificationType, string> = {
   [NotificationType.OutcomeChanged]: 'var(--mri-red)',
   [NotificationType.CatalogAdded]: 'var(--mri-red)',
   [NotificationType.SubmissionRejected]: 'var(--mri-red)',
+  [NotificationType.ChatMention]: 'var(--mri-red)',
 }
 
 function accentColor(item: NotificationItem): string {
@@ -232,7 +234,7 @@ function NotificationPopupCard({
           <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--mrg-text2)]">
             {isReminder
               ? m.notifications_eyebrow_reminder()
-              : `${eyebrowFor(item)} · ${formatTimeAgo(item.createdAt, getLocale(), new Date())}`}
+              : `${notificationEyebrow(item)} · ${formatTimeAgo(item.createdAt, getLocale(), new Date())}`}
           </span>
           <span className="mt-1 block text-[13.5px] font-semibold leading-[1.4] text-[var(--mrg-text)]">
             {notificationTitle(item)}
@@ -281,18 +283,6 @@ function NotificationPopupCard({
       </div>
     </div>
   )
-}
-
-function eyebrowFor(item: NotificationItem): string {
-  const EYEBROWS: Record<NotificationType, () => string> = {
-    [NotificationType.NewSubmission]: m.notifications_eyebrow_new_submission,
-    [NotificationType.OutcomeChanged]: m.notifications_eyebrow_outcome_changed,
-    [NotificationType.ClaimCreated]: m.notifications_eyebrow_claim_created,
-    [NotificationType.AssignedToMe]: m.notifications_eyebrow_assigned_to_me,
-    [NotificationType.CatalogAdded]: m.notifications_eyebrow_catalog_added,
-    [NotificationType.SubmissionRejected]: m.notifications_eyebrow_submission_rejected,
-  }
-  return EYEBROWS[item.type]()
 }
 
 const SNOOZE_OPTIONS: { preset: NotificationSnoozePreset; label: () => string }[] = [

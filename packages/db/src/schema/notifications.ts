@@ -45,11 +45,11 @@ export const notifications = pgTable(
   (t) => [
     check(
       'notifications_type_check',
-      sql`${t.type} IN ('new_submission', 'outcome_changed', 'claim_created', 'assigned_to_me', 'catalog_added', 'submission_rejected')`,
+      sql`${t.type} IN ('new_submission', 'outcome_changed', 'claim_created', 'assigned_to_me', 'catalog_added', 'submission_rejected', 'chat_mention')`,
     ),
     check(
       'notifications_entity_type_check',
-      sql`${t.entityType} IN ('client_submission', 'emotive_claim', 'domace_claim', 'catalog')`,
+      sql`${t.entityType} IN ('client_submission', 'emotive_claim', 'domace_claim', 'catalog', 'chat_message')`,
     ),
     foreignKey({
       name: 'notifications_user_id_fkey',
