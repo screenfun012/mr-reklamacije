@@ -569,4 +569,74 @@ describe('Chat', () => {
       expect(status).toBe(404)
     })
   })
+
+  /**
+   * What a mention looks like once it is written. The id is the truth and the name is read at the
+   * moment the message is read — the whole reason the spec stores an id rather than the letters
+   * somebody typed (§5 row 7).
+   */
+  describe('a message carries its mentions', () => {
+    async function readNewestMentions(conversationId: string) {
+      const app = createChatTestApp(container, testUser([...CLAIM_READER_PERMISSIONS]))
+      const res = await app.request(`/api/chat/conversations/${conversationId}/messages?limit=10`)
+      const page = ChatMessagesPageSchema.parse(await res.json())
+      return page.items.at(-1)?.mentions
+    }
+
+    it('resolves the mention to the name the database holds NOW, not the one that was typed', async () => {
+      await sendRaw(generalId, `zdravo @[Staro Ime](${OTHER_USER_ID}), pogledaj`)
+      await ctx.db
+        .update(schema.users)
+        .set({ name: 'Novo Ime' })
+        .where(eq(schema.users.id, OTHER_USER_ID))
+
+      expect(await readNewestMentions(generalId)).toEqual([{ id: OTHER_USER_ID, name: 'Novo Ime' }])
+    })
+
+    it('sends @svi with an empty name, because the server does not write Serbian', async () => {
+      await sendRaw(generalId, '@[svi](all) hitno')
+
+      expect(await readNewestMentions(generalId)).toEqual([{ id: 'all', name: '' }])
+    })
+
+    it('keeps the typed label when the account behind the id is gone', async () => {
+      const vanished = '00000000-0000-4000-8000-0000000000aa'
+      await sendRaw(generalId, `hvala @[Bivši Kolega](${vanished})`)
+
+      // A deleted account must not blank the sentence — the words a person wrote stay readable.
+      expect(await readNewestMentions(generalId)).toEqual([{ id: vanished, name: 'Bivši Kolega' }])
+    })
+
+    it('names each person once, however many times they were written', async () => {
+      await sendRaw(generalId, `@[A](${OTHER_USER_ID}) i opet @[B](${OTHER_USER_ID})`)
+
+      expect(await readNewestMentions(generalId)).toHaveLength(1)
+    })
+
+    it('carries no mentions on a deleted message — the words do not travel, and neither do they', async () => {
+      await sendRaw(generalId, `@[Neko](${OTHER_USER_ID})`)
+      await ctx.db
+        .update(schema.chatMessages)
+        .set({ deletedAt: new Date() })
+        .where(eq(schema.chatMessages.conversationId, generalId))
+
+      expect(await readNewestMentions(generalId)).toEqual([])
+    })
+
+    it('accepts a mention of somebody who cannot see the conversation', async () => {
+      // Spec §5 row 7: such a mention is not DELIVERED. Refusing the message would lose the words
+      // over an address — and permissions change after a message is written.
+      const app = createChatTestApp(container, testUser([...CLAIM_READER_PERMISSIONS]))
+      const res = await app.request(`/api/chat/conversations/${emotiveThreadId}/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          clientMsgId: crypto.randomUUID(),
+          body: `@[Serviser](${OTHER_USER_ID}) pogledaj`,
+        }),
+      })
+
+      expect(res.status).toBe(201)
+    })
+  })
 })

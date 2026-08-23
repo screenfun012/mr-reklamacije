@@ -22,6 +22,21 @@ export const ChatMessageAuthorSchema = z.object({
   initials: z.string(),
 })
 
+/**
+ * One person named in a message. The id is what was stored; the name is read at read time, so a
+ * renamed account does not leave old sentences talking about somebody who no longer exists under
+ * that name (spec §5 row 7).
+ *
+ * `@svi` arrives as the reserved id with an EMPTY name — the server does not write Serbian, the
+ * screen names it. (Same rule the statistics buckets follow.)
+ */
+export const ChatMentionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+export type ChatMention = z.infer<typeof ChatMentionSchema>
+
 export const ChatMessageSchema = z.object({
   id: z.string().uuid(),
   conversationId: z.string().uuid(),
@@ -32,6 +47,8 @@ export const ChatMessageSchema = z.object({
   /** Empty for a deleted message — the row stays, the words do not travel. */
   body: z.string(),
   quoteOf: z.string().uuid().nullable(),
+  /** Everybody this message names, in writing order, each of them once. */
+  mentions: z.array(ChatMentionSchema),
   systemKind: z.enum(chatSystemKindValues).nullable(),
   systemMeta: z.record(z.string(), z.string()).nullable(),
   editedAt: z.string().nullable(),

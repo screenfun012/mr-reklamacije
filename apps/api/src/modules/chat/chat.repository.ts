@@ -1,10 +1,13 @@
 import {
   ChatConversationType,
   ClaimKind,
+  findMentions,
   getInitials,
   INTERNAL_APP_PERMISSIONS,
+  MENTION_EVERYONE_ID,
   SYSTEM_ROLE_ADMIN,
   UserAccountStatus,
+  type ChatMention,
   type ChatSystemKind,
   type Permission,
 } from '@mr/shared'
@@ -197,7 +200,38 @@ function mapConversationRow(row: ConversationRow): ChatConversationListItem {
   }
 }
 
-function mapMessageRow(row: MessageRow): ChatMessage {
+/**
+ * ⚠ Mentions are read from the body this function PUBLISHES, not from the stored one. A deleted
+ * message publishes empty words, so it publishes no mentions either — otherwise the row would keep
+ * naming people out of a sentence nobody can read any more.
+ */
+/**
+ * Every person a message names, once each, in writing order.
+ *
+ * A name that resolves to nothing keeps the label that was typed: an account can be deleted, and
+ * blanking the word out of somebody's sentence is worse than an old name.
+ */
+function mentionsOf(body: string, names: ReadonlyMap<string, string>): ChatMention[] {
+  const seen = new Set<string>()
+  const mentions: ChatMention[] = []
+
+  for (const mention of findMentions(body)) {
+    if (seen.has(mention.id)) {
+      continue
+    }
+    seen.add(mention.id)
+    mentions.push({
+      id: mention.id,
+      // Empty for `@svi`: the server does not write Serbian, the screen names that one.
+      name: mention.id === MENTION_EVERYONE_ID ? '' : (names.get(mention.id) ?? mention.label),
+    })
+  }
+
+  return mentions
+}
+
+function mapMessageRow(row: MessageRow, names: ReadonlyMap<string, string>): ChatMessage {
+  const body = row.deletedAt === null ? row.body : ''
   return {
     id: row.id,
     conversationId: row.conversationId,
@@ -211,8 +245,9 @@ function mapMessageRow(row: MessageRow): ChatMessage {
             name: row.authorName ?? '',
             initials: getInitials(row.authorName ?? '', row.authorEmail ?? ''),
           },
+    mentions: mentionsOf(body, names),
     // The row stays so the screen can say a message was here; the words do not travel (spec §5.5).
-    body: row.deletedAt === null ? row.body : '',
+    body,
     quoteOf: row.quoteOf,
     systemKind: row.systemKind as ChatSystemKind | null,
     systemMeta: row.systemMeta,
@@ -250,6 +285,33 @@ export class ChatRepository {
    * would drop the one account that can always be reached. Same reason, same shape as the
    * notifications fan-out — the two must agree or a mention promises what the bell cannot keep.
    */
+  /**
+   * The names behind every id mentioned across these bodies — ONE query for a whole page.
+   *
+   * Per message it would be one request per chip, and a busy channel draws fifty of them. The
+   * reserved `@svi` id belongs to nobody and is never looked up.
+   */
+  private async resolveMentionNames(bodies: readonly string[]): Promise<Map<string, string>> {
+    const ids = new Set<string>()
+    for (const body of bodies) {
+      for (const mention of findMentions(body)) {
+        if (mention.id !== MENTION_EVERYONE_ID) {
+          ids.add(mention.id)
+        }
+      }
+    }
+    if (ids.size === 0) {
+      return new Map()
+    }
+
+    const rows = await this.db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, [...ids]))
+
+    return new Map(rows.map((row) => [row.id, row.name]))
+  }
+
   async listPeopleFor(conversation: ChatConversationListItem): Promise<ChatPersonRow[]> {
     if (conversation.type === ChatConversationType.Channel) {
       return this.db
@@ -336,7 +398,11 @@ export class ChatRepository {
 
     const hasMore = rows.length > query.limit
     const page = hasMore ? rows.slice(0, query.limit) : rows
-    const items = (forward ? page : [...page].reverse()).map(mapMessageRow)
+    const ordered = forward ? page : [...page].reverse()
+    const names = await this.resolveMentionNames(
+      ordered.map((row) => (row.deletedAt === null ? row.body : '')),
+    )
+    const items = ordered.map((row) => mapMessageRow(row, names))
     const edge = forward ? items.at(-1) : items.at(0)
 
     return {
@@ -487,7 +553,12 @@ export class ChatRepository {
 
   async findMessageById(id: string, userId: string): Promise<ChatMessage | null> {
     const [row] = await this.messageSelect(userId).where(eq(chatMessages.id, id)).limit(1)
-    return row === undefined ? null : mapMessageRow(row)
+    if (row === undefined) {
+      return null
+    }
+    const names = await this.resolveMentionNames([row.deletedAt === null ? row.body : ''])
+
+    return mapMessageRow(row, names)
   }
 
   /** The correction goes into the row itself — the previous text is not kept (spec §5 row 4). */

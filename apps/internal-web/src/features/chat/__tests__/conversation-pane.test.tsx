@@ -28,6 +28,7 @@ function message(over: Partial<ChatMessage> & { seq: string }): ChatMessage {
     deletedAt: null,
     createdAt: '2026-08-23T08:42:00.000Z',
     reactionCount: 0,
+    mentions: [],
     reactedByMe: false,
     ...over,
   }

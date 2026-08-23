@@ -1,6 +1,8 @@
 import {
   CHAT_READ_THROTTLE_MS,
   chatKeys,
+  findMentions,
+  MENTION_EVERYONE_ID,
   chatMessagesOptions,
   markChatRead,
   sendChatMessage,
@@ -133,6 +135,13 @@ export function ConversationPane({
         seq: '',
         clientMsgId: crypto.randomUUID(),
         author: { id: null, name: authorName, initials: initialsOf(authorName) },
+        // Read straight off what was just typed, so the chip is there from the first paint. The
+        // server's own row replaces this one a moment later with the name the database holds —
+        // which is the same name, unless somebody was renamed between typing and sending.
+        mentions: findMentions(body).map((mention) => ({
+          id: mention.id,
+          name: mention.id === MENTION_EVERYONE_ID ? '' : mention.label,
+        })),
         body,
         quoteOf: null,
         systemKind: null,
