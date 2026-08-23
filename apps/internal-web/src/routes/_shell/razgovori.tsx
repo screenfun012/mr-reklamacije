@@ -10,6 +10,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
 
 import { KindPill } from '~/components/kind-pill'
+import { ConversationList } from '~/features/chat/conversation-list'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
 
 export const Route = createFileRoute('/_shell/razgovori')({
@@ -92,7 +93,7 @@ function ConversationHeading({
 
 function RazgovoriColumns(): React.ReactElement {
   const { data } = useSuspenseQuery(chatConversationsOptions())
-  const [selectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // The general channel is where a person lands: it is the one conversation that always exists.
   const fallback =
@@ -101,8 +102,11 @@ function RazgovoriColumns(): React.ReactElement {
 
   return (
     <div className={FRAME_CLASSES}>
-      {/* The conversation list fills this column next. */}
-      <div className="w-[252px] flex-none border-r border-mri-border bg-mri-surface" />
+      <ConversationList
+        items={data.items}
+        activeId={current?.id ?? null}
+        onSelect={setSelectedId}
+      />
 
       <section className="flex min-w-0 flex-1 flex-col bg-mri-bg">
         <header className="flex h-[52px] flex-none items-center gap-2.5 border-b border-mri-border bg-mri-surface px-4">
