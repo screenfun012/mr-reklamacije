@@ -169,6 +169,7 @@ export {
   chatMessagesOptions,
   fetchChatMessagesSince,
   markChatRead,
+  openChatClaimThread,
   sendChatMessage,
 } from './chat.js'
 export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'

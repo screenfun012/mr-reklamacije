@@ -30,6 +30,7 @@ export { computeDomaceTotal } from './utils/compute-domace-total.js'
 export { isIntakeConditionRecorded } from './utils/intake-condition-recorded.js'
 export { freeFieldsFor } from './utils/intake-free-fields.js'
 export { normalizeMrKey } from './utils/normalize-mr-key.js'
+export { findMrCandidates, type MrCandidate } from './utils/find-mr-candidates.js'
 export { normalizeName, toAsciiDisplay } from './utils/normalize-name.js'
 export { parseExcelDate } from './utils/parse-excel-date.js'
 export {

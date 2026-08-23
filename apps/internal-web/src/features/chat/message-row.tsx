@@ -1,8 +1,14 @@
 import { m } from '@mr/i18n'
-import { ChatSystemKind, formatChatTime, type ChatMessage } from '@mr/shared'
+import {
+  ChatSystemKind,
+  formatChatTime,
+  type ChatMessage,
+  type MrRegistryExistingClaim,
+} from '@mr/shared'
 import { cn } from '@mr/ui'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
+import { MessageBody } from './message-body'
 
 /**
  * The four the prototype's own avatar map carries. Which person gets which is the one thing that
@@ -78,6 +84,9 @@ function SystemMessage({ message }: { message: ChatMessage }): React.ReactElemen
 
 export interface MessageRowProps {
   message: ChatMessage
+  /** Resolved for the whole list at once — see `use-mr-resolutions`. */
+  resolutions: ReadonlyMap<string, MrRegistryExistingClaim>
+  onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
   /** Written here, not yet answered for by the server. */
   pending?: boolean
   failed?: boolean
@@ -87,6 +96,8 @@ export interface MessageRowProps {
 /** One thing somebody said — or, without an author, one thing the shop did. */
 export function MessageRow({
   message,
+  resolutions,
+  onOpenClaim,
   pending = false,
   failed = false,
   onRetry,
@@ -125,11 +136,7 @@ export function MessageRow({
           )}
         </span>
         {message.deletedAt === null ? (
-          // `whitespace-pre-wrap` because Shift+Enter is a real line break in the composer, and a
-          // message typed on three lines that arrives as one is a different message.
-          <span className="text-[13px] leading-[1.55] break-words whitespace-pre-wrap text-mri-text">
-            {message.body}
-          </span>
+          <MessageBody body={message.body} resolutions={resolutions} onOpenClaim={onOpenClaim} />
         ) : (
           <span className="text-[13px] leading-[1.55] italic text-mri-text2">
             {m.chat_message_deleted()}

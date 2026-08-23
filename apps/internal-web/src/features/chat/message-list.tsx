@@ -1,9 +1,10 @@
 import { m } from '@mr/i18n'
-import type { ChatMessage } from '@mr/shared'
+import type { ChatMessage, MrRegistryExistingClaim } from '@mr/shared'
 import { ArrowDown } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { MessageRow } from './message-row'
+import { useMrResolutions } from './use-mr-resolutions'
 
 /**
  * How close to the bottom still counts as "reading the newest".
@@ -25,6 +26,8 @@ export interface MessageListProps {
   /** The message the amber NOVO rule is drawn above, or null when everything here was read. */
   novoBeforeId: string | null
   onRetry: (clientMsgId: string) => void
+  /** Where a click on an MR number goes. Absent leaves the chips drawn but inert. */
+  onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
 }
 
 function NovoSeparator(): React.ReactElement {
@@ -45,7 +48,15 @@ export function MessageList({
   pending,
   novoBeforeId,
   onRetry,
+  onOpenClaim,
 }: MessageListProps): React.ReactElement {
+  // One resolution pass for everything on screen, the message being written included.
+  const bodies = useMemo(
+    () => [...messages.map((item) => item.body), ...pending.map((row) => row.message.body)],
+    [messages, pending],
+  )
+  const resolutions = useMrResolutions(bodies)
+
   const paneRef = useRef<HTMLDivElement>(null)
   const atBottomRef = useRef(true)
   const [showJump, setShowJump] = useState(false)
@@ -93,7 +104,7 @@ export function MessageList({
         {messages.map((message) => (
           <div key={message.id} className="flex flex-col gap-3.5">
             {message.id === novoBeforeId ? <NovoSeparator /> : null}
-            <MessageRow message={message} />
+            <MessageRow message={message} resolutions={resolutions} onOpenClaim={onOpenClaim} />
           </div>
         ))}
 
@@ -101,6 +112,8 @@ export function MessageList({
           <MessageRow
             key={row.message.clientMsgId}
             message={row.message}
+            resolutions={resolutions}
+            onOpenClaim={onOpenClaim}
             pending={!row.failed}
             failed={row.failed}
             onRetry={() => onRetry(row.message.clientMsgId)}

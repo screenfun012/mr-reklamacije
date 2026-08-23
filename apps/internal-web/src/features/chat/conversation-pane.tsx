@@ -6,6 +6,7 @@ import {
   sendChatMessage,
   type ChatMessage,
   type ChatMessagesPage,
+  type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -68,6 +69,8 @@ export interface ConversationPaneProps {
   unreadCount: number
   authorName: string
   isThread?: boolean
+  /** What happens when somebody clicks an MR number written in a message. */
+  onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
 }
 
 /**
@@ -81,6 +84,7 @@ export function ConversationPane({
   unreadCount,
   authorName,
   isThread = false,
+  onOpenClaim,
 }: ConversationPaneProps): React.ReactElement {
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(chatMessagesOptions(conversationId))
@@ -184,6 +188,7 @@ export function ConversationPane({
         pending={visiblePending(data.items, pending)}
         novoBeforeId={novoBeforeId}
         onRetry={handleRetry}
+        onOpenClaim={onOpenClaim}
       />
       <Composer isThread={isThread} onSend={handleSend} />
     </>

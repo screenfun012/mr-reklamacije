@@ -2,10 +2,13 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { fetchNoContent } from '../api/fetch-no-content.js'
 import { fetchParsed } from '../api/fetch-json.js'
+import type { ClaimKind } from '../enums.js'
 import {
+  ChatConversationListItemSchema,
   ChatConversationListResponseSchema,
   ChatMessageSchema,
   ChatMessagesPageSchema,
+  type ChatConversationListItem,
   type ChatMessage,
   type ChatMessagesPage,
   type ChatSendInput,
@@ -93,6 +96,26 @@ export function sendChatMessage(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
+  })
+}
+
+/**
+ * Opens a claim's thread — and creates it when there is none.
+ *
+ * Get-or-create on purpose: "1 claim = 1 thread" is a database constraint, so two people clicking
+ * the same MR number at the same second land in the same room. The server answers 201 when it made
+ * one (and writes the `thread_created` system message) and 200 when it was already there; both
+ * carry the same row, so the caller only has to open what it got back.
+ *
+ * ⚠ Nothing here decides whether a thread SHOULD be made — the screen asks the person first
+ * (spec §8.2: nothing is created silently).
+ */
+export function openChatClaimThread(
+  kind: ClaimKind,
+  claimId: string,
+): Promise<ChatConversationListItem> {
+  return fetchParsed(`/api/chat/claims/${kind}/${claimId}/thread`, ChatConversationListItemSchema, {
+    method: 'POST',
   })
 }
 

@@ -4,6 +4,7 @@ import {
   chatConversationsOptions,
   ClaimKind,
   type ChatConversationListItem,
+  type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
@@ -12,6 +13,7 @@ import { Suspense, useState } from 'react'
 import { KindPill } from '~/components/kind-pill'
 import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
+import { ClaimThreadConfirm, findClaimThread } from '~/features/chat/open-claim-thread'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 
@@ -107,7 +109,21 @@ function MessagesSkeleton(): React.ReactElement {
 function RazgovoriColumns(): React.ReactElement {
   const { data } = useSuspenseQuery(chatConversationsOptions())
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
   const { userName } = useInternalAuthUser()
+
+  /**
+   * A claim number clicked in a message. It opens the claim's thread — and when there is none,
+   * it ASKS (spec §8.2). Nothing about clicking a word in a sentence says "make me a room".
+   */
+  const openClaim = (target: MrRegistryExistingClaim): void => {
+    const existing = findClaimThread(data.items, target.claimId)
+    if (existing === null) {
+      setPendingThread(target)
+      return
+    }
+    setSelectedId(existing.id)
+  }
 
   // The general channel is where a person lands: it is the one conversation that always exists.
   const fallback =
@@ -135,10 +151,20 @@ function RazgovoriColumns(): React.ReactElement {
               unreadCount={current.unreadCount}
               authorName={userName}
               isThread={current.type === ChatConversationType.Claim}
+              onOpenClaim={openClaim}
             />
           </Suspense>
         )}
       </section>
+
+      <ClaimThreadConfirm
+        target={pendingThread}
+        onCancel={() => setPendingThread(null)}
+        onOpened={(conversationId) => {
+          setPendingThread(null)
+          setSelectedId(conversationId)
+        }}
+      />
     </div>
   )
 }
