@@ -83,8 +83,23 @@ describe('MrRegistry HTTP', () => {
       expect(res.status).toBe(401)
     })
 
-    it('returns 403 without create permission on either module', async () => {
+    it('lets a claims reader resolve a number, so the chat can link it', async () => {
+      // Since 2026-08-23: the chat turns an MR number in any message into a link, and a viewer
+      // holds no create permission — every chip would have answered 403 and rendered as plain
+      // text. He already sees every MR number in the claims list, so nothing new crosses.
       const app = createMrRegistryTestApp(container, testUser(['emotive_claims.view']))
+      const res = await app.request('/api/mr-registry/lookup?mr=MR123/26')
+      expect(res.status).toBe(200)
+    })
+
+    it('still refuses somebody with no claims permission at all', async () => {
+      const app = createMrRegistryTestApp(container, testUser(['customers.view']))
+      const res = await app.request('/api/mr-registry/lookup?mr=MR123/26')
+      expect(res.status).toBe(403)
+    })
+
+    it('refuses a portal client — view_own_customer opens nothing internal', async () => {
+      const app = createMrRegistryTestApp(container, testUser(['emotive_claims.view_own_customer']))
       const res = await app.request('/api/mr-registry/lookup?mr=MR123/26')
       expect(res.status).toBe(403)
     })
