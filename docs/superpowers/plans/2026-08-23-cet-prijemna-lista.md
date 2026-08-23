@@ -31,15 +31,15 @@ isporučio je drugi spisak ispod, i on je temelj na kome ekran stoji.
 | --- | --- | --- | --- |
 | 1 | Tri kolone tačnih širina (252 / flex / 250), panel samo u niti, ⓘ toggle | 2, 3 | ✅ *(dokazano u pregledaču 23.08.)* |
 | 2 | Lista: DND, pretraga, KANALI + „+", NITI + „+", badge/MUTE/aktivno stanje, kind tačke | 2, 3, 6 | 🔄 *(sve stoji; pretraga zasivljena do koraka 7, „+" dijalozi su koraci 3 i 6)* |
-| 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 (MR), **neraspoređeno** (@pomen) | 🔄 *(MR pola gotovo; @pomen NIJE — vidi rupu ispod)* |
+| 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 | ✅ *(oba, dokazano u pregledaču 23.08.)* |
 | 4 | Poruka: avatar, vreme, izmenjeno, link-ikonica, citat, slike, PDF/XLS kartica, reakcija ✓, viđeno | 2, 4, 7 | 🔄 *(avatar, vreme, izmenjeno gotovi; ostalo su koraci 4 i 7)* |
 | 5 | Čip niti u kanalu + podeljena kartica reklamacije + „Podeli u razgovor“ na detalju | 3 | ❗ *(NIJE napravljeno — a `chat_threads_footer` na ekranu već pominje to dugme)* |
 | 6 | Sistemske poruke (pilula, amber ↻) + NOVO separator | 2, 5 | 🔄 *(server ih piše od koraka 1: ishod, objava, promena kategorije)* |
 | 7 | Composer: brzi odgovori, prilog, kamera, placeholder po režimu, POŠALJI primarno, Enter | 2, 4 | 🔄 *(sve osim priloga i kamere, koji su nacrtani i namerno neaktivni do koraka 4)* |
-| 7b | **@ autocomplete** — kucanje `@` otvara meni članova, strelice + Enter biraju (handoff §5) | **neraspoređeno** | ❗ *(nije bilo ni u jednoj listi — vidi rupu ispod)* |
+| 7b | **@ autocomplete** — kucanje `@` otvara meni članova, strelice + Enter biraju (handoff §5) | pomen | ✅ *(meni, sužavanje, strelice, Enter, Escape — dokazano u pregledaču)* |
 | 8 | Kontekst panel: kartica reklamacije, OTVORI REKLAMACIJU, prikačeno, prilozi | 3, 4, 7 | 🔄 *(kartica i OTVORI REKLAMACIJU dokazani u pregledaču; prilozi = korak 4, prikačeno = korak 7)* |
 | 9 | Oba dijaloga (nit sa pretragom i NAPRAVI +/NIT POSTOJI; kanal sa članovima) | 3, 6 | 🔄 *(dijalog niti stoji i dokazan u pregledaču; kanal sa članovima je korak 6)* |
-| 10 | Obaveštenja: popup + zvono, @pomen kroz mute, DND, zbir na meniju, viđeno | 5 | ⏳ |
+| 10 | Obaveštenja: popup + zvono, @pomen kroz mute, DND, zbir na meniju, viđeno | pomen, 5 | 🔄 *(zvono i popup za @pomen rade i probijaju utišanu nit; „viđeno" je korak 7)* |
 | 11 | Tab „Razgovor“ u detalju = ista nit | 3 | ✅ *(dokazano u pregledaču: poruka napisana u niti vidi se i na tabu)* |
 | 12 | BEZ „kuca…" indikatora i online tačke | — | ✅ *(ne pravi se; nema ga ni u modelu)* |
 | 13 | Nijedno dugme puna crvena ispuna | 2 | ✅ |
@@ -79,6 +79,21 @@ Ovo su odluke iz našeg spec-a §5 i §10 — nisu u handoff-ovoj listi, ali se 
 | Obrisana poruka se ne može izmeniti nazad | 1 | ✅ |
 
 ---
+
+## ✅ Pomen (@) — napravljen 23.08., i rupa je zatvorena
+
+Plan `docs/superpowers/plans/2026-08-23-cet-pomen.md`, sedam zadataka. **Dokazano u pregledaču sa
+DVA naloga u dva prozora, 10/10:** `@` otvara meni · kucanje ga sužava · `@djor` nalazi **Đorđe**
+bez kvačice · Enter upisuje **ID**, ne ime · poslata poruka nosi crveni čip sa imenom **iz baze**
+(izmereno `rgb(255,75,82)`) · drugom nalogu zvoni i piše **„POMENUO TE Milan Verifikator"** · klik
+sleće **u taj razgovor** (`/razgovori?razgovor=…`) · `@svi` stiže svima · **piscu ne zvoni za
+sopstvenu poruku**.
+
+⚠ **Sledeće što treba tebi da odlučim** — u meniju se pojavljuju **dva reda „Nikola Admin"**, jer
+zaista postoje dva naloga sa istim imenom (`screenfun99@gmail.com` i `kancelarija@local.test`).
+Meni je u pravu, ali čovek ne može da ih razlikuje — a pogrešan izbor tiho zvoni pogrešnoj osobi.
+Rešenje traži da se uz ime prikaže i mejl, što znači da svaki interni nalog vidi tuđe adrese. To je
+odluka, ne popravka.
 
 ## ❗ Rupa u praćenju, nađena 23.08. kad je Nikola prvi put seo za čet
 
