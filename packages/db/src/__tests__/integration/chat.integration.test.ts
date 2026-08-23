@@ -51,12 +51,25 @@ async function expectConstraint(run: Promise<unknown>, constraint: string): Prom
   })
 }
 
-async function anyUserId(): Promise<string> {
-  const [user] = await db.select({ id: schema.users.id }).from(schema.users).limit(1)
-  if (user === undefined) {
-    throw new Error('no user in the test database')
-  }
-  return user.id
+/**
+ * A user of our own, every time.
+ *
+ * ⚠ This used to take whichever user happened to be in the database, and it passed on a developer
+ * machine for exactly one reason: leftovers from earlier work. **No seed creates a user** — a
+ * freshly built CI database has none — so the borrowed row was never there and the whole file
+ * died on the first line. Fixtures are made, never found.
+ */
+async function ensureUserId(): Promise<string> {
+  const [user] = await db
+    .insert(schema.users)
+    .values({
+      id: crypto.randomUUID(),
+      name: 'Čet fiksura',
+      email: `chat-fixture-${crypto.randomUUID()}@local.test`,
+      emailVerified: false,
+    })
+    .returning({ id: schema.users.id })
+  return user?.id ?? ''
 }
 
 /** A claim of our own, so the suite does not depend on what the demo seed happens to hold. */
@@ -76,7 +89,7 @@ async function newEmotiveClaimId(): Promise<string> {
       mrNumber: `CHAT-${Date.now()}-${Math.round(Math.random() * 1e6)}/26`,
       outcome: 'pending',
       claimYear: 2026,
-      createdBy: await anyUserId(),
+      createdBy: await ensureUserId(),
     })
     .returning({ id: schema.emotiveClaims.id })
   return claim?.id ?? ''
@@ -89,7 +102,7 @@ async function newDomaceClaimId(): Promise<string> {
       outcome: 'pending',
       claimYear: 2026,
       customerName: 'Proba',
-      createdBy: await anyUserId(),
+      createdBy: await ensureUserId(),
     })
     .returning({ id: schema.domaceClaims.id })
   return claim?.id ?? ''
@@ -98,7 +111,7 @@ async function newDomaceClaimId(): Promise<string> {
 async function newConversation(): Promise<string> {
   const [row] = await db
     .insert(schema.chatConversations)
-    .values({ type: 'channel', name: 'Proba', createdBy: await anyUserId() })
+    .values({ type: 'channel', name: 'Proba', createdBy: await ensureUserId() })
     .returning({ id: schema.chatConversations.id })
   return row?.id ?? ''
 }
@@ -106,7 +119,7 @@ async function newConversation(): Promise<string> {
 describe('migration 0053 — the chat tables', () => {
   it('keeps one thread per claim', async () => {
     const claimId = await newEmotiveClaimId()
-    const createdBy = await anyUserId()
+    const createdBy = await ensureUserId()
     await db
       .insert(schema.chatConversations)
       .values({ type: 'claim', emotiveClaimId: claimId, createdBy })
@@ -127,7 +140,7 @@ describe('migration 0053 — the chat tables', () => {
         type: 'claim',
         emotiveClaimId: await newEmotiveClaimId(),
         domaceClaimId: await newDomaceClaimId(),
-        createdBy: await anyUserId(),
+        createdBy: await ensureUserId(),
       }),
       'chat_conversations_one_of_claim_check',
     )
@@ -135,21 +148,34 @@ describe('migration 0053 — the chat tables', () => {
 
   it('refuses a thread with no claim at all', async () => {
     await expectConstraint(
-      db.insert(schema.chatConversations).values({ type: 'claim', createdBy: await anyUserId() }),
+      db
+        .insert(schema.chatConversations)
+        .values({ type: 'claim', createdBy: await ensureUserId() }),
       'chat_conversations_one_of_claim_check',
     )
   })
 
   it('refuses a channel without a name', async () => {
     await expectConstraint(
-      db.insert(schema.chatConversations).values({ type: 'channel', createdBy: await anyUserId() }),
+      db
+        .insert(schema.chatConversations)
+        .values({ type: 'channel', createdBy: await ensureUserId() }),
       'chat_conversations_channel_name_check',
     )
   })
 
   it('allows only one general channel — the seeded one', async () => {
-    // The system seed already made it (`seedGeneralChannel`), so this asserts the real state of
-    // every environment: a second general channel cannot stand next to it, whoever tries.
+    /**
+     * Seeded here rather than trusted, and that is not belt-and-braces.
+     *
+     * ⚠ `packages/auth`'s permission suite runs `TRUNCATE users … CASCADE` before every test, and
+     * CASCADE empties every table referencing `users` — `chat_conversations` among them — without
+     * honouring `ON DELETE SET NULL`. Whether the seeded row is still here therefore depends on
+     * suite order. This passed on a laptop, where earlier work had left one, and failed on a CI
+     * database built from zero.
+     */
+    await seedGeneralChannel(db)
+
     const [seeded] = await db
       .select({ name: schema.chatConversations.name })
       .from(schema.chatConversations)
@@ -159,14 +185,14 @@ describe('migration 0053 — the chat tables', () => {
     await expectConstraint(
       db
         .insert(schema.chatConversations)
-        .values({ type: 'general', name: 'Drugi opšti', createdBy: await anyUserId() }),
+        .values({ type: 'general', name: 'Drugi opšti', createdBy: await ensureUserId() }),
       'uq_chat_conversations_general',
     )
   })
 
   it('gives every message a rising seq', async () => {
     const conversationId = await newConversation()
-    const authorId = await anyUserId()
+    const authorId = await ensureUserId()
     const [first] = await db
       .insert(schema.chatMessages)
       .values({ conversationId, authorId, body: 'prva', clientMsgId: crypto.randomUUID() })
@@ -183,7 +209,7 @@ describe('migration 0053 — the chat tables', () => {
 
   it('takes the same client id from one author only once', async () => {
     const conversationId = await newConversation()
-    const authorId = await anyUserId()
+    const authorId = await ensureUserId()
     const clientMsgId = crypto.randomUUID()
     await db
       .insert(schema.chatMessages)

@@ -86,17 +86,29 @@ describe('Chat', () => {
       .returning({ id: schema.emotiveClaims.id })
     emotiveClaimId = claim?.id ?? ''
 
-    // The general channel is a system seed — every database has exactly one, and a second one is
-    // refused by a unique index. So the test reads it rather than making its own.
+    /**
+     * The general channel is a system seed, but this suite does not TRUST it to be there.
+     *
+     * ⚠ `packages/auth`'s permission suite runs `TRUNCATE users … CASCADE` before every one of its
+     * tests, and CASCADE empties every table that references `users` — `chat_conversations`
+     * included. It does NOT honour `ON DELETE SET NULL`. So whether the seeded channel exists here
+     * depends on which suite ran last, which is why this passed on a laptop and failed in CI.
+     * Read it if it is there, make it if it is not; the unique index keeps it at one either way.
+     */
     const [general] = await ctx.db
       .select({ id: schema.chatConversations.id })
       .from(schema.chatConversations)
       .where(eq(schema.chatConversations.type, ChatConversationType.General))
       .limit(1)
-    if (general === undefined) {
-      throw new Error('No general channel — run db:seed')
-    }
-    generalId = general.id
+    generalId =
+      general?.id ??
+      (
+        await ctx.db
+          .insert(schema.chatConversations)
+          .values({ type: ChatConversationType.General, name: 'Opšti kanal' })
+          .returning({ id: schema.chatConversations.id })
+      )[0]?.id ??
+      ''
 
     const [thread] = await ctx.db
       .insert(schema.chatConversations)
