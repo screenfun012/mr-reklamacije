@@ -26,5 +26,14 @@ export function registerChatRoutes(
   routes.post('/conversations/:id/read', controller.markRead)
   routes.post('/claims/:kind/:id/thread', controller.openClaimThread)
 
+  routes.patch('/messages/:id', controller.editMessage)
+  routes.delete('/messages/:id', controller.deleteMessage)
+  routes.post('/conversations/:id/mute', controller.mute)
+  routes.delete('/conversations/:id/mute', controller.unmute)
+  routes.post('/messages/:id/pin', controller.pin)
+  routes.delete('/messages/:id/pin', controller.unpin)
+  routes.post('/messages/:id/reaction', controller.react)
+  routes.delete('/messages/:id/reaction', controller.unreact)
+
   app.route('/api/chat', routes)
 }

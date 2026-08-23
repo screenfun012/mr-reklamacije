@@ -7,6 +7,7 @@ import {
   chatMembers,
   chatMessages,
   chatMutes,
+  chatPins,
   chatReactions,
   chatReads,
   customers,
@@ -405,6 +406,82 @@ export class ChatRepository {
   async findMessageById(id: string, userId: string): Promise<ChatMessage | null> {
     const [row] = await this.messageSelect(userId).where(eq(chatMessages.id, id)).limit(1)
     return row === undefined ? null : mapMessageRow(row)
+  }
+
+  /** The correction goes into the row itself — the previous text is not kept (spec §5 row 4). */
+  async updateMessageBody(id: string, body: string): Promise<void> {
+    await this.db
+      .update(chatMessages)
+      .set({ body, editedAt: new Date() })
+      .where(eq(chatMessages.id, id))
+  }
+
+  /**
+   * ⚠ SOFT, and it stays that way. The row is the evidence a claim's thread is kept for, and the
+   * seq it holds is what everyone's read marker and recovery window are counted against — a hard
+   * delete would tear a hole in both. What stops the words travelling is `mapMessageRow`, which
+   * serves an empty body for a deleted row.
+   */
+  async softDeleteMessage(id: string): Promise<void> {
+    await this.db.update(chatMessages).set({ deletedAt: new Date() }).where(eq(chatMessages.id, id))
+  }
+
+  /** Muting is per account, so the row is per account — and saying it twice says it once. */
+  async insertMute(conversationId: string, userId: string): Promise<void> {
+    await this.db.insert(chatMutes).values({ conversationId, userId }).onConflictDoNothing()
+  }
+
+  async deleteMute(conversationId: string, userId: string): Promise<void> {
+    await this.db
+      .delete(chatMutes)
+      .where(and(eq(chatMutes.conversationId, conversationId), eq(chatMutes.userId, userId)))
+  }
+
+  /** Who pinned it, or null when nobody did. `pinnedBy` is NULL once that account is deleted. */
+  async findPin(
+    conversationId: string,
+    messageId: string,
+  ): Promise<{ pinnedBy: string | null } | null> {
+    const [row] = await this.db
+      .select({ pinnedBy: chatPins.pinnedBy })
+      .from(chatPins)
+      .where(and(eq(chatPins.conversationId, conversationId), eq(chatPins.messageId, messageId)))
+      .limit(1)
+
+    return row ?? null
+  }
+
+  async countPins(conversationId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(chatPins)
+      .where(eq(chatPins.conversationId, conversationId))
+
+    return row?.count ?? 0
+  }
+
+  async insertPin(conversationId: string, messageId: string, pinnedBy: string): Promise<void> {
+    await this.db
+      .insert(chatPins)
+      .values({ conversationId, messageId, pinnedBy })
+      .onConflictDoNothing()
+  }
+
+  async deletePin(conversationId: string, messageId: string): Promise<void> {
+    await this.db
+      .delete(chatPins)
+      .where(and(eq(chatPins.conversationId, conversationId), eq(chatPins.messageId, messageId)))
+  }
+
+  /** One tick per person per message — the primary key is the whole rule, so a repeat is a no-op. */
+  async insertReaction(messageId: string, userId: string): Promise<void> {
+    await this.db.insert(chatReactions).values({ messageId, userId }).onConflictDoNothing()
+  }
+
+  async deleteReaction(messageId: string, userId: string): Promise<void> {
+    await this.db
+      .delete(chatReactions)
+      .where(and(eq(chatReactions.messageId, messageId), eq(chatReactions.userId, userId)))
   }
 
   /** One shape for a message, wherever it is read from — a page, or the one just written. */

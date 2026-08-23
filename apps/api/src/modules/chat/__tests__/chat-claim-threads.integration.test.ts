@@ -31,11 +31,19 @@ const CLAIM_READER_PERMISSIONS = [
   'domace_claims.change_outcome',
 ] as const satisfies readonly Permission[]
 
-const CLAIM_READER: ChatActor = { id: TEST_USER_ID, permissions: CLAIM_READER_PERMISSIONS }
+const CLAIM_READER: ChatActor = {
+  id: TEST_USER_ID,
+  permissions: CLAIM_READER_PERMISSIONS,
+  roles: ['operator'],
+}
 
 /** In the internal app, but claims are not his. A thread of theirs must be absent, not forbidden. */
 const SERVISER_PERMISSIONS = ['intake_orders.view'] as const satisfies readonly Permission[]
-const SERVISER: ChatActor = { id: TEST_USER_ID, permissions: SERVISER_PERMISSIONS }
+const SERVISER: ChatActor = {
+  id: TEST_USER_ID,
+  permissions: SERVISER_PERMISSIONS,
+  roles: ['serviser'],
+}
 
 const auditContext = {
   actorUserId: TEST_USER_ID,

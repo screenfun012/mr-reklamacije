@@ -6,7 +6,9 @@ import { UnauthorizedError } from '../../core/errors/domain-errors.js'
 import {
   ChatClaimThreadParamSchema,
   ChatConversationIdParamSchema,
+  ChatEditInputSchema,
   ChatMarkReadInputSchema,
+  ChatMessageIdParamSchema,
   ChatMessagesQuerySchema,
   ChatSendInputSchema,
   type ChatActor,
@@ -17,7 +19,7 @@ function toActor(c: Context): ChatActor {
   if (user === null) {
     throw new UnauthorizedError()
   }
-  return { id: user.id, permissions: user.permissions }
+  return { id: user.id, permissions: user.permissions, roles: user.roles }
 }
 
 export function createChatController(container: Container): {
@@ -26,6 +28,14 @@ export function createChatController(container: Container): {
   sendMessage: (c: Context) => Promise<Response>
   markRead: (c: Context) => Promise<Response>
   openClaimThread: (c: Context) => Promise<Response>
+  editMessage: (c: Context) => Promise<Response>
+  deleteMessage: (c: Context) => Promise<Response>
+  mute: (c: Context) => Promise<Response>
+  unmute: (c: Context) => Promise<Response>
+  pin: (c: Context) => Promise<Response>
+  unpin: (c: Context) => Promise<Response>
+  react: (c: Context) => Promise<Response>
+  unreact: (c: Context) => Promise<Response>
 } {
   return {
     listConversations: async (c: Context) => {
@@ -64,6 +74,60 @@ export function createChatController(container: Container): {
       )
       // 200 says the thread was already there — opening it twice opens the same room.
       return c.json(conversation, created ? 201 : 200)
+    },
+
+    editMessage: async (c: Context) => {
+      const { id } = ChatMessageIdParamSchema.parse(c.req.param())
+      const { body } = ChatEditInputSchema.parse(await c.req.json())
+      const message = await container.chatService.editMessage(id, body, toActor(c))
+      return c.json(message)
+    },
+
+    /**
+     * 204 for everything below: what changed is one row the client already knows the shape of, and
+     * a body would only be a copy of what it just asked for. A tick and a pin are exactly the small
+     * actions CLAUDE.md allows an optimistic update for.
+     */
+    deleteMessage: async (c: Context) => {
+      const { id } = ChatMessageIdParamSchema.parse(c.req.param())
+      await container.chatService.deleteMessage(id, toActor(c))
+      return c.body(null, 204)
+    },
+
+    mute: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse(c.req.param())
+      await container.chatService.mute(id, toActor(c))
+      return c.body(null, 204)
+    },
+
+    unmute: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse(c.req.param())
+      await container.chatService.unmute(id, toActor(c))
+      return c.body(null, 204)
+    },
+
+    pin: async (c: Context) => {
+      const { id } = ChatMessageIdParamSchema.parse(c.req.param())
+      await container.chatService.pin(id, toActor(c))
+      return c.body(null, 204)
+    },
+
+    unpin: async (c: Context) => {
+      const { id } = ChatMessageIdParamSchema.parse(c.req.param())
+      await container.chatService.unpin(id, toActor(c))
+      return c.body(null, 204)
+    },
+
+    react: async (c: Context) => {
+      const { id } = ChatMessageIdParamSchema.parse(c.req.param())
+      await container.chatService.react(id, toActor(c))
+      return c.body(null, 204)
+    },
+
+    unreact: async (c: Context) => {
+      const { id } = ChatMessageIdParamSchema.parse(c.req.param())
+      await container.chatService.unreact(id, toActor(c))
+      return c.body(null, 204)
     },
   }
 }

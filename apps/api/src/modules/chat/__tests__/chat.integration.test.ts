@@ -24,14 +24,22 @@ const CLAIM_READER_PERMISSIONS = [
   'emotive_claims.view',
   'domace_claims.view',
 ] as const satisfies readonly Permission[]
-const CLAIM_READER: ChatActor = { id: TEST_USER_ID, permissions: CLAIM_READER_PERMISSIONS }
+const CLAIM_READER: ChatActor = {
+  id: TEST_USER_ID,
+  permissions: CLAIM_READER_PERMISSIONS,
+  roles: ['operator'],
+}
 
 /**
  * A serviser: he belongs in the internal app (intake), and he may not read claims. A claim thread
  * must not exist for him — not hidden, not forbidden: absent.
  */
 const SERVISER_PERMISSIONS = ['intake_orders.view'] as const satisfies readonly Permission[]
-const SERVISER: ChatActor = { id: TEST_USER_ID, permissions: SERVISER_PERMISSIONS }
+const SERVISER: ChatActor = {
+  id: TEST_USER_ID,
+  permissions: SERVISER_PERMISSIONS,
+  roles: ['serviser'],
+}
 
 /** The portal client. `view_own_customer` is not a key to anything internal (spec §3.3). */
 const PORTAL_CLIENT_PERMISSIONS = [

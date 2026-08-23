@@ -1,12 +1,20 @@
 import type { Logger } from '@mr/logger'
 import {
+  CHAT_EDIT_WINDOW_MS,
+  CHAT_PINS_MAX,
   ChatSystemKind,
   ClaimKind,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
+  SYSTEM_ROLE_ADMIN,
 } from '@mr/shared'
 
-import { ConflictError, NotFoundError } from '../../core/errors/domain-errors.js'
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnprocessableEntityError,
+} from '../../core/errors/domain-errors.js'
 import type { ChatPort, ChatSystemMessageTarget } from '../../core/ports/chat-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
@@ -199,6 +207,116 @@ export class ChatService implements ChatPort {
     }
   }
 
+  /**
+   * A typo, fixed. Only by the person who wrote it, and only while it is still a typo rather than
+   * a rewritten record — the messages are evidence for a claim (spec §5 row 4).
+   */
+  async editMessage(messageId: string, body: string, actor: ChatActor): Promise<ChatMessage> {
+    const message = await this.requireVisibleMessage(messageId, actor)
+
+    // A system message has no author, so it fails here too — and that is exactly the intent.
+    if (message.author?.id !== actor.id) {
+      throw new ForbiddenError('A message is corrected only by the person who wrote it')
+    }
+    if (message.deletedAt !== null) {
+      throw new UnprocessableEntityError('A message that was taken back is not corrected')
+    }
+    if (Date.now() - Date.parse(message.createdAt) > CHAT_EDIT_WINDOW_MS) {
+      throw new UnprocessableEntityError('The time to correct this message has passed')
+    }
+
+    await this.repo.updateMessageBody(messageId, body)
+
+    const updated = await this.repo.findMessageById(messageId, actor.id)
+    if (updated === null) {
+      throw new NotFoundError('Chat message', messageId)
+    }
+
+    return updated
+  }
+
+  /**
+   * Taken back, not erased: the row keeps its `seq` — which every read marker and every recovery
+   * window is counted against — and the words stop being served. Twice in a row is once.
+   */
+  async deleteMessage(messageId: string, actor: ChatActor): Promise<void> {
+    const message = await this.requireVisibleMessage(messageId, actor)
+
+    if (message.author?.id !== actor.id) {
+      throw new ForbiddenError('A message is taken back only by the person who wrote it')
+    }
+    if (message.deletedAt !== null) {
+      return
+    }
+
+    await this.repo.softDeleteMessage(messageId)
+  }
+
+  /** Per account, not per browser: it has to survive the tablet being swapped (spec §5). */
+  async mute(conversationId: string, actor: ChatActor): Promise<void> {
+    const scope = await this.requireVisible(conversationId, actor)
+
+    await this.repo.insertMute(conversationId, scope.userId)
+  }
+
+  async unmute(conversationId: string, actor: ChatActor): Promise<void> {
+    const scope = await this.requireVisible(conversationId, actor)
+
+    await this.repo.deleteMute(conversationId, scope.userId)
+  }
+
+  /**
+   * Pins are a shortlist, not a second inbox — hence the cap. Pinning what is already pinned is
+   * NOT refused at the cap: a retry must not be the one request that fails.
+   */
+  async pin(messageId: string, actor: ChatActor): Promise<void> {
+    const message = await this.requireVisibleMessage(messageId, actor)
+
+    if ((await this.repo.findPin(message.conversationId, messageId)) !== null) {
+      return
+    }
+    if ((await this.repo.countPins(message.conversationId)) >= CHAT_PINS_MAX) {
+      throw new ConflictError(
+        `A conversation keeps at most ${String(CHAT_PINS_MAX)} pinned messages`,
+      )
+    }
+
+    await this.repo.insertPin(message.conversationId, messageId, actor.id)
+  }
+
+  /**
+   * Whoever pinned it takes it down, and an admin can take down anybody's — the same rule the spec
+   * gives a channel (§5 rows 6 and 11). It is written as a ROLE and not a permission because chat
+   * has none of its own (N4: no new permission), and `admin` is the role this repo already reads
+   * directly where the concept IS the role.
+   */
+  async unpin(messageId: string, actor: ChatActor): Promise<void> {
+    const message = await this.requireVisibleMessage(messageId, actor)
+
+    const pin = await this.repo.findPin(message.conversationId, messageId)
+    if (pin === null) {
+      return
+    }
+    if (pin.pinnedBy !== actor.id && !actor.roles.includes(SYSTEM_ROLE_ADMIN)) {
+      throw new ForbiddenError('A pin is taken down by the person who put it there, or by an admin')
+    }
+
+    await this.repo.deletePin(message.conversationId, messageId)
+  }
+
+  /** One tick, one person, one message. There is no emoji to choose (spec §5 row 10). */
+  async react(messageId: string, actor: ChatActor): Promise<void> {
+    await this.requireVisibleMessage(messageId, actor)
+
+    await this.repo.insertReaction(messageId, actor.id)
+  }
+
+  async unreact(messageId: string, actor: ChatActor): Promise<void> {
+    await this.requireVisibleMessage(messageId, actor)
+
+    await this.repo.deleteReaction(messageId, actor.id)
+  }
+
   /** No audit entry: how far someone has read is view-tracking, not a business state change. */
   async markRead(conversationId: string, lastSeq: bigint, actor: ChatActor): Promise<void> {
     const scope = await this.requireVisible(conversationId, actor)
@@ -218,6 +336,21 @@ export class ChatService implements ChatPort {
     } catch (error) {
       this.logger.error({ err: error }, 'Chat message signal failed')
     }
+  }
+
+  /**
+   * The message AND the room it is in, in one place: a message id alone says nothing about who may
+   * touch it, so every action goes through the same visible set the reads use. 404 either way — a
+   * message in a conversation he cannot open is, for him, not there.
+   */
+  private async requireVisibleMessage(messageId: string, actor: ChatActor): Promise<ChatMessage> {
+    const message = await this.repo.findMessageById(messageId, actor.id)
+    if (message === null) {
+      throw new NotFoundError('Chat message', messageId)
+    }
+    await this.requireVisible(message.conversationId, actor)
+
+    return message
   }
 
   /** 404, never 403: a conversation he may not read is one that, for him, is not there. */
