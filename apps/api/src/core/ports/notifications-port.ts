@@ -69,6 +69,14 @@ export interface NotificationsPort {
    */
   notifyChatMention(actorUserId: string, mention: ChatMentionNotification): Promise<void>
 
+  /**
+   * Forget every mention notification pointing at these messages.
+   *
+   * ⚠ `notifications.entity_id` carries no foreign key, so nothing follows a hard-deleted message
+   * on its own — the rows would survive as bell entries linking into a room that is not there.
+   */
+  dropForChatMessages(messageIds: readonly string[]): Promise<void>
+
   /** A submission was rejected → replace its new_submission notifications with submission_rejected. */
   notifySubmissionRejected(
     actorUserId: string,

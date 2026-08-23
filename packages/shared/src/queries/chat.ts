@@ -47,6 +47,13 @@ export function chatConversationsOptions() {
 }
 
 /**
+ * Erases a room. Admin only, and the server is the judge of that — this is only the doorbell.
+ */
+export async function deleteChatConversation(conversationId: string): Promise<void> {
+  await fetchNoContent(`/api/chat/conversations/${conversationId}`, { method: 'DELETE' })
+}
+
+/**
  * Who a mention in this conversation may name — the people who can actually see it.
  *
  * Per conversation, not per app: the general channel is the whole internal office, a claim thread

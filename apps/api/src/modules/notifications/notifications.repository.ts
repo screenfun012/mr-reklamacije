@@ -5,7 +5,7 @@ import {
   NotificationType,
   type Permission,
 } from '@mr/shared'
-import { and, count, desc, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
+import { inArray, and, count, desc, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
@@ -213,6 +213,22 @@ export class NotificationsRepository {
       )
 
     return rows.map((row) => row.id)
+  }
+
+  /** Forgets every notification pointing at any of these chat messages. */
+  async deleteForChatMessages(messageIds: readonly string[]): Promise<void> {
+    if (messageIds.length === 0) {
+      return
+    }
+
+    await this.db
+      .delete(notifications)
+      .where(
+        and(
+          eq(notifications.entityType, NotificationEntityType.ChatMessage),
+          inArray(notifications.entityId, [...messageIds]),
+        ),
+      )
   }
 
   /**

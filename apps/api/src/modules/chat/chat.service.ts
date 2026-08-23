@@ -3,6 +3,8 @@ import {
   CHAT_EDIT_WINDOW_MS,
   CHAT_MENTION_EXCERPT_MAX,
   CHAT_PINS_MAX,
+  AuditAction,
+  ChatConversationType,
   ChatSystemKind,
   ClaimKind,
   getInitials,
@@ -22,6 +24,7 @@ import {
 } from '../../core/errors/domain-errors.js'
 import type { ChatPort, ChatSystemMessageTarget } from '../../core/ports/chat-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
+import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { NotificationsPort } from '../../core/ports/notifications-port.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
@@ -85,6 +88,7 @@ export class ChatService implements ChatPort {
     private readonly events: EventBus,
     private readonly logger: Logger,
     private readonly notifications: NotificationsPort,
+    private readonly audit: AuditPort,
   ) {}
 
   async listConversations(actor: ChatActor): Promise<ChatConversationListResponse> {
@@ -412,6 +416,50 @@ export class ChatService implements ChatPort {
     } catch (error) {
       this.logger.error({ err: error }, 'Chat message signal failed')
     }
+  }
+
+  /**
+   * Erases a room, for an admin and nobody else.
+   *
+   * Nikola, 2026-08-23: "ako neko napravi kanal ili nit bez razloga slucajno … ja kao admin mogu da
+   * je obrisem skroz znaci kao da nikada nije bila". So this is for a MISTAKE, not for tidying
+   * history — the precedent is `intake_orders.delete_signed`, where a wrongly made record goes and
+   * only the audit row is left to say it existed.
+   *
+   * ⚠ By ROLE, not by a permission: the chat deliberately has none of its own (spec N4), and `unpin`
+   * already reads the admin role the same way.
+   *
+   * ⚠ The general channel is refused. It is a system seed, every screen assumes it is there, and it
+   * cannot be made again from inside the app.
+   */
+  async deleteConversation(conversationId: string, actor: ChatActor): Promise<void> {
+    const conversation = await this.requireVisible(conversationId, actor)
+
+    if (!actor.roles.includes(SYSTEM_ROLE_ADMIN)) {
+      throw new ForbiddenError('A conversation is erased by an admin')
+    }
+    if (conversation.type === ChatConversationType.General) {
+      throw new UnprocessableEntityError('The general channel cannot be erased')
+    }
+
+    const messageIds = await this.repo.listMessageIds(conversationId)
+    // Before the messages go: those rows carry no foreign key and would survive as bell entries
+    // pointing into a room that is not there.
+    await this.notifications.dropForChatMessages(messageIds)
+    await this.repo.deleteConversation(conversationId)
+
+    await this.audit.log({
+      entityType: 'chat_conversation',
+      entityId: conversationId,
+      action: AuditAction.Delete,
+      actorUserId: actor.id,
+      // The only trace left. It says WHICH room and how much talk went with it.
+      changes: {
+        type: conversation.type,
+        title: conversation.title,
+        messagesErased: messageIds.length,
+      },
+    })
   }
 
   /**

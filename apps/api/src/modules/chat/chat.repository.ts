@@ -460,6 +460,29 @@ export class ChatRepository {
     )
   }
 
+  /** Every message id in this room — needed before it goes, to let the bell forget them. */
+  async listMessageIds(conversationId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: chatMessages.id })
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+
+    return rows.map((row) => row.id)
+  }
+
+  /**
+   * Erases a room. Not a soft delete — Nikola's words were "kao da nikada nije bila".
+   *
+   * ⚠ The only hard delete in this module, and it is deliberate: this is for a room made by
+   * mistake, not for tidying history. Everything under it follows through the foreign keys
+   * (messages, reads, pins, reactions, mutes, members), and the claim's partial unique index frees
+   * the claim again, so a thread can be made for it later. What does NOT follow is the audit row —
+   * that is the point of writing one, and it is the only trace left that the room existed.
+   */
+  async deleteConversation(conversationId: string): Promise<void> {
+    await this.db.delete(chatConversations).where(eq(chatConversations.id, conversationId))
+  }
+
   /**
    * The people who may see this conversation, and therefore the only people a mention here may
    * name. Three different questions, one per type: the general channel is the whole internal

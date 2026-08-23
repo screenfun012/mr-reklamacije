@@ -11,7 +11,11 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { NotFoundError, UnprocessableEntityError } from '../../../core/errors/domain-errors.js'
+import {
+  ForbiddenError,
+  NotFoundError,
+  UnprocessableEntityError,
+} from '../../../core/errors/domain-errors.js'
 import {
   ensureTestUser,
   getClaimCategoryIdByCode,
@@ -51,6 +55,9 @@ const auditContext = {
   actorUserAgent: null,
 }
 
+/** Somebody else in the shop — a mention needs a person who is not the author. */
+const OTHER_USER_ID = '00000000-0000-4000-8000-0000000000ee'
+
 describe('Chat claim threads', () => {
   let ctx: TestDbContext
   let container: Container
@@ -65,6 +72,7 @@ describe('Chat claim threads', () => {
     bus = new RecordingEventBus()
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, bus)
     await ensureTestUser(ctx.db)
+    await ensureTestUser(ctx.db, OTHER_USER_ID)
 
     overhaulCategoryId = await getClaimCategoryIdByCode(ctx.db, 'REMONT_MOTORA')
     machiningCategoryId = await getClaimCategoryIdByCode(ctx.db, 'MASINSKA_OBRADA')
@@ -413,6 +421,136 @@ describe('Chat claim threads', () => {
       const list = await container.chatService.listConversations(CLAIM_READER)
       const general = list.items.find((item) => item.type === ChatConversationType.General)
       expect(general?.isLocked).toBe(false)
+    })
+  })
+
+  /**
+   * Nikola, 2026-08-23: a room made by mistake goes "kao da nikada nije bila". For a MISTAKE, not
+   * for tidying history — the precedent is the intake order that was wrongly signed.
+   */
+  async function makeLiveUser(userId: string): Promise<void> {
+    await ctx.db
+      .update(schema.users)
+      .set({ isActive: true, accountStatus: 'approved' })
+      .where(eq(schema.users.id, userId))
+  }
+
+  async function giveRole(userId: string, roleCode: string): Promise<void> {
+    const [role] = await ctx.db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, roleCode))
+      .limit(1)
+    if (role === undefined) {
+      throw new Error(`Role ${roleCode} not found — system seeds must run in integration setup`)
+    }
+    await ctx.db
+      .insert(schema.userRoles)
+      .values({ userId, roleId: role.id, assignedBy: userId })
+      .onConflictDoNothing()
+  }
+
+  describe('an admin erases a room made by mistake', () => {
+    const ADMIN: ChatActor = { ...CLAIM_READER, roles: ['admin'] }
+
+    async function makeThread(): Promise<string> {
+      const { conversation } = await container.chatService.threadForClaim(
+        ClaimKind.Emotive,
+        emotiveClaimId,
+        CLAIM_READER,
+      )
+      return conversation.id
+    }
+
+    it('takes the room and everything under it', async () => {
+      const threadId = await makeThread()
+      await container.chatService.send(
+        threadId,
+        { clientMsgId: crypto.randomUUID(), body: 'greškom' },
+        CLAIM_READER,
+      )
+
+      await container.chatService.deleteConversation(threadId, ADMIN)
+
+      const rooms = await ctx.db
+        .select({ id: schema.chatConversations.id })
+        .from(schema.chatConversations)
+        .where(eq(schema.chatConversations.id, threadId))
+      const messages = await ctx.db
+        .select({ id: schema.chatMessages.id })
+        .from(schema.chatMessages)
+        .where(eq(schema.chatMessages.conversationId, threadId))
+
+      expect(rooms).toEqual([])
+      expect(messages).toEqual([])
+    })
+
+    it('frees the claim, so a thread can be made for it again', async () => {
+      const first = await makeThread()
+      await container.chatService.deleteConversation(first, ADMIN)
+
+      const second = await makeThread()
+      expect(second).not.toBe(first)
+    })
+
+    it('leaves an audit row — the only thing that says the room existed', async () => {
+      const threadId = await makeThread()
+      await container.chatService.send(
+        threadId,
+        { clientMsgId: crypto.randomUUID(), body: 'greškom' },
+        CLAIM_READER,
+      )
+
+      await container.chatService.deleteConversation(threadId, ADMIN)
+
+      const [entry] = await ctx.db
+        .select({ action: schema.auditLog.action, changes: schema.auditLog.changes })
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, threadId))
+
+      expect(entry?.action).toBe('delete')
+      // Two: the one written here, and the „Nit napravljena" the server writes when a thread is
+      // opened. A system message is a row in the room and goes with it.
+      expect(entry?.changes).toMatchObject({ messagesErased: 2 })
+    })
+
+    it('lets go of the bell entries that pointed at those messages', async () => {
+      const threadId = await makeThread()
+      await makeLiveUser(OTHER_USER_ID)
+      await giveRole(OTHER_USER_ID, 'claims_view')
+      await container.chatService.send(
+        threadId,
+        { clientMsgId: crypto.randomUUID(), body: `@[Kolega](${OTHER_USER_ID})` },
+        CLAIM_READER,
+      )
+      const before = await ctx.db.select().from(schema.notifications)
+      expect(before.length).toBeGreaterThan(0)
+
+      await container.chatService.deleteConversation(threadId, ADMIN)
+
+      // `notifications.entity_id` has no foreign key: without this they survive as bell rows
+      // linking into a room that is not there.
+      expect(await ctx.db.select().from(schema.notifications)).toEqual([])
+    })
+
+    it('refuses anybody who is not an admin', async () => {
+      const threadId = await makeThread()
+
+      await expect(
+        container.chatService.deleteConversation(threadId, CLAIM_READER),
+      ).rejects.toBeInstanceOf(ForbiddenError)
+    })
+
+    it('refuses the general channel, which every screen assumes is there', async () => {
+      const [general] = await ctx.db
+        .select({ id: schema.chatConversations.id })
+        .from(schema.chatConversations)
+        .where(eq(schema.chatConversations.type, ChatConversationType.General))
+        .limit(1)
+
+      await expect(
+        container.chatService.deleteConversation(general?.id ?? '', ADMIN),
+      ).rejects.toBeInstanceOf(UnprocessableEntityError)
     })
   })
 })

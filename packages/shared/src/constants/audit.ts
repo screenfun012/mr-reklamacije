@@ -17,6 +17,7 @@ export const AUDIT_ENTITY_TYPES = [
   'claim_category',
   'claim_category_field',
   'claim_category_field_option',
+  'chat_conversation',
   'external_party',
   'excel_workbook',
   'app_settings',

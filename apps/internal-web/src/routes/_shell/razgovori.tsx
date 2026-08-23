@@ -2,16 +2,23 @@ import { m } from '@mr/i18n'
 import {
   ChatConversationType,
   chatConversationsOptions,
+  chatKeys,
+  deleteChatConversation,
   ClaimKind,
   type ChatConversationListItem,
   type MrRegistryExistingClaim,
 } from '@mr/shared'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
 import { z } from 'zod'
 
+import { Trash2 } from 'lucide-react'
+
+import { ConfirmDialog } from '@mr/ui'
+
 import { KindPill } from '~/components/kind-pill'
+import { showInternalToast } from '~/lib/internal-toast'
 import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
@@ -131,7 +138,9 @@ function RazgovoriColumns(): React.ReactElement {
   // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
   // conversation wants it beside the next one too — and a channel simply has none to show.
   const [contextOpen, setContextOpen] = useState(false)
-  const { userId, userName } = useInternalAuthUser()
+  const { userId, isAdmin, userName } = useInternalAuthUser()
+  const [erasing, setErasing] = useState(false)
+  const queryClient = useQueryClient()
 
   /**
    * A claim number clicked in a message. It opens the claim's thread — and when there is none,
@@ -145,6 +154,21 @@ function RazgovoriColumns(): React.ReactElement {
     }
     openConversation(existing.id)
   }
+
+  /**
+   * Erasing is for a room made by mistake (Nikola, 23.08.). The server refuses anybody who is not
+   * an admin and refuses the general channel — this only asks.
+   */
+  const erase = useMutation({
+    mutationFn: (conversationId: string) => deleteChatConversation(conversationId),
+    onSuccess: async () => {
+      setErasing(false)
+      // Back to the general channel: the room that was open is gone.
+      void navigate({ search: {} })
+      await queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+      showInternalToast(m.chat_erase_done())
+    },
+  })
 
   // The general channel is where a person lands: it is the one conversation that always exists.
   const fallback =
@@ -166,6 +190,17 @@ function RazgovoriColumns(): React.ReactElement {
             <>
               <ConversationHeading conversation={current} />
               <span className="ml-auto flex items-center gap-[7px]">
+                {isAdmin && current.type !== ChatConversationType.General ? (
+                  <button
+                    type="button"
+                    title={m.chat_erase()}
+                    onClick={() => setErasing(true)}
+                    className="grid size-7 cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad"
+                  >
+                    <Trash2 aria-hidden="true" className="size-[13px]" />
+                    <span className="sr-only">{m.chat_erase()}</span>
+                  </button>
+                ) : null}
                 <ThreadContextToggle
                   conversation={current}
                   open={contextOpen}
@@ -199,6 +234,21 @@ function RazgovoriColumns(): React.ReactElement {
         onOpenChange={setNewThreadOpen}
         conversations={data.items}
         onOpened={openConversation}
+      />
+
+      <ConfirmDialog
+        open={erasing}
+        onOpenChange={setErasing}
+        title={m.chat_erase_title()}
+        description={m.chat_erase_description()}
+        confirmLabel={m.chat_erase_confirm()}
+        variant="destructive"
+        pending={erase.isPending}
+        onConfirm={() => {
+          if (current !== null) {
+            erase.mutate(current.id)
+          }
+        }}
       />
 
       <ClaimThreadConfirm

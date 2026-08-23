@@ -23,6 +23,7 @@ export function registerChatRoutes(
   routes.get('/conversations', controller.listConversations)
   routes.get('/conversations/:id/messages', controller.listMessages)
   routes.get('/conversations/:id/people', controller.listPeople)
+  routes.delete('/conversations/:id', controller.deleteConversation)
   routes.post('/conversations/:id/messages', controller.sendMessage)
   routes.post('/conversations/:id/read', controller.markRead)
   routes.post('/claims/:kind/:id/thread', controller.openClaimThread)

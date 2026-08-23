@@ -26,6 +26,7 @@ export function createChatController(container: Container): {
   listConversations: (c: Context) => Promise<Response>
   listMessages: (c: Context) => Promise<Response>
   listPeople: (c: Context) => Promise<Response>
+  deleteConversation: (c: Context) => Promise<Response>
   sendMessage: (c: Context) => Promise<Response>
   markRead: (c: Context) => Promise<Response>
   openClaimThread: (c: Context) => Promise<Response>
@@ -42,6 +43,12 @@ export function createChatController(container: Container): {
     listConversations: async (c: Context) => {
       const result = await container.chatService.listConversations(toActor(c))
       return c.json(result)
+    },
+
+    deleteConversation: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      await container.chatService.deleteConversation(id, toActor(c))
+      return c.body(null, 204)
     },
 
     listPeople: async (c: Context) => {

@@ -1,3 +1,4 @@
+import { SYSTEM_ROLE_ADMIN } from '@mr/shared'
 import { getRouteApi } from '@tanstack/react-router'
 
 import { authClient } from '~/lib/auth-client'
@@ -7,6 +8,8 @@ const rootRoute = getRouteApi('__root__')
 export interface InternalAuthUser {
   /** Empty only before the session is resolved — used to tell your own messages from everybody's. */
   userId: string
+  /** Read from the SAME session the server rendered with, like the name and the id. */
+  isAdmin: boolean
   userName: string
   userEmail: string
 }
@@ -35,5 +38,7 @@ export function useInternalAuthUser(): InternalAuthUser {
   const liveId = typeof liveSession?.user?.id === 'string' ? liveSession.user.id : ''
   const userId = authSession?.user?.id ?? liveId
 
-  return { userId, userName, userEmail }
+  const isAdmin = (authSession?.user?.roles ?? []).includes(SYSTEM_ROLE_ADMIN)
+
+  return { userId, isAdmin, userName, userEmail }
 }
