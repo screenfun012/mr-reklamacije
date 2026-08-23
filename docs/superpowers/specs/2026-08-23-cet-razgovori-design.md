@@ -60,7 +60,7 @@ Bez `chat.view`/`chat.send`. Ko prolazi čuvara interne aplikacije, prolazi i u 
 ### 3.5 MR broj (N3)
 
 Handoff §8.1: `MR \d{4}/\d{2}`. **U produkciji stoje `7167/25`, `MR1204/26`, `MR-7167`** — a `normalizeMrKey` **ne skida prefiks**, pa su to različiti ključevi.
-**Rešenje:** obrazac `MR?\s?-?\d{3,5}\s?/\s?\d{2}`; za svaki pogodak se traži i doslovan i ključ bez prefiksa; ako ništa ne pogodi — ostaje običan tekst. **Brojevi naloga prijema (`RN-…`) se izričito preskaču** (imaju svoj normalizator i svoj registar).
+**Rešenje:** prefiks je **cela grupa i opciona** — `(?:MR)?\s?-?\d{3,5}\s?/\s?\d{2}`, plus zaseban oblik bez kose crte (`MR-7167`). ⚠ Prvo napisano `MR?…` bilo je **greška u ovom dokumentu**: čita se kao „M pa opciono R", traži vodeće `M` i nikad ne bi pogodilo `7167/25` — prvi oblik koji je gore naveden kao produkcioni. Za svaki pogodak se traži i doslovan i ključ bez prefiksa; ako ništa ne pogodi — ostaje običan tekst. **Brojevi naloga prijema (`RN-…`) se izričito preskaču** (imaju svoj normalizator i svoj registar). ⚠ Mutacija je pokazala da oblik `RN-0249/26` hvata i opšte pravilo „broj zalepljen za crticu", ali **razmaknuti `RN 0249/26` hvata samo pravilo za prijem** — zato ono stoji zasebno.
 
 ---
 
