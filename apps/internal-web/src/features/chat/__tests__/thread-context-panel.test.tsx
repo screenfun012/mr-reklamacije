@@ -36,6 +36,7 @@ function thread(over: Partial<ChatConversationListItem> = {}): ChatConversationL
     claimKind: ClaimKind.Emotive,
     claimId: EMOTIVE_CLAIM_ID,
     unreadCount: 0,
+    isLocked: false,
     isMuted: false,
     lastMessageAt: null,
     ...over,

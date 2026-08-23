@@ -455,6 +455,7 @@
   "chat_thread_create_description": "Threads are never made silently. Confirm and the conversation about this claim gets its own place — visible to everyone who may see the claim.",
   "chat_thread_create_title": "This claim has no thread yet",
   "chat_thread_created_toast": "Thread created",
+  "chat_thread_locked": "The claim is decided, so this conversation is closed. It stays here to be read; new messages are taken again if the claim goes back to pending.",
   "chat_threads_empty": "No claim threads yet.",
   "chat_threads_footer": "A thread starts from a message carrying an MR number, from the claim’s detail (the “Razgovor” tab), or on its own with a system event.",
   "chat_ticks_seen_by_all": "Seen by everyone",

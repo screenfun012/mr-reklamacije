@@ -11,7 +11,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { NotFoundError } from '../../../core/errors/domain-errors.js'
+import { NotFoundError, UnprocessableEntityError } from '../../../core/errors/domain-errors.js'
 import {
   ensureTestUser,
   getClaimCategoryIdByCode,
@@ -324,5 +324,95 @@ describe('Chat claim threads', () => {
     )
 
     expect(updated.outcome).toBe(ClaimOutcome.Accepted)
+  })
+
+  /**
+   * Nikola, 2026-08-23: "ako je reklamacija zavrsena … ona postane arhivirana i ne moze da se pise
+   * nista vise u njoj samo u samoj reklamacciji moze da se procita … ako se ponovo otvori ta nit
+   * postaje ponovo aktivna".
+   *
+   * ⚠ No column and no switch. The thread's state IS the claim's outcome, so the two cannot drift,
+   * nothing has to remember to run, and reopening the claim reopens the thread by itself.
+   */
+  describe('a decided claim closes its thread', () => {
+    let threadId = ''
+
+    beforeEach(async () => {
+      const { conversation } = await container.chatService.threadForClaim(
+        ClaimKind.Emotive,
+        emotiveClaimId,
+        CLAIM_READER,
+      )
+      threadId = conversation.id
+    })
+
+    async function decide(
+      outcome: 'accepted' | 'rejected' | 'archived' | 'pending',
+    ): Promise<void> {
+      await ctx.db
+        .update(schema.emotiveClaims)
+        .set({ outcome })
+        .where(eq(schema.emotiveClaims.id, emotiveClaimId))
+    }
+
+    it('takes the thread off the list', async () => {
+      const before = await container.chatService.listConversations(CLAIM_READER)
+      expect(before.items.map((item) => item.id)).toContain(threadId)
+
+      await decide('accepted')
+
+      const after = await container.chatService.listConversations(CLAIM_READER)
+      expect(after.items.map((item) => item.id)).not.toContain(threadId)
+    })
+
+    it('still reads on the claim itself, and says it is closed', async () => {
+      await decide('rejected')
+
+      // This is the whole point: the conversation is evidence and stays readable where the claim is.
+      const page = await container.chatService.listMessages(threadId, { limit: 10 }, CLAIM_READER)
+      expect(page).toBeDefined()
+
+      const { conversation } = await container.chatService.threadForClaim(
+        ClaimKind.Emotive,
+        emotiveClaimId,
+        CLAIM_READER,
+      )
+      expect(conversation.isLocked).toBe(true)
+    })
+
+    it('refuses a new message', async () => {
+      await decide('accepted')
+
+      await expect(
+        container.chatService.send(
+          threadId,
+          { clientMsgId: crypto.randomUUID(), body: 'još nešto' },
+          CLAIM_READER,
+        ),
+      ).rejects.toBeInstanceOf(UnprocessableEntityError)
+    })
+
+    it('opens again when the claim goes back to pending', async () => {
+      await decide('archived')
+      await decide('pending')
+
+      const list = await container.chatService.listConversations(CLAIM_READER)
+      expect(list.items.map((item) => item.id)).toContain(threadId)
+
+      const sent = await container.chatService.send(
+        threadId,
+        { clientMsgId: crypto.randomUUID(), body: 'ponovo otvoreno' },
+        CLAIM_READER,
+      )
+      expect(sent.created).toBe(true)
+    })
+
+    it('leaves the general channel alone whatever the claims are doing', async () => {
+      await decide('accepted')
+
+      const list = await container.chatService.listConversations(CLAIM_READER)
+      const general = list.items.find((item) => item.type === ChatConversationType.General)
+      expect(general?.isLocked).toBe(false)
+    })
   })
 })

@@ -1,6 +1,7 @@
 import {
   ChatConversationType,
   ClaimKind,
+  ClaimOutcome,
   findMentions,
   getInitials,
   INTERNAL_APP_PERMISSIONS,
@@ -125,6 +126,7 @@ interface ConversationRow {
   domaceMrNumber: string | null
   domaceClaimNumber: string | null
   domaceCustomerName: string | null
+  isLocked: boolean
   isMuted: boolean
   unreadCount: number
   lastMessageAt: string | null
@@ -189,6 +191,17 @@ function visibleConversationCondition(scope: ChatVisibilityScope): SQL {
 }
 
 /**
+ * Whether this row's claim has been decided — the whole of "the thread is closed" (Nikola,
+ * 2026-08-23). A general channel and a topic channel are never locked; they belong to nobody's
+ * outcome.
+ */
+const isLockedSql = sql<boolean>`(
+  ${chatConversations.type} = ${ChatConversationType.Claim}
+  AND COALESCE(${emotiveClaims.outcome}, ${domaceClaims.outcome}) IS NOT NULL
+  AND COALESCE(${emotiveClaims.outcome}, ${domaceClaims.outcome}) <> ${ClaimOutcome.Pending}
+)`
+
+/**
  * Postgres hands this back as text, not a Date: drizzle installs its own timestamp type parsers so
  * that its column mappers can do the parsing, and a raw `sql` fragment has no column to map with.
  */
@@ -243,6 +256,7 @@ function mapConversationRow(row: ConversationRow): ChatConversationListItem {
           : null,
     claimId: row.emotiveClaimId ?? row.domaceClaimId,
     unreadCount: row.unreadCount,
+    isLocked: row.isLocked,
     isMuted: row.isMuted,
     lastMessageAt: row.lastMessageAt === null ? null : new Date(row.lastMessageAt).toISOString(),
   }
@@ -314,7 +328,15 @@ export class ChatRepository {
 
   async listConversations(scope: ChatVisibilityScope): Promise<ChatConversationListItem[]> {
     const rows = await this.conversationSelect(scope)
-      .where(and(isNull(chatConversations.deletedAt), visibleConversationCondition(scope)))
+      // ⚠ The list only. `findVisibleConversation` still finds a closed thread, because the claim's
+      // own „Razgovor" tab has to keep reading it — it is evidence, it just takes no more words.
+      .where(
+        and(
+          isNull(chatConversations.deletedAt),
+          visibleConversationCondition(scope),
+          sql`NOT ${isLockedSql}`,
+        ),
+      )
       // The general channel is home, then whatever spoke last.
       .orderBy(
         sql`(${chatConversations.type} = ${ChatConversationType.General}) DESC`,
@@ -823,6 +845,7 @@ export class ChatRepository {
         domaceClaimNumber: domaceClaims.claimNumber,
         domaceCustomerName: domaceClaims.customerName,
         unreadCount: unreadCountSql(scope.userId),
+        isLocked: isLockedSql,
         isMuted: sql<boolean>`EXISTS (
           SELECT 1 FROM ${chatMutes}
           WHERE ${chatMutes.conversationId} = ${chatConversations.id}

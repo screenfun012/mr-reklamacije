@@ -55,6 +55,7 @@ const EXISTING_THREAD: ChatConversationListItem = {
   claimKind: ClaimKind.Emotive,
   claimId: TALKED_ABOUT_ID,
   unreadCount: 0,
+  isLocked: false,
   isMuted: false,
   lastMessageAt: '2026-08-23T10:00:00.000Z',
 }

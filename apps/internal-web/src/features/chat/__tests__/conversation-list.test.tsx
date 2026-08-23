@@ -14,6 +14,7 @@ const GENERAL: ChatConversationListItem = {
   claimKind: null,
   claimId: null,
   unreadCount: 0,
+  isLocked: false,
   isMuted: false,
   lastMessageAt: '2026-08-23T10:00:00.000Z',
 }
@@ -34,6 +35,7 @@ function thread(options: {
     claimKind: options.kind ?? ClaimKind.Emotive,
     claimId: '99999999-9999-4999-8999-999999999999',
     unreadCount: options.unread ?? 0,
+    isLocked: false,
     isMuted: options.muted ?? false,
     lastMessageAt: options.at,
   }

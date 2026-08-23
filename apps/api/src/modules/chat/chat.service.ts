@@ -58,6 +58,19 @@ function holdsAny(actor: ChatActor, permissions: readonly string[]): boolean {
  * opens the claim on an INTERNAL screen. `emotive_claims.view_own_customer` is the portal
  * client's permission — reading it here would hand him the shop's own conversations. Spec §3.3.
  */
+/**
+ * A thread whose claim has been decided takes no more words (Nikola, 2026-08-23).
+ *
+ * ⚠ 422, not 403: nothing is wrong with WHO is asking — the room itself is closed, and it opens
+ * again the moment the claim goes back to pending. The message says so rather than making somebody
+ * guess which of the two it was.
+ */
+function requireOpen(conversation: ChatConversationListItem): void {
+  if (conversation.isLocked) {
+    throw new UnprocessableEntityError('This claim is decided, so its conversation is closed')
+  }
+}
+
 function scopeFor(actor: ChatActor): ChatVisibilityScope {
   return {
     userId: actor.id,
@@ -104,6 +117,7 @@ export class ChatService implements ChatPort {
     actor: ChatActor,
   ): Promise<ChatSendResult> {
     const conversation = await this.requireVisible(conversationId, actor)
+    requireOpen(conversation)
 
     /**
      * A quote must point INSIDE this conversation. The foreign key only proves the message
@@ -269,6 +283,7 @@ export class ChatService implements ChatPort {
    */
   async editMessage(messageId: string, body: string, actor: ChatActor): Promise<ChatMessage> {
     const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
+    requireOpen(conversation)
 
     // A system message has no author, so it fails here too — and that is exactly the intent.
     if (message.author?.id !== actor.id) {

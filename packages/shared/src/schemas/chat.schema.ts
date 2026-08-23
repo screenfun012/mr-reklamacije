@@ -120,6 +120,12 @@ export const ChatConversationListItemSchema = z.object({
   claimKind: z.enum([ClaimKind.Emotive, ClaimKind.Domace]).nullable(),
   claimId: z.string().uuid().nullable(),
   unreadCount: z.number().int().nonnegative(),
+  /**
+   * The claim this thread belongs to has been decided, so the room is closed: it is off the list
+   * and takes no more words. Read from the claim's outcome rather than stored — a column would be
+   * one more thing that can be wrong, and reopening the claim reopens the room by itself.
+   */
+  isLocked: z.boolean(),
   isMuted: z.boolean(),
   lastMessageAt: z.string().nullable(),
 })

@@ -1,3 +1,4 @@
+import { m } from '@mr/i18n'
 import {
   CHAT_READ_THROTTLE_MS,
   chatKeys,
@@ -72,6 +73,8 @@ export interface ConversationPaneProps {
   authorName: string
   /** Whose messages get the ticks — passed in like the name, so the pane needs no router. */
   authorId: string
+  /** The claim is decided: the words stay readable and no new ones are taken. */
+  isLocked?: boolean | undefined
   isThread?: boolean
   /** What happens when somebody clicks an MR number written in a message. */
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
@@ -90,6 +93,7 @@ export function ConversationPane({
   unreadCount,
   authorName,
   authorId,
+  isLocked = false,
   isThread = false,
   onOpenClaim,
   onOpenConversation,
@@ -225,14 +229,20 @@ export function ConversationPane({
         onReply={setReplyTo}
         currentUserId={authorId}
       />
-      <Composer
-        isThread={isThread}
-        onSend={handleSend}
-        conversationId={conversationId}
-        onOpened={onOpenConversation}
-        replyTo={replyTo}
-        onCancelReply={() => setReplyTo(null)}
-      />
+      {isLocked ? (
+        <p className="flex-none border-t border-mri-border bg-mri-surface px-4 py-3 text-[12px] text-mri-text2">
+          {m.chat_thread_locked()}
+        </p>
+      ) : (
+        <Composer
+          isThread={isThread}
+          onSend={handleSend}
+          conversationId={conversationId}
+          onOpened={onOpenConversation}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
+        />
+      )}
     </>
   )
 }

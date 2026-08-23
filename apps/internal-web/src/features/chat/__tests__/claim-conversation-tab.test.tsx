@@ -27,6 +27,7 @@ const THREAD: ChatConversationListItem = {
   claimKind: ClaimKind.Emotive,
   claimId: CLAIM_ID,
   unreadCount: 0,
+  isLocked: false,
   isMuted: false,
   lastMessageAt: '2026-08-23T10:00:00.000Z',
 }
@@ -147,5 +148,14 @@ describe('ClaimConversationTab', () => {
     // The detail IS the context (spec §8.5) — the third column would repeat the screen it is on.
     expect(screen.queryByText(m.chat_context_claim())).not.toBeInTheDocument()
     expect(screen.queryByText(m.chat_context_footer())).not.toBeInTheDocument()
+  })
+
+  it('takes no more words once the claim is decided, and says so', async () => {
+    // Nikola, 23.08.: the conversation is read on the claim and nowhere else once it is closed.
+    threads = [{ ...THREAD, isLocked: true }]
+    renderTab()
+
+    expect(await screen.findByText(/razgovor zatvoren/i)).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

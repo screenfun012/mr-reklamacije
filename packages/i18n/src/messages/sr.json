@@ -455,6 +455,7 @@
   "chat_thread_create_description": "Niti se ne prave same. Potvrdi i razgovor o ovoj reklamaciji dobija svoje mesto — videće ga svako ko sme da vidi reklamaciju.",
   "chat_thread_create_title": "Ova reklamacija još nema nit",
   "chat_thread_created_toast": "Nit napravljena",
+  "chat_thread_locked": "Reklamacija je rešena, pa je razgovor zatvoren. Ostaje ovde da se pročita; nove poruke se primaju kad se reklamacija vrati na čekanje.",
   "chat_threads_empty": "Još nema nijedne niti.",
   "chat_threads_footer": "Nit nastaje iz poruke sa MR brojem, iz detalja reklamacije (tab „Razgovor“), ili automatski uz sistemske događaje.",
   "chat_ticks_seen_by_all": "Svi videli",

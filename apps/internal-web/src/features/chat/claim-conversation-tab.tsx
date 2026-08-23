@@ -104,6 +104,7 @@ export function ClaimConversationTab({
           unreadCount={thread.unreadCount}
           authorName={userName}
           authorId={userId}
+          isLocked={thread.isLocked}
           isThread
         />
       </Suspense>
