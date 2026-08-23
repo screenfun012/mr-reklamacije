@@ -79,6 +79,18 @@ export class ChatService {
   ): Promise<ChatSendResult> {
     await this.requireVisible(conversationId, actor)
 
+    /**
+     * A quote must point INSIDE this conversation. The foreign key only proves the message
+     * exists — it would happily accept one from a thread the sender cannot open, and the row
+     * would then carry a pointer nothing can render and nobody meant to make.
+     */
+    if (input.quoteOf !== undefined) {
+      const quoted = await this.repo.findMessageById(input.quoteOf, actor.id)
+      if (quoted === null || quoted.conversationId !== conversationId) {
+        throw new NotFoundError('Chat message', input.quoteOf)
+      }
+    }
+
     const stored = await this.repo.insertMessage({
       conversationId,
       authorId: actor.id,

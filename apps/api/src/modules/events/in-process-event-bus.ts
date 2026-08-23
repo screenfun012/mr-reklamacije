@@ -9,7 +9,7 @@ import {
   ResourceEventType,
   SYSTEM_ROLE_ADMIN,
   SYSTEM_ROLE_OPERATOR,
-  SYSTEM_ROLE_SERVISER,
+  SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_VIEWER,
   type AppEvent,
   type ChatAppEvent,
@@ -30,19 +30,21 @@ const CLAIM_LIST_ROLE_CHANNELS = [
 const RESOURCE_SYNC_ROLE_CHANNELS = CLAIM_LIST_ROLE_CHANNELS
 
 /**
- * Chat is the whole internal shop, the serviser included (spec §3.4) — and never a portal client,
- * who would otherwise learn that a conversation he cannot open exists.
+ * Chat reaches the whole internal shop, and it is the ONE event that cannot be addressed by role.
  *
- * ponytail: role channels are all this bus can address, so a role the office invents in the admin
- * panel hears nothing live until it reconnects or refetches; the upgrade path is an `internal`
- * broadcast channel joined by anyone whose roles are not just `client`.
+ * Roles are data the office invents in the admin panel (CLAUDE.md §2 — the "samo Statistika"
+ * account is real), so a fixed list of role channels leaves such an account sitting in a chat that
+ * never updates until it reloads. A claim badge arriving late is a nuisance; a message that never
+ * appears is a broken chat. So chat publishes to ONE broadcast channel, joined by everyone whose
+ * roles are not merely `client` — the portal client is excluded and never learns that a
+ * conversation he cannot open exists.
  */
-const CHAT_ROLE_CHANNELS = [
-  SYSTEM_ROLE_OPERATOR,
-  SYSTEM_ROLE_VIEWER,
-  SYSTEM_ROLE_ADMIN,
-  SYSTEM_ROLE_SERVISER,
-] as const
+const INTERNAL_BROADCAST_CHANNEL = 'internal'
+
+/** Internal means "not merely a portal client" — a rule about roles, never a list of them. */
+function isInternalRoleSet(roleCodes: readonly string[]): boolean {
+  return roleCodes.some((code) => code !== SYSTEM_ROLE_CLIENT)
+}
 
 function userChannel(userId: string): string {
   return `user:${userId}`
@@ -120,9 +122,7 @@ export class InProcessEventBus implements EventBus {
       type: ChatEventType.MessageCreated,
       payload: { conversationId, messageId },
     }
-    for (const role of CHAT_ROLE_CHANNELS) {
-      this.publishToRole(role, event)
-    }
+    this.emitter.emit(INTERNAL_BROADCAST_CHANNEL, event)
   }
 
   publishToUser(userId: string, event: AppEvent): void {
@@ -143,6 +143,7 @@ export class InProcessEventBus implements EventBus {
       userChannel(userId),
       ...roleCodes.map(roleChannel),
       ...customerIds.map(customerChannel),
+      ...(isInternalRoleSet(roleCodes) ? [INTERNAL_BROADCAST_CHANNEL] : []),
     ]
 
     for (const channel of channels) {

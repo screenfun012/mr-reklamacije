@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
+import { NotFoundError } from '../../../core/errors/domain-errors.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer, createChatTestApp, testUser } from '../../../test-helpers/test-app.js'
@@ -243,6 +244,39 @@ describe('Chat', () => {
       body: JSON.stringify(payload),
     })
   }
+
+  it('refuses a quote that points at another conversation', async () => {
+    const elsewhere = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: 'u opštem' },
+      CLAIM_READER,
+    )
+
+    // The foreign key only proves the message exists — it would happily take one from a thread
+    // the sender cannot even open, leaving a pointer nothing can render.
+    await expect(
+      container.chatService.send(
+        emotiveThreadId,
+        { clientMsgId: crypto.randomUUID(), body: 'citiram tuđe', quoteOf: elsewhere.message.id },
+        CLAIM_READER,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('takes a quote that points inside the same conversation', async () => {
+    const quoted = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: 'original' },
+      CLAIM_READER,
+    )
+    const reply = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: 'odgovor', quoteOf: quoted.message.id },
+      CLAIM_READER,
+    )
+
+    expect(reply.message.quoteOf).toBe(quoted.message.id)
+  })
 
   it('accepts the same client id twice and stores one message', async () => {
     const clientMsgId = crypto.randomUUID()

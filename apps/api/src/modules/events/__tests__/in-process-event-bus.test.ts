@@ -3,6 +3,7 @@ import {
   ClaimKind,
   ResourceChangedKey,
   ResourceEventType,
+  SYSTEM_ROLE_CLIENT,
   SYSTEM_ROLE_OPERATOR,
   type AppEvent,
 } from '@mr/shared'
@@ -134,6 +135,55 @@ describe('InProcessEventBus', () => {
 
       expect(received).toHaveLength(1)
       unsubscribe()
+    })
+  })
+
+  describe('when publishing a chat message', () => {
+    function collect(roles: readonly string[]): { received: AppEvent[]; stop: () => void } {
+      const received: AppEvent[] = []
+      const stop = bus.subscribeUser(`u-${roles.join('-')}`, roles, (event) => {
+        received.push(event)
+      })
+      return { received, stop }
+    }
+
+    it('reaches a role the office invented in the admin panel', () => {
+      // Roles are DATA here — the "samo Statistika" account is real (CLAUDE.md §2). Addressing
+      // chat by a fixed list of role codes would leave such an account in a chat that never
+      // updates until it reloads, which is not a late badge but a broken chat.
+      const office = collect(['statistika'])
+      bus.publishChatMessageCreated('conv-1', 'msg-1')
+      office.stop()
+
+      expect(office.received).toEqual([
+        { type: 'chat_message_created', payload: { conversationId: 'conv-1', messageId: 'msg-1' } },
+      ])
+    })
+
+    it('reaches the ordinary internal roles too', () => {
+      const operator = collect([SYSTEM_ROLE_OPERATOR])
+      bus.publishChatMessageCreated('conv-2', 'msg-2')
+      operator.stop()
+
+      expect(operator.received).toHaveLength(1)
+    })
+
+    it('never reaches a portal client — he must not learn a conversation exists', () => {
+      const client = collect([SYSTEM_ROLE_CLIENT])
+      bus.publishChatMessageCreated('conv-3', 'msg-3')
+      client.stop()
+
+      expect(client.received).toEqual([])
+    })
+
+    it('reaches an account that is a client AND something else', () => {
+      // The combination is refused at approval today, but the bus must not be the thing that
+      // decides who is internal — it asks whether ANY role is not `client`.
+      const both = collect([SYSTEM_ROLE_CLIENT, SYSTEM_ROLE_OPERATOR])
+      bus.publishChatMessageCreated('conv-4', 'msg-4')
+      both.stop()
+
+      expect(both.received).toHaveLength(1)
     })
   })
 })

@@ -1,4 +1,6 @@
 import {
+  chatKeys,
+  ChatEventType,
   ClaimEventType,
   ClaimKind,
   ClientSubmissionEventType,
@@ -10,6 +12,7 @@ import {
   ResourceChangedKey,
   ResourceEventType,
   type AppEvent,
+  type ChatAppEvent,
   type ClaimAppEvent,
   type ClientSubmissionAppEvent,
   type NotificationAppEvent,
@@ -72,8 +75,21 @@ function isNotificationAppEvent(value: unknown): value is NotificationAppEvent {
   )
 }
 
+function isChatAppEvent(value: unknown): value is ChatAppEvent {
+  return (
+    isRecord(value) &&
+    value['type'] === ChatEventType.MessageCreated &&
+    isRecord(value['payload']) &&
+    typeof value['payload']['conversationId'] === 'string' &&
+    typeof value['payload']['messageId'] === 'string'
+  )
+}
+
 /**
  * Parses SSE `data` JSON into a typed AppEvent. Returns null for unknown or malformed payloads.
+ *
+ * ⚠ A type missing from this list is dropped in SILENCE — the server publishes, the stream
+ * delivers, and the screen never learns. Every new event kind ends here as well as in the bus.
  */
 export function parseAppEventFromSseData(data: string): AppEvent | null {
   let parsed: unknown
@@ -87,7 +103,8 @@ export function parseAppEventFromSseData(data: string): AppEvent | null {
     isResourceChangedAppEvent(parsed) ||
     isClaimAppEvent(parsed) ||
     isClientSubmissionAppEvent(parsed) ||
-    isNotificationAppEvent(parsed)
+    isNotificationAppEvent(parsed) ||
+    isChatAppEvent(parsed)
   ) {
     return parsed
   }
@@ -118,6 +135,19 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
   // The event carries only an id; the text is never on the wire.
   if (event.type === NotificationEventType.Created) {
     void queryClient.invalidateQueries({ queryKey: notificationKeys.lists() })
+    return
+  }
+
+  /**
+   * Somebody said something. The signal carries only ids — never the text (CLAUDE.md §2) — so the
+   * conversation list refreshes for its unread count, and the open conversation refetches from
+   * where it left off.
+   */
+  if (event.type === ChatEventType.MessageCreated) {
+    void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+    void queryClient.invalidateQueries({
+      queryKey: chatKeys.messages(event.payload.conversationId),
+    })
     return
   }
 

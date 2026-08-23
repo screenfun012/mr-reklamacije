@@ -1,4 +1,5 @@
 import {
+  ChatEventType,
   ClaimEventType,
   NotificationEventType,
   ClaimKind,
@@ -206,5 +207,32 @@ describe('handleAppEvent', () => {
         JSON.stringify({ type: NotificationEventType.Created, payload: { id: 'notif-1' } }),
       ),
     ).toEqual({ type: NotificationEventType.Created, payload: { id: 'notif-1' } })
+  })
+
+  it('parses a chat message off the wire — an unlisted type is dropped in silence', () => {
+    // The failure mode of a missing guard is nothing at all: the server publishes, the stream
+    // delivers, and the screen never learns. That is why this asserts the parse, not the effect.
+    const wire = JSON.stringify({
+      type: ChatEventType.MessageCreated,
+      payload: { conversationId: 'conv-1', messageId: 'msg-1' },
+    })
+
+    expect(parseAppEventFromSseData(wire)).toEqual({
+      type: ChatEventType.MessageCreated,
+      payload: { conversationId: 'conv-1', messageId: 'msg-1' },
+    })
+  })
+
+  it('refreshes the conversation list and the open conversation on a chat message', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    handleAppEvent(queryClient, {
+      type: ChatEventType.MessageCreated,
+      payload: { conversationId: 'conv-1', messageId: 'msg-1' },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'conversations'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'messages', 'conv-1'] })
   })
 })

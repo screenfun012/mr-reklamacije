@@ -163,6 +163,7 @@ export {
   notificationsListOptions,
   snoozeNotification,
 } from './notifications.js'
+export { chatKeys } from './chat.js'
 export { sendPresenceHeartbeat, sendPresenceLeave } from './presence.js'
 export {
   INTAKE_ORDERS_PAGE_SIZE,
