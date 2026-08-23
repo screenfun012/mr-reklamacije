@@ -6,11 +6,14 @@ import {
   INTERNAL_APP_PERMISSIONS,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
+  CHAT_QUOTE_EXCERPT_MAX,
   MENTION_EVERYONE_ID,
+  stripMentionMarkup,
   uniqueMentions,
   SYSTEM_ROLE_ADMIN,
   UserAccountStatus,
   type ChatMention,
+  type ChatQuote,
   type ChatSystemKind,
   type Permission,
 } from '@mr/shared'
@@ -271,7 +274,11 @@ function mentionsOf(body: string, names: ReadonlyMap<string, string>): ChatMenti
  * message publishes empty words, so it publishes no mentions either — otherwise the row would keep
  * naming people out of a sentence nobody can read any more.
  */
-function mapMessageRow(row: MessageRow, names: ReadonlyMap<string, string>): ChatMessage {
+function mapMessageRow(
+  row: MessageRow,
+  names: ReadonlyMap<string, string>,
+  quotes: ReadonlyMap<string, ChatQuote>,
+): ChatMessage {
   const body = row.deletedAt === null ? row.body : ''
   return {
     id: row.id,
@@ -289,7 +296,7 @@ function mapMessageRow(row: MessageRow, names: ReadonlyMap<string, string>): Cha
     mentions: mentionsOf(body, names),
     // The row stays so the screen can say a message was here; the words do not travel (spec §5.5).
     body,
-    quoteOf: row.quoteOf,
+    quote: row.quoteOf === null ? null : (quotes.get(row.quoteOf) ?? null),
     systemKind: row.systemKind as ChatSystemKind | null,
     systemMeta: row.systemMeta,
     editedAt: row.editedAt?.toISOString() ?? null,
@@ -349,6 +356,48 @@ export class ChatRepository {
       .where(and(isLiveAccount(), mentionedUserIds([...ids])))
 
     return new Map(rows.map((row) => [row.id, row.name]))
+  }
+
+  /**
+   * The messages being answered on this page — ONE query, whatever the page holds.
+   *
+   * ⚠ Not a join on the page itself: a quoted message is usually OLDER than the page and would not
+   * be in it. And no visibility filter is needed here, because a quote is already refused unless it
+   * points inside the same conversation (`ChatService.send`) — so anything reachable this way is
+   * something the reader may already read.
+   */
+  private async resolveQuotes(quoteIds: readonly string[]): Promise<Map<string, ChatQuote>> {
+    const ids = [...new Set(quoteIds)]
+    if (ids.length === 0) {
+      return new Map()
+    }
+
+    const rows = await this.db
+      .select({
+        id: chatMessages.id,
+        body: chatMessages.body,
+        deletedAt: chatMessages.deletedAt,
+        authorName: users.name,
+      })
+      .from(chatMessages)
+      .leftJoin(users, eq(users.id, chatMessages.authorId))
+      .where(inArray(chatMessages.id, ids))
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          authorName: row.authorName ?? '',
+          // A withdrawn message says so; its words do not travel here either (spec §5.5).
+          excerpt:
+            row.deletedAt === null
+              ? stripMentionMarkup(row.body).slice(0, CHAT_QUOTE_EXCERPT_MAX)
+              : '',
+          isDeleted: row.deletedAt !== null,
+        },
+      ]),
+    )
   }
 
   /**
@@ -449,7 +498,10 @@ export class ChatRepository {
     const names = await this.resolveMentionNames(
       ordered.map((row) => (row.deletedAt === null ? row.body : '')),
     )
-    const items = ordered.map((row) => mapMessageRow(row, names))
+    const quotes = await this.resolveQuotes(
+      ordered.map((row) => row.quoteOf).filter((id): id is string => id !== null),
+    )
+    const items = ordered.map((row) => mapMessageRow(row, names, quotes))
     const edge = forward ? items.at(-1) : items.at(0)
 
     return {
@@ -604,8 +656,9 @@ export class ChatRepository {
       return null
     }
     const names = await this.resolveMentionNames([row.deletedAt === null ? row.body : ''])
+    const quotes = await this.resolveQuotes(row.quoteOf === null ? [] : [row.quoteOf])
 
-    return mapMessageRow(row, names)
+    return mapMessageRow(row, names, quotes)
   }
 
   /** The correction goes into the row itself — the previous text is not kept (spec §5 row 4). */

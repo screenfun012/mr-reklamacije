@@ -45,6 +45,25 @@ export const ChatMentionSchema = z.object({
 
 export type ChatMention = z.infer<typeof ChatMentionSchema>
 
+/**
+ * The message being answered, as much of it as the block on screen draws.
+ *
+ * ⚠ The id alone is not enough and cannot be made enough on the client: the quoted message may sit
+ * on an older page the browser never loaded, so it has nothing to look the author or the words up
+ * in. The server resolves it — once per page, not once per message.
+ */
+export const ChatQuoteSchema = z.object({
+  id: z.string().uuid(),
+  authorName: z.string(),
+  /** The first words, already stripped of mention markup. Empty when the message was taken back. */
+  excerpt: z.string(),
+  /** The quoted message was withdrawn: the block says so rather than repeating words that no
+   * longer travel anywhere else. */
+  isDeleted: z.boolean(),
+})
+
+export type ChatQuote = z.infer<typeof ChatQuoteSchema>
+
 export const ChatMessageSchema = z.object({
   id: z.string().uuid(),
   conversationId: z.string().uuid(),
@@ -54,7 +73,7 @@ export const ChatMessageSchema = z.object({
   author: ChatMessageAuthorSchema.nullable(),
   /** Empty for a deleted message — the row stays, the words do not travel. */
   body: z.string(),
-  quoteOf: z.string().uuid().nullable(),
+  quote: ChatQuoteSchema.nullable(),
   /** Everybody this message names, in writing order, each of them once. */
   mentions: z.array(ChatMentionSchema),
   systemKind: z.enum(chatSystemKindValues).nullable(),

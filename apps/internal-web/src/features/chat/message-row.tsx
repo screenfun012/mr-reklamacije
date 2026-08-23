@@ -6,6 +6,7 @@ import {
   type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { cn } from '@mr/ui'
+import { Reply } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
 import { MessageBody } from './message-body'
@@ -91,12 +92,40 @@ export interface MessageRowProps {
   pending?: boolean
   failed?: boolean
   onRetry?: () => void
+  /** Absent where a reply cannot be written — a message on a screen with no composer. */
+  onReply?: ((message: ChatMessage) => void) | undefined
+}
+
+/**
+ * The message being answered, above the answer.
+ *
+ * Read from `cet-prototip.dc.html:112-114`: `padding:7px 10px`, `border-left:2px solid --border2`,
+ * `background:--inbg`, `border-radius:0 8px 8px 0`, who in mono 600 9.5px and the line at 11.5px,
+ * both `--text2`. It hugs its content (`align-self:flex-start`) rather than filling the row.
+ */
+function QuotedMessage({
+  quote,
+}: {
+  quote: NonNullable<ChatMessage['quote']>
+}): React.ReactElement {
+  return (
+    <span className="flex flex-col gap-[3px] self-start rounded-[0_8px_8px_0] border-l-2 border-mri-border2 bg-mri-inbg px-[10px] py-[7px]">
+      <span className="font-mono text-[9.5px] font-semibold text-mri-text2">
+        {quote.authorName}
+      </span>
+      <span className="text-[11.5px] text-mri-text2">
+        {/* A withdrawn message says so here too — its words do not travel anywhere. */}
+        {quote.isDeleted ? <em>{m.chat_message_deleted()}</em> : quote.excerpt}
+      </span>
+    </span>
+  )
 }
 
 /** One thing somebody said — or, without an author, one thing the shop did. */
 export function MessageRow({
   message,
   resolutions,
+  onReply,
   onOpenClaim,
   pending = false,
   failed = false,
@@ -134,7 +163,19 @@ export function MessageRow({
               {m.chat_message_edited()}
             </span>
           )}
+          {onReply === undefined || message.deletedAt !== null ? null : (
+            <button
+              type="button"
+              title={m.chat_reply()}
+              onClick={() => onReply(message)}
+              className="inline-flex cursor-pointer text-mri-text2 opacity-50 transition-opacity hover:text-mri-text hover:opacity-100"
+            >
+              <Reply aria-hidden="true" className="size-[11px]" />
+              <span className="sr-only">{m.chat_reply()}</span>
+            </button>
+          )}
         </span>
+        {message.quote === null ? null : <QuotedMessage quote={message.quote} />}
         {message.deletedAt === null ? (
           <MessageBody
             body={message.body}

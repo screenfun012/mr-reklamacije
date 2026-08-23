@@ -126,6 +126,13 @@ describe('Chat', () => {
     await ctx.cleanup()
   })
 
+  async function makeLiveUser(userId: string): Promise<void> {
+    await ctx.db
+      .update(schema.users)
+      .set({ isActive: true, accountStatus: 'approved' })
+      .where(eq(schema.users.id, userId))
+  }
+
   async function sendRaw(
     conversationId: string,
     body: string,
@@ -296,7 +303,54 @@ describe('Chat', () => {
       CLAIM_READER,
     )
 
-    expect(reply.message.quoteOf).toBe(quoted.message.id)
+    // The id alone cannot be drawn: the quoted message may sit on an older page the browser does
+    // not hold, so the server sends who wrote it and the first words with it.
+    expect(reply.message.quote).toEqual({
+      id: quoted.message.id,
+      authorName: 'Test Operator',
+      excerpt: 'original',
+      isDeleted: false,
+    })
+  })
+
+  it('says a quoted message was taken back instead of repeating words that no longer travel', async () => {
+    const quoted = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: 'ovo ću povući' },
+      CLAIM_READER,
+    )
+    const reply = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: 'odgovor', quoteOf: quoted.message.id },
+      CLAIM_READER,
+    )
+    await container.chatService.deleteMessage(quoted.message.id, CLAIM_READER)
+
+    const page = await container.chatService.listMessages(generalId, { limit: 50 }, CLAIM_READER)
+    const seen = page.items.find((item) => item.id === reply.message.id)
+
+    expect(seen?.quote).toEqual({
+      id: quoted.message.id,
+      authorName: 'Test Operator',
+      excerpt: '',
+      isDeleted: true,
+    })
+  })
+
+  it('shows the quoted line without the mention markup a person never typed', async () => {
+    await makeLiveUser(OTHER_USER_ID)
+    const quoted = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: `zdravo @[Kolega](${OTHER_USER_ID})` },
+      CLAIM_READER,
+    )
+    const reply = await container.chatService.send(
+      generalId,
+      { clientMsgId: crypto.randomUUID(), body: 'odgovor', quoteOf: quoted.message.id },
+      CLAIM_READER,
+    )
+
+    expect(reply.message.quote?.excerpt).toBe('zdravo @Kolega')
   })
 
   it('accepts the same client id twice and stores one message', async () => {

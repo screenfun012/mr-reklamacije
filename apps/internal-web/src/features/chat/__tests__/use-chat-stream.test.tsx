@@ -27,7 +27,7 @@ function message(seq: number, body = `poruka ${seq}`): ChatMessage {
     clientMsgId: uuid(500 + seq),
     author: { id: uuid(900), name: 'Slavko Jović', initials: 'SJ' },
     body,
-    quoteOf: null,
+    quote: null,
     systemKind: null,
     systemMeta: null,
     editedAt: null,

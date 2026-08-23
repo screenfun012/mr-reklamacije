@@ -28,6 +28,8 @@ export interface MessageListProps {
   onRetry: (clientMsgId: string) => void
   /** Where a click on an MR number goes. Absent leaves the chips drawn but inert. */
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
+  /** Absent where there is no composer to answer in. */
+  onReply?: ((message: ChatMessage) => void) | undefined
 }
 
 function NovoSeparator(): React.ReactElement {
@@ -49,6 +51,7 @@ export function MessageList({
   novoBeforeId,
   onRetry,
   onOpenClaim,
+  onReply,
 }: MessageListProps): React.ReactElement {
   // One resolution pass for everything on screen, the message being written included.
   const bodies = useMemo(
@@ -104,7 +107,12 @@ export function MessageList({
         {messages.map((message) => (
           <div key={message.id} className="flex flex-col gap-3.5">
             {message.id === novoBeforeId ? <NovoSeparator /> : null}
-            <MessageRow message={message} resolutions={resolutions} onOpenClaim={onOpenClaim} />
+            <MessageRow
+              message={message}
+              resolutions={resolutions}
+              onOpenClaim={onOpenClaim}
+              onReply={onReply}
+            />
           </div>
         ))}
 

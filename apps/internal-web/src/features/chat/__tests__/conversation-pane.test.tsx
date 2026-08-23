@@ -21,7 +21,7 @@ function message(over: Partial<ChatMessage> & { seq: string }): ChatMessage {
     clientMsgId: uuid(500 + Number(over.seq)),
     author: { id: uuid(900), name: 'Slavko Jović', initials: 'SJ' },
     body: 'Stigao motor za MR 7102/25',
-    quoteOf: null,
+    quote: null,
     systemKind: null,
     systemMeta: null,
     editedAt: null,
@@ -326,5 +326,50 @@ describe('ConversationPane', () => {
     expect(separator.compareDocumentPosition(rows[1] as HTMLElement)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
+  })
+
+  describe('answering one particular message', () => {
+    it('shows what is being answered, and sends its id with the answer', async () => {
+      const user = userEvent.setup()
+      renderPane()
+      await screen.findByText('Slavko Jović')
+
+      await user.click(screen.getByRole('button', { name: /Odgovori na poruku/ }))
+
+      // The person can see what they are answering before they write a word.
+      expect(screen.getByText(/Odgovaraš/)).toBeInTheDocument()
+
+      await user.type(composer(), 'jeste, gotovo')
+      await user.keyboard('{Enter}')
+
+      const posted = calls.find((call) => call.url.includes('/messages') && call.body !== undefined)
+      expect((posted?.body as { quoteOf?: string }).quoteOf).toBe(uuid(41))
+    })
+
+    it('lets the answer be called off without touching the words', async () => {
+      const user = userEvent.setup()
+      renderPane()
+      await screen.findByText('Slavko Jović')
+
+      await user.click(screen.getByRole('button', { name: /Odgovori na poruku/ }))
+      await user.type(composer(), 'ipak ne')
+      await user.click(screen.getByRole('button', { name: /Odustani od odgovora/ }))
+
+      expect(screen.queryByText(/Odgovaraš/)).not.toBeInTheDocument()
+      expect(composer()).toHaveValue('ipak ne')
+    })
+
+    it('stops answering once the answer is sent', async () => {
+      const user = userEvent.setup()
+      renderPane()
+      await screen.findByText('Slavko Jović')
+
+      await user.click(screen.getByRole('button', { name: /Odgovori na poruku/ }))
+      await user.type(composer(), 'evo')
+      await user.keyboard('{Enter}')
+
+      // Otherwise the next sentence quietly answers the same message again.
+      expect(screen.queryByText(/Odgovaraš/)).not.toBeInTheDocument()
+    })
   })
 })

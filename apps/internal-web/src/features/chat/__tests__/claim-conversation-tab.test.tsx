@@ -40,7 +40,7 @@ const MESSAGES: ChatMessagesPage = {
       clientMsgId: '55555555-5555-4555-8555-555555555555',
       author: { id: '66666666-6666-4666-8666-666666666666', name: 'Slavko Jović', initials: 'SJ' },
       body: 'Glava je stigla',
-      quoteOf: null,
+      quote: null,
       systemKind: null,
       systemMeta: null,
       editedAt: null,

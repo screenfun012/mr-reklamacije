@@ -70,3 +70,6 @@ export const CHAT_READ_THROTTLE_MS = 5_000
 
 /** How much of a message the bell repeats. Enough to recognise it, not enough to replace opening it. */
 export const CHAT_MENTION_EXCERPT_MAX = 140
+
+/** How much of a quoted message the block repeats. One line, not the message again. */
+export const CHAT_QUOTE_EXCERPT_MAX = 120

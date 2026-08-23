@@ -3,11 +3,12 @@ import {
   chatPeopleOptions,
   CHAT_MESSAGE_MAX_LENGTH,
   MENTION_EVERYONE_ID,
+  type ChatMessage,
   type ChatPerson,
 } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Paperclip } from 'lucide-react'
+import { Camera, Paperclip, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { ComposerMrSuggestion } from './composer-mr-suggestion'
@@ -41,6 +42,9 @@ export interface ComposerProps {
    * is made — the same rule the MR chip in a message follows.
    */
   onOpened?: ((conversationId: string) => void) | undefined
+  /** The message being answered, so the person can see what they are answering. */
+  replyTo?: ChatMessage | null | undefined
+  onCancelReply?: (() => void) | undefined
 }
 
 /**
@@ -101,6 +105,8 @@ export function Composer({
   onSend,
   conversationId,
   onOpened,
+  replyTo,
+  onCancelReply,
 }: ComposerProps): React.ReactElement {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const text = draft.text
@@ -156,6 +162,28 @@ export function Composer({
     <div className="flex flex-none flex-col border-t border-mri-border bg-mri-surface">
       {onOpened === undefined ? null : (
         <ComposerMrSuggestion draft={text} conversationId={conversationId} onOpened={onOpened} />
+      )}
+      {replyTo === null || replyTo === undefined ? null : (
+        <div className="flex items-center gap-2 border-b border-mri-border bg-mri-inbg px-4 py-2">
+          <span className="font-mono text-[8px] font-semibold tracking-[0.16em] text-mri-text2">
+            {m.chat_reply_to()}
+          </span>
+          <span className="font-mono text-[9.5px] font-semibold text-mri-text2">
+            {replyTo.author?.name ?? ''}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[11.5px] text-mri-text2">
+            {replyTo.body}
+          </span>
+          <button
+            type="button"
+            title={m.chat_reply_cancel()}
+            onClick={() => onCancelReply?.()}
+            className="grid size-5 flex-none cursor-pointer place-items-center rounded text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text"
+          >
+            <X aria-hidden="true" className="size-3" />
+            <span className="sr-only">{m.chat_reply_cancel()}</span>
+          </button>
+        </div>
       )}
       <div className="flex flex-wrap items-center gap-[7px] px-4 pt-2.5">
         <span className="font-mono text-[8px] font-semibold tracking-[0.16em] text-mri-text2">

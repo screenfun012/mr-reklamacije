@@ -94,6 +94,7 @@ export function ConversationPane({
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(chatMessagesOptions(conversationId))
   const [pending, setPending] = useState<PendingChatMessage[]>([])
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
 
   // What the SSE signal cannot promise: everything written while the pipe was down.
   useChatRecovery(conversationId)
@@ -107,6 +108,9 @@ export function ConversationPane({
       sendChatMessage(conversationId, {
         clientMsgId: row.message.clientMsgId,
         body: row.message.body,
+        // The answered message travels as its id; the block beside it was drawn from what the
+        // server sent, and the server resolves it again for everybody else.
+        ...(row.message.quote === null ? {} : { quoteOf: row.message.quote.id }),
       }),
     onSuccess: (created) => {
       queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
@@ -145,7 +149,15 @@ export function ConversationPane({
           name: mention.id === MENTION_EVERYONE_ID ? '' : mention.label,
         })),
         body,
-        quoteOf: null,
+        quote:
+          replyTo === null
+            ? null
+            : {
+                id: replyTo.id,
+                authorName: replyTo.author?.name ?? '',
+                excerpt: replyTo.body,
+                isDeleted: false,
+              },
         systemKind: null,
         systemMeta: null,
         editedAt: null,
@@ -156,6 +168,7 @@ export function ConversationPane({
       },
     }
     setPending((current) => [...current, row])
+    setReplyTo(null)
     send.mutate(row)
   }
 
@@ -203,12 +216,15 @@ export function ConversationPane({
         novoBeforeId={novoBeforeId}
         onRetry={handleRetry}
         onOpenClaim={onOpenClaim}
+        onReply={setReplyTo}
       />
       <Composer
         isThread={isThread}
         onSend={handleSend}
         conversationId={conversationId}
         onOpened={onOpenConversation}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
       />
     </>
   )

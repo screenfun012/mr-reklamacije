@@ -10,7 +10,7 @@ const MESSAGE = {
   clientMsgId: '33333333-3333-4333-8333-333333333333',
   author: { id: '44444444-4444-4444-8444-444444444444', name: 'Marko Petrović', initials: 'MP' },
   body: 'Stigao motor',
-  quoteOf: null,
+  quote: null,
   systemKind: null,
   systemMeta: null,
   editedAt: null,
