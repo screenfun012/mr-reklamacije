@@ -293,6 +293,19 @@ vitest-ovom `testTimeout` od 15 s. Ne popravlja se dizanjem brojeva po pojedina�
 
 ## 8a. Known issues (real bugs, fix later — don't trip over)
 
+- **Sidebar's claims count blows up hydration, intermittently, on EVERY internal screen (found
+  2026-08-23, NOT fixed).** `apps/internal-web/src/components/layout/claims-nav-group.tsx:133` reads
+  the per-category counts with a plain `useQuery` — deliberately not suspense, so a slow count cannot
+  take the menu down. But the server then renders the group's right-hand slot as the chevron (`▾`,
+  no count yet) while the client renders the amber badge (`18`), and React throws the WHOLE server
+  tree away: _"Hydration failed because the server rendered text didn't match the client"_. Measured
+  by loading `/razgovori` six times through Playwright: **2 of 6** loads carried it, which is why a
+  single check says the screen is clean. It is the same failure family as the three closed on
+  2026-08-21 (see §5) — and per that note the visible symptom is a screen that redraws without its
+  buttons, i.e. software that looks broken. The fix is not the query: it is that the badge must not
+  differ between the two renders (paint it after mount, or make the shell's loader resolve the count
+  so both sides agree). Do it deliberately, with a re-run of the six-load probe as the proof.
+
 - ~~Intake wizard, step 1: NEXT is dead and the sentence does not say why~~ **FIXED 2026-08-14**: the
   footer recited a fixed list of four fields while the button waited on six. `step1Missing()`
   (`intake-wizard-state.ts`) is now the whole rule and `step1Complete()` is derived from it, so the

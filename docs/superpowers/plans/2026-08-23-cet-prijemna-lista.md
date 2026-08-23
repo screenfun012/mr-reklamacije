@@ -12,6 +12,13 @@ Legenda: ✅ urađeno · 🔄 u izradi · ⏳ čeka svoj korak · ❌ svesno van
 Dokazano u pregledaču: poruka poslata, oznaka „šalje se" nestala kad je server potvrdio, Enter šalje,
 i poruka je **sama stigla drugom nalogu za ~0,5 s**, bez ijedne greške u konzoli.
 
+**Korak 3 (niti reklamacija) je DOKAZAN U PREGLEDAČU 23.08.** — deset provera, sve prošle, kroz
+privremeni nalog koji je posle obrisan: običan broj ne nudi ništa · pravi MR broj nudi NAPRAVI + ·
+klik i dalje PITA · odustajanje ne pravi nit (2 → 2 razgovora) · potvrda pravi nit i otvara je ·
+isti broj posle toga nudi NIT POSTOJI · poslata poruka nosi čip · klik na čip vodi u tu nit ·
+ⓘ otvara kontekst panel · tab „Razgovor“ na reklamaciji otvara ISTU nit.
+⚠ **Redovi 3 i 5 su i dalje otvoreni** — pomen i „Podeli u razgovor“.
+
 **Korak 1 (model, API, SSE) je ZAVRŠEN 23.08.** — devet zadataka, pun gejt zelen. Nijedna stavka
 handoff-ove liste nije mogla biti zatvorena u njemu, jer su sve ekranske; ono što je korak 1
 isporučio je drugi spisak ispod, i on je temelj na kome ekran stoji.
@@ -22,18 +29,18 @@ isporučio je drugi spisak ispod, i on je temelj na kome ekran stoji.
 
 | # | stavka (doslovno iz handoff-a) | korak | stanje |
 | --- | --- | --- | --- |
-| 1 | Tri kolone tačnih širina (252 / flex / 250), panel samo u niti, ⓘ toggle | 2, 3 | 🔄 *(dve kolone stoje; panel i ⓘ su korak 3)* |
+| 1 | Tri kolone tačnih širina (252 / flex / 250), panel samo u niti, ⓘ toggle | 2, 3 | ✅ *(dokazano u pregledaču 23.08.)* |
 | 2 | Lista: DND, pretraga, KANALI + „+", NITI + „+", badge/MUTE/aktivno stanje, kind tačke | 2, 3, 6 | 🔄 *(sve stoji; pretraga zasivljena do koraka 7, „+" dijalozi su koraci 3 i 6)* |
 | 3 | MR broj u tekstu = plavi mono čip-link → nit; @pomen crveni čip | 3 (MR), **neraspoređeno** (@pomen) | 🔄 *(MR pola gotovo; @pomen NIJE — vidi rupu ispod)* |
 | 4 | Poruka: avatar, vreme, izmenjeno, link-ikonica, citat, slike, PDF/XLS kartica, reakcija ✓, viđeno | 2, 4, 7 | 🔄 *(avatar, vreme, izmenjeno gotovi; ostalo su koraci 4 i 7)* |
-| 5 | Čip niti u kanalu + podeljena kartica reklamacije + „Podeli u razgovor" na detalju | 3 | ⏳ |
+| 5 | Čip niti u kanalu + podeljena kartica reklamacije + „Podeli u razgovor“ na detalju | 3 | ❗ *(NIJE napravljeno — a `chat_threads_footer` na ekranu već pominje to dugme)* |
 | 6 | Sistemske poruke (pilula, amber ↻) + NOVO separator | 2, 5 | 🔄 *(server ih piše od koraka 1: ishod, objava, promena kategorije)* |
 | 7 | Composer: brzi odgovori, prilog, kamera, placeholder po režimu, POŠALJI primarno, Enter | 2, 4 | 🔄 *(sve osim priloga i kamere, koji su nacrtani i namerno neaktivni do koraka 4)* |
 | 7b | **@ autocomplete** — kucanje `@` otvara meni članova, strelice + Enter biraju (handoff §5) | **neraspoređeno** | ❗ *(nije bilo ni u jednoj listi — vidi rupu ispod)* |
-| 8 | Kontekst panel: kartica reklamacije, OTVORI REKLAMACIJU, prikačeno, prilozi | 3, 4, 7 | ⏳ |
-| 9 | Oba dijaloga (nit sa pretragom i NAPRAVI +/NIT POSTOJI; kanal sa članovima) | 3, 6 | ⏳ |
+| 8 | Kontekst panel: kartica reklamacije, OTVORI REKLAMACIJU, prikačeno, prilozi | 3, 4, 7 | 🔄 *(kartica i OTVORI REKLAMACIJU dokazani u pregledaču; prilozi = korak 4, prikačeno = korak 7)* |
+| 9 | Oba dijaloga (nit sa pretragom i NAPRAVI +/NIT POSTOJI; kanal sa članovima) | 3, 6 | 🔄 *(dijalog niti stoji i dokazan u pregledaču; kanal sa članovima je korak 6)* |
 | 10 | Obaveštenja: popup + zvono, @pomen kroz mute, DND, zbir na meniju, viđeno | 5 | ⏳ |
-| 11 | Tab „Razgovor" u detalju = ista nit | 3 | ⏳ |
+| 11 | Tab „Razgovor“ u detalju = ista nit | 3 | ✅ *(dokazano u pregledaču: poruka napisana u niti vidi se i na tabu)* |
 | 12 | BEZ „kuca…" indikatora i online tačke | — | ✅ *(ne pravi se; nema ga ni u modelu)* |
 | 13 | Nijedno dugme puna crvena ispuna | 2 | ✅ |
 
