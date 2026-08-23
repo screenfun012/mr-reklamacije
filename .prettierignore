@@ -28,6 +28,7 @@ apps/internal-web/src/lib/tiptap-utils.ts
 design_handoff_internal_app/**
 design_handoff_admin_panel/**
 design_handoff_claim_categories/**
+design_handoff_chat/**
 
 # SDD subagent scratch (gitignored; briefs/reports/ledger — not repo content)
 .superpowers/
