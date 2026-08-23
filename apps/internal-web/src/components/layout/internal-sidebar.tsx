@@ -6,6 +6,8 @@ import { LogOut, Shield } from 'lucide-react'
 import type { NavItem } from '~/config/navigation'
 import { getInitials } from '@mr/shared'
 
+import { ChatUnreadBadge } from '~/features/chat/chat-unread-badge'
+
 import { ClaimsNavGroup } from './claims-nav-group'
 
 const rootRoute = getRouteApi('__root__')
@@ -132,6 +134,9 @@ export function InternalSidebar({
                     >
                       {item.label()}
                     </span>
+                    {item.badge === 'chat-unread' ? (
+                      <ChatUnreadBadge className={cn(collapsed && 'lg:hidden')} />
+                    ) : null}
                   </>
                 )}
               </Link>

@@ -1,9 +1,10 @@
 import {
+  INTERNAL_APP_PERMISSIONS,
   INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS,
   INTAKE_ORDERS_VIEW_PERMISSIONS,
   STATISTICS_VIEW_PERMISSIONS,
 } from '@mr/shared'
-import { BarChart3, Briefcase, Car, Inbox, LayoutDashboard } from 'lucide-react'
+import { BarChart3, Briefcase, Car, Inbox, LayoutDashboard, MessagesSquare } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 import { m } from '@mr/i18n'
@@ -17,6 +18,11 @@ export interface NavItem {
    * the claim categories. The sidebar renders the children; the palette lists the group alone.
    */
   children?: 'claim-categories'
+  /**
+   * A live count rendered at the end of the row. Named rather than computed here: the value
+   * comes from a query, and the config file must stay a plain list.
+   */
+  badge?: 'chat-unread'
   icon: ComponentType<{ className?: string }>
   /** When set, nav link is hidden unless the user has this permission. */
   permission?: string
@@ -51,6 +57,16 @@ export const internalNavItems: NavItem[] = [
     children: 'claim-categories',
     icon: Briefcase,
     permissions: [...INTERNAL_CLAIMS_LIST_VIEW_PERMISSIONS],
+  },
+  {
+    // Everyone who may enter the internal app may talk in it — the same gate the API puts on
+    // the whole chat module, so the menu entry and the server agree on who this is for.
+    key: 'razgovori',
+    label: m.nav_razgovori,
+    to: '/razgovori',
+    badge: 'chat-unread',
+    icon: MessagesSquare,
+    permissions: [...INTERNAL_APP_PERMISSIONS],
   },
   {
     key: 'servis',
