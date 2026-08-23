@@ -56,7 +56,6 @@ export function useRealtimeEventStream(): void {
 
     let es: EventSource | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined
-    let silenceTimer: ReturnType<typeof setInterval> | undefined
     let lastEventAt = Date.now()
     let backoffMs = INITIAL_BACKOFF_MS
     let disposed = false
@@ -113,7 +112,7 @@ export function useRealtimeEventStream(): void {
 
     connect()
 
-    silenceTimer = setInterval(() => {
+    const silenceTimer = setInterval(() => {
       if (disposed || Date.now() - lastEventAt < SILENCE_TIMEOUT_MS) {
         return
       }
@@ -126,9 +125,7 @@ export function useRealtimeEventStream(): void {
 
     return () => {
       disposed = true
-      if (silenceTimer !== undefined) {
-        clearInterval(silenceTimer)
-      }
+      clearInterval(silenceTimer)
       if (reconnectTimer !== undefined) {
         clearTimeout(reconnectTimer)
       }
