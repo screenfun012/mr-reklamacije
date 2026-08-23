@@ -63,6 +63,24 @@ export function chatMessagesOptions(conversationId: string) {
 }
 
 /**
+ * Everything newer than `afterSeq`, for putting back what a sleeping tab missed.
+ *
+ * ⚠ The caller asks from `maxSeen - CHAT_RECOVERY_OVERLAP`, never from `maxSeen`. `seq` is handed
+ * out at INSERT and becomes visible at COMMIT, so a reader can hold 42 while 41 is still being
+ * written — and a request for "> 42" would lose 41 for good. The overlap costs twenty rows the
+ * caller already has and throws away by id.
+ */
+export function fetchChatMessagesSince(
+  conversationId: string,
+  afterSeq: string,
+): Promise<ChatMessagesPage> {
+  return fetchParsed(
+    `/api/chat/conversations/${conversationId}/messages?afterSeq=${afterSeq}`,
+    ChatMessagesPageSchema,
+  )
+}
+
+/**
  * Sends one message. The server answers 201 with the new row and 200 with the row a retry of
  * the same `clientMsgId` already created — both are the same shape, so the caller replaces its
  * optimistic row either way and a retry can never post twice.

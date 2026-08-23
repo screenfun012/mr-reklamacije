@@ -167,6 +167,7 @@ export {
   chatConversationsOptions,
   chatKeys,
   chatMessagesOptions,
+  fetchChatMessagesSince,
   markChatRead,
   sendChatMessage,
 } from './chat.js'

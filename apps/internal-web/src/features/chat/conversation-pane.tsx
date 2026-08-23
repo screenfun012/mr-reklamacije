@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Composer } from './composer'
 import { MessageList, type PendingChatMessage } from './message-list'
 import { initialsOf } from './message-row'
+import { useChatRecovery } from './use-chat-stream'
 
 /**
  * The optimistic row and the row the server answers with share exactly one field, and it is the
@@ -84,6 +85,9 @@ export function ConversationPane({
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(chatMessagesOptions(conversationId))
   const [pending, setPending] = useState<PendingChatMessage[]>([])
+
+  // What the SSE signal cannot promise: everything written while the pipe was down.
+  useChatRecovery(conversationId)
 
   // Frozen at open: marking the conversation read empties `unreadCount` within the second, and a
   // separator that vanished while a person was still reading what it separates is worse than none.

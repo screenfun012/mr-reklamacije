@@ -26,6 +26,17 @@ const MAX_BACKOFF_MS = 30_000
  */
 const SILENCE_TIMEOUT_MS = 45_000
 
+/**
+ * Fired on `window` whenever this stream (re)connects, and whenever the watchdog above decides it
+ * was dead. It is a plain DOM event on purpose: the one thing a listener needs to know is "the
+ * pipe was interrupted, ask the server what you missed" — no payload, no store, no context.
+ *
+ * ⚠ A dispatch also happens when the watchdog fires, BEFORE the socket is back. That is
+ * deliberate: recovery is an ordinary HTTP read and works while SSE is still broken, which is
+ * exactly the moment there is something to recover.
+ */
+export const REALTIME_STREAM_OPEN_EVENT = 'mrr:realtime-open'
+
 // Every named SSE event the internal app reacts to: catalog sync + claim
 // lifecycle (so open lists/detail/stats live-update across users) + client
 // submissions (so the Pristiglo Inbox list & nav badge stay live).
@@ -94,6 +105,7 @@ export function useRealtimeEventStream(): void {
       es.addEventListener('open', () => {
         backoffMs = INITIAL_BACKOFF_MS
         markAlive()
+        window.dispatchEvent(new Event(REALTIME_STREAM_OPEN_EVENT))
       })
 
       // Carries no data; its arrival is the whole message.
@@ -120,6 +132,7 @@ export function useRealtimeEventStream(): void {
       es?.close()
       es = null
       markAlive()
+      window.dispatchEvent(new Event(REALTIME_STREAM_OPEN_EVENT))
       connect()
     }, SILENCE_TIMEOUT_MS)
 
