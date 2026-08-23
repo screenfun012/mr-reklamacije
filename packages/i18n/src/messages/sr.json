@@ -404,7 +404,7 @@
   "chat_context_attachments": "PRILOZI IZ RAZGOVORA · {count}",
   "chat_context_attachments_empty": "Prilozi u razgovoru stižu u sledećem koraku.",
   "chat_context_claim": "REKLAMACIJA",
-  "chat_context_footer": "Viđeno, pomeni i nove poruke idu u zvono + popup — osim utišanih niti i dok je DND uključen.",
+  "chat_context_footer": "Pomeni idu u zvono i popup — osim dok je DND uključen. Nove poruke se broje ovde u listi, a na telefon stižu kao push, osim u utišanoj niti.",
   "chat_context_open_claim": "OTVORI REKLAMACIJU →",
   "chat_context_toggle": "Panel reklamacije",
   "chat_dnd": "DND",

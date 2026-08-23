@@ -404,7 +404,7 @@
   "chat_context_attachments": "CONVERSATION ATTACHMENTS · {count}",
   "chat_context_attachments_empty": "Conversation attachments arrive in the next step.",
   "chat_context_claim": "CLAIM",
-  "chat_context_footer": "Read receipts, mentions and new messages go to the bell + popup — except in muted threads and while DND is on.",
+  "chat_context_footer": "Mentions go to the bell and the popup — unless Do Not Disturb is on. New messages are counted here in the list and reach the phone as a push, unless the thread is muted.",
   "chat_context_open_claim": "OPEN CLAIM →",
   "chat_context_toggle": "Claim panel",
   "chat_dnd": "DND",

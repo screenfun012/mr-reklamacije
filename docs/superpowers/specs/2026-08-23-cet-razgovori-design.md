@@ -221,6 +221,8 @@ Osam pravila. Svako imenuje fajl. Ko izmisli alternativu, greši — alternative
 
 ---
 
+**Fusnota kontekst panela je JEDINO mesto gde tekst prototipa nije prepisan doslovno (Nikola, 23.08.).** Prototip piše „Viđeno, pomeni i **nove poruke** idu u zvono + popup"; po odluci N2 zvono i popup nose **samo @pomen**, pa bi doslovan prepis obećavao iskačući prozor koji sistem ne šalje. Prototip je zakon za IZGLED — ovde je reč o činjenici koju je odluka promenila. Nova rečenica imenuje ono što aplikacija stvarno radi: pomen → zvono i popup, nove poruke → brojač u listi i push na telefon.
+
 ## 11. Šta se NE sme raditi
 
 - ❌ `vite-plugin-pwa` / Workbox — tukli bi se sa nitro cevovodom i keširali `/assets/**` koji već ima trajni keš; aplikaciji offline rad ne treba.
