@@ -136,7 +136,12 @@ export function MessageRow({
           )}
         </span>
         {message.deletedAt === null ? (
-          <MessageBody body={message.body} resolutions={resolutions} onOpenClaim={onOpenClaim} />
+          <MessageBody
+            body={message.body}
+            resolutions={resolutions}
+            onOpenClaim={onOpenClaim}
+            mentions={message.mentions}
+          />
         ) : (
           <span className="text-[13px] leading-[1.55] italic text-mri-text2">
             {m.chat_message_deleted()}

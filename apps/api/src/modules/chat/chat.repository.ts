@@ -252,15 +252,17 @@ function mapConversationRow(row: ConversationRow): ChatConversationListItem {
  * produce this same field for the row it shows before the server answers, and the one time this
  * rule lived in two places the second copy forgot it.
  *
- * An id that resolves to nobody keeps the label that was typed — and nobody means nobody LIVE, so
- * a colleague whose account is closed reads under the name he had when the sentence was written.
- * That is both true and kinder than blanking the word out of somebody's message.
+ * An id that resolves to nobody gets NO name — and nobody means nobody LIVE. The screen then falls
+ * back to the words that were typed, drawn as words rather than as a chip: a colleague who has left
+ * still reads under the name he had, and nobody can forge something that looks like a link to a
+ * real person in a conversation that is evidence for a claim.
  */
 function mentionsOf(body: string, names: ReadonlyMap<string, string>): ChatMention[] {
   return uniqueMentions(body).map((mention) => ({
     id: mention.id,
-    // Empty for `@svi`: the server does not write Serbian, the screen names that one.
-    name: mention.id === MENTION_EVERYONE_ID ? '' : (names.get(mention.id) ?? mention.label),
+    // `null` for `@svi` (the screen names it) and for an id with no live account behind it (the
+    // screen then draws the words that were typed, not a chip pointing at nobody).
+    name: mention.id === MENTION_EVERYONE_ID ? null : (names.get(mention.id) ?? null),
   }))
 }
 

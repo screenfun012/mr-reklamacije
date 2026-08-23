@@ -1,7 +1,8 @@
+import { m, setLocale } from '@mr/i18n'
 import { ClaimKind, type MrRegistryExistingClaim } from '@mr/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MessageBody } from '../message-body'
 
@@ -74,5 +75,67 @@ describe('MessageBody', () => {
     expect(chip.tagName).toBe('SPAN')
     expect(chip).toHaveClass('bg-mri-info-bg')
     expect(chip).toHaveClass('text-mri-info')
+  })
+})
+
+describe('a mention in a message', () => {
+  beforeEach(() => setLocale('sr'))
+
+  const ANA_ID = 'a1a1a1a1-1111-4111-8111-aaaaaaaaaaaa'
+
+  it('draws the name the server gave, not the one that was typed', () => {
+    render(
+      <MessageBody
+        body={`zdravo @[Staro Ime](${ANA_ID})`}
+        resolutions={new Map()}
+        mentions={[{ id: ANA_ID, name: 'Ana Anić' }]}
+      />,
+    )
+
+    expect(screen.getByText('@Ana Anić')).toBeInTheDocument()
+    expect(screen.queryByText(/Staro Ime/)).not.toBeInTheDocument()
+  })
+
+  it('names @svi on the screen, because the server does not write Serbian', () => {
+    render(
+      <MessageBody
+        body="@[svi](all) hitno"
+        resolutions={new Map()}
+        mentions={[{ id: 'all', name: null }]}
+      />,
+    )
+
+    expect(screen.getByText(`@${m.chat_mention_everyone()}`)).toBeInTheDocument()
+  })
+
+  it('draws an id that names nobody live as WORDS, never as a chip', () => {
+    // A chip pointing at nobody looks exactly like a link to a real person, and these messages are
+    // evidence for a claim. So a colleague who has left — or an address somebody typed by hand —
+    // reads as the words that were written.
+    const { container } = render(
+      <MessageBody
+        body={`hvala @[Bivši Kolega](${ANA_ID})`}
+        resolutions={new Map()}
+        mentions={[{ id: ANA_ID, name: null }]}
+      />,
+    )
+
+    expect(screen.getByText('@Bivši Kolega')).toBeInTheDocument()
+    expect(container.querySelector('.text-mri-redh')).toBeNull()
+  })
+
+  it('draws an MR number and a mention in one sentence, each in its place', () => {
+    const claim = { kind: ClaimKind.Emotive, claimId: 'c1c1c1c1-1111-4111-8111-cccccccccccc' }
+    render(
+      <MessageBody
+        body={`@[Ana](${ANA_ID}) pogledaj 7167/25 danas`}
+        resolutions={new Map([['7167/25', claim]])}
+        mentions={[{ id: ANA_ID, name: 'Ana Anić' }]}
+      />,
+    )
+
+    expect(screen.getByText('@Ana Anić')).toBeInTheDocument()
+    expect(screen.getByText('7167/25')).toBeInTheDocument()
+    expect(screen.getByText(/pogledaj/)).toBeInTheDocument()
   })
 })

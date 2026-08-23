@@ -167,6 +167,7 @@ export {
   chatConversationsOptions,
   chatKeys,
   chatMessagesOptions,
+  chatPeopleOptions,
   fetchChatMessagesSince,
   markChatRead,
   openChatClaimThread,

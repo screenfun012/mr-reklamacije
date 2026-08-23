@@ -644,7 +644,7 @@ describe('Chat', () => {
     it('sends @svi with an empty name, because the server does not write Serbian', async () => {
       await sendRaw(generalId, '@[svi](all) hitno')
 
-      expect(await readNewestMentions(generalId)).toEqual([{ id: 'all', name: '' }])
+      expect(await readNewestMentions(generalId)).toEqual([{ id: 'all', name: null }])
     })
 
     it('keeps the typed label for a colleague whose account has since been closed', async () => {
@@ -658,9 +658,8 @@ describe('Chat', () => {
         .set({ isActive: false })
         .where(eq(schema.users.id, OTHER_USER_ID))
 
-      expect(await readNewestMentions(generalId)).toEqual([
-        { id: OTHER_USER_ID, name: 'Bivši Kolega' },
-      ])
+      // No name at all, not the old one: the screen falls back to the words that were typed.
+      expect(await readNewestMentions(generalId)).toEqual([{ id: OTHER_USER_ID, name: null }])
     })
 
     it('names each person once, however many times they were written', async () => {

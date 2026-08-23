@@ -32,7 +32,15 @@ export const ChatMessageAuthorSchema = z.object({
  */
 export const ChatMentionSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  /**
+   * `null` when the server has no name to give, and it means one of two things the screen tells
+   * apart by the id: `@svi`, which the screen names itself because the server does not write
+   * Serbian; or an id with no LIVE account behind it — a colleague who has left, or an address
+   * somebody typed by hand. The second is why this is nullable at all: a chip that looks like a
+   * link to a real person, pointing at nobody, is a forgery in a conversation that is evidence
+   * for a claim. Those are drawn as words instead.
+   */
+  name: z.string().nullable(),
 })
 
 export type ChatMention = z.infer<typeof ChatMentionSchema>

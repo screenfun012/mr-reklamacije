@@ -1,9 +1,11 @@
 import { m } from '@mr/i18n'
-import { CHAT_MESSAGE_MAX_LENGTH } from '@mr/shared'
+import { chatPeopleOptions, CHAT_MESSAGE_MAX_LENGTH, type ChatPerson } from '@mr/shared'
+import { useQuery } from '@tanstack/react-query'
 import { Camera, Paperclip } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { ComposerMrSuggestion } from './composer-mr-suggestion'
+import { applyMention, findMentionQuery, MentionMenu, mentionOptions } from './mention-menu'
 
 /** The four the prototype offers. Whole sentences of this shop's day, not a phrasebook. */
 const QUICK_REPLIES = [
@@ -36,6 +38,42 @@ export function Composer({
   onOpened,
 }: ComposerProps): React.ReactElement {
   const [text, setText] = useState('')
+  const [caret, setCaret] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(0)
+  /**
+   * Which `@` was dismissed with Escape. Kept as the OFFSET rather than a boolean so the menu
+   * comes back for the next mention without coming back for this one on the next keystroke.
+   */
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null)
+  const fieldRef = useRef<HTMLTextAreaElement>(null)
+
+  const { data: people } = useQuery({
+    ...chatPeopleOptions(conversationId ?? ''),
+    enabled: conversationId !== undefined,
+  })
+
+  const mention = findMentionQuery(text, caret)
+  const options =
+    mention === null || mention.start === dismissedAt
+      ? []
+      : mentionOptions(people?.items ?? [], mention.query)
+  const menuOpen = options.length > 0
+
+  const pick = (person: ChatPerson): void => {
+    if (mention === null) {
+      return
+    }
+    const next = applyMention(text, mention, caret, person)
+    setText(next.text)
+    setCaret(next.caret)
+    setActiveIndex(0)
+    // The caret has to be put back by hand: React re-renders the value and the browser would
+    // otherwise leave it at the end of the whole field.
+    requestAnimationFrame(() => {
+      fieldRef.current?.focus()
+      fieldRef.current?.setSelectionRange(next.caret, next.caret)
+    })
+  }
 
   const submit = (): void => {
     const body = text.trim()
@@ -71,7 +109,10 @@ export function Composer({
         ))}
       </div>
 
-      <div className="flex items-end gap-[9px] px-4 pt-2.5 pb-3">
+      <div className="relative flex items-end gap-[9px] px-4 pt-2.5 pb-3">
+        {menuOpen ? (
+          <MentionMenu options={options} activeIndex={activeIndex} onPick={pick} />
+        ) : null}
         <button
           type="button"
           disabled
@@ -104,8 +145,37 @@ export function Composer({
           placeholder={
             isThread ? m.chat_composer_placeholder_thread() : m.chat_composer_placeholder()
           }
-          onChange={(event) => setText(event.target.value)}
+          ref={fieldRef}
+          onChange={(event) => {
+            setText(event.target.value)
+            setCaret(event.target.selectionStart)
+            setActiveIndex(0)
+          }}
+          onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
           onKeyDown={(event) => {
+            // ⚠ The menu answers first. Enter while it is open CHOOSES — otherwise picking
+            // somebody would post the unfinished sentence to the whole shop.
+            if (menuOpen) {
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                const step = event.key === 'ArrowDown' ? 1 : -1
+                setActiveIndex((current) => (current + step + options.length) % options.length)
+                return
+              }
+              if (event.key === 'Enter' || event.key === 'Tab') {
+                event.preventDefault()
+                const chosen = options[activeIndex]
+                if (chosen !== undefined) {
+                  pick(chosen)
+                }
+                return
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                setDismissedAt(mention?.start ?? null)
+                return
+              }
+            }
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
               submit()
