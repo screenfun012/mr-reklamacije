@@ -66,7 +66,7 @@ Handoff §8.1: `MR \d{4}/\d{2}`. **U produkciji stoje `7167/25`, `MR1204/26`, `M
 
 ## 4. Model
 
-Pet tabela, jedna migracija.
+Sedam tabela, jedna migracija.
 
 ```
 chat_conversations   id · type('general'|'channel'|'claim') · name? · emotive_claim_id? · domace_claim_id?
