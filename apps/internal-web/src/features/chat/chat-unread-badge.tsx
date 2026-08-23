@@ -2,6 +2,8 @@ import { chatConversationsOptions } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 
+import { useHydrated } from '~/lib/use-hydrated'
+
 /**
  * The menu's unread count. It is `unreadTotal` from the conversation list — the ONE number the
  * server already computes with muted conversations left out; a second count computed here would
@@ -11,7 +13,11 @@ import { useQuery } from '@tanstack/react-query'
  */
 export function ChatUnreadBadge({ className }: { className?: string }): React.ReactElement | null {
   const { data } = useQuery(chatConversationsOptions())
-  const total = data?.unreadTotal ?? 0
+  // Gated on hydration for the same reason as the claims counts: this number can arrive between
+  // the server's render and the client's, and a badge that differs across the two costs the whole
+  // server tree. See `useHydrated`.
+  const hydrated = useHydrated()
+  const total = hydrated ? (data?.unreadTotal ?? 0) : 0
 
   if (total === 0) {
     return null

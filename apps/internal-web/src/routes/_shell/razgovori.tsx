@@ -170,6 +170,7 @@ function RazgovoriColumns(): React.ReactElement {
               authorName={userName}
               isThread={current.type === ChatConversationType.Claim}
               onOpenClaim={openClaim}
+              onOpenConversation={setSelectedId}
             />
           </Suspense>
         )}

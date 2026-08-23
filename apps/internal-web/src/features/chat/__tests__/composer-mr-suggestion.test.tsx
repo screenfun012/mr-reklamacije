@@ -15,6 +15,7 @@ import { Composer } from '../composer'
 const TALKED_ABOUT_ID = '11111111-1111-4111-8111-111111111111'
 const FRESH_ID = '22222222-2222-4222-8222-222222222222'
 const THREAD_ID = '33333333-3333-4333-8333-333333333333'
+const NEW_THREAD_ID = '44444444-4444-4444-8444-444444444444'
 
 const EXISTING_THREAD: ChatConversationListItem = {
   id: THREAD_ID,
@@ -42,7 +43,10 @@ function installFetch(): void {
     const url = String(input)
     if (init?.method === 'POST') {
       posted.push(url)
-      return Response.json(EXISTING_THREAD, { status: 201 })
+      return Response.json(
+        { ...EXISTING_THREAD, id: NEW_THREAD_ID, claimId: FRESH_ID },
+        { status: 201 },
+      )
     }
     if (url.startsWith('/api/mr-registry/lookup')) {
       const mr = new URL(url, 'http://x').searchParams.get('mr') ?? ''
@@ -54,19 +58,19 @@ function installFetch(): void {
 }
 
 /**
- * ⚠ No default for `onOpenClaim`: a default would swallow an explicitly passed `undefined` and
+ * ⚠ No default for `onOpened`: a default would swallow an explicitly passed `undefined` and
  * quietly turn the "nowhere to go" case into the ordinary one — which is exactly what it did.
  */
-function renderComposer(onOpenClaim: ((target: MrRegistryExistingClaim) => void) | undefined): {
-  onOpenClaim: ((target: MrRegistryExistingClaim) => void) | undefined
+function renderComposer(onOpened: ((conversationId: string) => void) | undefined): {
+  onOpened: ((conversationId: string) => void) | undefined
 } {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <Composer isThread={false} onSend={vi.fn()} onOpenClaim={onOpenClaim} />
+      <Composer isThread={false} onSend={vi.fn()} onOpened={onOpened} />
     </QueryClientProvider>,
   )
-  return { onOpenClaim }
+  return { onOpened }
 }
 
 function field(): HTMLElement {
@@ -82,9 +86,9 @@ describe('the composer offers the claim whose number is being typed', () => {
   })
 
   it('offers to open the thread a written claim already has', async () => {
-    const onOpenClaim = vi.fn()
+    const onOpened = vi.fn()
     const user = userEvent.setup()
-    renderComposer(onOpenClaim)
+    renderComposer(onOpened)
 
     await user.type(field(), 'gotovo je 7167/25')
 
@@ -93,7 +97,9 @@ describe('the composer offers the claim whose number is being typed', () => {
     expect(screen.getByText('7167/25')).toBeInTheDocument()
 
     await user.click(offer)
-    expect(onOpenClaim).toHaveBeenCalledWith({ kind: ClaimKind.Emotive, claimId: TALKED_ABOUT_ID })
+    expect(onOpened).toHaveBeenCalledWith(THREAD_ID)
+    // Opening is not writing: a claim that already has a room gets no second one.
+    expect(posted).toEqual([])
   })
 
   it('says nothing about numbers that are not a claim', async () => {
@@ -110,30 +116,37 @@ describe('the composer offers the claim whose number is being typed', () => {
     expect(screen.queryByRole('button', { name: /NAPRAVI/ })).not.toBeInTheDocument()
   })
 
-  it('offers to make a thread that does not exist yet — and makes nothing by itself', async () => {
-    const onOpenClaim = vi.fn()
+  it('makes the missing thread on the press — and nothing before it', async () => {
+    const onOpened = vi.fn()
     const user = userEvent.setup()
-    renderComposer(onOpenClaim)
+    renderComposer(onOpened)
 
     await user.type(field(), 'pogledaj 7089/25')
-
     const offer = await screen.findByRole('button', { name: /NAPRAVI/ })
+
+    // Writing a number is not asking for a room: the offer standing on screen has written nothing.
+    expect(posted).toEqual([])
+
     await user.click(offer)
 
-    // The offer only ASKS: the write lives behind the confirm dialog the claim number chip uses.
-    expect(onOpenClaim).toHaveBeenCalledWith({ kind: ClaimKind.Emotive, claimId: FRESH_ID })
-    expect(posted).toEqual([])
+    // And the press is the answer — no dialog after it (Nikola, 23.08.). The MR chip inside a sent
+    // message keeps its dialog; a click on a number in somebody's sentence is not a request.
+    await waitFor(() => expect(onOpened).toHaveBeenCalledWith(NEW_THREAD_ID))
+    expect(posted).toEqual([`/api/chat/claims/${ClaimKind.Emotive}/${FRESH_ID}/thread`])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('offers the number written last, not the first one in the line', async () => {
-    const onOpenClaim = vi.fn()
+    const onOpened = vi.fn()
     const user = userEvent.setup()
-    renderComposer(onOpenClaim)
+    renderComposer(onOpened)
 
     await user.type(field(), 'bilo je 7167/25, sada je 7089/25')
 
     await user.click(await screen.findByRole('button', { name: /NAPRAVI/ }))
-    expect(onOpenClaim).toHaveBeenCalledWith({ kind: ClaimKind.Emotive, claimId: FRESH_ID })
+    await waitFor(() =>
+      expect(posted).toEqual([`/api/chat/claims/${ClaimKind.Emotive}/${FRESH_ID}/thread`]),
+    )
   })
 
   it('asks about the finished number, not about every prefix of it', async () => {

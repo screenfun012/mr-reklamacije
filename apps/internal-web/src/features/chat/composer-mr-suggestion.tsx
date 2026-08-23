@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { MR_CHIP_CLASSES } from './message-body'
 import { THREAD_BADGE_CLASSES } from './new-thread-dialog'
-import { findClaimThread } from './open-claim-thread'
+import { findClaimThread, useCreateClaimThread } from './open-claim-thread'
 import { useMrResolutions } from './use-mr-resolutions'
 
 /**
@@ -50,7 +50,8 @@ export interface ComposerMrSuggestionProps {
   draft: string
   /** The conversation being written in — an offer to open the room you are in is noise. */
   conversationId: string | undefined
-  onOpenClaim: (target: MrRegistryExistingClaim) => void
+  /** Where to go once there is a room to go to — the one the button just opened or made. */
+  onOpened: (conversationId: string) => void
 }
 
 /**
@@ -58,9 +59,14 @@ export interface ComposerMrSuggestionProps {
  *
  * The point is that the system PROPOSES and never acts (Nikola, 2026-08-23): somebody may write a
  * claim number just to say it, or type digits that are a phone number or a price. So a number that
- * names no claim shows nothing at all, and the button here does exactly what clicking the number
- * in a sent message does — opens the thread, or raises the dialog that asks before making one.
- * Nothing on this bar writes.
+ * names no claim shows nothing at all, and nothing here happens until a button is pressed.
+ *
+ * ⚠ Pressing it does the thing, with no dialog after (Nikola, 2026-08-23: „ne mora da izlazi
+ * popup"). The bar IS the question, and a button that already reads NAPRAVI + is an answer to it —
+ * asking twice is not caution, it is a second click. This makes it the third door that behaves the
+ * same way: the „Nova nit" dialog's NAPRAVI badge and the claim detail's NAPRAVI NIT button both
+ * write on one press. **The MR chip inside a sent message keeps its dialog** and must: clicking a
+ * number in the middle of somebody's sentence says nothing about wanting a room (spec §8.2).
  *
  * ⚠ Not in the prototype, which has no composing-time affordance. Its two halves are borrowed
  * whole rather than invented: the number wears the message chip it is about to become, and the
@@ -70,8 +76,11 @@ export interface ComposerMrSuggestionProps {
 export function ComposerMrSuggestion({
   draft,
   conversationId,
-  onOpenClaim,
+  onOpened,
 }: ComposerMrSuggestionProps): React.ReactElement | null {
+  // The same write the other two doors use — the endpoint is get-or-create, so two people pressing
+  // at the same second land in the same room.
+  const create = useCreateClaimThread(onOpened)
   const settled = useDebouncedValue(draft, SUGGESTION_DEBOUNCE_MS)
   const resolutions = useMrResolutions([settled])
   const written = lastWrittenClaim(settled, resolutions)
@@ -99,10 +108,11 @@ export function ComposerMrSuggestion({
       <span className={MR_CHIP_CLASSES}>{written.raw}</span>
       <button
         type="button"
-        onClick={() => onOpenClaim(written.target)}
+        disabled={create.isPending}
+        onClick={() => (thread === null ? create.mutate(written.target) : onOpened(thread.id))}
         className={cn(
           THREAD_BADGE_CLASSES,
-          'cursor-pointer transition-colors',
+          'cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60',
           thread === null
             ? 'border border-[rgba(31,169,113,.4)] bg-[rgba(31,169,113,.1)] text-mri-ok hover:bg-[rgba(31,169,113,.18)]'
             : 'border border-mri-border2 text-mri-text2 hover:border-mri-text2 hover:text-mri-text',

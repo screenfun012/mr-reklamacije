@@ -71,6 +71,8 @@ export interface ConversationPaneProps {
   isThread?: boolean
   /** What happens when somebody clicks an MR number written in a message. */
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
+  /** Where the composer's offer lands. Absent on the claim detail's tab — nowhere else to go. */
+  onOpenConversation?: ((conversationId: string) => void) | undefined
 }
 
 /**
@@ -85,6 +87,7 @@ export function ConversationPane({
   authorName,
   isThread = false,
   onOpenClaim,
+  onOpenConversation,
 }: ConversationPaneProps): React.ReactElement {
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(chatMessagesOptions(conversationId))
@@ -194,7 +197,7 @@ export function ConversationPane({
         isThread={isThread}
         onSend={handleSend}
         conversationId={conversationId}
-        onOpenClaim={onOpenClaim}
+        onOpened={onOpenConversation}
       />
     </>
   )

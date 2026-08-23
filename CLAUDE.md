@@ -165,6 +165,14 @@ pnpm --filter @mr/db run db:seed:demo   # system + DEMO data (sample claims/empl
 pnpm --filter @mr/db run db:generate    # generate a migration from schema diff
 pnpm create-admin                       # once per fresh DB
 
+# MR registry — the table that makes a duplicate MR number impossible and feeds the create-form
+# warning. A claim written through the app registers itself in the same transaction; a claim
+# INSERTED DIRECTLY (import-legacy) does not, which is how prod once held 3 of 127 numbers.
+# Dry run first: it does the work in a transaction and rolls it back, so the number it prints is
+# the number --apply will write. Safe to re-run — ON CONFLICT DO NOTHING.
+pnpm --filter api backfill-mr-registry            # reports what is missing, writes nothing
+pnpm --filter api backfill-mr-registry -- --apply # writes it
+
 # DB access (dev)
 docker exec -it mr-reklamacije-postgres psql -U mr -d mr_reklamacije
 # host localhost:5433 · user mr · pass mr_dev_password · dev db mr_reklamacije · test db mr_reklamacije_test
@@ -293,8 +301,7 @@ vitest-ovom `testTimeout` od 15 s. Ne popravlja se dizanjem brojeva po pojedina�
 
 ## 8a. Known issues (real bugs, fix later — don't trip over)
 
-- **Sidebar's claims count blows up hydration, intermittently, on EVERY internal screen (found
-  2026-08-23, NOT fixed).** `apps/internal-web/src/components/layout/claims-nav-group.tsx:133` reads
+- ~~Sidebar's claims count blows up hydration on every internal screen~~ **FIXED 2026-08-23.** `apps/internal-web/src/components/layout/claims-nav-group.tsx:133` reads
   the per-category counts with a plain `useQuery` — deliberately not suspense, so a slow count cannot
   take the menu down. But the server then renders the group's right-hand slot as the chevron (`▾`,
   no count yet) while the client renders the amber badge (`18`), and React throws the WHOLE server
@@ -302,9 +309,19 @@ vitest-ovom `testTimeout` od 15 s. Ne popravlja se dizanjem brojeva po pojedina�
   by loading `/razgovori` six times through Playwright: **2 of 6** loads carried it, which is why a
   single check says the screen is clean. It is the same failure family as the three closed on
   2026-08-21 (see §5) — and per that note the visible symptom is a screen that redraws without its
-  buttons, i.e. software that looks broken. The fix is not the query: it is that the badge must not
-  differ between the two renders (paint it after mount, or make the shell's loader resolve the count
-  so both sides agree). Do it deliberately, with a re-run of the six-load probe as the proof.
+  buttons, i.e. software that looks broken. The cause is `_shell.tsx:17`, which warms the counts with a
+  fire-and-forget `void queryClient.prefetchQuery(...)` — deliberately, so a slow count can never
+  take the menu down. The server therefore renders the sidebar BEFORE the answer exists; the answer
+  arrives during streaming, is dehydrated into the page, and the client hydrates with a cache the
+  server never had. Fixed with `useHydrated()` (`apps/internal-web/src/lib/use-hydrated.ts`), a
+  `useSyncExternalStore` whose SERVER snapshot is `false`: the count is held back for exactly one
+  render, both sides print the same thing, and the badge appears on the render after. Applied at the
+  two places a count enters the sidebar — the claims group and `ChatUnreadBadge`, which had the
+  identical shape and had simply not surfaced yet. ⚠ It works only because the gate applies on the
+  server too; a client-only guard moves the mismatch instead of removing it. Guarded by
+  `renderToString` tests (`sidebar-hydration.test.tsx`), both proven by mutation — and the first
+  version of one of them was HOLLOW: without `await router.load()` the router renders an empty shell
+  and the assertion passes whatever the component does.
 
 - ~~Intake wizard, step 1: NEXT is dead and the sentence does not say why~~ **FIXED 2026-08-14**: the
   footer recited a fixed list of four fields while the button waited on six. `step1Missing()`

@@ -6,6 +6,7 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import type { NavItem } from '~/config/navigation'
+import { useHydrated } from '~/lib/use-hydrated'
 import { useStoredFlag } from '~/lib/use-stored-flag'
 
 import { activeClaimsEntry, CLAIMS_ALL_ENTRY } from './active-claims-entry'
@@ -130,7 +131,13 @@ export function ClaimsNavGroup({
   })
   // Deliberately not suspense: a slow or failed count must never take the menu down with it.
   // The group then simply renders "Sve reklamacije" with no badge (V2 spec §5).
-  const { data: counts } = useQuery(claimCategoryCountsOptions())
+  const { data } = useQuery(claimCategoryCountsOptions())
+  // ⚠ Gated on hydration, and this is the whole fix for a real bug: `_shell.tsx` warms this query
+  // with a fire-and-forget prefetch, so the server renders the group before it resolves while the
+  // client hydrates with the streamed answer — different text, and React throws the server tree
+  // away. Held back for one render, both sides say the same thing. See `useHydrated`.
+  const hydrated = useHydrated()
+  const counts = hydrated ? data : undefined
   const [open, setOpen] = useStoredFlag(OPEN_STORAGE_KEY, true)
   const [flyoutOpen, setFlyoutOpen] = useState(false)
 

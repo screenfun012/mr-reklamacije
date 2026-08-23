@@ -69,7 +69,7 @@ Ovo su odluke iz našeg spec-a §5 i §10 — nisu u handoff-ovoj listi, ali se 
 | Optimističko slanje sa ponovnim pokušajem | 2 | ✅ |
 | Pomeranje na dno samo ako već gledaš dno | 2 | ✅ |
 | Živa isporuka drugom nalogu (dokazano u pregledaču, ~0,5 s) | 2 | ✅ |
-| Predlog nad poljem: prepoznat MR broj nudi NIT POSTOJI / NAPRAVI, a sam ne pravi ništa (Nikola, 23.08.) | 3 | ✅ |
+| Predlog nad poljem: prepoznat MR broj nudi NIT POSTOJI / NAPRAVI; ništa se ne upisuje dok se dugme ne pritisne, a pritisak radi posao BEZ popupa (Nikola, 23.08.) | 3 | ✅ |
 | Prilozi iz četa se **ne vide klijentu** (`chat_attachment`) | 4 | ⏳ |
 | Push: manifest, SW, pretplata, slanje, čišćenje | 5 | ⏳ |
 | Prekidač po čoveku: sve poruke · samo pomeni · bez teksta | 5 | ⏳ |

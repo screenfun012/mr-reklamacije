@@ -16,7 +16,8 @@
     "import-legacy": "tsx --conditions=development scripts/import-legacy.ts",
     "link-employees-departments": "tsx --conditions=development scripts/link-employees-departments.ts",
     "migrate-attachments-to-s3": "tsx --conditions=development scripts/migrate-attachments-to-s3.ts",
-    "check-attachment-integrity": "tsx --conditions=development scripts/check-attachment-integrity.ts"
+    "check-attachment-integrity": "tsx --conditions=development scripts/check-attachment-integrity.ts",
+    "backfill-mr-registry": "tsx --conditions=development scripts/backfill-mr-registry.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1085.0",

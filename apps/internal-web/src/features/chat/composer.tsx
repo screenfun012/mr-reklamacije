@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { CHAT_MESSAGE_MAX_LENGTH, type MrRegistryExistingClaim } from '@mr/shared'
+import { CHAT_MESSAGE_MAX_LENGTH } from '@mr/shared'
 import { Camera, Paperclip } from 'lucide-react'
 import { useState } from 'react'
 
@@ -22,10 +22,10 @@ export interface ComposerProps {
   /** The conversation being written in — so the offer never points at the room you are in. */
   conversationId?: string | undefined
   /**
-   * What happens when somebody takes up the offer above the field. Absent where there is nowhere
-   * to go, and then no offer is made — the same rule the MR chip in a message follows.
+   * Where the offer above the field lands. Absent where there is nowhere to go, and then no offer
+   * is made — the same rule the MR chip in a message follows.
    */
-  onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
+  onOpened?: ((conversationId: string) => void) | undefined
 }
 
 /** What a person writes, and the two buttons beside it that do not work yet and say so. */
@@ -33,7 +33,7 @@ export function Composer({
   isThread,
   onSend,
   conversationId,
-  onOpenClaim,
+  onOpened,
 }: ComposerProps): React.ReactElement {
   const [text, setText] = useState('')
 
@@ -48,12 +48,8 @@ export function Composer({
 
   return (
     <div className="flex flex-none flex-col border-t border-mri-border bg-mri-surface">
-      {onOpenClaim === undefined ? null : (
-        <ComposerMrSuggestion
-          draft={text}
-          conversationId={conversationId}
-          onOpenClaim={onOpenClaim}
-        />
+      {onOpened === undefined ? null : (
+        <ComposerMrSuggestion draft={text} conversationId={conversationId} onOpened={onOpened} />
       )}
       <div className="flex flex-wrap items-center gap-[7px] px-4 pt-2.5">
         <span className="font-mono text-[8px] font-semibold tracking-[0.16em] text-mri-text2">
