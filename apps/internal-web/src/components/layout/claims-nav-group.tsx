@@ -6,12 +6,9 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import type { NavItem } from '~/config/navigation'
-import { useHydrated } from '~/lib/use-hydrated'
-import { useStoredFlag } from '~/lib/use-stored-flag'
+import { CLAIMS_NAV_OPEN_COOKIE, writeUiFlagCookie } from '~/lib/ui-prefs'
 
 import { activeClaimsEntry, CLAIMS_ALL_ENTRY } from './active-claims-entry'
-
-const OPEN_STORAGE_KEY = 'mrr:internal:nav:reklamacije-open'
 
 export interface ClaimsNavChild {
   key: string
@@ -117,6 +114,8 @@ export interface ClaimsNavGroupProps {
   /** `03` — the menu's own numbering, so the group sits in the same rhythm as its neighbours. */
   index: string
   collapsed: boolean
+  /** Whether the group was open last time — read from the request, so the server agrees. */
+  defaultOpen: boolean
   onNavigate: () => void
 }
 
@@ -124,6 +123,7 @@ export function ClaimsNavGroup({
   item,
   index,
   collapsed,
+  defaultOpen,
   onNavigate,
 }: ClaimsNavGroupProps): React.ReactElement {
   const location = useLocation({
@@ -131,14 +131,15 @@ export function ClaimsNavGroup({
   })
   // Deliberately not suspense: a slow or failed count must never take the menu down with it.
   // The group then simply renders "Sve reklamacije" with no badge (V2 spec §5).
-  const { data } = useQuery(claimCategoryCountsOptions())
-  // ⚠ Gated on hydration, and this is the whole fix for a real bug: `_shell.tsx` warms this query
-  // with a fire-and-forget prefetch, so the server renders the group before it resolves while the
-  // client hydrates with the streamed answer — different text, and React throws the server tree
-  // away. Held back for one render, both sides say the same thing. See `useHydrated`.
-  const hydrated = useHydrated()
-  const counts = hydrated ? data : undefined
-  const [open, setOpen] = useStoredFlag(OPEN_STORAGE_KEY, true)
+  //
+  // ⚠ No hydration gate here any more, and its absence is load-bearing. `_shell.tsx` now AWAITS
+  // this query, so the server renders the whole group and the browser hydrates the same one. The
+  // gate used to hide the difference by making the server draw the SHORT group on purpose —
+  // which removed the React error and left 128px of menu appearing after first paint.
+  const { data: counts } = useQuery(claimCategoryCountsOptions())
+  // Remembered in a cookie, so the server folds the group for whoever keeps it folded instead of
+  // drawing it open and letting the browser snap it shut (see `~/lib/ui-prefs`).
+  const [open, setOpen] = useState(defaultOpen)
   const [flyoutOpen, setFlyoutOpen] = useState(false)
 
   const children = buildClaimsNavChildren(counts)
@@ -200,7 +201,10 @@ export function ClaimsNavGroup({
     <div className="flex flex-col">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open)
+          writeUiFlagCookie(CLAIMS_NAV_OPEN_COOKIE, !open)
+        }}
         aria-expanded={open}
         className={cn(
           'flex h-[38px] w-full cursor-pointer items-center gap-[10px] rounded-[9px] px-[11px] text-[13.5px] transition-colors hover:bg-mri-rowhv',

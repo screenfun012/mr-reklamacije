@@ -38,6 +38,8 @@ export interface InternalSidebarProps {
   collapsed: boolean
   /** Mobile drawer open/closed (< lg). */
   mobileOpen: boolean
+  /** Whether the claims group was left open — from the request, so the server folds it too. */
+  claimsNavOpen: boolean
   onCloseMobile: () => void
 }
 
@@ -48,6 +50,7 @@ export function InternalSidebar({
   onLogout,
   collapsed,
   mobileOpen,
+  claimsNavOpen,
   onCloseMobile,
 }: InternalSidebarProps) {
   const { authSession } = rootRoute.useRouteContext()
@@ -89,6 +92,7 @@ export function InternalSidebar({
                 // bare 38px icon inside the phone drawer, its categories reachable only through a
                 // popover over the page. Reproduced at 395px, 2026-08-22.
                 collapsed={collapsed && !mobileOpen}
+                defaultOpen={claimsNavOpen}
                 onNavigate={onCloseMobile}
               />
             ) : (

@@ -2,13 +2,14 @@ import { m } from '@mr/i18n'
 import { useSidebarState } from '@mr/ui'
 import { useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useCallback, type ReactNode } from 'react'
 
 import { MaskedIcon } from '~/components/masked-icon'
 import { filterVisibleNavItems, internalNavItems } from '~/config/navigation'
 import { authClient } from '~/lib/auth-client'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
+import { SIDEBAR_COLLAPSED_COOKIE, writeUiFlagCookie, type InternalUiPrefs } from '~/lib/ui-prefs'
 
 import { InternalSidebar } from './internal-sidebar'
 import { InternalTopbar } from './internal-topbar'
@@ -25,6 +26,8 @@ const ROLE_LABELS: Record<string, () => string> = {
 
 export interface InternalShellProps {
   children: ReactNode
+  /** The layout choices the SERVER rendered this request with — see `~/lib/ui-prefs`. */
+  ui: InternalUiPrefs
 }
 
 /**
@@ -36,14 +39,23 @@ export interface InternalShellProps {
  * (NOT hidden) contains the offscreen cog without creating a scroll container,
  * so the sticky header/sidebar keep working against the page scroll.
  */
-export function InternalShell({ children }: InternalShellProps) {
+export function InternalShell({ children, ui }: InternalShellProps) {
   useRealtimeEventStream()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { userEmail, userName } = useInternalAuthUser()
   const { authSession } = rootRoute.useRouteContext()
+  // The cookie the server read this request with, and where a new choice goes — one value, one
+  // place, so the shell the browser hydrates is the shell the server drew (see `ui-prefs`).
   const { collapsed, mobileOpen, onToggle, onCloseMobile } = useSidebarState(
-    'mrr:internal:sidebar-collapsed',
+    SIDEBAR_COLLAPSED_COOKIE,
+    {
+      initialCollapsed: ui.sidebarCollapsed,
+      persist: useCallback(
+        (next: boolean) => writeUiFlagCookie(SIDEBAR_COLLAPSED_COOKIE, next),
+        [],
+      ),
+    },
   )
 
   const visibleItems = filterVisibleNavItems(internalNavItems, authSession?.user?.permissions ?? [])
@@ -94,6 +106,7 @@ export function InternalShell({ children }: InternalShellProps) {
             onLogout={handleLogout}
             collapsed={collapsed}
             mobileOpen={mobileOpen}
+            claimsNavOpen={ui.claimsNavOpen}
             onCloseMobile={onCloseMobile}
           />
         ) : null}

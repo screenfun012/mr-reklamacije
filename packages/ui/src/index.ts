@@ -20,7 +20,11 @@ export {
 } from './components/claim-attachments/attachment-file-icon.js'
 export { cn } from './lib/cn.js'
 export { useLocale } from './lib/use-locale.js'
-export { useSidebarState, type SidebarState } from './lib/use-sidebar-state.js'
+export {
+  useSidebarState,
+  type SidebarState,
+  type SidebarStateOptions,
+} from './lib/use-sidebar-state.js'
 export { compressImage, type CompressImageOptions } from './lib/compress-image.js'
 export {
   dataTableDestructiveActionClassName,

@@ -26,22 +26,46 @@ export interface SidebarState {
   onCloseMobile: () => void
 }
 
+export interface SidebarStateOptions {
+  /**
+   * What the SERVER already rendered with. Supply it and the hook trusts it: no storage is read
+   * after mount, so the rail cannot slide shut once the page is on screen.
+   *
+   * ⚠ This is the whole point of the option. Reading the remembered value in an effect is
+   * "SSR-safe" only in the sense that it does not crash — the server still draws the rail open
+   * for somebody who keeps it closed, and the browser then drags 180px of page sideways. Measured
+   * on internal-web, 2026-08-24: CLS **2.31** across thirty shifts on one load.
+   */
+  initialCollapsed?: boolean
+  /** Where the new value goes. Supply it together with `initialCollapsed`, from the same place —
+   *  a store only the browser can read cannot be what the server rendered from. */
+  persist?: (collapsed: boolean) => void
+}
+
 /**
  * Collapsible-sidebar state shared by the internal and admin shells: a desktop
- * icon-rail (collapsed, persisted in localStorage under `storageKey`) plus a
- * mobile off-canvas drawer. The single header toggle collapses the rail on
- * desktop and opens/closes the drawer on mobile; growing back to desktop closes
- * a lingering drawer. SSR-safe: `matchMedia`/`localStorage` are only touched in
- * effects, so the first render is deterministic (expanded, drawer closed).
+ * icon-rail plus a mobile off-canvas drawer. The single header toggle collapses
+ * the rail on desktop and opens/closes the drawer on mobile; growing back to
+ * desktop closes a lingering drawer.
+ *
+ * With no options it keeps the original behaviour — remembered in localStorage under
+ * `storageKey`, read after mount — which is what admin-web still uses.
  */
-export function useSidebarState(storageKey: string): SidebarState {
+export function useSidebarState(
+  storageKey: string,
+  { initialCollapsed, persist }: SidebarStateOptions = {},
+): SidebarState {
   const isDesktop = useIsWide(DESKTOP_MIN_WIDTH_PX)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(initialCollapsed ?? false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const serverKnows = initialCollapsed !== undefined
 
   useEffect(() => {
+    if (serverKnows) {
+      return
+    }
     setCollapsed(localStorage.getItem(storageKey) === '1')
-  }, [storageKey])
+  }, [storageKey, serverKnows])
 
   useEffect(() => {
     if (isDesktop) {
@@ -53,13 +77,17 @@ export function useSidebarState(storageKey: string): SidebarState {
     if (isDesktop) {
       setCollapsed((prev) => {
         const next = !prev
-        localStorage.setItem(storageKey, next ? '1' : '0')
+        if (persist === undefined) {
+          localStorage.setItem(storageKey, next ? '1' : '0')
+        } else {
+          persist(next)
+        }
         return next
       })
     } else {
       setMobileOpen((prev) => !prev)
     }
-  }, [isDesktop, storageKey])
+  }, [isDesktop, storageKey, persist])
 
   const onCloseMobile = useCallback(() => setMobileOpen(false), [])
 

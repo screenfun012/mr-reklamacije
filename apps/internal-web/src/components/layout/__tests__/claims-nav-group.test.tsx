@@ -50,14 +50,24 @@ const CLAIMS_ITEM: NavItem = {
   icon: Briefcase,
 }
 
-async function renderGroup(pathname = '/reklamacije', collapsed = false): Promise<void> {
+async function renderGroup(
+  pathname = '/reklamacije',
+  collapsed = false,
+  defaultOpen = true,
+): Promise<void> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(claimCategoryCountsOptions().queryKey, COUNTS)
 
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <ClaimsNavGroup item={CLAIMS_ITEM} collapsed={collapsed} onNavigate={() => undefined} />
+        <ClaimsNavGroup
+          item={CLAIMS_ITEM}
+          index="03"
+          collapsed={collapsed}
+          defaultOpen={defaultOpen}
+          onNavigate={() => undefined}
+        />
       </QueryClientProvider>
     ),
   })
@@ -77,7 +87,8 @@ async function renderGroup(pathname = '/reklamacije', collapsed = false): Promis
   })
 
   render(<RouterProvider router={router as never} />)
-  await screen.findByRole('link', { name: /Sve reklamacije/ })
+  // A folded group has no children to wait for — the header button is what is always there.
+  await screen.findByRole('button', { name: /Reklamacije/ })
 }
 
 describe('buildClaimsNavChildren', () => {
@@ -122,14 +133,30 @@ describe('ClaimsNavGroup', () => {
     expect(current[0]).toHaveTextContent('Mašinska obrada')
   })
 
-  it('remembers whether the group was left open', async () => {
+  /**
+   * ⚠ A COOKIE, not localStorage, and that is the whole reason this choice is remembered where it
+   * is: the server renders this menu, and it cannot read localStorage. It used to, and the server
+   * therefore drew the group open for whoever kept it folded — the browser then snapped it shut
+   * after the first paint (measured 2026-08-24: CLS 0.106 on `/reklamacije` from this alone).
+   */
+  it('remembers whether the group was left open — where the SERVER can read it', async () => {
     const user = userEvent.setup()
     await renderGroup()
 
     await user.click(screen.getByRole('button', { name: /Reklamacije/ }))
 
     expect(screen.queryByRole('link', { name: /Mašinska obrada/ })).not.toBeInTheDocument()
-    expect(localStorage.getItem('mrr:internal:nav:reklamacije-open')).toBe('0')
+    expect(document.cookie).toContain('mrr_internal_nav_claims=0')
+  })
+
+  it('starts folded when the request said it was folded', async () => {
+    await renderGroup('/reklamacije', false, false)
+
+    expect(screen.queryByRole('link', { name: /Mašinska obrada/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Reklamacije/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 
   it('is one icon with a flyout when the rail is collapsed', async () => {
@@ -140,7 +167,13 @@ describe('ClaimsNavGroup', () => {
     const rootRoute = createRootRoute({
       component: () => (
         <QueryClientProvider client={queryClient}>
-          <ClaimsNavGroup item={CLAIMS_ITEM} collapsed onNavigate={vi.fn()} />
+          <ClaimsNavGroup
+            item={CLAIMS_ITEM}
+            index="03"
+            collapsed
+            defaultOpen
+            onNavigate={vi.fn()}
+          />
         </QueryClientProvider>
       ),
     })
@@ -189,6 +222,7 @@ describe('InternalSidebar — the drawer is never a rail', () => {
             onLogout={vi.fn()}
             collapsed
             mobileOpen
+            claimsNavOpen
             onCloseMobile={vi.fn()}
           />
         </QueryClientProvider>

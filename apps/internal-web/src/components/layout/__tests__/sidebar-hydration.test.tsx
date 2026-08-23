@@ -18,10 +18,17 @@ import { ChatUnreadBadge } from '~/features/chat/chat-unread-badge'
 import { useHydrated } from '~/lib/use-hydrated'
 
 /**
- * The sidebar's counts arrive between the server's render and the client's, because `_shell.tsx`
- * warms them with a fire-and-forget prefetch. Whatever the server printed, the hydration render
- * has to print the same thing — otherwise React discards the whole server tree and the screen
- * redraws without its buttons. These tests hold the two renders against each other.
+ * Whatever the server printed, the hydration render has to print the same thing — otherwise React
+ * discards the whole server tree and the screen redraws without its buttons. These tests hold the
+ * two renders against each other.
+ *
+ * ⚠ The two counts reach that agreement by OPPOSITE routes, and the difference is the lesson of
+ * 2026-08-24. The claims counts are awaited by `_shell.tsx`, so the server HAS them and prints
+ * them — agreement by giving the server the value. The chat badge is not loaded on most screens,
+ * so it is gated on hydration — agreement by withholding it from both sides. Withholding is the
+ * weaker of the two and it was once used for the claims group as well: the React error went away
+ * and 128px of menu still appeared after the first paint, because the server was then rendering a
+ * deliberately shorter menu on purpose.
  */
 
 function Probe(): React.ReactElement {
@@ -65,10 +72,32 @@ describe('the sidebar renders the same thing on both sides of hydration', () => 
     expect(screen.getByText('4')).toBeInTheDocument()
   })
 
-  it('the claims count is absent from the server render even when it is known', async () => {
+  /**
+   * ⚠ The inverse of what this file used to assert, and deliberately so. The count reaching the
+   * HTML is the fix: the server draws the whole group — five entries and their numbers — so the
+   * browser has nothing left to add and nothing moves after the first paint.
+   */
+  it('the claims group is drawn WHOLE by the server, counts and all', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     queryClient.setQueryData(claimCategoryCountsOptions().queryKey, {
-      items: [],
+      items: [
+        {
+          id: 'c1',
+          code: 'REMONT_MOTORA',
+          name: 'Generalni remont motora',
+          isActive: true,
+          total: 12,
+          pending: 7,
+        },
+        {
+          id: 'c2',
+          code: 'MASINSKA_OBRADA',
+          name: 'Mašinska obrada',
+          isActive: true,
+          total: 3,
+          pending: 2,
+        },
+      ],
       totals: { total: 15, pending: 9 },
     })
     const item: NavItem = {
@@ -81,7 +110,13 @@ describe('the sidebar renders the same thing on both sides of hydration', () => 
     const rootRoute = createRootRoute({
       component: () => (
         <QueryClientProvider client={queryClient}>
-          <ClaimsNavGroup item={item} collapsed={false} onNavigate={() => undefined} />
+          <ClaimsNavGroup
+            item={item}
+            index="03"
+            collapsed={false}
+            defaultOpen
+            onNavigate={() => undefined}
+          />
         </QueryClientProvider>
       ),
     })
@@ -90,8 +125,13 @@ describe('the sidebar renders the same thing on both sides of hydration', () => 
       path: '/reklamacije',
       component: () => null,
     })
+    const categoryRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reklamacije/kategorija/$categoryCode',
+      component: () => null,
+    })
     const router = createRouter({
-      routeTree: rootRoute.addChildren([listRoute]),
+      routeTree: rootRoute.addChildren([listRoute, categoryRoute]),
       history: createMemoryHistory({ initialEntries: ['/reklamacije'] }),
     })
 
@@ -101,8 +141,11 @@ describe('the sidebar renders the same thing on both sides of hydration', () => 
     const html = renderToString(<RouterProvider router={router as never} />)
     expect(html).toContain('Reklamacije')
 
-    // This is the exact pair React reported: the server printed the chevron where the client
-    // printed the amber 9.
-    expect(html).not.toContain('>9<')
+    // Every category, so the browser adds no rows: this is the 128px that used to appear.
+    expect(html).toContain('Generalni remont motora')
+    expect(html).toContain('Mašinska obrada')
+    // And the numbers, so no row changes width either.
+    expect(html).toContain('>9<')
+    expect(html).toContain('>7<')
   })
 })
