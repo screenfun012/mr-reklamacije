@@ -165,7 +165,12 @@ export {
 } from './notifications.js'
 export {
   buildChatAttachmentUrl,
+  addChatMembers,
   chatConversationAttachmentsOptions,
+  chatMembersOptions,
+  createChatChannel,
+  removeChatMember,
+  renameChatChannel,
   chatConversationsOptions,
   chatKeys,
   chatMessagesOptions,

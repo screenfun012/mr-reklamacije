@@ -60,7 +60,12 @@ export function ThreadContextToggle({
   open: boolean
   onToggle: () => void
 }): React.ReactElement | null {
-  if (claimOf(conversation) === null) {
+  /*
+   * ⚠ A channel has a panel too now — its people rather than a claim — so the toggle cannot key on
+   * "is there a claim" any more. The general channel still has none: nobody manages it, and there
+   * is nothing to show.
+   */
+  if (claimOf(conversation) === null && conversation.type !== ChatConversationType.Channel) {
     return null
   }
 

@@ -1760,5 +1760,16 @@
   "chat_push_failed": "Obaveštenja se nisu uključila.",
   "chat_push_banner_title": "Uključi obaveštenja na ovom uređaju",
   "chat_push_banner_body": "Poruke iz razgovora stižu i kad je aplikacija zatvorena. Traži se jednom, po uređaju.",
-  "chat_push_banner_dismiss": "Ne sada"
+  "chat_push_banner_dismiss": "Ne sada",
+  "chat_channel_new_title": "Nov kanal",
+  "chat_channel_name_label": "Ime kanala",
+  "chat_channel_name_placeholder": "npr. Nabavka",
+  "chat_channel_create": "Napravi kanal",
+  "chat_channel_members": "ČLANOVI",
+  "chat_channel_add_member": "Dodaj čoveka",
+  "chat_channel_remove_member": "Skloni iz kanala",
+  "chat_channel_leave": "Napusti kanal",
+  "chat_channel_leave_confirm": "Izlaziš iz kanala „{name}\". Nećeš ga više videti dok te neko ne vrati.",
+  "chat_channel_empty_notice": "U ovom kanalu nema nikoga. Vidiš ga jer si administrator.",
+  "chat_channel_failed": "Nije uspelo."
 }

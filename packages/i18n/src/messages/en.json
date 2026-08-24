@@ -1760,5 +1760,16 @@
   "chat_push_failed": "Notifications could not be turned on.",
   "chat_push_banner_title": "Turn on notifications on this device",
   "chat_push_banner_body": "Messages reach you with the app closed. Asked once, per device.",
-  "chat_push_banner_dismiss": "Not now"
+  "chat_push_banner_dismiss": "Not now",
+  "chat_channel_new_title": "New channel",
+  "chat_channel_name_label": "Channel name",
+  "chat_channel_name_placeholder": "e.g. Purchasing",
+  "chat_channel_create": "Create channel",
+  "chat_channel_members": "MEMBERS",
+  "chat_channel_add_member": "Add somebody",
+  "chat_channel_remove_member": "Remove from channel",
+  "chat_channel_leave": "Leave channel",
+  "chat_channel_leave_confirm": "You are leaving „{name}\". You will not see it again until somebody adds you back.",
+  "chat_channel_empty_notice": "Nobody is in this channel. You see it because you are an administrator.",
+  "chat_channel_failed": "That did not work."
 }

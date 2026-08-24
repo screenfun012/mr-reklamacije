@@ -29,6 +29,8 @@ import {
 import { ConversationList } from '~/features/chat/conversation-list'
 import { PushBanner } from '~/features/chat/push-banner'
 import { ConversationPane } from '~/features/chat/conversation-pane'
+import { ChannelPanel } from '~/features/chat/channel-panel'
+import { NewChannelDialog } from '~/features/chat/new-channel-dialog'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
 import { ClaimThreadConfirm, findClaimThread } from '~/features/chat/open-claim-thread'
 import { PinListButton } from '~/features/chat/pin-list'
@@ -153,6 +155,7 @@ function RazgovoriColumns(): React.ReactElement {
   const [listOpen, setListOpen] = useState(selectedId === undefined)
   const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
   const [newThreadOpen, setNewThreadOpen] = useState(false)
+  const [newChannelOpen, setNewChannelOpen] = useState(false)
   // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
   // conversation wants it beside the next one too — and a channel simply has none to show.
   const [contextOpen, setContextOpen] = useState(false)
@@ -230,6 +233,7 @@ function RazgovoriColumns(): React.ReactElement {
         activeId={current?.id ?? null}
         onSelect={openConversation}
         onNewThread={() => setNewThreadOpen(true)}
+        onNewChannel={() => setNewChannelOpen(true)}
         open={listOpen}
       />
 
@@ -304,9 +308,21 @@ function RazgovoriColumns(): React.ReactElement {
             onClick={() => setContextOpen(false)}
             className={CHAT_PANEL_BACKDROP_CLASSES}
           />
-          <ThreadContextPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+          {/* A channel's panel is its people; a claim thread's is the claim. Same slot, and the
+              same overlay rule below CHAT_PANEL_BREAKPOINT. */}
+          {current.type === ChatConversationType.Channel ? (
+            <ChannelPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+          ) : (
+            <ThreadContextPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+          )}
         </>
       )}
+
+      <NewChannelDialog
+        open={newChannelOpen}
+        onOpenChange={setNewChannelOpen}
+        onCreated={openConversation}
+      />
 
       <NewThreadDialog
         open={newThreadOpen}

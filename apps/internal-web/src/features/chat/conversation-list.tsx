@@ -170,6 +170,8 @@ export interface ConversationListProps {
   onSelect: (id: string) => void
   /** Opens the „Nova nit" dialog. */
   onNewThread: () => void
+  /** Opens the „Nov kanal" dialog. Anybody in the chat may make one. */
+  onNewChannel: () => void
   /**
    * Whether the list is showing as a sheet. Only means anything below CHAT_LIST_BREAKPOINT —
    * above it the list is a column and this is ignored, which is why the state may stay `true`
@@ -184,6 +186,7 @@ export function ConversationList({
   activeId,
   onSelect,
   onNewThread,
+  onNewChannel,
   open,
 }: ConversationListProps): React.ReactElement {
   const [dnd, setDnd] = useChatDnd()
@@ -237,7 +240,11 @@ export function ConversationList({
       </div>
 
       <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-2.5 pt-0.5">
-        <SectionHeader label={m.chat_section_channels()} addTitle={m.chat_new_channel_title()} />
+        <SectionHeader
+          label={m.chat_section_channels()}
+          addTitle={m.chat_new_channel_title()}
+          onAdd={onNewChannel}
+        />
         {[...general, ...channels].map((item) => (
           <ChannelRow key={item.id} item={item} active={item.id === activeId} onSelect={onSelect} />
         ))}

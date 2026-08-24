@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { queryOptions } from '@tanstack/react-query'
 
 import { fetchNoContent } from '../api/fetch-no-content.js'
@@ -5,6 +6,7 @@ import { fetchParsed } from '../api/fetch-json.js'
 import type { ClaimKind } from '../enums.js'
 import {
   ChatConversationListItemSchema,
+  ChatPersonSchema,
   ChatConversationListResponseSchema,
   ChatSendResponseSchema,
   ChatMessagesPageSchema,
@@ -42,6 +44,7 @@ export const chatKeys = {
   pins: (conversationId: string) => [...chatKeys.all, 'pins', conversationId] as const,
   attachments: (conversationId: string) =>
     [...chatKeys.all, 'attachments', conversationId] as const,
+  members: (conversationId: string) => [...chatKeys.all, 'members', conversationId] as const,
 }
 
 /** Every conversation this person may enter, plus the ONE unread number the sidebar shows. */
@@ -139,6 +142,57 @@ export function buildChatAttachmentUrl(
   }
   const query = params.size === 0 ? '' : `?${params.toString()}`
   return `/api/chat/conversations/${conversationId}/attachments/${attachmentId}${query}`
+}
+
+const ChatMembersResponseSchema = z.object({
+  members: z.array(ChatPersonSchema),
+  /**
+   * ⚠ Its own list, not the members. „Who may a mention name here" is the members for a channel, so
+   * offering that when adding somebody would offer only the people already inside.
+   */
+  addable: z.array(ChatPersonSchema),
+})
+
+export function chatMembersOptions(conversationId: string) {
+  return queryOptions({
+    queryKey: chatKeys.members(conversationId),
+    queryFn: () =>
+      fetchParsed(`/api/chat/conversations/${conversationId}/members`, ChatMembersResponseSchema),
+  })
+}
+
+export function createChatChannel(name: string): Promise<ChatConversationListItem> {
+  return fetchParsed('/api/chat/channels', ChatConversationListItemSchema, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+}
+
+export function renameChatChannel(
+  conversationId: string,
+  name: string,
+): Promise<ChatConversationListItem> {
+  return fetchParsed(`/api/chat/conversations/${conversationId}`, ChatConversationListItemSchema, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+}
+
+export function addChatMembers(conversationId: string, userIds: readonly string[]): Promise<void> {
+  return fetchNoContent(`/api/chat/conversations/${conversationId}/members`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userIds }),
+  })
+}
+
+/** `me` is how somebody walks out without needing to know their own id. */
+export function removeChatMember(conversationId: string, userId: string | 'me'): Promise<void> {
+  return fetchNoContent(`/api/chat/conversations/${conversationId}/members/${userId}`, {
+    method: 'DELETE',
+  })
 }
 
 /**

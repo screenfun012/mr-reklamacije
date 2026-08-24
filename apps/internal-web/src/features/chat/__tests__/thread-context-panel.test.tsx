@@ -226,8 +226,25 @@ describe('ThreadContextToggle', () => {
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 
-  it('is not offered in a channel', () => {
+  /**
+   * This asserted the opposite until channels got a panel of their own — and it was right until
+   * then, because a channel had nothing to put in one. Now it has its people.
+   */
+  it('is offered in a channel, whose panel is its people', () => {
     render(<ThreadContextToggle conversation={channel()} open={false} onToggle={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: m.chat_context_toggle() })).toBeInTheDocument()
+  })
+
+  it('is still not offered in the general channel, which nobody manages', () => {
+    const general = channel()
+    render(
+      <ThreadContextToggle
+        conversation={{ ...general, type: ChatConversationType.General }}
+        open={false}
+        onToggle={vi.fn()}
+      />,
+    )
 
     expect(screen.queryByRole('button', { name: m.chat_context_toggle() })).not.toBeInTheDocument()
   })
