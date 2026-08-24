@@ -90,6 +90,25 @@ export class ChatAttachmentsService {
     return prepared
   }
 
+  /**
+   * Removes a whole room's bytes from storage.
+   *
+   * ⚠ Called BEFORE the conversation row is deleted, because the attachment rows cascade with it
+   * and then nothing names these objects. A failure on one file is logged with its path and does
+   * NOT stop the erase: an object left behind costs disk, a half-erased room costs a promise.
+   */
+  async eraseStoredFiles(conversationId: string): Promise<void> {
+    const paths = await this.repo.listChatAttachmentPaths(conversationId)
+
+    for (const path of paths) {
+      try {
+        await this.storage.delete(path)
+      } catch (error) {
+        this.logger.error({ err: error, path }, 'chat attachment could not be erased')
+      }
+    }
+  }
+
   /** The bytes themselves. Streamed, never buffered — a photo is not a JSON payload. */
   async openStream(
     storagePath: string,

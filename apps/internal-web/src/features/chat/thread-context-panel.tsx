@@ -1,5 +1,7 @@
 import { m } from '@mr/i18n'
 import {
+  buildChatAttachmentUrl,
+  chatConversationAttachmentsOptions,
   ChatConversationType,
   ClaimDetailTab,
   ClaimKind,
@@ -204,15 +206,8 @@ export function ThreadContextPanel({
         </div>
       )}
 
-      {/* L173 */}
-      <div className="flex flex-col gap-2 px-[14px] py-3">
-        <span className={EYEBROW_CLASSES}>{m.chat_context_attachments({ count: 0 })}</span>
-        {/* The prototype's three squares are a gallery this build cannot open (step 4). An honest
-            sentence beats grey placeholders that look like broken images. */}
-        <p className="text-[11.5px] leading-[1.5] text-mri-text2">
-          {m.chat_context_attachments_empty()}
-        </p>
-      </div>
+      {/* L173-L174 */}
+      <ContextAttachments conversationId={conversation.id} />
 
       {/* L177 — verbatim, at the bottom of the column whatever else is in it. */}
       <p className="mt-auto border-t border-mri-border px-[14px] py-3 text-[10.5px] italic leading-[1.5] text-mri-text2">
@@ -220,4 +215,65 @@ export function ThreadContextPanel({
       </p>
     </aside>
   )
+}
+
+/**
+ * The room's shelf: the newest nine files, and „+N" for the rest (`cet-prototip.dc.html` L174 —
+ * `repeat(3,1fr)`, gap 6, square, radius 7, the count in mono at 9px).
+ *
+ * ⚠ `useQuery`, not suspense, and the same reason the pins use it: a shelf that is slow to arrive
+ * must never hold up the conversation it belongs beside.
+ */
+function ContextAttachments({ conversationId }: { conversationId: string }): React.ReactElement {
+  const shelf = useQuery(chatConversationAttachmentsOptions(conversationId))
+  const items = shelf.data?.items ?? []
+  const total = shelf.data?.total ?? 0
+  const hidden = Math.max(0, total - items.length)
+
+  return (
+    <div className="flex flex-col gap-2 px-[14px] py-3">
+      <span className={EYEBROW_CLASSES}>{m.chat_context_attachments({ count: total })}</span>
+      {items.length === 0 ? (
+        <p className="text-[11.5px] leading-[1.5] text-mri-text2">
+          {m.chat_context_attachments_none()}
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-[6px]">
+          {items.map((file) => (
+            <a
+              key={file.id}
+              href={buildChatAttachmentUrl(conversationId, file.id)}
+              title={file.fileName}
+              className="grid aspect-square place-items-center overflow-hidden rounded-[7px] border border-mri-border2 bg-mri-inbg transition-colors hover:border-mri-text2"
+            >
+              {file.mimeType.startsWith('image/') && file.mimeType !== 'image/heic' ? (
+                <img
+                  src={buildChatAttachmentUrl(conversationId, file.id, { variant: 'thumbnail' })}
+                  alt={file.fileName}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <span className="px-1 text-center font-mono text-[9px] font-semibold text-mri-text2">
+                  {badgeOf(file.mimeType)}
+                </span>
+              )}
+            </a>
+          ))}
+          {hidden === 0 ? null : (
+            <span className="grid aspect-square place-items-center rounded-[7px] border border-mri-border2 bg-mri-inbg font-mono text-[9px] font-semibold text-mri-text2">
+              {`+${hidden}`}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Three letters at most — the square is 9px mono. */
+function badgeOf(mimeType: string): string {
+  if (mimeType === 'application/pdf') {
+    return 'PDF'
+  }
+  return (mimeType.split('/').at(-1) ?? 'FILE').slice(0, 3).toUpperCase()
 }

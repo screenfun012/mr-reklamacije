@@ -154,6 +154,11 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
       queryKey: chatKeys.messages(event.payload.conversationId),
     })
     void queryClient.invalidateQueries({ queryKey: chatKeys.pins(event.payload.conversationId) })
+    // The shelf is its own request, so it has to be told too — a photo somebody else sent would
+    // otherwise sit in the room while the panel beside it still says nine.
+    void queryClient.invalidateQueries({
+      queryKey: chatKeys.attachments(event.payload.conversationId),
+    })
     return
   }
 

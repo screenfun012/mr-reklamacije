@@ -58,6 +58,7 @@ export function createChatController(container: Container): {
   mute: (c: Context) => Promise<Response>
   unmute: (c: Context) => Promise<Response>
   listPins: (c: Context) => Promise<Response>
+  listAttachments: (c: Context) => Promise<Response>
   downloadAttachment: (c: Context) => Promise<Response>
   pin: (c: Context) => Promise<Response>
   unpin: (c: Context) => Promise<Response>
@@ -120,6 +121,12 @@ export function createChatController(container: Container): {
       )
       // 200 says "this one was already here" — the retry is answered, not counted twice.
       return c.json({ ...message, partialFiles }, created ? 201 : 200)
+    },
+
+    listAttachments: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const result = await container.chatService.listAttachments(id, toActor(c))
+      return c.json(result)
     },
 
     downloadAttachment: async (c: Context) => {

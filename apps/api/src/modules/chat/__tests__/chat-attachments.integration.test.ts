@@ -416,6 +416,72 @@ describe('Chat attachments — reading', () => {
    * serves claim files must not find it. Nothing in the claim queries can reach it either — a chat
    * row carries no claim id at all — but this is the one an actual customer session would try.
    */
+  /**
+   * Erasing a room is the ONE hard delete in this module, so it is also the one place attachment
+   * rows disappear without anybody asking. The bytes have to go with them: after the cascade there
+   * is no row left that could ever name those objects again, and they sit on a disk we pay for.
+   */
+  /**
+   * The count has to come from the database.
+   *
+   * ⚠ The browser holds ONE page of fifty messages, so a shelf counted from the cache is wrong in
+   * every room older than that — and wrong quietly, which is the worst kind.
+   */
+  it('counts every file in the room, not just the page the browser holds', async () => {
+    // The room already has one file; add another on a second message.
+    const second = new FormData()
+    second.set('clientMsgId', crypto.randomUUID())
+    second.set('body', '')
+    second.append('files', fileFrom(MINIMAL_JPEG, 'drugi-kvar.jpg', 'image/jpeg'))
+    await officeApp.request(`/api/chat/conversations/${threadId}/messages`, {
+      method: 'POST',
+      body: second,
+    })
+
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/attachments`)
+    const shelf = (await res.json()) as {
+      items: Array<{ id: string; messageId: string; fileName: string }>
+      total: number
+      pageSize: number
+    }
+
+    expect(res.status).toBe(200)
+    expect(shelf.total).toBe(2)
+    // Newest first, and each carries the message it belongs to so a click can jump to it.
+    expect(shelf.items[0]?.fileName).toBe('drugi-kvar.jpg')
+    expect(shelf.items[0]?.messageId).toBeDefined()
+  })
+
+  it('keeps a withdrawn message off the shelf', async () => {
+    await officeApp.request(`/api/chat/messages/${messageId}`, { method: 'DELETE' })
+
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/attachments`)
+    const shelf = (await res.json()) as { total: number }
+    expect(shelf.total).toBe(0)
+  })
+
+  it('404s the shelf of a room the caller cannot see', async () => {
+    const res = await serviserApp.request(`/api/chat/conversations/${threadId}/attachments`)
+    expect(res.status).toBe(404)
+  })
+
+  it('takes the files off the disk when the room is erased', async () => {
+    const [row] = await ctx.db
+      .select({ storagePath: schema.attachments.storagePath })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.id, attachmentId))
+    const storagePath = row?.storagePath ?? ''
+    await expect(container.storageService.readStream(storagePath)).resolves.toBeDefined()
+
+    await container.chatService.deleteConversation(threadId, {
+      id: TEST_USER_ID,
+      permissions: [...OFFICE_PERMISSIONS],
+      roles: ['admin'],
+    })
+
+    await expect(container.storageService.readStream(storagePath)).rejects.toThrow()
+  })
+
   it('is invisible to the claim-attachment download path', async () => {
     await expect(
       container.attachmentsService.getDownloadMeta(

@@ -70,6 +70,34 @@ export const ChatAttachmentSchema = z.object({
 
 export type ChatAttachment = z.infer<typeof ChatAttachmentSchema>
 
+/**
+ * One file on the room's shelf. The message id rides along so a click can jump to where it was
+ * sent — the panel is a shortcut into the conversation, not a second place files live.
+ */
+export const ChatConversationAttachmentSchema = ChatAttachmentSchema.extend({
+  messageId: z.string().uuid(),
+})
+
+export type ChatConversationAttachment = z.infer<typeof ChatConversationAttachmentSchema>
+
+export const ChatConversationAttachmentsResponseSchema = z.object({
+  items: z.array(ChatConversationAttachmentSchema),
+  /**
+   * Everything the room holds, not just what was returned.
+   *
+   * ⚠ This cannot be counted in the browser. The client holds ONE page of fifty messages, so in
+   * any room older than that a count taken from the cache is simply wrong — which is why the
+   * shelf needs an endpoint of its own rather than a filter over what is already there.
+   */
+  total: z.number(),
+  page: z.number(),
+  pageSize: z.number(),
+})
+
+export type ChatConversationAttachmentsResponse = z.infer<
+  typeof ChatConversationAttachmentsResponseSchema
+>
+
 export const ChatQuoteSchema = z.object({
   id: z.string().uuid(),
   authorName: z.string(),

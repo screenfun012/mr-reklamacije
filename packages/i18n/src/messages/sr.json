@@ -402,7 +402,6 @@
   "chat_composer_send": "POŠALJI",
   "chat_context_assigned": "Zadužen: {name}",
   "chat_context_attachments": "PRILOZI IZ RAZGOVORA · {count}",
-  "chat_context_attachments_empty": "Prilozi u razgovoru stižu u sledećem koraku.",
   "chat_context_claim": "REKLAMACIJA",
   "chat_context_footer": "Pomeni idu u zvono i popup — osim dok je DND uključen. Nove poruke se broje ovde u listi, osim u utišanoj niti.",
   "chat_context_open_claim": "OTVORI REKLAMACIJU →",
@@ -1741,5 +1740,6 @@
   "chat_attachment_too_many": "Najviše 5 fajlova po poruci.",
   "chat_attachment_bad_type": "Sme samo fotografija ili PDF.",
   "chat_attachment_partial": "Poruka je poslata, ali neki fajlovi nisu sačuvani. Pošalji ih ponovo.",
-  "chat_attachment_download": "Preuzmi prilog"
+  "chat_attachment_download": "Preuzmi prilog",
+  "chat_context_attachments_none": "Još nijedan prilog u ovom razgovoru."
 }

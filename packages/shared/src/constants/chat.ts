@@ -95,6 +95,12 @@ export const CHAT_EDIT_WINDOW_MS = 15 * 60_000
 /** Pins are a shortlist, not a second inbox. */
 export const CHAT_PINS_MAX = 20
 
+/**
+ * How many files the room's shelf shows. Nine, because the prototype draws a 3×3 grid
+ * (`cet-prototip.dc.html` L174) and the last square carries „+N" for the rest.
+ */
+export const CHAT_CONTEXT_ATTACHMENTS_SHOWN = 9
+
 /** Read receipts are throttled to this — one write per open, not one per rendered frame. */
 export const CHAT_READ_THROTTLE_MS = 5_000
 

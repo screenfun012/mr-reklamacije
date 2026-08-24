@@ -1,5 +1,6 @@
 import type { Logger } from '@mr/logger'
 import {
+  CHAT_CONTEXT_ATTACHMENTS_SHOWN,
   CHAT_EDIT_WINDOW_MS,
   CHAT_MENTION_EXCERPT_MAX,
   CHAT_PINS_MAX,
@@ -14,6 +15,7 @@ import {
   stripMentionMarkup,
   SYSTEM_ROLE_ADMIN,
   uniqueMentions,
+  type ChatConversationAttachmentsResponse,
   type ChatPin,
 } from '@mr/shared'
 
@@ -199,6 +201,21 @@ export class ChatService implements ChatPort {
     }
 
     return { message, created: stored.created, partialFiles }
+  }
+
+  /** The room's shelf of files. Same gate as everything else here: 404 for a room he cannot read. */
+  async listAttachments(
+    conversationId: string,
+    actor: ChatActor,
+  ): Promise<ChatConversationAttachmentsResponse> {
+    await this.requireVisible(conversationId, actor)
+
+    const { items, total } = await this.repo.listConversationAttachments(
+      conversationId,
+      CHAT_CONTEXT_ATTACHMENTS_SHOWN,
+    )
+
+    return { items, total, page: 1, pageSize: CHAT_CONTEXT_ATTACHMENTS_SHOWN }
   }
 
   /**
@@ -528,6 +545,9 @@ export class ChatService implements ChatPort {
     // Before the messages go: those rows carry no foreign key and would survive as bell entries
     // pointing into a room that is not there.
     await this.notifications.dropForChatMessages(messageIds)
+    // ⚠ And before the ROW goes: the attachment rows follow it by cascade, and after that nothing
+    // names the objects. Same order as the intake's signed-order erase, for the same reason.
+    await this.attachments.eraseStoredFiles(conversationId)
     await this.repo.deleteConversation(conversationId)
 
     await this.audit.log({

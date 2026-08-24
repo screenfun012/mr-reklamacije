@@ -5,9 +5,11 @@ import {
   ClaimKind,
   ClaimOutcome,
   domaceClaimDetailOptions,
+  chatConversationAttachmentsOptions,
   chatPinsOptions,
   emotiveClaimDetailOptions,
   type ChatConversationListItem,
+  type ChatConversationAttachment,
   type ChatPin,
   type DomaceClaimDetail,
   type EmotiveClaimDetail,
@@ -75,14 +77,34 @@ const DOMACE_CLAIM = {
 
 const ME = '00000000-0000-4000-8000-0000000000aa'
 
+const SHELF: ChatConversationAttachment[] = [
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    messageId: '55555555-5555-4555-8555-555555555555',
+    fileName: 'kvar.jpg',
+    mimeType: 'image/jpeg',
+    fileSizeBytes: 1024,
+    width: 800,
+    height: 600,
+  },
+]
+
 async function renderPanel(
   conversation: ChatConversationListItem,
   pins: ChatPin[] = [],
+  shelf: ChatConversationAttachment[] = [],
+  shelfTotal?: number,
 ): Promise<void> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(emotiveClaimDetailOptions(EMOTIVE_CLAIM_ID).queryKey, EMOTIVE_CLAIM)
   queryClient.setQueryData(domaceClaimDetailOptions(DOMACE_CLAIM_ID).queryKey, DOMACE_CLAIM)
   queryClient.setQueryData(chatPinsOptions(conversation.id).queryKey, { items: pins })
+  queryClient.setQueryData(chatConversationAttachmentsOptions(conversation.id).queryKey, {
+    items: shelf,
+    total: shelfTotal ?? shelf.length,
+    page: 1,
+    pageSize: 9,
+  })
 
   const rootRoute = createRootRoute({
     component: () => (
@@ -146,14 +168,24 @@ describe('ThreadContextPanel', () => {
   })
 
   /**
-   * Attachments in a conversation are step 4 of this feature. The section says so instead of
-   * drawing the prototype's three grey squares, which would promise a gallery that cannot open.
+   * This test used to assert the opposite — that the section said attachments were still to come.
+   * It was written to fail on the day they arrived, and this is that day.
    */
-  it('says the conversation attachments are not here yet instead of drawing empty squares', async () => {
+  it('draws the room\u2019s files, and says how many there are in all', async () => {
+    await renderPanel(thread(), [], SHELF, 14)
+
+    // ⚠ The count is the ROOM's, not the grid's. The browser holds one page of fifty messages, so
+    // counting from what is on screen is wrong in every older room — quietly.
+    expect(screen.getByText(m.chat_context_attachments({ count: 14 }))).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'kvar.jpg' })).toBeInTheDocument()
+    // Nine shown, fourteen held: the last square says what is left.
+    expect(screen.getByText('+13')).toBeInTheDocument()
+  })
+
+  it('says so plainly when nothing has been sent yet', async () => {
     await renderPanel(thread())
 
-    expect(screen.getByText(m.chat_context_attachments({ count: 0 }))).toBeInTheDocument()
-    expect(screen.getByText(m.chat_context_attachments_empty())).toBeInTheDocument()
+    expect(screen.getByText(m.chat_context_attachments_none())).toBeInTheDocument()
   })
 
   it('closes with the note about the bell', async () => {

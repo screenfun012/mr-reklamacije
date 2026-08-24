@@ -17,6 +17,7 @@ import {
   type ChatMention,
   type ChatPin,
   type ChatAttachment,
+  type ChatConversationAttachment,
   type ChatReactor,
   type ChatQuote,
   type ChatSystemKind,
@@ -569,7 +570,16 @@ export class ChatRepository {
           isNull(attachments.deletedAt),
         ),
       )
-      .orderBy(asc(attachments.uploadedAt), asc(attachments.id))
+      /*
+       * ⚠ Stable, but not the order the person picked them in.
+       *
+       * Every file of one message is written by ONE insert, so they share `uploaded_at` down to
+       * the microsecond — `now()` is the transaction's clock, not the statement's. There is
+       * nothing in the row that records pick order, and giving it one means another column for
+       * something nobody has asked for. Stable is what matters: the same message must not shuffle
+       * its photos between two reads.
+       */
+      .orderBy(asc(attachments.id))
 
     const byMessage = new Map<string, ChatAttachment[]>()
     for (const row of rows) {
@@ -588,6 +598,102 @@ export class ChatRepository {
       byMessage.set(row.messageId, held)
     }
     return byMessage
+  }
+
+  /**
+   * The room's shelf: the newest files, plus how many there are in all.
+   *
+   * ⚠ The count comes from the database, not from the page of messages the browser holds — that
+   * page is fifty rows, so in any older room a count taken there is wrong.
+   *
+   * A withdrawn message takes its files off the shelf, the same rule the download route keeps.
+   */
+  async listConversationAttachments(
+    conversationId: string,
+    limit: number,
+  ): Promise<{ items: ChatConversationAttachment[]; total: number }> {
+    const conditions = and(
+      eq(chatMessages.conversationId, conversationId),
+      isNull(chatMessages.deletedAt),
+      eq(attachments.purpose, AttachmentPurpose.ChatAttachment),
+      isNull(attachments.deletedAt),
+    )
+
+    const rows = await this.db
+      .select({
+        id: attachments.id,
+        messageId: chatMessages.id,
+        fileName: attachments.fileName,
+        mimeType: attachments.mimeType,
+        fileSizeBytes: attachments.fileSizeBytes,
+        width: attachments.width,
+        height: attachments.height,
+      })
+      .from(attachments)
+      .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
+      .where(conditions)
+      /*
+       * Newest first by the ROOM's own order, which is `seq` — not `uploaded_at`.
+       *
+       * ⚠ `uploaded_at` defaults to `now()`, which in Postgres is the TRANSACTION's clock: every
+       * file of one message shares it to the microsecond, and inside a test transaction so does
+       * every file of every message. Sorting on it therefore falls through to a random v4 uuid.
+       * `seq` is a bigserial and is the one thing here that genuinely increases.
+       *
+       * ⚠ Within a single message the order is stable but NOT the order they were picked in —
+       * see the note on `resolveAttachments`.
+       */
+      .orderBy(desc(chatMessages.seq), asc(attachments.id))
+      .limit(limit)
+
+    const [counted] = await this.db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(attachments)
+      .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
+      .where(conditions)
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        messageId: row.messageId,
+        fileName: row.fileName,
+        mimeType: row.mimeType,
+        fileSizeBytes: Number(row.fileSizeBytes),
+        width: row.width,
+        height: row.height,
+      })),
+      total: counted?.total ?? 0,
+    }
+  }
+
+  /**
+   * Every file a room holds, as storage paths — read BEFORE the room goes.
+   *
+   * ⚠ Once the conversation row is deleted the attachment rows follow by cascade, and then nothing
+   * names those objects any more. They would sit on a disk we pay for, forever, with no row to
+   * find them by. The intake's signed-order erase learned this first and does the same thing in
+   * the same order.
+   */
+  async listChatAttachmentPaths(conversationId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({
+        storagePath: attachments.storagePath,
+        thumbnailPath: attachments.thumbnailPath,
+      })
+      .from(attachments)
+      .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
+      .where(
+        and(
+          eq(chatMessages.conversationId, conversationId),
+          eq(attachments.purpose, AttachmentPurpose.ChatAttachment),
+        ),
+      )
+
+    // Soft-deleted rows are included on purpose: their bytes are still on the disk, and after the
+    // room is gone there is no row left that could ever point at them again.
+    return rows.flatMap((row) =>
+      row.thumbnailPath === null ? [row.storagePath] : [row.storagePath, row.thumbnailPath],
+    )
   }
 
   /** Every message id in this room — needed before it goes, to let the bell forget them. */

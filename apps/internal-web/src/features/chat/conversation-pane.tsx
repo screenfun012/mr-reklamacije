@@ -169,7 +169,7 @@ export function ConversationPane({
         },
         row.files,
       ),
-    onSuccess: (created) => {
+    onSuccess: (created, row) => {
       queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
         appendMessage(page, created),
       )
@@ -184,6 +184,14 @@ export function ConversationPane({
        * 201 with three. And sending them again has to be a NEW message: the same clientMsgId
        * would answer 200 and drop the bytes, which is how a photo becomes unrecoverable.
        */
+      if (row.files.length > 0) {
+        // The shelf in the panel is its own request — the message landing in the cache says
+        // nothing to it.
+        void queryClient.invalidateQueries({
+          queryKey: chatKeys.attachments(conversationId),
+        })
+      }
+
       if (created.partialFiles > 0) {
         showInternalToast(m.chat_attachment_partial())
       }

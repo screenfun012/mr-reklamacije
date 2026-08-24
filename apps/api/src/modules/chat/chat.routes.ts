@@ -24,6 +24,7 @@ export function registerChatRoutes(
   routes.get('/conversations/:id/messages', controller.listMessages)
   routes.get('/conversations/:id/people', controller.listPeople)
   routes.get('/conversations/:id/pins', controller.listPins)
+  routes.get('/conversations/:id/attachments', controller.listAttachments)
   routes.get('/conversations/:id/attachments/:attachmentId', controller.downloadAttachment)
   routes.delete('/conversations/:id', controller.deleteConversation)
   routes.post('/conversations/:id/messages', controller.sendMessage)

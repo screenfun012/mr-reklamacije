@@ -402,7 +402,6 @@
   "chat_composer_send": "SEND",
   "chat_context_assigned": "Assigned: {name}",
   "chat_context_attachments": "CONVERSATION ATTACHMENTS · {count}",
-  "chat_context_attachments_empty": "Conversation attachments arrive in the next step.",
   "chat_context_claim": "CLAIM",
   "chat_context_footer": "Mentions go to the bell and the popup — unless Do Not Disturb is on. New messages are counted here in the list, unless the thread is muted.",
   "chat_context_open_claim": "OPEN CLAIM →",
@@ -1741,5 +1740,6 @@
   "chat_attachment_too_many": "At most 5 files per message.",
   "chat_attachment_bad_type": "Photos and PDF files only.",
   "chat_attachment_partial": "The message was sent, but some files were not saved. Send them again.",
-  "chat_attachment_download": "Download attachment"
+  "chat_attachment_download": "Download attachment",
+  "chat_context_attachments_none": "No attachments in this conversation yet."
 }

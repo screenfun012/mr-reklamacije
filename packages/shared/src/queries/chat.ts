@@ -9,10 +9,12 @@ import {
   ChatSendResponseSchema,
   ChatMessagesPageSchema,
   ChatPeopleResponseSchema,
+  ChatConversationAttachmentsResponseSchema,
   ChatPinsResponseSchema,
   type ChatConversationListItem,
   type ChatSendResponse,
   type ChatMessagesPage,
+  type ChatConversationAttachmentsResponse,
   type ChatPin,
   type ChatSendInput,
 } from '../schemas/chat.schema.js'
@@ -38,6 +40,8 @@ export const chatKeys = {
   messages: (conversationId: string) => [...chatKeys.all, 'messages', conversationId] as const,
   people: (conversationId: string) => [...chatKeys.all, 'people', conversationId] as const,
   pins: (conversationId: string) => [...chatKeys.all, 'pins', conversationId] as const,
+  attachments: (conversationId: string) =>
+    [...chatKeys.all, 'attachments', conversationId] as const,
 }
 
 /** Every conversation this person may enter, plus the ONE unread number the sidebar shows. */
@@ -211,6 +215,24 @@ export function markChatRead(conversationId: string, lastSeq: string): Promise<v
  * stale time worth setting: the list is invalidated by the pin that changed it, and by the same
  * `chat_message_created` signal every other reader gets.
  */
+/**
+ * The room's shelf of files.
+ *
+ * ⚠ Its own request rather than a filter over the messages already in the cache: that cache holds
+ * one page of fifty, so in an older room both the nine shown and the total would be wrong — and
+ * wrong without anything looking wrong.
+ */
+export function chatConversationAttachmentsOptions(conversationId: string) {
+  return queryOptions({
+    queryKey: chatKeys.attachments(conversationId),
+    queryFn: () =>
+      fetchParsed<ChatConversationAttachmentsResponse>(
+        `/api/chat/conversations/${conversationId}/attachments`,
+        ChatConversationAttachmentsResponseSchema,
+      ),
+  })
+}
+
 export function chatPinsOptions(conversationId: string) {
   return queryOptions({
     queryKey: chatKeys.pins(conversationId),
