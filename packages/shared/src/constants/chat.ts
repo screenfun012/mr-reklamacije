@@ -109,3 +109,29 @@ export const CHAT_MENTION_EXCERPT_MAX = 140
 
 /** How much of a quoted message the block repeats. One line, not the message again. */
 export const CHAT_QUOTE_EXCERPT_MAX = 120
+
+/**
+ * What a person wants on their phone. Nikola's switch, 2026-08-23: „sve poruke · samo pomeni ·
+ * bez teksta".
+ *
+ * ⚠ `NoText` is not "quieter" — it is the same frequency with the words held back. The phone on a
+ * workbench says a room has something new; what it says is only readable by unlocking it. That is
+ * the whole point of the position, and the reason it is not simply `Mentions` with a different
+ * label.
+ *
+ * ⚠ There is no `Off`. Turning push off is removing the subscription, and a switch that pretends
+ * otherwise leaves a row the server keeps paying a request for on every message.
+ */
+export const PushSubscriptionMode = {
+  All: 'all',
+  Mentions: 'mentions',
+  NoText: 'no_text',
+} as const
+
+export type PushSubscriptionMode = (typeof PushSubscriptionMode)[keyof typeof PushSubscriptionMode]
+
+export const pushSubscriptionModeValues = [
+  PushSubscriptionMode.All,
+  PushSubscriptionMode.Mentions,
+  PushSubscriptionMode.NoText,
+] as const

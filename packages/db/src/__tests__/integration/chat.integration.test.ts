@@ -403,3 +403,74 @@ describe('migration 0055 — a chat message may own a file', () => {
     expect(left).toHaveLength(0)
   })
 })
+
+/**
+ * A phone's standing permission to be told.
+ *
+ * The one that matters is the take-over: the same browser on the same device always hands back the
+ * same endpoint, so a second person signing in there must INHERIT the row rather than add one —
+ * otherwise the previous user keeps receiving the shop's messages on a device that is no longer
+ * theirs.
+ */
+describe('migration 0056 — a phone that can be told', () => {
+  async function subscribe(userId: string, endpoint: string, mode = 'all'): Promise<void> {
+    await db
+      .insert(schema.pushSubscriptions)
+      .values({
+        userId,
+        endpoint,
+        p256dh: 'kljuc',
+        auth: 'tajna',
+        mode: mode as 'all',
+      })
+      .onConflictDoUpdate({
+        target: schema.pushSubscriptions.endpoint,
+        set: { userId, p256dh: 'kljuc', auth: 'tajna' },
+      })
+  }
+
+  it('hands the device over to whoever signed in on it, instead of doubling up', async () => {
+    const first = await ensureUserId()
+    const second = await ensureUserId()
+    const endpoint = `https://push.example/${crypto.randomUUID()}`
+
+    await subscribe(first, endpoint)
+    await subscribe(second, endpoint)
+
+    const rows = await db
+      .select({ userId: schema.pushSubscriptions.userId })
+      .from(schema.pushSubscriptions)
+      .where(eq(schema.pushSubscriptions.endpoint, endpoint))
+
+    // One row, and it belongs to the person actually holding the device now.
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.userId).toBe(second)
+  })
+
+  it('refuses a switch position nobody declared', async () => {
+    await expectConstraint(
+      db.insert(schema.pushSubscriptions).values({
+        userId: await ensureUserId(),
+        endpoint: `https://push.example/${crypto.randomUUID()}`,
+        p256dh: 'kljuc',
+        auth: 'tajna',
+        mode: 'quiet' as 'all',
+      }),
+      'push_subscriptions_mode_check',
+    )
+  })
+
+  it('takes the phones with the account, because there is nobody left to notify', async () => {
+    const userId = await ensureUserId()
+    const endpoint = `https://push.example/${crypto.randomUUID()}`
+    await subscribe(userId, endpoint)
+
+    await db.delete(schema.users).where(eq(schema.users.id, userId))
+
+    const left = await db
+      .select({ id: schema.pushSubscriptions.id })
+      .from(schema.pushSubscriptions)
+      .where(eq(schema.pushSubscriptions.endpoint, endpoint))
+    expect(left).toHaveLength(0)
+  })
+})
