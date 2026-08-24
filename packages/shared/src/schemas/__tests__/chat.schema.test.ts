@@ -54,15 +54,29 @@ describe('the chat wire', () => {
     ).toBe('zdravo')
   })
 
-  it('refuses an empty message and one longer than the column holds', () => {
-    expect(() =>
-      ChatSendInputSchema.parse({ clientMsgId: MESSAGE.clientMsgId, body: '   ' }),
-    ).toThrow()
+  it('refuses a message longer than the column holds', () => {
     expect(() =>
       ChatSendInputSchema.parse({
         clientMsgId: MESSAGE.clientMsgId,
         body: 'x'.repeat(CHAT_MESSAGE_MAX_LENGTH + 1),
       }),
     ).toThrow()
+  })
+
+  /**
+   * This used to assert the opposite, and the change is deliberate: a photo on its own is a
+   * message (Nikola, 2026-08-24).
+   *
+   * ⚠ The rule did not disappear, it moved. `.min(1)` fails at the FIELD level, before any
+   * object-wide refinement runs, and this schema never sees the files at all — they arrive as
+   * multipart, not as JSON. So "empty only when a file rides along" lives in `ChatService.send`,
+   * where the parsed input and the processed files are both in hand, and
+   * `chat-attachments.integration.test.ts` is what proves an empty message with no file is still
+   * refused.
+   */
+  it('accepts an empty body — a photo needs no caption', () => {
+    expect(ChatSendInputSchema.parse({ clientMsgId: MESSAGE.clientMsgId, body: '   ' }).body).toBe(
+      '',
+    )
   })
 })

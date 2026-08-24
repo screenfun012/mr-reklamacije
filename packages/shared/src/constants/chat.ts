@@ -1,3 +1,5 @@
+import { ALLOWED_IMAGE_MIME_TYPES } from './limits.js'
+
 /** Which of the three kinds a conversation is. */
 export const ChatConversationType = {
   /** The one channel everyone internal is in. It cannot be created, left or deleted. */
@@ -39,6 +41,34 @@ export const chatSystemKindValues = [
   ChatSystemKind.CategoryChanged,
   ChatSystemKind.ChannelCreated,
 ] as const
+
+/**
+ * What a chat message may carry: photos and PDF, nothing else (Nikola, 2026-08-24).
+ *
+ * ⚠ This list is narrower than the shared pipeline's, and it has to be. `detectAttachmentMimeType`
+ * happily recognises mp4, mov, docx and xlsx, so without a whitelist of its own "photos and PDF"
+ * would be a promise made only by the browser's `accept` attribute — a hint, not a rule.
+ */
+export const ALLOWED_CHAT_ATTACHMENT_MIME_TYPES = [
+  ...ALLOWED_IMAGE_MIME_TYPES,
+  'application/pdf',
+] as const
+
+export type AllowedChatAttachmentMimeType = (typeof ALLOWED_CHAT_ATTACHMENT_MIME_TYPES)[number]
+
+export function isAllowedChatAttachmentMimeType(
+  mimeType: string,
+): mimeType is AllowedChatAttachmentMimeType {
+  return (ALLOWED_CHAT_ATTACHMENT_MIME_TYPES as readonly string[]).includes(mimeType)
+}
+
+/**
+ * Five files per message, and no quota per room (Nikola, 2026-08-24).
+ *
+ * A per-room cap would answer "this room is full" — a sentence nobody in the hall can act on. The
+ * per-file 25 MB and the browser-side downscale to 2048px are what actually bound the disk.
+ */
+export const CHAT_MAX_FILES_PER_MESSAGE = 5
 
 /** A message is a message, not a document — the composer is one line that grows. */
 export const CHAT_MESSAGE_MAX_LENGTH = 4000

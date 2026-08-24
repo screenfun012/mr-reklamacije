@@ -72,6 +72,12 @@ export interface SubmissionAttachmentPathInput {
   readonly extension: string
 }
 
+export interface ChatAttachmentPathInput {
+  readonly conversationId: string
+  readonly attachmentId: string
+  readonly extension: string
+}
+
 export interface IntakeAttachmentPathInput {
   readonly orderId: string
   readonly attachmentId: string
@@ -84,6 +90,14 @@ export interface IntakeAttachmentPathInput {
  */
 export function buildIntakeAttachmentStoragePath(input: IntakeAttachmentPathInput): string {
   return `intake/${input.orderId}/${input.attachmentId}.${input.extension}`
+}
+
+/**
+ * Storage key for a file sent in a chat message. Keyed by the room, not the message: a room is
+ * what gets erased in one go, so its objects are swept in one prefix.
+ */
+export function buildChatAttachmentStoragePath(input: ChatAttachmentPathInput): string {
+  return `chat/${input.conversationId}/${input.attachmentId}.${input.extension}`
 }
 
 /** Storage key for a portal-submission attachment (no claim year — a submission is pre-claim). */

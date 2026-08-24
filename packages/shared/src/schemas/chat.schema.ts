@@ -201,7 +201,15 @@ export type ChatMessagesQuery = z.infer<typeof ChatMessagesQuerySchema>
 export const ChatSendInputSchema = z.object({
   /** Minted by the sender BEFORE the request, so a retry lands exactly once. */
   clientMsgId: z.string().uuid(),
-  body: z.string().trim().min(1).max(CHAT_MESSAGE_MAX_LENGTH),
+  /**
+   * May be empty — a photo on its own is a message (Nikola, 2026-08-24).
+   *
+   * ⚠ The rule "empty only when a file rides along" deliberately does NOT live here. `.min(1)`
+   * fails at the FIELD level, before any object-wide refinement runs, and this schema never sees
+   * the files at all: they arrive as multipart, not as JSON. The service is the first place the
+   * parsed input and the processed files are both in hand, so the service is where it belongs.
+   */
+  body: z.string().trim().max(CHAT_MESSAGE_MAX_LENGTH),
   quoteOf: z.string().uuid().optional(),
 })
 

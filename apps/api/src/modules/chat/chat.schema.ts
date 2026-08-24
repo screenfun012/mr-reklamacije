@@ -1,5 +1,7 @@
 import { schema } from '@mr/db'
 
+// A chat file is a row in the shared attachments table, hung on the message by chat_message_id.
+export const attachments = schema.attachments
 export const chatConversations = schema.chatConversations
 export const chatMembers = schema.chatMembers
 export const chatMessages = schema.chatMessages

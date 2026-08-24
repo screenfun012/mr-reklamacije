@@ -7,6 +7,7 @@ import {
   INTERNAL_APP_PERMISSIONS,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
+  AttachmentPurpose,
   CHAT_QUOTE_EXCERPT_MAX,
   MENTION_EVERYONE_ID,
   stripMentionMarkup,
@@ -24,6 +25,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } fro
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
+  attachments,
   chatConversations,
   chatMembers,
   chatMessages,
@@ -321,6 +323,21 @@ function mapMessageRow(
     seenByAll: seenByAll(row),
     reactedBy: reactors.get(row.id) ?? [],
   }
+}
+
+/** One attachment row as the chat writes it — the columns a chat file has, and no others. */
+export interface NewChatAttachmentRow {
+  readonly id: string
+  readonly chatMessageId: string
+  readonly fileName: string
+  readonly storagePath: string
+  readonly mimeType: string
+  readonly fileSizeBytes: number
+  readonly contentSha256: string
+  readonly width: number | null
+  readonly height: number | null
+  readonly thumbnailPath: string | null
+  readonly purpose: typeof AttachmentPurpose.ChatAttachment
 }
 
 export class ChatRepository {
@@ -668,6 +685,22 @@ export class ChatRepository {
       .limit(1)
 
     return existing === undefined ? null : { id: existing.id, created: false }
+  }
+
+  /**
+   * The rows for one message's files, written together after the message is known to be new.
+   *
+   * ⚠ `purpose` is passed explicitly and never left to the column default: the default is
+   * `claim_attachment`, and the portal is handed every image carrying THAT purpose whatever the
+   * visibility column says. Forgetting it here would not leak (a chat row has no claim id, so no
+   * claim query finds it) — it would do the opposite and make the photo vanish from its own
+   * message, because every chat read filters the purpose positively.
+   */
+  async insertChatAttachments(rows: readonly NewChatAttachmentRow[]): Promise<void> {
+    if (rows.length === 0) {
+      return
+    }
+    await this.db.insert(attachments).values([...rows])
   }
 
   /** Is there a claim here at all, and is it still alive? A deleted claim gets no thread. */

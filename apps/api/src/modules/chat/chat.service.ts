@@ -22,11 +22,13 @@ import {
   ForbiddenError,
   NotFoundError,
   UnprocessableEntityError,
+  ValidationError,
 } from '../../core/errors/domain-errors.js'
 import type { ChatPort, ChatSystemMessageTarget } from '../../core/ports/chat-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { NotificationsPort } from '../../core/ports/notifications-port.js'
+import type { ChatAttachmentsService, PreparedChatFile } from './chat-attachments.service.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
   ChatActor,
@@ -43,6 +45,15 @@ import type {
 export interface ChatSendResult {
   message: ChatMessage
   created: boolean
+  /**
+   * How many of the message's files were lost on the way to storage. Zero on every ordinary send.
+   *
+   * The words are already posted by then, so one unwritable photo must not take the sentence down
+   * with it — the screen offers to send the missing ones again, as a NEW message. Retrying under
+   * the same clientMsgId would answer 200 and drop the bytes, which is how a photo becomes
+   * unrecoverable.
+   */
+  partialFiles: number
 }
 
 /** Same distinction for a thread: 201 the first time somebody opens it, 200 every time after. */
@@ -90,6 +101,7 @@ export class ChatService implements ChatPort {
     private readonly logger: Logger,
     private readonly notifications: NotificationsPort,
     private readonly audit: AuditPort,
+    private readonly attachments: ChatAttachmentsService,
   ) {}
 
   async listConversations(actor: ChatActor): Promise<ChatConversationListResponse> {
@@ -120,9 +132,20 @@ export class ChatService implements ChatPort {
     conversationId: string,
     input: ChatSendInput,
     actor: ChatActor,
+    files: readonly PreparedChatFile[] = [],
   ): Promise<ChatSendResult> {
     const conversation = await this.requireVisible(conversationId, actor)
     requireOpen(conversation)
+
+    /**
+     * A photo on its own IS a message (Nikola, 2026-08-24), so the body may be empty — but only
+     * when something else arrived with it. The rule lives here rather than in the Zod schema
+     * because this is the first place the parsed input and the processed files are both in hand:
+     * the files come as multipart and the schema never sees them.
+     */
+    if (input.body === '' && files.length === 0) {
+      throw new ValidationError('A message needs words or a file')
+    }
 
     /**
      * A quote must point INSIDE this conversation. The foreign key only proves the message
@@ -147,6 +170,19 @@ export class ChatService implements ChatPort {
       throw new ConflictError('Chat message could not be stored')
     }
 
+    /**
+     * Only a message that was actually created gets its files written.
+     *
+     * A retry finds the message already there, so these bytes are dropped and nothing reaches the
+     * disk — which is why the files ride the send request instead of an upload-then-send pair: the
+     * clientMsgId that already makes a retried message land once now covers its photos too.
+     */
+    let partialFiles = 0
+    if (stored.created && files.length > 0) {
+      const written = await this.attachments.store(conversationId, stored.id, files)
+      partialFiles = written.failed
+    }
+
     const message = await this.repo.findMessageById(stored.id)
     if (message === null) {
       throw new NotFoundError('Chat message', stored.id)
@@ -158,7 +194,7 @@ export class ChatService implements ChatPort {
       await this.ringMentions(conversation, message, actor)
     }
 
-    return { message, created: stored.created }
+    return { message, created: stored.created, partialFiles }
   }
 
   /**

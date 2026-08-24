@@ -3,6 +3,8 @@ import type { Context } from 'hono'
 import type { Container } from '../../core/container.js'
 import type { MRSessionUser } from '../../core/auth/session-types.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
+import { readUploadFiles } from '../../core/http/upload-files.js'
+import type { PreparedChatFile } from './chat-attachments.service.js'
 import {
   ChatClaimThreadParamSchema,
   ChatConversationIdParamSchema,
@@ -20,6 +22,22 @@ function toActor(c: Context): ChatActor {
     throw new UnauthorizedError()
   }
   return { id: user.id, permissions: user.permissions, roles: user.roles }
+}
+
+/**
+ * The non-file half of a multipart send, shaped so the same Zod schema parses both transports.
+ * A missing field stays missing rather than becoming an empty string — `quoteOf` is optional and
+ * an empty string is not a uuid.
+ */
+function readSendFields(formData: FormData): Record<string, unknown> {
+  const fields: Record<string, unknown> = {}
+  for (const key of ['clientMsgId', 'body', 'quoteOf']) {
+    const value = formData.get(key)
+    if (typeof value === 'string' && (key !== 'quoteOf' || value.length > 0)) {
+      fields[key] = value
+    }
+  }
+  return fields
 }
 
 export function createChatController(container: Container): {
@@ -65,10 +83,30 @@ export function createChatController(container: Container): {
       return c.json(page)
     },
 
+    /**
+     * Two shapes, one route: JSON for words alone, multipart when the message carries files.
+     *
+     * One route rather than an upload-then-send pair so the `clientMsgId` that already makes a
+     * retried message land exactly once covers its photos too — and so there is never a state
+     * called "uploaded but never sent" to clean up after.
+     */
     sendMessage: async (c: Context) => {
       const { id } = ChatConversationIdParamSchema.parse(c.req.param())
-      const input = ChatSendInputSchema.parse(await c.req.json())
-      const { message, created } = await container.chatService.send(id, input, toActor(c))
+      const isMultipart = (c.req.header('content-type') ?? '')
+        .toLowerCase()
+        .startsWith('multipart/form-data')
+
+      let input
+      let files: PreparedChatFile[] = []
+      if (isMultipart) {
+        const formData = await c.req.formData()
+        input = ChatSendInputSchema.parse(readSendFields(formData))
+        files = await container.chatAttachmentsService.prepare(await readUploadFiles(formData))
+      } else {
+        input = ChatSendInputSchema.parse(await c.req.json())
+      }
+
+      const { message, created } = await container.chatService.send(id, input, toActor(c), files)
       // 200 says "this one was already here" — the retry is answered, not counted twice.
       return c.json(message, created ? 201 : 200)
     },

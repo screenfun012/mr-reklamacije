@@ -37,7 +37,7 @@ import {
   IntakeChecklistItemsService,
 } from '../modules/intake-checklist-items/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
-import { ChatRepository, ChatService } from '../modules/chat/index.js'
+import { ChatAttachmentsService, ChatRepository, ChatService } from '../modules/chat/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { DashboardRepository, DashboardService } from '../modules/dashboard/index.js'
 import { StatisticsRepository, StatisticsService } from '../modules/statistics/index.js'
@@ -120,6 +120,7 @@ export interface Container {
   engineManufacturersRepository: EngineManufacturersRepository
   engineManufacturersService: EngineManufacturersService
   chatRepository: ChatRepository
+  chatAttachmentsService: ChatAttachmentsService
   chatService: ChatService
   claimCategoriesRepository: ClaimCategoriesRepository
   claimCategoriesService: ClaimCategoriesService
@@ -245,13 +246,22 @@ export function buildContainer(
     notificationsService,
   )
 
+  /**
+   * Storage is built here, earlier than its other consumers need it, because the chat needs it and
+   * the chat has to exist before the claim services — they take it as their ChatPort. It depends
+   * on nothing but `env`, so moving it up costs nothing.
+   */
+  const storageService = createStorageService(env)
+
   const chatRepository = new ChatRepository(db)
+  const chatAttachmentsService = new ChatAttachmentsService(chatRepository, storageService, logger)
   const chatService = new ChatService(
     chatRepository,
     eventBus,
     logger,
     notificationsService,
     auditService,
+    chatAttachmentsService,
   )
 
   const claimCategoriesRepository = new ClaimCategoriesRepository(db)
@@ -413,7 +423,7 @@ export function buildContainer(
   const statisticsRepository = new StatisticsRepository(db)
   const statisticsService = new StatisticsService(statisticsRepository, summaryCache)
 
-  const storageService = createStorageService(env)
+  // storageService is built earlier — the chat needs it (see above).
 
   // Built after the storage service because intake photos go through it (docs/25 V-4).
   const intakeOrdersRepository = new IntakeOrdersRepository(db)
@@ -495,6 +505,7 @@ export function buildContainer(
     engineManufacturersRepository,
     engineManufacturersService,
     chatRepository,
+    chatAttachmentsService,
     chatService,
     claimCategoriesRepository,
     claimCategoriesService,
