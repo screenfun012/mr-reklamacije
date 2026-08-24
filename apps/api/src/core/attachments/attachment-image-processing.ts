@@ -19,12 +19,27 @@ import {
  * silent, and the third means a full-size photo is stored instead of a small one. That is a cost
  * that shows up on the hosting bill months later with nothing in the logs to explain it.
  *
- * ⚠ `console` rather than the app's logger on purpose: this file is pure image machinery with no
- * dependencies, called from three modules, and threading a logger through all of them to reach a
- * warning would be the wrong trade. Railway captures stderr.
+ * ⚠ Written as a pino-shaped JSON line on STDOUT, and both halves of that matter.
+ *
+ * `console.warn` writes to stderr, and Railway files everything on stderr under "Error logs" — so
+ * the first version of this put three warnings straight into the panel a person goes to when
+ * something is actually wrong. A warning that hides real errors is worse than no warning.
+ *
+ * Hand-shaped rather than the app's logger because this file is pure image machinery with no
+ * dependencies, reached through a pipeline that four services share; threading a logger down to it
+ * would change five signatures to carry one line. `level: 40` is pino's `warn`, which is what makes
+ * Railway file it as a warning rather than guessing from the stream.
  */
 function warn(message: string, error: unknown): void {
-  console.warn(`[attachments] ${message}:`, error)
+  console.log(
+    JSON.stringify({
+      level: 40,
+      time: Date.now(),
+      name: 'attachments',
+      msg: message,
+      err: error instanceof Error ? error.message : String(error),
+    }),
+  )
 }
 
 export interface OptimizedReportImage {
