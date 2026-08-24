@@ -181,6 +181,22 @@ Login endpoint: 5/min/IP for admin, 10/min for others. After 10 failures in 15 m
 
 Nothing bypasses audit. Even admin actions are logged.
 
+### The one named exception: chat messages
+
+The `chat` module writes exactly ONE audit row — erasing a conversation — and that is deliberate,
+not an oversight. A message, an edit, a withdrawal, a like, a pin and an attachment write none.
+
+The reason is volume against value. A busy shop posts thousands of messages a day, and an audit row
+per message would bury the log the rest of this rule exists to protect while adding nothing: the
+messages ARE the record, they are never hard-deleted, a withdrawn one keeps its row, and the author
+is `ON DELETE SET NULL` so closing an account does not take the evidence with it. Erasing a room is
+the only act here that destroys something, and it is the only one audited — the audit row is
+literally the last trace that the room existed.
+
+⚠ This is an exception for `chat` alone, and it does not extend by analogy. Anything that changes a
+CLAIM, an order, a user or a catalogue is audited as above, including when the chat is what
+triggered it.
+
 ## Login auditing
 
 - Successful logins logged

@@ -72,7 +72,7 @@ Tri kolone unutar postojećeg shella (sidebar 236px + topbar 58px ostaju netaknu
 
 1. **Sekcija REKLAMACIJA** (donja ivica): eyebrow mono `600 8.5px tracking .18em` · MR mono `700 15px` + kind pill · ishod pill · partner + motor + „Zadužen: {ime}" `11.5px --text2 lh 1.5` · dugme **„OTVORI REKLAMACIJU →"** 32px outline (`--raised` + `--border2`, `10.5px w700`), vodi na detalj.
 2. **PRIKAČENO · N** (ako ima): pin poruka u `--inbg` + `--border2` kartici, `11.5px`, autor prefiks `--text2`.
-3. **PRILOZI IZ RAZGOVORA · N:** grid 3 kolone, kvadrati radius 7, `--inbg` + `--border2`, poslednji „+N" mono. Klik → galerija. **Prilozi iz niti se vide i u detalju reklamacije** (jedan izvor).
+3. **PRILOZI IZ RAZGOVORA · N:** grid 3 kolone, kvadrati radius 7, `--inbg` + `--border2`, poslednji „+N" mono. Klik → fajl. ⚠ **ISPRAVLJENO 24.08.: prilozi iz niti se NE vide u detalju reklamacije.** Portal daje klijentu svaku sliku čija je svrha `claim_attachment`, bez obzira na vidljivost (Nikolino pravilo od 04.07.), pa bi „jedan izvor" značio da fotografija iz interne niti stigne kupcu. Prilog iz četa ima svoju svrhu `chat_attachment` i ostaje u razgovoru.
 4. Futer (margin-top:auto, gornja ivica): italic `10.5px --text2` — napomena o obaveštenjima.
 
 ## 7. OBAVEŠTENJA (veže se na postojeći sistem zvona + glass popup)
@@ -107,7 +107,7 @@ Tri kolone unutar postojećeg shella (sidebar 236px + topbar 58px ostaju netaknu
 - Real-time: postojeći SSE kanal (isti koji hrani zvono) — event `chat:new-message` → invalidacija query-ja razgovora + popup logika.
 - Nepročitano: server računa iz ReadState (broj po razgovoru + zbir), stiže uz postojeći summary.
 - Linkifikacija: na renderu (klijent), NE u bazi — tekst se čuva sirov.
-- Prilozi: postojeći upload sistem reklamacija (isti storage); prilog u niti se registruje i kao prilog reklamacije.
+- Prilozi: postojeći upload **lanac** (magični bajtovi, smanjivanje, sha256, isto skladište), ali ⚠ **NE i isti endpoint i NE ista svrha** — ispravljeno 24.08. `/api/attachments/upload` traži dozvolu koja otvara fajlove svake reklamacije, a čet pušta unutra ljude koji je nemaju (serviser, nalog „samo Statistika"); i prilog se **ne registruje** kao prilog reklamacije, jer bi ga to poslalo kupcu na portal. Vidi `docs/superpowers/specs/2026-08-24-cet-prilozi-design.md` §3.1.
 
 ## 11. Redosled implementacije (svaki korak zeleni gate)
 
