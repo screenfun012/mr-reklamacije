@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isUploadPath } from '../body-limit.js'
+import { isUploadPath, usesUploadLimit } from '../body-limit.js'
 
 /**
  * A route that falls to the 2 MB default when it carries files fails only for the big uploads —
@@ -38,5 +38,32 @@ describe('the intake quote', () => {
     // It is a file made in another program — a scanned A4 is routinely 2-8 MB and nothing on the
     // way in compresses it. Falling to the 2 MB default answered 413 with no size in the message.
     expect(isUploadPath('/api/intake-orders/2f1c4e6a-0a3f-4d2e-9c11-7b0c9e5b4a10/quote')).toBe(true)
+  })
+})
+
+/**
+ * The chat sends its text and its files through the SAME route, so the path alone can no longer
+ * decide. Deciding on the path would have raised the module's most common POST — an ordinary
+ * message — from 2 MB to 130 MB, removing the layer that keeps one authenticated caller from
+ * exhausting the heap.
+ */
+describe('the upload window needs a multipart body, not just a path', () => {
+  const chat = '/api/chat/conversations/2f1c4e6a-0a3f-4d2e-9c11-7b0c9e5b4a10/messages'
+
+  it('opens for a multipart body on an upload path', () => {
+    expect(usesUploadLimit(chat, 'multipart/form-data; boundary=----x')).toBe(true)
+    expect(usesUploadLimit('/api/attachments/upload', 'multipart/form-data; boundary=y')).toBe(true)
+  })
+
+  it('stays shut for a JSON body on the very same path', () => {
+    expect(usesUploadLimit(chat, 'application/json')).toBe(false)
+  })
+
+  it('stays shut when the header is missing altogether', () => {
+    expect(usesUploadLimit(chat, undefined)).toBe(false)
+  })
+
+  it('stays shut for a multipart body on a path that carries no files', () => {
+    expect(usesUploadLimit('/api/claims', 'multipart/form-data; boundary=z')).toBe(false)
   })
 })

@@ -29,11 +29,30 @@ const UPLOAD_PATH_PATTERNS = [
   // routinely 2-8 MB, and nothing compresses it on the way in. Left out of this list it fell to
   // the 2 MB default and answered 413 with no size in the message, while the module documents 25.
   /^\/api\/intake-orders\/[^/]+\/quote$/,
+  // The chat sends a message and its photos through ONE route, so this entry alone would raise the
+  // module's most common POST — an ordinary text message — to the upload window. `usesUploadLimit`
+  // is what keeps that from happening: the path qualifies, the body still has to be multipart.
+  /^\/api\/chat\/conversations\/[^/]+\/messages$/,
 ]
 
 /** Exported for the regression test — a path silently falling to the 2 MB default is invisible. */
 export function isUploadPath(path: string): boolean {
   return UPLOAD_PATHS.has(path) || UPLOAD_PATH_PATTERNS.some((pattern) => pattern.test(path))
+}
+
+/**
+ * Both halves must hold: an upload path AND a multipart body.
+ *
+ * The path alone used to be the whole rule, which worked while every upload route did nothing else.
+ * The chat broke that — text and files share one route — and widening by path would have handed the
+ * 130 MB window to every ordinary message, undoing the guard this file exists for.
+ *
+ * It is not a security boundary on its own (a caller can claim any content-type, exactly as they
+ * can on `/api/attachments/upload`); it is what keeps the small default in place for the traffic
+ * that is not carrying a file.
+ */
+export function usesUploadLimit(path: string, contentType: string | undefined): boolean {
+  return isUploadPath(path) && (contentType ?? '').toLowerCase().startsWith('multipart/form-data')
 }
 
 function limitWith(maxSize: number): MiddlewareHandler {
@@ -55,6 +74,8 @@ const uploadLimit = limitWith(UPLOAD_MAX_BODY_BYTES)
  * gate any authenticated client could exhaust the heap with one huge POST).
  */
 export const requestBodyLimit: MiddlewareHandler = (c, next) => {
-  const limiter = isUploadPath(c.req.path) ? uploadLimit : defaultLimit
+  const limiter = usesUploadLimit(c.req.path, c.req.header('content-type'))
+    ? uploadLimit
+    : defaultLimit
   return limiter(c, next)
 }
