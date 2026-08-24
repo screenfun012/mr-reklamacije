@@ -110,6 +110,14 @@ export const AttachmentPurpose = {
    * the quote would land in the photo grid and be counted by `photoCount`, which is a gate.
    */
   IntakeQuote: 'intake_quote',
+  /**
+   * A file sent inside a chat message. Its own purpose, and the reason is the client rule in
+   * `attachments.repository.ts` `visibilityFilter`: the portal is handed EVERY image whose purpose
+   * is `claim_attachment`, whatever the `visibility` column says (Nikola, 2026-07-04). A photo
+   * dropped into an internal thread would therefore reach the partner. It stays in the room
+   * (Nikola, 2026-08-24) — so it must be a purpose the portal predicate does not name.
+   */
+  ChatAttachment: 'chat_attachment',
 } as const
 
 export type AttachmentPurpose = (typeof AttachmentPurpose)[keyof typeof AttachmentPurpose]

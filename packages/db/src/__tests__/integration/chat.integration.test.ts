@@ -116,6 +116,34 @@ async function newConversation(): Promise<string> {
   return row?.id ?? ''
 }
 
+async function newChatMessageId(conversationId: string): Promise<string> {
+  const [row] = await db
+    .insert(schema.chatMessages)
+    .values({
+      conversationId,
+      clientMsgId: crypto.randomUUID(),
+      authorId: await ensureUserId(),
+      body: 'proba',
+    })
+    .returning({ id: schema.chatMessages.id })
+  return row?.id ?? ''
+}
+
+/** The columns every attachment row needs, so a test can say only what it is testing. */
+function attachmentFields(): {
+  fileName: string
+  storagePath: string
+  mimeType: string
+  fileSizeBytes: number
+} {
+  return {
+    fileName: 'proba.jpg',
+    storagePath: `chat/${crypto.randomUUID()}.jpg`,
+    mimeType: 'image/jpeg',
+    fileSizeBytes: 1024,
+  }
+}
+
 describe('migration 0053 — the chat tables', () => {
   it('keeps one thread per claim', async () => {
     const claimId = await newEmotiveClaimId()
@@ -294,5 +322,84 @@ describe('the general channel seed', () => {
     // Idempotent — a system seed runs on every deploy someone types it, and on every fresh
     // environment. A second general channel is not a duplicate row, it is a split shop.
     expect(rows).toEqual([{ name: 'Opšti kanal' }])
+  })
+})
+
+/**
+ * A file sent in a chat message.
+ *
+ * The four branches of `attachments_one_of_claim_check` said nothing about a fifth column, so
+ * adding one without rewriting them would have let a CLAIM attachment carry a chat link as well —
+ * and no test in the repo would have noticed. Two of the cases below exist for exactly that.
+ */
+describe('migration 0055 — a chat message may own a file', () => {
+  it('accepts a row whose only parent is the message', async () => {
+    const messageId = await newChatMessageId(await newConversation())
+
+    const [row] = await db
+      .insert(schema.attachments)
+      .values({ ...attachmentFields(), chatMessageId: messageId, purpose: 'chat_attachment' })
+      .returning({ id: schema.attachments.id })
+
+    expect(row?.id).toBeDefined()
+  })
+
+  it('refuses a claim attachment that also carries a chat message', async () => {
+    const messageId = await newChatMessageId(await newConversation())
+
+    await expectConstraint(
+      db.insert(schema.attachments).values({
+        ...attachmentFields(),
+        claimKind: 'emotive',
+        emotiveClaimId: await newEmotiveClaimId(),
+        chatMessageId: messageId,
+        purpose: 'claim_attachment',
+      }),
+      'attachments_one_of_claim_check',
+    )
+  })
+
+  it('refuses a domace claim attachment that also carries a chat message', async () => {
+    const messageId = await newChatMessageId(await newConversation())
+
+    await expectConstraint(
+      db.insert(schema.attachments).values({
+        ...attachmentFields(),
+        claimKind: 'domace',
+        domaceClaimId: await newDomaceClaimId(),
+        chatMessageId: messageId,
+        purpose: 'claim_attachment',
+      }),
+      'attachments_one_of_claim_check',
+    )
+  })
+
+  it('refuses a purpose nobody declared', async () => {
+    const messageId = await newChatMessageId(await newConversation())
+
+    await expectConstraint(
+      db.insert(schema.attachments).values({
+        ...attachmentFields(),
+        chatMessageId: messageId,
+        purpose: 'chat_photo' as 'chat_attachment',
+      }),
+      'attachments_purpose_check',
+    )
+  })
+
+  it('takes the file with the message when a room is erased', async () => {
+    const conversationId = await newConversation()
+    const messageId = await newChatMessageId(conversationId)
+    await db
+      .insert(schema.attachments)
+      .values({ ...attachmentFields(), chatMessageId: messageId, purpose: 'chat_attachment' })
+
+    await db.delete(schema.chatConversations).where(eq(schema.chatConversations.id, conversationId))
+
+    const left = await db
+      .select({ id: schema.attachments.id })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.chatMessageId, messageId))
+    expect(left).toHaveLength(0)
   })
 })

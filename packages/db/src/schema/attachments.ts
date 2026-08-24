@@ -20,6 +20,7 @@ import {
 import { users } from './access-control.js'
 import { domaceClaims, emotiveClaims } from './claims.js'
 import { clientSubmissions } from './client-submissions.js'
+import { chatMessages } from './chat.js'
 import { intakeOrders } from './intake-orders.js'
 
 /**
@@ -32,6 +33,11 @@ import { intakeOrders } from './intake-orders.js'
  *
  * Intake photos need no new `purpose` value — `intake_order_id IS NOT NULL` already
  * identifies them, so widening that CHECK too would be redundant.
+ *
+ * A chat file sets only chat_message_id and leaves claim_kind NULL, and unlike an intake photo it
+ * DOES need its own purpose: the portal is handed every image whose purpose is `claim_attachment`
+ * regardless of `visibility`, so sharing the default would send an internal thread's photo to the
+ * customer (docs/superpowers/specs/2026-08-24-cet-prilozi-design.md §3.1).
  */
 export const attachments = pgTable(
   'attachments',
@@ -42,6 +48,7 @@ export const attachments = pgTable(
     domaceClaimId: uuid('domace_claim_id'),
     clientSubmissionId: uuid('client_submission_id'),
     intakeOrderId: uuid('intake_order_id'),
+    chatMessageId: uuid('chat_message_id'),
     /**
      * Points at a damage's `id` inside `intake_orders.damages`, so the photo shows that
      * damage's number. Deliberately nullable and deliberately NOT a foreign key: deleting
@@ -74,19 +81,23 @@ export const attachments = pgTable(
       sql`
         (${t.claimKind} = 'emotive' AND ${t.emotiveClaimId} IS NOT NULL
          AND ${t.domaceClaimId} IS NULL AND ${t.clientSubmissionId} IS NULL
-         AND ${t.intakeOrderId} IS NULL)
+         AND ${t.intakeOrderId} IS NULL AND ${t.chatMessageId} IS NULL)
         OR
         (${t.claimKind} = 'domace' AND ${t.emotiveClaimId} IS NULL
          AND ${t.domaceClaimId} IS NOT NULL AND ${t.clientSubmissionId} IS NULL
-         AND ${t.intakeOrderId} IS NULL)
+         AND ${t.intakeOrderId} IS NULL AND ${t.chatMessageId} IS NULL)
         OR
         (${t.claimKind} IS NULL AND ${t.clientSubmissionId} IS NOT NULL
          AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL
-         AND ${t.intakeOrderId} IS NULL)
+         AND ${t.intakeOrderId} IS NULL AND ${t.chatMessageId} IS NULL)
         OR
         (${t.claimKind} IS NULL AND ${t.intakeOrderId} IS NOT NULL
          AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL
-         AND ${t.clientSubmissionId} IS NULL)
+         AND ${t.clientSubmissionId} IS NULL AND ${t.chatMessageId} IS NULL)
+        OR
+        (${t.claimKind} IS NULL AND ${t.chatMessageId} IS NOT NULL
+         AND ${t.emotiveClaimId} IS NULL AND ${t.domaceClaimId} IS NULL
+         AND ${t.clientSubmissionId} IS NULL AND ${t.intakeOrderId} IS NULL)
       `,
     ),
     // A damage reference is meaningless without the intake order it lives on.
@@ -97,7 +108,7 @@ export const attachments = pgTable(
     check('attachments_visibility_check', sql`${t.visibility} IN ('internal', 'client_visible')`),
     check(
       'attachments_purpose_check',
-      sql`${t.purpose} IN ('claim_attachment', 'report_image', 'intake_quote')`,
+      sql`${t.purpose} IN ('claim_attachment', 'report_image', 'intake_quote', 'chat_attachment')`,
     ),
     foreignKey({
       name: 'attachments_emotive_claim_id_fkey',
@@ -120,6 +131,14 @@ export const attachments = pgTable(
       foreignColumns: [intakeOrders.id],
     }).onDelete('cascade'),
     foreignKey({
+      name: 'attachments_chat_message_id_fkey',
+      columns: [t.chatMessageId],
+      foreignColumns: [chatMessages.id],
+      // The only attachment parent that is ever HARD deleted: an admin erasing a room made by
+      // mistake. The bytes are removed before the row, the way the signed-intake erase does it —
+      // a cascade on its own would leave objects on a paid disk with no row to find them by.
+    }).onDelete('cascade'),
+    foreignKey({
       name: 'attachments_uploaded_by_fkey',
       columns: [t.uploadedBy],
       foreignColumns: [users.id],
@@ -137,6 +156,9 @@ export const attachments = pgTable(
     index('idx_attachments_intake_order_id')
       .on(t.intakeOrderId)
       .where(sql`${t.intakeOrderId} IS NOT NULL`),
+    index('idx_attachments_chat_message_id')
+      .on(t.chatMessageId)
+      .where(sql`${t.chatMessageId} IS NOT NULL`),
   ],
 )
 

@@ -311,6 +311,42 @@ describe('AttachmentsService integration', () => {
       expect(result.id).toBeDefined()
     })
 
+    /**
+     * The guard for a temptation this repo has already had once.
+     *
+     * When the chat got its own attachment purpose, the first draft of the design asked for
+     * `AttachmentsRepository.findById` to filter `purpose = 'claim_attachment'` — "for safety".
+     * That query is also the one behind `GET /api/attachments/:id/download`, and a report image
+     * is served by exactly that URL (`attachments.service.ts` returns it from `uploadReportImage`),
+     * so the filter would have turned every picture in every inspection report into a 404 and made
+     * it undeletable. It buys nothing either: a chat row has no claim FK, and `findById` already
+     * returns null for that.
+     *
+     * If this test ever goes red because someone narrowed `findById`, the narrowing is the bug.
+     */
+    it('still serves a report image through the shared download path', async () => {
+      const claimId = await createAcceptedDomaceClaim()
+      const reportImage = await createTestJpeg(640, 480)
+
+      const uploaded = await container.attachmentsService.uploadReportImage(
+        {
+          claimKind: ClaimKind.Domace,
+          claimId,
+          file: { fileName: 'engine.jpg', data: reportImage },
+        },
+        { id: TEST_USER_ID, permissions: ['claim_reports.update', 'domace_claims.view'] },
+        auditContext,
+      )
+
+      const meta = await container.attachmentsService.getDownloadMeta(
+        uploaded.id,
+        { id: TEST_USER_ID, permissions: ['attachments.view_internal', 'domace_claims.view'] },
+        'original',
+      )
+
+      expect(meta.mimeType).toBe('image/jpeg')
+    })
+
     it('lets an operator delete an attachment on a completed claim', async () => {
       const claimId = await createAcceptedDomaceClaim()
       const actor = {
