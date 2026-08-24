@@ -69,11 +69,15 @@ potvrdi samo čovek sa telefonom u ruci.** To je jedina stvar u ovom koraku koju
 | `user_id` | FK → `users(id)` **ON DELETE CASCADE** — nalog se gasi, pretplate idu s njim |
 | `endpoint` | text **UNIQUE** — adresa koju je pregledač dobio od svog push servisa |
 | `p256dh`, `auth` | text, ključevi tog pregledača za šifrovanje tela |
-| `user_agent` | text NULL — da čovek u spisku prepozna svoj uređaj |
+| `user_agent` | text NULL — ime uređaja u spisku iz §7.4 |
 | `mode` | text + CHECK `('all','mentions','no_text')`, default `'all'` |
-| `created_at`, `last_seen_at` | timestamptz |
+| `created_at` | timestamptz |
 
 Indeks na `user_id` (razašilj čita po korisniku), UNIQUE na `endpoint`.
+
+⚠ **Nema `last_seen_at`.** Prva verzija ga je imala i **ništa ga nije ni pisalo ni čitalo** — kolona
+koju niko ne dodiruje je obećanje u koje će sledeći čovek poverovati. Rast je i tako mali (pretplata
+nastaje samo svesnim uključivanjem, a zamenjenu pregledač prijavi kao 410).
 
 ⚠ **`endpoint` je jedinstven GLOBALNO, ne po korisniku.** Isti pregledač na istom uređaju daje istu
 adresu; ako se na njemu prijavi drugi čovek, pretplata mora da **pređe** na njega, ne da se udvoji —
@@ -109,6 +113,27 @@ ljudi koji smeju da vide sobu   (listPeopleFor — postoji, test-pokriveno)
 ⚠ **`chat_mutes` se poštuje.** Utišana soba je već obećanje da neće da smeta; push koji ipak
 stigne bi to obećanje pogazio na najgoroj mogućoj površini — na zaključanom ekranu.
 
+### 5.1 DND i „ne zvoni dok gledam baš taj razgovor" — dve odluke koje su ispale
+
+Spec od 23.08. §10 beleži **četiri** pravila isporuke: ne zvoni sebi · ne zvoni za utišanu nit ·
+**poštuje se DND** · **ne zvoni dok gledaš baš taj razgovor**. Prve dve su gore; druge dve su iz
+prve verzije ovog spec-a ispale bez reči — što je gore od svesnog izostavljanja.
+
+**DND je danas prekidač U PREGLEDAČU**, `localStorage` ključ `mrr:internal:chat:dnd`
+(`chat-dnd.ts:11`). ⚠ Ni server ni `sw.js` ga **ne mogu pročitati**: Web Storage postoji samo na
+`Window`, a service worker ga nema uopšte. DND kakav jeste ne stiže do telefona sam od sebe.
+
+**Predlog (Nikola može da obori):** kad se DND uključi, upisati ga i u **IndexedDB**, koji service
+worker ume da čita, pa `sw.js` ćuti dok je DND upaljen. Time DND znači ono što piše, uključujući i
+telefon, i ostaje **po uređaju** — što je i tačno: telefon u džepu ćuti, računar na stolu ne mora.
+Alternativa je da DND postane serverski, ali to menja zatečenu funkciju i pravi dva prekidača za
+istu stvar.
+
+**„Ne zvoni dok gledam baš taj razgovor"** se rešava u samom `sw.js`:
+`clients.matchAll({ type: 'window', includeUncontrolled: true })`, pa ako je neka otvorena kartica
+vidljiva (`visibilityState === 'visible'`) i njen URL nosi `razgovor=<id>` — obaveštenje se ne crta.
+Bez toga telefon zuji dok čovek gleda tu istu sobu na računaru.
+
 ⚠ **Telo poruke ne putuje u `no_text` režimu** — to je cela svrha tog položaja: telefon na stolu
 pokazuje da nešto ima, a ne šta piše.
 
@@ -120,6 +145,33 @@ pokazuje da nešto ima, a ne šta piše.
 **best-effort, nikad ne odbija** — obaveštenje nije vredno pada poruke koju opisuje.
 
 Zove se sa **istog mesta gde i `announce()`** u `ChatService.send`, i to tek kad je `created === true`.
+
+### 6.0 Tri opcije koje se NE smeju izostaviti
+
+```ts
+void this.push
+  .notifyChatMessage(…)
+  .catch((err) => this.logger.error({ err }, 'chat push failed'))
+```
+
+⚠ **`.catch()` nije uljudnost nego uslov da proces preživi.** Node 24 podrazumevano radi
+`--unhandled-rejections=throw`, a ovaj API **nema globalni `unhandledRejection`** (`server.ts` hvata
+samo SIGTERM/SIGINT) — jedno odbijeno slanje obara ceo servis. Presedan je u repou:
+`client-submissions.service.ts:111`.
+
+```ts
+sendNotification(sub, payload, { timeout: 5000, TTL: 3600, topic: shortTopic(conversationId) })
+```
+
+- ⚠ **`timeout`** — `web-push` ga podrazumevano NE postavlja, a ni Node-ov `https.request`. Push
+  servis koji prihvati vezu pa zaćuti drži utičnicu dok se TCP keepalive ne preda: **dva sata**. To
+  je tačno onaj oblik „stepenice u memoriji" koji Railway beleške već opisuju, a memorija je 86%
+  računa.
+- ⚠ **`TTL`** — podrazumevano je **četiri nedelje** (`DEFAULT_TTL = 2419200`). Telefon ugašen preko
+  noći ujutru bi dobio celo jučerašnje ćaskanje, redom. Jedan sat je koliko poruka iz sobe vredi.
+- ⚠ **`topic`** (RFC 8030 §5.4) — sabija poruke **u redu push servisa**, dok `tag` sabija tek ono
+  što je već stiglo na uređaj. Ograničen je na **32 base64url znaka**, a uuid razgovora bez crtica
+  je tačno 32.
 
 ### 6.1 Mrtva pretplata se briše, i to je obavezno
 
@@ -163,6 +215,13 @@ Pored DND-a u zaglavlju liste razgovora — tamo čovek i misli o obaveštenjima
 | nije dozvoljeno / nije pretplaćen | dugme „Uključi obaveštenja" |
 | pretplaćen | tri položaja: sve · samo pomeni · bez teksta |
 
+### 7.4 Spisak uređaja
+
+Ispod prekidača, kad je čovek pretplaćen: red po uređaju (`user_agent`) i ✕ koji tu pretplatu skida.
+⚠ **To je jedini razlog zašto `user_agent` uopšte stoji u tabeli** — bez ovog spiska on je prikupljen
+podatak bez ijednog čitaoca. Uz to je jedino mesto gde čovek sam skida tablet koji više ne koristi,
+umesto da se čeka da push servis vrati 410.
+
 ⚠ **Nikad ne tražiti dozvolu sam od sebe pri učitavanju.** Pregledači to kažnjavaju trajnim
 odbijanjem, a čovek koji je jednom odbio ne može da se predomisli iz aplikacije.
 
@@ -191,6 +250,10 @@ odbijanjem, a čovek koji je jednom odbio ne može da se predomisli iz aplikacij
 6. **Ključevi u env-u su opcioni** — jedan test mora da dokaže da bez njih ništa ne puca.
 7. **Push se šalje samo za `created === true`** — ponovljen `client_msg_id` ne sme da zvoni dvaput.
 8. **Utišana soba ne šalje** (§5).
+9. **Bez `.catch()` na razašilju Node 24 obara proces** (§6.0) — ovaj API nema globalni hvatač.
+10. **Bez `timeout`-a jedna zaglavljena veza drži utičnicu dva sata** (§6.0).
+11. **Bez `TTL`-a telefon ujutru dobije celo jučerašnje ćaskanje** (§6.0).
+12. **`localStorage` ne postoji u service worker-u** — DND mora kroz IndexedDB (§5.1).
 
 ---
 
@@ -200,11 +263,12 @@ odbijanjem, a čovek koji je jednom odbio ne može da se predomisli iz aplikacij
 | --- | --- | --- |
 | P1 | migracija `0056` + `PushSubscriptionMode` u `@mr/shared` | migracija od nule; neprijateljski red pada na CHECK |
 | P2 | `env.ts` + `PushPort` + no-op bez ključeva | test: bez ključeva slanje ne puca i ne šalje |
-| P3 | endpoint za pretplatu/odjavu/prekidač | isti `endpoint` sa drugim nalogom **prelazi**, ne udvaja |
+| P3 | endpoint za pretplatu/odjavu/prekidač — **iza `INTERNAL_APP_PERMISSIONS`**, ista vrata kao ceo čet modul, bez nove dozvole | isti `endpoint` sa drugim nalogom **prelazi**, ne udvaja |
 | P4 | razašilj iz `ChatService` | autor ne dobija; utišana soba ne dobija; `mentions` dobija samo pomen; `no_text` ne nosi telo |
 | P5 | brisanje mrtve pretplate na 404/410 | red nestane posle odbijenog slanja |
 | P6 | `sw.js` + manifest + registracija | build prolazi, `sw.js` se servira |
-| P7 | prekidač na ekranu, sva četiri stanja | test po stanju; iOS grana se ne crta kao dugme |
+| P7 | prekidač na ekranu, sva četiri stanja + spisak uređaja (§7.4) | test po stanju; iOS grana se ne crta kao dugme; ✕ skida baš tu pretplatu |
+| P8 | DND kroz IndexedDB + „ne zvoni dok gledam tu sobu" (§5.1) | SW ćuti kad je DND upaljen i kad je ta soba vidljiva u otvorenoj kartici |
 
 Svaki red se završava komitom, uz **pun gejt zelen** i `TZ=UTC`.
 
