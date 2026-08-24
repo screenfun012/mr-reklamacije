@@ -1,0 +1,82 @@
+import type { Context } from 'hono'
+
+import type { MRSessionUser } from '../../core/auth/session-types.js'
+import type { Container } from '../../core/container.js'
+import { UnauthorizedError } from '../../core/errors/domain-errors.js'
+
+import {
+  PushModeInputSchema,
+  PushSubscribeInputSchema,
+  PushSubscriptionIdParamSchema,
+} from './push.validators.js'
+
+function actorId(c: Context): string {
+  const user: MRSessionUser | null = c.get('user')
+  if (user === null) {
+    throw new UnauthorizedError()
+  }
+  return user.id
+}
+
+export function createPushController(container: Container): {
+  publicKey: (c: Context) => Promise<Response>
+  listDevices: (c: Context) => Promise<Response>
+  subscribe: (c: Context) => Promise<Response>
+  setMode: (c: Context) => Promise<Response>
+  removeDevice: (c: Context) => Promise<Response>
+} {
+  return {
+    /**
+     * The key the browser needs to subscribe at all.
+     *
+     * ⚠ Also the honest answer to "is push available here": when it is absent the screen must not
+     * offer a button, because `PushManager.subscribe` cannot be called without it.
+     */
+    publicKey: async (c: Context) => {
+      actorId(c)
+      return c.json({ publicKey: container.env.VAPID_PUBLIC_KEY ?? null })
+    },
+
+    listDevices: async (c: Context) => {
+      const devices = await container.pushRepository.listForUser(actorId(c))
+      return c.json({
+        items: devices.map((device) => ({
+          id: device.id,
+          userAgent: device.userAgent,
+          mode: device.mode,
+          createdAt: device.createdAt.toISOString(),
+        })),
+        total: devices.length,
+        page: 1,
+        pageSize: devices.length,
+      })
+    },
+
+    subscribe: async (c: Context) => {
+      const input = PushSubscribeInputSchema.parse(await c.req.json())
+      await container.pushRepository.subscribe({
+        userId: actorId(c),
+        endpoint: input.endpoint,
+        p256dh: input.keys.p256dh,
+        auth: input.keys.auth,
+        // Only so a person can tell their own devices apart in the list — never matched on.
+        userAgent: c.req.header('user-agent') ?? null,
+      })
+      return c.body(null, 204)
+    },
+
+    setMode: async (c: Context) => {
+      const { mode } = PushModeInputSchema.parse(await c.req.json())
+      // Per PERSON, not per device (Nikola, 2026-08-23) — so it lands on every row they have.
+      await container.pushRepository.setMode(actorId(c), mode)
+      return c.body(null, 204)
+    },
+
+    removeDevice: async (c: Context) => {
+      const { id } = PushSubscriptionIdParamSchema.parse({ id: c.req.param('id') })
+      // Scoped to the caller: somebody else's device id simply finds nothing.
+      await container.pushRepository.removeForUser(actorId(c), id)
+      return c.body(null, 204)
+    },
+  }
+}

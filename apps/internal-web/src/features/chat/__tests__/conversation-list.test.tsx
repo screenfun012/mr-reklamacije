@@ -1,5 +1,6 @@
 import { setLocale } from '@mr/i18n'
 import { ChatConversationType, ClaimKind, type ChatConversationListItem } from '@mr/shared'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -77,6 +78,16 @@ function mrNumbers(): string[] {
   return threadRows().map((row) => /MR \d{4}\/\d{2}/.exec(row.textContent ?? '')?.[0] ?? '')
 }
 
+/**
+ * The list now carries the phone-notification switch, which asks the server whether push is
+ * available at all — so it needs a query client. It renders NOTHING while that answer is pending,
+ * which is why every assertion below is unaffected.
+ */
+function renderList(ui: React.ReactElement): void {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
 describe('sortChatConversations', () => {
   it('floats unread above read, then orders by last activity', () => {
     const sorted = sortChatConversations(THREADS)
@@ -110,7 +121,7 @@ describe('ConversationList', () => {
   })
 
   it('lists the threads unread first, newest next', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL, ...THREADS]}
         activeId={GENERAL.id}
@@ -124,7 +135,7 @@ describe('ConversationList', () => {
   })
 
   it('shows the unread count on the row that has one, and on the general channel too', () => {
-    render(
+    renderList(
       <ConversationList
         items={[{ ...GENERAL, unreadCount: 4 }, ...THREADS]}
         activeId={null}
@@ -142,7 +153,7 @@ describe('ConversationList', () => {
   })
 
   it('marks a muted thread and hides its count', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL, ...THREADS]}
         activeId={null}
@@ -159,7 +170,7 @@ describe('ConversationList', () => {
   })
 
   it('lights exactly one row — the conversation you are in', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL, ...THREADS]}
         activeId={UNREAD.id}
@@ -178,7 +189,7 @@ describe('ConversationList', () => {
   })
 
   it('says the threads section is empty instead of drawing nothing', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL]}
         activeId={GENERAL.id}
@@ -193,7 +204,7 @@ describe('ConversationList', () => {
   })
 
   it('says what the search box will do rather than pretending to do it', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL]}
         activeId={GENERAL.id}
@@ -210,7 +221,7 @@ describe('ConversationList', () => {
 
   it('remembers Do Not Disturb in this browser, and says that is what it means', async () => {
     const user = userEvent.setup()
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL]}
         activeId={GENERAL.id}
@@ -235,7 +246,7 @@ describe('ConversationList', () => {
   it('opens the „Nova nit" dialog from the + beside the threads', async () => {
     const user = userEvent.setup()
     const onNewThread = vi.fn()
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL]}
         activeId={GENERAL.id}

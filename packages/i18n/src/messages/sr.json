@@ -1745,5 +1745,17 @@
   "chat_close_panel": "Zatvori podatke o reklamaciji",
   "chat_attachment_too_big": "Fajl je prevelik — najviše {mb} MB.",
   "chat_context_attachments_failed": "Prilozi se ne mogu učitati.",
-  "chat_excerpt_attachment_only": "Prilog"
+  "chat_excerpt_attachment_only": "Prilog",
+  "chat_push_eyebrow": "OBAVEŠTENJA NA TELEFON",
+  "chat_push_enable": "Uključi obaveštenja",
+  "chat_push_blocked": "Obaveštenja su blokirana u pregledaču. Uključi ih u podešavanjima sajta.",
+  "chat_push_unsupported": "Ovaj pregledač ne prima obaveštenja.",
+  "chat_push_ios_hint": "Na iPhone-u i iPad-u: Podeli → Dodaj na početni ekran, pa otvori aplikaciju odatle.",
+  "chat_push_mode_all": "Sve poruke",
+  "chat_push_mode_mentions": "Samo pomeni",
+  "chat_push_mode_no_text": "Bez teksta",
+  "chat_push_devices": "Uređaji",
+  "chat_push_device_remove": "Skloni uređaj",
+  "chat_push_this_device": "ovaj uređaj",
+  "chat_push_failed": "Obaveštenja se nisu uključila."
 }

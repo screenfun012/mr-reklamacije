@@ -1745,5 +1745,17 @@
   "chat_close_panel": "Close the claim details",
   "chat_attachment_too_big": "That file is too large — {mb} MB at most.",
   "chat_context_attachments_failed": "The attachments could not be loaded.",
-  "chat_excerpt_attachment_only": "Attachment"
+  "chat_excerpt_attachment_only": "Attachment",
+  "chat_push_eyebrow": "PHONE NOTIFICATIONS",
+  "chat_push_enable": "Turn notifications on",
+  "chat_push_blocked": "Notifications are blocked in this browser. Turn them on in the site settings.",
+  "chat_push_unsupported": "This browser does not take notifications.",
+  "chat_push_ios_hint": "On iPhone and iPad: Share → Add to Home Screen, then open the app from there.",
+  "chat_push_mode_all": "All messages",
+  "chat_push_mode_mentions": "Mentions only",
+  "chat_push_mode_no_text": "No text",
+  "chat_push_devices": "Devices",
+  "chat_push_device_remove": "Remove device",
+  "chat_push_this_device": "this device",
+  "chat_push_failed": "Notifications could not be turned on."
 }

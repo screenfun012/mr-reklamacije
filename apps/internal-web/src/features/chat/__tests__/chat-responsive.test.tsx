@@ -1,4 +1,5 @@
 import { ChatConversationType, type ChatConversationListItem } from '@mr/shared'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -28,6 +29,12 @@ const GENERAL: ChatConversationListItem = {
   lastMessageAt: '2026-08-23T10:00:00.000Z',
 }
 
+/** The list carries the push switch now, which asks the server a question — hence a client. */
+function renderList(ui: React.ReactElement): void {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
 function listRoot(): HTMLElement {
   // The list is the only 252px column in the tree.
   const root = screen.getByText('Opšti kanal').closest('div.w-\\[252px\\]')
@@ -49,7 +56,7 @@ function listRoot(): HTMLElement {
  */
 describe('the chat gives its width to the conversation', () => {
   it('keeps the list a column only while the room is wide enough for both', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL]}
         activeId={GENERAL.id}
@@ -66,7 +73,7 @@ describe('the chat gives its width to the conversation', () => {
   })
 
   it('lays the list over the conversation when it is out as a sheet', () => {
-    render(
+    renderList(
       <ConversationList
         items={[GENERAL]}
         activeId={GENERAL.id}

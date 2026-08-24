@@ -10,6 +10,8 @@ import {
   createRootAuthBeforeLoad,
   SESSION_ROUTE_STALE_MS,
 } from '@mr/auth/route-guards'
+import { useEffect } from 'react'
+
 import { LOCALE_BOOTSTRAP_SCRIPT, m } from '@mr/i18n'
 import { buildThemeBootstrapScript } from '@mr/shared'
 import { Toaster } from '@mr/ui'
@@ -17,6 +19,7 @@ import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/reac
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import type { ReactNode } from 'react'
 
+import { registerServiceWorker } from '~/lib/register-service-worker'
 import { authClient } from '~/lib/auth-client'
 import { loadServerSession } from '~/lib/auth-guard'
 import { useLocale } from '@mr/ui'
@@ -47,7 +50,16 @@ export const Route = createRootRouteWithContext<InternalRouterContext>()({
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: '/favicon.png' },
-      { rel: 'apple-touch-icon', href: '/favicon.png' },
+      /*
+       * ⚠ The manifest and this icon are what make push possible AT ALL on an iPhone or iPad.
+       * Safari refuses `Notification.requestPermission` from an ordinary tab; the app has to be
+       * added to the Home Screen first, and it cannot be added without a manifest.
+       *
+       * The icon is the plain MR mark rather than the emblem — measured 2026-08-23: the emblem is
+       * beautiful at 180px and turns to a smudge at 60.
+       */
+      { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/manifest.webmanifest' },
       { rel: 'stylesheet', href: globalsCss },
     ],
   }),
@@ -56,6 +68,16 @@ export const Route = createRootRouteWithContext<InternalRouterContext>()({
 
 function RootDocument({ children }: { children: ReactNode }) {
   const { locale } = useLocale()
+
+  /*
+   * Registering only — never asking. The browser is told the worker exists so a notification can be
+   * drawn later; the permission question is asked when a person presses the button, because a
+   * prompt fired on load is answered with a permanent refusal the app can never undo.
+   */
+  useEffect(() => {
+    registerServiceWorker()
+  }, [])
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>

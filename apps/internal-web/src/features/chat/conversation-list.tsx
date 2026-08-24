@@ -4,6 +4,7 @@ import { cn } from '@mr/ui'
 
 import { CHAT_LIST_COLUMN_CLASSES, CHAT_LIST_SHEET_CLASSES } from './chat-layout'
 import { useChatDnd } from './chat-dnd'
+import { PushSwitch } from './push-switch'
 
 /** Per browser, deliberately: it is "not now, here", not a setting that follows a person around. */
 
@@ -261,6 +262,12 @@ export function ConversationList({
             />
           ))
         )}
+      </div>
+
+      {/* Under DND and above the footer: both are about being disturbed, and a person setting one
+          is already thinking about the other. */}
+      <div className="flex-none">
+        <PushSwitch />
       </div>
 
       <p className="flex-none border-t border-mri-border px-3 py-[11px] text-[10.5px] italic leading-[1.5] text-mri-text2">
