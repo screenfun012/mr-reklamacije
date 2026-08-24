@@ -1734,5 +1734,7 @@
   "users_status_rejected": "Rejected",
   "users_status_update_error": "Failed to update user status.",
   "users_tag_protected": "protected",
-  "users_tag_you": "you"
+  "users_tag_you": "you",
+  "chat_open_list": "Show conversations",
+  "chat_close_list": "Close the conversation list"
 }

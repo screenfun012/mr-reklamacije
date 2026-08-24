@@ -1734,5 +1734,7 @@
   "users_status_rejected": "Odbijen",
   "users_status_update_error": "Greška pri ažuriranju statusa korisnika.",
   "users_tag_protected": "zaštićen",
-  "users_tag_you": "ti"
+  "users_tag_you": "ti",
+  "chat_open_list": "Prikaži razgovore",
+  "chat_close_list": "Zatvori spisak razgovora"
 }

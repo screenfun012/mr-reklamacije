@@ -13,12 +13,18 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
 import { z } from 'zod'
 
-import { Trash2 } from 'lucide-react'
+import { ChevronLeft, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@mr/ui'
 
 import { KindPill } from '~/components/kind-pill'
 import { showInternalToast } from '~/lib/internal-toast'
+import {
+  CHAT_FRAME_CLASSES,
+  CHAT_LIST_BACKDROP_CLASSES,
+  CHAT_LIST_COLUMN_CLASSES,
+  CHAT_LIST_TOGGLE_CLASSES,
+} from '~/features/chat/chat-layout'
 import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
@@ -52,8 +58,6 @@ export const Route = createFileRoute('/_shell/razgovori')({
  * `pb-[72px]` around every page (36px + 72px = 6.75rem). It scrolls inside its columns, never
  * as a page — a conversation that pushes the composer below the fold is not a conversation.
  */
-const FRAME_CLASSES =
-  'flex h-[calc(100vh-var(--mri-topbar-h)-6.75rem)] min-h-[520px] overflow-hidden rounded-xl border border-mri-border bg-mri-bg'
 
 function SkeletonBlock({ className }: { className: string }): React.ReactElement {
   return <div className={`animate-pulse rounded-lg bg-mri-inbg ${className}`} />
@@ -62,8 +66,12 @@ function SkeletonBlock({ className }: { className: string }): React.ReactElement
 /** Two columns in their real widths, so nothing jumps when the answer arrives. */
 function RazgovoriSkeleton(): React.ReactElement {
   return (
-    <div className={FRAME_CLASSES} aria-hidden="true">
-      <div className="flex w-[252px] flex-none flex-col gap-2 border-r border-mri-border bg-mri-surface p-3">
+    <div className={CHAT_FRAME_CLASSES} aria-hidden="true">
+      {/* The same rule as the real list, or the skeleton draws a column the screen it stands in
+          for will not have — which is the jump a skeleton exists to prevent. */}
+      <div
+        className={`flex w-[252px] flex-none flex-col gap-2 border-r border-mri-border bg-mri-surface p-3 ${CHAT_LIST_COLUMN_CLASSES}`}
+      >
         <SkeletonBlock className="h-[34px] w-full" />
         <SkeletonBlock className="mt-2 h-9 w-full" />
         <SkeletonBlock className="h-9 w-full" />
@@ -133,7 +141,14 @@ function RazgovoriColumns(): React.ReactElement {
   const navigate = useNavigate({ from: Route.fullPath })
   const openConversation = (conversationId: string): void => {
     void navigate({ search: { razgovor: conversationId } })
+    // Picking a room is the whole reason the sheet was open.
+    setListOpen(false)
   }
+  /**
+   * Only means anything below CHAT_LIST_BREAKPOINT. It starts open when nothing is selected —
+   * arriving at /razgovori with no room in the URL should show the rooms, not an empty column.
+   */
+  const [listOpen, setListOpen] = useState(selectedId === undefined)
   const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
   const [newThreadOpen, setNewThreadOpen] = useState(false)
   // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
@@ -177,18 +192,48 @@ function RazgovoriColumns(): React.ReactElement {
   const current = data.items.find((item) => item.id === selectedId) ?? fallback
 
   return (
-    <div className={FRAME_CLASSES}>
+    <div
+      className={CHAT_FRAME_CLASSES}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') {
+          return
+        }
+        // Whichever sheet is out, Escape puts it back — the same key for both, so nobody has to
+        // remember which one they opened.
+        setListOpen(false)
+        setContextOpen(false)
+      }}
+    >
+      {listOpen ? (
+        <button
+          type="button"
+          aria-label={m.chat_close_list()}
+          onClick={() => setListOpen(false)}
+          className={CHAT_LIST_BACKDROP_CLASSES}
+        />
+      ) : null}
+
       <ConversationList
         items={data.items}
         activeId={current?.id ?? null}
         onSelect={openConversation}
         onNewThread={() => setNewThreadOpen(true)}
+        open={listOpen}
       />
 
       <section className="flex min-w-0 flex-1 flex-col bg-mri-bg">
         <header className="flex h-[52px] flex-none items-center gap-2.5 border-b border-mri-border bg-mri-surface px-4">
           {current === null ? null : (
             <>
+              <button
+                type="button"
+                title={m.chat_open_list()}
+                onClick={() => setListOpen(true)}
+                className={CHAT_LIST_TOGGLE_CLASSES}
+              >
+                <ChevronLeft aria-hidden="true" className="size-[15px]" />
+                <span className="sr-only">{m.chat_open_list()}</span>
+              </button>
               <ConversationHeading conversation={current} />
               <span className="ml-auto flex items-center gap-[7px]">
                 <PinListButton

@@ -116,6 +116,7 @@ describe('ConversationList', () => {
         activeId={GENERAL.id}
         onSelect={vi.fn()}
         onNewThread={vi.fn()}
+        open={false}
       />,
     )
 
@@ -147,6 +148,7 @@ describe('ConversationList', () => {
         activeId={null}
         onSelect={vi.fn()}
         onNewThread={vi.fn()}
+        open={false}
       />,
     )
 
@@ -163,6 +165,7 @@ describe('ConversationList', () => {
         activeId={UNREAD.id}
         onSelect={vi.fn()}
         onNewThread={vi.fn()}
+        open={false}
       />,
     )
 
@@ -181,6 +184,7 @@ describe('ConversationList', () => {
         activeId={GENERAL.id}
         onSelect={vi.fn()}
         onNewThread={vi.fn()}
+        open={false}
       />,
     )
 
@@ -195,6 +199,7 @@ describe('ConversationList', () => {
         activeId={GENERAL.id}
         onSelect={vi.fn()}
         onNewThread={vi.fn()}
+        open={false}
       />,
     )
 
@@ -211,6 +216,7 @@ describe('ConversationList', () => {
         activeId={GENERAL.id}
         onSelect={vi.fn()}
         onNewThread={vi.fn()}
+        open={false}
       />,
     )
 

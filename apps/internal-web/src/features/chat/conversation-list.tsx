@@ -2,6 +2,7 @@ import { m } from '@mr/i18n'
 import { ChatConversationType, ClaimKind, type ChatConversationListItem } from '@mr/shared'
 import { cn } from '@mr/ui'
 
+import { CHAT_LIST_COLUMN_CLASSES, CHAT_LIST_SHEET_CLASSES } from './chat-layout'
 import { useChatDnd } from './chat-dnd'
 
 /** Per browser, deliberately: it is "not now, here", not a setting that follows a person around. */
@@ -168,6 +169,12 @@ export interface ConversationListProps {
   onSelect: (id: string) => void
   /** Opens the „Nova nit" dialog. */
   onNewThread: () => void
+  /**
+   * Whether the list is showing as a sheet. Only means anything below CHAT_LIST_BREAKPOINT —
+   * above it the list is a column and this is ignored, which is why the state may stay `true`
+   * across a resize without doing any harm.
+   */
+  open: boolean
 }
 
 /** The left column: DND, search, the channels, the claim threads, and how a thread comes to be. */
@@ -176,6 +183,7 @@ export function ConversationList({
   activeId,
   onSelect,
   onNewThread,
+  open,
 }: ConversationListProps): React.ReactElement {
   const [dnd, setDnd] = useChatDnd()
 
@@ -188,7 +196,14 @@ export function ConversationList({
   )
 
   return (
-    <div className="flex w-[252px] flex-none flex-col border-r border-mri-border bg-mri-surface">
+    <div
+      className={cn(
+        'flex w-[252px] flex-none flex-col border-r border-mri-border bg-mri-surface',
+        // Above CHAT_LIST_BREAKPOINT it is simply the first column. Below it there is not enough
+        // width for both, so it steps out of the row and becomes a sheet over the conversation.
+        open ? CHAT_LIST_SHEET_CLASSES : CHAT_LIST_COLUMN_CLASSES,
+      )}
+    >
       <div className="flex flex-col gap-[9px] px-3 pb-2.5 pt-3.5">
         <div className="flex items-center">
           <span className="font-mono text-[10px] font-bold tracking-[0.22em] text-mri-red">

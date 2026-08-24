@@ -13,6 +13,7 @@ import { cn } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 
+import { CHAT_PANEL_RESPONSIVE_CLASSES } from './chat-layout'
 import { PinList } from './pin-list'
 
 import { KindPill } from '~/components/kind-pill'
@@ -153,6 +154,10 @@ export function ThreadContextPanel({
       className={cn(
         'flex w-[250px] flex-none flex-col overflow-auto border-l border-mri-border bg-mri-surface',
         'animate-in fade-in-0 slide-in-from-bottom-[9px] duration-300 ease-[cubic-bezier(.22,1,.36,1)]',
+        // Below CHAT_PANEL_BREAKPOINT there is no room for a third column, so it lies over the
+        // conversation instead of squeezing it. It is opt-in either way (`contextOpen`), so this
+        // only decides WHERE it lands, never whether it exists.
+        CHAT_PANEL_RESPONSIVE_CLASSES,
       )}
     >
       {/* L160 */}
