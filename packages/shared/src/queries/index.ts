@@ -164,6 +164,7 @@ export {
   snoozeNotification,
 } from './notifications.js'
 export {
+  buildChatAttachmentUrl,
   chatConversationsOptions,
   chatKeys,
   chatMessagesOptions,

@@ -7,9 +7,9 @@ export {
   type ClaimAttachmentsGridProps,
 } from './components/claim-attachments/claim-attachments-grid.js'
 export {
-  ClaimAttachmentPreviewDialog,
-  type ClaimAttachmentPreviewDialogProps,
-} from './components/claim-attachments/claim-attachment-preview-dialog.js'
+  AttachmentPreviewDialog,
+  type AttachmentPreviewDialogProps,
+} from './components/claim-attachments/attachment-preview-dialog.js'
 export {
   ClaimAttachmentDeleteDialog,
   type ClaimAttachmentDeleteDialogProps,

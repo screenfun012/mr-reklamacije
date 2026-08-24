@@ -10,6 +10,7 @@ import {
   markChatRead,
   pinChatMessage,
   reactToChatMessage,
+  buildChatAttachmentUrl,
   sendChatMessage,
   type ChatMessage,
   type ChatMessagesPage,
@@ -18,6 +19,8 @@ import {
 } from '@mr/shared'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+
+import { AttachmentPreviewDialog } from '@mr/ui'
 
 import { showInternalToast } from '~/lib/internal-toast'
 
@@ -140,6 +143,10 @@ export function ConversationPane({
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(chatMessagesOptions(conversationId))
   const [pending, setPending] = useState<PendingChatMessage[]>([])
+  /** The photo being looked at full size, and the message it belongs to. */
+  const [preview, setPreview] = useState<{ message: ChatMessage; attachmentId: string } | null>(
+    null,
+  )
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
 
   // What the SSE signal cannot promise: everything written while the pipe was down.
@@ -151,13 +158,17 @@ export function ConversationPane({
 
   const send = useMutation({
     mutationFn: (row: PendingChatMessage) =>
-      sendChatMessage(conversationId, {
-        clientMsgId: row.message.clientMsgId,
-        body: row.message.body,
-        // The answered message travels as its id; the block beside it was drawn from what the
-        // server sent, and the server resolves it again for everybody else.
-        ...(row.message.quote === null ? {} : { quoteOf: row.message.quote.id }),
-      }),
+      sendChatMessage(
+        conversationId,
+        {
+          clientMsgId: row.message.clientMsgId,
+          body: row.message.body,
+          // The answered message travels as its id; the block beside it was drawn from what the
+          // server sent, and the server resolves it again for everybody else.
+          ...(row.message.quote === null ? {} : { quoteOf: row.message.quote.id }),
+        },
+        row.files,
+      ),
     onSuccess: (created) => {
       queryClient.setQueryData(chatKeys.messages(conversationId), (page: ChatMessagesPage) =>
         appendMessage(page, created),
@@ -165,6 +176,17 @@ export function ConversationPane({
       setPending((current) =>
         current.filter((row) => row.message.clientMsgId !== created.clientMsgId),
       )
+
+      /**
+       * The words landed and some of the files did not.
+       *
+       * ⚠ Said out loud, because otherwise a 201 with two of three photos looks exactly like a
+       * 201 with three. And sending them again has to be a NEW message: the same clientMsgId
+       * would answer 200 and drop the bytes, which is how a photo becomes unrecoverable.
+       */
+      if (created.partialFiles > 0) {
+        showInternalToast(m.chat_attachment_partial())
+      }
     },
     onError: (_error, row) => {
       setPending((current) =>
@@ -218,9 +240,10 @@ export function ConversationPane({
     onError: () => showInternalToast(m.chat_pins_full({ count: CHAT_PINS_MAX })),
   })
 
-  const handleSend = (body: string): void => {
+  const handleSend = (body: string, files: readonly File[]): void => {
     const row: PendingChatMessage = {
       failed: false,
+      files,
       message: {
         id: crypto.randomUUID(),
         conversationId,
@@ -258,7 +281,7 @@ export function ConversationPane({
         seenByAll: false,
         reactedBy: [],
         // The local preview of files still in flight lands here in the next step; an optimistic
-        // row carries none of its own yet.
+        // row carries none of its own yet — the previews are drawn from `files` above.
         attachments: [],
       },
     }
@@ -303,6 +326,15 @@ export function ConversationPane({
     return () => clearTimeout(timer)
   }, [conversationId, newestSeq, queryClient])
 
+  /**
+   * A chat file has no `caption` column of its own, so the dialog's optional one is always null —
+   * declared here rather than widened in the dialog, which every other caller does use.
+   */
+  const previewImages = (preview?.message.attachments ?? [])
+    .filter((file) => file.mimeType.startsWith('image/'))
+    .map((file) => ({ ...file, caption: null }))
+  const previewAttachment = previewImages.find((file) => file.id === preview?.attachmentId) ?? null
+
   return (
     <>
       {/* Above the messages, not behind a button: a pin exists so nobody has to go looking. */}
@@ -312,6 +344,7 @@ export function ConversationPane({
         pending={visiblePending(data.items, pending)}
         novoBeforeId={novoBeforeId}
         onRetry={handleRetry}
+        onOpenImage={(message, attachmentId) => setPreview({ message, attachmentId })}
         onOpenClaim={onOpenClaim}
         onReply={setReplyTo}
         onReact={(message) => react.mutate(message)}
@@ -334,6 +367,31 @@ export function ConversationPane({
           onCancelReply={() => setReplyTo(null)}
         />
       )}
+
+      <AttachmentPreviewDialog
+        open={preview !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreview(null)
+          }
+        }}
+        attachment={previewAttachment}
+        // Paging stays INSIDE the message the photo belongs to. Walking the whole room would need
+        // its own endpoint — the browser holds one page of fifty messages, no more.
+        imageAttachments={previewImages}
+        onNavigate={(next) =>
+          setPreview((current) => (current === null ? null : { ...current, attachmentId: next.id }))
+        }
+        // ⚠ The chat's own route, never `/api/attachments`: that one is gated by a permission
+        // which opens every claim's files, and the chat admits people who hold none of it.
+        buildUrl={(id, disposition) =>
+          buildChatAttachmentUrl(
+            conversationId,
+            id,
+            disposition === 'attachment' ? { disposition: 'attachment' } : {},
+          )
+        }
+      />
     </>
   )
 }

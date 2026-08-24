@@ -10,6 +10,7 @@ import { cn } from '@mr/ui'
 import { Check, CheckCheck, CornerUpLeft, Pin, PinOff, Reply, ThumbsUp } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
+import { MessageAttachments } from './message-attachments'
 import { MessageBody } from './message-body'
 
 /**
@@ -105,6 +106,8 @@ export interface MessageRowProps {
   canUnpin?: boolean
   /** Whose messages get the ticks: yours. Empty before the session resolves, so nothing shows. */
   currentUserId?: string | undefined
+  /** Opens a photo full size. Absent where there is no viewer to open — then a tile just sits. */
+  onOpenImage?: ((message: ChatMessage, attachmentId: string) => void) | undefined
 }
 
 /**
@@ -292,6 +295,7 @@ export function MessageRow({
   isPinned = false,
   canUnpin = true,
   currentUserId,
+  onOpenImage,
   onOpenClaim,
   pending = false,
   failed = false,
@@ -373,12 +377,23 @@ export function MessageRow({
         </span>
         {message.quote === null ? null : <QuotedMessage quote={message.quote} />}
         {message.deletedAt === null ? (
-          <MessageBody
-            body={message.body}
-            resolutions={resolutions}
-            onOpenClaim={onOpenClaim}
-            mentions={message.mentions}
-          />
+          <>
+            <MessageBody
+              body={message.body}
+              resolutions={resolutions}
+              onOpenClaim={onOpenClaim}
+              mentions={message.mentions}
+            />
+            {/* Prototype order (L110-135): name → quote → text → images → document → footer.
+                Inside the withdrawn branch on purpose: taking a message back takes its files with
+                it, and the server already empties `attachments` — this is the second half of the
+                same promise, so the two cannot drift. */}
+            <MessageAttachments
+              conversationId={message.conversationId}
+              attachments={message.attachments}
+              onOpenImage={(attachmentId) => onOpenImage?.(message, attachmentId)}
+            />
+          </>
         ) : (
           <span className="text-[13px] leading-[1.55] italic text-mri-text2">
             {m.chat_message_deleted()}

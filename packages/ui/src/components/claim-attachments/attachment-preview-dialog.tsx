@@ -1,4 +1,3 @@
-import type { AttachmentListItem } from '@mr/shared'
 import {
   AttachmentPreviewKind,
   buildAttachmentDownloadUrl,
@@ -21,13 +20,34 @@ import {
 import { Button } from '../../primitives/button.js'
 import { AttachmentFileIcon } from './attachment-file-icon.js'
 
-export interface ClaimAttachmentPreviewDialogProps {
+/**
+ * Everything this dialog actually draws, and nothing else.
+ *
+ * ⚠ Deliberately NOT `AttachmentListItem`: that type demands a non-null `claimKind` and `claimId`,
+ * which a file sent in a chat message has neither of. Nothing about the rendering here was ever
+ * claim-specific — only the type and the URL builder were, and both are now the caller's to say.
+ */
+export interface PreviewableAttachment {
+  id: string
+  fileName: string
+  mimeType: string
+  fileSizeBytes: number
+  caption: string | null
+}
+
+export interface AttachmentPreviewDialogProps<T extends PreviewableAttachment> {
   open: boolean
   onOpenChange: (open: boolean) => void
-  attachment: AttachmentListItem | null
-  imageAttachments: readonly AttachmentListItem[]
-  onNavigate: (attachment: AttachmentListItem) => void
+  attachment: T | null
+  imageAttachments: readonly T[]
+  onNavigate: (attachment: T) => void
   officePreview?: ReactNode
+  /**
+   * Where this attachment's bytes live. Defaults to the claim route, which is where every caller
+   * but the chat reads from — the chat serves its files from its own module, because
+   * `/api/attachments` is gated by a permission that opens every claim's files.
+   */
+  buildUrl?: (id: string, disposition: 'inline' | 'attachment') => string
 }
 
 const PREVIEW_DIALOG_CLASS = 'h-[85vh] max-h-[85vh] w-[min(90vw,1400px)] max-w-[min(90vw,1400px)]'
@@ -35,14 +55,15 @@ const PREVIEW_DIALOG_CLASS = 'h-[85vh] max-h-[85vh] w-[min(90vw,1400px)] max-w-[
 const PREVIEW_BODY_CLASS =
   'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-mri-inbg px-4 py-4 sm:px-6'
 
-export function ClaimAttachmentPreviewDialog({
+export function AttachmentPreviewDialog<T extends PreviewableAttachment>({
   open,
   onOpenChange,
   attachment,
   imageAttachments,
   onNavigate,
   officePreview,
-}: ClaimAttachmentPreviewDialogProps): React.ReactElement {
+  buildUrl = buildAttachmentDownloadUrl,
+}: AttachmentPreviewDialogProps<T>): React.ReactElement {
   if (attachment === null) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,8 +73,8 @@ export function ClaimAttachmentPreviewDialog({
   }
 
   const previewKind = getAttachmentPreviewKind(attachment.mimeType)
-  const downloadUrl = buildAttachmentDownloadUrl(attachment.id, 'attachment')
-  const inlineUrl = buildAttachmentDownloadUrl(attachment.id, 'inline')
+  const downloadUrl = buildUrl(attachment.id, 'attachment')
+  const inlineUrl = buildUrl(attachment.id, 'inline')
   const downloadLabel = m.claim_attachments_preview_download()
 
   const imageIndex = imageAttachments.findIndex((item) => item.id === attachment.id)

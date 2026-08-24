@@ -1736,5 +1736,10 @@
   "users_tag_protected": "protected",
   "users_tag_you": "you",
   "chat_open_list": "Show conversations",
-  "chat_close_list": "Close the conversation list"
+  "chat_close_list": "Close the conversation list",
+  "chat_attachment_remove": "Remove attachment",
+  "chat_attachment_too_many": "At most 5 files per message.",
+  "chat_attachment_bad_type": "Photos and PDF files only.",
+  "chat_attachment_partial": "The message was sent, but some files were not saved. Send them again.",
+  "chat_attachment_download": "Download attachment"
 }

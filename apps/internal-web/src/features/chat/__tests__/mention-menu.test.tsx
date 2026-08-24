@@ -99,7 +99,7 @@ describe('typing @ offers the people who can read the room', () => {
     await user.keyboard('{Enter}')
     // But the id is what leaves — it is the only thing that survives a rename, and the only thing
     // that tells two colleagues with the same name apart.
-    expect(onSend).toHaveBeenCalledWith(`zdravo @[Ana Anić](${ANA_ID})`)
+    expect(onSend).toHaveBeenCalledWith(`zdravo @[Ana Anić](${ANA_ID})`, [])
   })
 
   it('arrows move the choice and Enter takes it', async () => {
@@ -121,7 +121,7 @@ describe('typing @ offers the people who can read the room', () => {
     await user.type(field(), 'obicna poruka')
     await user.keyboard('{Enter}')
 
-    expect(onSend).toHaveBeenCalledWith('obicna poruka')
+    expect(onSend).toHaveBeenCalledWith('obicna poruka', [])
   })
 
   it('Enter chooses instead of sending while the menu is open', async () => {
@@ -147,7 +147,7 @@ describe('typing @ offers the people who can read the room', () => {
     await user.keyboard('{Backspace}{Backspace}')
     await user.keyboard('{Enter}')
 
-    expect(onSend).toHaveBeenCalledWith('@Ana Ani')
+    expect(onSend).toHaveBeenCalledWith('@Ana Ani', [])
   })
 
   it('paints the chosen name in the field, and only the name', async () => {

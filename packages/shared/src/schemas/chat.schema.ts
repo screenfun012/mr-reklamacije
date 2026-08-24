@@ -66,7 +66,6 @@ export const ChatAttachmentSchema = z.object({
   fileSizeBytes: z.number(),
   width: z.number().nullable(),
   height: z.number().nullable(),
-  hasThumbnail: z.boolean(),
 })
 
 export type ChatAttachment = z.infer<typeof ChatAttachmentSchema>

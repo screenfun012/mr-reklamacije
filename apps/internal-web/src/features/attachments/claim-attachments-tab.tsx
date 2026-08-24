@@ -11,7 +11,7 @@ import {
 import { m } from '@mr/i18n'
 import {
   ClaimAttachmentDeleteDialog,
-  ClaimAttachmentPreviewDialog,
+  AttachmentPreviewDialog,
   ClaimAttachmentsDropzone,
   ClaimAttachmentsGrid,
   Skeleton,
@@ -160,7 +160,7 @@ export function ClaimAttachmentsTab({
         />
       )}
 
-      <ClaimAttachmentPreviewDialog
+      <AttachmentPreviewDialog
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         attachment={previewAttachment}

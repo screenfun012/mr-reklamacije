@@ -83,14 +83,16 @@ describe('sendChatMessage', () => {
       attachments: [],
       mentions: [],
     }
-    const fetchMock = stubFetch(message)
+    // A send answers with the message PLUS how many of its files were lost — its own shape, so a
+    // message read later can never claim files went missing.
+    const fetchMock = stubFetch({ ...message, partialFiles: 0 })
 
     await expect(
       sendChatMessage(CONVERSATION_ID, {
         clientMsgId: '33333333-3333-4333-8333-333333333333',
         body: 'Stigao motor',
       }),
-    ).resolves.toEqual(message)
+    ).resolves.toEqual({ ...message, partialFiles: 0 })
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toContain(`/api/chat/conversations/${CONVERSATION_ID}/messages`)

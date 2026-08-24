@@ -25,6 +25,16 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   }
 }
 
+// jsdom implements no object URLs at all, so any component that previews a picked file crashes the
+// whole tree with "URL.createObjectURL is not a function" — and it surfaces as an empty document,
+// not as an error about the missing API. The component must NOT be taught to check for it: that
+// would be production code defending itself against the test environment.
+if (typeof URL.createObjectURL !== 'function') {
+  let counter = 0
+  URL.createObjectURL = () => `blob:mr-test/${(counter += 1)}`
+  URL.revokeObjectURL = () => {}
+}
+
 // @testing-library's default async window is 1000 ms, and that default assumes a machine like this
 // laptop. CI is a 2-core runner with several vitest workers on it, where the same work takes several
 // times longer — measured: an assertion that costs 707 ms here blew the 1000 ms window there and

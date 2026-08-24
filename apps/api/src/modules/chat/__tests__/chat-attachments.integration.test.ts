@@ -291,7 +291,7 @@ describe('Chat attachments — reading', () => {
     })
 
     const message = (await res.json()) as {
-      attachments: Array<{ fileName: string; mimeType: string; hasThumbnail: boolean }>
+      attachments: Array<{ fileName: string; mimeType: string }>
     }
     expect(message.attachments).toHaveLength(1)
     expect(message.attachments[0]?.fileName).toBe('drugi.jpg')

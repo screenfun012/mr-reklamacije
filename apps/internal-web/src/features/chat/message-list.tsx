@@ -18,6 +18,14 @@ const AT_BOTTOM_THRESHOLD_PX = 80
 export interface PendingChatMessage {
   message: ChatMessage
   failed: boolean
+  /**
+   * The files this row is still carrying, kept as the browser's own `File` objects.
+   *
+   * They cannot live on `message.attachments` — that is the shape the SERVER answers with, and
+   * nothing here has an id or a stored path yet. They are handed back to the mutation on a retry,
+   * which is why a failed send can be pressed again without picking the photos a second time.
+   */
+  files: readonly File[]
 }
 
 export interface MessageListProps {
@@ -26,6 +34,8 @@ export interface MessageListProps {
   /** The message the amber NOVO rule is drawn above, or null when everything here was read. */
   novoBeforeId: string | null
   onRetry: (clientMsgId: string) => void
+  /** Opens a photo full size. Passed straight down to every row. */
+  onOpenImage?: ((message: ChatMessage, attachmentId: string) => void) | undefined
   /** Where a click on an MR number goes. Absent leaves the chips drawn but inert. */
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
   /** Absent where there is no composer to answer in. */
@@ -61,6 +71,7 @@ export function MessageList({
   pending,
   novoBeforeId,
   onRetry,
+  onOpenImage,
   onOpenClaim,
   onReply,
   onReact,
@@ -133,6 +144,7 @@ export function MessageList({
               isPinned={pinnedIds?.has(message.id) ?? false}
               canUnpin={unpinnableIds?.has(message.id) ?? false}
               currentUserId={currentUserId}
+              onOpenImage={onOpenImage}
             />
           </div>
         ))}

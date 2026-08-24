@@ -7,7 +7,7 @@ import type { ReactElement } from 'react'
 import { intakeDamageMarkerColour } from './intake-damage-map'
 import { IntakePanel } from './intake-panel'
 import { IntakePhotoCellOverlay, photoCellBorderClass } from './intake-photo-cell-state'
-import { useIntakePhotoPicker } from './intake-photo-picker'
+import { useFilePicker } from '~/lib/use-file-picker'
 import type { IntakePhotoQueueEntry } from './use-intake-photo-queue'
 
 /** One cell of the grid, from either source: already on the server, or still on its way. */
@@ -92,7 +92,7 @@ export function IntakePhotoGrid({
   onOpen,
   onRetry,
 }: IntakePhotoGridProps): ReactElement {
-  const picker = useIntakePhotoPicker(onPick)
+  const picker = useFilePicker(onPick)
 
   return (
     <IntakePanel

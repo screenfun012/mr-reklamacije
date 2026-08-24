@@ -173,14 +173,51 @@ describe('ConversationPane', () => {
     )
   })
 
-  it('draws the attachment and camera buttons, inert and saying so', async () => {
+  /**
+   * This test used to assert the opposite — that both buttons were inert and said so. It was put
+   * there to fail on the day the feature landed, and this is that day.
+   */
+  it('offers the paperclip for photos and PDF, and the camera only where there is one', async () => {
     renderPane()
     await screen.findByText('Slavko Jović')
 
-    const attach = screen.getByRole('button', { name: /prilog/i })
-    expect(attach).toBeDisabled()
-    expect(attach).toHaveAttribute('title', expect.stringMatching(/sledećem koraku/i))
-    expect(screen.getByRole('button', { name: /kamera/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /prilog/i })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: /kamera/i })).not.toBeDisabled()
+
+    // The gallery input is what the paperclip opens. PDF has to be in there, or the office cannot
+    // send the one document it actually sends.
+    const gallery = document.querySelector('input[type="file"]:not([capture])')
+    expect(gallery).toHaveAttribute('accept', expect.stringContaining('application/pdf'))
+
+    // ⚠ The camera input NEVER takes PDF: `capture` opens the camera app, and there is no version
+    // of that which hands back a document.
+    const camera = document.querySelector('input[type="file"][capture]')
+    expect(camera).toHaveAttribute('accept', 'image/*')
+
+    // On a laptop `capture` falls back to the same dialog the paperclip opens, so the button is
+    // held back by plain CSS rather than promising a camera that is not there.
+    expect(screen.getByRole('button', { name: /kamera/i }).className).toContain(
+      '[@media(pointer:coarse)]:grid',
+    )
+  })
+
+  it('sends a photo with no words at all', async () => {
+    const user = userEvent.setup()
+    renderPane()
+    await screen.findByText('Slavko Jović')
+
+    // Nothing typed: the button is dead until something is picked.
+    const send = screen.getByRole('button', { name: /pošalji/i })
+    expect(send).toBeDisabled()
+
+    const gallery = document.querySelector('input[type="file"]:not([capture])')
+    if (!(gallery instanceof HTMLInputElement)) {
+      throw new Error('no gallery input')
+    }
+    await user.upload(gallery, new File(['x'], 'kvar.jpg', { type: 'image/jpeg' }))
+
+    // A photo on its own IS a message (Nikola, 2026-08-24).
+    expect(screen.getByRole('button', { name: /pošalji/i })).not.toBeDisabled()
   })
 
   it('sends on Enter, and Shift+Enter only breaks the line', async () => {

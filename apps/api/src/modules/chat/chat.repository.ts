@@ -584,7 +584,6 @@ export class ChatRepository {
         fileSizeBytes: Number(row.fileSizeBytes),
         width: row.width,
         height: row.height,
-        hasThumbnail: row.thumbnailPath !== null,
       })
       byMessage.set(row.messageId, held)
     }

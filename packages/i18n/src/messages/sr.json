@@ -1736,5 +1736,10 @@
   "users_tag_protected": "zaštićen",
   "users_tag_you": "ti",
   "chat_open_list": "Prikaži razgovore",
-  "chat_close_list": "Zatvori spisak razgovora"
+  "chat_close_list": "Zatvori spisak razgovora",
+  "chat_attachment_remove": "Skloni prilog",
+  "chat_attachment_too_many": "Najviše 5 fajlova po poruci.",
+  "chat_attachment_bad_type": "Sme samo fotografija ili PDF.",
+  "chat_attachment_partial": "Poruka je poslata, ali neki fajlovi nisu sačuvani. Pošalji ih ponovo.",
+  "chat_attachment_download": "Preuzmi prilog"
 }

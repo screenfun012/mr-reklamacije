@@ -6,12 +6,12 @@ import type { ClaimKind } from '../enums.js'
 import {
   ChatConversationListItemSchema,
   ChatConversationListResponseSchema,
-  ChatMessageSchema,
+  ChatSendResponseSchema,
   ChatMessagesPageSchema,
   ChatPeopleResponseSchema,
   ChatPinsResponseSchema,
   type ChatConversationListItem,
-  type ChatMessage,
+  type ChatSendResponse,
   type ChatMessagesPage,
   type ChatPin,
   type ChatSendInput,
@@ -114,6 +114,30 @@ export function fetchChatMessagesSince(
 }
 
 /**
+ * Where a chat file is served from.
+ *
+ * ⚠ Through the CHAT's own route, never `/api/attachments/:id/download`. That one is gated by
+ * `attachments.view_internal`, which is the permission that opens every CLAIM's files — and the
+ * chat lets in people who hold none of it (a serviser, a statistics-only account). The intake
+ * module reached the same conclusion for the same reason.
+ */
+export function buildChatAttachmentUrl(
+  conversationId: string,
+  attachmentId: string,
+  options: { variant?: 'thumbnail'; disposition?: 'attachment' } = {},
+): string {
+  const params = new URLSearchParams()
+  if (options.variant !== undefined) {
+    params.set('variant', options.variant)
+  }
+  if (options.disposition !== undefined) {
+    params.set('disposition', options.disposition)
+  }
+  const query = params.size === 0 ? '' : `?${params.toString()}`
+  return `/api/chat/conversations/${conversationId}/attachments/${attachmentId}${query}`
+}
+
+/**
  * Sends one message. The server answers 201 with the new row and 200 with the row a retry of
  * the same `clientMsgId` already created — both are the same shape, so the caller replaces its
  * optimistic row either way and a retry can never post twice.
@@ -121,12 +145,33 @@ export function fetchChatMessagesSince(
 export function sendChatMessage(
   conversationId: string,
   input: ChatSendInput,
-): Promise<ChatMessage> {
-  return fetchParsed(`/api/chat/conversations/${conversationId}/messages`, ChatMessageSchema, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
+  files: readonly File[] = [],
+): Promise<ChatSendResponse> {
+  const url = `/api/chat/conversations/${conversationId}/messages`
+
+  // Words alone stay JSON. The moment a file rides along the whole message goes multipart —
+  // ⚠ one request, not upload-then-send: the clientMsgId that makes a retried message land
+  // exactly once has to cover its photos too, or a retry stores a second copy of each.
+  if (files.length === 0) {
+    return fetchParsed(url, ChatSendResponseSchema, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  }
+
+  const form = new FormData()
+  form.set('clientMsgId', input.clientMsgId)
+  form.set('body', input.body)
+  if (input.quoteOf !== undefined) {
+    form.set('quoteOf', input.quoteOf)
+  }
+  for (const file of files) {
+    form.append('files', file)
+  }
+
+  // ⚠ No Content-Type of our own: the browser has to write the multipart boundary itself.
+  return fetchParsed(url, ChatSendResponseSchema, { method: 'POST', body: form })
 }
 
 /**

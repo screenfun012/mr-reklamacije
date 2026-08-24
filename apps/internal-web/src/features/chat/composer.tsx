@@ -1,4 +1,5 @@
 import { m } from '@mr/i18n'
+import { ALLOWED_IMAGE_MIME_TYPES, CHAT_MAX_FILES_PER_MESSAGE } from '@mr/shared'
 import {
   chatPeopleOptions,
   CHAT_MESSAGE_MAX_LENGTH,
@@ -11,6 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Camera, Paperclip, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
+import { ComposerAttachments, type PickedFile } from './composer-attachments'
 import { ComposerMrSuggestion } from './composer-mr-suggestion'
 import {
   EMPTY_DRAFT,
@@ -21,6 +23,9 @@ import {
 } from './composer-mentions'
 import { findMentionQuery, MentionMenu, mentionOptions } from './mention-menu'
 
+import { showInternalToast } from '~/lib/internal-toast'
+import { useFilePicker } from '~/lib/use-file-picker'
+
 /** The four the prototype offers. Whole sentences of this shop's day, not a phrasebook. */
 const QUICK_REPLIES = [
   m.chat_quick_engine_arrived,
@@ -29,12 +34,13 @@ const QUICK_REPLIES = [
   m.chat_quick_picked_up,
 ] as const
 
-const INERT_BUTTON_CLASSES =
-  'grid h-10 w-9 flex-none place-items-center rounded-[9px] border border-mri-border2 text-mri-text2 disabled:cursor-not-allowed disabled:opacity-60'
+/** 36×40 with a 15px glyph — the prototype's composer button (`cet-prototip.dc.html` L150). */
+const ACTION_BUTTON_CLASSES =
+  'grid h-10 w-9 flex-none cursor-pointer place-items-center rounded-[9px] border border-mri-border2 text-mri-text2 transition-colors hover:border-mri-text2 hover:text-mri-text'
 
 export interface ComposerProps {
   isThread: boolean
-  onSend: (body: string) => void
+  onSend: (body: string, files: readonly File[]) => void
   /** The conversation being written in — so the offer never points at the room you are in. */
   conversationId?: string | undefined
   /**
@@ -111,6 +117,12 @@ export function Composer({
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const text = draft.text
   const [caret, setCaret] = useState(0)
+  const [files, setFiles] = useState<readonly PickedFile[]>([])
+  // ⚠ The gallery takes photos AND PDF; the camera always takes `image/*`, because `capture`
+  // opens the camera app and there is no version of that which hands back a document.
+  const picker = useFilePicker((picked) => addFiles(picked), {
+    accept: [...ALLOWED_IMAGE_MIME_TYPES, 'application/pdf'].join(','),
+  })
   const [activeIndex, setActiveIndex] = useState(0)
   /**
    * Which `@` was dismissed with Escape. Kept as the OFFSET rather than a boolean so the menu
@@ -149,13 +161,44 @@ export function Composer({
     })
   }
 
+  const addFiles = (picked: readonly File[]): void => {
+    const room = CHAT_MAX_FILES_PER_MESSAGE - files.length
+    if (room <= 0) {
+      showInternalToast(m.chat_attachment_too_many())
+      return
+    }
+
+    const allowed = picked.filter(
+      (file) => file.type.startsWith('image/') || file.type === 'application/pdf',
+    )
+    if (allowed.length < picked.length) {
+      // The `accept` attribute is a hint a person can walk past in the file dialog; the server
+      // refuses the rest anyway, and saying so here costs nothing and a round trip less.
+      showInternalToast(m.chat_attachment_bad_type())
+    }
+    if (allowed.length > room) {
+      showInternalToast(m.chat_attachment_too_many())
+    }
+
+    setFiles((current) => [
+      ...current,
+      ...allowed.slice(0, room).map((file) => ({ id: crypto.randomUUID(), file })),
+    ])
+  }
+
   const submit = (): void => {
-    if (draft.text.trim() === '') {
+    // A photo on its own IS a message (Nikola, 2026-08-24) — so words are only required when
+    // nothing else came with them.
+    if (draft.text.trim() === '' && files.length === 0) {
       return
     }
     // The words are what a person wrote; the addresses are what the server is given.
-    onSend(toWireBody(draft).trim())
+    onSend(
+      toWireBody(draft).trim(),
+      files.map((picked) => picked.file),
+    )
     setDraft(EMPTY_DRAFT)
+    setFiles([])
   }
 
   return (
@@ -163,6 +206,10 @@ export function Composer({
       {onOpened === undefined ? null : (
         <ComposerMrSuggestion draft={text} conversationId={conversationId} onOpened={onOpened} />
       )}
+      <ComposerAttachments
+        files={files}
+        onRemove={(id) => setFiles((current) => current.filter((picked) => picked.id !== id))}
+      />
       {replyTo === null || replyTo === undefined ? null : (
         <div className="flex items-center gap-2 border-b border-mri-border bg-mri-inbg px-4 py-2">
           <span className="font-mono text-[8px] font-semibold tracking-[0.16em] text-mri-text2">
@@ -213,20 +260,26 @@ export function Composer({
         {menuOpen ? (
           <MentionMenu options={options} activeIndex={activeIndex} onPick={pick} />
         ) : null}
+        {picker.inputs}
         <button
           type="button"
-          disabled
           title={m.chat_attach_title()}
-          className={INERT_BUTTON_CLASSES}
+          onClick={picker.openGallery}
+          className={ACTION_BUTTON_CLASSES}
         >
           <Paperclip aria-hidden="true" className="size-[15px]" />
           <span className="sr-only">{m.chat_attach()}</span>
         </button>
+        {/*
+          Only where there is a camera to open. On a laptop `capture` falls back to the same file
+          dialog the paperclip opens, so the button would promise a camera that is not there.
+          Plain CSS, so the server and the browser draw the same thing.
+        */}
         <button
           type="button"
-          disabled
           title={m.chat_camera_title()}
-          className={INERT_BUTTON_CLASSES}
+          onClick={picker.openCamera}
+          className={`${ACTION_BUTTON_CLASSES} hidden [@media(pointer:coarse)]:grid`}
         >
           <Camera aria-hidden="true" className="size-[15px]" />
           <span className="sr-only">{m.chat_camera()}</span>
@@ -261,6 +314,15 @@ export function Composer({
               setActiveIndex(0)
             }}
             onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
+            onPaste={(event) => {
+              // A screenshot in the clipboard is the fastest thing anybody sends. Only take over
+              // when there are FILES — pasted text has to keep going into the field.
+              const pasted = [...event.clipboardData.files]
+              if (pasted.length > 0) {
+                event.preventDefault()
+                addFiles(pasted)
+              }
+            }}
             onKeyDown={(event) => {
               // ⚠ The menu answers first. Enter while it is open CHOOSES — otherwise picking
               // somebody would post the unfinished sentence to the whole shop.
@@ -301,7 +363,7 @@ export function Composer({
         <button
           type="button"
           onClick={submit}
-          disabled={text.trim() === ''}
+          disabled={text.trim() === '' && files.length === 0}
           className="h-10 flex-none rounded-[9px] bg-mri-btn px-[18px] text-[11px] font-bold tracking-[0.06em] whitespace-nowrap text-mri-btnfg shadow-[0_8px_22px_rgba(0,0,0,.4)] transition-transform hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {m.chat_composer_send()}
