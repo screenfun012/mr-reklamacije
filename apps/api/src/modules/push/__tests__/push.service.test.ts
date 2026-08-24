@@ -196,6 +196,22 @@ describe('who a new chat message reaches', () => {
     expect(removeByEndpoint).toHaveBeenCalledWith(dead.endpoint)
   })
 
+  /**
+   * The day the VAPID keys are rotated, EVERY existing subscription answers 403 — its signature was
+   * made with a key that no longer exists. Treating that as temporary would leave the whole table
+   * dead forever, each row paying for a request that cannot succeed, while the screen went on
+   * saying notifications were working.
+   */
+  it('drops a subscription signed by a key that no longer exists', async () => {
+    const stale = subscription()
+    const { service, removeByEndpoint } = build([stale])
+    sendNotification.mockRejectedValue({ statusCode: 403 })
+
+    await service.notifyChatMessage(message())
+
+    expect(removeByEndpoint).toHaveBeenCalledWith(stale.endpoint)
+  })
+
   it('keeps a browser that merely had a bad minute', async () => {
     const alive = subscription()
     const { service, removeByEndpoint } = build([alive])

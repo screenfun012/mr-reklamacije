@@ -23,8 +23,16 @@ const PUSH_TTL_SECONDS = 3600
  */
 const PUSH_TIMEOUT_MS = 5000
 
-/** The push service's own way of saying "this browser is gone" (RFC 8030). */
-const GONE_STATUS = new Set([404, 410])
+/**
+ * The answers that mean "this subscription will never work again".
+ *
+ * 404 and 410 are the push service saying the browser is gone. ⚠ 403 is it saying the signature
+ * does not match the key the subscription was made with — which is what EVERY row looks like the
+ * day the VAPID keys are rotated. Without it, rotation kills push silently for everybody and leaves
+ * the dead rows behind forever, each one paying for a request that cannot succeed. With it, the
+ * table cleans itself and people simply turn notifications on again.
+ */
+const GONE_STATUS = new Set([403, 404, 410])
 
 /**
  * Telling phones about a new chat message.

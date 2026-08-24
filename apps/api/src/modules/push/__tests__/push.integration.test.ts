@@ -44,14 +44,40 @@ describe('Push subscriptions', () => {
   it('refuses a portal client at the door', async () => {
     const portal = createPushTestApp(container, testUser([...CLIENT], TEST_USER_ID, ['client']))
 
-    const res = await subscribe(portal, 'https://push.example/klijent')
+    const res = await subscribe(portal, 'https://fcm.googleapis.com/fcm/send/klijent')
 
     // ⚠ 403 at the door, not a row the fan-out would then have to remember to skip.
     expect(res.status).toBe(403)
   })
 
+  /**
+   * ⚠ An endpoint is a URL the server will POST to on somebody else's instruction.
+   *
+   * Left open, a signed-in person could point it at anything — including an address inside the
+   * private network — and the API would dutifully make the request. The world's browsers have four
+   * push services between them, so the allowlist is short and costs nothing.
+   */
+  it('refuses an endpoint that is not a push service at all', async () => {
+    const res = await subscribe(app, 'https://example.com/collect')
+
+    expect(res.status).toBe(400)
+    expect(await container.pushRepository.listForUser(TEST_USER_ID)).toHaveLength(0)
+  })
+
+  it('refuses a plain http endpoint', async () => {
+    const res = await subscribe(app, 'http://fcm.googleapis.com/fcm/send/abc')
+
+    expect(res.status).toBe(400)
+  })
+
+  it('takes a real one', async () => {
+    const res = await subscribe(app, 'https://fcm.googleapis.com/fcm/send/abc123')
+
+    expect(res.status).toBe(204)
+  })
+
   it('records the device, and remembers what it is for the person to recognise', async () => {
-    const res = await subscribe(app, 'https://push.example/a')
+    const res = await subscribe(app, 'https://fcm.googleapis.com/fcm/send/a')
     expect(res.status).toBe(204)
 
     const devices = await container.pushRepository.listForUser(TEST_USER_ID)
@@ -69,7 +95,7 @@ describe('Push subscriptions', () => {
    * on the phone would ever reveal it.
    */
   it('hands the tablet over to whoever signed in on it', async () => {
-    const endpoint = 'https://push.example/deljeni-tablet'
+    const endpoint = 'https://fcm.googleapis.com/fcm/send/deljeni-tablet'
     await subscribe(app, endpoint)
 
     const second = createPushTestApp(container, testUser([...OFFICE], OTHER_USER_ID))
@@ -86,8 +112,8 @@ describe('Push subscriptions', () => {
   })
 
   it('moves the switch for the person, not for one device', async () => {
-    await subscribe(app, 'https://push.example/telefon')
-    await subscribe(app, 'https://push.example/racunar')
+    await subscribe(app, 'https://fcm.googleapis.com/fcm/send/telefon')
+    await subscribe(app, 'https://fcm.googleapis.com/fcm/send/racunar')
 
     const res = await app.request('/api/push/mode', {
       method: 'PATCH',
@@ -114,7 +140,7 @@ describe('Push subscriptions', () => {
   })
 
   it('drops the caller own device, and never somebody another', async () => {
-    await subscribe(app, 'https://push.example/moj')
+    await subscribe(app, 'https://fcm.googleapis.com/fcm/send/moj')
     const [mine] = await container.pushRepository.listForUser(TEST_USER_ID)
 
     const stranger = createPushTestApp(container, testUser([...OFFICE], OTHER_USER_ID))

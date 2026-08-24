@@ -12,6 +12,21 @@ import {
   type StorageService,
 } from '../../infrastructure/storage/storage.interface.js'
 
+/**
+ * These three used to swallow their failures whole.
+ *
+ * Each fallback is right — no dimensions, no thumbnail, or the original bytes — but all three are
+ * silent, and the third means a full-size photo is stored instead of a small one. That is a cost
+ * that shows up on the hosting bill months later with nothing in the logs to explain it.
+ *
+ * ⚠ `console` rather than the app's logger on purpose: this file is pure image machinery with no
+ * dependencies, called from three modules, and threading a logger through all of them to reach a
+ * warning would be the wrong trade. Railway captures stderr.
+ */
+function warn(message: string, error: unknown): void {
+  console.warn(`[attachments] ${message}:`, error)
+}
+
 export interface OptimizedReportImage {
   readonly data: Buffer
   readonly mimeType: 'image/jpeg' | 'image/webp'
@@ -32,7 +47,9 @@ export async function readImageDimensions(data: Buffer): Promise<ImageDimensions
     }
 
     return { width: metadata.width, height: metadata.height }
-  } catch {
+  } catch (error) {
+    // The caller is right to carry on without dimensions; it just must not happen unnoticed.
+    warn('could not read image dimensions', error)
     return null
   }
 }
@@ -57,7 +74,8 @@ export async function generateImageThumbnail(
     })
 
     return thumbnailPath
-  } catch {
+  } catch (error) {
+    warn('could not generate a thumbnail', error)
     return null
   }
 }
@@ -127,7 +145,10 @@ export async function optimizeAttachmentImage(
 
   try {
     return await optimizeImage(data, mimeType, MAX_ATTACHMENT_IMAGE_WIDTH)
-  } catch {
+  } catch (error) {
+    // Falling back to the original bytes is correct — a photo that will not recompress must still
+    // be stored — but it costs a full-size file, so it is worth being able to see it happening.
+    warn('could not recompress an image, storing it as it arrived', error)
     return null
   }
 }

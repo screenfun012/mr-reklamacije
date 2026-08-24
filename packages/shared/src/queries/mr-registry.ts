@@ -14,7 +14,18 @@ export type MrRegistryExistingClaim = z.infer<typeof MrRegistryExistingClaimSche
 
 const MrRegistryLookupResponseSchema = MrRegistryExistingClaimSchema.nullable()
 
-const MR_REGISTRY_LOOKUP_STALE_MS = 30_000
+/**
+ * An MR number's claim never changes.
+ *
+ * ⚠ This used to be 30 seconds, and the chat is what made that expensive: every distinct MR number
+ * visible in a message list is its own request, and a `staleTime` that short means they all go
+ * again every time somebody comes back to the window. The mapping is written once when the claim is
+ * created and is immutable afterwards — asking twice can only ever get the same answer.
+ *
+ * A deleted claim is the one case it could go stale, and the screen handles that already: the chip
+ * asks before opening a thread, and a missing claim answers 404.
+ */
+const MR_REGISTRY_LOOKUP_STALE_MS = Infinity
 
 export const mrRegistryKeys = {
   all: ['mr-registry'] as const,

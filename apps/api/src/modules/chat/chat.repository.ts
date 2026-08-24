@@ -26,6 +26,14 @@ import {
 } from '@mr/shared'
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 
+/**
+ * How far the shelf counts before it stops caring.
+ *
+ * The panel draws nine squares and a "+N". Past a hundred the exact number tells a person nothing,
+ * and counting it walks the whole room.
+ */
+const CHAT_SHELF_COUNT_CEILING = 100
+
 import type { ApiDatabase } from '../../core/database.js'
 import {
   attachments,
@@ -683,11 +691,25 @@ export class ChatRepository {
       .orderBy(desc(chatMessages.seq), asc(attachments.id))
       .limit(limit)
 
+    /*
+     * ⚠ Bounded, deliberately.
+     *
+     * The list half is excellent — 0.235 ms through the existing index — but a plain `count(*)`
+     * walks every file in the room: measured at 29.5 ms with 12,501 files, and it is triggered by
+     * somebody else typing. The shelf shows nine; nobody needs to know the difference between 300
+     * and 3,000. Counting up to 100 answers "+N" honestly and can never grow expensive.
+     */
     const [counted] = await this.db
       .select({ total: sql<number>`count(*)::int` })
-      .from(attachments)
-      .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
-      .where(conditions)
+      .from(
+        this.db
+          .select({ id: attachments.id })
+          .from(attachments)
+          .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
+          .where(conditions)
+          .limit(CHAT_SHELF_COUNT_CEILING)
+          .as('bounded'),
+      )
 
     return {
       items: rows.map((row) => ({

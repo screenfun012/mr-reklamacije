@@ -25,6 +25,9 @@ import {
 import type { ChatRepository, NewChatAttachmentRow } from './chat.repository.js'
 
 /** A file that has passed every check and is ready to be written — but is not written yet. */
+/** How many objects are removed at once when a room is erased. */
+const ERASE_BATCH_SIZE = 10
+
 export interface PreparedChatFile {
   readonly fileName: string
   readonly storedData: Buffer
@@ -93,12 +96,25 @@ export class ChatAttachmentsService {
   async eraseStoredFiles(conversationId: string): Promise<void> {
     const paths = await this.repo.listChatAttachmentPaths(conversationId)
 
-    for (const path of paths) {
-      try {
-        await this.storage.delete(path)
-      } catch (error) {
-        this.logger.error({ err: error, path }, 'chat attachment could not be erased')
-      }
+    /*
+     * ⚠ In batches, not one at a time.
+     *
+     * A photo is two objects (the original and its thumbnail), so a room with 150 pictures is 300
+     * sequential round trips at 20–50 ms each: six to fifteen seconds inside one HTTP request,
+     * against a Cloudflare cut-off of about 100. Ten at a time keeps the same per-file failure
+     * handling — an object left behind costs disk, a half-erased room costs a promise — and turns
+     * the wait into something a person will sit through.
+     */
+    for (let index = 0; index < paths.length; index += ERASE_BATCH_SIZE) {
+      await Promise.allSettled(
+        paths.slice(index, index + ERASE_BATCH_SIZE).map(async (path) => {
+          try {
+            await this.storage.delete(path)
+          } catch (error) {
+            this.logger.error({ err: error, path }, 'chat attachment could not be erased')
+          }
+        }),
+      )
     }
   }
 
@@ -159,8 +175,29 @@ export class ChatAttachmentsService {
       }
     }
 
-    if (rows.length > 0) {
+    if (rows.length === 0) {
+      return { failed }
+    }
+
+    try {
       await this.repo.insertChatAttachments(rows)
+    } catch (error) {
+      /*
+       * ⚠ The bytes are already on the disk at this point, and nothing else will ever name them.
+       *
+       * The rows are what makes a file findable — the erase path reads them, the integrity script
+       * reads them, the screen reads them. If this insert fails, those objects are paid for forever
+       * with no way to discover them. So they go back, and the message is reported as having lost
+       * its files, which is at least true and which the screen already knows how to say.
+       */
+      this.logger.error({ err: error }, 'chat attachment rows could not be written')
+      await Promise.allSettled(
+        rows.flatMap((row) => [
+          this.storage.delete(row.storagePath),
+          row.thumbnailPath === null ? Promise.resolve() : this.storage.delete(row.thumbnailPath),
+        ]),
+      )
+      return { failed: failed + rows.length }
     }
 
     return { failed }
