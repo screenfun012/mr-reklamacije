@@ -52,6 +52,25 @@ export type ChatMention = z.infer<typeof ChatMentionSchema>
  * on an older page the browser never loaded, so it has nothing to look the author or the words up
  * in. The server resolves it — once per page, not once per message.
  */
+/**
+ * One file on a message. Only what a bubble draws.
+ *
+ * ⚠ Never `storagePath`, `visibility`, `uploadedBy` or `purpose`. `AttachmentListItem` cannot be
+ * reused here at all: it requires a non-null `claimKind` and `claimId`, and its mapper THROWS on a
+ * row without them — a 500, not a 404.
+ */
+export const ChatAttachmentSchema = z.object({
+  id: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSizeBytes: z.number(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  hasThumbnail: z.boolean(),
+})
+
+export type ChatAttachment = z.infer<typeof ChatAttachmentSchema>
+
 export const ChatQuoteSchema = z.object({
   id: z.string().uuid(),
   authorName: z.string(),
@@ -60,6 +79,13 @@ export const ChatQuoteSchema = z.object({
   /** The quoted message was withdrawn: the block says so rather than repeating words that no
    * longer travel anywhere else. */
   isDeleted: z.boolean(),
+  /**
+   * Whether the quoted message carried a file.
+   *
+   * A photo on its own is a message, so its excerpt is empty — without this the quoted block and
+   * the pinned bar would both draw a blank line and look broken.
+   */
+  hasAttachment: z.boolean(),
 })
 
 export type ChatQuote = z.infer<typeof ChatQuoteSchema>
@@ -126,9 +152,23 @@ export const ChatMessageSchema = z.object({
    * „did I" is whether my id is in it.
    */
   reactedBy: z.array(ChatReactorSchema),
+  /** Photos and PDFs sent with it, in the order they were picked. Usually empty. */
+  attachments: z.array(ChatAttachmentSchema),
 })
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
+
+/**
+ * What a send answers with: the message, plus how many of its files were lost on the way.
+ *
+ * Its own schema rather than a field on the message, because it is a fact about THIS attempt and
+ * not about the message — reading the same message tomorrow must not claim files went missing.
+ */
+export const ChatSendResponseSchema = ChatMessageSchema.extend({
+  partialFiles: z.number(),
+})
+
+export type ChatSendResponse = z.infer<typeof ChatSendResponseSchema>
 
 /**
  * Somebody a mention in this conversation may name. Nothing beyond what one row of a menu draws —

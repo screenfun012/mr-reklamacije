@@ -248,6 +248,7 @@ export function ConversationPane({
                 authorName: replyTo.author?.name ?? '',
                 excerpt: replyTo.body,
                 isDeleted: false,
+                hasAttachment: replyTo.attachments.length > 0,
               },
         systemKind: null,
         systemMeta: null,
@@ -256,6 +257,9 @@ export function ConversationPane({
         createdAt: new Date().toISOString(),
         seenByAll: false,
         reactedBy: [],
+        // The local preview of files still in flight lands here in the next step; an optimistic
+        // row carries none of its own yet.
+        attachments: [],
       },
     }
     setPending((current) => [...current, row])

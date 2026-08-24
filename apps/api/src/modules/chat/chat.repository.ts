@@ -16,6 +16,7 @@ import {
   UserAccountStatus,
   type ChatMention,
   type ChatPin,
+  type ChatAttachment,
   type ChatReactor,
   type ChatQuote,
   type ChatSystemKind,
@@ -290,12 +291,27 @@ function mentionsOf(body: string, names: ReadonlyMap<string, string>): ChatMenti
  * message publishes empty words, so it publishes no mentions either — otherwise the row would keep
  * naming people out of a sentence nobody can read any more.
  */
+/**
+ * Does this message carry a file? One definition, used by both the quoted block and the pinned bar.
+ *
+ * A photo on its own is a message, so its excerpt is empty — the two places that draw an excerpt
+ * both need this or they draw a blank line. Written once because it is a predicate over a SHARED
+ * table: `purpose` is matched positively here exactly as it is everywhere else.
+ */
+const hasAttachmentSql = sql<boolean>`EXISTS (
+  SELECT 1 FROM ${attachments}
+  WHERE ${attachments.chatMessageId} = ${chatMessages.id}
+    AND ${attachments.purpose} = ${AttachmentPurpose.ChatAttachment}
+    AND ${attachments.deletedAt} IS NULL
+)`
+
 function mapMessageRow(
   row: MessageRow,
   names: ReadonlyMap<string, string>,
   quotes: ReadonlyMap<string, ChatQuote>,
   seenByAll: (row: MessageRow) => boolean,
   reactors: ReadonlyMap<string, ChatReactor[]>,
+  files: ReadonlyMap<string, ChatAttachment[]>,
 ): ChatMessage {
   const body = row.deletedAt === null ? row.body : ''
   return {
@@ -322,6 +338,8 @@ function mapMessageRow(
     createdAt: row.createdAt.toISOString(),
     seenByAll: seenByAll(row),
     reactedBy: reactors.get(row.id) ?? [],
+    // A withdrawn message keeps its row and loses its contents — the file goes with the words.
+    attachments: row.deletedAt === null ? (files.get(row.id) ?? []) : [],
   }
 }
 
@@ -455,6 +473,7 @@ export class ChatRepository {
         body: chatMessages.body,
         deletedAt: chatMessages.deletedAt,
         authorName: users.name,
+        hasAttachment: hasAttachmentSql,
       })
       .from(chatMessages)
       .leftJoin(users, eq(users.id, chatMessages.authorId))
@@ -472,6 +491,8 @@ export class ChatRepository {
               ? stripMentionMarkup(row.body).slice(0, CHAT_QUOTE_EXCERPT_MAX)
               : '',
           isDeleted: row.deletedAt !== null,
+          // The file goes with the words: a withdrawn message shows neither.
+          hasAttachment: row.deletedAt === null && row.hasAttachment,
         },
       ]),
     )
@@ -510,6 +531,61 @@ export class ChatRepository {
     for (const row of rows) {
       const held = byMessage.get(row.messageId) ?? []
       held.push({ id: row.userId, name: row.name })
+      byMessage.set(row.messageId, held)
+    }
+    return byMessage
+  }
+
+  /**
+   * Every file across a whole page of messages — ONE query, the way the reactors are read.
+   *
+   * ⚠ `purpose` is matched POSITIVELY. A negation would also admit whatever purpose is added next,
+   * and this table is shared with claim photos, report images and intake quotes.
+   */
+  private async resolveAttachments(
+    messageIds: readonly string[],
+  ): Promise<Map<string, ChatAttachment[]>> {
+    const ids = [...new Set(messageIds)]
+    if (ids.length === 0) {
+      return new Map()
+    }
+
+    const rows = await this.db
+      .select({
+        messageId: attachments.chatMessageId,
+        id: attachments.id,
+        fileName: attachments.fileName,
+        mimeType: attachments.mimeType,
+        fileSizeBytes: attachments.fileSizeBytes,
+        width: attachments.width,
+        height: attachments.height,
+        thumbnailPath: attachments.thumbnailPath,
+      })
+      .from(attachments)
+      .where(
+        and(
+          inArray(attachments.chatMessageId, ids),
+          eq(attachments.purpose, AttachmentPurpose.ChatAttachment),
+          isNull(attachments.deletedAt),
+        ),
+      )
+      .orderBy(asc(attachments.uploadedAt), asc(attachments.id))
+
+    const byMessage = new Map<string, ChatAttachment[]>()
+    for (const row of rows) {
+      if (row.messageId === null) {
+        continue
+      }
+      const held = byMessage.get(row.messageId) ?? []
+      held.push({
+        id: row.id,
+        fileName: row.fileName,
+        mimeType: row.mimeType,
+        fileSizeBytes: Number(row.fileSizeBytes),
+        width: row.width,
+        height: row.height,
+        hasThumbnail: row.thumbnailPath !== null,
+      })
       byMessage.set(row.messageId, held)
     }
     return byMessage
@@ -641,7 +717,10 @@ export class ChatRepository {
     )
     const seenByAll = await this.seenByAllTest(conversation)
     const reactors = await this.resolveReactors(ordered.map((row) => row.id))
-    const items = ordered.map((row) => mapMessageRow(row, names, quotes, seenByAll, reactors))
+    const files = await this.resolveAttachments(ordered.map((row) => row.id))
+    const items = ordered.map((row) =>
+      mapMessageRow(row, names, quotes, seenByAll, reactors, files),
+    )
     const edge = forward ? items.at(-1) : items.at(0)
 
     return {
@@ -860,8 +939,11 @@ export class ChatRepository {
     const names = await this.resolveMentionNames([row.deletedAt === null ? row.body : ''])
     const quotes = await this.resolveQuotes(row.quoteOf === null ? [] : [row.quoteOf])
     const reactors = await this.resolveReactors([row.id])
+    // ⚠ Files here too, not only in the list: this is the shape a SEND answers with, and a photo
+    // that appears one refresh later reads as a broken upload.
+    const files = await this.resolveAttachments([row.id])
     // A single message is read for an ACTION (edit, pin, react), never to be drawn with ticks.
-    return mapMessageRow(row, names, quotes, () => false, reactors)
+    return mapMessageRow(row, names, quotes, () => false, reactors, files)
   }
 
   /** The correction goes into the row itself — the previous text is not kept (spec §5 row 4). */
@@ -922,6 +1004,7 @@ export class ChatRepository {
         deletedAt: chatMessages.deletedAt,
         authorName: users.name,
         pinnedBy: chatPins.pinnedBy,
+        hasAttachment: hasAttachmentSql,
       })
       .from(chatPins)
       .innerJoin(chatMessages, eq(chatMessages.id, chatPins.messageId))
@@ -935,6 +1018,7 @@ export class ChatRepository {
       excerpt:
         row.deletedAt === null ? stripMentionMarkup(row.body).slice(0, CHAT_QUOTE_EXCERPT_MAX) : '',
       isDeleted: row.deletedAt !== null,
+      hasAttachment: row.deletedAt === null && row.hasAttachment,
       pinnedBy: row.pinnedBy,
     }))
   }

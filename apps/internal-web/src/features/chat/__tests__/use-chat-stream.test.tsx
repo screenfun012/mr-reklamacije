@@ -35,6 +35,7 @@ function message(seq: number, body = `poruka ${seq}`): ChatMessage {
     createdAt: '2026-08-23T08:42:00.000Z',
     seenByAll: false,
     reactedBy: [],
+    attachments: [],
     mentions: [],
   }
 }

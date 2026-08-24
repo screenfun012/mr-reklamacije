@@ -80,6 +80,7 @@ describe('sendChatMessage', () => {
       createdAt: '2026-08-23T09:00:00.000Z',
       seenByAll: false,
       reactedBy: [],
+      attachments: [],
       mentions: [],
     }
     const fetchMock = stubFetch(message)

@@ -112,9 +112,14 @@ export function createChatController(container: Container): {
         input = ChatSendInputSchema.parse(await c.req.json())
       }
 
-      const { message, created } = await container.chatService.send(id, input, toActor(c), files)
+      const { message, created, partialFiles } = await container.chatService.send(
+        id,
+        input,
+        toActor(c),
+        files,
+      )
       // 200 says "this one was already here" — the retry is answered, not counted twice.
-      return c.json(message, created ? 201 : 200)
+      return c.json({ ...message, partialFiles }, created ? 201 : 200)
     },
 
     downloadAttachment: async (c: Context) => {

@@ -29,6 +29,7 @@ function message(over: Partial<ChatMessage> & { seq: string }): ChatMessage {
     createdAt: '2026-08-23T08:42:00.000Z',
     seenByAll: false,
     reactedBy: [],
+    attachments: [],
     mentions: [],
     ...over,
   }
@@ -517,6 +518,7 @@ describe('ConversationPane', () => {
           authorName: 'Slavko Jović',
           excerpt: 'Stigao motor',
           isDeleted: false,
+          hasAttachment: false,
           pinnedBy: uuid(777),
         },
       ]
@@ -536,6 +538,7 @@ describe('ConversationPane', () => {
           authorName: 'Slavko Jović',
           excerpt: 'Stigao motor',
           isDeleted: false,
+          hasAttachment: false,
           pinnedBy: uuid(777),
         },
       ]

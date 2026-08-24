@@ -325,6 +325,9 @@ describe('Chat', () => {
       authorName: 'Test Operator',
       excerpt: 'original',
       isDeleted: false,
+      // A quote now says whether the message it points at carried a file: a photo on its own has
+      // an empty excerpt, and without this the block would draw a blank line.
+      hasAttachment: false,
     })
   })
 
@@ -349,6 +352,8 @@ describe('Chat', () => {
       authorName: 'Test Operator',
       excerpt: '',
       isDeleted: true,
+      // The file goes with the words — a withdrawn message shows neither.
+      hasAttachment: false,
     })
   })
 

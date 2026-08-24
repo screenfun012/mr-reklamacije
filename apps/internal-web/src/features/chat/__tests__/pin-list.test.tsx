@@ -23,6 +23,7 @@ function pin(over: Partial<ChatPin> & { id: string }): ChatPin {
     authorName: 'Marko Petrović',
     excerpt: 'Zapisnik obavezan pre slanja partneru',
     isDeleted: false,
+    hasAttachment: false,
     pinnedBy: ME,
     ...over,
   }

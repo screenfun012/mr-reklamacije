@@ -278,6 +278,80 @@ describe('Chat attachments — reading', () => {
     await ctx.cleanup()
   })
 
+  it('carries the file on the message the send itself answers with', async () => {
+    // findMessageById, not listMessages — the send response is read straight into the screen, and
+    // a resolver wired only into the list makes the photo appear one refresh late.
+    const data = new FormData()
+    data.set('clientMsgId', crypto.randomUUID())
+    data.set('body', '')
+    data.append('files', fileFrom(MINIMAL_JPEG, 'drugi.jpg', 'image/jpeg'))
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/messages`, {
+      method: 'POST',
+      body: data,
+    })
+
+    const message = (await res.json()) as {
+      attachments: Array<{ fileName: string; mimeType: string; hasThumbnail: boolean }>
+    }
+    expect(message.attachments).toHaveLength(1)
+    expect(message.attachments[0]?.fileName).toBe('drugi.jpg')
+    expect(message.attachments[0]?.mimeType).toBe('image/jpeg')
+  })
+
+  it('carries the file when the room is read back', async () => {
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/messages`)
+    const page = (await res.json()) as {
+      items: Array<{ id: string; attachments: Array<{ fileName: string }> }>
+    }
+
+    const withFile = page.items.find((item) => item.id === messageId)
+    expect(withFile?.attachments).toHaveLength(1)
+  })
+
+  /**
+   * Taking a message back is the ONLY way to remove a file (Nikola, 2026-08-24), so the wire has to
+   * honour it too — not just the download route. Without this the words vanish and the photo stays
+   * sitting under "poruka je povučena".
+   */
+  it('drops the file from the wire once the message is taken back', async () => {
+    await officeApp.request(`/api/chat/messages/${messageId}`, { method: 'DELETE' })
+
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/messages`)
+    const page = (await res.json()) as {
+      items: Array<{ id: string; body: string; attachments: unknown[] }>
+    }
+
+    const withdrawn = page.items.find((item) => item.id === messageId)
+    expect(withdrawn?.body).toBe('')
+    expect(withdrawn?.attachments).toEqual([])
+  })
+
+  it('says a quoted photo-only message has one, so the block is not empty', async () => {
+    const photoOnly = new FormData()
+    photoOnly.set('clientMsgId', crypto.randomUUID())
+    photoOnly.set('body', '')
+    photoOnly.append('files', fileFrom(MINIMAL_JPEG, 'samo-slika.jpg', 'image/jpeg'))
+    const posted = await officeApp.request(`/api/chat/conversations/${threadId}/messages`, {
+      method: 'POST',
+      body: photoOnly,
+    })
+    const { id: quotedId } = (await posted.json()) as { id: string }
+
+    await officeApp.request(`/api/chat/conversations/${threadId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clientMsgId: crypto.randomUUID(), body: 'da', quoteOf: quotedId }),
+    })
+
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/messages`)
+    const page = (await res.json()) as {
+      items: Array<{ quote: { excerpt: string; hasAttachment: boolean } | null }>
+    }
+    const reply = page.items.find((item) => item.quote !== null)
+    expect(reply?.quote?.excerpt).toBe('')
+    expect(reply?.quote?.hasAttachment).toBe(true)
+  })
+
   it('serves the file through the room it was sent to', async () => {
     const res = await officeApp.request(
       `/api/chat/conversations/${threadId}/attachments/${attachmentId}`,
