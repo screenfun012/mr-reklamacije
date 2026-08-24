@@ -59,9 +59,6 @@ function isPublicPath(path: string): boolean {
   if (path === '/health' || path === '/api/health') {
     return true
   }
-  if (path === '/api/attachments/raw') {
-    return true
-  }
   if (path === '/api/registration') {
     return true
   }

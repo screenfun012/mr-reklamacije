@@ -7,7 +7,6 @@ import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { buildSignedAttachmentUrl } from '../../../infrastructure/storage/local-volume-storage.js'
 import {
   ForbiddenError,
   NotFoundError,
@@ -747,38 +746,26 @@ describe('Attachments HTTP integration', () => {
     await ctx.cleanup()
   })
 
-  it('returns a signed URL that downloads the attachment without session auth', async () => {
-    const app = createAttachmentsTestApp(container, ATTACHMENT_OPERATOR)
-    const claimId = await createDomaceClaim(container)
+  /**
+   * The guard for a door that was closed on 2026-08-24.
+   *
+   * `/api/attachments/raw` was the ONE route in the whole API exempt from authentication: a signed
+   * link, five-minute TTL, no session required. Nothing in the three apps ever minted one — the only
+   * caller in the repo was a test. Meanwhile its reach quietly widened: the query behind it filters
+   * nothing but the id, so it had come to serve chat photos and intake quotes too, classes of file
+   * that were invented after it. And the secret signing those links fell back to
+   * BETTER_AUTH_SECRET, so one leak would have meant both "anybody can forge a session" AND
+   * "anybody can read every file without one".
+   *
+   * Nikola's call: delete it. A public door nobody walks through is only ever a way in.
+   */
+  it('has no unauthenticated way to reach a file', async () => {
+    const app = createAttachmentsTestApp(container, null)
 
-    const formData = new FormData()
-    formData.set('claimKind', ClaimKind.Domace)
-    formData.set('claimId', claimId)
-    formData.set('visibility', AttachmentVisibility.Internal)
-    formData.set('files', new File([MINIMAL_JPEG], 'engine.jpg', { type: 'image/jpeg' }))
+    const response = await app.request('/api/attachments/raw?id=x&exp=1&sig=y')
 
-    const uploadResponse = await app.request('/api/attachments/upload', {
-      method: 'POST',
-      body: formData,
-    })
-    expect(uploadResponse.status).toBe(201)
-
-    const uploadBody = (await uploadResponse.json()) as { items: Array<{ id: string }> }
-    const attachmentId = uploadBody.items[0]?.id
-    expect(attachmentId).toBeDefined()
-
-    // The URL is built the way the LOCAL-VOLUME storage backend builds it — that backend is the
-    // only thing that hands out `/raw` links, and the endpoint that used to mint one on request
-    // had no caller anywhere in the three apps (removed 2026-08-21).
-    const signed = buildSignedAttachmentUrl(
-      'http://localhost',
-      attachmentId as string,
-      container.env.ATTACHMENT_SIGNING_SECRET ?? container.env.BETTER_AUTH_SECRET,
-    )
-    const rawUrl = new URL(signed.url)
-    const rawResponse = await app.request(`${rawUrl.pathname}${rawUrl.search}`)
-    expect(rawResponse.status).toBe(200)
-    expect(rawResponse.headers.get('content-type')).toBe('image/jpeg')
+    // 404: the route is gone, not merely refused.
+    expect(response.status).toBe(404)
   })
 
   it('caches inline documents (not just images) with an ETag and revalidates via 304', async () => {

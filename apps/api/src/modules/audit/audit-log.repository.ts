@@ -1,4 +1,4 @@
-import { and, desc, eq, sql, type SQL } from 'drizzle-orm'
+import { and, eq, sql, type SQL } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
@@ -116,7 +116,19 @@ export class AuditLogRepository {
       .from(auditLog)
       .leftJoin(users, eq(users.id, auditLog.actorUserId))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+      /*
+       * ⚠ `NULLS LAST` spelled out, and it is not decoration.
+       *
+       * The index is `(created_at DESC NULLS LAST, id DESC NULLS LAST)` — that is what drizzle
+       * emits — while a plain `DESC` in Postgres means NULLS FIRST. The two do not match, so the
+       * planner ignores the index and sorts the whole table: measured on the dev database, a Seq
+       * Scan + Sort where the same query with NULLS LAST is an Index Only Scan.
+       *
+       * Both columns are NOT NULL, so the two spellings mean exactly the same thing here. This is
+       * a pure planner miss, and it grows with the table — the audit log is the one table that only
+       * ever gets bigger.
+       */
+      .orderBy(sql`${auditLog.createdAt} DESC NULLS LAST`, sql`${auditLog.id} DESC NULLS LAST`)
       .limit(query.limit + 1)
 
     const page = buildPaginatedSlice(rows, query.limit, (row) => ({

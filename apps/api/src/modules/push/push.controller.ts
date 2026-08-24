@@ -34,7 +34,19 @@ export function createPushController(container: Container): {
      */
     publicKey: async (c: Context) => {
       actorId(c)
-      return c.json({ publicKey: container.env.VAPID_PUBLIC_KEY ?? null })
+      /*
+       * ⚠ `isEnabled`, not merely "a key is set".
+       *
+       * That is exactly how production failed on 2026-08-24: the keys were there and VAPID_SUBJECT
+       * was malformed, so the service refused the configuration — but the screen would still have
+       * offered the button, everybody would have turned it on, rows would have piled up in
+       * `push_subscriptions`, and not one notification would ever have been sent. The only trace in
+       * the world was a single line in the startup log.
+       */
+      const publicKey = container.pushService.isEnabled
+        ? (container.env.VAPID_PUBLIC_KEY ?? null)
+        : null
+      return c.json({ publicKey })
     },
 
     listDevices: async (c: Context) => {

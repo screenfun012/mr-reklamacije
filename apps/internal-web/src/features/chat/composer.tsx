@@ -3,6 +3,7 @@ import {
   ALLOWED_CHAT_ATTACHMENT_MIME_TYPES,
   CHAT_MAX_FILES_PER_MESSAGE,
   isAllowedChatAttachmentMimeType,
+  MAX_ATTACHMENT_IMAGE_WIDTH,
   MAX_FILE_SIZE_MB,
 } from '@mr/shared'
 import {
@@ -12,7 +13,7 @@ import {
   type ChatMessage,
   type ChatPerson,
 } from '@mr/shared'
-import { cn } from '@mr/ui'
+import { cn, compressImage } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
 import { Camera, Paperclip, X } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -196,10 +197,35 @@ export function Composer({
       showInternalToast(m.chat_attachment_too_many())
     }
 
-    setFiles((current) => [
-      ...current,
-      ...allowed.slice(0, room).map((file) => ({ id: crypto.randomUUID(), file })),
-    ])
+    /*
+     * ⚠ Shrunk HERE, in the browser, before a byte leaves the device.
+     *
+     * Measured on this route: five 8 MB phone photos take the API from 42 MB to 299 MB of RSS, and
+     * it is one process carrying claims, intake and the portal. Shrinking first turns the ordinary
+     * case into about 15 MB. The intake wizard has done this since it was built
+     * (`use-intake-photo-queue.ts:139`); the chat simply never got it.
+     *
+     * ⚠ `compressImage` hands back the ORIGINAL when it cannot decode — HEIC straight off an iPad
+     * is the real case — so the server stays the one that enforces the size, and this is only ever
+     * an improvement, never a guarantee.
+     */
+    const queued = allowed.slice(0, room).map((file) => ({ id: crypto.randomUUID(), file }))
+    setFiles((current) => [...current, ...queued])
+
+    for (const entry of queued) {
+      if (!entry.file.type.startsWith('image/')) {
+        continue
+      }
+      void compressImage(entry.file, { maxEdge: MAX_ATTACHMENT_IMAGE_WIDTH }).then((smaller) => {
+        if (smaller === entry.file) {
+          return
+        }
+        // Replaced in place: the tile the person is looking at keeps its identity and its position.
+        setFiles((current) =>
+          current.map((picked) => (picked.id === entry.id ? { ...picked, file: smaller } : picked)),
+        )
+      })
+    }
   }
 
   const submit = (): void => {

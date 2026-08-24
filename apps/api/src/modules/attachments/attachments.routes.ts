@@ -20,7 +20,6 @@ export function registerAttachmentsRoutes(
 
   routes.get('/', viewAttachmentPermissions, controller.list)
   routes.post('/upload', requirePermission('attachments.upload'), controller.upload)
-  routes.get('/raw', controller.raw)
   routes.get('/:id/download', viewAttachmentPermissions, controller.download)
   routes.delete(
     '/:id',

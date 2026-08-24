@@ -7,7 +7,6 @@ import type { Container } from '../../core/container.js'
 import { UnauthorizedError, ValidationError } from '../../core/errors/domain-errors.js'
 import { getActorContext } from '../../core/http/actor-context.js'
 import {
-  buildAttachmentDownloadResponse,
   parseAttachmentDownloadRequest,
   serveCachedAttachmentDownload,
 } from '../../core/http/attachment-download.js'
@@ -17,12 +16,6 @@ import { AttachmentListQuerySchema } from './attachments.validators.js'
 
 const AttachmentIdParamSchema = z.object({
   id: z.string().uuid(),
-})
-
-const RawAttachmentQuerySchema = z.object({
-  id: z.string().uuid(),
-  exp: z.coerce.number().int(),
-  sig: z.string().min(1),
 })
 
 function toActor(user: MRSessionUser): AttachmentsActor {
@@ -41,7 +34,6 @@ export function createAttachmentsController(container: Container): {
   list: (c: Context) => Promise<Response>
   upload: (c: Context) => Promise<Response>
   download: (c: Context) => Promise<Response>
-  raw: (c: Context) => Promise<Response>
   delete: (c: Context) => Promise<Response>
 } {
   return {
@@ -95,27 +87,6 @@ export function createAttachmentsController(container: Container): {
       return serveCachedAttachmentDownload(c, meta, {
         disposition,
         openStream: (storagePath) => container.attachmentsService.openDownloadStream(storagePath),
-      })
-    },
-
-    raw: async (c: Context) => {
-      const query = RawAttachmentQuerySchema.parse(c.req.query())
-      const meta = await container.attachmentsService.getRawDownloadMeta(
-        query.id,
-        query.exp,
-        query.sig,
-      )
-      const { stream, size } = await container.attachmentsService.openDownloadStream(
-        meta.storagePath,
-      )
-
-      return buildAttachmentDownloadResponse({
-        stream,
-        size,
-        mimeType: meta.mimeType,
-        fileName: meta.fileName,
-        disposition: 'inline',
-        cacheControl: 'private, max-age=300',
       })
     },
 

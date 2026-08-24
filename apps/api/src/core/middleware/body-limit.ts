@@ -1,4 +1,4 @@
-import { MAX_FILE_SIZE_MB } from '@mr/shared'
+import { CHAT_MAX_FILES_PER_MESSAGE, MAX_FILE_SIZE_MB } from '@mr/shared'
 import { bodyLimit } from 'hono/body-limit'
 import type { MiddlewareHandler } from 'hono'
 
@@ -12,6 +12,24 @@ const DEFAULT_MAX_BODY_BYTES = 2 * MB
 // Multipart uploads: a batch of photos or one max-size file + form overhead.
 // Images are recompressed server-side after this gate, so the window is short.
 const UPLOAD_MAX_BODY_BYTES = (MAX_FILE_SIZE_MB * 5 + 5) * MB
+
+/**
+ * The chat's own, much smaller window — and it is a memory limit, not a policy.
+ *
+ * ⚠ Measured on Node 24 against this very route: five 25 MB PDFs take the process from 42 MB to
+ * **708 MB** of RSS, and five 8 MB phone photos take it to 299 MB. The API idles at 150–180 MB,
+ * runs as ONE process, and carries claims, intake and the portal with it — so this is not a slow
+ * request, it is the whole service falling over, reachable by anybody with an internal account,
+ * from a phone, without meaning to. Memory is also 85% of the hosting bill.
+ *
+ * Five files at CHAT_MAX_FILES_PER_MESSAGE, and a chat file is a photo or a PDF a person took or
+ * scanned — 6 MB each is generous for that, where a claim attachment may legitimately be a 25 MB
+ * video. The service still refuses anything over MAX_FILE_SIZE_MB per file; this only bounds what
+ * may be buffered at once.
+ */
+const CHAT_MAX_BODY_BYTES = (6 * CHAT_MAX_FILES_PER_MESSAGE + 5) * MB
+
+const CHAT_MESSAGES_PATH = /^\/api\/chat\/conversations\/[^/]+\/messages$/
 
 const UPLOAD_PATHS = new Set(['/api/attachments/upload', '/api/claim-reports/images'])
 
@@ -32,7 +50,8 @@ const UPLOAD_PATH_PATTERNS = [
   // The chat sends a message and its photos through ONE route, so this entry alone would raise the
   // module's most common POST — an ordinary text message — to the upload window. `usesUploadLimit`
   // is what keeps that from happening: the path qualifies, the body still has to be multipart.
-  /^\/api\/chat\/conversations\/[^/]+\/messages$/,
+  // ⚠ And it gets CHAT_MAX_BODY_BYTES rather than the shared one — see above.
+  CHAT_MESSAGES_PATH,
 ]
 
 /** Exported for the regression test — a path silently falling to the 2 MB default is invisible. */
@@ -55,6 +74,14 @@ export function usesUploadLimit(path: string, contentType: string | undefined): 
   return isUploadPath(path) && (contentType ?? '').toLowerCase().startsWith('multipart/form-data')
 }
 
+/** How much this particular request may buffer. Exported so a test can pin the chat's own window. */
+export function maxBodyBytesFor(path: string, contentType: string | undefined): number {
+  if (!usesUploadLimit(path, contentType)) {
+    return DEFAULT_MAX_BODY_BYTES
+  }
+  return CHAT_MESSAGES_PATH.test(path) ? CHAT_MAX_BODY_BYTES : UPLOAD_MAX_BODY_BYTES
+}
+
 function limitWith(maxSize: number): MiddlewareHandler {
   return bodyLimit({
     maxSize,
@@ -65,8 +92,18 @@ function limitWith(maxSize: number): MiddlewareHandler {
   })
 }
 
-const defaultLimit = limitWith(DEFAULT_MAX_BODY_BYTES)
-const uploadLimit = limitWith(UPLOAD_MAX_BODY_BYTES)
+const limiters = new Map<number, MiddlewareHandler>()
+
+/** One limiter per size, made once — `bodyLimit` builds a handler and there are only three sizes. */
+function limiterFor(maxSize: number): MiddlewareHandler {
+  const existing = limiters.get(maxSize)
+  if (existing !== undefined) {
+    return existing
+  }
+  const made = limitWith(maxSize)
+  limiters.set(maxSize, made)
+  return made
+}
 
 /**
  * Caps request-body size BEFORE anything buffers it (the per-file/total MB
@@ -74,8 +111,5 @@ const uploadLimit = limitWith(UPLOAD_MAX_BODY_BYTES)
  * gate any authenticated client could exhaust the heap with one huge POST).
  */
 export const requestBodyLimit: MiddlewareHandler = (c, next) => {
-  const limiter = usesUploadLimit(c.req.path, c.req.header('content-type'))
-    ? uploadLimit
-    : defaultLimit
-  return limiter(c, next)
+  return limiterFor(maxBodyBytesFor(c.req.path, c.req.header('content-type')))(c, next)
 }

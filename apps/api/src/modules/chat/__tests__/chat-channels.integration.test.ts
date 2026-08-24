@@ -1,6 +1,6 @@
 import { schema } from '@mr/db'
 import { ChatConversationType, type Permission } from '@mr/shared'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
@@ -29,6 +29,43 @@ describe('Channels', () => {
     container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new RecordingEventBus())
     await ensureTestUser(ctx.db)
     await ensureTestUser(ctx.db, OTHER_USER_ID)
+
+    /*
+     * ⚠ Both fixtures need a LIVE account and a real role.
+     *
+     * `addMembers` now filters the way the picker does, so somebody with no role at all is not a
+     * member candidate — which is correct: without a role they hold no permission and cannot pass
+     * the chat door either. Until this was added, these tests passed on users who could never have
+     * been in the room, which is the same "found rather than made" trap recorded on 2026-08-23.
+     */
+    await ctx.db
+      .update(schema.users)
+      .set({ isActive: true, accountStatus: 'approved' })
+      .where(inArray(schema.users.id, [TEST_USER_ID, OTHER_USER_ID]))
+
+    const [operatorRole] = await ctx.db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, 'operator'))
+      .limit(1)
+    const operatorRoleId =
+      operatorRole?.id ??
+      (
+        await ctx.db
+          .insert(schema.roles)
+          .values({ code: 'operator', nameSr: 'Operater', nameEn: 'Operator', isSystem: true })
+          .returning({ id: schema.roles.id })
+      )[0]?.id
+    if (operatorRoleId === undefined) {
+      throw new Error('no operator role')
+    }
+    await ctx.db
+      .insert(schema.userRoles)
+      .values([
+        { userId: TEST_USER_ID, roleId: operatorRoleId, assignedBy: TEST_USER_ID },
+        { userId: OTHER_USER_ID, roleId: operatorRoleId, assignedBy: TEST_USER_ID },
+      ])
+      .onConflictDoNothing()
   })
 
   afterEach(async () => {
@@ -91,6 +128,47 @@ describe('Channels', () => {
 
     const list = await container.chatService.listConversations(STRANGER)
     expect(list.items.map((item) => item.id)).toContain(channel.id)
+  })
+
+  /**
+   * The list that OFFERS people and the list that WRITES them must agree.
+   *
+   * `listAddableUsers` excludes `client` accounts; `addMembers` took whatever uuid arrived. Nothing
+   * leaks today — a portal client is refused at the module door — but membership already has teeth:
+   * a member is somebody a mention can name, and a mention writes a notification row carrying the
+   * message text. Roles are data the office creates in the panel, so one permission granted there
+   * turns this into a real leak.
+   */
+  it('refuses to put a portal client in a room, whoever asks', async () => {
+    const clientId = '00000000-0000-4000-8000-0000000000fc'
+    await ensureTestUser(ctx.db, clientId)
+    const [clientRole] = await ctx.db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, 'client'))
+      .limit(1)
+    const roleId =
+      clientRole?.id ??
+      (
+        await ctx.db
+          .insert(schema.roles)
+          .values({ code: 'client', nameSr: 'Klijent', nameEn: 'Client', isSystem: true })
+          .returning({ id: schema.roles.id })
+      )[0]?.id
+    await ctx.db
+      .insert(schema.userRoles)
+      .values({ userId: clientId, roleId: roleId ?? '', assignedBy: TEST_USER_ID })
+      .onConflictDoNothing()
+    await ctx.db
+      .update(schema.users)
+      .set({ isActive: true, accountStatus: 'approved' })
+      .where(eq(schema.users.id, clientId))
+
+    const channel = await container.chatService.createChannel('Nabavka', MAKER)
+    await container.chatService.addMembers(channel.id, [clientId], MAKER)
+
+    const { members } = await container.chatService.listMembers(channel.id, MAKER)
+    expect(members.map((person) => person.id)).not.toContain(clientId)
   })
 
   it('refuses somebody else the run of a room they did not make', async () => {

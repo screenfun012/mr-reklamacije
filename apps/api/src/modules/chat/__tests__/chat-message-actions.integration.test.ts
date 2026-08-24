@@ -58,9 +58,11 @@ describe('Chat message actions', () => {
   let generalId: string
   let emotiveThreadId: string
 
+  let bus: RecordingEventBus
   beforeEach(async () => {
     ctx = await createTestDbContext()
-    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new RecordingEventBus())
+    bus = new RecordingEventBus()
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, bus)
     await ensureTestUser(ctx.db)
     await ensureTestUser(ctx.db, OTHER_USER_ID)
     await ensureTestUser(ctx.db, ADMIN_USER_ID)
@@ -211,6 +213,35 @@ describe('Chat message actions', () => {
       expect(row?.id).toBe(id)
       expect(row?.deletedAt).not.toBeNull()
       expect(await bodyOnTheWire(id)).toBe('')
+    })
+
+    /**
+     * Taking a message back has to reach the OTHER screens, and until 2026-08-24 it did not.
+     *
+     * Every other action here announces — sending, pinning, unpinning, liking, unliking — and the
+     * withdrawal was the one that did not. So a thumbs-up travelled to all fifty browsers while
+     * taking back a photo sent to the wrong room travelled to none: it stayed on everybody's screen
+     * until they navigated away, and permanently once the room moved past the twenty-row recovery
+     * window. The server was right all along; only the screens were wrong.
+     */
+    it('tells the other screens, so the message really does go away', async () => {
+      const id = await insertMessage(generalId, 'pogrešna soba')
+      const before = bus.chatEvents.length
+
+      await container.chatService.deleteMessage(id, ME)
+
+      expect(bus.chatEvents.slice(before)).toHaveLength(1)
+      expect(bus.chatEvents.at(-1)?.conversationId).toBe(generalId)
+    })
+
+    it('tells them about a correction too', async () => {
+      const id = await insertMessage(generalId, 'prvo')
+      const before = bus.chatEvents.length
+
+      await container.chatService.editMessage(id, 'ispravljeno', ME)
+
+      // A correction nobody else sees is not a correction.
+      expect(bus.chatEvents.slice(before)).toHaveLength(1)
     })
 
     it('refuses to delete somebody else’s message', async () => {

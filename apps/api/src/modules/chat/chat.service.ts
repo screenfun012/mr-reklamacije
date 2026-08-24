@@ -433,6 +433,8 @@ export class ChatService implements ChatPort {
     }
 
     await this.repo.updateMessageBody(messageId, body)
+    // Same reason as the withdrawal above: a correction nobody else sees is not a correction.
+    this.announce(message.conversationId, messageId)
 
     const updated = await this.repo.findMessageById(messageId)
     if (updated === null) {
@@ -462,6 +464,17 @@ export class ChatService implements ChatPort {
     }
 
     await this.repo.softDeleteMessage(messageId)
+    /*
+     * ⚠ Taking a message back has to reach the OTHER screens, and until now it did not.
+     *
+     * Every other action here announces — sending, pinning, unpinning, liking, unliking — and a
+     * withdrawal was the one that did not. So a thumbs-up travelled to all fifty browsers while
+     * taking back a photo sent to the wrong room travelled to none: it stayed on everybody's screen
+     * until they navigated away, and permanently once the room moved past the twenty-row recovery
+     * window. The server was right all along (the bytes 404); only the screens were wrong, and in
+     * the direction that hurts.
+     */
+    this.announce(message.conversationId, messageId)
   }
 
   /** Per account, not per browser: it has to survive the tablet being swapped (spec §5). */

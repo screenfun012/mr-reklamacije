@@ -23,7 +23,6 @@ import {
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { ClaimContextPort } from '../../core/ports/claim-context-port.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
-import { verifySignedAttachmentToken } from '../../infrastructure/storage/local-volume-storage.js'
 import {
   buildAttachmentStoragePath,
   sanitizeUploadFileName,
@@ -112,7 +111,6 @@ export class AttachmentsService {
     private readonly claimContext: ClaimContextPort,
     private readonly audit: AuditPort,
     private readonly events: EventBus,
-    private readonly signingSecret: string,
     private readonly apiBaseUrl: string,
   ) {}
 
@@ -191,27 +189,6 @@ export class AttachmentsService {
     storagePath: string,
   ): Promise<{ stream: ReadableStream<Uint8Array>; size: number }> {
     return this.storage.readStream(storagePath)
-  }
-
-  async getRawDownloadMeta(
-    id: string,
-    expiresAtEpochSeconds: number,
-    token: string,
-  ): Promise<{ storagePath: string; mimeType: string; fileName: string }> {
-    if (!verifySignedAttachmentToken(id, expiresAtEpochSeconds, token, this.signingSecret)) {
-      throw new ForbiddenError('Invalid or expired signed URL')
-    }
-
-    const row = await this.repo.findRawById(id)
-    if (row === null) {
-      throw new NotFoundError('Attachment', id)
-    }
-
-    return {
-      storagePath: row.storagePath,
-      mimeType: row.mimeType,
-      fileName: row.fileName,
-    }
   }
 
   async upload(

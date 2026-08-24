@@ -468,7 +468,6 @@ export function buildContainer(
     claimContextService,
     auditService,
     eventBus,
-    env.ATTACHMENT_SIGNING_SECRET ?? env.BETTER_AUTH_SECRET,
     env.API_BASE_URL,
   )
   const submissionAttachmentsService = new SubmissionAttachmentsService(
