@@ -16,6 +16,7 @@ import {
   SYSTEM_ROLE_ADMIN,
   uniqueMentions,
   type ChatConversationAttachmentsResponse,
+  type ChatPerson,
   type ChatPin,
 } from '@mr/shared'
 
@@ -98,6 +99,7 @@ function scopeFor(actor: ChatActor): ChatVisibilityScope {
     userId: actor.id,
     canReadEmotiveClaims: holdsAny(actor, INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS),
     canReadDomaceClaims: holdsAny(actor, INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS),
+    isAdmin: actor.roles.includes(SYSTEM_ROLE_ADMIN),
   }
 }
 
@@ -564,6 +566,114 @@ export class ChatService implements ChatPort {
     } catch (error) {
       this.logger.error({ err: error }, 'Chat message signal failed')
     }
+  }
+
+  /**
+   * Whose channel this is. The maker, or an admin.
+   *
+   * ⚠ Admin by ROLE rather than by permission — the chat has no permission of its own, the same
+   * reasoning that lets an admin take down somebody else's pin.
+   *
+   * ⚠ 403 here, not 404. A room he cannot SEE is 404 (`requireVisible` above answered that already);
+   * this is a room he can see and does not own, and its existence is no secret to him.
+   */
+  private requireChannelOwner(
+    conversation: ChatConversationListItem,
+    createdBy: string | null,
+    actor: ChatActor,
+  ): void {
+    if (actor.roles.includes(SYSTEM_ROLE_ADMIN)) {
+      return
+    }
+    if (createdBy !== actor.id) {
+      throw new ForbiddenError('A channel is managed by whoever made it')
+    }
+  }
+
+  /** ⚠ On EVERY channel route, not only on delete: it is the one room that exists for everybody. */
+  private requireRealChannel(conversation: ChatConversationListItem): void {
+    if (conversation.type === ChatConversationType.General) {
+      throw new UnprocessableEntityError('The general channel is not managed')
+    }
+    if (conversation.type !== ChatConversationType.Channel) {
+      throw new UnprocessableEntityError('This is not a channel')
+    }
+  }
+
+  /**
+   * Makes a channel. Anybody in the chat may (Nikola, 2026-08-24) — the same as opening a claim's
+   * thread, and for the same reason: a room is work, not a privilege. A surplus one is deleted.
+   */
+  async createChannel(name: string, actor: ChatActor): Promise<ChatConversationListItem> {
+    const id = await this.repo.createChannel(name, actor.id)
+    const conversation = await this.repo.findVisibleConversation(id, scopeFor(actor))
+    if (conversation === null) {
+      throw new NotFoundError('Chat conversation', id)
+    }
+
+    return conversation
+  }
+
+  async renameChannel(
+    conversationId: string,
+    name: string,
+    actor: ChatActor,
+  ): Promise<ChatConversationListItem> {
+    const conversation = await this.requireVisible(conversationId, actor)
+    this.requireRealChannel(conversation)
+    this.requireChannelOwner(conversation, await this.repo.findCreatedBy(conversationId), actor)
+
+    await this.repo.renameChannel(conversationId, name)
+    const renamed = await this.repo.findVisibleConversation(conversationId, scopeFor(actor))
+    if (renamed === null) {
+      throw new NotFoundError('Chat conversation', conversationId)
+    }
+
+    return renamed
+  }
+
+  async listMembers(
+    conversationId: string,
+    actor: ChatActor,
+  ): Promise<{ members: ChatPerson[]; addable: ChatPerson[] }> {
+    const conversation = await this.requireVisible(conversationId, actor)
+    this.requireRealChannel(conversation)
+
+    return {
+      members: await this.repo.listMembers(conversationId),
+      // ⚠ Its own query: `listPeopleFor` answers "who may a mention name here", which for a channel
+      // is its members — reusing it would offer only the people already inside.
+      addable: await this.repo.listAddableUsers(conversationId),
+    }
+  }
+
+  async addMembers(
+    conversationId: string,
+    userIds: readonly string[],
+    actor: ChatActor,
+  ): Promise<void> {
+    const conversation = await this.requireVisible(conversationId, actor)
+    this.requireRealChannel(conversation)
+    this.requireChannelOwner(conversation, await this.repo.findCreatedBy(conversationId), actor)
+
+    await this.repo.addMembers(conversationId, userIds)
+  }
+
+  /**
+   * Taking somebody out — or walking out yourself.
+   *
+   * ⚠ Leaving needs no ownership: anybody may leave any room they are in. Which is exactly how a
+   * channel ends up with nobody in it, and why an admin can see an empty one.
+   */
+  async removeMember(conversationId: string, userId: string, actor: ChatActor): Promise<void> {
+    const conversation = await this.requireVisible(conversationId, actor)
+    this.requireRealChannel(conversation)
+
+    if (userId !== actor.id) {
+      this.requireChannelOwner(conversation, await this.repo.findCreatedBy(conversationId), actor)
+    }
+
+    await this.repo.removeMember(conversationId, userId)
   }
 
   /**

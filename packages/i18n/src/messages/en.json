@@ -1757,5 +1757,8 @@
   "chat_push_devices": "Devices",
   "chat_push_device_remove": "Remove device",
   "chat_push_this_device": "this device",
-  "chat_push_failed": "Notifications could not be turned on."
+  "chat_push_failed": "Notifications could not be turned on.",
+  "chat_push_banner_title": "Turn on notifications on this device",
+  "chat_push_banner_body": "Messages reach you with the app closed. Asked once, per device.",
+  "chat_push_banner_dismiss": "Not now"
 }

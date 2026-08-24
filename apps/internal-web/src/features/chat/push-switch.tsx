@@ -1,19 +1,12 @@
 import { m } from '@mr/i18n'
-import {
-  PushSubscriptionMode,
-  pushDevicesOptions,
-  pushKeys,
-  pushPublicKeyOptions,
-  removePushDevice,
-  setPushMode,
-  subscribeToPush,
-} from '@mr/shared'
+import { PushSubscriptionMode, pushKeys, removePushDevice, setPushMode } from '@mr/shared'
 import { cn } from '@mr/ui'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
-import { useState } from 'react'
 
 import { showInternalToast } from '~/lib/internal-toast'
+
+import { usePushEnrollment } from './use-push-enrollment'
 
 const EYEBROW_CLASSES = 'font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2'
 
@@ -26,62 +19,17 @@ const MODES = [
 ] as const
 
 /**
- * Whether this browser can be told anything at all.
- *
- * ⚠ Feature detection, never a user-agent string. On iPhone and iPad `PushManager` is simply absent
- * until the app is added to the Home Screen — so asking "is it there" answers the real question,
- * and keeps answering it correctly the day Apple changes its mind.
- */
-function pushIsPossible(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    'serviceWorker' in navigator &&
-    'PushManager' in window &&
-    'Notification' in window
-  )
-}
-
-/** Safari calls the app "standalone" once it has been added to the Home Screen. */
-function looksLikeIosWithoutHomeScreen(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
-  const standalone = (navigator as { standalone?: boolean }).standalone === true
-  return isIos && !standalone && !('PushManager' in window)
-}
-
-/**
- * The base64url the server hands out, in the byte form `PushManager.subscribe` insists on.
- * ⚠ It refuses the string outright — this conversion is not decoration.
- */
-function toApplicationServerKey(base64Url: string): ArrayBuffer {
-  const padded = base64Url.padEnd(base64Url.length + ((4 - (base64Url.length % 4)) % 4), '=')
-  const binary = atob(padded.replaceAll('-', '+').replaceAll('_', '/'))
-  const bytes = Uint8Array.from(binary, (character) => character.codePointAt(0) ?? 0)
-  // The `ArrayBuffer` rather than the view: TypeScript's DOM types accept a plain BufferSource,
-  // and a `Uint8Array` over a SharedArrayBuffer is not one of them.
-  return bytes.buffer.slice(0) as ArrayBuffer
-}
-
-/**
  * „Obaveštenja na telefon", under the DND switch — where a person is already thinking about being
  * disturbed.
  */
+/**
+ * „Obaveštenja na telefon", under the DND switch — where a person is already thinking about being
+ * disturbed. The banner above the conversation is the same offer for somebody who never looks here.
+ */
 export function PushSwitch(): React.ReactElement | null {
   const queryClient = useQueryClient()
-  const publicKey = useQuery(pushPublicKeyOptions())
-  const devices = useQuery(pushDevicesOptions())
-  const [asking, setAsking] = useState(false)
+  const { enrollment, devices, asking, enable } = usePushEnrollment()
 
-  /*
-   * ⚠ Every hook BEFORE the early return below.
-   *
-   * These sat after it in the first version, so the moment the server's answer arrived the render
-   * went from four hooks to six and React threw the whole tree away — the panel would have died
-   * exactly when push became available. The test caught it; the rule is that a hook is never
-   * conditional, and an early return is a condition.
-   */
   const changeMode = useMutation({
     mutationFn: setPushMode,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: pushKeys.devices() }),
@@ -94,58 +42,26 @@ export function PushSwitch(): React.ReactElement | null {
     onError: () => showInternalToast(m.chat_push_failed()),
   })
 
-  // Nothing to offer: the server has no VAPID keys, so `subscribe` could not be called anyway.
-  if (publicKey.data?.publicKey === null || publicKey.data === undefined) {
+  // Our own setup, not anything the person could act on — so nothing is said at all.
+  if (enrollment === 'no-keys') {
     return null
   }
 
-  const key = publicKey.data.publicKey
-
-  const mode = devices.data?.items[0]?.mode ?? PushSubscriptionMode.All
-  const subscribed = (devices.data?.items.length ?? 0) > 0
-
-  const enable = async (): Promise<void> => {
-    setAsking(true)
-    try {
-      // ⚠ Asked HERE, on a press — never on load. A prompt fired at load is answered with a
-      // permanent refusal that the app can never undo.
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') {
-        showInternalToast(m.chat_push_blocked())
-        return
-      }
-
-      const registration = await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.subscribe({
-        // Required by every browser: a push that anybody could send to is not a push.
-        userVisibleOnly: true,
-        applicationServerKey: toApplicationServerKey(key),
-      })
-
-      const raw = subscription.toJSON()
-      await subscribeToPush({
-        endpoint: subscription.endpoint,
-        keys: { p256dh: raw.keys?.['p256dh'] ?? '', auth: raw.keys?.['auth'] ?? '' },
-      })
-      await queryClient.invalidateQueries({ queryKey: pushKeys.devices() })
-    } catch {
-      showInternalToast(m.chat_push_failed())
-    } finally {
-      setAsking(false)
-    }
-  }
+  const mode = devices[0]?.mode ?? PushSubscriptionMode.All
 
   return (
     <div className="flex flex-col gap-2 border-t border-mri-border px-3 py-3">
       <span className={EYEBROW_CLASSES}>{m.chat_push_eyebrow()}</span>
 
-      {!pushIsPossible() ? (
+      {enrollment === 'ios-needs-home-screen' || enrollment === 'unsupported' ? (
         <p className={HINT_CLASSES}>
           {/* ⚠ Says WHY rather than showing nothing. On an iPad this is the one sentence between a
               serviser and a phone that never rings. */}
-          {looksLikeIosWithoutHomeScreen() ? m.chat_push_ios_hint() : m.chat_push_unsupported()}
+          {enrollment === 'ios-needs-home-screen'
+            ? m.chat_push_ios_hint()
+            : m.chat_push_unsupported()}
         </p>
-      ) : !subscribed ? (
+      ) : enrollment === 'off' ? (
         <button
           type="button"
           disabled={asking}
@@ -177,7 +93,7 @@ export function PushSwitch(): React.ReactElement | null {
 
           <span className={EYEBROW_CLASSES}>{m.chat_push_devices()}</span>
           <ul className="flex flex-col gap-1">
-            {(devices.data?.items ?? []).map((device) => (
+            {devices.map((device) => (
               <li key={device.id} className="flex items-center gap-1.5">
                 <span className="min-w-0 flex-1 truncate text-[10.5px] text-mri-text2">
                   {device.userAgent ?? m.chat_push_this_device()}

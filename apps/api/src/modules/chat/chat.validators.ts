@@ -39,6 +39,22 @@ export interface ChatActor {
   roles: readonly string[]
 }
 
+/**
+ * ⚠ The name is NOT unique in the database, deliberately. Two „Nabavka" are allowed: a name is a
+ * label, not a key, and enforcing it would mean a migration for a problem nobody has reported.
+ */
+export const ChatChannelInputSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+})
+
+export const ChatMembersInputSchema = z.object({
+  userIds: z.array(z.string().uuid()).min(1).max(200),
+})
+
+export const ChatMemberParamSchema = z.object({
+  userId: z.string().uuid(),
+})
+
 /** A file id in a room's URL — parsed like every other id, never trusted as a string. */
 export const ChatAttachmentIdParamSchema = z.object({
   attachmentId: z.string().uuid(),

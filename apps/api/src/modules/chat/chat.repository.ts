@@ -15,6 +15,7 @@ import {
   SYSTEM_ROLE_ADMIN,
   UserAccountStatus,
   type ChatMention,
+  type ChatPerson,
   type ChatPin,
   type ChatAttachment,
   type ChatConversationAttachment,
@@ -103,6 +104,11 @@ function claimReaderPermissions(conversation: ChatConversationListItem): Permiss
  * Only a live, approved account. The same gate the login uses and the same one the notifications
  * fan-out uses — a name in this menu that cannot receive a mention is a lie with a click on it.
  */
+/** The wire shape a chat person has everywhere: the initials are drawn, never stored. */
+function toPerson(row: { id: string; name: string; email?: string }): ChatPerson {
+  return { id: row.id, name: row.name, initials: getInitials(row.name, row.email ?? '') }
+}
+
 function isLiveAccount(): SQL | undefined {
   return and(
     eq(users.isActive, true),
@@ -119,6 +125,13 @@ export interface ChatVisibilityScope {
   userId: string
   canReadEmotiveClaims: boolean
   canReadDomaceClaims: boolean
+  /**
+   * By ROLE, not by permission — the chat has no permission of its own, the same reasoning that
+   * lets an admin take down somebody else's pin.
+   *
+   * ⚠ It buys exactly ONE thing here: seeing a channel that has no members left. Not every channel.
+   */
+  isAdmin: boolean
 }
 
 interface ConversationRow {
@@ -184,10 +197,25 @@ function visibleConversationCondition(scope: ChatVisibilityScope): SQL {
 
   return sql`(
     ${chatConversations.type} = ${ChatConversationType.General}
-    OR (${chatConversations.type} = ${ChatConversationType.Channel} AND EXISTS (
-      SELECT 1 FROM ${chatMembers}
-      WHERE ${chatMembers.conversationId} = ${chatConversations.id}
-        AND ${chatMembers.userId} = ${scope.userId}
+    OR (${chatConversations.type} = ${ChatConversationType.Channel} AND (
+      EXISTS (
+        SELECT 1 FROM ${chatMembers}
+        WHERE ${chatMembers.conversationId} = ${chatConversations.id}
+          AND ${chatMembers.userId} = ${scope.userId}
+      )
+      /*
+       * ⚠ An admin sees a channel with NO members left, and nothing more.
+       *
+       * A channel everybody has walked out of is otherwise visible to NOBODY — it cannot be opened,
+       * cannot be deleted, and sits in the database forever. This is the narrowest fix for that:
+       * "an admin sees every channel" would be a different feature and a different privacy, because
+       * a room where three people talk does not stop being theirs when somebody holds a role.
+       * An empty channel is nobody's conversation, so there is nobody for it to be private from.
+       */
+      OR (${scope.isAdmin} AND NOT EXISTS (
+        SELECT 1 FROM ${chatMembers}
+        WHERE ${chatMembers.conversationId} = ${chatConversations.id}
+      ))
     ))
     OR (${chatConversations.type} = ${ChatConversationType.Claim}
         AND (${emotiveThread} OR ${domaceThread}))
@@ -945,6 +973,108 @@ export class ChatRepository {
       .limit(1)
 
     return row ?? null
+  }
+
+  /**
+   * Makes a channel, with its maker inside it.
+   *
+   * ⚠ One transaction, and that is not tidiness. A channel is visible to its MEMBERS, so a maker
+   * who is not one has built a room that vanished the moment it was made — invisible to everybody
+   * including themselves, and impossible to delete.
+   */
+  async createChannel(name: string, createdBy: string): Promise<string> {
+    return this.db.transaction(async (tx) => {
+      const [conversation] = await tx
+        .insert(chatConversations)
+        .values({ type: ChatConversationType.Channel, name, createdBy })
+        .returning({ id: chatConversations.id })
+
+      if (conversation === undefined) {
+        throw new Error('channel could not be created')
+      }
+
+      await tx.insert(chatMembers).values({ conversationId: conversation.id, userId: createdBy })
+      return conversation.id
+    })
+  }
+
+  /** Who made this room. Read on its own because the list projection has no business carrying it. */
+  async findCreatedBy(conversationId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ createdBy: chatConversations.createdBy })
+      .from(chatConversations)
+      .where(eq(chatConversations.id, conversationId))
+      .limit(1)
+
+    return row?.createdBy ?? null
+  }
+
+  async renameChannel(conversationId: string, name: string): Promise<void> {
+    await this.db
+      .update(chatConversations)
+      .set({ name, updatedAt: new Date() })
+      .where(eq(chatConversations.id, conversationId))
+  }
+
+  /** Adding people. Idempotent: adding somebody twice is the same room, not an error. */
+  async addMembers(conversationId: string, userIds: readonly string[]): Promise<void> {
+    const ids = [...new Set(userIds)]
+    if (ids.length === 0) {
+      return
+    }
+
+    await this.db
+      .insert(chatMembers)
+      .values(ids.map((userId) => ({ conversationId, userId })))
+      .onConflictDoNothing()
+  }
+
+  async removeMember(conversationId: string, userId: string): Promise<void> {
+    await this.db
+      .delete(chatMembers)
+      .where(and(eq(chatMembers.conversationId, conversationId), eq(chatMembers.userId, userId)))
+  }
+
+  /** Who is in this room, for the panel that manages it. */
+  async listMembers(conversationId: string): Promise<ChatPerson[]> {
+    const rows = await this.db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(chatMembers)
+      .innerJoin(users, eq(users.id, chatMembers.userId))
+      .where(eq(chatMembers.conversationId, conversationId))
+      .orderBy(users.name)
+
+    return rows.map(toPerson)
+  }
+
+  /**
+   * Who could still be added.
+   *
+   * ⚠ A SECOND query, deliberately. `listPeopleFor` answers "who may a mention here name", and for
+   * a channel that is its members — so reusing it would offer only the people already inside.
+   */
+  async listAddableUsers(conversationId: string): Promise<ChatPerson[]> {
+    const rows = await this.db
+      .selectDistinct({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .innerJoin(userRoles, eq(userRoles.userId, users.id))
+      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .where(
+        and(
+          isLiveAccount(),
+          isNull(roles.deletedAt),
+          // Anybody in the internal app, minus whoever is already here.
+          sql`NOT EXISTS (
+            SELECT 1 FROM ${chatMembers}
+            WHERE ${chatMembers.conversationId} = ${conversationId}
+              AND ${chatMembers.userId} = ${users.id}
+          )`,
+          sql`${roles.code} <> 'client'`,
+        ),
+      )
+      .orderBy(users.name)
+
+    return rows.map(toPerson)
   }
 
   /** Is there a claim here at all, and is it still alive? A deleted claim gets no thread. */

@@ -12,6 +12,9 @@ import type { PreparedChatFile } from './chat-attachments.service.js'
 import {
   ChatClaimThreadParamSchema,
   ChatAttachmentIdParamSchema,
+  ChatChannelInputSchema,
+  ChatMemberParamSchema,
+  ChatMembersInputSchema,
   ChatConversationIdParamSchema,
   ChatEditInputSchema,
   ChatMarkReadInputSchema,
@@ -58,6 +61,11 @@ export function createChatController(container: Container): {
   mute: (c: Context) => Promise<Response>
   unmute: (c: Context) => Promise<Response>
   listPins: (c: Context) => Promise<Response>
+  createChannel: (c: Context) => Promise<Response>
+  renameChannel: (c: Context) => Promise<Response>
+  listMembers: (c: Context) => Promise<Response>
+  addMembers: (c: Context) => Promise<Response>
+  removeMember: (c: Context) => Promise<Response>
   listAttachments: (c: Context) => Promise<Response>
   downloadAttachment: (c: Context) => Promise<Response>
   pin: (c: Context) => Promise<Response>
@@ -121,6 +129,42 @@ export function createChatController(container: Container): {
       )
       // 200 says "this one was already here" — the retry is answered, not counted twice.
       return c.json({ ...message, partialFiles }, created ? 201 : 200)
+    },
+
+    createChannel: async (c: Context) => {
+      const { name } = ChatChannelInputSchema.parse(await c.req.json())
+      const conversation = await container.chatService.createChannel(name, toActor(c))
+      return c.json(conversation, 201)
+    },
+
+    renameChannel: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const { name } = ChatChannelInputSchema.parse(await c.req.json())
+      const conversation = await container.chatService.renameChannel(id, name, toActor(c))
+      return c.json(conversation)
+    },
+
+    listMembers: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const result = await container.chatService.listMembers(id, toActor(c))
+      return c.json(result)
+    },
+
+    addMembers: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const { userIds } = ChatMembersInputSchema.parse(await c.req.json())
+      await container.chatService.addMembers(id, userIds, toActor(c))
+      return c.body(null, 204)
+    },
+
+    removeMember: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const raw = c.req.param('userId')
+      // „me" is how somebody walks out of a room without knowing their own id.
+      const actor = toActor(c)
+      const { userId } = ChatMemberParamSchema.parse({ userId: raw === 'me' ? actor.id : raw })
+      await container.chatService.removeMember(id, userId, actor)
+      return c.body(null, 204)
     },
 
     listAttachments: async (c: Context) => {

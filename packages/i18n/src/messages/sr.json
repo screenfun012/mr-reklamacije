@@ -1757,5 +1757,8 @@
   "chat_push_devices": "Uređaji",
   "chat_push_device_remove": "Skloni uređaj",
   "chat_push_this_device": "ovaj uređaj",
-  "chat_push_failed": "Obaveštenja se nisu uključila."
+  "chat_push_failed": "Obaveštenja se nisu uključila.",
+  "chat_push_banner_title": "Uključi obaveštenja na ovom uređaju",
+  "chat_push_banner_body": "Poruke iz razgovora stižu i kad je aplikacija zatvorena. Traži se jednom, po uređaju.",
+  "chat_push_banner_dismiss": "Ne sada"
 }
