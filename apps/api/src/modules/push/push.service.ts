@@ -46,7 +46,7 @@ export class PushService implements PushPort {
     },
   ) {
     const { publicKey, privateKey, subject } = keys
-    this.isEnabled =
+    const configured =
       publicKey !== undefined &&
       publicKey !== '' &&
       privateKey !== undefined &&
@@ -54,8 +54,34 @@ export class PushService implements PushPort {
       subject !== undefined &&
       subject !== ''
 
-    if (this.isEnabled) {
-      webpush.setVapidDetails(subject as string, publicKey as string, privateKey as string)
+    if (!configured) {
+      this.isEnabled = false
+      return
+    }
+
+    /*
+     * ⚠ A wrong value here disables PUSH. It must never take the API down with it.
+     *
+     * `setVapidDetails` throws on anything it does not like — and on 2026-08-24 it did: a subject
+     * entered as `someone@example.com` instead of `mailto:someone@example.com` threw inside the
+     * container's constructor, so `server.js` never started and the WHOLE API crash-looped in
+     * production. Claims, intake, the portal — all of it down, because of one optional variable for
+     * a feature nobody had turned on yet.
+     *
+     * An optional feature that can refuse to start the service it lives in is not optional. So the
+     * failure is caught, named loudly enough to be found in the logs, and push alone goes quiet.
+     */
+    try {
+      webpush.setVapidDetails(subject, publicKey, privateKey)
+      this.isEnabled = true
+    } catch (error) {
+      this.isEnabled = false
+      this.logger.error(
+        { err: error, subject },
+        'Push is disabled: the VAPID configuration was refused. VAPID_SUBJECT must be a URL — ' +
+          'either "mailto:someone@example.com" or "https://example.com" — and the keys must be the ' +
+          'pair printed by `npx web-push generate-vapid-keys`.',
+      )
     }
   }
 

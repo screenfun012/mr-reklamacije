@@ -61,6 +61,8 @@ describe('who a new chat message reaches', () => {
     sendNotification.mockReset()
     sendNotification.mockResolvedValue(undefined)
     setVapidDetails.mockReset()
+    // Back to a working configuration: the two cases below deliberately make it throw.
+    setVapidDetails.mockImplementation(() => undefined)
   })
 
   it('says nothing at all when the keys are absent', async () => {
@@ -68,6 +70,48 @@ describe('who a new chat message reaches', () => {
 
     expect(service.isEnabled).toBe(false)
     // ⚠ And does not throw: an unconfigured push is a disabled feature, not a broken one.
+    await expect(service.notifyChatMessage(message())).resolves.toBeUndefined()
+    expect(sendNotification).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The regression for a production outage on 2026-08-24.
+   *
+   * `VAPID_SUBJECT` was entered as `someone@example.com` instead of `mailto:someone@example.com`.
+   * `setVapidDetails` threw inside the container's constructor, `server.js` never started, and the
+   * WHOLE API crash-looped — claims, intake, the portal, all of it — because of one optional
+   * variable for a feature nobody had turned on yet.
+   *
+   * ⚠ An optional feature that can refuse to start the service it lives in is not optional.
+   */
+  it('goes quiet on a bad configuration instead of taking the API down with it', () => {
+    setVapidDetails.mockImplementation(() => {
+      throw new Error('Vapid subject is not a valid URL. someone@example.com')
+    })
+
+    const { service, logger } = build([subscription()], {
+      publicKey: 'pub',
+      privateKey: 'priv',
+      // The exact mistake: an email address rather than a mailto: URL.
+      subject: 'someone@example.com',
+    })
+
+    expect(service.isEnabled).toBe(false)
+    // And says so loudly enough to be found in the logs, naming what the value must look like.
+    expect(logger.error).toHaveBeenCalled()
+  })
+
+  it('sends nothing at all once it has gone quiet', async () => {
+    setVapidDetails.mockImplementation(() => {
+      throw new Error('Vapid subject is not a valid URL. someone@example.com')
+    })
+
+    const { service } = build([subscription()], {
+      publicKey: 'pub',
+      privateKey: 'priv',
+      subject: 'someone@example.com',
+    })
+
     await expect(service.notifyChatMessage(message())).resolves.toBeUndefined()
     expect(sendNotification).not.toHaveBeenCalled()
   })
