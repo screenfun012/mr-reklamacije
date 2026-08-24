@@ -493,3 +493,119 @@ describe('Chat attachments — reading', () => {
     ).rejects.toThrow()
   })
 })
+
+/**
+ * Who a phone hears from.
+ *
+ * ⚠ The muting is decided HERE, in the chat's own query, and not in the push module. `chat_mutes`
+ * is the chat's promise that a room will not disturb you — and a lock screen is the worst possible
+ * place to break it.
+ */
+describe('Chat push — who is on the list', () => {
+  let ctx: TestDbContext
+  let container: Container
+  let generalId: string
+
+  beforeEach(async () => {
+    ctx = await createTestDbContext()
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new RecordingEventBus())
+    await ensureTestUser(ctx.db)
+
+    /*
+     * ⚠ The account has to be LIVE and hold a ROLE, or none of this proves anything.
+     *
+     * `listPeopleFor` joins through `user_roles` and requires `is_active` + `approved`
+     * (`isLiveAccount`). Without this the test user is simply absent from every list, and
+     * "the author is not on it" would pass because he was unreachable — not because he was
+     * excluded. That exact trap was recorded on 2026-08-23 and it caught this test too.
+     */
+    await ctx.db
+      .update(schema.users)
+      .set({ isActive: true, accountStatus: 'approved' })
+      .where(eq(schema.users.id, TEST_USER_ID))
+    // The admin role short-circuits the permission join in `listPeopleFor`. Made here rather than
+    // borrowed from the seed: whether the seed survived depends on which suite ran last, and a
+    // fixture that is found rather than made is how a suite passes on a laptop and dies in CI.
+    const [existingRole] = await ctx.db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(eq(schema.roles.code, 'admin'))
+      .limit(1)
+    const roleId =
+      existingRole?.id ??
+      (
+        await ctx.db
+          .insert(schema.roles)
+          .values({
+            code: 'admin',
+            nameSr: 'Administrator',
+            nameEn: 'Administrator',
+            isSystem: true,
+          })
+          .returning({ id: schema.roles.id })
+      )[0]?.id
+    if (roleId === undefined) {
+      throw new Error('no admin role')
+    }
+    await ctx.db
+      .insert(schema.userRoles)
+      // assignedBy is NOT NULL and self-assignment is the bootstrap pattern this repo already uses.
+      .values({ userId: TEST_USER_ID, roleId, assignedBy: TEST_USER_ID })
+      .onConflictDoNothing()
+
+    const [existing] = await ctx.db
+      .select({ id: schema.chatConversations.id })
+      .from(schema.chatConversations)
+      .where(eq(schema.chatConversations.type, ChatConversationType.General))
+      .limit(1)
+    generalId =
+      existing?.id ??
+      (
+        await ctx.db
+          .insert(schema.chatConversations)
+          .values({ type: ChatConversationType.General, name: 'Opšti kanal' })
+          .returning({ id: schema.chatConversations.id })
+      )[0]?.id ??
+      ''
+  })
+
+  afterEach(async () => {
+    await ctx.cleanup()
+  })
+
+  async function conversation() {
+    const list = await container.chatService.listConversations({
+      id: TEST_USER_ID,
+      permissions: [...OFFICE_PERMISSIONS],
+      roles: ['operator'],
+    })
+    const found = list.items.find((item) => item.id === generalId)
+    if (found === undefined) {
+      throw new Error('general channel not visible')
+    }
+    return found
+  }
+
+  it('never puts the author on it', async () => {
+    const recipients = await container.chatRepository.listPushRecipients(
+      await conversation(),
+      TEST_USER_ID,
+    )
+
+    expect(recipients).not.toContain(TEST_USER_ID)
+  })
+
+  it('takes a muted room off it', async () => {
+    const room = await conversation()
+
+    const before = await container.chatRepository.listPushRecipients(room, 'someone-else')
+    expect(before).toContain(TEST_USER_ID)
+
+    await ctx.db
+      .insert(schema.chatMutes)
+      .values({ conversationId: generalId, userId: TEST_USER_ID })
+
+    const after = await container.chatRepository.listPushRecipients(room, 'someone-else')
+    expect(after).not.toContain(TEST_USER_ID)
+  })
+})

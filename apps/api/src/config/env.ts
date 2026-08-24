@@ -105,6 +105,14 @@ const EnvSchema = z.object({
   // Redis-backed feature falls back to in-memory/DB, so the app behaves exactly as today.
   // MUST be the PRIVATE Railway URL (redis.railway.internal) — the public TCP proxy bills egress.
   REDIS_URL: z.string().url().optional(),
+
+  // Web push (VAPID) for the chat. All three optional and all three needed together: when any is
+  // absent push is disabled (NoOp), the screen never offers it, and nothing else changes — the
+  // same shape the email keys above use. Generated once with `npx web-push generate-vapid-keys`.
+  // VAPID_SUBJECT must be a mailto: or https: URL — the push services reject anything else.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
 })
 
 export type Env = z.infer<typeof EnvSchema>

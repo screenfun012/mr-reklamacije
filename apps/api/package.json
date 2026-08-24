@@ -45,6 +45,7 @@
     "react-dom": "19.2.5",
     "sanitize-html": "^2.17.0",
     "sharp": "^0.35.2",
+    "web-push": "^3.6.7",
     "zod": "4.4.2"
   },
   "devDependencies": {
@@ -55,6 +56,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.0",
+    "@types/web-push": "^3.6.4",
     "aws-sdk-client-mock": "^4.1.0",
     "dependency-cruiser": "^16.10.4",
     "eslint": "^9.39.1",

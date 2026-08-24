@@ -38,6 +38,7 @@ import {
 } from '../modules/intake-checklist-items/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
 import { ChatAttachmentsService, ChatRepository, ChatService } from '../modules/chat/index.js'
+import { PushRepository, PushService } from '../modules/push/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { DashboardRepository, DashboardService } from '../modules/dashboard/index.js'
 import { StatisticsRepository, StatisticsService } from '../modules/statistics/index.js'
@@ -122,6 +123,8 @@ export interface Container {
   chatRepository: ChatRepository
   chatAttachmentsService: ChatAttachmentsService
   chatService: ChatService
+  pushRepository: PushRepository
+  pushService: PushService
   claimCategoriesRepository: ClaimCategoriesRepository
   claimCategoriesService: ClaimCategoriesService
   claimCategoryFieldsRepository: ClaimCategoryFieldsRepository
@@ -253,6 +256,13 @@ export function buildContainer(
    */
   const storageService = createStorageService(env)
 
+  const pushRepository = new PushRepository(db)
+  const pushService = new PushService(pushRepository, logger, {
+    publicKey: env.VAPID_PUBLIC_KEY,
+    privateKey: env.VAPID_PRIVATE_KEY,
+    subject: env.VAPID_SUBJECT,
+  })
+
   const chatRepository = new ChatRepository(db)
   const chatAttachmentsService = new ChatAttachmentsService(chatRepository, storageService, logger)
   const chatService = new ChatService(
@@ -262,6 +272,7 @@ export function buildContainer(
     notificationsService,
     auditService,
     chatAttachmentsService,
+    pushService,
   )
 
   const claimCategoriesRepository = new ClaimCategoriesRepository(db)
@@ -507,6 +518,8 @@ export function buildContainer(
     chatRepository,
     chatAttachmentsService,
     chatService,
+    pushRepository,
+    pushService,
     claimCategoriesRepository,
     claimCategoriesService,
     claimCategoryFieldsRepository,

@@ -656,6 +656,31 @@ export class ChatRepository {
   }
 
   /**
+   * Everybody whose phone should be told about a new message here.
+   *
+   * ⚠ The muting happens HERE, not in the push module. `chat_mutes` is the chat's own promise —
+   * "this room will not disturb me" — and a promise kept on the screen but broken on a lock screen
+   * is worse than never made. Doing it here also keeps the push module from having to know what a
+   * conversation is.
+   *
+   * The author is excluded for the same reason every fan-out in this system excludes them.
+   */
+  async listPushRecipients(
+    conversation: ChatConversationListItem,
+    authorId: string,
+  ): Promise<string[]> {
+    const people = await this.listPeopleFor(conversation)
+
+    const muted = await this.db
+      .select({ userId: chatMutes.userId })
+      .from(chatMutes)
+      .where(eq(chatMutes.conversationId, conversation.id))
+    const silenced = new Set(muted.map((row) => row.userId))
+
+    return people.map((person) => person.id).filter((id) => id !== authorId && !silenced.has(id))
+  }
+
+  /**
    * Every file a room holds, as storage paths — read BEFORE the room goes.
    *
    * ⚠ Once the conversation row is deleted the attachment rows follow by cascade, and then nothing

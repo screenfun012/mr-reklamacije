@@ -34,6 +34,7 @@ import {
   resolveAttachmentDownloadMeta,
   type AttachmentDownloadMeta,
 } from '../../core/attachments/attachment-download-meta.js'
+import type { PushPort } from '../../core/ports/push-port.js'
 import type { ChatAttachmentsService, PreparedChatFile } from './chat-attachments.service.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
@@ -108,6 +109,7 @@ export class ChatService implements ChatPort {
     private readonly notifications: NotificationsPort,
     private readonly audit: AuditPort,
     private readonly attachments: ChatAttachmentsService,
+    private readonly push: PushPort,
   ) {}
 
   async listConversations(actor: ChatActor): Promise<ChatConversationListResponse> {
@@ -198,6 +200,7 @@ export class ChatService implements ChatPort {
     if (stored.created) {
       this.announce(conversationId, message.id)
       await this.ringMentions(conversation, message, actor)
+      this.pushToPhones(conversation, message, actor)
     }
 
     return { message, created: stored.created, partialFiles }
@@ -239,6 +242,52 @@ export class ChatService implements ChatPort {
     }
 
     return resolveAttachmentDownloadMeta(row, variant)
+  }
+
+  /**
+   * Tells the phones. Every message, not only the mentions — Nikola, 2026-08-23, and the reason is
+   * his: a person who is flooded turns notifications off in the PHONE and loses the mentions too,
+   * so the switch that thins them out lives in the app.
+   *
+   * ⚠ Fire-and-forget with a `.catch()`, and the catch is not politeness. Node 24 runs
+   * `--unhandled-rejections=throw` and this API registers no handler for it, so one push service
+   * having a bad day would take the whole service down. `PushPort` promises never to reject; this
+   * is what makes that promise not be the only thing standing there.
+   */
+  private pushToPhones(
+    conversation: ChatConversationListItem,
+    message: ChatMessage,
+    actor: ChatActor,
+  ): void {
+    void this.deliverPush(conversation, message, actor).catch((error: unknown) => {
+      this.logger.error({ err: error }, 'chat push fan-out failed')
+    })
+  }
+
+  private async deliverPush(
+    conversation: ChatConversationListItem,
+    message: ChatMessage,
+    actor: ChatActor,
+  ): Promise<void> {
+    if (!this.push.isEnabled) {
+      return
+    }
+
+    // ⚠ The muted are filtered out HERE, in the chat's own query — `chat_mutes` is the chat's
+    // promise that a room will not disturb you, and a lock screen is the worst place to break it.
+    const recipientIds = await this.repo.listPushRecipients(conversation, actor.id)
+    if (recipientIds.length === 0) {
+      return
+    }
+
+    await this.push.notifyChatMessage({
+      conversationId: conversation.id,
+      conversationTitle: conversation.title,
+      authorName: message.author?.name ?? '',
+      excerpt: stripMentionMarkup(message.body).slice(0, CHAT_MENTION_EXCERPT_MAX),
+      mentionedUserIds: uniqueMentions(message.body).map((mention) => mention.id),
+      recipientIds,
+    })
   }
 
   /**
