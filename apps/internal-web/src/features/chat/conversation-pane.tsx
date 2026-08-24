@@ -10,6 +10,7 @@ import {
   markChatRead,
   pinChatMessage,
   reactToChatMessage,
+  ApiError,
   buildChatAttachmentUrl,
   sendChatMessage,
   type ChatMessage,
@@ -196,7 +197,27 @@ export function ConversationPane({
         showInternalToast(m.chat_attachment_partial())
       }
     },
-    onError: (_error, row) => {
+    onError: (error, row) => {
+      /*
+       * The server's own sentence, not a generic "not sent".
+       *
+       * ⚠ And a 4xx is a REFUSAL, not a hiccup: the same bytes under the same clientMsgId can only
+       * be refused again, so offering "try again" for one is a button that cannot work. The intake
+       * quote reached the same conclusion — "file too large" and "unsupported type" are things the
+       * office can act on, and only if it is told.
+       */
+      const refused = error instanceof ApiError && error.status >= 400 && error.status < 500
+      if (error instanceof ApiError) {
+        showInternalToast(error.message)
+      }
+
+      if (refused) {
+        setPending((current) =>
+          current.filter((item) => item.message.clientMsgId !== row.message.clientMsgId),
+        )
+        return
+      }
+
       setPending((current) =>
         current.map((item) =>
           item.message.clientMsgId === row.message.clientMsgId ? { ...item, failed: true } : item,

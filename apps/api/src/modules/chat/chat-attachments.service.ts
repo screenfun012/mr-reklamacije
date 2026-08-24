@@ -33,13 +33,6 @@ export interface PreparedChatFile {
   readonly optimized: Awaited<ReturnType<typeof processUploadFile>>['optimized']
 }
 
-export interface StoredChatFiles {
-  /** How many made it to storage and to a row. */
-  readonly stored: number
-  /** How many were lost writing them. Zero on every ordinary send. */
-  readonly failed: number
-}
-
 /**
  * Files sent inside a chat message.
  *
@@ -127,7 +120,7 @@ export class ChatAttachmentsService {
     conversationId: string,
     messageId: string,
     prepared: readonly PreparedChatFile[],
-  ): Promise<StoredChatFiles> {
+  ): Promise<{ failed: number }> {
     const rows: NewChatAttachmentRow[] = []
     let failed = 0
 
@@ -170,6 +163,6 @@ export class ChatAttachmentsService {
       await this.repo.insertChatAttachments(rows)
     }
 
-    return { stored: rows.length, failed }
+    return { failed }
   }
 }

@@ -440,16 +440,17 @@ describe('Chat attachments — reading', () => {
 
     const res = await officeApp.request(`/api/chat/conversations/${threadId}/attachments`)
     const shelf = (await res.json()) as {
-      items: Array<{ id: string; messageId: string; fileName: string }>
+      items: Array<{ id: string; fileName: string }>
       total: number
       pageSize: number
     }
 
     expect(res.status).toBe(200)
     expect(shelf.total).toBe(2)
-    // Newest first, and each carries the message it belongs to so a click can jump to it.
-    expect(shelf.items[0]?.fileName).toBe('drugi-kvar.jpg')
-    expect(shelf.items[0]?.messageId).toBeDefined()
+    // Newest first — by the message's `seq`, the one thing in a room that genuinely increases.
+    // ⚠ NOT by `uploaded_at`: that defaults to now(), which is the TRANSACTION's clock, so every
+    // file of one message shares it and the sort falls through to a random uuid.
+    expect(shelf.items.map((item) => item.fileName)).toEqual(['drugi-kvar.jpg', 'kvar.jpg'])
   })
 
   it('keeps a withdrawn message off the shelf', async () => {

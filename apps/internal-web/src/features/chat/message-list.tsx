@@ -157,6 +157,7 @@ export function MessageList({
             onOpenClaim={onOpenClaim}
             pending={!row.failed}
             failed={row.failed}
+            pendingFiles={row.files}
             onRetry={() => onRetry(row.message.clientMsgId)}
             currentUserId={currentUserId}
           />

@@ -9,6 +9,7 @@ import {
   CHAT_LIST_COLUMN_CLASSES,
   CHAT_LIST_SHEET_CLASSES,
   CHAT_LIST_TOGGLE_CLASSES,
+  CHAT_PANEL_BACKDROP_CLASSES,
   CHAT_PANEL_BREAKPOINT,
   CHAT_PANEL_RESPONSIVE_CLASSES,
 } from '../chat-layout'
@@ -97,6 +98,21 @@ describe('the chat gives its width to the conversation', () => {
     ]) {
       expect(classes).toContain(`@min-[${CHAT_LIST_BREAKPOINT}px]/chat:`)
     }
+  })
+
+  /**
+   * The panel needs a way out, and it is not decoration.
+   *
+   * Below its breakpoint it lies over the right 250px of the conversation — which is exactly where
+   * the ⓘ that opened it sits. Without this, one tap on a tablet ends the conversation until the
+   * page is reloaded: the toggle is underneath, the panel has no ✕, and a tablet has no Escape.
+   */
+  it('gives the panel a way out on exactly the widths where it covers its own toggle', () => {
+    expect(CHAT_PANEL_BACKDROP_CLASSES).toContain(`@min-[${CHAT_PANEL_BREAKPOINT}px]/chat:hidden`)
+    expect(CHAT_PANEL_BACKDROP_CLASSES).toContain('absolute inset-0')
+    // Under the panel, over the conversation.
+    expect(CHAT_PANEL_BACKDROP_CLASSES).toContain('z-10')
+    expect(CHAT_PANEL_RESPONSIVE_CLASSES).toContain('z-20')
   })
 
   it('agrees with the panel on where the third column stops fitting', () => {

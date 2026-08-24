@@ -1,5 +1,10 @@
 import { m } from '@mr/i18n'
-import { ALLOWED_IMAGE_MIME_TYPES, CHAT_MAX_FILES_PER_MESSAGE } from '@mr/shared'
+import {
+  ALLOWED_CHAT_ATTACHMENT_MIME_TYPES,
+  CHAT_MAX_FILES_PER_MESSAGE,
+  isAllowedChatAttachmentMimeType,
+  MAX_FILE_SIZE_MB,
+} from '@mr/shared'
 import {
   chatPeopleOptions,
   CHAT_MESSAGE_MAX_LENGTH,
@@ -121,7 +126,7 @@ export function Composer({
   // ⚠ The gallery takes photos AND PDF; the camera always takes `image/*`, because `capture`
   // opens the camera app and there is no version of that which hands back a document.
   const picker = useFilePicker((picked) => addFiles(picked), {
-    accept: [...ALLOWED_IMAGE_MIME_TYPES, 'application/pdf'].join(','),
+    accept: ALLOWED_CHAT_ATTACHMENT_MIME_TYPES.join(','),
   })
   const [activeIndex, setActiveIndex] = useState(0)
   /**
@@ -168,13 +173,24 @@ export function Composer({
       return
     }
 
-    const allowed = picked.filter(
-      (file) => file.type.startsWith('image/') || file.type === 'application/pdf',
-    )
-    if (allowed.length < picked.length) {
+    const rightType = picked.filter((file) => isAllowedChatAttachmentMimeType(file.type))
+    if (rightType.length < picked.length) {
       // The `accept` attribute is a hint a person can walk past in the file dialog; the server
       // refuses the rest anyway, and saying so here costs nothing and a round trip less.
+      // ⚠ The SHARED list, not `startsWith('image/')`: a GIF passes that and the server refuses it.
       showInternalToast(m.chat_attachment_bad_type())
+    }
+
+    /*
+     * ⚠ And the size, before a single byte leaves the tablet.
+     *
+     * The pipeline refuses anything over MAX_FILE_SIZE_MB, but only after it has arrived — a 30 MB
+     * photo would climb the hall wifi in full to be thrown away at the other end, and the person
+     * would see nothing but "not sent".
+     */
+    const allowed = rightType.filter((file) => file.size <= MAX_FILE_SIZE_MB * 1024 * 1024)
+    if (allowed.length < rightType.length) {
+      showInternalToast(m.chat_attachment_too_big({ mb: MAX_FILE_SIZE_MB }))
     }
     if (allowed.length > room) {
       showInternalToast(m.chat_attachment_too_many())
@@ -315,10 +331,17 @@ export function Composer({
             }}
             onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
             onPaste={(event) => {
-              // A screenshot in the clipboard is the fastest thing anybody sends. Only take over
-              // when there are FILES — pasted text has to keep going into the field.
+              /*
+               * A screenshot in the clipboard is the fastest thing anybody sends.
+               *
+               * ⚠ But only when the clipboard carries NOTHING BUT files. Copying a cell out of
+               * Excel, or a line out of Outlook, puts an `image/png` bitmap on the clipboard
+               * ALONGSIDE the text — and this office lives in Excel. Taking over on
+               * `files.length > 0` alone attached a picture of the cell and threw the MR number
+               * away.
+               */
               const pasted = [...event.clipboardData.files]
-              if (pasted.length > 0) {
+              if (pasted.length > 0 && event.clipboardData.getData('text/plain') === '') {
                 event.preventDefault()
                 addFiles(pasted)
               }
@@ -343,6 +366,9 @@ export function Composer({
                 }
                 if (event.key === 'Escape') {
                   event.preventDefault()
+                  // ⚠ And stops here: the frame above closes its sheets on Escape, and shutting a
+                  // mention menu is not a request to close the room's panel as well.
+                  event.stopPropagation()
                   setDismissedAt(mention?.start ?? null)
                   return
                 }

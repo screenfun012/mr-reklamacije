@@ -392,9 +392,9 @@
   "auth_register_success_pending": "Nalog je kreiran i čeka odobrenje administratora. Moći ćete da se prijavite kada administrator odobri nalog.",
   "auth_register_title": "Registracija",
   "chat_attach": "Prilog",
-  "chat_attach_title": "Prilog (slika, PDF, Excel) — stiže u sledećem koraku.",
+  "chat_attach_title": "Prilog (fotografija ili PDF)",
   "chat_camera": "Kamera",
-  "chat_camera_title": "Kamera (tablet) — stiže u sledećem koraku.",
+  "chat_camera_title": "Kamera",
   "chat_composer_label": "Poruka",
   "chat_composer_placeholder": "Poruka…",
   "chat_composer_placeholder_thread": "Odgovori u nit…",
@@ -1741,5 +1741,9 @@
   "chat_attachment_bad_type": "Sme samo fotografija ili PDF.",
   "chat_attachment_partial": "Poruka je poslata, ali neki fajlovi nisu sačuvani. Pošalji ih ponovo.",
   "chat_attachment_download": "Preuzmi prilog",
-  "chat_context_attachments_none": "Još nijedan prilog u ovom razgovoru."
+  "chat_context_attachments_none": "Još nijedan prilog u ovom razgovoru.",
+  "chat_close_panel": "Zatvori podatke o reklamaciji",
+  "chat_attachment_too_big": "Fajl je prevelik — najviše {mb} MB.",
+  "chat_context_attachments_failed": "Prilozi se ne mogu učitati.",
+  "chat_excerpt_attachment_only": "Prilog"
 }

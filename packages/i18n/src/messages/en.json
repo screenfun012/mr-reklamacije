@@ -392,9 +392,9 @@
   "auth_register_success_pending": "Your account was created and is pending administrator approval. You will be able to sign in once an administrator approves your account.",
   "auth_register_title": "Register",
   "chat_attach": "Attachment",
-  "chat_attach_title": "Attachment (image, PDF, Excel) — arrives in the next step.",
+  "chat_attach_title": "Attachment (photo or PDF)",
   "chat_camera": "Camera",
-  "chat_camera_title": "Camera (tablet) — arrives in the next step.",
+  "chat_camera_title": "Camera",
   "chat_composer_label": "Message",
   "chat_composer_placeholder": "Message…",
   "chat_composer_placeholder_thread": "Reply in the thread…",
@@ -1741,5 +1741,9 @@
   "chat_attachment_bad_type": "Photos and PDF files only.",
   "chat_attachment_partial": "The message was sent, but some files were not saved. Send them again.",
   "chat_attachment_download": "Download attachment",
-  "chat_context_attachments_none": "No attachments in this conversation yet."
+  "chat_context_attachments_none": "No attachments in this conversation yet.",
+  "chat_close_panel": "Close the claim details",
+  "chat_attachment_too_big": "That file is too large — {mb} MB at most.",
+  "chat_context_attachments_failed": "The attachments could not be loaded.",
+  "chat_excerpt_attachment_only": "Attachment"
 }

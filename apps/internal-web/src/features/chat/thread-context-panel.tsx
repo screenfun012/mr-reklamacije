@@ -233,7 +233,19 @@ function ContextAttachments({ conversationId }: { conversationId: string }): Rea
   return (
     <div className="flex flex-col gap-2 px-[14px] py-3">
       <span className={EYEBROW_CLASSES}>{m.chat_context_attachments({ count: total })}</span>
-      {items.length === 0 ? (
+      {/* ⚠ Three states, not one. Without these the shelf claims „0" and „nothing sent yet" while
+          it is still loading — and forever, if the request fails. */}
+      {shelf.isPending ? (
+        <div className="grid grid-cols-3 gap-[6px]">
+          {[0, 1, 2].map((slot) => (
+            <div key={slot} className="aspect-square animate-pulse rounded-[7px] bg-mri-inbg" />
+          ))}
+        </div>
+      ) : shelf.isError ? (
+        <p className="text-[11.5px] leading-[1.5] text-mri-bad">
+          {m.chat_context_attachments_failed()}
+        </p>
+      ) : items.length === 0 ? (
         <p className="text-[11.5px] leading-[1.5] text-mri-text2">
           {m.chat_context_attachments_none()}
         </p>
@@ -242,7 +254,9 @@ function ContextAttachments({ conversationId }: { conversationId: string }): Rea
           {items.map((file) => (
             <a
               key={file.id}
-              href={buildChatAttachmentUrl(conversationId, file.id)}
+              // ⚠ A download, not a navigation. `inline` walks the whole app out of the room and
+              // takes the scroll position, the frozen NOVO rule and the composer draft with it.
+              href={buildChatAttachmentUrl(conversationId, file.id, { disposition: 'attachment' })}
               title={file.fileName}
               className="grid aspect-square place-items-center overflow-hidden rounded-[7px] border border-mri-border2 bg-mri-inbg transition-colors hover:border-mri-text2"
             >

@@ -558,9 +558,6 @@ export class ChatRepository {
         fileName: attachments.fileName,
         mimeType: attachments.mimeType,
         fileSizeBytes: attachments.fileSizeBytes,
-        width: attachments.width,
-        height: attachments.height,
-        thumbnailPath: attachments.thumbnailPath,
       })
       .from(attachments)
       .where(
@@ -592,8 +589,6 @@ export class ChatRepository {
         fileName: row.fileName,
         mimeType: row.mimeType,
         fileSizeBytes: Number(row.fileSizeBytes),
-        width: row.width,
-        height: row.height,
       })
       byMessage.set(row.messageId, held)
     }
@@ -622,12 +617,9 @@ export class ChatRepository {
     const rows = await this.db
       .select({
         id: attachments.id,
-        messageId: chatMessages.id,
         fileName: attachments.fileName,
         mimeType: attachments.mimeType,
         fileSizeBytes: attachments.fileSizeBytes,
-        width: attachments.width,
-        height: attachments.height,
       })
       .from(attachments)
       .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
@@ -655,12 +647,9 @@ export class ChatRepository {
     return {
       items: rows.map((row) => ({
         id: row.id,
-        messageId: row.messageId,
         fileName: row.fileName,
         mimeType: row.mimeType,
         fileSizeBytes: Number(row.fileSizeBytes),
-        width: row.width,
-        height: row.height,
       })),
       total: counted?.total ?? 0,
     }

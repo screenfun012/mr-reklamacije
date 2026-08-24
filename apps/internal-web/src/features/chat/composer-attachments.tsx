@@ -106,3 +106,45 @@ function useObjectUrl(file: File): string | null {
 
   return url
 }
+
+/**
+ * The same tiles under a message that is still going up.
+ *
+ * ⚠ Drawn from the browser's own `File` objects, because a row that has not reached the server has
+ * no attachment ids to fetch by — and without them a photo with no caption is an empty bubble for
+ * as long as the upload takes, which reads as a message that failed.
+ */
+export function PendingAttachments({
+  files,
+}: {
+  files: readonly File[]
+}): React.ReactElement | null {
+  if (files.length === 0) {
+    return null
+  }
+
+  return (
+    <span className="flex flex-wrap gap-[7px] opacity-60">
+      {files.map((file, index) => (
+        <PendingTile key={`${file.name}-${String(index)}`} file={file} />
+      ))}
+    </span>
+  )
+}
+
+function PendingTile({ file }: { file: File }): React.ReactElement {
+  const preview = useObjectUrl(file)
+  const isImage = file.type.startsWith('image/')
+
+  return (
+    <span className={CHAT_TILE_CLASSES}>
+      {isImage && preview !== null ? (
+        <img src={preview} alt={file.name} className="size-full object-cover" />
+      ) : (
+        <span className="px-2 text-center font-mono text-[9px] font-medium text-mri-text2">
+          {file.name}
+        </span>
+      )}
+    </span>
+  )
+}

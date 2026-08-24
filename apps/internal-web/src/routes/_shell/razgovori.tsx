@@ -24,6 +24,7 @@ import {
   CHAT_LIST_BACKDROP_CLASSES,
   CHAT_LIST_COLUMN_CLASSES,
   CHAT_LIST_TOGGLE_CLASSES,
+  CHAT_PANEL_BACKDROP_CLASSES,
 } from '~/features/chat/chat-layout'
 import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
@@ -198,8 +199,18 @@ function RazgovoriColumns(): React.ReactElement {
         if (event.key !== 'Escape') {
           return
         }
-        // Whichever sheet is out, Escape puts it back — the same key for both, so nobody has to
-        // remember which one they opened.
+        /*
+         * ⚠ Only when a sheet is actually out.
+         *
+         * Escape bubbles: the mention menu closes itself with `preventDefault()` and no
+         * `stopPropagation()`, and Radix's dismiss layer does not stop it either. Firing
+         * unconditionally therefore tore the claim panel down from the THIRD COLUMN on a wide
+         * screen whenever somebody pressed Escape in the lightbox or the mention menu — a column
+         * that was never a sheet in the first place.
+         */
+        if (!listOpen && !contextOpen) {
+          return
+        }
         setListOpen(false)
         setContextOpen(false)
       }}
@@ -280,7 +291,17 @@ function RazgovoriColumns(): React.ReactElement {
       </section>
 
       {current === null || !contextOpen ? null : (
-        <ThreadContextPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+        <>
+          {/* The way back out. Below CHAT_PANEL_BREAKPOINT the panel covers the ⓘ that opened it,
+              and a tablet has no Escape key — without this, one tap ends the conversation. */}
+          <button
+            type="button"
+            aria-label={m.chat_close_panel()}
+            onClick={() => setContextOpen(false)}
+            className={CHAT_PANEL_BACKDROP_CLASSES}
+          />
+          <ThreadContextPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+        </>
       )}
 
       <NewThreadDialog

@@ -4,6 +4,8 @@ import { cn } from '@mr/ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pin, X } from 'lucide-react'
 
+import { AttachmentOnlyExcerpt } from './message-attachments'
+
 /** L169/L170: who said it in mono, then the words, in an `--inbg` card with a hairline. */
 function PinRow({
   pin,
@@ -21,6 +23,8 @@ function PinRow({
               rule a quoted block follows. */}
           {pin.isDeleted ? (
             <em className="text-mri-text2">{m.chat_message_deleted()}</em>
+          ) : pin.excerpt === '' && pin.hasAttachment ? (
+            <AttachmentOnlyExcerpt />
           ) : (
             pin.excerpt
           )}
@@ -169,6 +173,8 @@ export function PinnedBar({
           <span className="font-semibold text-mri-text2">{newest.authorName}: </span>
           {newest.isDeleted ? (
             <em className="text-mri-text2">{m.chat_message_deleted()}</em>
+          ) : newest.excerpt === '' && newest.hasAttachment ? (
+            <AttachmentOnlyExcerpt />
           ) : (
             newest.excerpt
           )}

@@ -1,7 +1,7 @@
 import { setLocale } from '@mr/i18n'
 import { ChatSystemKind, type ChatMessage, type ChatMessagesPage, type ChatPin } from '@mr/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,6 +42,8 @@ function page(items: ChatMessage[]): ChatMessagesPage {
 interface FetchCall {
   url: string
   body: unknown
+  /** What rode along as multipart. Empty for a JSON send. */
+  files: FormDataEntryValue[]
 }
 
 let calls: FetchCall[] = []
@@ -55,8 +57,18 @@ let actionFails = false
 function installFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
-    const body: unknown = init?.body === undefined ? undefined : JSON.parse(String(init.body))
-    calls.push({ url, body })
+    /*
+     * ⚠ A send carrying files is `multipart/form-data`, not JSON.
+     *
+     * `JSON.parse(String(formData))` throws on "[object FormData]", so this harness could not see
+     * a file at all — which is why nothing noticed that the files were never handed to the
+     * mutation. Both shapes are recorded now: `body` for JSON, `files` for what actually rode along.
+     */
+    const isForm = init?.body instanceof FormData
+    const body: unknown =
+      init?.body === undefined || isForm ? undefined : JSON.parse(String(init.body))
+    const files = isForm ? (init.body as FormData).getAll('files') : []
+    calls.push({ url, body, files })
 
     if (url.includes('/read')) {
       return new Response(null, { status: 204 })
@@ -191,14 +203,112 @@ describe('ConversationPane', () => {
 
     // ⚠ The camera input NEVER takes PDF: `capture` opens the camera app, and there is no version
     // of that which hands back a document.
-    const camera = document.querySelector('input[type="file"][capture]')
-    expect(camera).toHaveAttribute('accept', 'image/*')
+    const cameraInput = document.querySelector('input[type="file"][capture]')
+    expect(cameraInput).toHaveAttribute('accept', 'image/*')
 
     // On a laptop `capture` falls back to the same dialog the paperclip opens, so the button is
     // held back by plain CSS rather than promising a camera that is not there.
-    expect(screen.getByRole('button', { name: /kamera/i }).className).toContain(
-      '[@media(pointer:coarse)]:grid',
-    )
+    const camera = screen.getByRole('button', { name: /kamera/i }).className
+    expect(camera).toContain('[@media(pointer:coarse)]:grid')
+    // ⚠ And `hidden`: without it the base class already starts with `grid`, so the button shows on
+    // every laptop while the variant above stays exactly as it is.
+    expect(camera).toContain('hidden')
+  })
+
+  /**
+   * The one that was missing, and it is the one that matters.
+   *
+   * Everything else about the paperclip could be green while the file never left the browser:
+   * `onSend(body, [])` in the composer, or dropping `row.files` from the mutation, and the photos
+   * vanish silently. This asserts the file is in the REQUEST.
+   */
+  it('actually puts the picked file in the request', async () => {
+    const user = userEvent.setup()
+    renderPane()
+    await screen.findByText('Slavko Jović')
+
+    const gallery = document.querySelector('input[type="file"]:not([capture])')
+    if (!(gallery instanceof HTMLInputElement)) {
+      throw new Error('no gallery input')
+    }
+    await user.upload(gallery, new File(['x'], 'kvar.jpg', { type: 'image/jpeg' }))
+    await user.click(screen.getByRole('button', { name: /pošalji/i }))
+
+    await waitFor(() => {
+      const sent = calls.find((call) => call.url.endsWith('/messages') && call.files.length > 0)
+      expect(sent).toBeDefined()
+      expect((sent?.files[0] as File).name).toBe('kvar.jpg')
+    })
+  })
+
+  it('refuses a file bigger than the server would take, before sending it', async () => {
+    const user = userEvent.setup()
+    renderPane()
+    await screen.findByText('Slavko Jović')
+
+    const gallery = document.querySelector('input[type="file"]:not([capture])')
+    if (!(gallery instanceof HTMLInputElement)) {
+      throw new Error('no gallery input')
+    }
+    // 26 MB — over MAX_FILE_SIZE_MB. A tablet photo climbing the hall wifi in full only to be
+    // thrown away at the far end is the failure this prevents.
+    const huge = new File([new Uint8Array(26 * 1024 * 1024)], 'ogromna.jpg', {
+      type: 'image/jpeg',
+    })
+    await user.upload(gallery, huge)
+
+    // Nothing picked, so the send button stays dead.
+    expect(screen.getByRole('button', { name: /pošalji/i })).toBeDisabled()
+  })
+
+  it('keeps the paperclip from promising a feature it now has', async () => {
+    renderPane()
+    await screen.findByText('Slavko Jović')
+
+    // Both titles said „stiže u sledećem koraku" — and named Excel, which the server refuses.
+    for (const name of [/prilog/i, /kamera/i]) {
+      expect(screen.getByRole('button', { name }).getAttribute('title')).not.toMatch(
+        /sledećem koraku|excel/i,
+      )
+    }
+  })
+
+  /**
+   * This office lives in Excel, and copying a cell puts an `image/png` bitmap on the clipboard
+   * ALONGSIDE the text. Taking over whenever there are files attached a picture of the cell and
+   * threw the MR number away.
+   */
+  it('lets pasted text through, even when a bitmap rides along with it', async () => {
+    const user = userEvent.setup()
+    renderPane()
+    await screen.findByText('Slavko Jović')
+
+    const field = composer()
+    // jsdom implements no DataTransfer, so this is exactly what the handler reads and no more.
+    const clipboard = (text: string, files: File[]) => ({
+      files,
+      getData: (type: string) => (type === 'text/plain' ? text : ''),
+    })
+
+    // Excel puts a bitmap on the clipboard beside the text. The text has to win.
+    fireEvent.paste(field, {
+      clipboardData: clipboard('7167/25', [new File(['x'], 'excel.png', { type: 'image/png' })]),
+    })
+    expect(screen.getByRole('button', { name: /pošalji/i })).toBeDisabled()
+
+    // A screenshot alone carries no text, and then the paperclip is exactly what was meant.
+    fireEvent.paste(field, {
+      clipboardData: clipboard('', [new File(['x'], 'screenshot.png', { type: 'image/png' })]),
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /pošalji/i })).not.toBeDisabled()
+    })
+
+    await user.click(screen.getByRole('button', { name: /pošalji/i }))
+    await waitFor(() => {
+      const sent = calls.find((call) => call.url.endsWith('/messages') && call.files.length > 0)
+      expect((sent?.files[0] as File).name).toBe('screenshot.png')
+    })
   })
 
   it('sends a photo with no words at all', async () => {

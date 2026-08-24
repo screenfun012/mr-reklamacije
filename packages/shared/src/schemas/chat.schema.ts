@@ -64,19 +64,19 @@ export const ChatAttachmentSchema = z.object({
   fileName: z.string(),
   mimeType: z.string(),
   fileSizeBytes: z.number(),
-  width: z.number().nullable(),
-  height: z.number().nullable(),
 })
 
 export type ChatAttachment = z.infer<typeof ChatAttachmentSchema>
 
 /**
- * One file on the room's shelf. The message id rides along so a click can jump to where it was
- * sent — the panel is a shortcut into the conversation, not a second place files live.
+ * One file on the room's shelf.
+ *
+ * ⚠ It deliberately carries NO message id. The design wanted a click to jump to the message it was
+ * sent in, and that jump was never built — nothing in this module scrolls to a message, not even
+ * the pins. A field on the wire that nothing reads is a promise the screen does not keep, so the
+ * shelf hands the file over instead. If the jump is ever built, the id comes back with it.
  */
-export const ChatConversationAttachmentSchema = ChatAttachmentSchema.extend({
-  messageId: z.string().uuid(),
-})
+export const ChatConversationAttachmentSchema = ChatAttachmentSchema
 
 export type ChatConversationAttachment = z.infer<typeof ChatConversationAttachmentSchema>
 

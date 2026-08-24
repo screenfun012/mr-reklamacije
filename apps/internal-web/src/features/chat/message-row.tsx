@@ -10,7 +10,8 @@ import { cn } from '@mr/ui'
 import { Check, CheckCheck, CornerUpLeft, Pin, PinOff, Reply, ThumbsUp } from 'lucide-react'
 
 import { OUTCOME_LABELS } from '~/components/outcome-pill'
-import { MessageAttachments } from './message-attachments'
+import { AttachmentOnlyExcerpt, MessageAttachments } from './message-attachments'
+import { PendingAttachments } from './composer-attachments'
 import { MessageBody } from './message-body'
 
 /**
@@ -92,6 +93,13 @@ export interface MessageRowProps {
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
   /** Written here, not yet answered for by the server. */
   pending?: boolean
+  /**
+   * The files this row is still carrying up, as the browser's own `File` objects.
+   *
+   * ⚠ Without them a photo-with-no-caption is an EMPTY bubble for as long as the upload takes —
+   * the server's `attachments` cannot be filled in yet, because none of these has an id.
+   */
+  pendingFiles?: readonly File[] | undefined
   failed?: boolean
   onRetry?: () => void
   /** Absent where a reply cannot be written — a message on a screen with no composer. */
@@ -234,7 +242,13 @@ function QuotedMessage({
       </span>
       <span className="line-clamp-2 text-[11.5px] leading-[1.45] text-mri-text">
         {/* A withdrawn message says so here too — its words do not travel anywhere. */}
-        {quote.isDeleted ? <em>{m.chat_message_deleted()}</em> : quote.excerpt}
+        {quote.isDeleted ? (
+          <em>{m.chat_message_deleted()}</em>
+        ) : quote.excerpt === '' && quote.hasAttachment ? (
+          <AttachmentOnlyExcerpt />
+        ) : (
+          quote.excerpt
+        )}
       </span>
     </span>
   )
@@ -296,6 +310,7 @@ export function MessageRow({
   canUnpin = true,
   currentUserId,
   onOpenImage,
+  pendingFiles,
   onOpenClaim,
   pending = false,
   failed = false,
@@ -393,6 +408,7 @@ export function MessageRow({
               attachments={message.attachments}
               onOpenImage={(attachmentId) => onOpenImage?.(message, attachmentId)}
             />
+            <PendingAttachments files={pendingFiles ?? []} />
           </>
         ) : (
           <span className="text-[13px] leading-[1.55] italic text-mri-text2">

@@ -47,9 +47,20 @@ export const CHAT_LIST_COLUMN_CLASSES = 'hidden @min-[672px]/chat:flex'
 export const CHAT_LIST_SHEET_CLASSES =
   'absolute inset-y-0 left-0 z-30 shadow-2xl @min-[672px]/chat:static @min-[672px]/chat:shadow-none'
 
-/** What closes the sheet by clicking beside it. Exists only below the breakpoint. */
+/** What closes the list sheet by clicking beside it. Exists only below the breakpoint. */
 export const CHAT_LIST_BACKDROP_CLASSES =
   'absolute inset-0 z-20 cursor-default bg-black/40 @min-[672px]/chat:hidden'
+
+/**
+ * The same for the claim panel — and it is not decoration.
+ *
+ * ⚠ Below CHAT_PANEL_BREAKPOINT the panel lies over the right 250px of the conversation, which is
+ * exactly where the ⓘ that opened it sits. Without a way out, one tap on a tablet leaves the
+ * serviser stuck until he reloads the page: the toggle is underneath, the panel has no ✕, and a
+ * tablet keyboard has no Escape.
+ */
+export const CHAT_PANEL_BACKDROP_CLASSES =
+  'absolute inset-0 z-10 cursor-default bg-black/40 @min-[922px]/chat:hidden'
 
 /** The back arrow that calls the sheet out. Exists only below the breakpoint. */
 export const CHAT_LIST_TOGGLE_CLASSES =

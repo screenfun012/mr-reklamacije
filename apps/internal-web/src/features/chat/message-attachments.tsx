@@ -1,6 +1,6 @@
 import { m } from '@mr/i18n'
 import { buildChatAttachmentUrl, formatAttachmentFileSize, type ChatAttachment } from '@mr/shared'
-import { Download } from 'lucide-react'
+import { Download, Paperclip } from 'lucide-react'
 import { useState } from 'react'
 
 import { CHAT_TILE_CLASSES } from './composer-attachments'
@@ -141,4 +141,20 @@ function badgeOf(mimeType: string): string {
   }
   const tail = mimeType.split('/').at(-1) ?? 'FILE'
   return tail.slice(0, 3).toUpperCase()
+}
+
+/**
+ * What a quoted or pinned line shows when the message it points at was only a photo.
+ *
+ * ⚠ This is the whole reason `hasAttachment` is on the wire. A photo on its own is a message, so
+ * its excerpt is empty — without this both the quoted block and the pinned bar draw a blank line
+ * and read as broken. Written once because there are exactly two callers and they must not drift.
+ */
+export function AttachmentOnlyExcerpt(): React.ReactElement {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-mri-text2">
+      <Paperclip aria-hidden="true" className="size-[11px]" />
+      {m.chat_excerpt_attachment_only()}
+    </span>
+  )
 }
