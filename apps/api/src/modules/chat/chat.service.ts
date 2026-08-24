@@ -28,6 +28,10 @@ import type { ChatPort, ChatSystemMessageTarget } from '../../core/ports/chat-po
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type { AuditPort } from '../../core/ports/audit-port.js'
 import type { NotificationsPort } from '../../core/ports/notifications-port.js'
+import {
+  resolveAttachmentDownloadMeta,
+  type AttachmentDownloadMeta,
+} from '../../core/attachments/attachment-download-meta.js'
 import type { ChatAttachmentsService, PreparedChatFile } from './chat-attachments.service.js'
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
@@ -195,6 +199,29 @@ export class ChatService implements ChatPort {
     }
 
     return { message, created: stored.created, partialFiles }
+  }
+
+  /**
+   * What to serve for one file in one room.
+   *
+   * Two gates, deliberately both: `requireVisible` answers 404 for a room he may not read, and the
+   * repository query then resolves the file through its own message so a room he MAY read cannot
+   * be used as a doorway into one he may not.
+   */
+  async attachmentDownloadMeta(
+    conversationId: string,
+    attachmentId: string,
+    actor: ChatActor,
+    variant: 'original' | 'thumbnail',
+  ): Promise<AttachmentDownloadMeta> {
+    await this.requireVisible(conversationId, actor)
+
+    const row = await this.repo.findChatAttachment(conversationId, attachmentId)
+    if (row === null) {
+      throw new NotFoundError('Chat attachment', attachmentId)
+    }
+
+    return resolveAttachmentDownloadMeta(row, variant)
   }
 
   /**

@@ -3,10 +3,15 @@ import type { Context } from 'hono'
 import type { Container } from '../../core/container.js'
 import type { MRSessionUser } from '../../core/auth/session-types.js'
 import { UnauthorizedError } from '../../core/errors/domain-errors.js'
+import {
+  parseAttachmentDownloadRequest,
+  serveCachedAttachmentDownload,
+} from '../../core/http/attachment-download.js'
 import { readUploadFiles } from '../../core/http/upload-files.js'
 import type { PreparedChatFile } from './chat-attachments.service.js'
 import {
   ChatClaimThreadParamSchema,
+  ChatAttachmentIdParamSchema,
   ChatConversationIdParamSchema,
   ChatEditInputSchema,
   ChatMarkReadInputSchema,
@@ -53,6 +58,7 @@ export function createChatController(container: Container): {
   mute: (c: Context) => Promise<Response>
   unmute: (c: Context) => Promise<Response>
   listPins: (c: Context) => Promise<Response>
+  downloadAttachment: (c: Context) => Promise<Response>
   pin: (c: Context) => Promise<Response>
   unpin: (c: Context) => Promise<Response>
   react: (c: Context) => Promise<Response>
@@ -109,6 +115,26 @@ export function createChatController(container: Container): {
       const { message, created } = await container.chatService.send(id, input, toActor(c), files)
       // 200 says "this one was already here" — the retry is answered, not counted twice.
       return c.json(message, created ? 201 : 200)
+    },
+
+    downloadAttachment: async (c: Context) => {
+      const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
+      const { attachmentId } = ChatAttachmentIdParamSchema.parse({
+        attachmentId: c.req.param('attachmentId'),
+      })
+      const { variant, disposition } = parseAttachmentDownloadRequest(c)
+
+      const meta = await container.chatService.attachmentDownloadMeta(
+        id,
+        attachmentId,
+        toActor(c),
+        variant,
+      )
+
+      return serveCachedAttachmentDownload(c, meta, {
+        disposition,
+        openStream: (storagePath) => container.chatAttachmentsService.openStream(storagePath),
+      })
     },
 
     markRead: async (c: Context) => {

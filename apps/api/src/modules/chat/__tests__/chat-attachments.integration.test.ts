@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
-import { ensureTestUser } from '../../../test-helpers/fixtures.js'
+import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer, createChatTestApp, testUser } from '../../../test-helpers/test-app.js'
 import { createTestDbContext, type TestDbContext } from '../../../test-helpers/test-db.js'
@@ -185,5 +185,170 @@ describe('Chat attachments — sending', () => {
     })
 
     expect(res.status).toBe(201)
+  })
+})
+
+describe('Chat attachments — reading', () => {
+  let ctx: TestDbContext
+  let container: Container
+  let officeApp: ReturnType<typeof createChatTestApp>
+  let serviserApp: ReturnType<typeof createChatTestApp>
+  let generalId: string
+  let threadId: string
+  let attachmentId: string
+  let messageId: string
+
+  beforeEach(async () => {
+    ctx = await createTestDbContext()
+    container = buildTestContainer(ctx.db, ctx.pool, ctx.databaseUrl, new RecordingEventBus())
+    await ensureTestUser(ctx.db)
+
+    const [existing] = await ctx.db
+      .select({ id: schema.chatConversations.id })
+      .from(schema.chatConversations)
+      .where(eq(schema.chatConversations.type, ChatConversationType.General))
+      .limit(1)
+    generalId =
+      existing?.id ??
+      (
+        await ctx.db
+          .insert(schema.chatConversations)
+          .values({ type: ChatConversationType.General, name: 'Opšti kanal' })
+          .returning({ id: schema.chatConversations.id })
+      )[0]?.id ??
+      ''
+
+    const [manufacturer] = await ctx.db
+      .insert(schema.engineManufacturers)
+      .values({ code: `CA-MFG-${Date.now()}`, name: 'Chat Attachments Mfg' })
+      .returning({ id: schema.engineManufacturers.id })
+    const [engineType] = await ctx.db
+      .insert(schema.engineTypes)
+      .values({ code: `CA-ENG-${Date.now()}`, manufacturerId: manufacturer?.id ?? '' })
+      .returning({ id: schema.engineTypes.id })
+    const [claim] = await ctx.db
+      .insert(schema.emotiveClaims)
+      .values({
+        warrantyReport: 'Chat attachment claim',
+        engineTypeId: engineType?.id ?? '',
+        dateOfClaim: new Date('2026-08-24'),
+        mrNumber: `MR-CA-${Date.now()}`,
+        outcome: 'pending',
+        claimYear: 2026,
+        createdBy: TEST_USER_ID,
+      })
+      .returning({ id: schema.emotiveClaims.id })
+    const [thread] = await ctx.db
+      .insert(schema.chatConversations)
+      .values({
+        type: ChatConversationType.Claim,
+        emotiveClaimId: claim?.id ?? '',
+        createdBy: TEST_USER_ID,
+      })
+      .returning({ id: schema.chatConversations.id })
+    threadId = thread?.id ?? ''
+
+    officeApp = createChatTestApp(container, testUser([...OFFICE_PERMISSIONS]))
+    // A serviser belongs in the internal app but may not read claims, so the thread is absent
+    // for him — while the general channel is his like everyone else's.
+    serviserApp = createChatTestApp(
+      container,
+      testUser(['intake_orders.view'], TEST_USER_ID, ['serviser']),
+    )
+
+    const data = new FormData()
+    data.set('clientMsgId', crypto.randomUUID())
+    data.set('body', 'evo kvara')
+    data.append('files', fileFrom(MINIMAL_JPEG, 'kvar.jpg', 'image/jpeg'))
+    const res = await officeApp.request(`/api/chat/conversations/${threadId}/messages`, {
+      method: 'POST',
+      body: data,
+    })
+    const message = (await res.json()) as { id: string }
+    messageId = message.id
+
+    const [row] = await ctx.db
+      .select({ id: schema.attachments.id })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.chatMessageId, messageId))
+    attachmentId = row?.id ?? ''
+  })
+
+  afterEach(async () => {
+    await ctx.cleanup()
+  })
+
+  it('serves the file through the room it was sent to', async () => {
+    const res = await officeApp.request(
+      `/api/chat/conversations/${threadId}/attachments/${attachmentId}`,
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('etag')).not.toBeNull()
+  })
+
+  /**
+   * The one that matters.
+   *
+   * Checking only "may this person open THIS conversation" is not enough: the general channel is
+   * visible to everybody unconditionally, so a serviser — who sees no claim thread at all — could
+   * ask for a claim thread's photo through the general channel and be handed it. The file has to
+   * be resolved through its own message, in the same query.
+   */
+  it('refuses a file from a room the caller cannot see, asked for through one he can', async () => {
+    const res = await serviserApp.request(
+      `/api/chat/conversations/${generalId}/attachments/${attachmentId}`,
+    )
+
+    expect(res.status).toBe(404)
+  })
+
+  /**
+   * The second gate, and it needs its own case.
+   *
+   * The query above binds the file to the room in the URL, which alone would hand this serviser
+   * the photo — the room in the URL is the right one, he just may not read it. Removing
+   * `requireVisible` leaves every other test in this file green, which is what "defence in depth"
+   * means in practice: two layers, two cases.
+   */
+  it('refuses a file from a room the caller cannot see, asked for through that same room', async () => {
+    const res = await serviserApp.request(
+      `/api/chat/conversations/${threadId}/attachments/${attachmentId}`,
+    )
+
+    expect(res.status).toBe(404)
+  })
+
+  it('stops serving the file once the message is taken back', async () => {
+    await officeApp.request(`/api/chat/messages/${messageId}`, { method: 'DELETE' })
+
+    const res = await officeApp.request(
+      `/api/chat/conversations/${threadId}/attachments/${attachmentId}`,
+    )
+
+    expect(res.status).toBe(404)
+  })
+
+  it('hands a download rather than an inline body when asked', async () => {
+    const res = await officeApp.request(
+      `/api/chat/conversations/${threadId}/attachments/${attachmentId}?disposition=attachment`,
+    )
+
+    expect(res.headers.get('content-disposition')).toContain('attachment')
+  })
+
+  /**
+   * The portal half of the promise: a chat file is not a claim attachment, so the route that
+   * serves claim files must not find it. Nothing in the claim queries can reach it either — a chat
+   * row carries no claim id at all — but this is the one an actual customer session would try.
+   */
+  it('is invisible to the claim-attachment download path', async () => {
+    await expect(
+      container.attachmentsService.getDownloadMeta(
+        attachmentId,
+        { id: TEST_USER_ID, permissions: ['attachments.view_client_visible'] },
+        'original',
+      ),
+    ).rejects.toThrow()
   })
 })

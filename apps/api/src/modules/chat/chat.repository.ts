@@ -703,6 +703,52 @@ export class ChatRepository {
     await this.db.insert(attachments).values([...rows])
   }
 
+  /**
+   * One file, resolved THROUGH its own message.
+   *
+   * ⚠ The conversation id is a condition of this query, not a separate check before it. Asking
+   * "may he open conversation X?" and then "give me file Y" authorises the wrong thing: the
+   * general channel is visible to everybody unconditionally, so a serviser who sees no claim
+   * thread could ask for a thread's photo through the general channel and be handed it. Both
+   * halves must hold in the same WHERE.
+   *
+   * A withdrawn message stops serving its file too — taking the message back is the only way to
+   * remove one (Nikola, 2026-08-24), so this is where that promise is kept.
+   */
+  async findChatAttachment(
+    conversationId: string,
+    attachmentId: string,
+  ): Promise<{
+    storagePath: string
+    mimeType: string
+    fileName: string
+    thumbnailPath: string | null
+    contentSha256: string | null
+  } | null> {
+    const [row] = await this.db
+      .select({
+        storagePath: attachments.storagePath,
+        mimeType: attachments.mimeType,
+        fileName: attachments.fileName,
+        thumbnailPath: attachments.thumbnailPath,
+        contentSha256: attachments.contentSha256,
+      })
+      .from(attachments)
+      .innerJoin(chatMessages, eq(chatMessages.id, attachments.chatMessageId))
+      .where(
+        and(
+          eq(attachments.id, attachmentId),
+          eq(attachments.purpose, AttachmentPurpose.ChatAttachment),
+          isNull(attachments.deletedAt),
+          eq(chatMessages.conversationId, conversationId),
+          isNull(chatMessages.deletedAt),
+        ),
+      )
+      .limit(1)
+
+    return row ?? null
+  }
+
   /** Is there a claim here at all, and is it still alive? A deleted claim gets no thread. */
   async claimExists(kind: ClaimKind, claimId: string): Promise<boolean> {
     const claims = kind === ClaimKind.Emotive ? emotiveClaims : domaceClaims

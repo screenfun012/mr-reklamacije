@@ -39,6 +39,11 @@ export interface ChatActor {
   roles: readonly string[]
 }
 
+/** A file id in a room's URL — parsed like every other id, never trusted as a string. */
+export const ChatAttachmentIdParamSchema = z.object({
+  attachmentId: z.string().uuid(),
+})
+
 export const ChatMessageIdParamSchema = z.object({
   id: z.string().uuid(),
 })

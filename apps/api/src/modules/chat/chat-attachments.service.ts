@@ -90,6 +90,13 @@ export class ChatAttachmentsService {
     return prepared
   }
 
+  /** The bytes themselves. Streamed, never buffered — a photo is not a JSON payload. */
+  async openStream(
+    storagePath: string,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; size: number }> {
+    return this.storage.readStream(storagePath)
+  }
+
   /**
    * Writes the bytes, then the rows — only ever called once the message is known to be new.
    *

@@ -26,7 +26,7 @@ import {
 import {
   resolveAttachmentDownloadMeta,
   type AttachmentDownloadMeta,
-} from './attachment-download-meta.js'
+} from '../../core/attachments/attachment-download-meta.js'
 import {
   alignFileNameExtension,
   processUploadFile,
