@@ -93,9 +93,14 @@ globalThis.addEventListener('push', (event) => {
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
         // ⚠ The room's id, so ten messages from one room replace one another instead of stacking
-        // ten rows on a lock screen. Without `renotify` the replacement is silent, which is exactly
-        // what is wanted for the second message in a conversation already announced.
+        // ten rows on a lock screen.
         tag: conversationId,
+        // ⚠ And the replacement ALERTS. Without this it is silent, which was the first draft's
+        // idea of tact — and what it actually produced was Nikola's report of 2026-08-25: the
+        // first message rings, everything after it lands without a sound, and a phone in a pocket
+        // reads that as "the notifications are not arriving". Nikola's rule stands above the
+        // tidiness: every message is worth telling.
+        renotify: true,
         data: { conversationId },
       })
     })(),

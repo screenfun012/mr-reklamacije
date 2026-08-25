@@ -121,6 +121,17 @@ export class PushService implements PushPort {
         JSON.stringify(bodyFor(subscription.mode, message)),
         {
           TTL: PUSH_TTL_SECONDS,
+          /*
+           * ⚠ `high`, and the library sends `normal` when nothing is said.
+           *
+           * Under RFC 8030 `normal` is the level at which a push service MAY hold a message back
+           * for the device's battery, and Android's Doze does exactly that: the phone stays quiet
+           * for as long as it is asleep, and then the whole stretch arrives at once the moment the
+           * app is opened. That is what Nikola saw on 2026-08-25 — a first notification, then
+           * nothing, then all of them together. `high` asks for delivery now, which is what a
+           * message in a workshop is worth.
+           */
+          urgency: 'high',
           timeout: PUSH_TIMEOUT_MS,
           // ⚠ RFC 8030 §5.4: this collapses messages still QUEUED at the push service, which `tag`
           // cannot do — `tag` only replaces what has already reached the device. Capped at 32

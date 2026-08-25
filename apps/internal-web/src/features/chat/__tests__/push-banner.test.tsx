@@ -38,7 +38,19 @@ function install(options: {
     configurable: true,
     value: {
       ...ORIGINAL_NAVIGATOR,
-      serviceWorker: { ready: Promise.resolve({}) },
+      serviceWorker: {
+        ready: Promise.resolve({
+          pushManager: {
+            getSubscription: async () =>
+              subscribed
+                ? {
+                    endpoint: 'https://fcm.googleapis.com/fcm/send/ovaj-pregledac',
+                    toJSON: () => ({ keys: { p256dh: 'kljuc', auth: 'tajna' } }),
+                  }
+                : null,
+          },
+        }),
+      },
       userAgent: 'Chrome',
     },
   })
@@ -95,7 +107,15 @@ describe('the bar that asks once', () => {
   it('stays out of the way once they are on', async () => {
     install({ subscribed: true })
     const queryClient = renderBanner()
-    await settled(queryClient)
+    /*
+     * ⚠ Waits for THIS BROWSER's answer, not the device list. The bar is hidden while the answer is
+     * still coming, so waiting on the list alone would let this pass before anything was decided —
+     * the same trap the switch beside it documents. Since 2026-08-25 the list is not the question:
+     * a second device with another one already in it must still be offered the button.
+     */
+    await waitFor(() => {
+      expect(queryClient.getQueryData(pushKeys.thisBrowser())).toBe(true)
+    })
 
     expect(screen.queryByText(m.chat_push_banner_title())).not.toBeInTheDocument()
   })

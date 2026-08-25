@@ -9,6 +9,8 @@ export const pushKeys = {
   all: ['push'] as const,
   publicKey: () => [...pushKeys.all, 'public-key'] as const,
   devices: () => [...pushKeys.all, 'devices'] as const,
+  /** Not the server's answer but this BROWSER's — whether it holds a subscription of its own. */
+  thisBrowser: () => [...pushKeys.all, 'this-browser'] as const,
 }
 
 /**

@@ -20,13 +20,21 @@ import { showInternalToast } from '~/lib/internal-toast'
  * not there.
  * `ios-needs-home-screen` — an iPhone or iPad not yet added to the Home Screen. Apple allows no
  * push before that, so the only useful thing to show is what to do about it.
+ * `unknown` — the browser has not answered yet. Offer nothing for the moment it takes: a bar that
+ * says "turn notifications on" and then vanishes is worse than a bar that arrives a tick late.
  * `off` — it can be turned on, and has not been.
  * `on` — it is on, on this browser.
  *
  * ⚠ The first two were one value in the first draft, and a test caught it: collapsing them silences
  * the one case a person can actually do something about.
  */
-export type PushEnrollment = 'no-keys' | 'unsupported' | 'ios-needs-home-screen' | 'off' | 'on'
+export type PushEnrollment =
+  | 'no-keys'
+  | 'unsupported'
+  | 'ios-needs-home-screen'
+  | 'unknown'
+  | 'off'
+  | 'on'
 
 /**
  * Whether this browser can be told anything at all.
@@ -65,6 +73,40 @@ function toApplicationServerKey(base64Url: string): ArrayBuffer {
   return bytes.buffer.slice(0) as ArrayBuffer
 }
 
+/** Handing one subscription to the server. The upsert is keyed on the endpoint, so it repeats. */
+function postSubscription(subscription: PushSubscription): Promise<void> {
+  const raw = subscription.toJSON()
+  return subscribeToPush({
+    endpoint: subscription.endpoint,
+    keys: { p256dh: raw.keys?.['p256dh'] ?? '', auth: raw.keys?.['auth'] ?? '' },
+  })
+}
+
+/**
+ * Is THIS browser subscribed?
+ *
+ * ⚠ The question used to be "does this PERSON have any device at all", and that was wrong in both
+ * directions. A second device found the switch already reading "on" and was never offered the one
+ * button that would have subscribed it — Nikola, 2026-08-25: a message sent to the tablet arrived
+ * only after the iPhone's row had been deleted from the list. And a browser whose row went away —
+ * removed from another device, or dropped by the send path when a rotated VAPID key answers 403 —
+ * went on reading "on" while receiving nothing, with no way back inside the app.
+ *
+ * So the browser is asked, and its answer is written back: re-posting the same subscription costs
+ * one row-touch and puts the row back if it is gone. It is deliberately NOT awaited — the answer is
+ * already known, and waiting for a round trip would flash the offer bar at somebody who is on.
+ */
+async function readThisBrowser(): Promise<boolean> {
+  const registration = await navigator.serviceWorker.ready
+  const subscription = await registration.pushManager.getSubscription()
+  if (subscription === null) {
+    return false
+  }
+
+  void postSubscription(subscription).catch(() => showInternalToast(m.chat_push_failed()))
+  return true
+}
+
 export interface PushEnrollmentState {
   enrollment: PushEnrollment
   devices: PushDevice[]
@@ -88,6 +130,16 @@ export function usePushEnrollment(): PushEnrollmentState {
   const key = publicKey.data?.publicKey ?? null
   const items = devices.data?.items ?? []
 
+  const thisBrowser = useQuery({
+    queryKey: pushKeys.thisBrowser(),
+    queryFn: readThisBrowser,
+    // Nothing to ask when there is no key to subscribe with, or no push in this browser at all.
+    enabled: key !== null && pushIsPossible(),
+    // It changes only when somebody presses the button below, which sets the answer itself.
+    staleTime: Infinity,
+    retry: false,
+  })
+
   const enable = async (): Promise<void> => {
     if (key === null) {
       return
@@ -109,17 +161,28 @@ export function usePushEnrollment(): PushEnrollmentState {
       }
 
       const registration = await navigator.serviceWorker.ready
+
+      /*
+       * ⚠ A subscription made with a DIFFERENT application key cannot be reused, and `subscribe`
+       * refuses it outright rather than replacing it. That is the state every browser in the shop
+       * is in the day the VAPID keys change — so the old one goes first, and this button stays the
+       * way back instead of failing forever.
+       */
+      const stale = await registration.pushManager.getSubscription()
+      if (stale !== null) {
+        await stale.unsubscribe()
+      }
+
       const subscription = await registration.pushManager.subscribe({
         // Required by every browser: a push nobody can see is a push anybody could abuse.
         userVisibleOnly: true,
         applicationServerKey: toApplicationServerKey(key),
       })
 
-      const raw = subscription.toJSON()
-      await subscribeToPush({
-        endpoint: subscription.endpoint,
-        keys: { p256dh: raw.keys?.['p256dh'] ?? '', auth: raw.keys?.['auth'] ?? '' },
-      })
+      await postSubscription(subscription)
+      // Set rather than invalidated: this browser just did the subscribing, so asking it again
+      // would only re-post what it already sent.
+      queryClient.setQueryData(pushKeys.thisBrowser(), true)
       await queryClient.invalidateQueries({ queryKey: pushKeys.devices() })
     } catch {
       showInternalToast(m.chat_push_failed())
@@ -135,9 +198,11 @@ export function usePushEnrollment(): PushEnrollmentState {
         ? looksLikeIosWithoutHomeScreen()
           ? 'ios-needs-home-screen'
           : 'unsupported'
-        : items.length > 0
-          ? 'on'
-          : 'off'
+        : thisBrowser.data === undefined
+          ? 'unknown'
+          : thisBrowser.data
+            ? 'on'
+            : 'off'
 
   return { enrollment, devices: items, asking, enable }
 }

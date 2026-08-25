@@ -20,12 +20,25 @@ const MODES = [
 
 /**
  * „Obaveštenja na telefon", under the DND switch — where a person is already thinking about being
- * disturbed.
- */
-/**
- * „Obaveštenja na telefon", under the DND switch — where a person is already thinking about being
  * disturbed. The banner above the conversation is the same offer for somebody who never looks here.
  */
+/**
+ * Which row is the phone in your hand.
+ *
+ * ⚠ Matched on the user-agent string, because that is exactly what the server stored for this
+ * browser. Two identical phones look alike here and that is the whole ceiling of it: this is a
+ * label, never the on/off decision — Nikola deleted the wrong row on 2026-08-25 with nothing on
+ * the screen to tell them apart.
+ */
+function deviceLabel(userAgent: string | null): string {
+  if (userAgent === null) {
+    return m.chat_push_this_device()
+  }
+  return userAgent === navigator.userAgent
+    ? `${userAgent} · ${m.chat_push_this_device()}`
+    : userAgent
+}
+
 export function PushSwitch(): React.ReactElement | null {
   const queryClient = useQueryClient()
   const { enrollment, devices, asking, enable } = usePushEnrollment()
@@ -42,8 +55,9 @@ export function PushSwitch(): React.ReactElement | null {
     onError: () => showInternalToast(m.chat_push_failed()),
   })
 
-  // Our own setup, not anything the person could act on — so nothing is said at all.
-  if (enrollment === 'no-keys') {
+  // Our own setup, not anything the person could act on — so nothing is said at all. And nothing
+  // at all until the browser has answered: a panel that offers and then withdraws reads as a fault.
+  if (enrollment === 'no-keys' || enrollment === 'unknown') {
     return null
   }
 
@@ -96,7 +110,7 @@ export function PushSwitch(): React.ReactElement | null {
             {devices.map((device) => (
               <li key={device.id} className="flex items-center gap-1.5">
                 <span className="min-w-0 flex-1 truncate text-[10.5px] text-mri-text2">
-                  {device.userAgent ?? m.chat_push_this_device()}
+                  {deviceLabel(device.userAgent)}
                 </span>
                 <button
                   type="button"

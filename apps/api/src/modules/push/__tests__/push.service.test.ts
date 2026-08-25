@@ -182,6 +182,13 @@ describe('who a new chat message reaches', () => {
     // RFC 8030 §5.4, capped at 32 base64url characters — a uuid without dashes is exactly 32.
     expect(options['topic']).toBe('33333333333343338333333333333333')
     expect(String(options['topic'])).toHaveLength(32)
+    /*
+     * ⚠ Not decoration, and not the library's default: unsaid, web-push sends `normal`, which
+     * under RFC 8030 is the level a push service MAY hold back to spare the battery. Android's
+     * Doze does exactly that, and the whole held stretch then lands at once when the app is
+     * opened — Nikola's report of 2026-08-25.
+     */
+    expect(options['urgency']).toBe('high')
   })
 
   it('deletes a browser the push service says is gone', async () => {
