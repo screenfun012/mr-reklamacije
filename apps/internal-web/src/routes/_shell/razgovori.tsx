@@ -4,12 +4,18 @@ import {
   chatConversationsOptions,
   chatKeys,
   deleteChatConversation,
+  invalidateChatConversationMetadataQueries,
   ClaimDetailTab,
   ClaimKind,
   type ChatConversationListItem,
   type MrRegistryExistingClaim,
 } from '@mr/shared'
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
 import { z } from 'zod'
@@ -30,6 +36,7 @@ import {
 import { ConversationList } from '~/features/chat/conversation-list'
 import { ConversationPane } from '~/features/chat/conversation-pane'
 import { ChannelPanel } from '~/features/chat/channel-panel'
+import { ChannelManagementDialog } from '~/features/chat/channel-management-dialog'
 import { NewChannelDialog } from '~/features/chat/new-channel-dialog'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
 import { ClaimThreadConfirm, useResolveClaimThread } from '~/features/chat/open-claim-thread'
@@ -139,6 +146,25 @@ function MessagesSkeleton(): React.ReactElement {
   )
 }
 
+export function handleChannelDeleted({
+  queryClient,
+  deletedId,
+  selectedId,
+  generalId,
+  selectConversation,
+}: {
+  queryClient: QueryClient
+  deletedId: string
+  selectedId: string | null
+  generalId: string | null
+  selectConversation: (conversationId: string) => void
+}): void {
+  invalidateChatConversationMetadataQueries(queryClient, deletedId)
+  if (deletedId === selectedId && generalId !== null) {
+    selectConversation(generalId)
+  }
+}
+
 function RazgovoriColumns(): React.ReactElement {
   const { data } = useSuspenseQuery(chatConversationsOptions())
   const { razgovor: selectedId } = Route.useSearch()
@@ -156,6 +182,7 @@ function RazgovoriColumns(): React.ReactElement {
   const [pendingThread, setPendingThread] = useState<MrRegistryExistingClaim | null>(null)
   const [newThreadOpen, setNewThreadOpen] = useState(false)
   const [newChannelOpen, setNewChannelOpen] = useState(false)
+  const [channelManagementOpen, setChannelManagementOpen] = useState(false)
   // Kept across a switch on purpose (prototype L388): a person who wants the claim beside the
   // conversation wants it beside the next one too — and a channel simply has none to show.
   const [contextOpen, setContextOpen] = useState(false)
@@ -212,6 +239,16 @@ function RazgovoriColumns(): React.ReactElement {
   const general = data.items.find((item) => item.type === ChatConversationType.General) ?? null
   const fallback = general ?? data.items[0] ?? null
   const current = data.items.find((item) => item.id === selectedId) ?? fallback
+  const onChannelDeleted = (deletedId: string): void => {
+    handleChannelDeleted({
+      queryClient,
+      deletedId,
+      selectedId: current?.id ?? null,
+      generalId: general?.id ?? null,
+      selectConversation: openConversation,
+    })
+    setContextOpen(false)
+  }
 
   return (
     <div
@@ -252,6 +289,7 @@ function RazgovoriColumns(): React.ReactElement {
         onSelect={openConversation}
         onNewThread={() => setNewThreadOpen(true)}
         onNewChannel={() => setNewChannelOpen(true)}
+        onManageChannels={() => setChannelManagementOpen(true)}
         open={listOpen}
       />
 
@@ -275,12 +313,12 @@ function RazgovoriColumns(): React.ReactElement {
                   currentUserId={userId}
                   isAdmin={isAdmin}
                 />
-                {isAdmin && current.type !== ChatConversationType.General ? (
+                {isAdmin && current.type === ChatConversationType.Claim ? (
                   <button
                     type="button"
                     title={m.chat_erase()}
                     onClick={() => setErasing(true)}
-                    className="grid size-7 cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad"
+                    className="grid size-10 cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad"
                   >
                     <Trash2 aria-hidden="true" className="size-[13px]" />
                     <span className="sr-only">{m.chat_erase()}</span>
@@ -327,7 +365,11 @@ function RazgovoriColumns(): React.ReactElement {
           {/* A channel's panel is its people; a claim thread's is the claim. Same slot, and the
               same overlay rule below CHAT_PANEL_BREAKPOINT. */}
           {current.type === ChatConversationType.Channel ? (
-            <ChannelPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
+            <ChannelPanel
+              conversation={current}
+              currentUserId={userId}
+              onDeleted={onChannelDeleted}
+            />
           ) : (
             <ThreadContextPanel conversation={current} currentUserId={userId} isAdmin={isAdmin} />
           )}
@@ -340,6 +382,14 @@ function RazgovoriColumns(): React.ReactElement {
         generalConversationId={general?.id ?? null}
         currentUserId={userId}
         onCreated={openConversation}
+      />
+
+      <ChannelManagementDialog
+        open={channelManagementOpen}
+        onOpenChange={setChannelManagementOpen}
+        currentUserId={userId}
+        selectedConversationId={current?.id ?? null}
+        onDeleted={onChannelDeleted}
       />
 
       <NewThreadDialog

@@ -1,4 +1,6 @@
 import {
+  chatKeys,
+  ChatConversationType,
   ChatEventType,
   ClaimEventType,
   NotificationEventType,
@@ -11,6 +13,21 @@ import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
 import { handleAppEvent, parseAppEventFromSseData } from '../handle-app-event.js'
+
+function conversation(id: string) {
+  return {
+    id,
+    type: ChatConversationType.Channel,
+    title: 'Nabavka',
+    subtitle: '2 člana',
+    claimKind: null,
+    claimId: null,
+    unreadCount: 0,
+    isLocked: false,
+    isMuted: false,
+    lastMessageAt: null,
+  }
+}
 
 describe('parseAppEventFromSseData', () => {
   it('parses resource_changed events', () => {
@@ -240,5 +257,56 @@ describe('handleAppEvent', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'conversations'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'messages', 'conv-1'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'pins', 'conv-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['chat', 'attachments', 'conv-1'] })
+  })
+
+  it('also invalidates channel metadata and only its matching cached claim lookup on an id signal', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const matchingKey = chatKeys.claimThread(ClaimKind.Emotive, 'claim-1')
+    const otherKey = chatKeys.claimThread(ClaimKind.Domace, 'claim-2')
+    queryClient.setQueryData(matchingKey, {
+      conversation: conversation('conv-1'),
+      canCreateThread: false,
+    })
+    queryClient.setQueryData(otherKey, {
+      conversation: conversation('conv-2'),
+      canCreateThread: false,
+    })
+
+    handleAppEvent(queryClient, {
+      type: ChatEventType.MessageCreated,
+      payload: { conversationId: 'conv-1', messageId: 'conv-1' },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.conversations() })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.messages('conv-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.pins('conv-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.attachments('conv-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.members('conv-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.people('conv-1') })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: chatKeys.channelManagement() })
+    expect(queryClient.getQueryState(matchingKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false)
+  })
+
+  it('does not invalidate metadata or claim lookups for an ordinary message id', () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const matchingKey = chatKeys.claimThread(ClaimKind.Emotive, 'claim-1')
+    queryClient.setQueryData(matchingKey, {
+      conversation: conversation('conv-1'),
+      canCreateThread: false,
+    })
+
+    handleAppEvent(queryClient, {
+      type: ChatEventType.MessageCreated,
+      payload: { conversationId: 'conv-1', messageId: 'message-1' },
+    })
+
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: chatKeys.members('conv-1') })
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: chatKeys.people('conv-1') })
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: chatKeys.channelManagement() })
+    expect(queryClient.getQueryState(matchingKey)?.isInvalidated).toBe(false)
   })
 })

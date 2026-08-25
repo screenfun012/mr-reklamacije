@@ -4,6 +4,7 @@ import {
   ClaimEventType,
   ClaimKind,
   ClientSubmissionEventType,
+  invalidateChatConversationMetadataQueries,
   invalidateInternalClaimQueries,
   invalidateInternalSubmissionQueries,
   NotificationEventType,
@@ -159,6 +160,9 @@ export function handleAppEvent(queryClient: QueryClient, event: AppEvent): void 
     void queryClient.invalidateQueries({
       queryKey: chatKeys.attachments(event.payload.conversationId),
     })
+    if (event.payload.messageId === event.payload.conversationId) {
+      invalidateChatConversationMetadataQueries(queryClient, event.payload.conversationId)
+    }
     return
   }
 

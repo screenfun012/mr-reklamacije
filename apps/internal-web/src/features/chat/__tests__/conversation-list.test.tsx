@@ -203,22 +203,6 @@ describe('ConversationList', () => {
     expect(threadRows()).toHaveLength(0)
   })
 
-  it('says what the search box will do rather than pretending to do it', () => {
-    renderList(
-      <ConversationList
-        items={[GENERAL]}
-        activeId={GENERAL.id}
-        onSelect={vi.fn()}
-        onNewThread={vi.fn()}
-        open={false}
-      />,
-    )
-
-    const search = screen.getByPlaceholderText('Pretraga poruka…')
-    expect(search).toBeDisabled()
-    expect(search).toHaveAttribute('title', 'Pretraga poruka stiže uskoro.')
-  })
-
   it('remembers Do Not Disturb in this browser, and says that is what it means', async () => {
     const user = userEvent.setup()
     renderList(
@@ -255,12 +239,32 @@ describe('ConversationList', () => {
       />,
     )
 
-    // The accessible name of both + buttons is "+", so the tooltip is what tells them apart.
     const add = screen.getByTitle('Nova nit — izaberi reklamaciju')
     expect(add).toBeEnabled()
 
     await user.click(add)
 
     expect(onNewThread).toHaveBeenCalled()
+  })
+
+  it('opens channel management from the channels section', async () => {
+    const user = userEvent.setup()
+    const onManageChannels = vi.fn()
+    renderList(
+      <ConversationList
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+        onNewChannel={vi.fn()}
+        onManageChannels={onManageChannels}
+        open={false}
+        userId="11111111-1111-4111-8111-111111111111"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Upravljaj kanalima' }))
+
+    expect(onManageChannels).toHaveBeenCalledOnce()
   })
 })

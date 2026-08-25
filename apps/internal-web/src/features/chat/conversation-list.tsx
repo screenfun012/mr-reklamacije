@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 import { ChatConversationType, ClaimKind, type ChatConversationListItem } from '@mr/shared'
 import { cn } from '@mr/ui'
+import { Plus, Settings2 } from 'lucide-react'
 
 import { CHAT_LIST_COLUMN_CLASSES, CHAT_LIST_SHEET_CLASSES } from './chat-layout'
 import { useChatDnd } from './chat-dnd'
@@ -70,7 +71,7 @@ function ChannelRow({
       onClick={() => onSelect(item.id)}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'flex h-9 items-center gap-2 rounded-[9px] px-[10px] text-left text-[13px] transition-colors hover:bg-mri-rowhv',
+        'flex h-10 items-center gap-2 rounded-[9px] px-[10px] text-left text-[13px] transition-colors hover:bg-mri-rowhv',
         active
           ? 'bg-[rgba(237,28,36,.11)] font-bold text-mri-text shadow-[inset_2px_0_0_var(--mri-red)]'
           : 'font-semibold text-mri-text2',
@@ -130,36 +131,45 @@ function ThreadRow({
 function SectionHeader({
   label,
   addTitle,
+  manageTitle,
   className,
   onAdd,
+  onManage,
 }: {
   label: string
   addTitle: string
+  manageTitle?: string | undefined
   className?: string
-  /** Absent while the dialog behind it does not exist yet — the button then says so. */
-  onAdd?: (() => void) | undefined
+  onAdd: () => void
+  onManage?: (() => void) | undefined
 }): React.ReactElement {
   return (
     <div className={cn('flex items-center px-[10px] pb-[5px] pt-0.5', className)}>
       <span className="font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2">
         {label}
       </span>
-      <button
-        type="button"
-        disabled={onAdd === undefined}
-        onClick={onAdd}
-        title={addTitle}
-        className={cn(
-          'ml-auto grid size-5 place-items-center rounded-md border border-mri-border2 text-[13px] leading-none text-mri-text2',
-          // Inert where the dialog behind it does not exist yet — and saying so in its tooltip
-          // rather than swallowing a click.
-          onAdd === undefined
-            ? 'opacity-60'
-            : 'transition-colors hover:border-mri-text2 hover:text-mri-text',
+      <span className="ml-auto flex items-center gap-1">
+        {onManage === undefined || manageTitle === undefined ? null : (
+          <button
+            type="button"
+            onClick={onManage}
+            title={manageTitle}
+            className="grid size-10 place-items-center rounded-md text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text"
+          >
+            <Settings2 aria-hidden="true" className="size-3.5" />
+            <span className="sr-only">{manageTitle}</span>
+          </button>
         )}
-      >
-        +
-      </button>
+        <button
+          type="button"
+          onClick={onAdd}
+          title={addTitle}
+          className="grid size-10 place-items-center rounded-md border border-mri-border2 text-mri-text2 transition-colors hover:border-mri-text2 hover:text-mri-text"
+        >
+          <Plus aria-hidden="true" className="size-3.5" />
+          <span className="sr-only">{addTitle}</span>
+        </button>
+      </span>
     </div>
   )
 }
@@ -173,6 +183,8 @@ export interface ConversationListProps {
   onNewThread: () => void
   /** Opens the „Nov kanal" dialog. Anybody in the chat may make one. */
   onNewChannel: () => void
+  /** Opens the lazy channel-management dialog. */
+  onManageChannels: () => void
   /**
    * Whether the list is showing as a sheet. Only means anything below CHAT_LIST_BREAKPOINT —
    * above it the list is a column and this is ignored, which is why the state may stay `true`
@@ -189,6 +201,7 @@ export function ConversationList({
   onSelect,
   onNewThread,
   onNewChannel,
+  onManageChannels,
   open,
 }: ConversationListProps): React.ReactElement {
   const [dnd, setDnd] = useChatDnd()
@@ -221,7 +234,7 @@ export function ConversationList({
             aria-pressed={dnd}
             title={m.chat_dnd_title()}
             className={cn(
-              'ml-auto rounded-[7px] border px-[9px] py-1 font-mono text-[8.5px] font-bold tracking-[0.12em] transition-colors',
+              'ml-auto h-10 rounded-[7px] border px-[9px] font-mono text-[8.5px] font-bold tracking-[0.12em] transition-colors',
               dnd
                 ? 'border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] text-mri-redh'
                 : 'border-mri-border2 text-mri-text2',
@@ -230,22 +243,15 @@ export function ConversationList({
             {m.chat_dnd()}
           </button>
         </div>
-        {/* Searching MESSAGES is its own piece of work; a box that filtered conversation names
-            would answer a different question than the one it asks. */}
-        <input
-          type="search"
-          disabled
-          placeholder={m.chat_search_placeholder()}
-          title={m.chat_search_disabled_title()}
-          className="h-[34px] rounded-lg border border-mri-border2 bg-mri-inbg px-[11px] text-[12px] font-medium text-mri-text outline-none placeholder:text-mri-text2 disabled:cursor-not-allowed disabled:opacity-60"
-        />
       </div>
 
       <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-2.5 pt-0.5">
         <SectionHeader
           label={m.chat_section_channels()}
           addTitle={m.chat_new_channel_title()}
+          manageTitle={m.chat_channel_manage()}
           onAdd={onNewChannel}
+          onManage={onManageChannels}
         />
         {[...general, ...channels].map((item) => (
           <ChannelRow key={item.id} item={item} active={item.id === activeId} onSelect={onSelect} />
@@ -258,7 +264,7 @@ export function ConversationList({
           onAdd={onNewThread}
         />
         {threads.length === 0 ? (
-          <p role="status" className="px-[10px] py-1.5 text-[11px] text-mri-text2">
+          <p role="status" className="px-[10px] py-1.5 text-pretty text-[11px] text-mri-text2">
             {m.chat_threads_empty()}
           </p>
         ) : (
@@ -279,7 +285,7 @@ export function ConversationList({
         <PushSwitch userId={userId} />
       </div>
 
-      <p className="flex-none border-t border-mri-border px-3 py-[11px] text-[10.5px] italic leading-[1.5] text-mri-text2">
+      <p className="flex-none border-t border-mri-border px-3 py-[11px] text-pretty text-[10.5px] italic leading-[1.5] text-mri-text2">
         {m.chat_threads_footer()}
       </p>
     </div>
