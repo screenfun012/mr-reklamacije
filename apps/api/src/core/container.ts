@@ -37,7 +37,13 @@ import {
   IntakeChecklistItemsService,
 } from '../modules/intake-checklist-items/index.js'
 import { DomaceClaimsRepository, DomaceClaimsService } from '../modules/domace-claims/index.js'
-import { ChatAttachmentsService, ChatRepository, ChatService } from '../modules/chat/index.js'
+import {
+  ChatAttachmentsService,
+  ChatRepository,
+  ChatService,
+  PostgresChatConversationFence,
+  type ChatConversationFence,
+} from '../modules/chat/index.js'
 import { PushRepository, PushService } from '../modules/push/index.js'
 import { ClaimsRepository, ClaimsService } from '../modules/claims/index.js'
 import { DashboardRepository, DashboardService } from '../modules/dashboard/index.js'
@@ -121,6 +127,7 @@ export interface Container {
   engineManufacturersRepository: EngineManufacturersRepository
   engineManufacturersService: EngineManufacturersService
   chatRepository: ChatRepository
+  chatConversationFence: ChatConversationFence
   chatAttachmentsService: ChatAttachmentsService
   chatService: ChatService
   pushRepository: PushRepository
@@ -210,6 +217,7 @@ export function buildContainer(
   cache: RedisCache = new RedisCache(null),
   emailPort: EmailPort = createEmailPort(env),
   loginAttemptStore?: LoginAttemptStore,
+  chatConversationFence: ChatConversationFence = new PostgresChatConversationFence(pool),
 ): Container {
   const rateLimiters = createRateLimiters(cache)
   const auth = createAuth(db, {
@@ -267,6 +275,7 @@ export function buildContainer(
   const chatAttachmentsService = new ChatAttachmentsService(chatRepository, storageService, logger)
   const chatService = new ChatService(
     chatRepository,
+    chatConversationFence,
     eventBus,
     logger,
     notificationsService,
@@ -515,6 +524,7 @@ export function buildContainer(
     engineManufacturersRepository,
     engineManufacturersService,
     chatRepository,
+    chatConversationFence,
     chatAttachmentsService,
     chatService,
     pushRepository,

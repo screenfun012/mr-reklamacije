@@ -1,6 +1,6 @@
 import { schema } from '@mr/db'
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
+import type { ApiDatabase } from '../../core/database.js'
 import type { AuditEntry, AuditPort } from '../../core/ports/audit-port.js'
 
 export type { AuditEntry } from '../../core/ports/audit-port.js'
@@ -9,10 +9,10 @@ export type { AuditEntry } from '../../core/ports/audit-port.js'
  * AuditService — writes audit_log rows for business mutations.
  */
 export class AuditService implements AuditPort {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(private readonly db: ApiDatabase) {}
 
-  async log(entry: AuditEntry): Promise<void> {
-    await this.db.insert(schema.auditLog).values({
+  async log(entry: AuditEntry, executor: ApiDatabase = this.db): Promise<void> {
+    await executor.insert(schema.auditLog).values({
       entityType: entry.entityType,
       entityId: entry.entityId,
       action: entry.action,

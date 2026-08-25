@@ -23,6 +23,7 @@ import {
   type ChatPin,
 } from '@mr/shared'
 
+import type { ApiDatabase } from '../../core/database.js'
 import {
   ConflictError,
   ForbiddenError,
@@ -40,7 +41,8 @@ import {
 } from '../../core/attachments/attachment-download-meta.js'
 import type { PushPort } from '../../core/ports/push-port.js'
 import type { ChatAttachmentsService, PreparedChatFile } from './chat-attachments.service.js'
-import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
+import type { ChatConversationFence } from './chat-conversation-fence.js'
+import { ChatRepository, type ChatVisibilityScope } from './chat.repository.js'
 import type {
   ChatActor,
   ChatChannelCreateInput,
@@ -110,6 +112,7 @@ function scopeFor(actor: ChatActor): ChatVisibilityScope {
 export class ChatService implements ChatPort {
   constructor(
     private readonly repo: ChatRepository,
+    private readonly fence: ChatConversationFence,
     private readonly events: EventBus,
     private readonly logger: Logger,
     private readonly notifications: NotificationsPort,
@@ -148,9 +151,6 @@ export class ChatService implements ChatPort {
     actor: ChatActor,
     files: readonly PreparedChatFile[] = [],
   ): Promise<ChatSendResult> {
-    const conversation = await this.requireVisible(conversationId, actor)
-    requireOpen(conversation)
-
     /**
      * A photo on its own IS a message (Nikola, 2026-08-24), so the body may be empty — but only
      * when something else arrived with it. The rule lives here rather than in the Zod schema
@@ -161,55 +161,77 @@ export class ChatService implements ChatPort {
       throw new ValidationError('A message needs words or a file')
     }
 
-    /**
-     * A quote must point INSIDE this conversation. The foreign key only proves the message
-     * exists — it would happily accept one from a thread the sender cannot open, and the row
-     * would then carry a pointer nothing can render and nobody meant to make.
-     */
-    if (input.quoteOf !== undefined) {
-      const quoted = await this.repo.findMessageById(input.quoteOf)
-      if (quoted === null || quoted.conversationId !== conversationId) {
-        throw new NotFoundError('Chat message', input.quoteOf)
+    const persisted = await this.fence.shared(conversationId, async (db) => {
+      const mentionSignals: Array<{ userId: string; notificationId: string }> = []
+      const repo = new ChatRepository(db)
+      const conversation = await this.requireVisible(conversationId, actor, repo)
+      requireOpen(conversation)
+
+      /**
+       * A quote must point INSIDE this conversation. The foreign key only proves the message
+       * exists — it would happily accept one from a thread the sender cannot open, and the row
+       * would then carry a pointer nothing can render and nobody meant to make.
+       */
+      if (input.quoteOf !== undefined) {
+        const quoted = await repo.findMessageById(input.quoteOf)
+        if (quoted === null || quoted.conversationId !== conversationId) {
+          throw new NotFoundError('Chat message', input.quoteOf)
+        }
       }
-    }
 
-    const stored = await this.repo.insertMessage({
-      conversationId,
-      authorId: actor.id,
-      clientMsgId: input.clientMsgId,
-      body: input.body,
-      quoteOf: input.quoteOf ?? null,
+      const stored = await repo.insertMessage({
+        conversationId,
+        authorId: actor.id,
+        clientMsgId: input.clientMsgId,
+        body: input.body,
+        quoteOf: input.quoteOf ?? null,
+      })
+      if (stored === null) {
+        throw new ConflictError('Chat message could not be stored')
+      }
+
+      /**
+       * Only a message that was actually created gets its files written.
+       *
+       * A retry finds the message already there, so these bytes are dropped and nothing reaches
+       * the disk — which is why the files ride the send request instead of an upload-then-send
+       * pair: the clientMsgId that already makes a retried message land once now covers its photos.
+       */
+      let partialFiles = 0
+      if (stored.created && files.length > 0) {
+        const written = await this.attachments.store(conversationId, stored.id, files, repo)
+        partialFiles = written.failed
+      }
+
+      const message = await repo.findMessageById(stored.id)
+      if (message === null) {
+        throw new NotFoundError('Chat message', stored.id)
+      }
+
+      if (stored.created) {
+        await this.ringMentions(conversation, message, actor, repo, db, (userId, notificationId) =>
+          mentionSignals.push({ userId, notificationId }),
+        )
+      }
+
+      return {
+        result: { message, created: stored.created, partialFiles },
+        conversation,
+        mentionSignals,
+      }
     })
-    if (stored === null) {
-      throw new ConflictError('Chat message could not be stored')
-    }
 
-    /**
-     * Only a message that was actually created gets its files written.
-     *
-     * A retry finds the message already there, so these bytes are dropped and nothing reaches the
-     * disk — which is why the files ride the send request instead of an upload-then-send pair: the
-     * clientMsgId that already makes a retried message land once now covers its photos too.
-     */
-    let partialFiles = 0
-    if (stored.created && files.length > 0) {
-      const written = await this.attachments.store(conversationId, stored.id, files)
-      partialFiles = written.failed
-    }
-
-    const message = await this.repo.findMessageById(stored.id)
-    if (message === null) {
-      throw new NotFoundError('Chat message', stored.id)
+    for (const signal of persisted.mentionSignals) {
+      this.events.publishNotificationCreated(signal.userId, signal.notificationId)
     }
 
     // A retry wrote nothing, so it announces nothing — one message, one signal.
-    if (stored.created) {
-      this.announce(conversationId, message.id)
-      await this.ringMentions(conversation, message, actor)
-      this.pushToPhones(conversation, message, actor)
+    if (persisted.result.created) {
+      this.announce(conversationId, persisted.result.message.id)
+      this.pushToPhones(persisted.conversation, persisted.result.message, actor)
     }
 
-    return { message, created: stored.created, partialFiles }
+    return persisted.result
   }
 
   /** The room's shelf of files. Same gate as everything else here: 404 for a room he cannot read. */
@@ -313,13 +335,16 @@ export class ChatService implements ChatPort {
     conversation: ChatConversationListItem,
     message: ChatMessage,
     actor: ChatActor,
+    repo: ChatRepository = this.repo,
+    executor?: ApiDatabase,
+    onNotificationCreated?: (userId: string, notificationId: string) => void,
   ): Promise<void> {
     const mentions = uniqueMentions(message.body)
     if (mentions.length === 0) {
       return
     }
 
-    const people = await this.repo.listPeopleFor(conversation)
+    const people = await repo.listPeopleFor(conversation)
     const namesEverybody = mentions.some((mention) => mention.id === MENTION_EVERYONE_ID)
     const reachable = new Set(people.map((person) => person.id))
     // ⚠ The author is NOT dropped here. Every `NotificationsPort` method promises to exclude the
@@ -333,14 +358,19 @@ export class ChatService implements ChatPort {
       return
     }
 
-    await this.notifications.notifyChatMention(actor.id, {
-      messageId: message.id,
-      conversationId: conversation.id,
-      conversationTitle: conversation.title,
-      authorName: message.author?.name ?? '',
-      excerpt: stripMentionMarkup(message.body).slice(0, CHAT_MENTION_EXCERPT_MAX),
-      recipientIds: [...new Set(recipientIds)],
-    })
+    await this.notifications.notifyChatMention(
+      actor.id,
+      {
+        messageId: message.id,
+        conversationId: conversation.id,
+        conversationTitle: conversation.title,
+        authorName: message.author?.name ?? '',
+        excerpt: stripMentionMarkup(message.body).slice(0, CHAT_MENTION_EXCERPT_MAX),
+        recipientIds: [...new Set(recipientIds)],
+      },
+      executor,
+      onNotificationCreated,
+    )
   }
 
   /**
@@ -631,9 +661,10 @@ export class ChatService implements ChatPort {
   private async metadataAccess(
     conversationId: string,
     actor: ChatActor,
+    repo: ChatRepository = this.repo,
   ): Promise<{ conversation: ChatConversationListItem; canManage: boolean }> {
     const scope = scopeFor(actor)
-    const manageable = await this.repo.findManageableChannel(
+    const manageable = await repo.findManageableChannel(
       conversationId,
       actor.id,
       actor.roles.includes(SYSTEM_ROLE_ADMIN),
@@ -643,7 +674,7 @@ export class ChatService implements ChatPort {
       return { conversation: manageable, canManage: true }
     }
 
-    const visible = await this.requireVisible(conversationId, actor)
+    const visible = await this.requireVisible(conversationId, actor, repo)
     this.requireRealChannel(visible)
     return { conversation: visible, canManage: false }
   }
@@ -651,8 +682,9 @@ export class ChatService implements ChatPort {
   private async requireChannelManager(
     conversationId: string,
     actor: ChatActor,
+    repo: ChatRepository = this.repo,
   ): Promise<ChatConversationListItem> {
-    const access = await this.metadataAccess(conversationId, actor)
+    const access = await this.metadataAccess(conversationId, actor, repo)
     if (!access.canManage) {
       throw new ForbiddenError('A channel is managed by whoever made it')
     }
@@ -733,50 +765,73 @@ export class ChatService implements ChatPort {
   }
 
   /**
-   * Erases a room, for an admin and nobody else.
+   * Erases a room made by mistake: a channel's creator or an admin, but a claim thread only for an
+   * admin. The metadata lookup deliberately lets an owner/admin do that without gaining message
+   * visibility.
    *
    * Nikola, 2026-08-23: "ako neko napravi kanal ili nit bez razloga slucajno … ja kao admin mogu da
    * je obrisem skroz znaci kao da nikada nije bila". So this is for a MISTAKE, not for tidying
    * history — the precedent is `intake_orders.delete_signed`, where a wrongly made record goes and
    * only the audit row is left to say it existed.
    *
-   * ⚠ By ROLE, not by a permission: the chat deliberately has none of its own (spec N4), and `unpin`
-   * already reads the admin role the same way.
-   *
    * ⚠ The general channel is refused. It is a system seed, every screen assumes it is there, and it
    * cannot be made again from inside the app.
    */
   async deleteConversation(conversationId: string, actor: ChatActor): Promise<void> {
-    const conversation = await this.requireVisible(conversationId, actor)
+    await this.fence.exclusive(conversationId, async (db) => {
+      const repo = new ChatRepository(db)
+      const conversation = await this.requireDeleteAccess(conversationId, actor, repo)
+      const messagesErased = await repo.countMessages(conversationId)
 
-    if (!actor.roles.includes(SYSTEM_ROLE_ADMIN)) {
-      throw new ForbiddenError('A conversation is erased by an admin')
+      // `entity_id` has no FK. Resolve the room in SQL rather than materialising every message id.
+      await this.notifications.dropForChatConversation(conversationId, db)
+      // Before the row goes: its attachment rows cascade, after which nothing names the objects.
+      await this.attachments.eraseStoredFiles(conversationId, repo)
+      await repo.deleteConversation(conversationId)
+      await this.audit.log(
+        {
+          entityType: 'chat_conversation',
+          entityId: conversationId,
+          action: AuditAction.Delete,
+          actorUserId: actor.id,
+          changes: {
+            type: conversation.type,
+            title: conversation.title,
+            messagesErased,
+          },
+        },
+        db,
+      )
+    })
+
+    // The lock is already gone: listeners may re-read now and can only observe the deleted room.
+    this.announce(conversationId, conversationId)
+  }
+
+  private async requireDeleteAccess(
+    conversationId: string,
+    actor: ChatActor,
+    repo: ChatRepository,
+  ): Promise<ChatConversationListItem> {
+    const isAdmin = actor.roles.includes(SYSTEM_ROLE_ADMIN)
+    const manageable = await repo.findManageableChannel(
+      conversationId,
+      actor.id,
+      isAdmin,
+      scopeFor(actor),
+    )
+    if (manageable !== null) {
+      return manageable
     }
-    if (conversation.type === ChatConversationType.General) {
+
+    const visible = await this.requireVisible(conversationId, actor, repo)
+    if (visible.type === ChatConversationType.General) {
       throw new UnprocessableEntityError('The general channel cannot be erased')
     }
-
-    const messageIds = await this.repo.listMessageIds(conversationId)
-    // Before the messages go: those rows carry no foreign key and would survive as bell entries
-    // pointing into a room that is not there.
-    await this.notifications.dropForChatMessages(messageIds)
-    // ⚠ And before the ROW goes: the attachment rows follow it by cascade, and after that nothing
-    // names the objects. Same order as the intake's signed-order erase, for the same reason.
-    await this.attachments.eraseStoredFiles(conversationId)
-    await this.repo.deleteConversation(conversationId)
-
-    await this.audit.log({
-      entityType: 'chat_conversation',
-      entityId: conversationId,
-      action: AuditAction.Delete,
-      actorUserId: actor.id,
-      // The only trace left. It says WHICH room and how much talk went with it.
-      changes: {
-        type: conversation.type,
-        title: conversation.title,
-        messagesErased: messageIds.length,
-      },
-    })
+    if (visible.type === ChatConversationType.Channel || !isAdmin) {
+      throw new ForbiddenError('A conversation is erased by its channel creator or an admin')
+    }
+    return visible
   }
 
   /**
@@ -831,8 +886,9 @@ export class ChatService implements ChatPort {
   private async requireVisible(
     conversationId: string,
     actor: ChatActor,
+    repo: ChatRepository = this.repo,
   ): Promise<ChatConversationListItem> {
-    const conversation = await this.repo.findVisibleConversation(conversationId, scopeFor(actor))
+    const conversation = await repo.findVisibleConversation(conversationId, scopeFor(actor))
     if (conversation === null) {
       throw new NotFoundError('Chat conversation', conversationId)
     }

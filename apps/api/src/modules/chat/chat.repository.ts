@@ -801,14 +801,14 @@ export class ChatRepository {
     )
   }
 
-  /** Every message id in this room — needed before it goes, to let the bell forget them. */
-  async listMessageIds(conversationId: string): Promise<string[]> {
-    const rows = await this.db
-      .select({ id: chatMessages.id })
+  /** The audit needs one number, not an unbounded UUID array in Node memory. */
+  async countMessages(conversationId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ total: sql<number>`count(*)::int`.mapWith(Number) })
       .from(chatMessages)
       .where(eq(chatMessages.conversationId, conversationId))
 
-    return rows.map((row) => row.id)
+    return row?.total ?? 0
   }
 
   /**

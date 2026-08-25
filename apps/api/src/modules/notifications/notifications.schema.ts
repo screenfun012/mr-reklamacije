@@ -6,3 +6,4 @@ export const userRoles = schema.userRoles
 export const roles = schema.roles
 export const rolePermissions = schema.rolePermissions
 export const employees = schema.employees
+export const chatMessages = schema.chatMessages

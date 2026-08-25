@@ -7,6 +7,7 @@ import {
   type Permission,
 } from '@mr/shared'
 
+import type { ApiDatabase } from '../../core/database.js'
 import { NotFoundError, ValidationError } from '../../core/errors/domain-errors.js'
 import type { EventBus } from '../../core/ports/event-bus-port.js'
 import type {
@@ -276,47 +277,63 @@ export class NotificationsService implements NotificationsPort {
     return this.repo.findEmployeeUserId(employeeId, actorUserId)
   }
 
-  /**
-   * Writes a fan-out and emits one signal-only SSE event per created row. Best-effort by
-   * design: the caller has already persisted and audited the business change, so a failure
-   * here is logged and swallowed rather than rolled onto the user.
-   */
-  async dropForChatMessages(messageIds: readonly string[]): Promise<void> {
-    await this.repo.deleteForChatMessages(messageIds)
+  /** A hard-deleted room leaves no bell row pointing at one of its vanished messages. */
+  async dropForChatConversation(conversationId: string, executor?: ApiDatabase): Promise<void> {
+    await this.repo.deleteForChatConversation(conversationId, executor)
   }
 
-  async notifyChatMention(actorUserId: string, mention: ChatMentionNotification): Promise<void> {
-    return this.fanOut(async () => {
-      // Already rung for THIS message — an edit that adds a mention must reach only the new names.
-      const alreadyRung = new Set(await this.repo.findMentionRecipients(mention.messageId))
+  async notifyChatMention(
+    actorUserId: string,
+    mention: ChatMentionNotification,
+    executor?: ApiDatabase,
+    onCreated?: (userId: string, notificationId: string) => void,
+  ): Promise<void> {
+    return this.fanOut(
+      async () => {
+        // Already rung for THIS message — an edit that adds a mention must reach only the new names.
+        const alreadyRung = new Set(
+          await this.repo.findMentionRecipients(mention.messageId, executor),
+        )
 
-      return mention.recipientIds
-        .filter((userId) => userId !== actorUserId && !alreadyRung.has(userId))
-        .map((userId) => ({
-          userId,
-          type: NotificationType.ChatMention,
-          entityType: NotificationEntityType.ChatMessage,
-          entityId: mention.messageId,
-          data: {
-            authorName: mention.authorName,
-            conversationId: mention.conversationId,
-            conversationTitle: mention.conversationTitle,
-            excerpt: mention.excerpt,
-          },
-        }))
-    })
+        return mention.recipientIds
+          .filter((userId) => userId !== actorUserId && !alreadyRung.has(userId))
+          .map((userId) => ({
+            userId,
+            type: NotificationType.ChatMention,
+            entityType: NotificationEntityType.ChatMessage,
+            entityId: mention.messageId,
+            data: {
+              authorName: mention.authorName,
+              conversationId: mention.conversationId,
+              conversationTitle: mention.conversationTitle,
+              excerpt: mention.excerpt,
+            },
+          }))
+      },
+      executor,
+      onCreated,
+    )
   }
 
-  private async fanOut(build: () => Promise<readonly NotificationInsert[]>): Promise<void> {
+  /** Writes a fan-out and emits one signal-only SSE event per created row, best-effort. */
+  private async fanOut(
+    build: () => Promise<readonly NotificationInsert[]>,
+    executor?: ApiDatabase,
+    onCreated?: (userId: string, notificationId: string) => void,
+  ): Promise<void> {
     try {
       const rows = await build()
       if (rows.length === 0) {
         return
       }
 
-      const created = await this.repo.insertMany(rows)
+      const created = await this.repo.insertMany(rows, executor)
       for (const row of created) {
-        this.events.publishNotificationCreated(row.userId, row.id)
+        if (onCreated === undefined) {
+          this.events.publishNotificationCreated(row.userId, row.id)
+        } else {
+          onCreated(row.userId, row.id)
+        }
       }
     } catch (error) {
       this.logger.error({ err: error }, 'Notification fan-out failed')

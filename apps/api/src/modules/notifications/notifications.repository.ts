@@ -5,10 +5,11 @@ import {
   NotificationType,
   type Permission,
 } from '@mr/shared'
-import { inArray, and, count, desc, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 
 import type { ApiDatabase } from '../../core/database.js'
 import {
+  chatMessages,
   employees,
   notifications,
   rolePermissions,
@@ -148,12 +149,15 @@ export class NotificationsRepository {
     await this.db.delete(notifications).where(eq(notifications.userId, userId))
   }
 
-  async insertMany(rows: readonly NotificationInsert[]): Promise<CreatedNotification[]> {
+  async insertMany(
+    rows: readonly NotificationInsert[],
+    executor: ApiDatabase = this.db,
+  ): Promise<CreatedNotification[]> {
     if (rows.length === 0) {
       return []
     }
 
-    return this.db
+    return executor
       .insert(notifications)
       .values(
         rows.map((row) => ({
@@ -215,20 +219,22 @@ export class NotificationsRepository {
     return rows.map((row) => row.id)
   }
 
-  /** Forgets every notification pointing at any of these chat messages. */
-  async deleteForChatMessages(messageIds: readonly string[]): Promise<void> {
-    if (messageIds.length === 0) {
-      return
-    }
-
-    await this.db
-      .delete(notifications)
-      .where(
-        and(
-          eq(notifications.entityType, NotificationEntityType.ChatMessage),
-          inArray(notifications.entityId, [...messageIds]),
-        ),
-      )
+  /** One bounded delete, however many messages the conversation held. */
+  async deleteForChatConversation(
+    conversationId: string,
+    executor: ApiDatabase = this.db,
+  ): Promise<void> {
+    await executor.delete(notifications).where(
+      and(
+        eq(notifications.entityType, NotificationEntityType.ChatMessage),
+        sql`EXISTS (
+            SELECT 1
+            FROM ${chatMessages}
+            WHERE ${chatMessages.id} = ${notifications.entityId}
+              AND ${chatMessages.conversationId} = ${conversationId}
+          )`,
+      ),
+    )
   }
 
   /**
@@ -238,8 +244,11 @@ export class NotificationsRepository {
    * first version already named must not hear it twice. The notification rows ARE that record, so
    * there is no second table to keep in step with them.
    */
-  async findMentionRecipients(messageId: string): Promise<string[]> {
-    const rows = await this.db
+  async findMentionRecipients(
+    messageId: string,
+    executor: ApiDatabase = this.db,
+  ): Promise<string[]> {
+    const rows = await executor
       .select({ userId: notifications.userId })
       .from(notifications)
       .where(

@@ -33,6 +33,7 @@ import { registerDashboardRoutes } from '../modules/dashboard/index.js'
 import { registerEngineTypesRoutes } from '../modules/engine-types/index.js'
 import { registerEngineManufacturersRoutes } from '../modules/engine-manufacturers/index.js'
 import { registerChatRoutes } from '../modules/chat/index.js'
+import type { ChatConversationFence } from '../modules/chat/index.js'
 import { registerPushRoutes } from '../modules/push/index.js'
 import { registerClaimCategoriesRoutes } from '../modules/claim-categories/index.js'
 import { registerClaimCategoryFieldsRoutes } from '../modules/claim-category-fields/index.js'
@@ -385,6 +386,11 @@ export function buildTestContainer(
   eventBus?: EventBus,
   emailPort?: EmailPort,
 ): Container {
+  const fence: ChatConversationFence = {
+    shared: (_conversationId, work) => work(db),
+    exclusive: (_conversationId, work) => work(db),
+  }
+
   // cache defaults to a disabled RedisCache(null) — tests never require Redis.
   return buildContainer(
     createTestEnv(databaseUrl),
@@ -394,6 +400,8 @@ export function buildTestContainer(
     eventBus,
     undefined,
     emailPort,
+    undefined,
+    fence,
   )
 }
 

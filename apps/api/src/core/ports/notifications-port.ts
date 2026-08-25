@@ -1,5 +1,7 @@
 import type { ClaimKind, ClaimOutcome, NotificationCatalog } from '@mr/shared'
 
+import type { ApiDatabase } from '../database.js'
+
 /** The claim facts a notification needs to render its title — never claim internals. */
 export interface ClaimNotificationContext {
   readonly kind: ClaimKind
@@ -67,15 +69,15 @@ export interface NotificationsPort {
    * conversation. What is decided HERE is who has already been rung for this message: an edit may
    * add a mention (15-minute window) and must not ring anybody a second time.
    */
-  notifyChatMention(actorUserId: string, mention: ChatMentionNotification): Promise<void>
+  notifyChatMention(
+    actorUserId: string,
+    mention: ChatMentionNotification,
+    executor?: ApiDatabase,
+    onCreated?: (userId: string, notificationId: string) => void,
+  ): Promise<void>
 
-  /**
-   * Forget every mention notification pointing at these messages.
-   *
-   * ⚠ `notifications.entity_id` carries no foreign key, so nothing follows a hard-deleted message
-   * on its own — the rows would survive as bell entries linking into a room that is not there.
-   */
-  dropForChatMessages(messageIds: readonly string[]): Promise<void>
+  /** Forget every mention notification pointing into one conversation, in one bounded query. */
+  dropForChatConversation(conversationId: string, executor?: ApiDatabase): Promise<void>
 
   /** A submission was rejected → replace its new_submission notifications with submission_rejected. */
   notifySubmissionRejected(

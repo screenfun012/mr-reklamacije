@@ -93,8 +93,8 @@ export class ChatAttachmentsService {
    * and then nothing names these objects. A failure on one file is logged with its path and does
    * NOT stop the erase: an object left behind costs disk, a half-erased room costs a promise.
    */
-  async eraseStoredFiles(conversationId: string): Promise<void> {
-    const paths = await this.repo.listChatAttachmentPaths(conversationId)
+  async eraseStoredFiles(conversationId: string, repo: ChatRepository = this.repo): Promise<void> {
+    const paths = await repo.listChatAttachmentPaths(conversationId)
 
     /*
      * ⚠ In batches, not one at a time.
@@ -136,6 +136,7 @@ export class ChatAttachmentsService {
     conversationId: string,
     messageId: string,
     prepared: readonly PreparedChatFile[],
+    repo: ChatRepository = this.repo,
   ): Promise<{ failed: number }> {
     const rows: NewChatAttachmentRow[] = []
     let failed = 0
@@ -180,7 +181,7 @@ export class ChatAttachmentsService {
     }
 
     try {
-      await this.repo.insertChatAttachments(rows)
+      await repo.insertChatAttachments(rows)
     } catch (error) {
       /*
        * ⚠ The bytes are already on the disk at this point, and nothing else will ever name them.

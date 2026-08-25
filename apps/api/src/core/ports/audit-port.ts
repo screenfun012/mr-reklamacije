@@ -1,5 +1,7 @@
 import type { AuditAction } from '@mr/shared'
 
+import type { ApiDatabase } from '../database.js'
+
 export interface AuditEntry {
   entityType: string
   entityId: string
@@ -12,5 +14,5 @@ export interface AuditEntry {
 }
 
 export interface AuditPort {
-  log(entry: AuditEntry): Promise<void>
+  log(entry: AuditEntry, executor?: ApiDatabase): Promise<void>
 }

@@ -1,5 +1,6 @@
 import { schema } from '@mr/db'
 import {
+  AttachmentPurpose,
   ChatChannelManagementListResponseSchema,
   ChatConversationListItemSchema,
   ChatConversationType,
@@ -36,6 +37,8 @@ interface TestActor extends ChatActor {
 const MAKER: TestActor = { id: TEST_USER_ID, permissions: OFFICE, roles: ['operator'] }
 const MEMBER: TestActor = { id: OTHER_USER_ID, permissions: OFFICE, roles: ['operator'] }
 const ADMIN: TestActor = { id: ADMIN_USER_ID, permissions: OFFICE, roles: ['admin'] }
+
+const MINIMAL_PDF = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n', 'latin1')
 
 describe('Channels', () => {
   let ctx: TestDbContext
@@ -539,5 +542,222 @@ describe('Channels', () => {
         ),
       )
     expect(auditRows).toEqual([])
+  })
+
+  describe('deleting a conversation made by mistake', () => {
+    it('lets the creator erase a channel after leaving it', async () => {
+      const channel = await createChannel(MAKER, 'Napustio tvorac')
+      await container.chatService.removeMember(channel.id, MAKER.id, MAKER)
+      bus.chatEvents.length = 0
+
+      const response = await appFor(MAKER).request(`/api/chat/conversations/${channel.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(204)
+      expect(bus.chatEvents).toEqual([
+        {
+          type: 'chat_message_created',
+          conversationId: channel.id,
+          messageId: channel.id,
+        },
+      ])
+    })
+
+    it('returns 403 to a visible creator of another channel', async () => {
+      await createChannel(MEMBER, 'Njegov kanal')
+      const channel = await createChannel(MAKER, 'Tuđ kanal', [MEMBER.id])
+
+      const response = await appFor(MEMBER).request(`/api/chat/conversations/${channel.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(403)
+    })
+
+    it('returns 404 to a nonmember who cannot see the channel', async () => {
+      const channel = await createChannel(MAKER, 'Sakriven kanal')
+
+      const response = await appFor(MEMBER).request(`/api/chat/conversations/${channel.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(404)
+    })
+
+    it('lets a nonmember admin erase a channel', async () => {
+      const channel = await createChannel(MAKER, 'Admin briše')
+      bus.chatEvents.length = 0
+
+      const response = await appFor(ADMIN).request(`/api/chat/conversations/${channel.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(204)
+      expect(bus.chatEvents).toEqual([
+        {
+          type: 'chat_message_created',
+          conversationId: channel.id,
+          messageId: channel.id,
+        },
+      ])
+    })
+
+    it('returns 422 for the General channel', async () => {
+      const [general] = await ctx.db
+        .select({ id: schema.chatConversations.id })
+        .from(schema.chatConversations)
+        .where(eq(schema.chatConversations.type, ChatConversationType.General))
+        .limit(1)
+      if (general === undefined) {
+        throw new Error('general channel missing from seed')
+      }
+
+      const response = await appFor(ADMIN).request(`/api/chat/conversations/${general.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(422)
+    })
+
+    it('keeps claim-thread deletion admin-only', async () => {
+      const [manufacturer] = await ctx.db
+        .insert(schema.engineManufacturers)
+        .values({ code: 'DELETE-THREAD-MFG', name: 'Delete thread manufacturer' })
+        .returning({ id: schema.engineManufacturers.id })
+      const [engineType] = await ctx.db
+        .insert(schema.engineTypes)
+        .values({ code: 'DELETE-THREAD-ENGINE', manufacturerId: manufacturer?.id ?? '' })
+        .returning({ id: schema.engineTypes.id })
+      const [claim] = await ctx.db
+        .insert(schema.emotiveClaims)
+        .values({
+          warrantyReport: 'Delete fence thread',
+          engineTypeId: engineType?.id ?? '',
+          dateOfClaim: new Date('2026-08-25'),
+          mrNumber: 'MR-DELETE-FENCE',
+          outcome: 'pending',
+          claimYear: 2026,
+          createdBy: TEST_USER_ID,
+        })
+        .returning({ id: schema.emotiveClaims.id })
+      const [thread] = await ctx.db
+        .insert(schema.chatConversations)
+        .values({
+          type: ChatConversationType.Claim,
+          emotiveClaimId: claim?.id ?? '',
+          createdBy: MAKER.id,
+        })
+        .returning({ id: schema.chatConversations.id })
+      if (thread === undefined) {
+        throw new Error('claim thread could not be created')
+      }
+
+      const forbidden = await appFor(MAKER).request(`/api/chat/conversations/${thread.id}`, {
+        method: 'DELETE',
+      })
+      const deleted = await appFor(ADMIN).request(`/api/chat/conversations/${thread.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(forbidden.status).toBe(403)
+      expect(deleted.status).toBe(204)
+    })
+
+    it('erases messages, mention notifications, attachment rows and bytes with one exact audit', async () => {
+      const channel = await createChannel(MAKER, 'Potpuno brisanje', [MEMBER.id])
+      const prepared = await container.chatAttachmentsService.prepare([
+        { fileName: 'racun.pdf', data: MINIMAL_PDF, caption: null },
+      ])
+      const sent = await container.chatService.send(
+        channel.id,
+        {
+          clientMsgId: crypto.randomUUID(),
+          body: `@[Kolega](${MEMBER.id}) greškom`,
+        },
+        MAKER,
+        prepared,
+      )
+      const [attachment] = await ctx.db
+        .select({
+          id: schema.attachments.id,
+          storagePath: schema.attachments.storagePath,
+        })
+        .from(schema.attachments)
+        .where(
+          and(
+            eq(schema.attachments.chatMessageId, sent.message.id),
+            eq(schema.attachments.purpose, AttachmentPurpose.ChatAttachment),
+          ),
+        )
+      if (attachment === undefined) {
+        throw new Error('chat attachment was not stored')
+      }
+      expect(await container.storageService.exists(attachment.storagePath)).toBe(true)
+      const notificationsBefore = await ctx.db
+        .select({ id: schema.notifications.id })
+        .from(schema.notifications)
+        .where(eq(schema.notifications.entityId, sent.message.id))
+      expect(notificationsBefore).toHaveLength(1)
+      bus.chatEvents.length = 0
+
+      const response = await appFor(MAKER).request(`/api/chat/conversations/${channel.id}`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(204)
+      expect(await container.storageService.exists(attachment.storagePath)).toBe(false)
+      expect(
+        await ctx.db
+          .select({ id: schema.chatConversations.id })
+          .from(schema.chatConversations)
+          .where(eq(schema.chatConversations.id, channel.id)),
+      ).toEqual([])
+      expect(
+        await ctx.db
+          .select({ id: schema.chatMessages.id })
+          .from(schema.chatMessages)
+          .where(eq(schema.chatMessages.conversationId, channel.id)),
+      ).toEqual([])
+      expect(
+        await ctx.db
+          .select({ id: schema.attachments.id })
+          .from(schema.attachments)
+          .where(eq(schema.attachments.id, attachment.id)),
+      ).toEqual([])
+      expect(
+        await ctx.db
+          .select({ id: schema.notifications.id })
+          .from(schema.notifications)
+          .where(eq(schema.notifications.entityId, sent.message.id)),
+      ).toEqual([])
+
+      const auditRows = await ctx.db
+        .select({ action: schema.auditLog.action, changes: schema.auditLog.changes })
+        .from(schema.auditLog)
+        .where(
+          and(
+            eq(schema.auditLog.entityType, 'chat_conversation'),
+            eq(schema.auditLog.entityId, channel.id),
+          ),
+        )
+      expect(auditRows).toEqual([
+        {
+          action: 'delete',
+          changes: {
+            type: ChatConversationType.Channel,
+            title: 'Potpuno brisanje',
+            messagesErased: 2,
+          },
+        },
+      ])
+      expect(bus.chatEvents).toEqual([
+        {
+          type: 'chat_message_created',
+          conversationId: channel.id,
+          messageId: channel.id,
+        },
+      ])
+    })
   })
 })
