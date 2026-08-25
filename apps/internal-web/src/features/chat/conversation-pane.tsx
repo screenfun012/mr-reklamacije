@@ -120,6 +120,8 @@ export interface ConversationPaneProps {
   isThread?: boolean
   /** What happens when somebody clicks an MR number written in a message. */
   onOpenClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
+  /** Direct claim-detail destination when a just-created thread closes before it can open. */
+  onOpenClosedClaim?: ((target: MrRegistryExistingClaim) => void) | undefined
   /** Where the composer's offer lands. Absent on the claim detail's tab — nowhere else to go. */
   onOpenConversation?: ((conversationId: string) => void) | undefined
 }
@@ -139,6 +141,7 @@ export function ConversationPane({
   isLocked = false,
   isThread = false,
   onOpenClaim,
+  onOpenClosedClaim,
   onOpenConversation,
 }: ConversationPaneProps): React.ReactElement {
   const queryClient = useQueryClient()
@@ -375,9 +378,9 @@ export function ConversationPane({
         onRetry={handleRetry}
         onOpenImage={(message, attachmentId) => setPreview({ message, attachmentId })}
         onOpenClaim={onOpenClaim}
-        onReply={setReplyTo}
-        onReact={(message) => react.mutate(message)}
-        onPin={(message) => pin.mutate(message)}
+        onReply={isLocked ? undefined : setReplyTo}
+        onReact={isLocked ? undefined : (message) => react.mutate(message)}
+        onPin={isLocked ? undefined : (message) => pin.mutate(message)}
         pinnedIds={pinnedIds}
         unpinnableIds={unpinnableIds}
         currentUserId={authorId}
@@ -392,6 +395,7 @@ export function ConversationPane({
           onSend={handleSend}
           conversationId={conversationId}
           onOpened={onOpenConversation}
+          onClosed={onOpenClosedClaim}
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}
         />

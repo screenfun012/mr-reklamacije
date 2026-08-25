@@ -96,7 +96,7 @@ function installFetch(): void {
 /** The fixture's author. Passing this makes the fixture message "mine", which is what ticks need. */
 const SLAVKO_ID = uuid(900)
 
-function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false) {
+function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false, isLocked = false) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const result = render(
     <QueryClientProvider client={queryClient}>
@@ -107,6 +107,7 @@ function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false) {
           authorName="Marko Petrović"
           authorId={authorId}
           isAdmin={isAdmin}
+          isLocked={isLocked}
         />
       </Suspense>
     </QueryClientProvider>,
@@ -170,6 +171,56 @@ describe('ConversationPane', () => {
     })
     const read = calls.find((call) => call.url.includes('/read'))
     expect(read?.body).toEqual({ lastSeq: '41' })
+  })
+
+  it('keeps a locked thread readable and downloadable but exposes no mutation action', async () => {
+    const attachmentId = uuid(701)
+    initialPage = page([
+      message({
+        seq: '41',
+        attachments: [
+          {
+            id: attachmentId,
+            fileName: 'nalaz.pdf',
+            mimeType: 'application/pdf',
+            fileSizeBytes: 2048,
+          },
+        ],
+      }),
+    ])
+    pins = [
+      {
+        id: uuid(41),
+        authorName: 'Slavko Jović',
+        excerpt: 'Stigao motor za MR 7102/25',
+        isDeleted: false,
+        hasAttachment: true,
+        pinnedBy: SLAVKO_ID,
+      },
+    ]
+
+    renderPane(1, SLAVKO_ID, true, true)
+
+    expect(await screen.findByText('Stigao motor za MR 7102/25')).toBeInTheDocument()
+    expect(screen.getByText('Prikačeno')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /nalaz\.pdf.*preuzmi prilog/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('disposition=attachment'),
+    )
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Odgovori na poruku' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sviđa mi se' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skini sa prikačenih' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Prikači poruku' })).not.toBeInTheDocument()
+    await waitFor(() => expect(calls.some((call) => call.url.includes('/read'))).toBe(true))
+    expect(
+      calls.filter(
+        (call) =>
+          (call.url.endsWith('/messages') && (call.body !== undefined || call.files.length > 0)) ||
+          call.url.includes('/reaction') ||
+          call.url.endsWith('/pin'),
+      ),
+    ).toEqual([])
   })
 
   it('puts a quick reply into the field and sends nothing', async () => {

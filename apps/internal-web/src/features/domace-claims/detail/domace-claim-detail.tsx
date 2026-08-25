@@ -48,9 +48,9 @@ export function DomaceClaimDetailView({
   const { data: claim } = useSuspenseQuery(domaceClaimDetailOptions(id))
   // Only for the tab's counter — the same query the photo card already runs.
   const { data: attachments } = useQuery(attachmentsListOptions(ClaimKind.Domace, id))
-  // Only for the tab's counter — the conversation list is already in the cache (the menu's own
-  // unread badge reads it), so this costs nothing and carries the number the thread has.
-  const { thread: chatThread } = useClaimThread(id)
+  // Only for the tab's counter — pending claims reuse the active list; closed claims use the
+  // read-only lookup that preserves their historical thread.
+  const { thread: chatThread } = useClaimThread(ClaimKind.Domace, id, claim.outcome)
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('domace_claims.change_outcome') === true
@@ -178,7 +178,11 @@ export function DomaceClaimDetailView({
         {/* The claim's own conversation — the same thread the „Razgovori" screen mounts, with no
             context panel beside it: this screen IS the context (spec §8.5). */}
         <TabsContent value={ClaimDetailTab.Razgovor}>
-          <ClaimConversationTab kind={ClaimKind.Domace} claimId={claim.id} />
+          <ClaimConversationTab
+            kind={ClaimKind.Domace}
+            claimId={claim.id}
+            outcome={claim.outcome}
+          />
         </TabsContent>
       </Tabs>
     </div>

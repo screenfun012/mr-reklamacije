@@ -138,6 +138,7 @@ const DOMACE_CLAIM = {
 } as unknown as DomaceClaimDetail
 
 let threads: ChatConversationListItem[] = []
+let lookupReads: string[] = []
 
 function installFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -148,6 +149,17 @@ function installFetch(): void {
     if (url.includes('/chat/conversations') && url.includes('/messages')) {
       return Response.json(MESSAGES)
     }
+    if (url.includes(`/api/chat/claims/${ClaimKind.Emotive}/${CLAIM_ID}/thread`)) {
+      lookupReads.push(url)
+      return Response.json({ conversation: { ...THREAD, isLocked: true }, canCreateThread: false })
+    }
+    if (url.includes(`/api/chat/claims/${ClaimKind.Domace}/${CLAIM_ID}/thread`)) {
+      lookupReads.push(url)
+      return Response.json({
+        conversation: { ...THREAD, claimKind: ClaimKind.Domace, isLocked: true },
+        canCreateThread: false,
+      })
+    }
     if (url.includes('/chat/conversations')) {
       return Response.json({ items: threads, unreadTotal: 0 })
     }
@@ -155,12 +167,22 @@ function installFetch(): void {
   }) as unknown as typeof fetch
 }
 
-async function renderDetail(kind: ClaimKind, tab: ClaimDetailTabValue): Promise<void> {
+async function renderDetail(
+  kind: ClaimKind,
+  tab: ClaimDetailTabValue,
+  outcome = ClaimOutcome.Accepted,
+): Promise<void> {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
-  client.setQueryData(emotiveClaimDetailOptions(CLAIM_ID).queryKey, EMOTIVE_CLAIM)
-  client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, DOMACE_CLAIM)
+  client.setQueryData(emotiveClaimDetailOptions(CLAIM_ID).queryKey, {
+    ...EMOTIVE_CLAIM,
+    outcome,
+  })
+  client.setQueryData(domaceClaimDetailOptions(CLAIM_ID).queryKey, {
+    ...DOMACE_CLAIM,
+    outcome,
+  })
 
   const node: ReactElement = (
     <QueryClientProvider client={client}>
@@ -192,7 +214,8 @@ describe.each([
 ] as const)('%s claim detail — the Razgovor tab', (_label, kind) => {
   beforeEach(() => {
     setLocale('sr', { reload: false })
-    threads = [THREAD]
+    threads = []
+    lookupReads = []
     installFetch()
   })
 
@@ -210,11 +233,12 @@ describe.each([
     await renderDetail(kind, ClaimDetailTab.Razgovor)
 
     expect(await screen.findByText('Glava je stigla')).toBeInTheDocument()
+    expect(lookupReads).toEqual([`/api/chat/claims/${kind}/${CLAIM_ID}/thread`])
   })
 
   it('offers a thread when the claim has none — and shows no conversation until then', async () => {
     threads = []
-    await renderDetail(kind, ClaimDetailTab.Razgovor)
+    await renderDetail(kind, ClaimDetailTab.Razgovor, ClaimOutcome.Pending)
 
     expect(await screen.findByText(m.chat_thread_create_title())).toBeInTheDocument()
     expect(screen.queryByText('Glava je stigla')).not.toBeInTheDocument()

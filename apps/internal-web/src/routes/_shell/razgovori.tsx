@@ -4,6 +4,7 @@ import {
   chatConversationsOptions,
   chatKeys,
   deleteChatConversation,
+  ClaimDetailTab,
   ClaimKind,
   type ChatConversationListItem,
   type MrRegistryExistingClaim,
@@ -31,7 +32,7 @@ import { ConversationPane } from '~/features/chat/conversation-pane'
 import { ChannelPanel } from '~/features/chat/channel-panel'
 import { NewChannelDialog } from '~/features/chat/new-channel-dialog'
 import { NewThreadDialog } from '~/features/chat/new-thread-dialog'
-import { ClaimThreadConfirm, findClaimThread } from '~/features/chat/open-claim-thread'
+import { ClaimThreadConfirm, useResolveClaimThread } from '~/features/chat/open-claim-thread'
 import { PinListButton } from '~/features/chat/pin-list'
 import { ThreadContextPanel, ThreadContextToggle } from '~/features/chat/thread-context-panel'
 import { internalRequireAppAccess } from '~/lib/auth-guard'
@@ -162,17 +163,34 @@ function RazgovoriColumns(): React.ReactElement {
   const [erasing, setErasing] = useState(false)
   const queryClient = useQueryClient()
 
+  const openClaimDetail = (target: MrRegistryExistingClaim): void => {
+    if (target.kind === ClaimKind.Emotive) {
+      void navigate({
+        to: '/reklamacije/emotive/$id',
+        params: { id: target.claimId },
+        search: { tab: ClaimDetailTab.Razgovor },
+      })
+      return
+    }
+    void navigate({
+      to: '/reklamacije/domace/$id',
+      params: { id: target.claimId },
+      search: { tab: ClaimDetailTab.Razgovor },
+    })
+  }
+
+  const resolveClaim = useResolveClaimThread({
+    onActive: openConversation,
+    onMissing: setPendingThread,
+    onClosed: openClaimDetail,
+  })
+
   /**
    * A claim number clicked in a message. It opens the claim's thread — and when there is none,
    * it ASKS (spec §8.2). Nothing about clicking a word in a sentence says "make me a room".
    */
   const openClaim = (target: MrRegistryExistingClaim): void => {
-    const existing = findClaimThread(data.items, target.claimId)
-    if (existing === null) {
-      setPendingThread(target)
-      return
-    }
-    openConversation(existing.id)
+    resolveClaim.mutate(target)
   }
 
   /**
@@ -289,6 +307,7 @@ function RazgovoriColumns(): React.ReactElement {
               isAdmin={isAdmin}
               isThread={current.type === ChatConversationType.Claim}
               onOpenClaim={openClaim}
+              onOpenClosedClaim={openClaimDetail}
               onOpenConversation={openConversation}
             />
           </Suspense>
@@ -326,6 +345,7 @@ function RazgovoriColumns(): React.ReactElement {
         onOpenChange={setNewThreadOpen}
         conversations={data.items}
         onOpened={openConversation}
+        onClosed={openClaimDetail}
       />
 
       <ConfirmDialog
@@ -349,6 +369,10 @@ function RazgovoriColumns(): React.ReactElement {
         onOpened={(conversationId) => {
           setPendingThread(null)
           openConversation(conversationId)
+        }}
+        onClosed={(claim) => {
+          setPendingThread(null)
+          openClaimDetail(claim)
         }}
       />
     </div>

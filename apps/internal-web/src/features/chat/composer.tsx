@@ -12,6 +12,7 @@ import {
   MENTION_EVERYONE_ID,
   type ChatMessage,
   type ChatPerson,
+  type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { cn, compressImage } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
@@ -54,6 +55,7 @@ export interface ComposerProps {
    * is made — the same rule the MR chip in a message follows.
    */
   onOpened?: ((conversationId: string) => void) | undefined
+  onClosed?: ((claim: MrRegistryExistingClaim) => void) | undefined
   /** The message being answered, so the person can see what they are answering. */
   replyTo?: ChatMessage | null | undefined
   onCancelReply?: (() => void) | undefined
@@ -117,6 +119,7 @@ export function Composer({
   onSend,
   conversationId,
   onOpened,
+  onClosed,
   replyTo,
   onCancelReply,
 }: ComposerProps): React.ReactElement {
@@ -245,8 +248,13 @@ export function Composer({
 
   return (
     <div className="flex flex-none flex-col border-t border-mri-border bg-mri-surface">
-      {onOpened === undefined ? null : (
-        <ComposerMrSuggestion draft={text} conversationId={conversationId} onOpened={onOpened} />
+      {onOpened === undefined || onClosed === undefined ? null : (
+        <ComposerMrSuggestion
+          draft={text}
+          conversationId={conversationId}
+          onOpened={onOpened}
+          onClosed={onClosed}
+        />
       )}
       <ComposerAttachments
         files={files}

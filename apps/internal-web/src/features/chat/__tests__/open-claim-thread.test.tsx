@@ -1,4 +1,4 @@
-import { setLocale } from '@mr/i18n'
+import { m, setLocale } from '@mr/i18n'
 import {
   ChatConversationType,
   ClaimKind,
@@ -11,6 +11,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ClaimThreadConfirm, findClaimThread } from '../open-claim-thread'
+import { showInternalToast } from '~/lib/internal-toast'
+
+vi.mock('~/lib/internal-toast', () => ({ showInternalToast: vi.fn() }))
 
 const CLAIM_ID = '99999999-9999-4999-8999-999999999999'
 const OTHER_CLAIM_ID = '88888888-8888-4888-8888-888888888888'
@@ -39,30 +42,51 @@ const GENERAL: ChatConversationListItem = {
 }
 
 let posted: string[] = []
-let postFails = false
+let result: 'active' | 'closed' | 'missing' | 'error' | 'unprocessable' = 'active'
+let events: string[] = []
 
 function installFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (init?.method === 'POST') {
       posted.push(url)
-      if (postFails) {
+      events.push('POST')
+      if (result === 'error') {
         return new Response(JSON.stringify({ message: 'nope' }), { status: 500 })
+      }
+      if (result === 'unprocessable') {
+        return Response.json({ error: { message: 'closed' } }, { status: 422 })
       }
       return Response.json(THREAD, { status: 201 })
     }
-    return Response.json({ items: [GENERAL, THREAD], unreadTotal: 0 })
+    if (url === `/api/chat/claims/${ClaimKind.Emotive}/${CLAIM_ID}/thread`) {
+      events.push('LOOKUP')
+      return Response.json({
+        conversation: result === 'closed' ? { ...THREAD, isLocked: true } : null,
+        canCreateThread: false,
+      })
+    }
+    events.push('CONVERSATIONS')
+    return Response.json({
+      items: result === 'active' ? [GENERAL, THREAD] : [GENERAL],
+      unreadTotal: 0,
+    })
   }) as unknown as typeof fetch
 }
 
-function renderConfirm(onOpened = vi.fn(), onCancel = vi.fn()) {
+function renderConfirm(onOpened = vi.fn(), onCancel = vi.fn(), onClosed = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <ClaimThreadConfirm target={TARGET} onCancel={onCancel} onOpened={onOpened} />
+      <ClaimThreadConfirm
+        target={TARGET}
+        onCancel={onCancel}
+        onOpened={onOpened}
+        onClosed={onClosed}
+      />
     </QueryClientProvider>,
   )
-  return { onOpened, onCancel }
+  return { onOpened, onCancel, onClosed }
 }
 
 describe('findClaimThread', () => {
@@ -79,7 +103,9 @@ describe('ClaimThreadConfirm', () => {
   beforeEach(() => {
     setLocale('sr', { reload: false })
     posted = []
-    postFails = false
+    result = 'active'
+    events = []
+    vi.mocked(showInternalToast).mockClear()
     installFetch()
   })
 
@@ -103,6 +129,43 @@ describe('ClaimThreadConfirm', () => {
     })
   })
 
+  it('waits for a fresh active list before it navigates to the returned thread', async () => {
+    const onOpened = vi.fn(() => events.push('OPEN'))
+    renderConfirm(onOpened)
+
+    await userEvent.click(await screen.findByRole('button', { name: /napravi nit/i }))
+
+    await waitFor(() => expect(onOpened).toHaveBeenCalledWith(THREAD.id))
+    expect(events).toEqual(['POST', 'CONVERSATIONS', 'OPEN'])
+    expect(showInternalToast).toHaveBeenCalledWith(m.chat_thread_opened_toast())
+  })
+
+  it('opens the claim detail when the thread closes between POST and the fresh list', async () => {
+    result = 'closed'
+    const { onOpened, onClosed } = renderConfirm()
+
+    await userEvent.click(await screen.findByRole('button', { name: /napravi nit/i }))
+
+    await waitFor(() => expect(onClosed).toHaveBeenCalledWith(TARGET))
+    expect(onOpened).not.toHaveBeenCalled()
+    expect(events).toEqual(['POST', 'CONVERSATIONS', 'LOOKUP'])
+    expect(showInternalToast).toHaveBeenCalledWith(m.chat_thread_saved_closed_toast())
+  })
+
+  it('reports an unavailable thread when it is deleted before navigation', async () => {
+    result = 'missing'
+    const { onOpened, onClosed } = renderConfirm()
+
+    await userEvent.click(await screen.findByRole('button', { name: /napravi nit/i }))
+
+    await waitFor(() =>
+      expect(showInternalToast).toHaveBeenCalledWith(m.chat_thread_unavailable_toast()),
+    )
+    expect(onOpened).not.toHaveBeenCalled()
+    expect(onClosed).not.toHaveBeenCalled()
+    expect(events).toEqual(['POST', 'CONVERSATIONS', 'LOOKUP'])
+  })
+
   it('makes nothing when the person backs out', async () => {
     const { onCancel, onOpened } = renderConfirm()
 
@@ -114,7 +177,7 @@ describe('ClaimThreadConfirm', () => {
   })
 
   it('does not open a thread the server refused to make', async () => {
-    postFails = true
+    result = 'error'
     const { onOpened } = renderConfirm()
 
     await userEvent.click(await screen.findByRole('button', { name: /napravi nit/i }))
@@ -123,5 +186,19 @@ describe('ClaimThreadConfirm', () => {
       expect(posted).toHaveLength(1)
     })
     expect(onOpened).not.toHaveBeenCalled()
+  })
+
+  it('shows the closed-claim error on 422 without a success callback or toast', async () => {
+    result = 'unprocessable'
+    const { onOpened, onClosed } = renderConfirm()
+
+    await userEvent.click(await screen.findByRole('button', { name: /napravi nit/i }))
+
+    await waitFor(() =>
+      expect(showInternalToast).toHaveBeenCalledWith(m.chat_thread_closed_create_error()),
+    )
+    expect(onOpened).not.toHaveBeenCalled()
+    expect(onClosed).not.toHaveBeenCalled()
+    expect(showInternalToast).not.toHaveBeenCalledWith(m.chat_thread_opened_toast())
   })
 })

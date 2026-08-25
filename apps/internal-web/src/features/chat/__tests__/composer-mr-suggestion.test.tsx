@@ -16,6 +16,7 @@ const TALKED_ABOUT_ID = '11111111-1111-4111-8111-111111111111'
 const FRESH_ID = '22222222-2222-4222-8222-222222222222'
 const THREAD_ID = '33333333-3333-4333-8333-333333333333'
 const NEW_THREAD_ID = '44444444-4444-4444-8444-444444444444'
+const CLOSED_ID = '55555555-5555-4555-8555-555555555555'
 
 const EXISTING_THREAD: ChatConversationListItem = {
   id: THREAD_ID,
@@ -34,16 +35,20 @@ const EXISTING_THREAD: ChatConversationListItem = {
 const REGISTRY: Record<string, MrRegistryExistingClaim> = {
   '7167/25': { kind: ClaimKind.Emotive, claimId: TALKED_ABOUT_ID },
   '7089/25': { kind: ClaimKind.Emotive, claimId: FRESH_ID },
+  '7000/25': { kind: ClaimKind.Emotive, claimId: CLOSED_ID },
 }
 
 let posted: string[] = []
 let askedKeys: string[] = []
+let threadLookups: string[] = []
+let created = false
 
 function installFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (init?.method === 'POST') {
       posted.push(url)
+      created = true
       return Response.json(
         { ...EXISTING_THREAD, id: NEW_THREAD_ID, claimId: FRESH_ID },
         { status: 201 },
@@ -54,7 +59,26 @@ function installFetch(): void {
       askedKeys.push(mr)
       return Response.json(REGISTRY[mr] ?? null)
     }
-    return Response.json({ items: [EXISTING_THREAD], unreadTotal: 0 })
+    if (url.startsWith('/api/chat/claims/')) {
+      threadLookups.push(url)
+      if (url.includes(CLOSED_ID)) {
+        return Response.json({
+          conversation: { ...EXISTING_THREAD, claimId: CLOSED_ID, isLocked: true },
+          canCreateThread: false,
+        })
+      }
+      if (url.includes(FRESH_ID)) {
+        return Response.json({ conversation: null, canCreateThread: true })
+      }
+      return Response.json({ conversation: EXISTING_THREAD, canCreateThread: false })
+    }
+    return Response.json({
+      items: [
+        EXISTING_THREAD,
+        ...(created ? [{ ...EXISTING_THREAD, id: NEW_THREAD_ID, claimId: FRESH_ID }] : []),
+      ],
+      unreadTotal: 0,
+    })
   }) as unknown as typeof fetch
 }
 
@@ -68,7 +92,7 @@ function renderComposer(onOpened: ((conversationId: string) => void) | undefined
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <Composer isThread={false} onSend={vi.fn()} onOpened={onOpened} />
+      <Composer isThread={false} onSend={vi.fn()} onOpened={onOpened} onClosed={vi.fn()} />
     </QueryClientProvider>,
   )
   return { onOpened }
@@ -83,6 +107,8 @@ describe('the composer offers the claim whose number is being typed', () => {
     setLocale('sr')
     posted = []
     askedKeys = []
+    threadLookups = []
+    created = false
     installFetch()
   })
 
@@ -148,6 +174,20 @@ describe('the composer offers the claim whose number is being typed', () => {
     await waitFor(() =>
       expect(posted).toEqual([`/api/chat/claims/${ClaimKind.Emotive}/${FRESH_ID}/thread`]),
     )
+    expect(threadLookups).toEqual([`/api/chat/claims/${ClaimKind.Emotive}/${FRESH_ID}/thread`])
+  })
+
+  it('does not offer to create a thread for a closed claim', async () => {
+    const user = userEvent.setup()
+    renderComposer(vi.fn())
+
+    await user.type(field(), 'završeno je 7000/25')
+
+    await waitFor(() =>
+      expect(threadLookups).toEqual([`/api/chat/claims/${ClaimKind.Emotive}/${CLOSED_ID}/thread`]),
+    )
+    expect(screen.queryByRole('button', { name: /NAPRAVI/ })).not.toBeInTheDocument()
+    expect(posted).toEqual([])
   })
 
   it('asks about the finished number, not about every prefix of it', async () => {

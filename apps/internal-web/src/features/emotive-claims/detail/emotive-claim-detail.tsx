@@ -58,9 +58,9 @@ export function EmotiveClaimDetailView({
   // Only for the tab's counter — the same query the photo card already runs, so it costs
   // nothing extra, and a claim still opens when the attachment list is slow.
   const { data: attachments } = useQuery(attachmentsListOptions(ClaimKind.Emotive, id))
-  // Only for the tab's counter — the conversation list is already in the cache (the menu's own
-  // unread badge reads it), so this costs nothing and carries the number the thread has.
-  const { thread: chatThread } = useClaimThread(id)
+  // Only for the tab's counter — pending claims reuse the active list; closed claims use the
+  // read-only lookup that preserves their historical thread.
+  const { thread: chatThread } = useClaimThread(ClaimKind.Emotive, id, claim.outcome)
   const { authSession } = rootRoute.useRouteContext()
   const permissions = authSession?.user?.permissions
   const canChangeOutcome = permissions?.includes('emotive_claims.change_outcome') === true
@@ -191,7 +191,11 @@ export function EmotiveClaimDetailView({
         {/* The claim's own conversation — the same thread the „Razgovori" screen mounts, with no
             context panel beside it: this screen IS the context (spec §8.5). */}
         <TabsContent value={ClaimDetailTab.Razgovor}>
-          <ClaimConversationTab kind={ClaimKind.Emotive} claimId={claim.id} />
+          <ClaimConversationTab
+            kind={ClaimKind.Emotive}
+            claimId={claim.id}
+            outcome={claim.outcome}
+          />
         </TabsContent>
       </Tabs>
     </div>

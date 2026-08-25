@@ -1,11 +1,13 @@
 import { m } from '@mr/i18n'
 import {
   ClaimKind,
+  ClaimOutcome,
   claimsListOptions,
   formatClaimDetailMetaLine,
   useDebouncedValue,
   type ChatConversationListItem,
   type ClaimListItem,
+  type MrRegistryExistingClaim,
 } from '@mr/shared'
 import { cn, Dialog, DialogContent, DialogDescription, DialogTitle } from '@mr/ui'
 import { useQuery } from '@tanstack/react-query'
@@ -92,6 +94,7 @@ export interface NewThreadDialogProps {
   /** The conversations already on screen — what makes a row say POSTOJI instead of NAPRAVI. */
   conversations: readonly ChatConversationListItem[]
   onOpened: (conversationId: string) => void
+  onClosed: (claim: MrRegistryExistingClaim) => void
 }
 
 /**
@@ -107,18 +110,29 @@ export function NewThreadDialog({
   onOpenChange,
   conversations,
   onOpened,
+  onClosed,
 }: NewThreadDialogProps): React.ReactElement {
   const [query, setQuery] = useState('')
   const search = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS)
 
   const claims = useQuery({
-    ...claimsListOptions(search === '' ? {} : { search }, 1, CLAIMS_PAGE_SIZE),
+    ...claimsListOptions(
+      { outcome: ClaimOutcome.Pending, ...(search === '' ? {} : { search }) },
+      1,
+      CLAIMS_PAGE_SIZE,
+    ),
     enabled: open,
   })
 
-  const create = useCreateClaimThread((conversationId) => {
-    onOpenChange(false)
-    onOpened(conversationId)
+  const create = useCreateClaimThread({
+    onOpened: (conversationId) => {
+      onOpenChange(false)
+      onOpened(conversationId)
+    },
+    onClosed: (claim) => {
+      onOpenChange(false)
+      onClosed(claim)
+    },
   })
 
   const handlePick = (claim: ClaimListItem, threadId: string | null): void => {

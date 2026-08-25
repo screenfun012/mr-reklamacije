@@ -1,5 +1,12 @@
 import { m } from '@mr/i18n'
-import { chatConversationsOptions, type ChatConversationListItem, type ClaimKind } from '@mr/shared'
+import {
+  chatClaimThreadOptions,
+  chatConversationsOptions,
+  ClaimOutcome,
+  type ChatConversationListItem,
+  type ClaimKind,
+  type ClaimOutcome as ClaimOutcomeType,
+} from '@mr/shared'
 import { useQuery } from '@tanstack/react-query'
 import { Suspense } from 'react'
 
@@ -13,21 +20,37 @@ export interface ClaimThreadState {
   /** The claim's thread, or `null` — which is also what it is while the list is still coming. */
   thread: ChatConversationListItem | null
   isPending: boolean
+  canCreateThread: boolean
 }
 
 /**
- * The claim's thread, out of the conversation list the sidebar already reads.
- *
- * Deliberately that list and not a lookup of its own: it is in the cache on every internal
- * screen, it carries the unread number the tab shows, and a second endpoint answering "does
- * this claim have a thread" would be a second opinion about the same row.
+ * Pending claims use the active conversation list the sidebar already reads. Closed claims are
+ * absent from that list by design, so their historical thread comes from the read-only lookup.
  */
-export function useClaimThread(claimId: string): ClaimThreadState {
-  const { data, isPending } = useQuery(chatConversationsOptions())
+export function useClaimThread(
+  kind: ClaimKind,
+  claimId: string,
+  outcome: ClaimOutcomeType,
+): ClaimThreadState {
+  const isOpen = outcome === ClaimOutcome.Pending
+  const conversations = useQuery({ ...chatConversationsOptions(), enabled: isOpen })
+  const lookup = useQuery({ ...chatClaimThreadOptions(kind, claimId), enabled: !isOpen })
+
+  if (!isOpen) {
+    return {
+      thread: lookup.data?.conversation ?? null,
+      isPending: lookup.isPending,
+      canCreateThread: lookup.data?.canCreateThread ?? false,
+    }
+  }
+
+  const thread =
+    conversations.data === undefined ? null : findClaimThread(conversations.data.items, claimId)
 
   return {
-    thread: data === undefined ? null : findClaimThread(data.items, claimId),
-    isPending,
+    thread,
+    isPending: conversations.isPending,
+    canCreateThread: conversations.data !== undefined && thread === null,
   }
 }
 
@@ -58,15 +81,17 @@ function PaneSkeleton(): React.ReactElement {
 export function ClaimConversationTab({
   kind,
   claimId,
+  outcome,
 }: {
   kind: ClaimKind
   claimId: string
+  outcome: ClaimOutcomeType
 }): React.ReactElement {
-  const { thread, isPending } = useClaimThread(claimId)
+  const { thread, isPending, canCreateThread } = useClaimThread(kind, claimId, outcome)
   const { userId, userName, isAdmin } = useInternalAuthUser()
-  // The same write both other doors use (the MR chip in a message, the „Nova nit" dialog): the
+  // The same write the other doors use (the composer MR offer and the „Nova nit" dialog): the
   // endpoint is get-or-create, so two people pressing at once land in the same room.
-  const create = useCreateClaimThread(() => undefined)
+  const create = useCreateClaimThread({ onOpened: () => undefined, onClosed: () => undefined })
 
   if (isPending) {
     return (
@@ -77,6 +102,16 @@ export function ClaimConversationTab({
   }
 
   if (thread === null) {
+    if (!canCreateThread) {
+      return (
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-mri-border bg-mri-surface px-6 py-8">
+          <p className="text-[15px] font-bold text-mri-text">
+            {m.chat_thread_closed_empty_title()}
+          </p>
+        </div>
+      )
+    }
+
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-mri-border bg-mri-surface px-6 py-8">
         <p className="text-[15px] font-bold text-mri-text">{m.chat_thread_create_title()}</p>

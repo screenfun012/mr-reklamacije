@@ -1,10 +1,12 @@
 import { m, setLocale } from '@mr/i18n'
 import { ClaimKind, type MrRegistryExistingClaim } from '@mr/shared'
-import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MessageBody } from '../message-body'
+import { useResolveClaimThread } from '../open-claim-thread'
 
 const CLAIM: MrRegistryExistingClaim = {
   kind: ClaimKind.Emotive,
@@ -16,6 +18,62 @@ function resolutions(entries: Array<[string, MrRegistryExistingClaim]>) {
 }
 
 describe('MessageBody', () => {
+  it('resolves a sent closed MR only on click and opens its claim without a POST', async () => {
+    const requests: Array<{ url: string; method: string }> = []
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({ url: String(input), method: init?.method ?? 'GET' })
+      return Response.json({
+        conversation: {
+          id: '11111111-1111-4111-8111-111111111111',
+          type: 'claim',
+          title: '7167/25',
+          subtitle: 'Auto Stanić',
+          claimKind: ClaimKind.Emotive,
+          claimId: CLAIM.claimId,
+          unreadCount: 0,
+          isLocked: true,
+          isMuted: false,
+          lastMessageAt: null,
+        },
+        canCreateThread: false,
+      })
+    }) as unknown as typeof fetch
+    const onActive = vi.fn()
+    const onMissing = vi.fn()
+    const onClosed = vi.fn()
+
+    function SentMessage(): React.ReactElement {
+      const resolve = useResolveClaimThread({ onActive, onMissing, onClosed })
+      return (
+        <MessageBody
+          body="Stigao motor 7167/25 jutros"
+          resolutions={resolutions([['7167/25', CLAIM]])}
+          onOpenClaim={(target) => resolve.mutate(target)}
+        />
+      )
+    }
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SentMessage />
+      </QueryClientProvider>,
+    )
+
+    expect(requests).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: '7167/25' }))
+
+    await waitFor(() => expect(onClosed).toHaveBeenCalledWith(CLAIM))
+    expect(onActive).not.toHaveBeenCalled()
+    expect(onMissing).not.toHaveBeenCalled()
+    expect(requests).toEqual([
+      {
+        url: `/api/chat/claims/${ClaimKind.Emotive}/${CLAIM.claimId}/thread`,
+        method: 'GET',
+      },
+    ])
+  })
+
   it('turns a resolved MR number into a chip that opens its claim', async () => {
     const onOpenClaim = vi.fn()
     render(

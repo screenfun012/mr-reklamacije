@@ -1,6 +1,7 @@
 import { m } from '@mr/i18n'
 import {
-  chatConversationsOptions,
+  chatClaimThreadOptions,
+  ClaimKind,
   findMrCandidates,
   useDebouncedValue,
   type MrRegistryExistingClaim,
@@ -10,7 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { MR_CHIP_CLASSES } from './message-body'
 import { THREAD_BADGE_CLASSES } from './new-thread-dialog'
-import { findClaimThread, useCreateClaimThread } from './open-claim-thread'
+import { useCreateClaimThread } from './open-claim-thread'
 import { useMrResolutions } from './use-mr-resolutions'
 
 /**
@@ -52,6 +53,7 @@ export interface ComposerMrSuggestionProps {
   conversationId: string | undefined
   /** Where to go once there is a room to go to — the one the button just opened or made. */
   onOpened: (conversationId: string) => void
+  onClosed: (claim: MrRegistryExistingClaim) => void
 }
 
 /**
@@ -77,26 +79,34 @@ export function ComposerMrSuggestion({
   draft,
   conversationId,
   onOpened,
+  onClosed,
 }: ComposerMrSuggestionProps): React.ReactElement | null {
   // The same write the other two doors use — the endpoint is get-or-create, so two people pressing
   // at the same second land in the same room.
-  const create = useCreateClaimThread(onOpened)
+  const create = useCreateClaimThread({ onOpened, onClosed })
   const settled = useDebouncedValue(draft, SUGGESTION_DEBOUNCE_MS)
   const resolutions = useMrResolutions([settled])
   const written = lastWrittenClaim(settled, resolutions)
 
-  // The list every internal screen already holds — the same row that makes „Nova nit" say POSTOJI
-  // instead of NAPRAVI. A second endpoint answering "does this claim have a thread" would be a
-  // second opinion about one row.
-  const { data } = useQuery(chatConversationsOptions())
-  const thread =
-    written === null || data === undefined
-      ? null
-      : findClaimThread(data.items, written.target.claimId)
+  const lookup = useQuery({
+    ...chatClaimThreadOptions(
+      written?.target.kind ?? ClaimKind.Emotive,
+      written?.target.claimId ?? '',
+    ),
+    enabled: written !== null,
+  })
+  const thread = lookup.data?.conversation ?? null
 
   // `thread?.id` would be `undefined` for a claim that has none — and equal to an absent
   // conversationId, which silently swallowed the NAPRAVI offer. Ask the real question.
-  if (written === null || (thread !== null && thread.id === conversationId)) {
+  if (
+    written === null ||
+    lookup.isPending ||
+    lookup.isError ||
+    thread?.isLocked === true ||
+    (thread === null && lookup.data?.canCreateThread !== true) ||
+    (thread !== null && thread.id === conversationId)
+  ) {
     return null
   }
 

@@ -75,7 +75,7 @@ export function NewChannelDialog({
           onSubmit={(event) => {
             event.preventDefault()
             if (trimmed !== '') {
-              create.mutate(trimmed)
+              create.mutate({ name: trimmed, memberIds: [] })
             }
           }}
         >
