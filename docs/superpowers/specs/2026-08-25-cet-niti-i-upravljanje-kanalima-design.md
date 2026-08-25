@@ -296,10 +296,12 @@ postojeći chat signal; ne uvodi se novi event tip i ne objavljuje se signal po 
 isti signal dodatno poništava `chatKeys.members(conversationId)`,
 `chatKeys.people(conversationId)` i management listu uz postojeću listu razgovora.
 
-Zbog kompatibilnog rolling deploya postojeći payload zadržava polje `messageId`. Za stvarnu ili
-`channel_created` poruku ono nosi pravi id poruke; za rename/roster/delete, gde nova poruka ne
-postoji, nosi `conversationId` kao dokumentovan opaque invalidation token. Nijedan consumer ga ne
-dereferencira niti iz eventa zaključuje da je nastala nova korisnička poruka.
+Zbog kompatibilnog rolling deploya postojeći payload zadržava polje `messageId`. Za običnu i claim
+sistemsku poruku ono nosi pravi id poruke. Za svaku channel-metadata promenu — uključujući create,
+rename, roster i delete — nosi `conversationId` kao dokumentovan opaque invalidation token. Klijent
+zato management/members/people ključeve poništava samo kada je `messageId === conversationId`, ne
+na svaku poruku u firmi. Nijedan consumer token ne dereferencira niti iz njega zaključuje da je
+nastala nova korisnička poruka.
 
 Posledice:
 
@@ -428,8 +430,8 @@ Svaka izmena počinje crvenim testom.
 3. Tvorac/admin dobijaju `canManage=true`; običan član false i nema add/remove kontrole.
 4. Običan član ne može HTTP-om dodati ili skloniti drugoga.
 5. Later-add sa mešavinom validnih i nevažećih id-jeva rollbackuje ceo batch.
-6. Create šalje pravi system-message id; rename/roster/delete šalju dokumentovan opaque token, a
-   conversations/members/people/management cache se ponište.
+6. Create/rename/roster/delete šalju dokumentovan opaque token, a
+   conversations/members/people/management cache se ponište bez refetcha na običnu poruku.
 7. Tvorac briše svoj kanal; drugi tvorac ne; admin briše kanal u kom nije član.
 8. Tvorac posle napuštanja i dalje vidi metadata management za svoj kanal, ali ne može da čita
    messages/attachments; admin ima isto pravilo za sve kanale.
