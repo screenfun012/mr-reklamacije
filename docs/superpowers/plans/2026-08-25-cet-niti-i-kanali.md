@@ -180,6 +180,8 @@ git commit -m "feat(chat): define thread and channel management contracts"
 ### Task 2: Pending-only claim thread API i zaključane mutacije
 
 **Files:**
+- Modify: `packages/shared/src/queries/chat.ts` (correct the Task 1 management GET URL to the binding spec)
+- Modify: `packages/shared/src/queries/__tests__/chat.test.ts`
 - Modify: `apps/api/src/modules/chat/chat.validators.ts`
 - Modify: `apps/api/src/modules/chat/chat.repository.ts`
 - Modify: `apps/api/src/modules/chat/chat.service.ts`
@@ -421,9 +423,9 @@ ChatRepository.listManagedChannels(
 ): Promise<ChatChannelManagementListResponse>
 
 GET /api/chat/channels/manage
-PATCH /api/chat/channels/:id // 204
-GET /api/chat/channels/:id/members // { members, addable, canManage }
-POST /api/chat/channels/:id/members // all-or-nothing
+PATCH /api/chat/conversations/:id // 204
+GET /api/chat/conversations/:id/members // { members, addable, canManage }
+POST /api/chat/conversations/:id/members // all-or-nothing
 ```
 
 - [ ] **Step 1: Napisati crvene atomic-create/eligibility testove**
@@ -452,7 +454,7 @@ Guard prvo traži manageable channel po `createdBy`/admin bez membership-a. Ako 
 
 - [ ] **Step 6: Uskladiti HTTP ugovore i signale**
 
-Controller parsira deljeni `ChatChannelCreateInputSchema`, dodaje `GET /channels/manage`, a rename vraća `c.body(null,204)`. Create/rename/uspešan add/remove šalju tačno jedan `announce(conversationId,conversationId)` posle uspešne DB operacije. Create/rename/roster ne auditiraju.
+Prvo crvenim shared query testom ispraviti management fetch na jedinu dokumentovanu rutu `/api/chat/channels/manage?...`; ne dodavati alias za raniji Task 1 URL. Controller parsira deljeni `ChatChannelCreateInputSchema`, dodaje `GET /channels/manage`, a postojeća rename ruta `/conversations/:id` vraća `c.body(null,204)`. Create/rename/uspešan add/remove šalju tačno jedan `announce(conversationId,conversationId)` posle uspešne DB operacije. Create/rename/roster ne auditiraju.
 
 - [ ] **Step 7: Pokrenuti fokusirane API testove**
 
