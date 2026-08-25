@@ -288,6 +288,8 @@ git commit -m "fix(chat): enforce pending claim threads"
 - Modify: `apps/internal-web/src/features/chat/composer-mr-suggestion.tsx`
 - Modify: `apps/internal-web/src/features/chat/composer.tsx`
 - Modify: `apps/internal-web/src/features/chat/conversation-pane.tsx`
+- Modify: `apps/internal-web/src/features/chat/new-channel-dialog.tsx` (compile-only create-contract adapter pulled forward from Task 6)
+- Create: `apps/internal-web/src/features/chat/__tests__/new-channel-dialog.test.tsx` (exact empty-member body regression; Task 6 extends it)
 - Modify: `apps/internal-web/src/features/emotive-claims/detail/emotive-claim-detail.tsx`
 - Modify: `apps/internal-web/src/features/domace-claims/detail/domace-claim-detail.tsx`
 - Modify: `apps/internal-web/src/routes/_shell/razgovori.tsx`
@@ -355,6 +357,8 @@ onPin={isLocked ? undefined : handlePin}
 - [ ] **Step 7: Dodati minimalan thread copy u oba jezika**
 
 Dodati ključeve `chat_thread_closed_empty_title`, `chat_thread_closed_create_error`, `chat_thread_opened_toast`, `chat_thread_saved_closed_toast` i `chat_thread_unavailable_toast`, pa pokrenuti `pnpm --filter @mr/i18n build` pre typecheck-a. Ne hardkodovati tekst u komponentama.
+
+Pre finalnog typecheck-a napisati jedan crveni test da postojeći name-only channel modal šalje novi deljeni oblik `{ name, memberIds: [] }`, pa promeniti samo taj call site. Picker, people query i selection ostaju u Task 6.
 
 - [ ] **Step 8: Pokrenuti fokusirane frontend testove**
 
@@ -576,7 +580,7 @@ git commit -m "fix(chat): serialize sends with conversation deletion"
 
 **Files:**
 - Modify: `apps/internal-web/src/features/chat/new-channel-dialog.tsx`
-- Create: `apps/internal-web/src/features/chat/__tests__/new-channel-dialog.test.tsx`
+- Modify: `apps/internal-web/src/features/chat/__tests__/new-channel-dialog.test.tsx`
 - Modify: `apps/internal-web/src/routes/_shell/razgovori.tsx`
 
 **Interfaces:**
@@ -594,7 +598,7 @@ type NewChannelDialogProps = {
 
 - [ ] **Step 1: Napisati crveni picker test**
 
-Dokazati: dok je modal zatvoren nema people GET-a; otvaranje koristi `/api/chat/conversations/:generalId/people`; creator nije ponuđen; lokalna pretraga ne šalje dodatni request; izbor dva naloga šalje jedan POST `{name,memberIds:[...]}`; 422 ostavlja modal i izbor otvorene; close/success resetuju name/search/selection.
+Proširiti postojeći exact-empty-body regression i dokazati: dok je modal zatvoren nema people GET-a; otvaranje koristi `/api/chat/conversations/:generalId/people`; creator nije ponuđen; lokalna pretraga ne šalje dodatni request; izbor dva naloga šalje jedan POST `{name,memberIds:[...]}`; 422 ostavlja modal i izbor otvorene; close/success resetuju name/search/selection.
 
 - [ ] **Step 2: Potvrditi očekivani RED**
 
