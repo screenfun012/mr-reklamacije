@@ -8,9 +8,9 @@ import { pushSubscriptionModeValues, type PushSubscriptionMode } from '../consta
 export const pushKeys = {
   all: ['push'] as const,
   publicKey: () => [...pushKeys.all, 'public-key'] as const,
-  devices: () => [...pushKeys.all, 'devices'] as const,
+  devices: (userId: string) => [...pushKeys.all, 'devices', userId] as const,
   /** Not the server's answer but this BROWSER's — whether it holds a subscription of its own. */
-  thisBrowser: () => [...pushKeys.all, 'this-browser'] as const,
+  thisBrowser: (userId: string) => [...pushKeys.all, 'this-browser', userId] as const,
 }
 
 /**
@@ -34,6 +34,7 @@ const PushDeviceSchema = z.object({
   userAgent: z.string().nullable(),
   mode: z.enum(pushSubscriptionModeValues),
   createdAt: z.string(),
+  isCurrent: z.boolean(),
 })
 
 export type PushDevice = z.infer<typeof PushDeviceSchema>
@@ -45,10 +46,15 @@ const PushDevicesResponseSchema = z.object({
   pageSize: z.number(),
 })
 
-export function pushDevicesOptions() {
+export function pushDevicesOptions(userId: string) {
   return queryOptions({
-    queryKey: pushKeys.devices(),
+    queryKey: pushKeys.devices(userId),
     queryFn: () => fetchParsed('/api/push/devices', PushDevicesResponseSchema),
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 }
 

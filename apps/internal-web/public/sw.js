@@ -18,6 +18,7 @@
 const DB_NAME = 'mr-chat'
 const STORE = 'prefs'
 const DND_KEY = 'dnd'
+const ACTIVE_PUSH_USER_KEY = 'active-push-user'
 
 /**
  * Is „ne uznemiravaj" on, on THIS device?
@@ -28,6 +29,15 @@ const DND_KEY = 'dnd'
  * called is a message lost.
  */
 async function dndIsOn() {
+  return (await readPreference(DND_KEY)) === true
+}
+
+async function activePushUserId() {
+  const value = await readPreference(ACTIVE_PUSH_USER_KEY)
+  return typeof value === 'string' ? value : null
+}
+
+async function readPreference(key) {
   try {
     const value = await new Promise((resolve, reject) => {
       const open = globalThis.indexedDB.open(DB_NAME, 1)
@@ -36,17 +46,21 @@ async function dndIsOn() {
       open.onsuccess = () => {
         const db = open.result
         if (!db.objectStoreNames.contains(STORE)) {
-          resolve(false)
+          db.close()
+          resolve(undefined)
           return
         }
-        const request = db.transaction(STORE, 'readonly').objectStore(STORE).get(DND_KEY)
+        const request = db.transaction(STORE, 'readonly').objectStore(STORE).get(key)
         request.onerror = () => reject(request.error)
-        request.onsuccess = () => resolve(request.result === true)
+        request.onsuccess = () => {
+          db.close()
+          resolve(request.result)
+        }
       }
     })
-    return value === true
+    return value
   } catch {
-    return false
+    return undefined
   }
 }
 
@@ -58,51 +72,73 @@ async function dndIsOn() {
  * reading it.
  */
 async function roomIsOnScreen(conversationId) {
-  const windows = await globalThis.clients.matchAll({ type: 'window', includeUncontrolled: true })
-  return windows.some(
-    (client) =>
-      client.visibilityState === 'visible' && client.url.includes(`razgovor=${conversationId}`),
-  )
+  try {
+    const windows = await globalThis.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    return windows.some(
+      (client) =>
+        client.visibilityState === 'visible' &&
+        client.focused === true &&
+        client.url.includes(`razgovor=${conversationId}`),
+    )
+  } catch {
+    // A failed visibility check must fall back to an audible notification, never swallow the push.
+    return false
+  }
 }
+
+globalThis.addEventListener('install', (event) => {
+  event.waitUntil(globalThis.skipWaiting())
+})
+
+globalThis.addEventListener('activate', (event) => {
+  event.waitUntil(globalThis.clients.claim())
+})
 
 globalThis.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
-      if (event.data === null) {
-        return
-      }
-
-      let payload
+      let payload = {}
       try {
-        payload = event.data.json()
+        payload = event.data?.json() ?? {}
       } catch {
-        return
+        // A malformed payload is still a received Web Push event. WebKit requires it to be
+        // user-visible, so continue with the generic application notification below.
       }
 
-      const conversationId = payload.conversationId
-      if (typeof conversationId !== 'string') {
-        return
-      }
+      const recipientId =
+        typeof payload?.recipientId === 'string' && payload.recipientId !== ''
+          ? payload.recipientId
+          : undefined
+      const chatPayload =
+        typeof payload?.conversationId === 'string' && payload.conversationId !== ''
+      // Trust only an explicit recipient that matches the active account. Payloads queued by the
+      // previous release have no recipient id; a generic one-hour transition is preferable to
+      // showing the previous account's chat text, even when the payload itself is malformed.
+      const wrongAccount = recipientId === undefined || (await activePushUserId()) !== recipientId
+      const conversationId = !wrongAccount && chatPayload ? payload.conversationId : undefined
+      const silent =
+        wrongAccount ||
+        (conversationId !== undefined &&
+          ((await dndIsOn()) || (await roomIsOnScreen(conversationId))))
 
-      if ((await dndIsOn()) || (await roomIsOnScreen(conversationId))) {
-        return
-      }
-
-      await globalThis.registration.showNotification(payload.title ?? '', {
-        body: payload.body ?? '',
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
-        // ⚠ The room's id, so ten messages from one room replace one another instead of stacking
-        // ten rows on a lock screen.
-        tag: conversationId,
-        // ⚠ And the replacement ALERTS. Without this it is silent, which was the first draft's
-        // idea of tact — and what it actually produced was Nikola's report of 2026-08-25: the
-        // first message rings, everything after it lands without a sound, and a phone in a pocket
-        // reads that as "the notifications are not arriving". Nikola's rule stands above the
-        // tidiness: every message is worth telling.
-        renotify: true,
-        data: { conversationId },
-      })
+      await globalThis.registration.showNotification(
+        !wrongAccount && typeof payload?.title === 'string' && payload.title !== ''
+          ? payload.title
+          : 'MR Interna',
+        {
+          body: !wrongAccount && typeof payload?.body === 'string' ? payload.body : '',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          // Keep room messages together, while malformed events still receive a visible fallback.
+          ...(conversationId === undefined
+            ? {}
+            : { tag: conversationId, data: { conversationId } }),
+          // The operating system may suppress the sound for a visible room or DND, but WebKit
+          // still receives a shown notification rather than a silently swallowed push event.
+          silent,
+          renotify: conversationId !== undefined && !silent,
+        },
+      )
     })(),
   )
 })

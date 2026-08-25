@@ -3,6 +3,18 @@
 > Nastavak na `2026-08-23-cet-razgovori-design.md` (korak 5) i `2026-08-24-cet-prilozi-design.md`.
 > Gde ovaj i handoff protivreče, **ovaj pobeđuje** — razlozi su u tekstu, svaki sa dokazom.
 
+> **Dopuna 2026-08-25 (Nikolina odluka; ova dopuna pobeđuje starije delove ispod):** dozvola se
+> traži samo posle jednog klika, a zatim aplikacija na svakom prijavljenom pokretanju sama vezuje ili
+> popravlja postojeću pretplatu. DND i otvoren razgovor više NE gutaju primljen push: obaveštenje se
+> uvek prikaže, samo sa `silent: true`, jer WebKit može ukinuti pretplatu zbog nevidljivih push-eva.
+> Pretplata pripada aktivnoj sesiji; najviše 5 sesija znači najviše 5 aktivnih odredišta po
+> korisniku. Lični režim ostaje na `users.push_mode`, nezavisno od odjave poslednjeg uređaja.
+> Slanje je po API procesu ograničeno na 10 aktivnih i 250 čekajućih zahteva (dovoljno za jednu
+> najgoru sobu od 50 ljudi × 5 uređaja); višak se odmah odbija umesto da puni RAM. Postoji najviše
+> jedan retry, samo za 429/5xx. Payload nosi primaoca, pa se posle
+> odjave/promene naloga eventualno već redovan stari push prikazuje generički, bez tuđeg teksta.
+> Nema pollinga, outbox-a, Redis-a, Firebase-a, dodatnog Railway servisa ni beskonačnog retry-ja.
+
 ---
 
 ## 1. Šta se gradi

@@ -316,9 +316,11 @@ This means Phase 1.3 file API design must include:
 - File records in DB store the S3 key, not the URL
 - Public/private file access controlled by signed URLs with expiry
 
-### G3. PWA stand-by
+### G3. PWA / Web Push boundary
 
-Vite PWA plugin can be added in Phase 2 if mobile use case becomes priority. Current stack is PWA-ready (Vite + service worker support). Do not enable yet.
+`internal-web` intentionally has a small, hand-written service worker for Web Push. It does not
+cache assets and does not provide an offline application shell. Do not add a Vite PWA plugin,
+offline cache, background sync, or another worker without a separate architectural review.
 
 ## H. Explicitly NOT Implementing (and Why)
 
@@ -328,6 +330,7 @@ The following are intentionally out of scope. Adding any of these requires expli
 - **Edge runtime (Cloudflare Workers, Vercel Edge)** — All users in Serbia. Frankfurt region Railway has ~20-30ms latency. Edge benefit minimal, complexity high.
 - **GraphQL** — REST + Hono + Zod schemas + TanStack Query cover our needs. Migration possible later if 15+ heterogeneous clients emerge.
 - **Apollo / urql** — Only relevant if GraphQL adopted.
-- **Service Workers** — Internal app, users have stable office internet. Revisit if mobile-first phase emerges.
+- **Offline/service-worker asset caching** — Web Push is the only approved worker responsibility;
+  stable office internet means an offline application shell is still unjustified.
 
 If any of these become tempting, write the architectural justification first. Default: stay with current stack.

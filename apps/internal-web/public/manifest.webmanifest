@@ -1,5 +1,6 @@
 {
   "name": "MR Interna aplikacija",
+  "id": "/",
   "short_name": "MR Interna",
   "description": "Reklamacije, prijem vozila i razgovori — MR Engines.",
   "start_url": "/",

@@ -22,6 +22,7 @@ import type { ReactNode } from 'react'
 import { registerServiceWorker } from '~/lib/register-service-worker'
 import { authClient } from '~/lib/auth-client'
 import { loadServerSession } from '~/lib/auth-guard'
+import { PushAccountSync } from '~/lib/push-account-sync'
 import { useLocale } from '@mr/ui'
 import type { InternalRouterContext } from '~/router-context'
 import globalsCss from '~/styles/globals.css?url'
@@ -75,7 +76,7 @@ function RootDocument({ children }: { children: ReactNode }) {
    * prompt fired on load is answered with a permanent refusal the app can never undo.
    */
   useEffect(() => {
-    registerServiceWorker()
+    void registerServiceWorker().catch(() => undefined)
   }, [])
 
   return (
@@ -87,7 +88,10 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body suppressHydrationWarning className="antialiased">
         <div key={locale}>
-          <AuthProvider authClient={authClient}>{children}</AuthProvider>
+          <AuthProvider authClient={authClient}>
+            <PushAccountSync />
+            {children}
+          </AuthProvider>
         </div>
         <Toaster position="bottom-center" />
         {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}

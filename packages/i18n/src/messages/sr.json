@@ -407,7 +407,7 @@
   "chat_context_open_claim": "OTVORI REKLAMACIJU →",
   "chat_context_toggle": "Panel reklamacije",
   "chat_dnd": "DND",
-  "chat_dnd_title": "Ne uznemiravaj — pauzira popup obaveštenja. Važi samo u ovom pregledaču.",
+  "chat_dnd_title": "Ne uznemiravaj — utišava zvuk i vibraciju; obaveštenja i dalje stižu. Važi samo u ovom pregledaču.",
   "chat_erase": "Obriši razgovor",
   "chat_erase_confirm": "OBRIŠI",
   "chat_erase_description": "Nestaju i sve poruke u njemu, i to se ne može poništiti. Ovo je za sobu napravljenu greškom — ne za sklanjanje istorije. U reviziji ostaje trag da je postojala.",

@@ -5,8 +5,8 @@ import { useStoredFlag } from '~/lib/use-stored-flag'
  * ("Važi samo u ovom pregledaču"), and it is the honest scope for a thing you flip while you are
  * head-down in one job.
  *
- * ⚠ It silences the POPUP and nothing else: the bell still fills, the counts still count. A
- * mention you never see is worse than one that waited (handoff §7).
+ * ⚠ It silences sound/vibration, not delivery or visibility: the system notification still
+ * appears, the bell still fills, and the counts still count.
  */
 export const CHAT_DND_STORAGE_KEY = 'mrr:internal:chat:dnd'
 
@@ -31,8 +31,8 @@ const DND_KEY = 'dnd'
  *
  * ⚠ `localStorage` is defined on `Window` only — a service worker has no Web Storage at all — so
  * the switch above cannot reach the code that draws a notification while the app is closed. Without
- * this mirror, „ne uznemiravaj" would silence the popup on the screen and leave the phone buzzing,
- * which is the one surface where it matters most.
+ * this mirror, „ne uznemiravaj" would leave the phone buzzing, which is the one surface where it
+ * matters most.
  *
  * IndexedDB is the store both sides can reach. Failures are swallowed: the worker reads a missing
  * value as "not on", and a phone that buzzes when it should not is a nuisance, while one that stays

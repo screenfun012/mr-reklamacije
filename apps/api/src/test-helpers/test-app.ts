@@ -6,7 +6,7 @@ import { Hono } from 'hono'
 import { vi } from 'vitest'
 
 import type { AppVariables } from '../app.js'
-import type { MRSessionUser } from '../core/auth/session-types.js'
+import type { BetterAuthFullSession, MRSessionUser } from '../core/auth/session-types.js'
 import { buildContainer, type Container } from '../core/container.js'
 import type { Env } from '../config/env.js'
 import { registerGlobalErrorHandler } from '../core/middleware/error-handler.js'
@@ -92,6 +92,11 @@ export function testUser(
     roles,
     permissions,
   } as MRSessionUser
+}
+
+/** A session-shaped test value; the push routes need its real database id for ownership checks. */
+export function testSession(id: string, userId = TEST_USER_ID): BetterAuthFullSession['session'] {
+  return { id, userId } as BetterAuthFullSession['session']
 }
 
 export function createEmotiveClaimsTestApp(
@@ -357,13 +362,14 @@ export function createChatTestApp(
 export function createPushTestApp(
   container: Container,
   user: MRSessionUser | null,
+  session: BetterAuthFullSession['session'] | null = null,
 ): Hono<{ Variables: AppVariables }> {
   const app = new Hono<{ Variables: AppVariables }>()
   registerGlobalErrorHandler(app, container.logger)
 
   app.use('*', async (c, next) => {
     c.set('user', user)
-    c.set('session', null)
+    c.set('session', session)
     await next()
   })
 

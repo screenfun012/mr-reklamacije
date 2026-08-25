@@ -234,7 +234,7 @@ describe('ConversationList', () => {
     const dnd = screen.getByRole('button', { name: 'DND' })
     expect(dnd).toHaveAttribute(
       'title',
-      'Ne uznemiravaj — pauzira popup obaveštenja. Važi samo u ovom pregledaču.',
+      'Ne uznemiravaj — utišava zvuk i vibraciju; obaveštenja i dalje stižu. Važi samo u ovom pregledaču.',
     )
 
     await user.click(dnd)

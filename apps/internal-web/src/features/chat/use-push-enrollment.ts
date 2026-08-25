@@ -3,31 +3,19 @@ import {
   pushDevicesOptions,
   pushKeys,
   pushPublicKeyOptions,
+  removePushDevice,
   subscribeToPush,
   type PushDevice,
 } from '@mr/shared'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { registerServiceWorker } from '~/lib/register-service-worker'
 import { showInternalToast } from '~/lib/internal-toast'
 
-/**
- * What this browser can be offered.
- *
- * `no-keys` — the SERVER is not configured for push. Show nothing at all: it is our own setup, not
- * anything the person could act on, and a sentence about it would only puzzle them.
- * `unsupported` — the browser genuinely cannot. Worth saying, so nobody hunts for a switch that is
- * not there.
- * `ios-needs-home-screen` — an iPhone or iPad not yet added to the Home Screen. Apple allows no
- * push before that, so the only useful thing to show is what to do about it.
- * `unknown` — the browser has not answered yet. Offer nothing for the moment it takes: a bar that
- * says "turn notifications on" and then vanishes is worse than a bar that arrives a tick late.
- * `off` — it can be turned on, and has not been.
- * `on` — it is on, on this browser.
- *
- * ⚠ The first two were one value in the first draft, and a test caught it: collapsing them silences
- * the one case a person can actually do something about.
- */
+const SERVICE_WORKER_READY_TIMEOUT_MS = 5000
+const OPT_OUT_KEY_PREFIX = 'mrr:internal:push-disabled:'
+
 export type PushEnrollment =
   | 'no-keys'
   | 'unsupported'
@@ -35,14 +23,9 @@ export type PushEnrollment =
   | 'unknown'
   | 'off'
   | 'on'
+  | 'blocked'
+  | 'failed'
 
-/**
- * Whether this browser can be told anything at all.
- *
- * ⚠ Feature detection, never a user-agent string. On iPhone and iPad `PushManager` is simply absent
- * until the app is added to the Home Screen — asking "is it there" answers the real question, and
- * keeps answering it correctly the day Apple changes its mind.
- */
 function pushIsPossible(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -52,20 +35,17 @@ function pushIsPossible(): boolean {
   )
 }
 
-/** Safari calls the app "standalone" once it has been added to the Home Screen. */
 function looksLikeIosWithoutHomeScreen(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
+
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isIpadDesktopUa = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
   const standalone = (navigator as { standalone?: boolean }).standalone === true
-  return isIos && !standalone && !('PushManager' in window)
+  return (isIos || isIpadDesktopUa) && !standalone && !('PushManager' in window)
 }
 
-/**
- * The base64url the server hands out, in the byte form `PushManager.subscribe` insists on.
- * ⚠ It refuses the string outright — this conversion is not decoration.
- */
 function toApplicationServerKey(base64Url: string): ArrayBuffer {
   const padded = base64Url.padEnd(base64Url.length + ((4 - (base64Url.length % 4)) % 4), '=')
   const binary = atob(padded.replaceAll('-', '+').replaceAll('_', '/'))
@@ -73,7 +53,66 @@ function toApplicationServerKey(base64Url: string): ArrayBuffer {
   return bytes.buffer.slice(0) as ArrayBuffer
 }
 
-/** Handing one subscription to the server. The upsert is keyed on the endpoint, so it repeats. */
+function applicationServerKeyMatches(subscription: PushSubscription, publicKey: string): boolean {
+  const current = subscription.options?.applicationServerKey
+  if (current === null || current === undefined) {
+    return false
+  }
+
+  try {
+    const expected = new Uint8Array(toApplicationServerKey(publicKey))
+    const actual = new Uint8Array(current)
+    return (
+      actual.length === expected.length && actual.every((value, index) => value === expected[index])
+    )
+  } catch {
+    return false
+  }
+}
+
+function optOutKey(userId: string): string {
+  return `${OPT_OUT_KEY_PREFIX}${userId}`
+}
+
+function isOptedOut(userId: string): boolean {
+  return typeof localStorage !== 'undefined' && localStorage.getItem(optOutKey(userId)) === '1'
+}
+
+function setOptedOut(userId: string, optedOut: boolean): void {
+  if (typeof localStorage === 'undefined') {
+    return
+  }
+  if (optedOut) {
+    localStorage.setItem(optOutKey(userId), '1')
+  } else {
+    localStorage.removeItem(optOutKey(userId))
+  }
+}
+
+function notificationPermission(): NotificationPermission {
+  const permission = Notification.permission
+  return permission === 'granted' || permission === 'denied' ? permission : 'default'
+}
+
+function waitForServiceWorker(): Promise<ServiceWorkerRegistration> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error('Service worker readiness timed out')),
+      SERVICE_WORKER_READY_TIMEOUT_MS,
+    )
+  })
+
+  return Promise.race([
+    registerServiceWorker().then(() => navigator.serviceWorker.ready),
+    timeoutPromise,
+  ]).finally(() => {
+    if (timeout !== undefined) {
+      clearTimeout(timeout)
+    }
+  })
+}
+
 function postSubscription(subscription: PushSubscription): Promise<void> {
   const raw = subscription.toJSON()
   return subscribeToPush({
@@ -82,29 +121,37 @@ function postSubscription(subscription: PushSubscription): Promise<void> {
   })
 }
 
-/**
- * Is THIS browser subscribed?
- *
- * ⚠ The question used to be "does this PERSON have any device at all", and that was wrong in both
- * directions. A second device found the switch already reading "on" and was never offered the one
- * button that would have subscribed it — Nikola, 2026-08-25: a message sent to the tablet arrived
- * only after the iPhone's row had been deleted from the list. And a browser whose row went away —
- * removed from another device, or dropped by the send path when a rotated VAPID key answers 403 —
- * went on reading "on" while receiving nothing, with no way back inside the app.
- *
- * So the browser is asked, and its answer is written back: re-posting the same subscription costs
- * one row-touch and puts the row back if it is gone. It is deliberately NOT awaited — the answer is
- * already known, and waiting for a round trip would flash the offer bar at somebody who is on.
- */
-async function readThisBrowser(): Promise<boolean> {
-  const registration = await navigator.serviceWorker.ready
-  const subscription = await registration.pushManager.getSubscription()
-  if (subscription === null) {
-    return false
+async function subscribe(
+  registration: ServiceWorkerRegistration,
+  publicKey: string,
+): Promise<PushSubscription> {
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: toApplicationServerKey(publicKey),
+  })
+}
+
+async function bindThisBrowser(publicKey: string): Promise<'on' | 'off' | 'blocked'> {
+  const permission = notificationPermission()
+  if (permission === 'denied') {
+    return 'blocked'
+  }
+  if (permission !== 'granted') {
+    return 'off'
   }
 
-  void postSubscription(subscription).catch(() => showInternalToast(m.chat_push_failed()))
-  return true
+  const registration = await waitForServiceWorker()
+  let subscription = await registration.pushManager.getSubscription()
+  if (subscription !== null && !applicationServerKeyMatches(subscription, publicKey)) {
+    await subscription.unsubscribe()
+    subscription = null
+  }
+  if (subscription === null) {
+    subscription = await subscribe(registration, publicKey)
+  }
+
+  await postSubscription(subscription)
+  return 'on'
 }
 
 export interface PushEnrollmentState {
@@ -112,33 +159,77 @@ export interface PushEnrollmentState {
   devices: PushDevice[]
   asking: boolean
   enable: () => Promise<void>
+  disableThisDevice: () => Promise<void>
 }
 
-/**
- * Everything both the banner and the switch need to know, in ONE place.
- *
- * ⚠ Written once deliberately. Two copies of "may we offer this here" drift, and the way they drift
- * is one of them offering a button on a device that cannot use it — or worse, staying silent on one
- * that can.
- */
-export function usePushEnrollment(): PushEnrollmentState {
+export function usePushEnrollment(
+  userId: string,
+  { reconcile = true, loadDevices = false }: { reconcile?: boolean; loadDevices?: boolean } = {},
+): PushEnrollmentState {
   const queryClient = useQueryClient()
-  const publicKey = useQuery(pushPublicKeyOptions())
-  const devices = useQuery(pushDevicesOptions())
+  const isBrowser = typeof window !== 'undefined'
+  const publicKey = useQuery({
+    ...pushPublicKeyOptions(),
+    enabled: isBrowser && userId !== '',
+  })
+  const devices = useQuery({
+    ...pushDevicesOptions(userId),
+    enabled: isBrowser && userId !== '' && loadDevices,
+  })
   const [asking, setAsking] = useState(false)
 
   const key = publicKey.data?.publicKey ?? null
   const items = devices.data?.items ?? []
-
   const thisBrowser = useQuery({
-    queryKey: pushKeys.thisBrowser(),
-    queryFn: readThisBrowser,
-    // Nothing to ask when there is no key to subscribe with, or no push in this browser at all.
-    enabled: key !== null && pushIsPossible(),
-    // It changes only when somebody presses the button below, which sets the answer itself.
+    queryKey: pushKeys.thisBrowser(userId),
+    queryFn: () =>
+      isOptedOut(userId) ? Promise.resolve('off' as const) : bindThisBrowser(key ?? ''),
+    enabled: isBrowser && reconcile && userId !== '' && key !== null && pushIsPossible(),
     staleTime: Infinity,
-    retry: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
+
+  useEffect(() => {
+    if (!isBrowser || userId === '' || key === null || !pushIsPossible()) return
+
+    const refreshChangedPermission = (): void => {
+      if (document.visibilityState !== 'visible') return
+      const current = queryClient.getQueryData<PushEnrollment>(pushKeys.thisBrowser(userId))
+      const permission = notificationPermission()
+
+      if (current === 'on' && permission !== 'granted') {
+        queryClient.setQueryData(
+          pushKeys.thisBrowser(userId),
+          permission === 'denied' ? 'blocked' : 'off',
+        )
+      } else if (
+        (current === 'blocked' && permission !== 'denied') ||
+        (current === 'off' && permission === 'granted')
+      ) {
+        void queryClient.invalidateQueries({ queryKey: pushKeys.thisBrowser(userId) })
+      }
+    }
+
+    window.addEventListener('focus', refreshChangedPermission)
+    document.addEventListener('visibilitychange', refreshChangedPermission)
+    return () => {
+      window.removeEventListener('focus', refreshChangedPermission)
+      document.removeEventListener('visibilitychange', refreshChangedPermission)
+    }
+  }, [isBrowser, key, queryClient, userId])
+
+  useEffect(() => {
+    if (reconcile && thisBrowser.data === 'on') {
+      void queryClient.invalidateQueries({ queryKey: pushKeys.devices(userId) })
+    }
+  }, [queryClient, reconcile, thisBrowser.data, userId])
+
+  const refresh = async (): Promise<void> => {
+    await queryClient.invalidateQueries({ queryKey: pushKeys.devices(userId) })
+  }
 
   const enable = async (): Promise<void> => {
     if (key === null) {
@@ -147,48 +238,51 @@ export function usePushEnrollment(): PushEnrollmentState {
 
     setAsking(true)
     try {
-      /*
-       * ⚠ Asked HERE, on a press — never on load.
-       *
-       * A prompt nobody asked for is answered with Block, and Block is PERMANENT: the app can
-       * never ask again, and the only cure is the browser's own site settings. Asking at the wrong
-       * moment does not lose a click, it loses the person.
-       */
+      setOptedOut(userId, false)
       const permission = await Notification.requestPermission()
-      if (permission !== 'granted') {
+      if (permission === 'denied') {
+        queryClient.setQueryData(pushKeys.thisBrowser(userId), 'blocked')
         showInternalToast(m.chat_push_blocked())
         return
       }
-
-      const registration = await navigator.serviceWorker.ready
-
-      /*
-       * ⚠ A subscription made with a DIFFERENT application key cannot be reused, and `subscribe`
-       * refuses it outright rather than replacing it. That is the state every browser in the shop
-       * is in the day the VAPID keys change — so the old one goes first, and this button stays the
-       * way back instead of failing forever.
-       */
-      const stale = await registration.pushManager.getSubscription()
-      if (stale !== null) {
-        await stale.unsubscribe()
+      if (permission !== 'granted') {
+        queryClient.setQueryData(pushKeys.thisBrowser(userId), 'off')
+        return
       }
 
-      const subscription = await registration.pushManager.subscribe({
-        // Required by every browser: a push nobody can see is a push anybody could abuse.
-        userVisibleOnly: true,
-        applicationServerKey: toApplicationServerKey(key),
-      })
-
-      await postSubscription(subscription)
-      // Set rather than invalidated: this browser just did the subscribing, so asking it again
-      // would only re-post what it already sent.
-      queryClient.setQueryData(pushKeys.thisBrowser(), true)
-      await queryClient.invalidateQueries({ queryKey: pushKeys.devices() })
+      const next = await bindThisBrowser(key)
+      queryClient.setQueryData(pushKeys.thisBrowser(userId), next)
+      await refresh()
     } catch {
       showInternalToast(m.chat_push_failed())
     } finally {
       setAsking(false)
     }
+  }
+
+  const disableThisDevice = async (): Promise<void> => {
+    setOptedOut(userId, true)
+    setAsking(true)
+    const current = items.find((device) => device.isCurrent)
+    const localCleanup = waitForServiceWorker().then(async (registration) => {
+      const subscription = await registration.pushManager.getSubscription()
+      if (subscription !== null) {
+        await subscription.unsubscribe()
+      }
+    })
+    const serverCleanup = current === undefined ? Promise.resolve() : removePushDevice(current.id)
+    const results = await Promise.allSettled([localCleanup, serverCleanup])
+    queryClient.setQueryData(pushKeys.thisBrowser(userId), 'off')
+    let failed = results.some((result) => result.status === 'rejected')
+    try {
+      await refresh()
+    } catch {
+      failed = true
+    }
+    if (failed) {
+      showInternalToast(m.chat_push_failed())
+    }
+    setAsking(false)
   }
 
   const enrollment: PushEnrollment =
@@ -198,11 +292,11 @@ export function usePushEnrollment(): PushEnrollmentState {
         ? looksLikeIosWithoutHomeScreen()
           ? 'ios-needs-home-screen'
           : 'unsupported'
-        : thisBrowser.data === undefined
-          ? 'unknown'
-          : thisBrowser.data
-            ? 'on'
-            : 'off'
+        : thisBrowser.isError
+          ? 'failed'
+          : thisBrowser.data === undefined
+            ? 'unknown'
+            : thisBrowser.data
 
-  return { enrollment, devices: items, asking, enable }
+  return { enrollment, devices: items, asking, enable, disableThisDevice }
 }

@@ -17,11 +17,11 @@ import { z } from 'zod'
  * is short because the world's browsers only have four of these between them.
  */
 const PUSH_SERVICE_HOSTS = [
-  'fcm.googleapis.com',
-  'updates.push.services.mozilla.com',
-  'web.push.apple.com',
-  'wns2-.*\\.notify\\.windows\\.com',
-  'notify\\.windows\\.com',
+  /^fcm\.googleapis\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/,
+  /^(?:[a-z0-9-]+\.)+push\.apple\.com$/,
+  /^wns2-[a-z0-9-]+\.notify\.windows\.com$/,
+  /^notify\.windows\.com$/,
 ]
 
 function isPushServiceUrl(value: string): boolean {
@@ -38,7 +38,7 @@ function isPushServiceUrl(value: string): boolean {
     return false
   }
 
-  return PUSH_SERVICE_HOSTS.some((host) => new RegExp(`^${host}$`).test(parsed.host))
+  return parsed.port === '' && PUSH_SERVICE_HOSTS.some((host) => host.test(parsed.hostname))
 }
 
 export const PushSubscribeInputSchema = z.object({

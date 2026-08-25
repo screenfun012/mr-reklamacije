@@ -1,5 +1,5 @@
 import { m } from '@mr/i18n'
-import { PushSubscriptionMode, pushKeys, removePushDevice, setPushMode } from '@mr/shared'
+import { PushSubscriptionMode, pushKeys, setPushMode } from '@mr/shared'
 import { cn } from '@mr/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
@@ -18,40 +18,29 @@ const MODES = [
   { value: PushSubscriptionMode.NoText, label: m.chat_push_mode_no_text },
 ] as const
 
-/**
- * „Obaveštenja na telefon", under the DND switch — where a person is already thinking about being
- * disturbed. The banner above the conversation is the same offer for somebody who never looks here.
- */
-/**
- * Which row is the phone in your hand.
- *
- * ⚠ Matched on the user-agent string, because that is exactly what the server stored for this
- * browser. Two identical phones look alike here and that is the whole ceiling of it: this is a
- * label, never the on/off decision — Nikola deleted the wrong row on 2026-08-25 with nothing on
- * the screen to tell them apart.
- */
-function deviceLabel(userAgent: string | null): string {
-  if (userAgent === null) {
-    return m.chat_push_this_device()
-  }
-  return userAgent === navigator.userAgent
-    ? `${userAgent} · ${m.chat_push_this_device()}`
-    : userAgent
+/** Marks the row owned by the authenticated session, never by a user-agent comparison. */
+function deviceLabel(userAgent: string | null, isCurrent: boolean): string {
+  const label = userAgent ?? ''
+  return isCurrent ? `${label} · ${m.chat_push_this_device()}` : label
 }
 
-export function PushSwitch(): React.ReactElement | null {
+export function PushSwitch({
+  userId,
+  reconcile = false,
+}: {
+  userId: string
+  /** Isolated tests may make the panel own reconciliation; the shell owns it in the app. */
+  reconcile?: boolean
+}): React.ReactElement | null {
   const queryClient = useQueryClient()
-  const { enrollment, devices, asking, enable } = usePushEnrollment()
+  const { enrollment, devices, asking, disableThisDevice, enable } = usePushEnrollment(userId, {
+    reconcile,
+    loadDevices: true,
+  })
 
   const changeMode = useMutation({
     mutationFn: setPushMode,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: pushKeys.devices() }),
-    onError: () => showInternalToast(m.chat_push_failed()),
-  })
-
-  const dropDevice = useMutation({
-    mutationFn: removePushDevice,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: pushKeys.devices() }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pushKeys.devices(userId) }),
     onError: () => showInternalToast(m.chat_push_failed()),
   })
 
@@ -67,23 +56,30 @@ export function PushSwitch(): React.ReactElement | null {
     <div className="flex flex-col gap-2 border-t border-mri-border px-3 py-3">
       <span className={EYEBROW_CLASSES}>{m.chat_push_eyebrow()}</span>
 
-      {enrollment === 'ios-needs-home-screen' || enrollment === 'unsupported' ? (
+      {enrollment === 'ios-needs-home-screen' ||
+      enrollment === 'unsupported' ||
+      enrollment === 'blocked' ? (
         <p className={HINT_CLASSES}>
           {/* ⚠ Says WHY rather than showing nothing. On an iPad this is the one sentence between a
               serviser and a phone that never rings. */}
           {enrollment === 'ios-needs-home-screen'
             ? m.chat_push_ios_hint()
-            : m.chat_push_unsupported()}
+            : enrollment === 'unsupported'
+              ? m.chat_push_unsupported()
+              : m.chat_push_blocked()}
         </p>
-      ) : enrollment === 'off' ? (
-        <button
-          type="button"
-          disabled={asking}
-          onClick={() => void enable()}
-          className="h-8 rounded-[7px] border border-mri-border2 px-3 text-[11px] font-semibold text-mri-text transition-colors hover:border-mri-text2 disabled:opacity-60"
-        >
-          {m.chat_push_enable()}
-        </button>
+      ) : enrollment === 'off' || enrollment === 'failed' ? (
+        <>
+          {enrollment === 'failed' ? <p className={HINT_CLASSES}>{m.chat_push_failed()}</p> : null}
+          <button
+            type="button"
+            disabled={asking}
+            onClick={() => void enable()}
+            className="h-8 rounded-[7px] border border-mri-border2 px-3 text-[11px] font-semibold text-mri-text transition-colors hover:border-mri-text2 disabled:opacity-60"
+          >
+            {m.chat_push_enable()}
+          </button>
+        </>
       ) : (
         <>
           <div className="flex flex-wrap gap-1">
@@ -110,17 +106,20 @@ export function PushSwitch(): React.ReactElement | null {
             {devices.map((device) => (
               <li key={device.id} className="flex items-center gap-1.5">
                 <span className="min-w-0 flex-1 truncate text-[10.5px] text-mri-text2">
-                  {deviceLabel(device.userAgent)}
+                  {deviceLabel(device.userAgent, device.isCurrent)}
                 </span>
-                <button
-                  type="button"
-                  title={m.chat_push_device_remove()}
-                  onClick={() => dropDevice.mutate(device.id)}
-                  className="grid size-5 flex-none cursor-pointer place-items-center rounded-[5px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad"
-                >
-                  <X aria-hidden="true" className="size-3" />
-                  <span className="sr-only">{m.chat_push_device_remove()}</span>
-                </button>
+                {device.isCurrent ? (
+                  <button
+                    type="button"
+                    title={m.chat_push_device_remove()}
+                    disabled={asking}
+                    onClick={() => void disableThisDevice()}
+                    className="grid size-5 flex-none cursor-pointer place-items-center rounded-[5px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad disabled:opacity-60"
+                  >
+                    <X aria-hidden="true" className="size-3" />
+                    <span className="sr-only">{m.chat_push_device_remove()}</span>
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>

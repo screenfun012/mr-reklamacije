@@ -1,4 +1,4 @@
-import type { UserAccountStatus, UserLanguage } from '@mr/shared'
+import type { PushSubscriptionMode, UserAccountStatus, UserLanguage } from '@mr/shared'
 import { UserAccountStatus as UserAccountStatusValues } from '@mr/shared'
 import { relations, sql } from 'drizzle-orm'
 import {
@@ -44,6 +44,8 @@ export const users = pgTable(
       .default(UserAccountStatusValues.Pending)
       .$type<UserAccountStatus>(),
     preferredLanguage: text('preferred_language').notNull().default('sr').$type<UserLanguage>(),
+    /** Person-level privacy preference; nullable only until an existing user first rebinds push. */
+    pushMode: text('push_mode').$type<PushSubscriptionMode>(),
     twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'date' }),
     lastLoginIp: inet('last_login_ip'),
@@ -57,6 +59,7 @@ export const users = pgTable(
   (t) => [
     uniqueIndex('users_email_key').on(t.email),
     check('users_preferred_language_check', sql`${t.preferredLanguage} IN ('sr', 'en')`),
+    check('users_push_mode_check', sql`${t.pushMode} IN ('all', 'mentions', 'no_text')`),
     check(
       'users_account_status_check',
       sql`${t.accountStatus} IN ('pending', 'approved', 'rejected')`,

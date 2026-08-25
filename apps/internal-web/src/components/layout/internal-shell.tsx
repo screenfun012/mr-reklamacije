@@ -6,7 +6,9 @@ import { useCallback, type ReactNode } from 'react'
 
 import { MaskedIcon } from '~/components/masked-icon'
 import { filterVisibleNavItems, internalNavItems } from '~/config/navigation'
+import { PushBanner } from '~/features/chat/push-banner'
 import { authClient } from '~/lib/auth-client'
+import { syncServiceWorkerPushUser } from '~/lib/register-service-worker'
 import { useInternalAuthUser } from '~/lib/use-internal-auth-user'
 import { useRealtimeEventStream } from '~/lib/use-realtime-event-stream'
 import { SIDEBAR_COLLAPSED_COOKIE, writeUiFlagCookie, type InternalUiPrefs } from '~/lib/ui-prefs'
@@ -43,7 +45,7 @@ export function InternalShell({ children, ui }: InternalShellProps) {
   useRealtimeEventStream()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { userEmail, userName } = useInternalAuthUser()
+  const { userEmail, userId, userName } = useInternalAuthUser()
   const { authSession } = rootRoute.useRouteContext()
   // The cookie the server read this request with, and where a new choice goes — one value, one
   // place, so the shell the browser hydrates is the shell the server drew (see `ui-prefs`).
@@ -71,6 +73,7 @@ export function InternalShell({ children, ui }: InternalShellProps) {
 
   const handleLogout = (): void => {
     void (async () => {
+      await syncServiceWorkerPushUser(null)
       await authClient.signOut()
       // Client-side navigation keeps the cache alive — on a shared workshop
       // computer the next person to sign in would briefly see the previous
@@ -119,6 +122,7 @@ export function InternalShell({ children, ui }: InternalShellProps) {
             className="pointer-events-none absolute -right-[180px] top-10 size-[440px] text-mri-gear"
           />
 
+          <PushBanner userId={userId} />
           <main className="relative px-4 pb-[72px] pt-9 sm:px-8">{children}</main>
         </div>
       </div>

@@ -10,12 +10,13 @@ import {
   PushSubscriptionIdParamSchema,
 } from './push.validators.js'
 
-function actorId(c: Context): string {
+function actor(c: Context): { userId: string; sessionId: string } {
   const user: MRSessionUser | null = c.get('user')
-  if (user === null) {
+  const session = c.get('session')
+  if (user === null || session === null) {
     throw new UnauthorizedError()
   }
-  return user.id
+  return { userId: user.id, sessionId: session.id }
 }
 
 export function createPushController(container: Container): {
@@ -33,7 +34,7 @@ export function createPushController(container: Container): {
      * offer a button, because `PushManager.subscribe` cannot be called without it.
      */
     publicKey: async (c: Context) => {
-      actorId(c)
+      actor(c)
       /*
        * ⚠ `isEnabled`, not merely "a key is set".
        *
@@ -50,13 +51,15 @@ export function createPushController(container: Container): {
     },
 
     listDevices: async (c: Context) => {
-      const devices = await container.pushRepository.listForUser(actorId(c))
+      const current = actor(c)
+      const devices = await container.pushRepository.listForUser(current.userId, current.sessionId)
       return c.json({
         items: devices.map((device) => ({
           id: device.id,
           userAgent: device.userAgent,
           mode: device.mode,
           createdAt: device.createdAt.toISOString(),
+          isCurrent: device.isCurrent,
         })),
         total: devices.length,
         page: 1,
@@ -66,8 +69,10 @@ export function createPushController(container: Container): {
 
     subscribe: async (c: Context) => {
       const input = PushSubscribeInputSchema.parse(await c.req.json())
+      const current = actor(c)
       await container.pushRepository.subscribe({
-        userId: actorId(c),
+        userId: current.userId,
+        sessionId: current.sessionId,
         endpoint: input.endpoint,
         p256dh: input.keys.p256dh,
         auth: input.keys.auth,
@@ -80,14 +85,15 @@ export function createPushController(container: Container): {
     setMode: async (c: Context) => {
       const { mode } = PushModeInputSchema.parse(await c.req.json())
       // Per PERSON, not per device (Nikola, 2026-08-23) — so it lands on every row they have.
-      await container.pushRepository.setMode(actorId(c), mode)
+      await container.pushRepository.setMode(actor(c).userId, mode)
       return c.body(null, 204)
     },
 
     removeDevice: async (c: Context) => {
       const { id } = PushSubscriptionIdParamSchema.parse({ id: c.req.param('id') })
       // Scoped to the caller: somebody else's device id simply finds nothing.
-      await container.pushRepository.removeForUser(actorId(c), id)
+      const current = actor(c)
+      await container.pushRepository.removeForSession(current.userId, current.sessionId, id)
       return c.body(null, 204)
     },
   }

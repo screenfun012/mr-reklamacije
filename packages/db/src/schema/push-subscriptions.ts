@@ -12,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import { users } from './access-control.js'
+import { sessions } from './auth-tables.js'
 
 /**
  * One browser's standing permission to be told about a new chat message.
@@ -32,6 +33,8 @@ export const pushSubscriptions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').notNull(),
+    /** The live Better-Auth session that owns this browser subscription. */
+    sessionId: uuid('session_id'),
     /** The push service's address for this browser. Opaque, and long — never parsed. */
     endpoint: text('endpoint').notNull(),
     /** The browser's public key and auth secret, for encrypting the payload to it (RFC 8291). */
@@ -39,6 +42,7 @@ export const pushSubscriptions = pgTable(
     auth: text('auth').notNull(),
     /** Only so a person can tell their own devices apart in the list — never matched on. */
     userAgent: text('user_agent'),
+    /** Rolling-deploy mirror; `users.push_mode` is the durable person-level source of truth. */
     mode: text('mode').notNull().default('all').$type<PushSubscriptionMode>(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
   },
@@ -50,7 +54,13 @@ export const pushSubscriptions = pgTable(
       foreignColumns: [users.id],
       // The account goes, its phones go with it. There is nobody left to notify.
     }).onDelete('cascade'),
+    foreignKey({
+      name: 'push_subscriptions_session_id_fkey',
+      columns: [t.sessionId],
+      foreignColumns: [sessions.id],
+    }).onDelete('cascade'),
     index('idx_push_subscriptions_user_id').on(t.userId),
+    uniqueIndex('uq_push_subscriptions_session_id').on(t.sessionId),
     // The take-over above needs this to be UNIQUE — it is what `ON CONFLICT (endpoint)` infers,
     // and what makes one device exactly one row.
     uniqueIndex('uq_push_subscriptions_endpoint').on(t.endpoint),

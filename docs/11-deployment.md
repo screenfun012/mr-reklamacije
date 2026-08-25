@@ -170,6 +170,11 @@ UPLOAD_DIR=/data/uploads
 RESEND_API_KEY=<secret>
 RESEND_FROM_EMAIL=no-reply@mrengines.rs
 
+# Web Push (one stable pair; rotating it forces automatic browser re-subscription)
+VAPID_PUBLIC_KEY=<public key from web-push generate-vapid-keys>
+VAPID_PRIVATE_KEY=<matching private key>
+VAPID_SUBJECT=mailto:it@mrengines.rs
+
 # PDF export (set false if Chromium misbehaves — app falls back to browser print)
 CLAIM_REPORT_PDF_ENABLED=true
 ```
@@ -217,6 +222,11 @@ The `api` service's `railway.json` sets `preDeployCommand: pnpm --filter @mr/db 
 8. **Verify**: login on all three apps, claims list + detail, SSE live update, file upload + thumbnail, PDF export, portal registration → approval → activation email (Resend).
 
 **Adding an env var later:** set it in Railway (api or web service), redeploy that service (env changes don't apply to running deploys), and mirror it in `apps/api/.env.example` + the list above in the same PR.
+
+**Web Push:** keep the VAPID key pair stable across deploys. If rotation is required, deploy both
+new keys together; each browser whose permission is already granted replaces its old subscription
+automatically on the next authenticated app load. No `db:seed`, Redis, Firebase, or extra Railway
+service is required.
 
 ### Connection pooling
 

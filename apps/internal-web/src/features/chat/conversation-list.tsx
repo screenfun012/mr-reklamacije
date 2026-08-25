@@ -165,6 +165,7 @@ function SectionHeader({
 }
 
 export interface ConversationListProps {
+  userId: string
   items: readonly ChatConversationListItem[]
   activeId: string | null
   onSelect: (id: string) => void
@@ -182,6 +183,7 @@ export interface ConversationListProps {
 
 /** The left column: DND, search, the channels, the claim threads, and how a thread comes to be. */
 export function ConversationList({
+  userId,
   items,
   activeId,
   onSelect,
@@ -274,7 +276,7 @@ export function ConversationList({
       {/* Under DND and above the footer: both are about being disturbed, and a person setting one
           is already thinking about the other. */}
       <div className="flex-none">
-        <PushSwitch />
+        <PushSwitch userId={userId} />
       </div>
 
       <p className="flex-none border-t border-mri-border px-3 py-[11px] text-[10.5px] italic leading-[1.5] text-mri-text2">

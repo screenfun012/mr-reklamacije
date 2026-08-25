@@ -1,6 +1,7 @@
 import type { Logger } from '@mr/logger'
 import { PushSubscriptionMode, type PushSubscriptionMode as Mode } from '@mr/shared'
 import webpush from 'web-push'
+import { createECDH, timingSafeEqual } from 'node:crypto'
 
 import type { ChatPushMessage, PushPort } from '../../core/ports/push-port.js'
 
@@ -22,17 +23,25 @@ const PUSH_TTL_SECONDS = 3600
  * before, and memory is 86% of the hosting bill.
  */
 const PUSH_TIMEOUT_MS = 5000
+const PUSH_CONCURRENCY = 10
+// One worst-case 50-person room (author + 49 recipients × five devices) fits; a concurrent burst
+// cannot retain an unbounded tail of future HTTPS work.
+const PUSH_MAX_PENDING_SENDS = 250
+const PUSH_BACKPRESSURE = new Error('push transport queue is full')
+
+type SendFailure = number | 'network' | 'backpressure'
 
 /**
  * The answers that mean "this subscription will never work again".
  *
- * 404 and 410 are the push service saying the browser is gone. ⚠ 403 is it saying the signature
- * does not match the key the subscription was made with — which is what EVERY row looks like the
- * day the VAPID keys are rotated. Without it, rotation kills push silently for everybody and leaves
- * the dead rows behind forever, each one paying for a request that cannot succeed. With it, the
- * table cleans itself and people simply turn notifications on again.
+ * 404 and 410 are the push service saying the browser is gone. ⚠ 401/403 can say the VAPID
+ * authorization does not match the key the subscription was made with — which is what EVERY row
+ * looks like the day the keys are rotated. Without those, rotation kills push silently for
+ * everybody and leaves the dead rows behind forever, each one paying for a request that cannot
+ * succeed. With them, the table cleans itself and the browser silently creates/rebinds a valid row
+ * on its next app load.
  */
-const GONE_STATUS = new Set([403, 404, 410])
+const GONE_STATUS = new Set([401, 403, 404, 410])
 
 /**
  * Telling phones about a new chat message.
@@ -43,6 +52,10 @@ const GONE_STATUS = new Set([403, 404, 410])
  */
 export class PushService implements PushPort {
   readonly isEnabled: boolean
+  private readonly transportLimiter = new ConcurrencyLimiter(
+    PUSH_CONCURRENCY,
+    PUSH_MAX_PENDING_SENDS,
+  )
 
   constructor(
     private readonly repo: PushRepository,
@@ -80,6 +93,9 @@ export class PushService implements PushPort {
      * failure is caught, named loudly enough to be found in the logs, and push alone goes quiet.
      */
     try {
+      if (!vapidKeysMatch(publicKey, privateKey)) {
+        throw new Error('VAPID public and private keys are not one pair')
+      }
       webpush.setVapidDetails(subject, publicKey, privateKey)
       this.isEnabled = true
     } catch (error) {
@@ -101,54 +117,145 @@ export class PushService implements PushPort {
     const mentioned = new Set(message.mentionedUserIds)
     const subscriptions = await this.repo.listForUsers(message.recipientIds)
 
-    await Promise.allSettled(
-      subscriptions
-        .filter((subscription) => wants(subscription.mode, mentioned.has(subscription.userId)))
-        .map((subscription) => this.send(subscription, message)),
+    const targets = subscriptions.filter((subscription) =>
+      wants(subscription.mode, mentioned.has(subscription.userId)),
     )
+    const failures: SendFailure[] = []
+
+    // Submit the whole fan-out now. The limiter accepts only its hard active+pending capacity;
+    // batching here would hide future batches outside that counter and make the queue unbounded.
+    const outcomes = await Promise.all(
+      targets.map((subscription) => this.send(subscription, message)),
+    )
+    failures.push(...outcomes.flatMap((outcome) => (outcome === null ? [] : [outcome])))
+
+    if (failures.length > 0) {
+      this.logger.error(
+        {
+          attempted: targets.length,
+          failed: failures.length,
+          statuses: failures.reduce<Record<string, number>>((counts, status) => {
+            const key = String(status)
+            counts[key] = (counts[key] ?? 0) + 1
+            return counts
+          }, {}),
+        },
+        'chat push delivery failures',
+      )
+    }
   }
 
   private async send(
     subscription: StoredPushSubscription,
     message: ChatPushMessage,
-  ): Promise<void> {
-    try {
-      await webpush.sendNotification(
-        {
-          endpoint: subscription.endpoint,
-          keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-        },
-        JSON.stringify(bodyFor(subscription.mode, message)),
-        {
-          TTL: PUSH_TTL_SECONDS,
-          /*
-           * ⚠ `high`, and the library sends `normal` when nothing is said.
-           *
-           * Under RFC 8030 `normal` is the level at which a push service MAY hold a message back
-           * for the device's battery, and Android's Doze does exactly that: the phone stays quiet
-           * for as long as it is asleep, and then the whole stretch arrives at once the moment the
-           * app is opened. That is what Nikola saw on 2026-08-25 — a first notification, then
-           * nothing, then all of them together. `high` asks for delivery now, which is what a
-           * message in a workshop is worth.
-           */
-          urgency: 'high',
-          timeout: PUSH_TIMEOUT_MS,
-          // ⚠ RFC 8030 §5.4: this collapses messages still QUEUED at the push service, which `tag`
-          // cannot do — `tag` only replaces what has already reached the device. Capped at 32
-          // base64url characters, which a uuid without its dashes is exactly.
-          topic: message.conversationId.replaceAll('-', ''),
-        },
-      )
-    } catch (error) {
-      const status = (error as { statusCode?: number }).statusCode
-      if (status !== undefined && GONE_STATUS.has(status)) {
-        // ⚠ Not a failure to log and forget: the browser is gone for good, and a row nobody deletes
-        // is a request this service pays for on every single message, forever.
-        await this.repo.removeByEndpoint(subscription.endpoint)
-        return
+  ): Promise<SendFailure | null> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await this.transportLimiter.run(() =>
+          webpush.sendNotification(
+            {
+              endpoint: subscription.endpoint,
+              keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+            },
+            JSON.stringify(bodyFor(subscription.mode, message, subscription.userId)),
+            {
+              TTL: PUSH_TTL_SECONDS,
+              /*
+               * ⚠ `high`, and the library sends `normal` when nothing is said.
+               *
+               * Under RFC 8030 `normal` is the level at which a push service MAY hold a message back
+               * for the device's battery, and Android's Doze does exactly that: the phone stays quiet
+               * for as long as it is asleep, and then the whole stretch arrives at once the moment the
+               * app is opened. That is what Nikola saw on 2026-08-25 — a first notification, then
+               * nothing, then all of them together. `high` asks for delivery now, which is what a
+               * message in a workshop is worth.
+               */
+              urgency: 'high',
+              timeout: PUSH_TIMEOUT_MS,
+              // ⚠ RFC 8030 §5.4: this collapses messages still QUEUED at the push service, which `tag`
+              // cannot do — `tag` only replaces what has already reached the device. Capped at 32
+              // base64url characters, which a uuid without its dashes is exactly.
+              topic: message.conversationId.replaceAll('-', ''),
+            },
+          ),
+        )
+        return null
+      } catch (error) {
+        if (error === PUSH_BACKPRESSURE) {
+          return 'backpressure'
+        }
+        const status = (error as { statusCode?: number }).statusCode
+        if (status !== undefined && GONE_STATUS.has(status)) {
+          // ⚠ Not a failure to log and forget: the browser is gone for good, and a row nobody deletes
+          // is a request this service pays for on every single message, forever.
+          try {
+            await this.repo.removeIfMatches(subscription)
+          } catch {
+            return status
+          }
+          return null
+        }
+        if (attempt === 0 && isRetryable(status)) {
+          continue
+        }
+        return status ?? 'network'
       }
-      this.logger.error({ err: error, status }, 'chat push failed')
     }
+
+    return null
+  }
+}
+
+function vapidKeysMatch(publicKey: string, privateKey: string): boolean {
+  const curve = createECDH('prime256v1')
+  curve.setPrivateKey(Buffer.from(privateKey, 'base64url'))
+  const expected = curve.getPublicKey()
+  const actual = Buffer.from(publicKey, 'base64url')
+  return actual.length === expected.length && timingSafeEqual(actual, expected)
+}
+
+function isRetryable(status: number | undefined): boolean {
+  return status === 429 || (status !== undefined && status >= 500 && status <= 599)
+}
+
+/** Bounds external HTTP across every chat send handled by this API process. */
+class ConcurrencyLimiter {
+  private active = 0
+  private readonly waiters: Array<() => void> = []
+
+  constructor(
+    private readonly limit: number,
+    private readonly maxWaiters: number,
+  ) {}
+
+  async run<T>(work: () => Promise<T>): Promise<T> {
+    await this.acquire()
+    try {
+      return await work()
+    } finally {
+      this.release()
+    }
+  }
+
+  private acquire(): Promise<void> {
+    if (this.active < this.limit) {
+      this.active += 1
+      return Promise.resolve()
+    }
+
+    if (this.waiters.length >= this.maxWaiters) {
+      return Promise.reject(PUSH_BACKPRESSURE)
+    }
+    return new Promise((resolve) => this.waiters.push(resolve))
+  }
+
+  private release(): void {
+    const next = this.waiters.shift()
+    if (next !== undefined) {
+      next()
+      return
+    }
+    this.active -= 1
   }
 }
 
@@ -167,14 +274,21 @@ function wants(mode: Mode, isMentioned: boolean): boolean {
 function bodyFor(
   mode: Mode,
   message: ChatPushMessage,
-): { title: string; body: string; conversationId: string } {
+  recipientId: string,
+): { title: string; body: string; conversationId: string; recipientId: string } {
   if (mode === PushSubscriptionMode.NoText) {
-    return { title: message.conversationTitle, body: '', conversationId: message.conversationId }
+    return {
+      title: message.conversationTitle,
+      body: '',
+      conversationId: message.conversationId,
+      recipientId,
+    }
   }
 
   return {
     title: `${message.authorName} · ${message.conversationTitle}`,
     body: message.excerpt,
     conversationId: message.conversationId,
+    recipientId,
   }
 }

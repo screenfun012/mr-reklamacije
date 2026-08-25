@@ -3,6 +3,9 @@ export const MAX_FILES_PER_CLAIM = 50
 export const MAX_REPORT_IMAGES_PER_CLAIM = 100
 export const MAX_TOTAL_SIZE_PER_CLAIM_MB = 500
 
+/** Security and push-cost ceiling shared by the auth hook and push fan-out. */
+export const MAX_ACTIVE_SESSIONS_PER_USER = 5
+
 /** Max stored width for report images after server-side optimization. */
 export const MAX_REPORT_IMAGE_WIDTH = 1920
 

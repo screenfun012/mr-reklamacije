@@ -5,10 +5,24 @@ import { nitro } from 'nitro/vite'
 import { defineConfig, mergeConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 import { devApiProxyPlugin } from '@mr/dev-vite/dev-api-proxy'
-import { spaSecurityRouteRules } from '@mr/dev-vite/security-headers'
+import { buildSpaDocumentHeaders, spaSecurityRouteRules } from '@mr/dev-vite/security-headers'
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 const i18nEntry = fileURLToPath(new URL('../../packages/i18n/src/index.ts', import.meta.url))
+
+function internalRouteRules() {
+  return {
+    ...spaSecurityRouteRules(),
+    // `updateViaCache: 'none'` does not control a CDN response. A stale worker can keep old push
+    // behavior alive indefinitely, so the worker itself must always be revalidated at the edge.
+    '/sw.js': {
+      headers: {
+        ...buildSpaDocumentHeaders(),
+        'cache-control': 'no-store, no-cache, max-age=0, must-revalidate',
+      },
+    },
+  }
+}
 
 /** Workspace packages resolve from src in dev (package.json "development" export). */
 const mrWebDevSettings = {
@@ -58,7 +72,7 @@ export default defineConfig(({ command }) =>
       viteReact(),
       // Security headers are baked into the production Nitro build only, so dev
       // HMR/websockets are untouched. frame-src 'self' → same-origin inline PDF preview.
-      nitro(command === 'build' ? { routeRules: spaSecurityRouteRules() } : {}),
+      nitro(command === 'build' ? { routeRules: internalRouteRules() } : {}),
     ],
   }),
 )

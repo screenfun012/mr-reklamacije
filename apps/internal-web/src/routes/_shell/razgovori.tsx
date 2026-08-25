@@ -27,7 +27,6 @@ import {
   CHAT_PANEL_BACKDROP_CLASSES,
 } from '~/features/chat/chat-layout'
 import { ConversationList } from '~/features/chat/conversation-list'
-import { PushBanner } from '~/features/chat/push-banner'
 import { ConversationPane } from '~/features/chat/conversation-pane'
 import { ChannelPanel } from '~/features/chat/channel-panel'
 import { NewChannelDialog } from '~/features/chat/new-channel-dialog'
@@ -229,6 +228,7 @@ function RazgovoriColumns(): React.ReactElement {
       ) : null}
 
       <ConversationList
+        userId={userId}
         items={data.items}
         activeId={current?.id ?? null}
         onSelect={openConversation}
@@ -238,9 +238,6 @@ function RazgovoriColumns(): React.ReactElement {
       />
 
       <section className="flex min-w-0 flex-1 flex-col bg-mri-bg">
-        {/* Above the conversation, where nobody can miss it — and only for somebody who has not
-            turned notifications on yet. It puts itself away for good once they do. */}
-        <PushBanner />
         <header className="flex h-[52px] flex-none items-center gap-2.5 border-b border-mri-border bg-mri-surface px-4">
           {current === null ? null : (
             <>

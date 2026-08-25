@@ -3,9 +3,13 @@ import { createAppQueryClient } from '@mr/shared'
 import type { QueryClient } from '@tanstack/react-query'
 
 import { authClient } from './auth-client'
+import { syncServiceWorkerPushUser } from './register-service-worker'
 
 export function createQueryClient(): QueryClient {
   return createAppQueryClient(() => {
-    handleUnauthorizedSession(() => authClient.signOut())
+    handleUnauthorizedSession(async () => {
+      await syncServiceWorkerPushUser(null)
+      return authClient.signOut()
+    })
   })
 }
