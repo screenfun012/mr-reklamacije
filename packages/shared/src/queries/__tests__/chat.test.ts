@@ -165,7 +165,7 @@ describe('channel management', () => {
       page: 2,
       pageSize: 25,
     })
-    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).pathname).toBe('/api/chat/channels')
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).pathname).toBe('/api/chat/channels/manage')
     expect(new URL(String(fetchMock.mock.calls[0]?.[0])).search).toBe(
       '?search=Servis+%26+delovi&page=2&pageSize=25',
     )

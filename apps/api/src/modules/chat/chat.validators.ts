@@ -2,12 +2,18 @@ import { ChatConversationListResponseSchema, ClaimKind } from '@mr/shared'
 import { z } from 'zod'
 
 export {
+  ChatChannelCreateInputSchema,
+  ChatChannelManagementQuerySchema,
   ChatEditInputSchema,
   ChatMarkReadInputSchema,
   ChatMessagesQuerySchema,
   ChatSendInputSchema,
+  type ChatChannelCreateInput,
+  type ChatChannelManagementListResponse,
+  type ChatChannelManagementQuery,
   type ChatConversationListItem,
   type ChatClaimThreadLookup,
+  type ChatMembersResponse,
   type ChatSendInput,
   type ChatMessage,
   type ChatMessagesPage,

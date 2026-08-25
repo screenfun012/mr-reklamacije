@@ -12,7 +12,9 @@ import type { PreparedChatFile } from './chat-attachments.service.js'
 import {
   ChatClaimThreadParamSchema,
   ChatAttachmentIdParamSchema,
+  ChatChannelCreateInputSchema,
   ChatChannelInputSchema,
+  ChatChannelManagementQuerySchema,
   ChatMemberParamSchema,
   ChatMembersInputSchema,
   ChatConversationIdParamSchema,
@@ -62,6 +64,7 @@ export function createChatController(container: Container): {
   mute: (c: Context) => Promise<Response>
   unmute: (c: Context) => Promise<Response>
   listPins: (c: Context) => Promise<Response>
+  listManagedChannels: (c: Context) => Promise<Response>
   createChannel: (c: Context) => Promise<Response>
   renameChannel: (c: Context) => Promise<Response>
   listMembers: (c: Context) => Promise<Response>
@@ -133,16 +136,22 @@ export function createChatController(container: Container): {
     },
 
     createChannel: async (c: Context) => {
-      const { name } = ChatChannelInputSchema.parse(await c.req.json())
-      const conversation = await container.chatService.createChannel(name, toActor(c))
+      const input = ChatChannelCreateInputSchema.parse(await c.req.json())
+      const conversation = await container.chatService.createChannel(input, toActor(c))
       return c.json(conversation, 201)
+    },
+
+    listManagedChannels: async (c: Context) => {
+      const query = ChatChannelManagementQuerySchema.parse(c.req.query())
+      const result = await container.chatService.listManagedChannels(query, toActor(c))
+      return c.json(result)
     },
 
     renameChannel: async (c: Context) => {
       const { id } = ChatConversationIdParamSchema.parse({ id: c.req.param('id') })
       const { name } = ChatChannelInputSchema.parse(await c.req.json())
-      const conversation = await container.chatService.renameChannel(id, name, toActor(c))
-      return c.json(conversation)
+      await container.chatService.renameChannel(id, name, toActor(c))
+      return c.body(null, 204)
     },
 
     listMembers: async (c: Context) => {

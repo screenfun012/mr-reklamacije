@@ -17,8 +17,9 @@ import {
   SYSTEM_ROLE_ADMIN,
   uniqueMentions,
   type ChatConversationAttachmentsResponse,
+  type ChatChannelManagementListResponse,
   type ChatClaimThreadLookup,
-  type ChatPerson,
+  type ChatMembersResponse,
   type ChatPin,
 } from '@mr/shared'
 
@@ -42,6 +43,8 @@ import type { ChatAttachmentsService, PreparedChatFile } from './chat-attachment
 import type { ChatRepository, ChatVisibilityScope } from './chat.repository.js'
 import type {
   ChatActor,
+  ChatChannelCreateInput,
+  ChatChannelManagementQuery,
   ChatConversationListItem,
   ChatConversationListResponse,
   ChatMessage,
@@ -101,7 +104,6 @@ function scopeFor(actor: ChatActor): ChatVisibilityScope {
     userId: actor.id,
     canReadEmotiveClaims: holdsAny(actor, INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS),
     canReadDomaceClaims: holdsAny(actor, INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS),
-    isAdmin: actor.roles.includes(SYSTEM_ROLE_ADMIN),
   }
 }
 
@@ -616,28 +618,6 @@ export class ChatService implements ChatPort {
     }
   }
 
-  /**
-   * Whose channel this is. The maker, or an admin.
-   *
-   * ⚠ Admin by ROLE rather than by permission — the chat has no permission of its own, the same
-   * reasoning that lets an admin take down somebody else's pin.
-   *
-   * ⚠ 403 here, not 404. A room he cannot SEE is 404 (`requireVisible` above answered that already);
-   * this is a room he can see and does not own, and its existence is no secret to him.
-   */
-  private requireChannelOwner(
-    conversation: ChatConversationListItem,
-    createdBy: string | null,
-    actor: ChatActor,
-  ): void {
-    if (actor.roles.includes(SYSTEM_ROLE_ADMIN)) {
-      return
-    }
-    if (createdBy !== actor.id) {
-      throw new ForbiddenError('A channel is managed by whoever made it')
-    }
-  }
-
   /** ⚠ On EVERY channel route, not only on delete: it is the one room that exists for everybody. */
   private requireRealChannel(conversation: ChatConversationListItem): void {
     if (conversation.type === ChatConversationType.General) {
@@ -648,50 +628,79 @@ export class ChatService implements ChatPort {
     }
   }
 
+  private async metadataAccess(
+    conversationId: string,
+    actor: ChatActor,
+  ): Promise<{ conversation: ChatConversationListItem; canManage: boolean }> {
+    const scope = scopeFor(actor)
+    const manageable = await this.repo.findManageableChannel(
+      conversationId,
+      actor.id,
+      actor.roles.includes(SYSTEM_ROLE_ADMIN),
+      scope,
+    )
+    if (manageable !== null) {
+      return { conversation: manageable, canManage: true }
+    }
+
+    const visible = await this.requireVisible(conversationId, actor)
+    this.requireRealChannel(visible)
+    return { conversation: visible, canManage: false }
+  }
+
+  private async requireChannelManager(
+    conversationId: string,
+    actor: ChatActor,
+  ): Promise<ChatConversationListItem> {
+    const access = await this.metadataAccess(conversationId, actor)
+    if (!access.canManage) {
+      throw new ForbiddenError('A channel is managed by whoever made it')
+    }
+    return access.conversation
+  }
+
   /**
    * Makes a channel. Anybody in the chat may (Nikola, 2026-08-24) — the same as opening a claim's
    * thread, and for the same reason: a room is work, not a privilege. A surplus one is deleted.
    */
-  async createChannel(name: string, actor: ChatActor): Promise<ChatConversationListItem> {
-    const id = await this.repo.createChannel(name, actor.id)
-    const conversation = await this.repo.findVisibleConversation(id, scopeFor(actor))
+  async createChannel(
+    input: ChatChannelCreateInput,
+    actor: ChatActor,
+  ): Promise<ChatConversationListItem> {
+    const { conversationId } = await this.repo.createChannel(input, actor.id)
+    this.announce(conversationId, conversationId)
+
+    const conversation = await this.repo.findVisibleConversation(conversationId, scopeFor(actor))
     if (conversation === null) {
-      throw new NotFoundError('Chat conversation', id)
+      throw new NotFoundError('Chat conversation', conversationId)
     }
 
     return conversation
   }
 
-  async renameChannel(
-    conversationId: string,
-    name: string,
+  async listManagedChannels(
+    query: ChatChannelManagementQuery,
     actor: ChatActor,
-  ): Promise<ChatConversationListItem> {
-    const conversation = await this.requireVisible(conversationId, actor)
-    this.requireRealChannel(conversation)
-    this.requireChannelOwner(conversation, await this.repo.findCreatedBy(conversationId), actor)
-
-    await this.repo.renameChannel(conversationId, name)
-    const renamed = await this.repo.findVisibleConversation(conversationId, scopeFor(actor))
-    if (renamed === null) {
-      throw new NotFoundError('Chat conversation', conversationId)
-    }
-
-    return renamed
+  ): Promise<ChatChannelManagementListResponse> {
+    return this.repo.listManagedChannels(actor.id, actor.roles.includes(SYSTEM_ROLE_ADMIN), query)
   }
 
-  async listMembers(
-    conversationId: string,
-    actor: ChatActor,
-  ): Promise<{ members: ChatPerson[]; addable: ChatPerson[] }> {
-    const conversation = await this.requireVisible(conversationId, actor)
-    this.requireRealChannel(conversation)
+  async renameChannel(conversationId: string, name: string, actor: ChatActor): Promise<void> {
+    await this.requireChannelManager(conversationId, actor)
+
+    await this.repo.renameChannel(conversationId, name)
+    this.announce(conversationId, conversationId)
+  }
+
+  async listMembers(conversationId: string, actor: ChatActor): Promise<ChatMembersResponse> {
+    const { canManage } = await this.metadataAccess(conversationId, actor)
 
     return {
       members: await this.repo.listMembers(conversationId),
       // ⚠ Its own query: `listPeopleFor` answers "who may a mention name here", which for a channel
       // is its members — reusing it would offer only the people already inside.
-      addable: await this.repo.listAddableUsers(conversationId),
+      addable: canManage ? await this.repo.listAddableUsers(conversationId) : [],
+      canManage,
     }
   }
 
@@ -700,11 +709,10 @@ export class ChatService implements ChatPort {
     userIds: readonly string[],
     actor: ChatActor,
   ): Promise<void> {
-    const conversation = await this.requireVisible(conversationId, actor)
-    this.requireRealChannel(conversation)
-    this.requireChannelOwner(conversation, await this.repo.findCreatedBy(conversationId), actor)
+    await this.requireChannelManager(conversationId, actor)
 
     await this.repo.addMembers(conversationId, userIds)
+    this.announce(conversationId, conversationId)
   }
 
   /**
@@ -714,14 +722,14 @@ export class ChatService implements ChatPort {
    * channel ends up with nobody in it, and why an admin can see an empty one.
    */
   async removeMember(conversationId: string, userId: string, actor: ChatActor): Promise<void> {
-    const conversation = await this.requireVisible(conversationId, actor)
-    this.requireRealChannel(conversation)
+    const { canManage } = await this.metadataAccess(conversationId, actor)
 
-    if (userId !== actor.id) {
-      this.requireChannelOwner(conversation, await this.repo.findCreatedBy(conversationId), actor)
+    if (userId !== actor.id && !canManage) {
+      throw new ForbiddenError('A channel is managed by whoever made it')
     }
 
     await this.repo.removeMember(conversationId, userId)
+    this.announce(conversationId, conversationId)
   }
 
   /**

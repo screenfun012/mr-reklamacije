@@ -184,7 +184,7 @@ export function chatChannelManagementOptions(query: ChatChannelManagementQuery) 
     queryKey: chatKeys.channelManagementList(normalizedQuery),
     queryFn: () =>
       fetchParsed(
-        `/api/chat/channels?${params.toString()}`,
+        `/api/chat/channels/manage?${params.toString()}`,
         ChatChannelManagementListResponseSchema,
       ),
   })

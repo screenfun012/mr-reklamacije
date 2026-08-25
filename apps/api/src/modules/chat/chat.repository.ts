@@ -24,7 +24,19 @@ import {
   ChatSystemKind,
   type Permission,
 } from '@mr/shared'
-import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 
 /**
  * How far the shelf counts before it stops caring.
@@ -34,7 +46,8 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } fro
  */
 const CHAT_SHELF_COUNT_CEILING = 100
 
-import type { ApiDatabase } from '../../core/database.js'
+import type { ApiDatabase, ApiDbExecutor } from '../../core/database.js'
+import { UnprocessableEntityError } from '../../core/errors/domain-errors.js'
 import {
   attachments,
   chatConversations,
@@ -53,6 +66,9 @@ import {
   users,
 } from './chat.schema.js'
 import type {
+  ChatChannelCreateInput,
+  ChatChannelManagementListResponse,
+  ChatChannelManagementQuery,
   ChatConversationListItem,
   ChatMessage,
   ChatMessagesPage,
@@ -125,6 +141,18 @@ function isLiveAccount(): SQL | undefined {
   )
 }
 
+/** One database-level definition of who may enter the internal app and therefore a channel. */
+function isEligibleInternalAccount(): SQL | undefined {
+  return and(
+    isLiveAccount(),
+    isNull(roles.deletedAt),
+    or(
+      eq(roles.code, SYSTEM_ROLE_ADMIN),
+      inArray(rolePermissions.permissionId, [...INTERNAL_APP_PERMISSIONS]),
+    ),
+  )
+}
+
 /**
  * What this actor is allowed to see, resolved ONCE from his permissions and then carried into
  * every read. The two claim flags are the whole security of the module — see the service.
@@ -133,13 +161,6 @@ export interface ChatVisibilityScope {
   userId: string
   canReadEmotiveClaims: boolean
   canReadDomaceClaims: boolean
-  /**
-   * By ROLE, not by permission — the chat has no permission of its own, the same reasoning that
-   * lets an admin take down somebody else's pin.
-   *
-   * ⚠ It buys exactly ONE thing here: seeing a channel that has no members left. Not every channel.
-   */
-  isAdmin: boolean
 }
 
 interface ConversationRow {
@@ -221,26 +242,13 @@ function visibleConversationCondition(scope: ChatVisibilityScope): SQL {
 
   return sql`(
     ${chatConversations.type} = ${ChatConversationType.General}
-    OR (${chatConversations.type} = ${ChatConversationType.Channel} AND (
+    OR (${chatConversations.type} = ${ChatConversationType.Channel} AND
       EXISTS (
         SELECT 1 FROM ${chatMembers}
         WHERE ${chatMembers.conversationId} = ${chatConversations.id}
           AND ${chatMembers.userId} = ${scope.userId}
       )
-      /*
-       * ⚠ An admin sees a channel with NO members left, and nothing more.
-       *
-       * A channel everybody has walked out of is otherwise visible to NOBODY — it cannot be opened,
-       * cannot be deleted, and sits in the database forever. This is the narrowest fix for that:
-       * "an admin sees every channel" would be a different feature and a different privacy, because
-       * a room where three people talk does not stop being theirs when somebody holds a role.
-       * An empty channel is nobody's conversation, so there is nobody for it to be private from.
-       */
-      OR (${scope.isAdmin} AND NOT EXISTS (
-        SELECT 1 FROM ${chatMembers}
-        WHERE ${chatMembers.conversationId} = ${chatConversations.id}
-      ))
-    ))
+    )
     OR (${chatConversations.type} = ${ChatConversationType.Claim}
         AND (${emotiveThread} OR ${domaceThread}))
   )`
@@ -841,6 +849,17 @@ export class ChatRepository {
         .orderBy(users.name)
     }
 
+    if (conversation.type === ChatConversationType.General) {
+      return this.db
+        .selectDistinct({ id: users.id, name: users.name, email: users.email })
+        .from(users)
+        .innerJoin(userRoles, eq(userRoles.userId, users.id))
+        .innerJoin(roles, eq(roles.id, userRoles.roleId))
+        .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+        .where(isEligibleInternalAccount())
+        .orderBy(users.name)
+    }
+
     const permissions: Permission[] = claimReaderPermissions(conversation)
 
     return this.db
@@ -1030,38 +1049,126 @@ export class ChatRepository {
     return row ?? null
   }
 
-  /**
-   * Makes a channel, with its maker inside it.
-   *
-   * ⚠ One transaction, and that is not tidiness. A channel is visible to its MEMBERS, so a maker
-   * who is not one has built a room that vanished the moment it was made — invisible to everybody
-   * including themselves, and impossible to delete.
-   */
-  async createChannel(name: string, createdBy: string): Promise<string> {
+  async createChannel(
+    input: ChatChannelCreateInput,
+    createdBy: string,
+  ): Promise<{ conversationId: string; systemMessageId: string }> {
     return this.db.transaction(async (tx) => {
       const [conversation] = await tx
         .insert(chatConversations)
-        .values({ type: ChatConversationType.Channel, name, createdBy })
+        .values({ type: ChatConversationType.Channel, name: input.name, createdBy })
         .returning({ id: chatConversations.id })
 
       if (conversation === undefined) {
         throw new Error('channel could not be created')
       }
 
-      await tx.insert(chatMembers).values({ conversationId: conversation.id, userId: createdBy })
-      return conversation.id
+      const memberIds = [...new Set([createdBy, ...input.memberIds])]
+      const eligibleIds = await this.eligibleUserIds(tx, memberIds)
+      if (eligibleIds.length !== memberIds.length) {
+        throw new UnprocessableEntityError('Every channel member must be an internal user')
+      }
+
+      await tx
+        .insert(chatMembers)
+        .values(memberIds.map((userId) => ({ conversationId: conversation.id, userId })))
+
+      const [message] = await tx
+        .insert(chatMessages)
+        .values({
+          conversationId: conversation.id,
+          clientMsgId: crypto.randomUUID(),
+          authorId: null,
+          body: '',
+          systemKind: ChatSystemKind.ChannelCreated,
+          systemMeta: {},
+        })
+        .returning({ id: chatMessages.id })
+      if (message === undefined) {
+        throw new Error('channel_created message could not be stored')
+      }
+
+      return { conversationId: conversation.id, systemMessageId: message.id }
     })
   }
 
-  /** Who made this room. Read on its own because the list projection has no business carrying it. */
-  async findCreatedBy(conversationId: string): Promise<string | null> {
-    const [row] = await this.db
-      .select({ createdBy: chatConversations.createdBy })
-      .from(chatConversations)
-      .where(eq(chatConversations.id, conversationId))
+  async listManagedChannels(
+    actorId: string,
+    isAdmin: boolean,
+    query: ChatChannelManagementQuery,
+  ): Promise<ChatChannelManagementListResponse> {
+    const conditions: SQL[] = [
+      eq(chatConversations.type, ChatConversationType.Channel),
+      isNull(chatConversations.deletedAt),
+      isNotNull(chatConversations.name),
+    ]
+    if (!isAdmin) {
+      conditions.push(eq(chatConversations.createdBy, actorId))
+    }
+    if (query.search !== undefined) {
+      conditions.push(ilike(chatConversations.name, `%${query.search}%`))
+    }
+
+    const creatorName = sql<string | null>`(
+      SELECT ${users.name}
+      FROM ${users}
+      WHERE ${users.id} = ${chatConversations.createdBy}
+        AND ${users.isActive} = true
+        AND ${users.accountStatus} = ${UserAccountStatus.Approved}
+        AND ${users.deletedAt} IS NULL
+      LIMIT 1
+    )`
+    const memberCount = sql<number>`(
+      SELECT COUNT(*)::int
+      FROM ${chatMembers}
+      WHERE ${chatMembers.conversationId} = ${chatConversations.id}
+    )`.mapWith(Number)
+    const where = and(...conditions)
+    const [items, [totalRow]] = await Promise.all([
+      this.db
+        .select({
+          id: chatConversations.id,
+          name: chatConversations.name,
+          creatorName,
+          memberCount,
+        })
+        .from(chatConversations)
+        .where(where)
+        .orderBy(asc(chatConversations.name), asc(chatConversations.id))
+        .limit(query.pageSize)
+        .offset((query.page - 1) * query.pageSize),
+      this.db
+        .select({ total: sql<number>`count(*)::int`.mapWith(Number) })
+        .from(chatConversations)
+        .where(where),
+    ])
+
+    return {
+      items: items.map((item) => ({ ...item, name: item.name ?? '' })),
+      total: totalRow?.total ?? 0,
+      page: query.page,
+      pageSize: query.pageSize,
+    }
+  }
+
+  async findManageableChannel(
+    conversationId: string,
+    actorId: string,
+    isAdmin: boolean,
+    scope: ChatVisibilityScope,
+  ): Promise<ChatConversationListItem | null> {
+    const [row] = await this.conversationSelect(scope)
+      .where(
+        and(
+          eq(chatConversations.id, conversationId),
+          eq(chatConversations.type, ChatConversationType.Channel),
+          isNull(chatConversations.deletedAt),
+          isAdmin ? undefined : eq(chatConversations.createdBy, actorId),
+        ),
+      )
       .limit(1)
 
-    return row?.createdBy ?? null
+    return row === undefined ? null : mapConversationRow(row)
   }
 
   async renameChannel(conversationId: string, name: string): Promise<void> {
@@ -1071,45 +1178,24 @@ export class ChatRepository {
       .where(eq(chatConversations.id, conversationId))
   }
 
-  /** Adding people. Idempotent: adding somebody twice is the same room, not an error. */
+  /** Adding people. Idempotent, but a mixed eligible/ineligible batch writes nothing. */
   async addMembers(conversationId: string, userIds: readonly string[]): Promise<void> {
     const ids = [...new Set(userIds)]
     if (ids.length === 0) {
       return
     }
 
-    /*
-     * ⚠ Filtered HERE too, not only in the picker.
-     *
-     * `listAddableUsers` below excludes `client` accounts; this took whatever uuid arrived. Nothing
-     * leaks today (a portal client is refused at the module door), but membership already has
-     * teeth: a member becomes somebody a mention can name, and a mention writes a notification row
-     * carrying the message text. Roles are data the office creates in the admin panel — one
-     * permission granted there and the gap becomes real. The list that offers and the list that
-     * writes must agree.
-     */
-    const allowed = await this.db
-      .selectDistinct({ id: users.id })
-      .from(users)
-      .innerJoin(userRoles, eq(userRoles.userId, users.id))
-      .innerJoin(roles, eq(roles.id, userRoles.roleId))
-      .where(
-        and(
-          isLiveAccount(),
-          isNull(roles.deletedAt),
-          sql`${roles.code} <> 'client'`,
-          inArray(users.id, ids),
-        ),
-      )
+    await this.db.transaction(async (tx) => {
+      const eligibleIds = await this.eligibleUserIds(tx, ids)
+      if (eligibleIds.length !== ids.length) {
+        throw new UnprocessableEntityError('Every channel member must be an internal user')
+      }
 
-    if (allowed.length === 0) {
-      return
-    }
-
-    await this.db
-      .insert(chatMembers)
-      .values(allowed.map((row) => ({ conversationId, userId: row.id })))
-      .onConflictDoNothing()
+      await tx
+        .insert(chatMembers)
+        .values(ids.map((userId) => ({ conversationId, userId })))
+        .onConflictDoNothing()
+    })
   }
 
   async removeMember(conversationId: string, userId: string): Promise<void> {
@@ -1142,22 +1228,38 @@ export class ChatRepository {
       .from(users)
       .innerJoin(userRoles, eq(userRoles.userId, users.id))
       .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
       .where(
         and(
-          isLiveAccount(),
-          isNull(roles.deletedAt),
+          isEligibleInternalAccount(),
           // Anybody in the internal app, minus whoever is already here.
           sql`NOT EXISTS (
             SELECT 1 FROM ${chatMembers}
             WHERE ${chatMembers.conversationId} = ${conversationId}
               AND ${chatMembers.userId} = ${users.id}
           )`,
-          sql`${roles.code} <> 'client'`,
         ),
       )
       .orderBy(users.name)
 
     return rows.map(toPerson)
+  }
+
+  private async eligibleUserIds(db: ApiDbExecutor, ids: readonly string[]): Promise<string[]> {
+    if (ids.length === 0) {
+      return []
+    }
+
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .innerJoin(userRoles, eq(userRoles.userId, users.id))
+      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+      .where(and(inArray(users.id, [...ids]), isEligibleInternalAccount()))
+      .groupBy(users.id)
+
+    return rows.map((row) => row.id)
   }
 
   /** The live claim's outcome, or null when the claim is absent or soft-deleted. */

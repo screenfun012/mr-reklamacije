@@ -24,6 +24,7 @@ export function registerChatRoutes(
   routes.get('/conversations/:id/messages', controller.listMessages)
   routes.get('/conversations/:id/people', controller.listPeople)
   routes.get('/conversations/:id/pins', controller.listPins)
+  routes.get('/channels/manage', controller.listManagedChannels)
   routes.post('/channels', controller.createChannel)
   routes.patch('/conversations/:id', controller.renameChannel)
   routes.get('/conversations/:id/members', controller.listMembers)
