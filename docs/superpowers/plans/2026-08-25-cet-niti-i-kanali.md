@@ -584,6 +584,8 @@ git commit -m "fix(chat): serialize sends with conversation deletion"
 - Modify: `apps/internal-web/src/features/chat/new-channel-dialog.tsx`
 - Modify: `apps/internal-web/src/features/chat/__tests__/new-channel-dialog.test.tsx`
 - Modify: `apps/internal-web/src/routes/_shell/razgovori.tsx`
+- Modify: `packages/i18n/src/messages/sr.json`
+- Modify: `packages/i18n/src/messages/en.json`
 
 **Interfaces:**
 - Consumes: Task 1 `createChatChannel({name,memberIds})`, `chatPeopleOptions`; Task 4 validaciju; postojeći General conversation i signed-in user ID.
@@ -611,6 +613,7 @@ Expected: FAIL jer trenutni dijalog ima samo ime i nema new test behavior.
 - [ ] **Step 3: Implementirati native search/checkbox picker**
 
 Koristiti postojeće input/checkbox/scroll komponente, `enabled: open && generalConversationId !== null`, lokalni filter i jedan mutation. Ne dodavati combobox biblioteku. Iznad potvrde prikazati upozorenje da novi član vidi celu dotadašnju istoriju.
+U oba jezika dodati i odmah koristiti `chat_channel_history_warning` i `chat_channel_people_search`; tekst se ne hardkoduje u komponenti.
 
 - [ ] **Step 4: Povezati General ID i current user iz rute**
 
@@ -622,6 +625,7 @@ Run:
 
 ```bash
 TZ=UTC pnpm --filter internal-web test -- src/features/chat/__tests__/new-channel-dialog.test.tsx
+pnpm --filter @mr/i18n build
 pnpm --filter internal-web typecheck
 ```
 
@@ -630,7 +634,8 @@ Expected: PASS.
 ```bash
 git add apps/internal-web/src/features/chat/new-channel-dialog.tsx \
   apps/internal-web/src/features/chat/__tests__/new-channel-dialog.test.tsx \
-  apps/internal-web/src/routes/_shell/razgovori.tsx
+  apps/internal-web/src/routes/_shell/razgovori.tsx \
+  packages/i18n/src/messages/sr.json packages/i18n/src/messages/en.json
 git commit -m "feat(chat): choose members when creating channels"
 ```
 
@@ -682,7 +687,7 @@ Postojeće invalidacije uvek ostaju. Samo `messageId === conversationId` poziva 
 
 - [ ] **Step 7: Dodati minimalan sr/en copy i ukloniti mrtav tekst**
 
-Dodati ključeve za channel history warning/search/manage/creator/disabled-account/member-count/delete. Ponovo koristiti postojeće `action_*`, erase i pagination ključeve. `chat_erase_description` mora eksplicitno reći da nestaju poruke i prilozi bez vraćanja; ukloniti zastareli „stiže uskoro“/empty-admin copy kada više nema callera. Thread copy je već uveden uz Task 3 komponente koje ga koriste.
+Dodati ključeve za channel manage/search/creator/disabled-account/member-count/delete. Ponovo koristiti postojeće `action_*`, erase i pagination ključeve. `chat_erase_description` mora eksplicitno reći da nestaju poruke i prilozi bez vraćanja; ukloniti zastareli „stiže uskoro“/empty-admin copy kada više nema callera. Thread copy je već uveden uz Task 3, a history warning i people search uz Task 6 komponente koje ih koriste.
 
 - [ ] **Step 8: Pokrenuti i18n i fokusirane frontend provere**
 
