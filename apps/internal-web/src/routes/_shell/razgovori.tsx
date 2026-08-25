@@ -209,8 +209,8 @@ function RazgovoriColumns(): React.ReactElement {
   })
 
   // The general channel is where a person lands: it is the one conversation that always exists.
-  const fallback =
-    data.items.find((item) => item.type === ChatConversationType.General) ?? data.items[0] ?? null
+  const general = data.items.find((item) => item.type === ChatConversationType.General) ?? null
+  const fallback = general ?? data.items[0] ?? null
   const current = data.items.find((item) => item.id === selectedId) ?? fallback
 
   return (
@@ -337,6 +337,8 @@ function RazgovoriColumns(): React.ReactElement {
       <NewChannelDialog
         open={newChannelOpen}
         onOpenChange={setNewChannelOpen}
+        generalConversationId={general?.id ?? null}
+        currentUserId={userId}
         onCreated={openConversation}
       />
 

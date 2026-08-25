@@ -1772,6 +1772,8 @@
   "chat_channel_name_label": "Ime kanala",
   "chat_channel_name_placeholder": "npr. Nabavka",
   "chat_channel_create": "Napravi kanal",
+  "chat_channel_history_warning": "Novi članovi vide celu dosadašnju istoriju kanala.",
+  "chat_channel_people_search": "Pretraži ljude",
   "chat_channel_members": "ČLANOVI",
   "chat_channel_add_member": "Dodaj čoveka",
   "chat_channel_remove_member": "Skloni iz kanala",

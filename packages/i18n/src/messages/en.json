@@ -1772,6 +1772,8 @@
   "chat_channel_name_label": "Channel name",
   "chat_channel_name_placeholder": "e.g. Purchasing",
   "chat_channel_create": "Create channel",
+  "chat_channel_history_warning": "New members can see the channel's full history.",
+  "chat_channel_people_search": "Search people",
   "chat_channel_members": "MEMBERS",
   "chat_channel_add_member": "Add somebody",
   "chat_channel_remove_member": "Remove from channel",
