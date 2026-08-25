@@ -1,19 +1,24 @@
-import { z } from 'zod'
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, type QueryClient } from '@tanstack/react-query'
 
 import { fetchNoContent } from '../api/fetch-no-content.js'
 import { fetchParsed } from '../api/fetch-json.js'
 import type { ClaimKind } from '../enums.js'
 import {
   ChatConversationListItemSchema,
-  ChatPersonSchema,
+  ChatChannelManagementListResponseSchema,
+  ChatChannelManagementQuerySchema,
+  ChatClaimThreadLookupSchema,
   ChatConversationListResponseSchema,
   ChatSendResponseSchema,
   ChatMessagesPageSchema,
   ChatPeopleResponseSchema,
+  ChatMembersResponseSchema,
   ChatConversationAttachmentsResponseSchema,
   ChatPinsResponseSchema,
   type ChatConversationListItem,
+  type ChatChannelCreateInput,
+  type ChatChannelManagementQuery,
+  type ChatClaimThreadLookup,
   type ChatSendResponse,
   type ChatMessagesPage,
   type ChatConversationAttachmentsResponse,
@@ -45,6 +50,12 @@ export const chatKeys = {
   attachments: (conversationId: string) =>
     [...chatKeys.all, 'attachments', conversationId] as const,
   members: (conversationId: string) => [...chatKeys.all, 'members', conversationId] as const,
+  claimThreads: () => [...chatKeys.all, 'claim-threads'] as const,
+  claimThread: (kind: ClaimKind, claimId: string) =>
+    [...chatKeys.claimThreads(), kind, claimId] as const,
+  channelManagement: () => [...chatKeys.all, 'channel-management'] as const,
+  channelManagementList: (query: ChatChannelManagementQuery) =>
+    [...chatKeys.channelManagement(), 'list', query] as const,
 }
 
 /** Every conversation this person may enter, plus the ONE unread number the sidebar shows. */
@@ -144,15 +155,6 @@ export function buildChatAttachmentUrl(
   return `/api/chat/conversations/${conversationId}/attachments/${attachmentId}${query}`
 }
 
-const ChatMembersResponseSchema = z.object({
-  members: z.array(ChatPersonSchema),
-  /**
-   * ⚠ Its own list, not the members. „Who may a mention name here" is the members for a channel, so
-   * offering that when adding somebody would offer only the people already inside.
-   */
-  addable: z.array(ChatPersonSchema),
-})
-
 export function chatMembersOptions(conversationId: string) {
   return queryOptions({
     queryKey: chatKeys.members(conversationId),
@@ -161,23 +163,66 @@ export function chatMembersOptions(conversationId: string) {
   })
 }
 
-export function createChatChannel(name: string): Promise<ChatConversationListItem> {
+export function chatClaimThreadOptions(kind: ClaimKind, claimId: string) {
+  return queryOptions({
+    queryKey: chatKeys.claimThread(kind, claimId),
+    queryFn: () =>
+      fetchParsed(`/api/chat/claims/${kind}/${claimId}/thread`, ChatClaimThreadLookupSchema),
+  })
+}
+
+export function chatChannelManagementOptions(query: ChatChannelManagementQuery) {
+  const normalizedQuery = ChatChannelManagementQuerySchema.parse(query)
+  const params = new URLSearchParams()
+  if (normalizedQuery.search !== undefined) {
+    params.set('search', normalizedQuery.search)
+  }
+  params.set('page', String(normalizedQuery.page))
+  params.set('pageSize', String(normalizedQuery.pageSize))
+
+  return queryOptions({
+    queryKey: chatKeys.channelManagementList(normalizedQuery),
+    queryFn: () =>
+      fetchParsed(
+        `/api/chat/channels?${params.toString()}`,
+        ChatChannelManagementListResponseSchema,
+      ),
+  })
+}
+
+export function createChatChannel(
+  input: ChatChannelCreateInput,
+): Promise<ChatConversationListItem> {
   return fetchParsed('/api/chat/channels', ChatConversationListItemSchema, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export function renameChatChannel(conversationId: string, name: string): Promise<void> {
+  return fetchNoContent(`/api/chat/conversations/${conversationId}`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   })
 }
 
-export function renameChatChannel(
+export function invalidateChatConversationMetadataQueries(
+  queryClient: QueryClient,
   conversationId: string,
-  name: string,
-): Promise<ChatConversationListItem> {
-  return fetchParsed(`/api/chat/conversations/${conversationId}`, ChatConversationListItemSchema, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  })
+): void {
+  void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+  void queryClient.invalidateQueries({ queryKey: chatKeys.members(conversationId) })
+  void queryClient.invalidateQueries({ queryKey: chatKeys.people(conversationId) })
+  void queryClient.invalidateQueries({ queryKey: chatKeys.channelManagement() })
+  for (const [queryKey, lookup] of queryClient.getQueriesData<ChatClaimThreadLookup>({
+    queryKey: chatKeys.claimThreads(),
+  })) {
+    if (lookup?.conversation?.id === conversationId) {
+      void queryClient.invalidateQueries({ queryKey, exact: true })
+    }
+  }
 }
 
 export function addChatMembers(conversationId: string, userIds: readonly string[]): Promise<void> {

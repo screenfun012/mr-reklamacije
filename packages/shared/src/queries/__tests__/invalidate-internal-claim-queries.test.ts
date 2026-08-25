@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ClaimKind } from '../../enums.js'
+import { chatKeys } from '../chat.js'
 import { invalidateInternalClaimQueries } from '../invalidate-internal-claim-queries.js'
 
 describe('invalidateInternalClaimQueries', () => {
@@ -54,5 +55,17 @@ describe('invalidateInternalClaimQueries', () => {
     invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Emotive, id: 'claim-1' })
 
     expect(spy).toHaveBeenCalledWith({ queryKey: ['mr-registry'] })
+  })
+
+  it('refreshes the conversation list and the claim thread lookup for every claim event', () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    invalidateInternalClaimQueries(queryClient, { kind: ClaimKind.Domace, id: 'claim-7' })
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: chatKeys.conversations() })
+    expect(spy).toHaveBeenCalledWith({
+      queryKey: chatKeys.claimThread(ClaimKind.Domace, 'claim-7'),
+    })
   })
 })

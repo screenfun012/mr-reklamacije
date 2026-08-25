@@ -76,6 +76,9 @@ export const CHAT_MESSAGE_MAX_LENGTH = 4000
 /** One page of history. Keyset by `seq`, never an offset — an infinite scroll has no page number. */
 export const CHAT_MESSAGES_PAGE_SIZE = 50
 
+/** The channel-management table is deliberately capped at fifty rows per page. */
+export const CHAT_CHANNEL_MANAGEMENT_PAGE_SIZE = 50
+
 /**
  * ⚠ The reason no message is lost, and the one number here that must never be "optimised" away.
  *

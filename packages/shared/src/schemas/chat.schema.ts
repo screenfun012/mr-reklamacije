@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import {
+  CHAT_CHANNEL_MANAGEMENT_PAGE_SIZE,
   CHAT_MESSAGES_PAGE_SIZE,
   CHAT_MESSAGE_MAX_LENGTH,
   chatConversationTypeValues,
@@ -213,6 +214,14 @@ export const ChatPeopleResponseSchema = z.object({ items: z.array(ChatPersonSche
 
 export type ChatPeopleResponse = z.infer<typeof ChatPeopleResponseSchema>
 
+export const ChatMembersResponseSchema = z.object({
+  members: z.array(ChatPersonSchema),
+  addable: z.array(ChatPersonSchema),
+  canManage: z.boolean(),
+})
+
+export type ChatMembersResponse = z.infer<typeof ChatMembersResponseSchema>
+
 export const ChatConversationListItemSchema = z.object({
   id: z.string().uuid(),
   type: z.enum(chatConversationTypeValues),
@@ -234,6 +243,46 @@ export const ChatConversationListItemSchema = z.object({
 })
 
 export type ChatConversationListItem = z.infer<typeof ChatConversationListItemSchema>
+
+export const ChatClaimThreadLookupSchema = z.object({
+  conversation: ChatConversationListItemSchema.nullable(),
+  canCreateThread: z.boolean(),
+})
+
+export type ChatClaimThreadLookup = z.infer<typeof ChatClaimThreadLookupSchema>
+
+export const ChatChannelManagementQuerySchema = z.object({
+  search: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(CHAT_CHANNEL_MANAGEMENT_PAGE_SIZE)
+    .default(CHAT_CHANNEL_MANAGEMENT_PAGE_SIZE),
+})
+
+export type ChatChannelManagementQuery = z.infer<typeof ChatChannelManagementQuerySchema>
+
+export const ChatChannelManagementItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  creatorName: z.string().nullable(),
+  memberCount: z.number().int().nonnegative(),
+})
+
+export type ChatChannelManagementItem = z.infer<typeof ChatChannelManagementItemSchema>
+
+export const ChatChannelManagementListResponseSchema = z.object({
+  items: z.array(ChatChannelManagementItemSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+})
+
+export type ChatChannelManagementListResponse = z.infer<
+  typeof ChatChannelManagementListResponseSchema
+>
 
 export const ChatConversationListResponseSchema = z.object({
   items: z.array(ChatConversationListItemSchema),

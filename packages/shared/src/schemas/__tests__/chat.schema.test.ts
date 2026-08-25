@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { CHAT_MESSAGES_PAGE_SIZE, CHAT_MESSAGE_MAX_LENGTH } from '../../constants/chat.js'
-import { ChatMessageSchema, ChatMessagesQuerySchema, ChatSendInputSchema } from '../chat.schema.js'
+import {
+  CHAT_CHANNEL_MANAGEMENT_PAGE_SIZE,
+  CHAT_MESSAGES_PAGE_SIZE,
+  CHAT_MESSAGE_MAX_LENGTH,
+} from '../../constants/chat.js'
+import {
+  ChatChannelManagementItemSchema,
+  ChatChannelManagementQuerySchema,
+  ChatClaimThreadLookupSchema,
+  ChatMembersResponseSchema,
+  ChatMessageSchema,
+  ChatMessagesQuerySchema,
+  ChatSendInputSchema,
+} from '../chat.schema.js'
 
 const MESSAGE = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -79,5 +91,59 @@ describe('the chat wire', () => {
     expect(ChatSendInputSchema.parse({ clientMsgId: MESSAGE.clientMsgId, body: '   ' }).body).toBe(
       '',
     )
+  })
+})
+
+describe('chat threads and channel management wire', () => {
+  const conversation = {
+    id: '55555555-5555-4555-8555-555555555555',
+    type: 'claim',
+    title: 'MR-42',
+    subtitle: 'Partner · Motor',
+    claimKind: 'emotive',
+    claimId: '66666666-6666-4666-8666-666666666666',
+    unreadCount: 0,
+    isLocked: false,
+    isMuted: false,
+    lastMessageAt: null,
+  }
+
+  it('parses both an existing and an as-yet uncreated claim thread', () => {
+    expect(
+      ChatClaimThreadLookupSchema.parse({
+        conversation: null,
+        canCreateThread: true,
+      }),
+    ).toEqual({ conversation: null, canCreateThread: true })
+    expect(
+      ChatClaimThreadLookupSchema.parse({
+        conversation,
+        canCreateThread: false,
+      }),
+    ).toEqual({ conversation, canCreateThread: false })
+  })
+
+  it('requires the member-management capability on the members response', () => {
+    expect(() => ChatMembersResponseSchema.parse({ members: [], addable: [] })).toThrow()
+  })
+
+  it('normalizes a management query and refuses a page larger than fifty rows', () => {
+    expect(ChatChannelManagementQuerySchema.parse({ search: '  Servis  ' })).toEqual({
+      search: 'Servis',
+      page: 1,
+      pageSize: CHAT_CHANNEL_MANAGEMENT_PAGE_SIZE,
+    })
+    expect(() => ChatChannelManagementQuerySchema.parse({ page: 1, pageSize: 51 })).toThrow()
+  })
+
+  it('accepts a channel whose creator account no longer exists', () => {
+    expect(
+      ChatChannelManagementItemSchema.parse({
+        id: '77777777-7777-4777-8777-777777777777',
+        name: 'Servis',
+        creatorName: null,
+        memberCount: 4,
+      }),
+    ).toMatchObject({ creatorName: null })
   })
 })
