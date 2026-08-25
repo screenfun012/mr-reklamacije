@@ -55,6 +55,7 @@ export function createChatController(container: Container): {
   deleteConversation: (c: Context) => Promise<Response>
   sendMessage: (c: Context) => Promise<Response>
   markRead: (c: Context) => Promise<Response>
+  findClaimThread: (c: Context) => Promise<Response>
   openClaimThread: (c: Context) => Promise<Response>
   editMessage: (c: Context) => Promise<Response>
   deleteMessage: (c: Context) => Promise<Response>
@@ -198,6 +199,12 @@ export function createChatController(container: Container): {
       const { lastSeq } = ChatMarkReadInputSchema.parse(await c.req.json())
       await container.chatService.markRead(id, lastSeq, toActor(c))
       return c.body(null, 204)
+    },
+
+    findClaimThread: async (c: Context) => {
+      const { kind, id } = ChatClaimThreadParamSchema.parse(c.req.param())
+      const lookup = await container.chatService.findThreadForClaim(kind, id, toActor(c))
+      return c.json(lookup)
     },
 
     openClaimThread: async (c: Context) => {

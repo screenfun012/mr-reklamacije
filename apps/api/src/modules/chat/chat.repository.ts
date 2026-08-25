@@ -21,7 +21,7 @@ import {
   type ChatConversationAttachment,
   type ChatReactor,
   type ChatQuote,
-  type ChatSystemKind,
+  ChatSystemKind,
   type Permission,
 } from '@mr/shared'
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
@@ -167,6 +167,22 @@ export interface ChatMessageInsert {
   body: string
   quoteOf: string | null
 }
+
+export type ChatClaimThreadOpenResult =
+  | { status: 'not_found' }
+  | { status: 'closed' }
+  | {
+      status: 'opened'
+      created: false
+      conversationId: string
+      messageId: null
+    }
+  | {
+      status: 'opened'
+      created: true
+      conversationId: string
+      messageId: string
+    }
 
 interface MessageRow {
   id: string
@@ -1144,16 +1160,39 @@ export class ChatRepository {
     return rows.map(toPerson)
   }
 
-  /** Is there a claim here at all, and is it still alive? A deleted claim gets no thread. */
-  async claimExists(kind: ClaimKind, claimId: string): Promise<boolean> {
+  /** The live claim's outcome, or null when the claim is absent or soft-deleted. */
+  async findClaimOutcome(kind: ClaimKind, claimId: string): Promise<ClaimOutcome | null> {
     const claims = kind === ClaimKind.Emotive ? emotiveClaims : domaceClaims
     const [row] = await this.db
-      .select({ id: claims.id })
+      .select({ outcome: claims.outcome })
       .from(claims)
       .where(and(eq(claims.id, claimId), isNull(claims.deletedAt)))
       .limit(1)
 
-    return row !== undefined
+    return row?.outcome ?? null
+  }
+
+  /** The live claim's existing thread, scoped by the same internal permissions as every read. */
+  async findVisibleClaimThread(
+    kind: ClaimKind,
+    claimId: string,
+    scope: ChatVisibilityScope,
+  ): Promise<ChatConversationListItem | null> {
+    const column =
+      kind === ClaimKind.Emotive
+        ? chatConversations.emotiveClaimId
+        : chatConversations.domaceClaimId
+    const [row] = await this.conversationSelect(scope)
+      .where(
+        and(
+          eq(column, claimId),
+          isNull(chatConversations.deletedAt),
+          visibleConversationCondition(scope),
+        ),
+      )
+      .limit(1)
+
+    return row === undefined ? null : mapConversationRow(row)
   }
 
   /** The claim's thread, or null. A soft-deleted one does not count — the claim is free again. */
@@ -1171,36 +1210,82 @@ export class ChatRepository {
     return row?.id ?? null
   }
 
-  /**
-   * Get-or-create, in that order of outcomes but not of statements: it inserts first and lets the
-   * partial unique index decide. Two people opening the claim at the same instant both reach this,
-   * and `ON CONFLICT DO NOTHING` is what makes the loser read the winner's thread instead of
-   * failing — the same shape `insertMessage` uses. No target: the only unique index a `claim` row
-   * can collide with is its own claim's.
-   */
+  /** Locks the live claim, requires pending, and creates the thread and its first message at once. */
   async openClaimThread(
     kind: ClaimKind,
     claimId: string,
     createdBy: string,
-  ): Promise<{ id: string; created: boolean } | null> {
-    const [inserted] = await this.db
-      .insert(chatConversations)
-      .values({
-        type: ChatConversationType.Claim,
-        emotiveClaimId: kind === ClaimKind.Emotive ? claimId : null,
-        domaceClaimId: kind === ClaimKind.Domace ? claimId : null,
-        createdBy,
-      })
-      .onConflictDoNothing()
-      .returning({ id: chatConversations.id })
+  ): Promise<ChatClaimThreadOpenResult> {
+    return this.db.transaction(async (tx) => {
+      const claims = kind === ClaimKind.Emotive ? emotiveClaims : domaceClaims
+      const [claim] = await tx
+        .select({ outcome: claims.outcome })
+        .from(claims)
+        .where(and(eq(claims.id, claimId), isNull(claims.deletedAt)))
+        .for('update')
 
-    if (inserted !== undefined) {
-      return { id: inserted.id, created: true }
-    }
+      if (claim === undefined) {
+        return { status: 'not_found' }
+      }
+      if (claim.outcome !== ClaimOutcome.Pending) {
+        return { status: 'closed' }
+      }
 
-    const existing = await this.findClaimThreadId(kind, claimId)
+      const claimColumn =
+        kind === ClaimKind.Emotive
+          ? chatConversations.emotiveClaimId
+          : chatConversations.domaceClaimId
+      const [inserted] = await tx
+        .insert(chatConversations)
+        .values({
+          type: ChatConversationType.Claim,
+          emotiveClaimId: kind === ClaimKind.Emotive ? claimId : null,
+          domaceClaimId: kind === ClaimKind.Domace ? claimId : null,
+          createdBy,
+        })
+        .onConflictDoNothing()
+        .returning({ id: chatConversations.id })
 
-    return existing === null ? null : { id: existing, created: false }
+      if (inserted === undefined) {
+        const [existing] = await tx
+          .select({ id: chatConversations.id })
+          .from(chatConversations)
+          .where(and(eq(claimColumn, claimId), isNull(chatConversations.deletedAt)))
+          .limit(1)
+
+        return existing === undefined
+          ? { status: 'not_found' }
+          : {
+              status: 'opened',
+              created: false,
+              conversationId: existing.id,
+              messageId: null,
+            }
+      }
+
+      const [message] = await tx
+        .insert(chatMessages)
+        .values({
+          conversationId: inserted.id,
+          clientMsgId: crypto.randomUUID(),
+          authorId: null,
+          body: '',
+          systemKind: ChatSystemKind.ThreadCreated,
+          systemMeta: {},
+        })
+        .returning({ id: chatMessages.id })
+
+      if (message === undefined) {
+        throw new Error('thread_created message could not be stored')
+      }
+
+      return {
+        status: 'opened',
+        created: true,
+        conversationId: inserted.id,
+        messageId: message.id,
+      }
+    })
   }
 
   /**

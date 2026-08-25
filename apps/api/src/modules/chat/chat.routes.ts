@@ -34,6 +34,7 @@ export function registerChatRoutes(
   routes.delete('/conversations/:id', controller.deleteConversation)
   routes.post('/conversations/:id/messages', controller.sendMessage)
   routes.post('/conversations/:id/read', controller.markRead)
+  routes.get('/claims/:kind/:id/thread', controller.findClaimThread)
   routes.post('/claims/:kind/:id/thread', controller.openClaimThread)
 
   routes.patch('/messages/:id', controller.editMessage)

@@ -7,6 +7,7 @@ export {
   ChatMessagesQuerySchema,
   ChatSendInputSchema,
   type ChatConversationListItem,
+  type ChatClaimThreadLookup,
   type ChatSendInput,
   type ChatMessage,
   type ChatMessagesPage,

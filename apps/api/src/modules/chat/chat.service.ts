@@ -8,6 +8,7 @@ import {
   ChatConversationType,
   ChatSystemKind,
   ClaimKind,
+  ClaimOutcome,
   getInitials,
   INTERNAL_DOMACE_CLAIMS_VIEW_PERMISSIONS,
   INTERNAL_EMOTIVE_CLAIMS_VIEW_PERMISSIONS,
@@ -16,6 +17,7 @@ import {
   SYSTEM_ROLE_ADMIN,
   uniqueMentions,
   type ChatConversationAttachmentsResponse,
+  type ChatClaimThreadLookup,
   type ChatPerson,
   type ChatPin,
 } from '@mr/shared'
@@ -357,25 +359,53 @@ export class ChatService implements ChatPort {
      */
     const mayRead =
       kind === ClaimKind.Emotive ? scope.canReadEmotiveClaims : scope.canReadDomaceClaims
-    if (!mayRead || !(await this.repo.claimExists(kind, claimId))) {
+    if (!mayRead) {
       throw new NotFoundError('Claim', claimId)
     }
 
     const opened = await this.repo.openClaimThread(kind, claimId, actor.id)
-    if (opened === null) {
-      throw new ConflictError('Chat thread could not be opened')
+    if (opened.status === 'not_found') {
+      throw new NotFoundError('Claim', claimId)
+    }
+    if (opened.status === 'closed') {
+      throw new UnprocessableEntityError('This claim is decided, so its conversation is closed')
     }
 
-    if (opened.created) {
-      await this.writeSystemMessage(opened.id, ChatSystemKind.ThreadCreated, {})
-    }
-
-    const conversation = await this.repo.findVisibleConversation(opened.id, scope)
+    const conversation = await this.repo.findVisibleConversation(opened.conversationId, scope)
     if (conversation === null) {
-      throw new NotFoundError('Chat conversation', opened.id)
+      throw new NotFoundError('Chat conversation', opened.conversationId)
+    }
+
+    if (opened.messageId !== null) {
+      this.announce(opened.conversationId, opened.messageId)
     }
 
     return { conversation, created: opened.created }
+  }
+
+  /** Looks up the claim's thread without creating anything. */
+  async findThreadForClaim(
+    kind: ClaimKind,
+    claimId: string,
+    actor: ChatActor,
+  ): Promise<ChatClaimThreadLookup> {
+    const scope = scopeFor(actor)
+    const mayRead =
+      kind === ClaimKind.Emotive ? scope.canReadEmotiveClaims : scope.canReadDomaceClaims
+    if (!mayRead) {
+      throw new NotFoundError('Claim', claimId)
+    }
+
+    const outcome = await this.repo.findClaimOutcome(kind, claimId)
+    if (outcome === null) {
+      throw new NotFoundError('Claim', claimId)
+    }
+
+    const conversation = await this.repo.findVisibleClaimThread(kind, claimId, scope)
+    return {
+      conversation,
+      canCreateThread: conversation === null && outcome === ClaimOutcome.Pending,
+    }
   }
 
   /**
@@ -454,7 +484,8 @@ export class ChatService implements ChatPort {
    * window is counted against — and the words stop being served. Twice in a row is once.
    */
   async deleteMessage(messageId: string, actor: ChatActor): Promise<void> {
-    const { message } = await this.requireVisibleMessage(messageId, actor)
+    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
+    requireOpen(conversation)
 
     if (message.author?.id !== actor.id) {
       throw new ForbiddenError('A message is taken back only by the person who wrote it')
@@ -495,7 +526,8 @@ export class ChatService implements ChatPort {
    * NOT refused at the cap: a retry must not be the one request that fails.
    */
   async pin(messageId: string, actor: ChatActor): Promise<void> {
-    const { message } = await this.requireVisibleMessage(messageId, actor)
+    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
+    requireOpen(conversation)
 
     if ((await this.repo.findPin(message.conversationId, messageId)) !== null) {
       return
@@ -517,7 +549,8 @@ export class ChatService implements ChatPort {
    * directly where the concept IS the role.
    */
   async unpin(messageId: string, actor: ChatActor): Promise<void> {
-    const { message } = await this.requireVisibleMessage(messageId, actor)
+    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
+    requireOpen(conversation)
 
     const pin = await this.repo.findPin(message.conversationId, messageId)
     if (pin === null) {
@@ -533,14 +566,16 @@ export class ChatService implements ChatPort {
 
   /** One tick, one person, one message. There is no emoji to choose (spec §5 row 10). */
   async react(messageId: string, actor: ChatActor): Promise<void> {
-    const { message } = await this.requireVisibleMessage(messageId, actor)
+    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
+    requireOpen(conversation)
 
     await this.repo.insertReaction(messageId, actor.id)
     this.announce(message.conversationId, messageId)
   }
 
   async unreact(messageId: string, actor: ChatActor): Promise<void> {
-    const { message } = await this.requireVisibleMessage(messageId, actor)
+    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
+    requireOpen(conversation)
 
     await this.repo.deleteReaction(messageId, actor.id)
     this.announce(message.conversationId, messageId)

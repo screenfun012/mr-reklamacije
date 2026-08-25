@@ -194,6 +194,7 @@ describe('Chat attachments — reading', () => {
   let officeApp: ReturnType<typeof createChatTestApp>
   let serviserApp: ReturnType<typeof createChatTestApp>
   let generalId: string
+  let claimId: string
   let threadId: string
   let attachmentId: string
   let messageId: string
@@ -238,11 +239,12 @@ describe('Chat attachments — reading', () => {
         createdBy: TEST_USER_ID,
       })
       .returning({ id: schema.emotiveClaims.id })
+    claimId = claim?.id ?? ''
     const [thread] = await ctx.db
       .insert(schema.chatConversations)
       .values({
         type: ChatConversationType.Claim,
-        emotiveClaimId: claim?.id ?? '',
+        emotiveClaimId: claimId,
         createdBy: TEST_USER_ID,
       })
       .returning({ id: schema.chatConversations.id })
@@ -359,6 +361,19 @@ describe('Chat attachments — reading', () => {
 
     expect(res.status).toBe(200)
     expect(res.headers.get('etag')).not.toBeNull()
+  })
+
+  it('keeps serving a file after the claim closes its thread', async () => {
+    await ctx.db
+      .update(schema.emotiveClaims)
+      .set({ outcome: 'accepted' })
+      .where(eq(schema.emotiveClaims.id, claimId))
+
+    const res = await officeApp.request(
+      `/api/chat/conversations/${threadId}/attachments/${attachmentId}`,
+    )
+
+    expect(res.status).toBe(200)
   })
 
   /**
