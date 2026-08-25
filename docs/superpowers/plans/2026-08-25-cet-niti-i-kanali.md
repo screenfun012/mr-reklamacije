@@ -393,12 +393,17 @@ git commit -m "fix(chat): preserve closed claim thread history"
 - Produces:
 
 ```ts
-createChannel(
+ChatRepository.createChannel(
   input: ChatChannelCreateInput,
   createdBy: string,
 ): Promise<{ conversationId: string; systemMessageId: string }>
 
-listManagedChannels(
+ChatService.createChannel(
+  input: ChatChannelCreateInput,
+  actor: ChatActor,
+): Promise<ChatConversationListItem>
+
+ChatRepository.listManagedChannels(
   actorId: string,
   isAdmin: boolean,
   query: ChatChannelManagementQuery,
