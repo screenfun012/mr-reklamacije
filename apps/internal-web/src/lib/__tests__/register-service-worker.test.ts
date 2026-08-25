@@ -40,5 +40,9 @@ describe('registerServiceWorker', () => {
     )
     await expect(registerServiceWorker()).resolves.toEqual({})
     expect(register).toHaveBeenCalledTimes(2)
+    expect(register).toHaveBeenNthCalledWith(2, '/sw.js?v=2', {
+      scope: '/',
+      updateViaCache: 'none',
+    })
   })
 })

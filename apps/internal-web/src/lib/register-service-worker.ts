@@ -26,7 +26,8 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
   }
 
   registration = navigator.serviceWorker
-    .register('/sw.js', { scope: '/', updateViaCache: 'none' })
+    // `v=2` escapes the old four-hour Cloudflare cache entry; the new no-store response stays fresh.
+    .register('/sw.js?v=2', { scope: '/', updateViaCache: 'none' })
     .catch((error: unknown) => {
       registration = undefined
       throw error
