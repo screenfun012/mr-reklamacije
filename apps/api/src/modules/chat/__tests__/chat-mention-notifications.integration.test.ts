@@ -207,6 +207,27 @@ describe('a mention rings the person it names', () => {
     expect(await rungFor(mentioned)).toEqual([messageId])
   })
 
+  it('runs a mention-adding correction through the conversation fence before deletion', async () => {
+    const messageId = await send(threadId, 'bez pomena')
+    const sharedCalls: string[] = []
+    const shared = container.chatConversationFence.shared.bind(container.chatConversationFence)
+    container.chatConversationFence.shared = (conversationId, work) => {
+      sharedCalls.push(conversationId)
+      return shared(conversationId, work)
+    }
+
+    await container.chatService.editMessage(messageId, `sada zovem @[Kolegu](${mentioned})`, author)
+
+    expect(sharedCalls).toEqual([threadId])
+    expect(await rungFor(mentioned)).toEqual([messageId])
+
+    await container.chatService.deleteConversation(threadId, {
+      ...author,
+      roles: ['admin'],
+    })
+    expect(await rungFor(mentioned)).toEqual([])
+  })
+
   it('rings through a muted conversation — a mention is what mute does not silence', async () => {
     const mutedActor: ChatActor = {
       id: mentioned,

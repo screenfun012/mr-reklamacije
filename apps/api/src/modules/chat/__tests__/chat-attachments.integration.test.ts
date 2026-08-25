@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Container } from '../../../core/container.js'
+import type { UploadOpts } from '../../../infrastructure/storage/storage.interface.js'
 import { ensureTestUser, TEST_USER_ID } from '../../../test-helpers/fixtures.js'
 import { RecordingEventBus } from '../../../test-helpers/recording-event-bus.js'
 import { buildTestContainer, createChatTestApp, testUser } from '../../../test-helpers/test-app.js'
@@ -175,6 +176,77 @@ describe('Chat attachments — sending', () => {
       .from(schema.attachments)
       .where(eq(schema.attachments.chatMessageId, messages[0]?.id ?? ''))
     expect(stored).toHaveLength(1)
+  })
+
+  it('rejects a clientMsgId already used in another conversation without storing its file', async () => {
+    const clientMsgId = crypto.randomUUID()
+    const [other] = await ctx.db
+      .insert(schema.chatConversations)
+      .values({
+        type: ChatConversationType.Channel,
+        name: 'Druga soba za isti ključ',
+        createdBy: TEST_USER_ID,
+      })
+      .returning({ id: schema.chatConversations.id })
+    if (other === undefined) {
+      throw new Error('second conversation was not created')
+    }
+    await ctx.db
+      .insert(schema.chatMembers)
+      .values({ conversationId: other.id, userId: TEST_USER_ID })
+
+    const first = await send(
+      form({
+        clientMsgId,
+        body: 'prva soba',
+        files: [{ data: MINIMAL_PDF, name: 'prvi.pdf', type: 'application/pdf' }],
+      }),
+    )
+    expect(first.status).toBe(201)
+    const firstMessage = (await first.json()) as { id: string }
+    const [firstAttachment] = await ctx.db
+      .select({ storagePath: schema.attachments.storagePath })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.chatMessageId, firstMessage.id))
+    if (firstAttachment === undefined) {
+      throw new Error('first attachment was not stored')
+    }
+
+    const uploadedElsewhere: string[] = []
+    const upload = container.storageService.upload.bind(container.storageService)
+    container.storageService.upload = async (opts: UploadOpts) => {
+      uploadedElsewhere.push(opts.path)
+      return upload(opts)
+    }
+
+    try {
+      const second = await app.request(`/api/chat/conversations/${other.id}/messages`, {
+        method: 'POST',
+        body: form({
+          clientMsgId,
+          body: 'druga soba',
+          files: [{ data: MINIMAL_PDF, name: 'drugi.pdf', type: 'application/pdf' }],
+        }),
+      })
+      const response = (await second.json()) as { id?: string }
+
+      expect(response.id).not.toBe(firstMessage.id)
+      expect(second.status).toBe(409)
+      expect(uploadedElsewhere).toEqual([])
+      expect(await container.storageService.exists(firstAttachment.storagePath)).toBe(true)
+      expect(
+        await ctx.db
+          .select({ id: schema.chatMessages.id })
+          .from(schema.chatMessages)
+          .where(eq(schema.chatMessages.conversationId, other.id)),
+      ).toEqual([])
+      expect(
+        await ctx.db.select({ id: schema.notifications.id }).from(schema.notifications),
+      ).toEqual([])
+    } finally {
+      container.storageService.upload = upload
+      await container.storageService.delete(firstAttachment.storagePath)
+    }
   })
 
   it('still takes a plain JSON message, unchanged', async () => {

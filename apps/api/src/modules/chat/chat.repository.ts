@@ -955,8 +955,8 @@ export class ChatRepository {
    * Stores a message, or discovers it was already stored. `ON CONFLICT DO NOTHING` on
    * `(author_id, client_msg_id)` is what makes a retried POST from a flaky tablet safe: the
    * second attempt writes nothing, the empty return says so, and the first message is read back
-   * by the same key. Returns `null` only if that key then finds nothing — which the unique index
-   * makes impossible, so the service treats it as a conflict rather than inventing a message.
+   * by the same key in the same conversation. A key already used in another conversation returns
+   * `null`, so the service answers with a conflict rather than leaking that room's message.
    */
   async insertMessage(input: ChatMessageInsert): Promise<{ id: string; created: boolean } | null> {
     const [inserted] = await this.db
@@ -978,6 +978,7 @@ export class ChatRepository {
       .from(chatMessages)
       .where(
         and(
+          eq(chatMessages.conversationId, input.conversationId),
           eq(chatMessages.authorId, input.authorId),
           eq(chatMessages.clientMsgId, input.clientMsgId),
         ),

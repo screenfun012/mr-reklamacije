@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises'
 
 import { createPool, schema } from '@mr/db'
-import { ChatConversationType, ChatSystemKind, type Permission } from '@mr/shared'
+import {
+  ChatConversationType,
+  ChatSystemKind,
+  ClaimKind,
+  NotificationType,
+  type Permission,
+} from '@mr/shared'
 import { and, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -20,6 +26,7 @@ import {
   PostgresChatConversationFence,
   type ChatConversationFence,
 } from '../chat-conversation-fence.js'
+import { ChatRepository } from '../chat.repository.js'
 import type { ChatActor } from '../chat.validators.js'
 
 const OFFICE = [
@@ -47,6 +54,7 @@ describe('Chat send/delete fence', () => {
   let recipientId: string
   let originalUpload: StorageService['upload']
   let mentionSignalInsideSharedCallback: boolean
+  let chatSignalInsideSharedCallback: boolean
 
   beforeEach(async () => {
     databaseUrl = process.env['TEST_DATABASE_URL'] ?? ''
@@ -58,6 +66,7 @@ describe('Chat send/delete fence', () => {
     db = drizzle(pool, { schema }) as ApiDatabase
     bus = new RecordingEventBus()
     mentionSignalInsideSharedCallback = false
+    chatSignalInsideSharedCallback = false
     let sharedCallbackActive = false
     const realFence = new PostgresChatConversationFence(pool)
     const observedFence: ChatConversationFence = {
@@ -76,6 +85,11 @@ describe('Chat send/delete fence', () => {
     bus.publishNotificationCreated = (userId, notificationId) => {
       mentionSignalInsideSharedCallback ||= sharedCallbackActive
       recordNotification(userId, notificationId)
+    }
+    const recordChat = bus.publishChatMessageCreated.bind(bus)
+    bus.publishChatMessageCreated = (eventConversationId, messageId) => {
+      chatSignalInsideSharedCallback ||= sharedCallbackActive
+      recordChat(eventConversationId, messageId)
     }
     container = buildContainer(
       createTestEnv(databaseUrl),
@@ -225,6 +239,7 @@ describe('Chat send/delete fence', () => {
 
       expect(bus.notificationEvents).toHaveLength(1)
       expect(mentionSignalInsideSharedCallback).toBe(false)
+      expect(chatSignalInsideSharedCallback).toBe(false)
       expect(
         bus.chatEvents.filter(
           (event) => event.conversationId === conversationId && event.messageId === conversationId,
@@ -295,6 +310,161 @@ describe('Chat send/delete fence', () => {
           .filter((path) => path !== '')
           .map((path) => container.storageService.delete(path)),
       )
+    }
+  })
+
+  it('makes delete wait for a system-message writer and audits the message it erases', async () => {
+    const manufacturerId = crypto.randomUUID()
+    const engineTypeId = crypto.randomUUID()
+    const claimId = crypto.randomUUID()
+    const threadId = crypto.randomUUID()
+    await db.insert(schema.engineManufacturers).values({
+      id: manufacturerId,
+      code: `RACE-SYSTEM-${manufacturerId}`,
+      name: 'System message race manufacturer',
+    })
+    await db.insert(schema.engineTypes).values({
+      id: engineTypeId,
+      code: `RACE-SYSTEM-${engineTypeId}`,
+      manufacturerId,
+    })
+    await db.insert(schema.emotiveClaims).values({
+      id: claimId,
+      warrantyReport: 'System message race',
+      engineTypeId,
+      dateOfClaim: new Date('2026-08-26'),
+      mrNumber: `MR-${claimId}`,
+      outcome: 'pending',
+      claimYear: 2026,
+      createdBy: author.id,
+    })
+    await db.insert(schema.chatConversations).values({
+      id: threadId,
+      type: ChatConversationType.Claim,
+      emotiveClaimId: claimId,
+      createdBy: author.id,
+    })
+    await db.insert(schema.chatMessages).values({
+      conversationId: threadId,
+      clientMsgId: crypto.randomUUID(),
+      authorId: null,
+      body: '',
+      systemKind: ChatSystemKind.ThreadCreated,
+      systemMeta: {},
+    })
+
+    const writerEntered = deferred()
+    const releaseWriter = deferred()
+    const insertSystemMessage = ChatRepository.prototype.insertSystemMessage
+    ChatRepository.prototype.insertSystemMessage = async function (...args) {
+      writerEntered.resolve()
+      await releaseWriter.promise
+      return insertSystemMessage.apply(this, args)
+    }
+
+    const systemPromise = container.chatService.postSystemMessage(
+      { kind: ClaimKind.Emotive, claimId },
+      ChatSystemKind.OutcomeChanged,
+      { from: 'pending', to: 'accepted' },
+    )
+    let deletePromise: Promise<void> | undefined
+
+    try {
+      await writerEntered.promise
+      deletePromise = container.chatService.deleteConversation(threadId, admin)
+      expect(await observeExclusiveWait(deletePromise)).toBe('waiting')
+
+      releaseWriter.resolve()
+      await systemPromise
+      await deletePromise
+
+      const audits = await db
+        .select({ changes: schema.auditLog.changes })
+        .from(schema.auditLog)
+        .where(eq(schema.auditLog.entityId, threadId))
+      expect(audits).toEqual([
+        {
+          changes: {
+            type: ChatConversationType.Claim,
+            title: `MR-${claimId}`,
+            messagesErased: 2,
+          },
+        },
+      ])
+      expect(chatSignalInsideSharedCallback).toBe(false)
+      expect(
+        bus.chatEvents.filter(
+          (event) => event.conversationId === threadId && event.messageId !== threadId,
+        ),
+      ).toHaveLength(1)
+    } finally {
+      ChatRepository.prototype.insertSystemMessage = insertSystemMessage
+      releaseWriter.resolve()
+      await Promise.allSettled([
+        systemPromise,
+        ...(deletePromise === undefined ? [] : [deletePromise]),
+      ])
+      await db.delete(schema.auditLog).where(eq(schema.auditLog.entityId, threadId))
+      await db.delete(schema.chatConversations).where(eq(schema.chatConversations.id, threadId))
+      await db.delete(schema.emotiveClaims).where(eq(schema.emotiveClaims.id, claimId))
+      await db.delete(schema.engineTypes).where(eq(schema.engineTypes.id, engineTypeId))
+      await db
+        .delete(schema.engineManufacturers)
+        .where(eq(schema.engineManufacturers.id, manufacturerId))
+    }
+  })
+
+  it('makes delete wait for an edit that adds a mention and leaves no orphan bell row', async () => {
+    const sent = await container.chatService.send(
+      conversationId,
+      { clientMsgId: crypto.randomUUID(), body: 'bez pomena' },
+      author,
+    )
+    bus.chatEvents.length = 0
+    const writerEntered = deferred()
+    const releaseWriter = deferred()
+    const insertMany = container.notificationsRepository.insertMany.bind(
+      container.notificationsRepository,
+    )
+    container.notificationsRepository.insertMany = async (rows, executor) => {
+      if (rows.some((row) => row.type === NotificationType.ChatMention)) {
+        writerEntered.resolve()
+        await releaseWriter.promise
+      }
+      return insertMany(rows, executor)
+    }
+
+    const editPromise = container.chatService.editMessage(
+      sent.message.id,
+      `sada zovem @[Kolegu](${recipientId})`,
+      author,
+    )
+    let deletePromise: Promise<void> | undefined
+
+    try {
+      await writerEntered.promise
+      deletePromise = container.chatService.deleteConversation(conversationId, admin)
+      expect(await observeExclusiveWait(deletePromise)).toBe('waiting')
+
+      releaseWriter.resolve()
+      await editPromise
+      await deletePromise
+
+      expect(
+        await db
+          .select({ id: schema.notifications.id })
+          .from(schema.notifications)
+          .where(eq(schema.notifications.entityId, sent.message.id)),
+      ).toEqual([])
+      expect(mentionSignalInsideSharedCallback).toBe(false)
+      expect(chatSignalInsideSharedCallback).toBe(false)
+    } finally {
+      container.notificationsRepository.insertMany = insertMany
+      releaseWriter.resolve()
+      await Promise.allSettled([
+        editPromise,
+        ...(deletePromise === undefined ? [] : [deletePromise]),
+      ])
     }
   })
 })

@@ -469,8 +469,11 @@ export class ChatService implements ChatPort {
     systemKind: ChatSystemKind,
     meta: Record<string, string>,
   ): Promise<void> {
-    const message = await this.repo.insertSystemMessage(conversationId, systemKind, meta)
+    const message = await this.fence.shared(conversationId, (db) =>
+      new ChatRepository(db).insertSystemMessage(conversationId, systemKind, meta),
+    )
     if (message !== null) {
+      // The shared lock is gone before PostgresEventBus can lease its own connection.
       this.announce(conversationId, message.id)
     }
   }
@@ -480,35 +483,50 @@ export class ChatService implements ChatPort {
    * a rewritten record — the messages are evidence for a claim (spec §5 row 4).
    */
   async editMessage(messageId: string, body: string, actor: ChatActor): Promise<ChatMessage> {
-    const { message, conversation } = await this.requireVisibleMessage(messageId, actor)
-    requireOpen(conversation)
+    // The message supplies the advisory-lock key. Every security and mutation read is repeated
+    // after the shared lock is held, so a delete that wins this small gap leaves a clean 404.
+    const snapshot = await this.requireVisibleMessage(messageId, actor)
+    const persisted = await this.fence.shared(snapshot.message.conversationId, async (db) => {
+      const repo = new ChatRepository(db)
+      const { message, conversation } = await this.requireVisibleMessage(messageId, actor, repo)
+      requireOpen(conversation)
 
-    // A system message has no author, so it fails here too — and that is exactly the intent.
-    if (message.author?.id !== actor.id) {
-      throw new ForbiddenError('A message is corrected only by the person who wrote it')
+      // A system message has no author, so it fails here too — and that is exactly the intent.
+      if (message.author?.id !== actor.id) {
+        throw new ForbiddenError('A message is corrected only by the person who wrote it')
+      }
+      if (message.deletedAt !== null) {
+        throw new UnprocessableEntityError('A message that was taken back is not corrected')
+      }
+      if (Date.now() - Date.parse(message.createdAt) > CHAT_EDIT_WINDOW_MS) {
+        throw new UnprocessableEntityError('The time to correct this message has passed')
+      }
+
+      await repo.updateMessageBody(messageId, body)
+      const updated = await repo.findMessageById(messageId)
+      if (updated === null) {
+        throw new NotFoundError('Chat message', messageId)
+      }
+
+      const mentionSignals: Array<{ userId: string; notificationId: string }> = []
+      // A correction may ADD a name (Nikola, 23.08.), and that name has not heard anything yet.
+      // Anybody the first version already rang is skipped inside the fan-out, so the same person
+      // never hears the same message twice however often it is corrected.
+      await this.ringMentions(conversation, updated, actor, repo, db, (userId, notificationId) =>
+        mentionSignals.push({ userId, notificationId }),
+      )
+
+      return { updated, mentionSignals }
+    })
+
+    // A correction nobody else sees is not a correction, but no signal may lease a second pool
+    // connection until the shared advisory lock has been released.
+    this.announce(snapshot.message.conversationId, messageId)
+    for (const signal of persisted.mentionSignals) {
+      this.events.publishNotificationCreated(signal.userId, signal.notificationId)
     }
-    if (message.deletedAt !== null) {
-      throw new UnprocessableEntityError('A message that was taken back is not corrected')
-    }
-    if (Date.now() - Date.parse(message.createdAt) > CHAT_EDIT_WINDOW_MS) {
-      throw new UnprocessableEntityError('The time to correct this message has passed')
-    }
 
-    await this.repo.updateMessageBody(messageId, body)
-    // Same reason as the withdrawal above: a correction nobody else sees is not a correction.
-    this.announce(message.conversationId, messageId)
-
-    const updated = await this.repo.findMessageById(messageId)
-    if (updated === null) {
-      throw new NotFoundError('Chat message', messageId)
-    }
-
-    // A correction may ADD a name (Nikola, 23.08.), and that name has not heard anything yet.
-    // Anybody the first version already rang is skipped inside the fan-out, so the same person
-    // never hears the same message twice however often it is corrected.
-    await this.ringMentions(conversation, updated, actor)
-
-    return updated
+    return persisted.updated
   }
 
   /**
@@ -864,14 +882,15 @@ export class ChatService implements ChatPort {
   private async requireVisibleMessage(
     messageId: string,
     actor: ChatActor,
+    repo: ChatRepository = this.repo,
   ): Promise<{ message: ChatMessage; conversation: ChatConversationListItem }> {
-    const message = await this.repo.findMessageById(messageId)
+    const message = await repo.findMessageById(messageId)
     if (message === null) {
       throw new NotFoundError('Chat message', messageId)
     }
     // The room comes back with the message: an edit may add a mention, and ringing it needs to
     // know who can see the room — asking a second time would be a second answer to one question.
-    const conversation = await this.requireVisible(message.conversationId, actor)
+    const conversation = await this.requireVisible(message.conversationId, actor, repo)
 
     return { message, conversation }
   }
