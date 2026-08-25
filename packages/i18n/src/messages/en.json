@@ -428,6 +428,8 @@
   "chat_mr_open_thread": "Open this claim's thread",
   "chat_mr_suggestion_eyebrow": "MR NUMBER RECOGNISED",
   "chat_mute_badge": "MUTE",
+  "chat_thread_mute": "Mute thread",
+  "chat_thread_unmute": "Unmute thread",
   "chat_new_channel_title": "New channel — coming soon",
   "chat_new_thread_create": "CREATE +",
   "chat_new_thread_empty": "No claim matches that search.",

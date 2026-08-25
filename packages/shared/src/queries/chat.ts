@@ -309,6 +309,13 @@ export function markChatRead(conversationId: string, lastSeq: string): Promise<v
   })
 }
 
+/** Muting is per account and remains available while a claim thread is locked. */
+export function setChatConversationMuted(conversationId: string, muted: boolean): Promise<void> {
+  return fetchNoContent(`/api/chat/conversations/${conversationId}/mute`, {
+    method: muted ? 'POST' : 'DELETE',
+  })
+}
+
 /**
  * What is pinned in this conversation. At most `CHAT_PINS_MAX` rows, so there is no paging and no
  * stale time worth setting: the list is invalidated by the pin that changed it, and by the same

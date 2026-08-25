@@ -64,6 +64,7 @@ let conversationReads = 0
 let lookupReads: string[] = []
 let threads: ChatConversationListItem[] = []
 let lookupConversation: ChatConversationListItem | null = null
+let muteCalls: string[] = []
 
 function installFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -72,6 +73,13 @@ function installFetch(): void {
       threadPosts.push(url)
       threads = [THREAD]
       return Response.json(THREAD, { status: 201 })
+    }
+    if (url.endsWith('/mute') && (init?.method === 'POST' || init?.method === 'DELETE')) {
+      muteCalls.push(init.method)
+      if (lookupConversation !== null) {
+        lookupConversation = { ...lookupConversation, isMuted: init.method === 'POST' }
+      }
+      return new Response(null, { status: 204 })
     }
     if (init?.method === 'POST') {
       return new Response(null, { status: 204 })
@@ -105,6 +113,7 @@ describe('ClaimConversationTab', () => {
     lookupReads = []
     threads = []
     lookupConversation = null
+    muteCalls = []
     installFetch()
   })
 
@@ -195,5 +204,24 @@ describe('ClaimConversationTab', () => {
 
     expect(await screen.findByText(/razgovor zatvoren/i)).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('keeps mute and unmute on closed history while every message mutation stays hidden', async () => {
+    const user = userEvent.setup()
+    lookupConversation = { ...THREAD, isLocked: true }
+    renderTab(ClaimOutcome.Accepted)
+
+    expect(await screen.findByText('Glava je stigla')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Odgovori na poruku' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sviđa mi se' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Prikači poruku' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /pokušaj ponovo/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Utišaj nit' }))
+    await waitFor(() => expect(muteCalls).toEqual(['POST']))
+
+    await user.click(await screen.findByRole('button', { name: 'Uključi obaveštenja za nit' }))
+    await waitFor(() => expect(muteCalls).toEqual(['POST', 'DELETE']))
   })
 })

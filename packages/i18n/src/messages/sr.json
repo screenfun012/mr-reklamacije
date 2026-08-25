@@ -428,6 +428,8 @@
   "chat_mr_open_thread": "Otvori nit ove reklamacije",
   "chat_mr_suggestion_eyebrow": "PREPOZNAT MR BROJ",
   "chat_mute_badge": "MUTE",
+  "chat_thread_mute": "Utišaj nit",
+  "chat_thread_unmute": "Uključi obaveštenja za nit",
   "chat_new_channel_title": "Novi kanal — stiže uskoro",
   "chat_new_thread_create": "NAPRAVI +",
   "chat_new_thread_empty": "Nijedna reklamacija ne odgovara pretrazi.",

@@ -185,6 +185,7 @@ export {
   openChatClaimThread,
   pinChatMessage,
   reactToChatMessage,
+  setChatConversationMuted,
   sendChatMessage,
 } from './chat.js'
 export {

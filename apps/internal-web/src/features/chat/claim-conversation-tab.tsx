@@ -2,12 +2,14 @@ import { m } from '@mr/i18n'
 import {
   chatClaimThreadOptions,
   chatConversationsOptions,
+  chatKeys,
   ClaimOutcome,
+  setChatConversationMuted,
   type ChatConversationListItem,
   type ClaimKind,
   type ClaimOutcome as ClaimOutcomeType,
 } from '@mr/shared'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Suspense } from 'react'
 
 import { InternalButton } from '~/components/internal-button'
@@ -89,9 +91,16 @@ export function ClaimConversationTab({
 }): React.ReactElement {
   const { thread, isPending, canCreateThread } = useClaimThread(kind, claimId, outcome)
   const { userId, userName, isAdmin } = useInternalAuthUser()
+  const queryClient = useQueryClient()
   // The same write the other doors use (the composer MR offer and the „Nova nit" dialog): the
   // endpoint is get-or-create, so two people pressing at once land in the same room.
   const create = useCreateClaimThread({ onOpened: () => undefined, onClosed: () => undefined })
+  const mute = useMutation({
+    mutationFn: ({ conversationId, muted }: { conversationId: string; muted: boolean }) =>
+      setChatConversationMuted(conversationId, muted),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: chatKeys.claimThread(kind, claimId), exact: true }),
+  })
 
   if (isPending) {
     return (
@@ -133,6 +142,20 @@ export function ClaimConversationTab({
 
   return (
     <div className={FRAME_CLASSES}>
+      {thread.isLocked ? (
+        <div className="flex flex-none justify-end border-b border-mri-border bg-mri-surface p-2">
+          <InternalButton
+            type="button"
+            variant="outline"
+            className="h-10 w-auto px-3 text-[10px] active:scale-[0.96]"
+            aria-pressed={thread.isMuted}
+            disabled={mute.isPending}
+            onClick={() => mute.mutate({ conversationId: thread.id, muted: !thread.isMuted })}
+          >
+            {thread.isMuted ? m.chat_thread_unmute() : m.chat_thread_mute()}
+          </InternalButton>
+        </div>
+      ) : null}
       <Suspense key={thread.id} fallback={<PaneSkeleton />}>
         <ConversationPane
           conversationId={thread.id}

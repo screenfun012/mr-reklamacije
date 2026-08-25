@@ -373,7 +373,7 @@ export function ConversationPane({
       <PinnedBar conversationId={conversationId} />
       <MessageList
         messages={data.items}
-        pending={visiblePending(data.items, pending)}
+        pending={isLocked ? [] : visiblePending(data.items, pending)}
         novoBeforeId={novoBeforeId}
         onRetry={handleRetry}
         onOpenImage={(message, attachmentId) => setPreview({ message, attachmentId })}

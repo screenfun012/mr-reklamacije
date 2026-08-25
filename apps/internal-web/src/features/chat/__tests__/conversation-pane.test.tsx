@@ -96,9 +96,14 @@ function installFetch(): void {
 /** The fixture's author. Passing this makes the fixture message "mine", which is what ticks need. */
 const SLAVKO_ID = uuid(900)
 
-function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false, isLocked = false) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const result = render(
+function paneTree(
+  queryClient: QueryClient,
+  unreadCount = 0,
+  authorId = SLAVKO_ID,
+  isAdmin = false,
+  isLocked = false,
+): React.ReactElement {
+  return (
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={<p>…</p>}>
         <ConversationPane
@@ -110,8 +115,13 @@ function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false, isLo
           isLocked={isLocked}
         />
       </Suspense>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
+}
+
+function renderPane(unreadCount = 0, authorId = SLAVKO_ID, isAdmin = false, isLocked = false) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const result = render(paneTree(queryClient, unreadCount, authorId, isAdmin, isLocked))
   return { ...result, queryClient }
 }
 
@@ -478,6 +488,22 @@ describe('ConversationPane', () => {
     expect((sent[1]?.body as { clientMsgId: string }).clientMsgId).toBe(
       (first?.body as { clientMsgId: string }).clientMsgId,
     )
+  })
+
+  it('removes a failed local message and its retry when the thread becomes locked', async () => {
+    const user = userEvent.setup()
+    sendFails = true
+    const { rerender, queryClient } = renderPane()
+    await screen.findByText('Slavko Jović')
+
+    await user.click(composer())
+    await user.keyboard('Krećem po motor{Enter}')
+    expect(await screen.findByRole('button', { name: /pokušaj ponovo/i })).toBeInTheDocument()
+
+    rerender(paneTree(queryClient, 0, SLAVKO_ID, false, true))
+
+    expect(screen.queryByText('Krećem po motor')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /pokušaj ponovo/i })).not.toBeInTheDocument()
   })
 
   it('does not yank the reader down while he is reading history', async () => {
