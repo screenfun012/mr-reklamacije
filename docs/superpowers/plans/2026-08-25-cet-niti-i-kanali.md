@@ -298,6 +298,8 @@ git commit -m "fix(chat): enforce pending claim threads"
 - Modify: `apps/internal-web/src/features/chat/__tests__/composer-mr-suggestion.test.tsx`
 - Modify: `apps/internal-web/src/features/chat/__tests__/message-body.test.tsx`
 - Modify: `apps/internal-web/src/features/chat/__tests__/conversation-pane.test.tsx`
+- Modify: `packages/i18n/src/messages/sr.json`
+- Modify: `packages/i18n/src/messages/en.json`
 
 **Interfaces:**
 - Consumes: Task 1 `chatClaimThreadOptions` i keys; Task 2 GET/POST semantics; postojeći immutable MR registry `{kind, claimId}`.
@@ -350,7 +352,11 @@ onReact={isLocked ? undefined : handleReact}
 onPin={isLocked ? undefined : handlePin}
 ```
 
-- [ ] **Step 7: Pokrenuti fokusirane frontend testove**
+- [ ] **Step 7: Dodati minimalan thread copy u oba jezika**
+
+Dodati ključeve `chat_thread_closed_empty_title`, `chat_thread_closed_create_error`, `chat_thread_opened_toast`, `chat_thread_saved_closed_toast` i `chat_thread_unavailable_toast`, pa pokrenuti `pnpm --filter @mr/i18n build` pre typecheck-a. Ne hardkodovati tekst u komponentama.
+
+- [ ] **Step 8: Pokrenuti fokusirane frontend testove**
 
 Run:
 
@@ -368,13 +374,14 @@ pnpm --filter internal-web typecheck
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add apps/internal-web/src/features/chat \
   apps/internal-web/src/features/emotive-claims/detail/emotive-claim-detail.tsx \
   apps/internal-web/src/features/domace-claims/detail/domace-claim-detail.tsx \
-  apps/internal-web/src/routes/_shell/razgovori.tsx
+  apps/internal-web/src/routes/_shell/razgovori.tsx \
+  packages/i18n/src/messages/sr.json packages/i18n/src/messages/en.json
 git commit -m "fix(chat): preserve closed claim thread history"
 ```
 
@@ -669,7 +676,7 @@ Postojeće invalidacije uvek ostaju. Samo `messageId === conversationId` poziva 
 
 - [ ] **Step 7: Dodati minimalan sr/en copy i ukloniti mrtav tekst**
 
-Dodati ključeve za closed thread empty/error/opened/saved/unavailable, channel history warning/search/manage/creator/disabled-account/member-count/delete. Ponovo koristiti postojeće `action_*`, erase i pagination ključeve. `chat_erase_description` mora eksplicitno reći da nestaju poruke i prilozi bez vraćanja; ukloniti zastareli „stiže uskoro“/empty-admin copy kada više nema callera.
+Dodati ključeve za channel history warning/search/manage/creator/disabled-account/member-count/delete. Ponovo koristiti postojeće `action_*`, erase i pagination ključeve. `chat_erase_description` mora eksplicitno reći da nestaju poruke i prilozi bez vraćanja; ukloniti zastareli „stiže uskoro“/empty-admin copy kada više nema callera. Thread copy je već uveden uz Task 3 komponente koje ga koriste.
 
 - [ ] **Step 8: Pokrenuti i18n i fokusirane frontend provere**
 
