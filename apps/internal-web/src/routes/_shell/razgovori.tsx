@@ -2,7 +2,6 @@ import { m } from '@mr/i18n'
 import {
   ChatConversationType,
   chatConversationsOptions,
-  chatKeys,
   deleteChatConversation,
   invalidateChatConversationMetadataQueries,
   ClaimDetailTab,
@@ -226,11 +225,11 @@ function RazgovoriColumns(): React.ReactElement {
    */
   const erase = useMutation({
     mutationFn: (conversationId: string) => deleteChatConversation(conversationId),
-    onSuccess: async () => {
+    onSuccess: (_result, deletedConversationId) => {
       setErasing(false)
       // Back to the general channel: the room that was open is gone.
       void navigate({ search: {} })
-      await queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+      invalidateChatConversationMetadataQueries(queryClient, deletedConversationId)
       showInternalToast(m.chat_erase_done())
     },
   })
