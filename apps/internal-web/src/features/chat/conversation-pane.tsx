@@ -370,7 +370,12 @@ export function ConversationPane({
   return (
     <>
       {/* Above the messages, not behind a button: a pin exists so nobody has to go looking. */}
-      <PinnedBar conversationId={conversationId} />
+      <PinnedBar
+        conversationId={conversationId}
+        currentUserId={authorId}
+        isAdmin={isAdmin}
+        isLocked={isLocked}
+      />
       <MessageList
         messages={data.items}
         pending={isLocked ? [] : visiblePending(data.items, pending)}

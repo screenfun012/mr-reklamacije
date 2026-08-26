@@ -6,6 +6,14 @@ import { Pin, X } from 'lucide-react'
 
 import { AttachmentOnlyExcerpt } from './message-attachments'
 
+function useUnpin(conversationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (messageId: string) => pinChatMessage(messageId, false),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chatKeys.pins(conversationId) }),
+  })
+}
+
 /** L169/L170: who said it in mono, then the words, in an `--inbg` card with a hairline. */
 function PinRow({
   pin,
@@ -64,14 +72,9 @@ export function PinList({
   isAdmin: boolean
   className?: string
 }): React.ReactElement {
-  const queryClient = useQueryClient()
   const { data } = useQuery(chatPinsOptions(conversationId))
   const items = data?.items ?? []
-
-  const unpin = useMutation({
-    mutationFn: (messageId: string) => pinChatMessage(messageId, false),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: chatKeys.pins(conversationId) }),
-  })
+  const unpin = useUnpin(conversationId)
 
   if (items.length === 0) {
     return <p className={cn('text-[11.5px] text-mri-text2', className)}>{m.chat_pins_empty()}</p>
@@ -148,12 +151,19 @@ export function PinListButton({
  */
 export function PinnedBar({
   conversationId,
+  currentUserId,
+  isAdmin,
+  isLocked = false,
 }: {
   conversationId: string
+  currentUserId: string
+  isAdmin: boolean
+  isLocked?: boolean
 }): React.ReactElement | null {
   const { data } = useQuery(chatPinsOptions(conversationId))
   const items = data?.items ?? []
   const newest = items[0]
+  const unpin = useUnpin(conversationId)
 
   if (newest === undefined) {
     return null
@@ -162,7 +172,7 @@ export function PinnedBar({
   return (
     <div className="flex flex-none items-center gap-2.5 border-b border-mri-border bg-mri-inbg px-4 py-2">
       <Pin aria-hidden="true" className="size-[13px] flex-none text-mri-red" />
-      <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 flex-1 flex-col">
         <span className="font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2">
           {m.chat_pinned_bar()}
           {items.length > 1 ? ` · ${String(items.length)}` : ''}
@@ -180,6 +190,18 @@ export function PinnedBar({
           )}
         </span>
       </span>
+      {!isLocked && (isAdmin || newest.pinnedBy === currentUserId) ? (
+        <button
+          type="button"
+          title={m.chat_unpin()}
+          aria-label={m.chat_unpin()}
+          disabled={unpin.isPending}
+          onClick={() => unpin.mutate(newest.id)}
+          className="relative grid size-7 flex-none cursor-pointer place-items-center rounded-md text-mri-text2 transition-colors after:absolute after:-inset-1.5 hover:bg-mri-rowhv hover:text-mri-bad disabled:cursor-wait disabled:opacity-50"
+        >
+          <X aria-hidden="true" className="size-3.5" />
+        </button>
+      ) : null}
     </div>
   )
 }

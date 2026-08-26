@@ -768,7 +768,7 @@ describe('ConversationPane', () => {
       ]
       renderPane(0, SLAVKO_ID, true)
 
-      expect(await screen.findByRole('button', { name: 'Skini sa prikačenih' })).toBeInTheDocument()
+      expect(await screen.findAllByRole('button', { name: 'Skini sa prikačenih' })).toHaveLength(2)
     })
   })
 })

@@ -41,11 +41,24 @@ function renderButton(isAdmin = false) {
   )
 }
 
-function renderBar() {
+function renderBar({
+  currentUserId = ME,
+  isAdmin = false,
+  isLocked = false,
+}: {
+  currentUserId?: string
+  isAdmin?: boolean
+  isLocked?: boolean
+} = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <PinnedBar conversationId={CONVERSATION_ID} />
+      <PinnedBar
+        conversationId={CONVERSATION_ID}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
+        isLocked={isLocked}
+      />
     </QueryClientProvider>,
   )
 }
@@ -133,12 +146,33 @@ describe('PinListButton', () => {
  * shortlist behind a button answers that only for somebody who already went looking.
  */
 describe('PinnedBar', () => {
+  let deleteFails = false
+  let holdDelete = false
+  let releaseDelete: (() => void) | undefined
+
   beforeEach(() => {
     setLocale('sr', { reload: false })
     pins = []
     calls = []
-    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      calls.push({ url: String(input), method: 'GET' })
+    deleteFails = false
+    holdDelete = false
+    releaseDelete = undefined
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      calls.push({ url, method })
+      if (method === 'DELETE') {
+        if (holdDelete) {
+          await new Promise<void>((resolve) => {
+            releaseDelete = resolve
+          })
+        }
+        if (deleteFails) {
+          return Response.json({ message: 'nope' }, { status: 500 })
+        }
+        pins = pins.filter((item) => !url.includes(item.id))
+        return new Response(null, { status: 204 })
+      }
       return Response.json({ items: pins })
     }) as unknown as typeof fetch
   })
@@ -167,5 +201,54 @@ describe('PinnedBar', () => {
     expect(await screen.findByText('Prikačeno · 2')).toBeInTheDocument()
     expect(screen.getByText(/Najnovije/)).toBeInTheDocument()
     expect(screen.queryByText(/Starije/)).not.toBeInTheDocument()
+  })
+
+  it('lets the person who pinned the newest message remove it directly from the bar', async () => {
+    pins = [pin({ id: uuid(1), excerpt: 'Najnovije' }), pin({ id: uuid(2), excerpt: 'Starije' })]
+    holdDelete = true
+    const user = userEvent.setup()
+    renderBar()
+
+    const unpin = await screen.findByRole('button', { name: 'Skini sa prikačenih' })
+    await user.click(unpin)
+
+    expect(unpin).toBeDisabled()
+    expect(screen.getByText(/Najnovije/)).toBeInTheDocument()
+    releaseDelete?.()
+    expect(await screen.findByText(/Starije/)).toBeInTheDocument()
+    expect(screen.queryByText(/Najnovije/)).not.toBeInTheDocument()
+  })
+
+  it('offers the bar action only to the person who pinned it, or to an admin', async () => {
+    pins = [pin({ id: uuid(1), pinnedBy: SOMEBODY_ELSE })]
+    const mine = renderBar()
+
+    expect(await screen.findByText('Prikačeno')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skini sa prikačenih' })).not.toBeInTheDocument()
+    mine.unmount()
+
+    renderBar({ isAdmin: true })
+    expect(await screen.findByRole('button', { name: 'Skini sa prikačenih' })).toBeInTheDocument()
+  })
+
+  it('keeps the bar read-only in a locked claim thread', async () => {
+    pins = [pin({ id: uuid(1) })]
+    renderBar({ isLocked: true })
+
+    expect(await screen.findByText('Prikačeno')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skini sa prikačenih' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the pin visible when taking it down fails', async () => {
+    pins = [pin({ id: uuid(1), excerpt: 'Ostaje važno' })]
+    deleteFails = true
+    const user = userEvent.setup()
+    renderBar()
+
+    const unpin = await screen.findByRole('button', { name: 'Skini sa prikačenih' })
+    await user.click(unpin)
+
+    await waitFor(() => expect(unpin).not.toBeDisabled())
+    expect(screen.getByText(/Ostaje važno/)).toBeInTheDocument()
   })
 })

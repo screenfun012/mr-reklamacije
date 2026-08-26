@@ -1,3 +1,4 @@
+import { m } from '@mr/i18n'
 import { ChatConversationType, type ChatConversationListItem } from '@mr/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
@@ -36,8 +37,8 @@ function renderList(ui: React.ReactElement): void {
 }
 
 function listRoot(): HTMLElement {
-  // The list is the only 252px column in the tree.
-  const root = screen.getByText('Opšti kanal').closest('div.w-\\[252px\\]')
+  const row = screen.getByText('Opšti kanal').closest('button')
+  const root = row?.parentElement?.parentElement
   if (!(root instanceof HTMLElement)) {
     throw new Error('conversation list root not found')
   }
@@ -55,6 +56,51 @@ function listRoot(): HTMLElement {
  * conversation from 878 down.
  */
 describe('the chat gives its width to the conversation', () => {
+  it('keeps 420px for the conversation beside a compact 220px list', () => {
+    renderList(
+      <ConversationList
+        userId="u0000000-0000-4000-8000-000000000000"
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+        onNewChannel={vi.fn()}
+        onManageChannels={vi.fn()}
+        open={false}
+      />,
+    )
+
+    expect(listRoot()).toHaveClass('w-[220px]')
+    expect(CHAT_LIST_BREAKPOINT - 220).toBe(420)
+    expect(CHAT_PANEL_BREAKPOINT - 220 - 250).toBe(420)
+  })
+
+  it('draws compact sidebar controls without shrinking their 40px hit boxes', () => {
+    renderList(
+      <ConversationList
+        userId="u0000000-0000-4000-8000-000000000000"
+        items={[GENERAL]}
+        activeId={GENERAL.id}
+        onSelect={vi.fn()}
+        onNewThread={vi.fn()}
+        onNewChannel={vi.fn()}
+        onManageChannels={vi.fn()}
+        open={false}
+      />,
+    )
+
+    for (const title of [
+      m.chat_channel_manage(),
+      m.chat_new_channel_title(),
+      m.chat_new_thread_title(),
+      m.chat_dnd_title(),
+    ]) {
+      const control = screen.getByTitle(title)
+      expect(control).toHaveClass('size-10')
+      expect(control.firstElementChild).toHaveClass('h-7')
+    }
+  })
+
   it('keeps the list a column only while the room is wide enough for both', () => {
     renderList(
       <ConversationList

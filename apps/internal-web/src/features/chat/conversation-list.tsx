@@ -154,9 +154,11 @@ function SectionHeader({
             type="button"
             onClick={onManage}
             title={manageTitle}
-            className="grid size-10 place-items-center rounded-md text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text"
+            className="group grid size-10 place-items-center text-mri-text2"
           >
-            <Settings2 aria-hidden="true" className="size-3.5" />
+            <span className="grid h-7 w-7 place-items-center rounded-md transition-colors group-hover:bg-mri-rowhv group-hover:text-mri-text">
+              <Settings2 aria-hidden="true" className="size-3.5" />
+            </span>
             <span className="sr-only">{manageTitle}</span>
           </button>
         )}
@@ -164,9 +166,11 @@ function SectionHeader({
           type="button"
           onClick={onAdd}
           title={addTitle}
-          className="grid size-10 place-items-center rounded-md border border-mri-border2 text-mri-text2 transition-colors hover:border-mri-text2 hover:text-mri-text"
+          className="group grid size-10 place-items-center text-mri-text2"
         >
-          <Plus aria-hidden="true" className="size-3.5" />
+          <span className="grid h-7 w-7 place-items-center rounded-md border border-mri-border2 transition-colors group-hover:border-mri-text2 group-hover:text-mri-text">
+            <Plus aria-hidden="true" className="size-3.5" />
+          </span>
           <span className="sr-only">{addTitle}</span>
         </button>
       </span>
@@ -217,7 +221,7 @@ export function ConversationList({
   return (
     <div
       className={cn(
-        'flex w-[252px] flex-none flex-col border-r border-mri-border bg-mri-surface',
+        'flex w-[220px] flex-none flex-col border-r border-mri-border bg-mri-surface',
         // Above CHAT_LIST_BREAKPOINT it is simply the first column. Below it there is not enough
         // width for both, so it steps out of the row and becomes a sheet over the conversation.
         open ? CHAT_LIST_SHEET_CLASSES : CHAT_LIST_COLUMN_CLASSES,
@@ -233,14 +237,18 @@ export function ConversationList({
             onClick={() => setDnd(!dnd)}
             aria-pressed={dnd}
             title={m.chat_dnd_title()}
-            className={cn(
-              'ml-auto h-10 rounded-[7px] border px-[9px] font-mono text-[8.5px] font-bold tracking-[0.12em] transition-colors',
-              dnd
-                ? 'border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] text-mri-redh'
-                : 'border-mri-border2 text-mri-text2',
-            )}
+            className="ml-auto grid size-10 place-items-center font-mono text-[8.5px] font-bold tracking-[0.12em]"
           >
-            {m.chat_dnd()}
+            <span
+              className={cn(
+                'grid h-7 min-w-7 place-items-center rounded-[7px] border px-2 transition-colors',
+                dnd
+                  ? 'border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] text-mri-redh'
+                  : 'border-mri-border2 text-mri-text2',
+              )}
+            >
+              {m.chat_dnd()}
+            </span>
           </button>
         </div>
       </div>

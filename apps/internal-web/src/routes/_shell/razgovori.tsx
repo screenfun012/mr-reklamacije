@@ -80,7 +80,7 @@ function RazgovoriSkeleton(): React.ReactElement {
       {/* The same rule as the real list, or the skeleton draws a column the screen it stands in
           for will not have — which is the jump a skeleton exists to prevent. */}
       <div
-        className={`flex w-[252px] flex-none flex-col gap-2 border-r border-mri-border bg-mri-surface p-3 ${CHAT_LIST_COLUMN_CLASSES}`}
+        className={`flex w-[220px] flex-none flex-col gap-2 border-r border-mri-border bg-mri-surface p-3 ${CHAT_LIST_COLUMN_CLASSES}`}
       >
         <SkeletonBlock className="h-[34px] w-full" />
         <SkeletonBlock className="mt-2 h-9 w-full" />

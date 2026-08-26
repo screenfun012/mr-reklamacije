@@ -10,8 +10,8 @@
  * composer's size. So a conversation column needs 420px before it stops being a conversation.
  *
  * ```
- * CHAT_LIST_BREAKPOINT  = 252 (list)               + 420 = 672
- * CHAT_PANEL_BREAKPOINT = 252 (list) + 250 (panel) + 420 = 922
+ * CHAT_LIST_BREAKPOINT  = 220 (list)               + 420 = 640
+ * CHAT_PANEL_BREAKPOINT = 220 (list) + 250 (panel) + 420 = 890
  * ```
  *
  * Checked against the container widths the app actually produces, which are NOT viewport widths:
@@ -21,7 +21,7 @@
  * viewport 1280 →  978   both columns
  * viewport 1180 →  878   panel lies over the conversation, list stays
  * viewport 1024 →  722   the worst case: the shell's sidebar only becomes a drawer BELOW lg,
- *                        so 960 gives 894 — more room than 1024 does
+ *                        so 960 gives 894 — enough for all three compact columns
  * viewport  700 →  634   the list becomes a sheet too; typing room 415px
  * viewport  390 →  356   typing room 137px, where the whole column used to be 106px
  * ```
@@ -32,24 +32,24 @@
  * ⚠ A `@min-[…]` naming a container nothing declares never matches, and nothing errors: the app
  * simply draws the narrow shape forever, on every monitor. That pair is what the test asserts.
  */
-export const CHAT_LIST_BREAKPOINT = 672
+export const CHAT_LIST_BREAKPOINT = 640
 
-export const CHAT_PANEL_BREAKPOINT = 922
+export const CHAT_PANEL_BREAKPOINT = 890
 
 /** The chat frame. Declares the container everything below queries, and hosts the two sheets. */
 export const CHAT_FRAME_CLASSES =
   '@container/chat relative flex h-[calc(100vh-var(--mri-topbar-h)-6.75rem)] min-h-[520px] overflow-hidden rounded-xl border border-mri-border bg-mri-bg'
 
 /** The conversation list while it is a column — the ordinary case. */
-export const CHAT_LIST_COLUMN_CLASSES = 'hidden @min-[672px]/chat:flex'
+export const CHAT_LIST_COLUMN_CLASSES = 'hidden @min-[640px]/chat:flex'
 
 /** The conversation list while it is out as a sheet, and how it goes back to being a column. */
 export const CHAT_LIST_SHEET_CLASSES =
-  'absolute inset-y-0 left-0 z-30 shadow-2xl @min-[672px]/chat:static @min-[672px]/chat:shadow-none'
+  'absolute inset-y-0 left-0 z-30 shadow-2xl @min-[640px]/chat:static @min-[640px]/chat:shadow-none'
 
 /** What closes the list sheet by clicking beside it. Exists only below the breakpoint. */
 export const CHAT_LIST_BACKDROP_CLASSES =
-  'absolute inset-0 z-20 cursor-default bg-black/40 @min-[672px]/chat:hidden'
+  'absolute inset-0 z-20 cursor-default bg-black/40 @min-[640px]/chat:hidden'
 
 /**
  * The same for the claim panel — and it is not decoration.
@@ -60,12 +60,12 @@ export const CHAT_LIST_BACKDROP_CLASSES =
  * tablet keyboard has no Escape.
  */
 export const CHAT_PANEL_BACKDROP_CLASSES =
-  'absolute inset-0 z-10 cursor-default bg-black/40 @min-[922px]/chat:hidden'
+  'absolute inset-0 z-10 cursor-default bg-black/40 @min-[890px]/chat:hidden'
 
 /** The back arrow that calls the sheet out. Exists only below the breakpoint. */
 export const CHAT_LIST_TOGGLE_CLASSES =
-  'grid size-7 flex-none cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text @min-[672px]/chat:hidden'
+  'grid size-7 flex-none cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text @min-[640px]/chat:hidden'
 
 /** The claim panel: a sheet over the conversation until there is room for a third column. */
 export const CHAT_PANEL_RESPONSIVE_CLASSES =
-  'absolute inset-y-0 right-0 z-20 shadow-2xl @min-[922px]/chat:static @min-[922px]/chat:shadow-none'
+  'absolute inset-y-0 right-0 z-20 shadow-2xl @min-[890px]/chat:static @min-[890px]/chat:shadow-none'
