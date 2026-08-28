@@ -21,7 +21,7 @@ export function RouteError({ onRetry }: { onRetry: () => void }) {
       className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-8 text-center"
     >
       <Heading level="h1">{m.route_error_title()}</Heading>
-      <p className="text-sm text-muted-foreground">{m.route_error_description()}</p>
+      <p className="text-pretty text-sm text-muted-foreground">{m.route_error_description()}</p>
       <Button type="button" variant="outline" onClick={onRetry} className="mt-2">
         {m.route_error_retry()}
       </Button>

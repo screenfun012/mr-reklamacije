@@ -129,7 +129,7 @@ export function AttachmentPreviewDialog<T extends PreviewableAttachment>({
               <img
                 src={inlineUrl}
                 alt={attachment.fileName}
-                className="max-h-full max-w-full object-contain"
+                className="max-h-full max-w-full rounded-md object-contain ring-1 ring-inset ring-black/10 dark:ring-white/10"
               />
               {hasPrev ? (
                 <Button

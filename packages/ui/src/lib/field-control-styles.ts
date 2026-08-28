@@ -76,7 +76,7 @@ export const dataTableCellClassName = 'px-[18px] py-3'
 
 /** Empty state for a list that has no rows yet — italic, quiet, and inside the card. */
 export const dataTableEmptyClassName =
-  'px-6 py-10 text-center text-[13.5px] italic text-muted-foreground'
+  'text-pretty px-6 py-10 text-center text-[13.5px] italic text-muted-foreground'
 
 /**
  * The block a screen is made of. internal-web wraps its filters, its list and every dashboard

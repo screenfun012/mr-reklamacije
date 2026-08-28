@@ -100,7 +100,7 @@ export function ClaimAttachmentsGrid({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-8 shrink-0 text-mri-text2 hover:text-mri-bad"
+                  className="relative size-8 shrink-0 text-mri-text2 after:absolute after:-inset-1 hover:text-mri-bad"
                   aria-label={m.claim_attachments_grid_delete()}
                   onClick={() => onDelete(item)}
                 >

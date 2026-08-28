@@ -11,8 +11,12 @@ import {
   SelectValue,
 } from '../primitives/select.js'
 
-/** 30px, radius 8 — the prototype's pager (§4). */
-const PAGER_BUTTON_CLASSES = 'size-[30px] rounded-lg'
+/**
+ * 30px, radius 8 — the prototype's pager (§4). The halo stretches the target to 40px tall
+ * without touching a visible pixel; sideways it stays at 30 so neighbours' targets never overlap.
+ */
+const PAGER_BUTTON_CLASSES =
+  'relative size-[30px] rounded-lg after:absolute after:inset-x-0 after:-inset-y-[5px]'
 
 export interface ListPaginationProps {
   total: number
@@ -50,7 +54,7 @@ export function ListPagination({
 
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm tabular-nums text-muted-foreground">
         {m.list_pagination_showing({ from, to, total })}
       </p>
 
@@ -84,7 +88,7 @@ export function ListPagination({
 
         {/* Mono, uppercase — a page number is technical, and every technical value in these
             screens is written in the same hand (prototype §0/§4). */}
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
           {m.emotive_claims_pagination_page_of({ page, totalPages })}
         </p>
 

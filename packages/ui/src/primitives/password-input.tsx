@@ -24,12 +24,28 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
         />
         <button
           type="button"
-          className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
           aria-label={revealed ? m.action_hide_password() : m.action_show_password()}
           disabled={disabled}
           onClick={() => setRevealed((current) => !current)}
         >
-          {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {/* Both eyes stay mounted and cross-fade — a hard swap flickers on slow paints. */}
+          <span className="relative grid size-4 place-items-center">
+            <Eye
+              aria-hidden="true"
+              className={cn(
+                'col-start-1 row-start-1 size-4 transition-opacity duration-150',
+                revealed ? 'opacity-0' : 'opacity-100',
+              )}
+            />
+            <EyeOff
+              aria-hidden="true"
+              className={cn(
+                'col-start-1 row-start-1 size-4 transition-opacity duration-150',
+                revealed ? 'opacity-100' : 'opacity-0',
+              )}
+            />
+          </span>
         </button>
       </div>
     )
