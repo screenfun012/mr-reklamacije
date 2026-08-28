@@ -29,6 +29,7 @@ import { useState } from 'react'
 
 import { AdmConfirmDialog } from '~/components/adm-confirm-dialog'
 import {
+  admDialogClassName,
   admFieldClassName,
   admLabelClassName,
   admPrimaryButtonClassName,
@@ -81,9 +82,9 @@ export function RolesScreen({ heldPermissions }: RolesScreenProps): React.ReactE
   const nameOf = (role: RoleListItem): string => (english ? role.nameEn : role.nameSr)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="adm-enter flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+        <h1 className="text-balance text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.roles_title()}
         </h1>
         <p className="mt-[7px] max-w-[640px] text-[13px] leading-[1.6] text-muted-foreground">
@@ -102,7 +103,7 @@ export function RolesScreen({ heldPermissions }: RolesScreenProps): React.ReactE
         </div>
 
         {roles.length === 0 ? (
-          <p className="px-6 py-10 text-center text-[13.5px] italic text-muted-foreground">
+          <p className="text-pretty px-6 py-10 text-center text-[13.5px] italic text-muted-foreground">
             {m.roles_empty()}
           </p>
         ) : (
@@ -264,7 +265,7 @@ function DuplicateRoleDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[520px]">
+      <DialogContent className={`${admDialogClassName} max-w-[520px]`}>
         <DialogHeader>
           <DialogTitle>{m.roles_duplicate_dialog_title()}</DialogTitle>
           <DialogDescription>{m.roles_duplicate_dialog_description()}</DialogDescription>

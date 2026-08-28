@@ -91,9 +91,9 @@ export function AppSettingsForm(): React.ReactElement {
   }
 
   return (
-    <div className="flex max-w-[760px] flex-col gap-4">
+    <div className="adm-enter flex max-w-[760px] flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+        <h1 className="text-balance text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.app_settings_title()}
         </h1>
         <p className="mt-[5px] text-[13px] text-muted-foreground">{m.app_settings_subtitle()}</p>
@@ -128,7 +128,7 @@ export function AppSettingsForm(): React.ReactElement {
         </span>
         <button
           type="button"
-          className={`${admPrimaryButtonClassName} flex-none px-7`}
+          className={`${admPrimaryButtonClassName} flex-none px-7 shadow-[0_8px_22px_rgba(0,0,0,.3)]`}
           disabled={changed.length === 0 || saveMutation.isPending}
           onClick={handleSave}
         >

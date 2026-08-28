@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { Suspense } from 'react'
 
 import {
+  admDialogClassName,
   admFieldClassName,
   admLabelClassName,
   admLockedFieldClassName,
@@ -117,7 +118,7 @@ export function ResourceFormDialog<
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[520px]">
+      <DialogContent className={`${admDialogClassName} max-w-[520px]`}>
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? definition.createTitle() : definition.editTitle()}

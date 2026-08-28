@@ -7,7 +7,11 @@ import { m } from '@mr/i18n'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@mr/ui'
 
 import { authClient } from '~/lib/auth-client'
-import { admPrimaryButtonClassName, admSecondaryButtonClassName } from '~/lib/adm-chrome'
+import {
+  admDialogClassName,
+  admPrimaryButtonClassName,
+  admSecondaryButtonClassName,
+} from '~/lib/adm-chrome'
 
 export const Route = createFileRoute('/_shell/settings/security')({
   component: SecuritySettingsComponent,
@@ -21,7 +25,7 @@ function SecuritySettingsComponent(): React.ReactElement {
   return (
     <>
       <div className="flex max-w-[640px] flex-col gap-4">
-        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+        <h1 className="text-balance text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.nav_security()}
         </h1>
 
@@ -69,7 +73,9 @@ function SecuritySettingsComponent(): React.ReactElement {
       </div>
 
       <Dialog open={showEnroll} onOpenChange={setShowEnroll}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-lg">
+        <DialogContent
+          className={`${admDialogClassName} max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-lg`}
+        >
           <DialogHeader>
             <DialogTitle>{m.security_2fa_enable_title()}</DialogTitle>
             <DialogDescription>{m.security_2fa_enable_description()}</DialogDescription>
@@ -83,7 +89,9 @@ function SecuritySettingsComponent(): React.ReactElement {
       </Dialog>
 
       <Dialog open={showDisable} onOpenChange={setShowDisable}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-lg">
+        <DialogContent
+          className={`${admDialogClassName} max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-lg`}
+        >
           <DialogHeader>
             <DialogTitle>{m.security_2fa_disable_title()}</DialogTitle>
             <DialogDescription>{m.security_2fa_disable_description()}</DialogDescription>

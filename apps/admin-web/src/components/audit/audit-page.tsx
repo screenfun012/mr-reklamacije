@@ -23,9 +23,9 @@ export function AuditPageContent(): ReactElement {
   const items = query.data?.pages.flatMap((page) => page.items) ?? []
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="adm-enter flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+        <h1 className="text-balance text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.audit_page_title()}
         </h1>
         <p className="mt-[5px] text-[13px] text-muted-foreground">{m.audit_page_subtitle()}</p>

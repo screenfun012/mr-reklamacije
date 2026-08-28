@@ -58,7 +58,7 @@ function MonthTrend({ delta }: { delta: number }): ReactElement {
   const isUp = delta > 0
   return (
     <span
-      className={`flex items-center gap-1 ${isUp ? 'text-adm-grn' : 'text-adm-red-h'}`}
+      className={`flex items-center gap-1 tabular-nums ${isUp ? 'text-adm-grn' : 'text-adm-red-h'}`}
       title={m.dashboard_trend_vs_last_month()}
     >
       {isUp ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
@@ -80,12 +80,12 @@ function DashboardContent(): ReactElement {
   const recentChanges = audit.pages.flatMap((page) => page.items)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="adm-enter flex flex-col gap-4">
       <div>
         <div className="mb-[7px] font-mono text-[10.5px] font-semibold tracking-[0.2em] text-adm-red-h">
           {formatDateEyebrow(new Date(), locale)}
         </div>
-        <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-foreground">
+        <h1 className="text-balance text-[26px] font-extrabold tracking-[-0.02em] text-foreground">
           {m.dashboard_welcome({ userName })}
         </h1>
       </div>
@@ -149,20 +149,21 @@ function DashboardSkeleton(): ReactElement {
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-8 w-64" />
       </div>
+      {/* rounded-[13px] mirrors the cards these stand in for — a 6px ghost snaps at swap. */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Skeleton className="h-[92px] w-full" />
-        <Skeleton className="h-[92px] w-full" />
-        <Skeleton className="h-[92px] w-full" />
-        <Skeleton className="h-[92px] w-full" />
+        <Skeleton className="h-[92px] w-full rounded-[13px]" />
+        <Skeleton className="h-[92px] w-full rounded-[13px]" />
+        <Skeleton className="h-[92px] w-full rounded-[13px]" />
+        <Skeleton className="h-[92px] w-full rounded-[13px]" />
       </div>
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[340px_1fr]">
-        <Skeleton className="h-[300px] w-full" />
-        <Skeleton className="h-[300px] w-full" />
+        <Skeleton className="h-[300px] w-full rounded-[13px]" />
+        <Skeleton className="h-[300px] w-full rounded-[13px]" />
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3.5">
-        <Skeleton className="h-[220px] w-full" />
-        <Skeleton className="h-[220px] w-full" />
-        <Skeleton className="h-[220px] w-full" />
+        <Skeleton className="h-[220px] w-full rounded-[13px]" />
+        <Skeleton className="h-[220px] w-full rounded-[13px]" />
+        <Skeleton className="h-[220px] w-full rounded-[13px]" />
       </div>
     </div>
   )

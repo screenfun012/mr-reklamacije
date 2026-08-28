@@ -6,7 +6,7 @@ import {
   dataTableHeadRowClassName,
   dataTableRowHoverOnlyClassName,
 } from '@mr/ui'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Fragment, useState, type ReactElement } from 'react'
 
 import { admTableHeadCellClassName, admTableScrollClassName } from '~/lib/adm-chrome'
@@ -91,13 +91,12 @@ export function AuditLogTable({ items }: AuditLogTableProps): ReactElement {
                         onClick={() => toggle(item.id)}
                         aria-expanded={isOpen}
                         aria-label={isOpen ? m.audit_expand_hide() : m.audit_expand_show()}
-                        className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                        className="-m-2 cursor-pointer p-2 text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        {isOpen ? (
-                          <ChevronDown className="size-4" />
-                        ) : (
-                          <ChevronRight className="size-4" />
-                        )}
+                        {/* One glyph that turns (prototype :331), not two that swap. */}
+                        <ChevronRight
+                          className={`size-4 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}
+                        />
                       </button>
                     </td>
                     <td

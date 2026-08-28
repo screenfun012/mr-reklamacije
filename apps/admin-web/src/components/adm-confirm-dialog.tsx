@@ -64,7 +64,7 @@ export function AdmConfirmDialog({
       <DialogContent
         unstyled
         hideClose
-        className="left-1/2 top-1/2 flex w-[calc(100%-2rem)] max-w-[480px] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-[15px] border border-mr-border-strong bg-adm-raised px-[26px] py-6 shadow-[0_28px_70px_rgba(0,0,0,.5)]"
+        className="left-1/2 top-1/2 flex w-[calc(100%-2rem)] max-w-[480px] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-[15px] border border-mr-border-strong bg-adm-raised px-[26px] py-6 shadow-[0_28px_70px_rgba(0,0,0,.5)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-2 data-[state=open]:duration-[250ms] motion-reduce:animate-none"
       >
         <p
           className={cn(

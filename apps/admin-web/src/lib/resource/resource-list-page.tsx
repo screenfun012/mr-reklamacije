@@ -75,10 +75,10 @@ export function ResourceListPage<
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="adm-enter flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+          <h1 className="text-balance text-2xl font-extrabold tracking-[-0.02em] text-foreground">
             {definition.title()}
           </h1>
           <p className="mt-[5px] text-[13px] text-muted-foreground">{definition.subtitle()}</p>
@@ -87,7 +87,7 @@ export function ResourceListPage<
             identity or destruction, and "add a row" is neither (prototype §1). */}
         <button
           type="button"
-          className="h-11 cursor-pointer rounded-[10px] bg-adm-btn px-[22px] text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-adm-btn-fg shadow-[0_8px_22px_rgba(0,0,0,.3)] transition-opacity hover:opacity-90"
+          className="h-11 cursor-pointer rounded-[10px] bg-adm-btn px-[22px] text-[12.5px] font-extrabold uppercase tracking-[0.06em] text-adm-btn-fg shadow-[0_8px_22px_rgba(0,0,0,.3)] transition-[opacity,transform] hover:opacity-90 active:scale-[0.98]"
           onClick={() => setCreateOpen(true)}
         >
           {definition.addLabel()}

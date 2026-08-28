@@ -40,7 +40,7 @@ export function PendingUsersCard({
 
       {users.length === 0 ? (
         <p
-          className="px-6 py-10 text-center text-[13.5px] italic text-muted-foreground"
+          className="text-pretty px-6 py-10 text-center text-[13.5px] italic text-muted-foreground"
           role="status"
         >
           {m.users_pending_empty()}
@@ -76,7 +76,7 @@ export function PendingUsersCard({
               <button
                 type="button"
                 disabled={disabled}
-                className="h-[38px] cursor-pointer rounded-[9px] border border-adm-grn/45 bg-adm-grn/[0.14] px-[18px] font-mono text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-adm-grn transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-[38px] cursor-pointer rounded-[9px] border border-adm-grn/45 bg-adm-grn/[0.14] px-[18px] font-mono text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-adm-grn transition-[opacity,transform] hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => onApprove(user)}
               >
                 {m.users_approve_button()}
@@ -84,7 +84,7 @@ export function PendingUsersCard({
               <button
                 type="button"
                 disabled={disabled}
-                className="h-[38px] cursor-pointer rounded-[9px] border border-mr-brand/40 bg-transparent px-4 font-mono text-[11.5px] font-bold uppercase tracking-[0.06em] text-adm-red-h transition-colors hover:bg-mr-brand/10 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-[38px] cursor-pointer rounded-[9px] border border-mr-brand/40 bg-transparent px-4 font-mono text-[11.5px] font-bold uppercase tracking-[0.06em] text-adm-red-h transition-[background-color,transform] hover:bg-mr-brand/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => onReject(user)}
               >
                 {m.users_reject_button()}

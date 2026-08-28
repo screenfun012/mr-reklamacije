@@ -118,7 +118,7 @@ function LoginComponent(): React.ReactElement {
     // card, and a sign-in for one administrator does not need a hero. internal-web and portal-web
     // keep theirs — they are the screens clients and the shop floor see.
     <main className="adm-grid relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
-      <div className="relative z-10 w-full max-w-[420px] rounded-2xl border border-border bg-card px-9 py-8">
+      <div className="adm-enter relative z-10 w-full max-w-[420px] rounded-2xl border border-border bg-card px-9 py-8 [animation-duration:.4s]">
         <div className="mb-4">
           <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-adm-red-h">
             {m.admin_login_eyebrow()}
@@ -232,7 +232,7 @@ function LoginComponent(): React.ReactElement {
               <button
                 type="submit"
                 disabled={isPending}
-                className={`${admPrimaryButtonClassName} h-12 w-full flex-none`}
+                className={`${admPrimaryButtonClassName} h-12 w-full flex-none shadow-[0_8px_22px_rgba(0,0,0,.3)]`}
               >
                 {m.auth_login_submit()}
               </button>

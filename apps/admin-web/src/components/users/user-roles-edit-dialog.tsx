@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 
 import {
+  admDialogClassName,
   admLabelClassName,
   admPrimaryButtonClassName,
   admSecondaryButtonClassName,
@@ -90,7 +91,7 @@ export function UserRolesEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[520px]">
+      <DialogContent className={`${admDialogClassName} max-w-[520px]`}>
         <DialogHeader>
           <DialogTitle>{m.users_roles_edit_dialog_title()}</DialogTitle>
           {user !== null ? (

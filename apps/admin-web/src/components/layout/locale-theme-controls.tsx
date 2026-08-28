@@ -69,11 +69,23 @@ export function LocaleThemeControls(): ReactElement {
         title={nextThemeLabel}
         className="grid size-[34px] cursor-pointer place-items-center rounded-lg border border-mr-border-strong bg-adm-inbg text-muted-foreground transition-colors hover:text-foreground"
       >
-        {resolvedTheme === 'dark' ? (
-          <Sun className="size-4" aria-hidden="true" />
-        ) : (
-          <Moon className="size-4" aria-hidden="true" />
-        )}
+        {/* Both glyphs stay mounted and cross-fade with a quarter turn — a hard swap blinks. */}
+        <span className="relative grid size-4 place-items-center">
+          <Sun
+            aria-hidden="true"
+            className={cn(
+              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              resolvedTheme === 'dark' ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0',
+            )}
+          />
+          <Moon
+            aria-hidden="true"
+            className={cn(
+              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              resolvedTheme === 'dark' ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100',
+            )}
+          />
+        </span>
       </button>
     </div>
   )

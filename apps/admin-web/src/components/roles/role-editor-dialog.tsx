@@ -172,7 +172,7 @@ export function RoleEditorDialog({
       <DialogContent
         unstyled
         hideClose
-        className="left-1/2 top-1/2 flex max-h-[92vh] w-[1100px] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-mr-border-strong bg-adm-raised shadow-[0_28px_70px_rgba(0,0,0,.5)]"
+        className="left-1/2 top-1/2 flex max-h-[92vh] w-[1100px] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-mr-border-strong bg-adm-raised shadow-[0_28px_70px_rgba(0,0,0,.5)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-2 data-[state=open]:duration-[250ms] motion-reduce:animate-none"
       >
         <div className="flex-none border-b border-border px-6 pb-3.5 pt-5">
           <div className="flex flex-wrap items-center gap-3">

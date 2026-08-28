@@ -74,5 +74,5 @@ export function DashRow({ children }: { children: ReactNode }): ReactElement {
 
 /** What a card says when it has nothing to list. Italic, quiet — never a blank card. */
 export function DashEmpty({ children }: { children: ReactNode }): ReactElement {
-  return <p className="py-2 text-[12.5px] italic text-muted-foreground">{children}</p>
+  return <p className="text-pretty py-2 text-[12.5px] italic text-muted-foreground">{children}</p>
 }

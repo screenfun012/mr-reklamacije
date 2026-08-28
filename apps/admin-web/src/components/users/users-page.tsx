@@ -503,7 +503,7 @@ export function UsersPageContent(): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+        <h1 className="text-balance text-2xl font-extrabold tracking-[-0.02em] text-foreground">
           {m.nav_users()}
         </h1>
         <p className="mt-[5px] text-[13px] text-muted-foreground">{m.users_page_subtitle()}</p>

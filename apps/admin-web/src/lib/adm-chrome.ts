@@ -26,11 +26,19 @@ export const admLockedFieldClassName =
 
 /** The one filled button in a dialog: save, confirm, proceed. Never red — see the prototype's §1. */
 export const admPrimaryButtonClassName =
-  'h-[46px] flex-1 cursor-pointer rounded-[10px] bg-adm-btn px-5 text-[12.5px] font-extrabold uppercase tracking-[0.05em] text-adm-btn-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50'
+  'h-[46px] flex-1 cursor-pointer rounded-[10px] bg-adm-btn px-5 text-[12.5px] font-extrabold uppercase tracking-[0.05em] text-adm-btn-fg transition-[opacity,transform] hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50'
 
 /** Its neighbour: cancel, back out, leave things as they are. */
 export const admSecondaryButtonClassName =
-  'h-[46px] flex-1 cursor-pointer rounded-[10px] border border-mr-border-strong bg-adm-inbg px-5 text-[12.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50'
+  'h-[46px] flex-1 cursor-pointer rounded-[10px] border border-mr-border-strong bg-adm-inbg px-5 text-[12.5px] font-bold uppercase tracking-[0.05em] text-muted-foreground transition-[color,transform] hover:text-foreground active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50'
+
+/**
+ * The prototype's dialog shell (15px on `--raised` under the deep shadow), for the styled
+ * `DialogContent` call sites whose default would otherwise sit at ~7px — blunter than the 9px
+ * fields inside it.
+ */
+export const admDialogClassName =
+  'rounded-[15px] sm:rounded-[15px] border-mr-border-strong bg-adm-raised shadow-[0_28px_70px_rgba(0,0,0,.5)]'
 
 /**
  * The box a list table scrolls inside, capped to what the screen can show.

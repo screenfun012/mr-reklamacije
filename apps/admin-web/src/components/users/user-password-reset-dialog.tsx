@@ -13,6 +13,8 @@ import {
 import { Eye, EyeOff } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
 
+import { admDialogClassName } from '~/lib/adm-chrome'
+
 interface UserPasswordResetDialogProps {
   user: UserListItem | null
   open: boolean
@@ -57,7 +59,7 @@ export function UserPasswordResetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={`${admDialogClassName} max-w-md`}>
         <DialogHeader>
           <DialogTitle>{m.users_reset_password_dialog_title()}</DialogTitle>
           {user !== null ? (

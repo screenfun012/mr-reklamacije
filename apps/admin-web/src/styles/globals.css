@@ -123,3 +123,26 @@
     linear-gradient(90deg, var(--adm-grid) 1px, transparent 1px);
   background-size: 56px 56px;
 }
+
+/* The prototype gives every screen container `fadeUp .35s cubic-bezier(.22,1,.36,1) both`
+ * (admin-prototip.dc.html:128 and siblings) — one class instead of seven inline copies. */
+@keyframes adm-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.adm-enter {
+  animation: adm-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-enter {
+    animation: none;
+  }
+}
