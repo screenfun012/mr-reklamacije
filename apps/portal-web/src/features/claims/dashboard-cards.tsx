@@ -102,7 +102,7 @@ export function ActivityCard({
     >
       <h3 className="mb-4 text-[15px] font-bold">{m.portal_activity_heading()}</h3>
       {activity.length === 0 ? (
-        <p className="text-[13.5px] text-mrp-text2">{m.portal_activity_empty()}</p>
+        <p className="text-pretty text-[13.5px] text-mrp-text2">{m.portal_activity_empty()}</p>
       ) : (
         <div className="flex flex-col">
           {activity.map((item, index) => (

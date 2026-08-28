@@ -114,7 +114,7 @@ export function AttachmentPicker({
                   disabled={disabled}
                   onClick={() => removeAt(index)}
                   aria-label={m.portal_submit_attachments_remove()}
-                  className="flex-none rounded-md p-1 text-mrp-text2 transition-colors hover:text-mrp-redh disabled:cursor-not-allowed"
+                  className="-my-1.5 flex-none rounded-md p-2.5 text-mrp-text2 transition-colors hover:text-mrp-redh disabled:cursor-not-allowed"
                 >
                   <X className="size-4" />
                 </button>

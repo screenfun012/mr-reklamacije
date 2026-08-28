@@ -73,7 +73,9 @@ export function ReportedProblemCard({ claim }: { claim: ClientClaimDetail }) {
         <h2 className="text-[17px] font-extrabold">{m.portal_detail_problem()}</h2>
         {claim.sectionFreshness.details && <SectionNewBadge />}
       </div>
-      <p className="whitespace-pre-line text-[15px] leading-[1.65]">{claim.warrantyReport}</p>
+      <p className="whitespace-pre-line text-pretty text-[15px] leading-[1.65]">
+        {claim.warrantyReport}
+      </p>
     </div>
   )
 }
@@ -91,7 +93,7 @@ export function InspectionCard({ claim }: { claim: ClientClaimDetail }) {
         {claim.sectionFreshness.inspection && <SectionNewBadge />}
       </div>
       {report !== null && report !== '' ? (
-        <p className="whitespace-pre-line text-[15px] leading-[1.65]">
+        <p className="whitespace-pre-line text-pretty text-[15px] leading-[1.65]">
           {stripClientVisibleMarker(report)}
         </p>
       ) : (

@@ -187,7 +187,7 @@ function ClaimDetailError() {
               onClick={() => {
                 void router.invalidate()
               }}
-              className="cursor-pointer rounded-[10px] border border-mrp-border2 bg-mrp-raised px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-colors hover:border-mrp-red hover:text-mrp-redh"
+              className="cursor-pointer rounded-[10px] border border-mrp-border2 bg-mrp-raised px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-[color,border-color,transform] hover:border-mrp-red hover:text-mrp-redh active:scale-[0.98]"
             >
               {m.portal_claims_error_retry()}
             </button>

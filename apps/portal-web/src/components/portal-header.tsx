@@ -57,7 +57,7 @@ export function PortalHeader({ maxWidthClass = 'max-w-[1280px]' }: { maxWidthCla
             type="button"
             onClick={handleSignOut}
             aria-label={m.portal_signout()}
-            className="grid size-9 flex-none place-items-center rounded-[9px] border border-mrp-border2 bg-mrp-raised text-mrp-text2 transition-colors hover:border-mrp-red hover:text-mrp-redh sm:hidden"
+            className="relative grid size-9 flex-none place-items-center rounded-[9px] border border-mrp-border2 bg-mrp-raised text-mrp-text2 transition-[color,border-color,transform] after:absolute after:-inset-0.5 active:scale-[0.97] hover:border-mrp-red hover:text-mrp-redh sm:hidden"
           >
             <LogOut className="size-4" />
           </button>

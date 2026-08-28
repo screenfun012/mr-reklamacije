@@ -24,7 +24,7 @@ function engineLine(claim: ClientClaimListItem): string {
 const CARD_CLASSES =
   'mrp-fade-up group relative block overflow-hidden rounded-[14px] border border-mrp-border bg-mrp-surface px-5 pb-[18px] pt-5 transition-[transform,box-shadow,border-color] duration-[220ms]'
 const CARD_CLICKABLE_CLASSES =
-  'hover:-translate-y-1 hover:border-[rgba(237,28,36,0.55)] hover:shadow-[var(--mrp-shadow)]'
+  'hover:-translate-y-1 hover:border-[rgba(237,28,36,0.55)] hover:shadow-[var(--mrp-shadow)] active:translate-y-0 active:scale-[0.995]'
 
 /** Dashboard claim card: mono id + chip, service tag, engine, 3-segment progress. */
 export function ClaimCard({ claim, index }: { claim: ClientClaimListItem; index: number }) {

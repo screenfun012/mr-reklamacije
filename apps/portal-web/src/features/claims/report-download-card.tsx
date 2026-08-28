@@ -108,7 +108,7 @@ export function ReportDownloadCard({
       >
         <span className="absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,#ed1c24,transparent_70%)]" />
         <h2 className="mb-2 text-base font-extrabold">{m.portal_detail_download_title()}</h2>
-        <p className="mb-5 text-[13.5px] leading-[1.55] text-mrp-text2">
+        <p className="mb-5 text-pretty text-[13.5px] leading-[1.55] text-mrp-text2">
           {m.portal_detail_download_subtitle()}
         </p>
         <PortalButton type="button" className="h-12 text-[13.5px]" onClick={openReport}>
@@ -117,7 +117,10 @@ export function ReportDownloadCard({
       </div>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex h-[86vh] max-w-5xl flex-col gap-0 overflow-hidden border-mrp-border bg-mrp-surface p-0 text-mrp-text">
+        <DialogContent
+          className="flex h-[86vh] max-w-5xl flex-col gap-0 overflow-hidden rounded-[15px] border-mrp-border bg-mrp-surface p-0 text-mrp-text sm:rounded-[15px]"
+          overlayClassName="bg-[rgba(6,6,8,0.9)] backdrop-blur-[6px]"
+        >
           <DialogHeader className="flex-row items-center justify-between gap-4 border-b border-mrp-border px-5 py-3">
             <DialogTitle className="text-sm font-bold">
               {m.portal_report_viewer_title()}
@@ -126,7 +129,7 @@ export function ReportDownloadCard({
               <a
                 href={objectUrl}
                 download={fileName}
-                className="mr-8 inline-flex items-center gap-2 rounded-lg bg-mrp-btn px-3.5 py-2 text-[12px] font-bold uppercase tracking-[0.08em] text-mrp-btnfg transition-colors hover:bg-mrp-btnhv"
+                className="mr-8 inline-flex items-center gap-2 rounded-lg bg-mrp-btn px-3.5 py-2 text-[12px] font-bold uppercase tracking-[0.08em] text-mrp-btnfg transition-[background-color,transform] hover:bg-mrp-btnhv active:scale-[0.98]"
               >
                 <Download className="size-4" aria-hidden="true" />
                 {m.portal_report_download()}
@@ -159,7 +162,7 @@ export function ReportDownloadCard({
                 <button
                   type="button"
                   onClick={openReport}
-                  className="cursor-pointer rounded-lg border border-mrp-border2 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.08em] transition-colors hover:border-mrp-red hover:text-mrp-redh"
+                  className="cursor-pointer rounded-lg border border-mrp-border2 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.08em] transition-[color,border-color,transform] hover:border-mrp-red hover:text-mrp-redh active:scale-[0.98]"
                 >
                   {m.portal_report_retry()}
                 </button>

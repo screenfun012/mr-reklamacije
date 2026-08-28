@@ -29,7 +29,7 @@ export function LangThemeControls({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={() => setLocale('en')}
           className={cn(
-            'cursor-pointer font-mono font-semibold tracking-[0.08em] transition-colors',
+            'cursor-pointer font-mono font-semibold tracking-[0.08em] transition-[color,background-color,transform] active:scale-[0.97]',
             segmentPad,
             locale === 'en' ? SEGMENT_ACTIVE : SEGMENT_IDLE,
           )}
@@ -40,7 +40,7 @@ export function LangThemeControls({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={() => setLocale('sr')}
           className={cn(
-            'cursor-pointer font-mono font-semibold tracking-[0.08em] transition-colors',
+            'cursor-pointer font-mono font-semibold tracking-[0.08em] transition-[color,background-color,transform] active:scale-[0.97]',
             segmentPad,
             locale === 'sr' ? SEGMENT_ACTIVE : SEGMENT_IDLE,
           )}
@@ -54,15 +54,25 @@ export function LangThemeControls({ compact = false }: { compact?: boolean }) {
         aria-label={nextThemeLabel}
         title={nextThemeLabel}
         className={cn(
-          'grid size-9 cursor-pointer place-items-center rounded-lg border border-mrp-border2 bg-transparent font-mono font-semibold tracking-[0.08em] text-mrp-text2 transition-colors hover:border-mrp-text2 hover:text-mrp-text sm:block sm:size-auto',
+          'relative grid size-9 cursor-pointer place-items-center rounded-lg border border-mrp-border2 bg-transparent font-mono font-semibold tracking-[0.08em] text-mrp-text2 transition-[color,border-color,transform] after:absolute after:-inset-0.5 active:scale-[0.97] hover:border-mrp-text2 hover:text-mrp-text sm:block sm:size-auto',
           chipPad,
         )}
       >
-        {theme === 'dark' ? (
-          <Sun className="size-4 sm:hidden" aria-hidden="true" />
-        ) : (
-          <Moon className="size-4 sm:hidden" aria-hidden="true" />
-        )}
+        {/* Below sm both glyphs stay mounted and cross-fade with a quarter turn. */}
+        <span className="relative grid size-4 place-items-center sm:hidden" aria-hidden="true">
+          <Sun
+            className={cn(
+              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              theme === 'dark' ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0',
+            )}
+          />
+          <Moon
+            className={cn(
+              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              theme === 'dark' ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100',
+            )}
+          />
+        </span>
         <span className="hidden sm:inline">{nextThemeLabel}</span>
       </button>
     </div>

@@ -189,6 +189,11 @@
     animation: mrpPopIn 0.55s ease both;
   }
 
+  /* The lightbox's tempo — the prototype draws it at .3s; .55s is the pending-card's. */
+  .mrp-pop-in-fast {
+    animation: mrpPopIn 0.3s ease both;
+  }
+
   .mrp-ken-burns {
     animation: mrpKen 28s ease-in-out infinite alternate;
   }
@@ -229,6 +234,12 @@
   }
 }
 
+/* The prototype's body carries this (MR Portal v2.dc.html:16); the transfer had dropped it. */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .mrp-input::placeholder {
   color: currentColor;
   opacity: 0.38;
@@ -245,6 +256,7 @@
   .mrp-fade-up-slow,
   .mrp-fade-in,
   .mrp-pop-in,
+  .mrp-pop-in-fast,
   .mrp-ken-burns,
   .mrp-spin-cog,
   .mrp-ring-warn,

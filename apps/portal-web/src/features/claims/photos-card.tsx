@@ -59,7 +59,7 @@ export function PhotosCard({ claimId, isFresh }: { claimId: string; isFresh: boo
               key={photo.id}
               type="button"
               onClick={() => setLightboxUrl(buildAttachmentDownloadUrl(photo.id, 'inline'))}
-              className="relative block aspect-[4/3] w-full cursor-zoom-in overflow-hidden rounded-[9px] border border-mrp-border transition-[transform,box-shadow] duration-200 hover:scale-[1.035] hover:shadow-[var(--mrp-shadow)]"
+              className="relative block aspect-[4/3] w-full cursor-zoom-in overflow-hidden rounded-[9px] border border-mrp-border transition-[transform,box-shadow] duration-200 hover:scale-[1.035] hover:shadow-[var(--mrp-shadow)] active:scale-100"
             >
               <img
                 src={buildAttachmentThumbnailUrl(photo.id)}
@@ -82,7 +82,7 @@ export function PhotosCard({ claimId, isFresh }: { claimId: string; isFresh: boo
           <img
             src={lightboxUrl}
             alt={m.portal_photo_alt()}
-            className="mrp-pop-in max-h-[84vh] max-w-[min(84vw,1100px)] object-contain"
+            className="mrp-pop-in-fast max-h-[84vh] max-w-[min(84vw,1100px)] rounded-[9px] object-contain outline outline-1 -outline-offset-1 outline-mrp-border"
           />
         </div>
       )}

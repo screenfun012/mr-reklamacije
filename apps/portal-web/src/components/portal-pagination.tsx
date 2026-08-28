@@ -28,8 +28,9 @@ function buildPageWindow(current: number, total: number): PageToken[] {
   return tokens
 }
 
+// The halo stretches the 36px look to a 40px target without moving a visible pixel.
 const PAGE_BUTTON =
-  'grid size-9 cursor-pointer place-items-center rounded-lg border font-mono text-[12px] font-semibold transition-colors'
+  'relative grid size-9 cursor-pointer place-items-center rounded-lg border font-mono text-[12px] font-semibold transition-[color,border-color,background-color,transform] after:absolute after:-inset-0.5 active:scale-[0.94]'
 
 export function PortalPagination({
   page,

@@ -36,7 +36,7 @@ export function HeroPanel({ variant }: { variant: 'login' | 'signup' }) {
       />
       {variant === 'login' && (
         <span
-          className="absolute -bottom-[140px] -right-[140px] size-[520px] text-white/[0.06]"
+          className="mrp-spin-cog absolute -bottom-[140px] -right-[140px] size-[520px] text-white/[0.06]"
           style={{ animation: 'mrpSpin 150s linear infinite' }}
         >
           <MaskedIcon name="cog" className="size-full" />
@@ -57,13 +57,13 @@ export function HeroPanel({ variant }: { variant: 'login' | 'signup' }) {
           {m.portal_hero_eyebrow()}
         </div>
         <h1
-          className="mrp-fade-up-slow mb-3.5 text-[clamp(34px,3.3vw,50px)] font-extrabold leading-[1.07] tracking-[-0.02em]"
+          className="mrp-fade-up-slow mb-3.5 text-balance text-[clamp(34px,3.3vw,50px)] font-extrabold leading-[1.07] tracking-[-0.02em]"
           style={{ animationDelay: '0.2s' }}
         >
           {m.portal_hero_title()}
         </h1>
         <p
-          className="mrp-fade-up-slow max-w-[470px] text-[16.5px] leading-[1.55] text-white/70"
+          className="mrp-fade-up-slow max-w-[470px] text-pretty text-[16.5px] leading-[1.55] text-white/70"
           style={{ animationDelay: '0.3s', marginBottom: variant === 'login' ? 34 : 0 }}
         >
           {m.portal_hero_subtitle()}

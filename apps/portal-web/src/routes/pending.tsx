@@ -32,7 +32,7 @@ function PendingComponent(): React.ReactElement {
 
       <div className="mrp-pop-in relative w-full max-w-[520px] overflow-hidden rounded-[18px] border border-mrp-border bg-mrp-surface px-8 pb-10 pt-11 shadow-[var(--mrp-shadow)] sm:px-[46px]">
         <span
-          className="absolute -right-[90px] -top-[90px] size-[230px] text-mrp-gear"
+          className="mrp-spin-cog absolute -right-[90px] -top-[90px] size-[230px] text-mrp-gear"
           style={{ animation: 'mrpSpin 60s linear infinite' }}
         >
           <MaskedIcon name="cog" className="size-full" />

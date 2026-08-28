@@ -60,7 +60,7 @@ function WelcomeComponent() {
       />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,8,10,0.92)_0%,rgba(8,8,10,0.62)_52%,rgba(8,8,10,0.15)_100%)]" />
       <span
-        className="absolute -bottom-[190px] -left-[190px] z-[1] size-[600px] text-white/[0.05]"
+        className="mrp-spin-cog absolute -bottom-[190px] -left-[190px] z-[1] size-[600px] text-white/[0.05]"
         style={{ animation: 'mrpSpin 160s linear infinite' }}
       >
         <MaskedIcon name="cog" className="size-full" />
@@ -80,13 +80,13 @@ function WelcomeComponent() {
           {m.portal_welcome_eyebrow()}
         </div>
         <h1
-          className="mrp-fade-up-slow mb-4 text-[clamp(42px,4.6vw,62px)] font-extrabold leading-[1.05] tracking-[-0.02em]"
+          className="mrp-fade-up-slow mb-4 text-balance text-[clamp(42px,4.6vw,62px)] font-extrabold leading-[1.05] tracking-[-0.02em]"
           style={{ animationDelay: '0.25s' }}
         >
           {m.portal_welcome_hello({ company })}
         </h1>
         <p
-          className="mrp-fade-up-slow mb-10 max-w-[540px] text-lg leading-[1.55] text-white/75"
+          className="mrp-fade-up-slow mb-10 max-w-[540px] text-pretty text-lg leading-[1.55] text-white/75"
           style={{ animationDelay: '0.35s' }}
         >
           {m.portal_welcome_intro()}
@@ -116,7 +116,7 @@ function WelcomeComponent() {
         <button
           type="button"
           onClick={handleEnter}
-          className="mrp-fade-up-slow inline-flex h-[54px] cursor-pointer items-center gap-2.5 rounded-[10px] border-none bg-[#f2f2f3] px-[38px] font-sans text-[15px] font-bold uppercase tracking-[0.09em] text-[#101013] shadow-[0_16px_38px_rgba(0,0,0,0.4)] transition-[background,transform] duration-200 hover:-translate-y-px hover:bg-white"
+          className="mrp-fade-up-slow inline-flex h-[54px] cursor-pointer items-center gap-2.5 rounded-[10px] border-none bg-[#f2f2f3] px-[38px] font-sans text-[15px] font-bold uppercase tracking-[0.09em] text-[#101013] shadow-[0_16px_38px_rgba(0,0,0,0.4)] transition-[background,transform] duration-200 hover:-translate-y-px hover:bg-white active:translate-y-0 active:scale-[0.99]"
           style={{ animationDelay: '0.75s' }}
         >
           {m.portal_welcome_cta()}

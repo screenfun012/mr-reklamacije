@@ -62,7 +62,7 @@ function DashboardBackdrop() {
       <div className="mrp-grid-bg mrp-grid-fade-down absolute inset-0" />
       <div className="absolute -top-[260px] left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(237,28,36,0.1),transparent_65%)]" />
       <span
-        className="absolute -right-[170px] top-[70px] size-[460px] text-mrp-gear"
+        className="mrp-spin-cog absolute -right-[170px] top-[70px] size-[460px] text-mrp-gear"
         style={{ animation: 'mrpSpin 130s linear infinite' }}
       >
         <MaskedIcon name="cog" className="size-full" />
@@ -97,10 +97,10 @@ function DashboardComponent() {
             <div className="mb-2.5 font-mono text-[11px] font-medium tracking-[0.2em] text-mrp-redh">
               {formatPortalDateEyebrow(now, locale)}
             </div>
-            <h1 className="mb-2 text-[30px] font-extrabold tracking-[-0.02em] sm:text-[38px]">
+            <h1 className="mb-2 text-balance text-[30px] font-extrabold tracking-[-0.02em] sm:text-[38px]">
               {m.portal_dashboard_greeting({ company: primary })}
             </h1>
-            <p className="text-[15px] text-mrp-text2">
+            <p className="text-[15px] tabular-nums text-mrp-text2">
               {m.portal_dashboard_summary({
                 resolved: summary.stats.resolved,
                 total: summary.stats.total,
@@ -139,7 +139,7 @@ function DashboardComponent() {
                       })
                     }}
                     className={cn(
-                      'cursor-pointer px-[15px] py-2 font-sans text-xs font-semibold transition-colors',
+                      'cursor-pointer px-[15px] py-2 font-sans text-xs font-semibold transition-[color,background-color,transform] active:scale-[0.97]',
                       index > 0 && 'border-l border-mrp-border',
                       filter === f.key
                         ? 'bg-mrp-red text-white'
@@ -153,7 +153,7 @@ function DashboardComponent() {
             </div>
 
             {claims.length === 0 ? (
-              <div className="rounded-[14px] border border-mrp-border bg-mrp-surface px-6 py-14 text-center text-[14px] text-mrp-text2">
+              <div className="text-balance rounded-[14px] border border-mrp-border bg-mrp-surface px-6 py-14 text-center text-[14px] text-mrp-text2">
                 {filter === 'machining'
                   ? m.portal_claims_empty_machining()
                   : m.portal_claims_empty_description()}
@@ -217,7 +217,7 @@ function DashboardError() {
             onClick={() => {
               void router.invalidate()
             }}
-            className="mt-5 cursor-pointer rounded-[10px] border border-mrp-border2 bg-mrp-raised px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-colors hover:border-mrp-red hover:text-mrp-redh"
+            className="mt-5 cursor-pointer rounded-[10px] border border-mrp-border2 bg-mrp-raised px-6 py-2.5 text-[13px] font-bold uppercase tracking-[0.08em] transition-[color,border-color,transform] hover:border-mrp-red hover:text-mrp-redh active:scale-[0.98]"
           >
             {m.portal_claims_error_retry()}
           </button>
