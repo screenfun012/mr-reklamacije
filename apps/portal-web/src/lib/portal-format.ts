@@ -19,7 +19,9 @@ export function formatPortalDate(value: string | null): string {
 
 /** "THURSDAY · 03.07.2026" — the dashboard date eyebrow. */
 export function formatPortalDateEyebrow(now: Date, locale: Locale): string {
-  const weekday = new Intl.DateTimeFormat(locale === 'sr' ? 'sr-RS' : 'en-GB', {
+  // sr-Latn, never bare sr-RS: plain Serbian resolves to CYRILLIC and greeted the
+  // dashboard with СУБОТА (caught by Nikola, 2026-08-29).
+  const weekday = new Intl.DateTimeFormat(locale === 'sr' ? 'sr-Latn-RS' : 'en-GB', {
     weekday: 'long',
   }).format(now)
   const day = String(now.getDate()).padStart(2, '0')
@@ -38,7 +40,9 @@ export function formatPortalTimeAgo(iso: string, locale: Locale, now: Date): str
   const diffHours = Math.round(diffMs / 3_600_000)
   const diffDays = Math.round(diffMs / 86_400_000)
 
-  const rtf = new Intl.RelativeTimeFormat(locale === 'sr' ? 'sr-RS' : 'en', { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat(locale === 'sr' ? 'sr-Latn-RS' : 'en', {
+    numeric: 'auto',
+  })
   let label: string
   if (Math.abs(diffDays) >= 1) {
     label = rtf.format(diffDays, 'day')

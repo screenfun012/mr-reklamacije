@@ -74,14 +74,14 @@ export function LocaleThemeControls(): ReactElement {
           <Sun
             aria-hidden="true"
             className={cn(
-              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              'adm-theme-glyph col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-300 motion-reduce:transition-none',
               resolvedTheme === 'dark' ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0',
             )}
           />
           <Moon
             aria-hidden="true"
             className={cn(
-              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              'adm-theme-glyph col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-300 motion-reduce:transition-none',
               resolvedTheme === 'dark' ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100',
             )}
           />

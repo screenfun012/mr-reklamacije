@@ -14,12 +14,9 @@ export function LangThemeControls({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = usePortalTheme()
 
   const segmentPad = compact ? 'px-[11px] py-1.5 text-[11px]' : 'px-3 py-[7px] text-[11.5px]'
-  // The word is kept from sm up, where the prototype drew it. Below sm it becomes a glyph: on a
-  // 390px phone the header ran 57px past the edge, and this chip is the one control whose width
-  // changes with BOTH the language and the current theme (LIGHT/DARK/SVETLA/TAMNA).
-  const chipPad = compact
-    ? 'sm:px-[13px] sm:py-1.5 sm:text-[11px]'
-    : 'sm:px-3.5 sm:py-[7px] sm:text-[11.5px]'
+  // A glyph at every width — Nikola's call (2026-08-29) over the prototype's word: the word was
+  // the one control whose width changed with BOTH the language and the current theme
+  // (LIGHT/DARK/SVETLA/TAMNA), and the other two apps already draw the glyph.
   const nextThemeLabel = theme === 'dark' ? m.portal_theme_light() : m.portal_theme_dark()
 
   return (
@@ -53,27 +50,24 @@ export function LangThemeControls({ compact = false }: { compact?: boolean }) {
         onClick={toggleTheme}
         aria-label={nextThemeLabel}
         title={nextThemeLabel}
-        className={cn(
-          'relative grid size-9 cursor-pointer place-items-center rounded-lg border border-mrp-border2 bg-transparent font-mono font-semibold tracking-[0.08em] text-mrp-text2 transition-[color,border-color,transform] after:absolute after:-inset-0.5 active:scale-[0.97] hover:border-mrp-text2 hover:text-mrp-text sm:block sm:size-auto',
-          chipPad,
-        )}
+        className="relative grid size-9 cursor-pointer place-items-center rounded-lg border border-mrp-border2 bg-transparent text-mrp-text2 transition-[color,border-color,transform] after:absolute after:-inset-0.5 active:scale-[0.97] hover:border-mrp-text2 hover:text-mrp-text"
       >
-        {/* Below sm both glyphs stay mounted and cross-fade with a quarter turn. */}
-        <span className="relative grid size-4 place-items-center sm:hidden" aria-hidden="true">
+        {/* Both glyphs stay mounted and cross-fade with a quarter turn — and they are the one
+            thing that keeps animating while the theme flip freezes every other transition. */}
+        <span className="relative grid size-4 place-items-center" aria-hidden="true">
           <Sun
             className={cn(
-              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              'mrp-theme-glyph col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-300 motion-reduce:transition-none',
               theme === 'dark' ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0',
             )}
           />
           <Moon
             className={cn(
-              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              'mrp-theme-glyph col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-300 motion-reduce:transition-none',
               theme === 'dark' ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100',
             )}
           />
         </span>
-        <span className="hidden sm:inline">{nextThemeLabel}</span>
       </button>
     </div>
   )

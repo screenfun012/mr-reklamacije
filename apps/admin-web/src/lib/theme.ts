@@ -43,16 +43,23 @@ function resolve(theme: Theme): ResolvedTheme {
   return theme === 'system' ? getSystemTheme() : theme
 }
 
+let themeFlipTimer: ReturnType<typeof setTimeout> | undefined
+
 function applyDocumentClass(resolved: ResolvedTheme): void {
   if (typeof document === 'undefined') {
     return
   }
   const root = document.documentElement
+  // The palette must flip as ONE frame: any element with a colour transition trails
+  // the rest otherwise. The toggle's own glyphs are exempted in CSS.
+  root.classList.add('adm-theme-flip')
   if (resolved === 'dark') {
     root.classList.add('dark')
   } else {
     root.classList.remove('dark')
   }
+  clearTimeout(themeFlipTimer)
+  themeFlipTimer = setTimeout(() => root.classList.remove('adm-theme-flip'), 150)
 }
 
 interface ThemeStore {

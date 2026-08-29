@@ -16,7 +16,10 @@ export function formatTimeAgo(iso: string, locale: 'sr' | 'en', now: Date): stri
   const diffHours = Math.round(diffMs / 3_600_000)
   const diffDays = Math.round(diffMs / 86_400_000)
 
-  const rtf = new Intl.RelativeTimeFormat(locale === 'sr' ? 'sr-RS' : 'en', { numeric: 'auto' })
+  // sr-Latn, never bare sr-RS — plain Serbian resolves to CYRILLIC („пре 2 мин").
+  const rtf = new Intl.RelativeTimeFormat(locale === 'sr' ? 'sr-Latn-RS' : 'en', {
+    numeric: 'auto',
+  })
   if (Math.abs(diffDays) >= 1) {
     return rtf.format(diffDays, 'day')
   }

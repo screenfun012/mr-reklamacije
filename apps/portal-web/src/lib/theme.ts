@@ -43,11 +43,19 @@ function getServerSnapshot(): PortalTheme {
   return DEFAULT_THEME
 }
 
+let themeFlipTimer: ReturnType<typeof setTimeout> | undefined
+
 function applyTheme(theme: PortalTheme): void {
   const root = document.documentElement
+  // The palette must flip as ONE frame: any element with a colour transition trails
+  // the rest otherwise (the submit button lagged the theme — Nikola, 2026-08-29).
+  // The toggle's own glyphs are exempted in CSS; their cross-fade IS the feedback.
+  root.classList.add('mrp-theme-flip')
   root.classList.remove('dark', 'light')
   root.classList.add(theme)
   root.style.colorScheme = theme
+  clearTimeout(themeFlipTimer)
+  themeFlipTimer = setTimeout(() => root.classList.remove('mrp-theme-flip'), 150)
 }
 
 /** Reactive theme with persistence; the bootstrap script keeps first paint in sync. */

@@ -146,3 +146,11 @@
     animation: none;
   }
 }
+
+/* While the theme flips (150ms, `applyDocumentClass`), nothing transitions — except the
+ * toggle's own glyphs, whose cross-fade IS the flip's feedback. Unlayered on purpose. */
+.adm-theme-flip *:not(.adm-theme-glyph),
+.adm-theme-flip *:not(.adm-theme-glyph)::before,
+.adm-theme-flip *:not(.adm-theme-glyph)::after {
+  transition: none !important;
+}

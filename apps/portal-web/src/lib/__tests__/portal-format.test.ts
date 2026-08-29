@@ -1,6 +1,31 @@
 import { describe, expect, it } from 'vitest'
 
-import { companyInitials, formatCompanyLabel } from '../portal-format'
+import {
+  companyInitials,
+  formatCompanyLabel,
+  formatPortalDateEyebrow,
+  formatPortalTimeAgo,
+} from '../portal-format'
+
+describe('formatPortalDateEyebrow', () => {
+  it('writes Serbian in Latin script, never Cyrillic', () => {
+    // 2026-08-29 is a Saturday — bare `sr` resolves to Cyrillic and printed „СУБОТА".
+    const eyebrow = formatPortalDateEyebrow(new Date(2026, 7, 29), 'sr')
+    expect(eyebrow).toContain('SUBOTA')
+    expect(eyebrow).not.toMatch(/\p{Script=Cyrillic}/u)
+  })
+})
+
+describe('formatPortalTimeAgo', () => {
+  it('writes Serbian in Latin script, never Cyrillic', () => {
+    const now = new Date('2026-08-29T12:00:00Z')
+    // `numeric: 'auto'` names the day — in Latin script, not „ПРЕКЈУЧЕ".
+    const twoDays = formatPortalTimeAgo('2026-08-27T12:00:00Z', 'sr', now)
+    expect(twoDays).toBe('PREKJUČE')
+    expect(formatPortalTimeAgo('2026-08-26T12:00:00Z', 'sr', now)).toBe('PRE 3 DANA')
+    expect(twoDays).not.toMatch(/\p{Script=Cyrillic}/u)
+  })
+})
 
 describe('formatCompanyLabel', () => {
   it('shows the single linked firm', () => {

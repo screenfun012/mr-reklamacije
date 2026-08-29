@@ -240,6 +240,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* While the theme flips (150ms, `applyTheme`), nothing transitions — except the toggle's
+ * own glyphs, whose cross-fade IS the flip's feedback. Unlayered on purpose: it must beat
+ * every layered transition utility for that one moment. */
+.mrp-theme-flip *:not(.mrp-theme-glyph),
+.mrp-theme-flip *:not(.mrp-theme-glyph)::before,
+.mrp-theme-flip *:not(.mrp-theme-glyph)::after {
+  transition: none !important;
+}
+
 .mrp-input::placeholder {
   color: currentColor;
   opacity: 0.38;
