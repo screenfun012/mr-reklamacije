@@ -79,7 +79,7 @@ export function FaultRowsEditor({
       {value.map((fault, index) => (
         <div
           key={`fault-${index}`}
-          className="@container/fault flex flex-col gap-3 rounded-xl border border-mri-border2 p-[15px]"
+          className="@container/fault flex flex-col gap-3 rounded-md border border-mri-border2 p-[15px]"
         >
           <div className="flex items-center justify-between gap-2">
             <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-mri-text2">

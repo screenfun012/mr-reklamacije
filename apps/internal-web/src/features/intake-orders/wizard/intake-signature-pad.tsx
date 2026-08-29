@@ -118,7 +118,7 @@ export function IntakeSignaturePad({
           // The aspect is the pad's own 460×200 space, so what is drawn matches what is printed:
           // the sheet renders the path in that ratio, and a signature drawn in a squashed box would
           // come out stretched on paper.
-          'relative aspect-[460/200] w-full flex-none cursor-crosshair rounded-xl bg-mri-inbg',
+          'relative aspect-[460/200] w-full flex-none cursor-crosshair rounded-[6px] bg-mri-inbg',
           signed
             ? 'border border-solid border-[rgba(31,169,113,0.45)]'
             : 'border border-dashed border-mri-border2',

@@ -127,7 +127,8 @@ export function PinListButton({
         <Pin aria-hidden="true" className="size-[11px]" />
         {m.chat_pins({ count })}
       </summary>
-      <div className="absolute right-0 top-[calc(100%+6px)] z-20 flex w-[300px] flex-col gap-2 rounded-xl border border-mri-border bg-mri-raised p-3 shadow-lg">
+      {/* 20 = the 8px rows + 12px padding, so the popover's corner follows its content's. */}
+      <div className="absolute right-0 top-[calc(100%+6px)] z-20 flex w-[300px] flex-col gap-2 rounded-[20px] border border-mri-border bg-mri-raised p-3 shadow-lg">
         <span className="font-mono text-[8.5px] font-semibold tracking-[0.18em] text-mri-text2">
           {m.chat_pins_title({ count })}
         </span>

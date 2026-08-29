@@ -76,7 +76,7 @@ export function ClaimFindingsSection({
             {draft.map((finding, index) => (
               <div
                 key={`finding-${index}`}
-                className="flex flex-col gap-[11px] rounded-xl border border-mri-border2 p-[15px]"
+                className="flex flex-col gap-[11px] rounded-md border border-mri-border2 p-[15px]"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-red">
@@ -163,7 +163,7 @@ export function ClaimFindingsSection({
             {findings.map((finding, index) => (
               <li
                 key={`finding-${index}`}
-                className="flex flex-col gap-1.5 rounded-xl border border-mri-border2 p-[15px]"
+                className="flex flex-col gap-1.5 rounded-md border border-mri-border2 p-[15px]"
               >
                 {finding.type !== '' ? (
                   <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-red">

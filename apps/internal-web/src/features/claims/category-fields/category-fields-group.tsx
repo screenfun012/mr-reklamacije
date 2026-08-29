@@ -158,7 +158,7 @@ export function CategoryFieldsGroup({
   return (
     <div
       data-testid="category-fields-group"
-      className="@container/catfields flex flex-col gap-[11px] rounded-xl border border-dashed border-mri-border2 p-[15px]"
+      className="@container/catfields flex flex-col gap-[11px] rounded-md border border-dashed border-mri-border2 p-[15px]"
     >
       <div className="flex items-center gap-[9px]">
         <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-mri-text2">
