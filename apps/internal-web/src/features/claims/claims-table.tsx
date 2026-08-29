@@ -393,19 +393,19 @@ export function ClaimsTable({
           </h2>
           {selectedCount > 0 ? (
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[11px] font-semibold text-mri-text">
+              <span className="font-mono text-[11px] font-semibold tabular-nums text-mri-text">
                 {m.claims_selected_count({ count: selectedCount })}
               </span>
               <button
                 type="button"
                 onClick={() => table.resetRowSelection()}
-                className="font-mono text-[11px] text-mri-text2 transition-colors hover:text-mri-redh"
+                className="relative py-2 font-mono text-[11px] text-mri-text2 transition-colors after:absolute after:inset-x-0 after:-inset-y-1 hover:text-mri-redh"
               >
                 {m.claims_selection_clear()}
               </button>
             </div>
           ) : (
-            <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-mri-text2">
+            <span className="font-mono text-[11px] uppercase tracking-[0.13em] tabular-nums text-mri-text2">
               {m.claims_table_total({ count: String(total) })}
             </span>
           )}

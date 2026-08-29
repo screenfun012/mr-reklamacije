@@ -114,7 +114,7 @@ export function PushSwitch({
                     title={m.chat_push_device_remove()}
                     disabled={asking}
                     onClick={() => void disableThisDevice()}
-                    className="grid size-5 flex-none cursor-pointer place-items-center rounded-[5px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad disabled:opacity-60"
+                    className="relative grid size-5 flex-none cursor-pointer place-items-center rounded-[5px] text-mri-text2 transition-colors after:absolute after:-inset-2.5 hover:bg-mri-rowhv hover:text-mri-bad disabled:opacity-60"
                   >
                     <X aria-hidden="true" className="size-3" />
                     <span className="sr-only">{m.chat_push_device_remove()}</span>

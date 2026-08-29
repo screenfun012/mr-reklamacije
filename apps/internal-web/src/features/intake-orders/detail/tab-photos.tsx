@@ -35,7 +35,7 @@ export function TabPhotos({ order }: { order: IntakeOrderDetail }): ReactElement
       <section className={cn(CARD, 'flex flex-col gap-[14px] px-[22px] py-5')}>
         {/* The count sits inside the red caption, undimmed — unlike the Pregled card's `· N`,
             which greys it (prototype :599 against :562). */}
-        <h2 className={CAPTION}>
+        <h2 className={`${CAPTION} tabular-nums`}>
           {m.intake_card_photo_documentation()} · {cells.length}
         </h2>
 

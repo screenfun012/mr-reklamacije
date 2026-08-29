@@ -546,4 +546,18 @@ select.mri-input option {
   .mri-grow-h {
     animation: none !important;
   }
+
+  /* tw-animate-css utilities (chat panels, dialogs) sit outside the mri-* list above —
+   * without this line every `animate-in` keeps moving for people who asked it not to. */
+  .animate-in,
+  .animate-out {
+    animation: none !important;
+  }
+}
+
+/* The same smoothing the admin and portal bodies carry — one app rendering heavier text
+ * than its two siblings is what made them read as different products on one monitor. */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

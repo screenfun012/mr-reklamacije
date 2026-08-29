@@ -38,5 +38,5 @@ export function InternalTabCount({ count }: { count: number }): React.ReactEleme
     return null
   }
 
-  return <span className="font-mono text-[10px] font-semibold">{count}</span>
+  return <span className="font-mono text-[10px] font-semibold tabular-nums">{count}</span>
 }

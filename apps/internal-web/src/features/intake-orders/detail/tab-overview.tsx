@@ -223,7 +223,9 @@ export function TabOverview({
             <section className={cn(CARD, 'flex flex-col gap-[11px] px-[18px] py-4')}>
               <h2 className={CAPTION}>
                 {m.intake_card_photos()}
-                <span className="ml-1 tracking-[0.1em] text-mri-text2">· {cells.length}</span>
+                <span className="ml-1 tracking-[0.1em] tabular-nums text-mri-text2">
+                  · {cells.length}
+                </span>
               </h2>
 
               {cells.length === 0 ? (

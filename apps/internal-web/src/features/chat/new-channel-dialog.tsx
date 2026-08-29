@@ -121,7 +121,7 @@ export function NewChannelDialog({
             aria-label={m.chat_channel_name_label()}
             className="h-10 rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 text-[13px] text-mri-text outline-none focus:border-mri-red"
           />
-          <p className="rounded-[7px] border border-mri-border2 bg-mri-inbg px-3 py-2 text-[11px] leading-[1.45] text-mri-text2">
+          <p className="rounded-[7px] border border-mri-border2 bg-mri-inbg px-3 py-2 text-[11px] leading-[1.45] text-pretty text-mri-text2">
             {m.chat_channel_history_warning()}
           </p>
           <input

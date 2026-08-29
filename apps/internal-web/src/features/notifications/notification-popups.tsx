@@ -270,7 +270,7 @@ function NotificationPopupCard({
         type="button"
         aria-label={m.notifications_popup_close_aria()}
         onClick={onDismiss}
-        className="absolute right-2.5 top-2.5 grid size-[22px] place-items-center rounded-[6px] text-[var(--mrg-text2)] transition-colors hover:bg-[var(--mrg-hover)] hover:text-[var(--mrg-text)]"
+        className="absolute right-2.5 top-2.5 grid size-[22px] place-items-center rounded-[6px] text-[var(--mrg-text2)] transition-colors after:absolute after:-inset-[9px] hover:bg-[var(--mrg-hover)] hover:text-[var(--mrg-text)]"
       >
         <X className="size-3.5" aria-hidden="true" />
       </button>
@@ -359,7 +359,7 @@ function SnoozeMenu({
         type="button"
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
-        className="flex items-center gap-1 rounded-[7px] border border-[var(--mrg-sel-border)] bg-[var(--mrg-sel)] px-2 py-[3px] text-[12.5px] font-semibold text-[var(--mrg-text)]"
+        className="relative flex items-center gap-1 rounded-[7px] border border-[var(--mrg-sel-border)] bg-[var(--mrg-sel)] px-2 py-[3px] text-[12.5px] font-semibold text-[var(--mrg-text)] after:absolute after:inset-x-0 after:-inset-y-2"
       >
         {m.notifications_snooze()}
         <span aria-hidden="true" className="text-[9px] opacity-70">
@@ -368,7 +368,7 @@ function SnoozeMenu({
       </button>
 
       {open ? (
-        <div className="mri-glass absolute left-0 top-[calc(100%+6px)] z-10 w-[196px] rounded-[12px] p-1.5">
+        <div className="mri-glass mri-glass-in absolute left-0 top-[calc(100%+6px)] z-10 w-[196px] rounded-[12px] p-1.5">
           <p className="px-2.5 pb-[5px] pt-[7px] font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--mrg-text2)]">
             {m.notifications_snooze_heading()}
           </p>

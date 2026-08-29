@@ -71,7 +71,7 @@ function ChannelRow({
       onClick={() => onSelect(item.id)}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'flex h-10 items-center gap-2 rounded-[9px] px-[10px] text-left text-[13px] transition-colors hover:bg-mri-rowhv',
+        'flex h-10 items-center gap-2 rounded-[9px] px-[10px] text-left text-[13px] transition-[background-color,transform] hover:bg-mri-rowhv active:scale-[0.99]',
         active
           ? 'bg-[rgba(237,28,36,.11)] font-bold text-mri-text shadow-[inset_2px_0_0_var(--mri-red)]'
           : 'font-semibold text-mri-text2',
@@ -104,7 +104,7 @@ function ThreadRow({
       onClick={() => onSelect(item.id)}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'flex h-10 items-center gap-2 rounded-[9px] px-[10px] text-left transition-colors hover:bg-mri-rowhv',
+        'flex h-10 items-center gap-2 rounded-[9px] px-[10px] text-left transition-[background-color,transform] hover:bg-mri-rowhv active:scale-[0.99]',
         active && 'bg-[rgba(237,28,36,.11)] shadow-[inset_2px_0_0_var(--mri-red)]',
         item.isMuted && !active && 'opacity-[.65]',
       )}

@@ -24,10 +24,12 @@ export function ClaimsCategoryEmpty({
       >
         <Package className="size-5" />
       </span>
-      <span className="text-[15px] font-extrabold text-mri-text">
+      <span className="text-balance text-[15px] font-extrabold text-mri-text">
         {m.claims_empty_category_title()}
       </span>
-      <span className="text-[12.5px] italic text-mri-text2">{m.claims_empty_category_hint()}</span>
+      <span className="text-pretty text-[12.5px] italic text-mri-text2">
+        {m.claims_empty_category_hint()}
+      </span>
       {/* The invitation is a door, not a sentence: an empty category is the one screen where the
           next thing to do is obvious (prototype §4). */}
       {canCreate ? (
@@ -47,14 +49,16 @@ export function ClaimsCategoryEmpty({
 export function ClaimsFilterEmpty({ onClear }: { onClear: () => void }): React.ReactElement {
   return (
     <div className="flex flex-col items-center gap-2.5 rounded-[14px] border border-mri-border bg-mri-surface px-5 py-11 text-center">
-      <span className="text-[14.5px] font-extrabold text-mri-text">
+      <span className="text-balance text-[14.5px] font-extrabold text-mri-text">
         {m.claims_empty_filter_title()}
       </span>
-      <span className="text-[12.5px] italic text-mri-text2">{m.claims_empty_filter_hint()}</span>
+      <span className="text-pretty text-[12.5px] italic text-mri-text2">
+        {m.claims_empty_filter_hint()}
+      </span>
       <button
         type="button"
         onClick={onClear}
-        className="cursor-pointer text-xs font-bold uppercase tracking-[0.06em] text-mri-redh hover:underline"
+        className="relative cursor-pointer py-2 text-xs font-bold uppercase tracking-[0.06em] text-mri-redh after:absolute after:inset-x-0 after:-inset-y-1 hover:underline"
       >
         {m.claims_empty_filter_clear()}
       </button>

@@ -74,7 +74,8 @@ function PickedTile({
         title={m.chat_attachment_remove()}
         onClick={onRemove}
         className={cn(
-          'absolute right-1 top-1 grid size-5 cursor-pointer place-items-center rounded-full',
+          // size-7, not a halo: the tile is overflow-hidden, so a pseudo-target would be clipped.
+          'absolute right-1 top-1 grid size-7 cursor-pointer place-items-center rounded-full',
           'bg-black/60 text-white transition-colors hover:bg-mri-red',
         )}
       >

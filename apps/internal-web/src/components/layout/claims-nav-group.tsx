@@ -96,7 +96,7 @@ function ChildLink({
       activeOptions={{ exact: true }}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex items-center text-[12.5px] transition-colors hover:bg-mri-rowhv',
+        'flex items-center text-[12.5px] transition-[color,background-color,transform] hover:bg-mri-rowhv active:scale-[0.99]',
         flyout ? 'h-[31px] rounded-lg px-[9px]' : 'h-8 rounded-l-none rounded-r-lg pl-3 pr-[10px]',
         active
           ? 'bg-[rgba(237,28,36,.11)] font-bold text-mri-text shadow-[inset_2px_0_0_var(--mri-red)]'
@@ -207,7 +207,7 @@ export function ClaimsNavGroup({
         }}
         aria-expanded={open}
         className={cn(
-          'flex h-[38px] w-full cursor-pointer items-center gap-[10px] rounded-[9px] px-[11px] text-[13.5px] transition-colors hover:bg-mri-rowhv',
+          'flex h-[38px] w-full cursor-pointer items-center gap-[10px] rounded-[9px] px-[11px] text-[13.5px] transition-[color,background-color,transform] hover:bg-mri-rowhv active:scale-[0.99]',
           groupActive ? 'font-bold text-mri-text' : 'font-semibold text-mri-text2',
         )}
       >
@@ -220,12 +220,19 @@ export function ClaimsNavGroup({
         <span className="truncate">{item.label()}</span>
         <span className="ml-auto flex items-center gap-2">
           {pendingTotal > 0 ? (
-            <span className="rounded-full bg-[rgba(234,179,8,.13)] px-[7px] py-[2px] font-mono text-[10px] font-semibold text-mri-amb">
+            <span className="rounded-full bg-[rgba(234,179,8,.13)] px-[7px] py-[2px] font-mono text-[10px] font-semibold tabular-nums text-mri-amb">
               {pendingTotal}
             </span>
           ) : null}
-          <span aria-hidden="true" className="text-[9px] text-mri-text2">
-            {open ? '▾' : '▸'}
+          {/* One glyph that turns, not two that swap. */}
+          <span
+            aria-hidden="true"
+            className={cn(
+              'inline-block text-[9px] text-mri-text2 transition-transform duration-150',
+              open && 'rotate-90',
+            )}
+          >
+            ▸
           </span>
         </span>
       </button>

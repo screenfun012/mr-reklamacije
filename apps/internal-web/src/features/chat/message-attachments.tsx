@@ -11,7 +11,7 @@ import { CHAT_TILE_CLASSES } from './composer-attachments'
  * at 700 8px mono with .1em tracking inside a 40%-opacity red border.
  */
 const DOCUMENT_PILL_CLASSES =
-  'inline-flex max-w-full cursor-pointer items-center gap-[9px] self-start rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-[9px] transition-colors hover:border-mri-text2'
+  'inline-flex max-w-full cursor-pointer items-center gap-[9px] self-start rounded-[9px] border border-mri-border2 bg-mri-inbg px-3 py-[9px] transition-[border-color,transform] hover:border-mri-text2 active:scale-[0.99]'
 
 const DOCUMENT_BADGE_CLASSES =
   'flex-none rounded-[4px] border border-mri-red/40 px-[5px] py-[2px] font-mono text-[8px] font-bold tracking-[0.1em] text-mri-redh'

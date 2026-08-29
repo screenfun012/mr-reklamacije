@@ -34,7 +34,7 @@ export function IntakePhotoLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={m.intake_photo_preview()}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[rgba(11,11,13,0.92)] p-6"
+      className="mri-fade-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[rgba(11,11,13,0.92)] p-6"
       onClick={onClose}
     >
       {/* The grid deliberately loads thumbnails; the preview is the one place worth the full
@@ -46,7 +46,7 @@ export function IntakePhotoLightbox({
             : cell.url
         }
         alt=""
-        className="max-h-[78vh] max-w-full rounded-xl object-contain"
+        className="max-h-[78vh] max-w-full rounded-xl object-contain ring-1 ring-inset ring-mri-border2"
       />
       <div className="flex gap-3" onClick={(event) => event.stopPropagation()}>
         <button

@@ -43,7 +43,7 @@ const QUICK_REPLIES = [
 
 /** 36×40 with a 15px glyph — the prototype's composer button (`cet-prototip.dc.html` L150). */
 const ACTION_BUTTON_CLASSES =
-  'grid h-10 w-9 flex-none cursor-pointer place-items-center rounded-[9px] border border-mri-border2 text-mri-text2 transition-colors hover:border-mri-text2 hover:text-mri-text'
+  'relative grid h-10 w-9 flex-none cursor-pointer place-items-center rounded-[9px] border border-mri-border2 text-mri-text2 transition-colors after:absolute after:-inset-x-0.5 after:inset-y-0 hover:border-mri-text2 hover:text-mri-text'
 
 export interface ComposerProps {
   isThread: boolean
@@ -299,7 +299,7 @@ export function Composer({
                 text: current.text === '' ? quick() : `${current.text} ${quick()}`,
               }))
             }
-            className="rounded-[20px] border border-mri-border2 px-[11px] py-[5px] text-[11px] font-semibold text-mri-text2 transition-colors hover:border-mri-text2 hover:text-mri-text"
+            className="relative rounded-[20px] border border-mri-border2 px-[11px] py-[5px] text-[11px] font-semibold text-mri-text2 transition-colors after:absolute after:inset-x-0 after:-inset-y-2 hover:border-mri-text2 hover:text-mri-text"
           >
             {quick()}
           </button>

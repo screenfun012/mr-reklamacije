@@ -134,7 +134,7 @@ function StatCard({ card, index }: { card: StatCardConfig; index: number }) {
     <Link
       to="/reklamacije"
       search={{ page: 1, pageSize: 10, ...card.linkSearch }}
-      className="block cursor-pointer rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mri-red"
+      className="block cursor-pointer rounded-xl transition-[opacity,transform] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mri-red active:scale-[0.99]"
     >
       {cardBody}
     </Link>

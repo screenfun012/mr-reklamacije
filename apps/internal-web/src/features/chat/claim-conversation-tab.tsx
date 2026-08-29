@@ -114,7 +114,7 @@ export function ClaimConversationTab({
     if (!canCreateThread) {
       return (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-mri-border bg-mri-surface px-6 py-8">
-          <p className="text-[15px] font-bold text-mri-text">
+          <p className="text-balance text-[15px] font-bold text-mri-text">
             {m.chat_thread_closed_empty_title()}
           </p>
         </div>
@@ -123,8 +123,10 @@ export function ClaimConversationTab({
 
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-mri-border bg-mri-surface px-6 py-8">
-        <p className="text-[15px] font-bold text-mri-text">{m.chat_thread_create_title()}</p>
-        <p className="max-w-[560px] text-[12.5px] leading-[1.5] text-mri-text2">
+        <p className="text-balance text-[15px] font-bold text-mri-text">
+          {m.chat_thread_create_title()}
+        </p>
+        <p className="max-w-[560px] text-pretty text-[12.5px] leading-[1.5] text-mri-text2">
           {m.chat_thread_create_description()}
         </p>
         <InternalButton

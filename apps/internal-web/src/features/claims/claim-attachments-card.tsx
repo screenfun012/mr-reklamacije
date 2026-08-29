@@ -54,7 +54,7 @@ export function ClaimAttachmentsCard({
           params={attachmentsTab.params}
           search={attachmentsTab.search}
           title={item.fileName}
-          className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border border-mri-border2 bg-mri-inbg"
+          className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border border-mri-border2 bg-mri-inbg transition-[border-color,transform] hover:border-mri-text2 active:scale-[0.98]"
         >
           {item.mimeType.startsWith('image/') ? (
             <img
@@ -77,7 +77,7 @@ export function ClaimAttachmentsCard({
         search={attachmentsTab.search}
         title={m.claim_detail_attachments_add()}
         aria-label={m.claim_detail_attachments_add()}
-        className="flex aspect-[4/3] items-center justify-center rounded-lg border border-dashed border-mri-border2 bg-mri-inbg text-[15px] text-mri-text2 transition-colors hover:border-mri-redh hover:text-mri-redh"
+        className="flex aspect-[4/3] items-center justify-center rounded-lg border border-dashed border-mri-border2 bg-mri-inbg text-[15px] text-mri-text2 transition-[color,border-color,transform] hover:border-mri-redh hover:text-mri-redh active:scale-[0.98]"
       >
         +
       </Link>

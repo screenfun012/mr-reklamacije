@@ -59,7 +59,7 @@ function ClaimRow({
     <button
       type="button"
       onClick={() => onPick(claim, threadId)}
-      className="flex h-11 items-center gap-[9px] rounded-[9px] px-[10px] text-left transition-colors hover:bg-mri-rowhv"
+      className="flex h-11 items-center gap-[9px] rounded-[9px] px-[10px] text-left transition-[background-color,transform] hover:bg-mri-rowhv active:scale-[0.99]"
     >
       <span
         aria-hidden="true"

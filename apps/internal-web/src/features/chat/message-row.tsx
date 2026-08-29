@@ -199,7 +199,7 @@ function ReactionChip({
       title={people.map((person) => person.name).join(', ')}
       onClick={onToggle}
       className={cn(
-        'inline-flex w-fit max-w-full items-center gap-[5px] rounded-[20px] border px-2 py-[3px] font-mono text-[10px] transition-colors',
+        'relative inline-flex w-fit max-w-full items-center gap-[5px] rounded-[20px] border px-2 py-[3px] font-mono text-[10px] transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5',
         'border-[rgba(31,169,113,.35)] bg-[rgba(31,169,113,.12)] text-mri-grn',
         onToggle === undefined ? 'cursor-default' : 'cursor-pointer hover:border-mri-grn',
         mine ? 'font-bold' : 'font-medium',
@@ -380,11 +380,23 @@ export function MessageRow({
                   tone="text-mri-red"
                   onClick={() => onPin(message)}
                 >
-                  {isPinned ? (
-                    <PinOff aria-hidden="true" className="size-[15px]" />
-                  ) : (
-                    <Pin aria-hidden="true" className="size-[15px]" />
-                  )}
+                  {/* Both pins stay mounted and cross-fade — a hard swap blinks under the cursor. */}
+                  <span className="relative grid size-[15px] place-items-center">
+                    <Pin
+                      aria-hidden="true"
+                      className={cn(
+                        'col-start-1 row-start-1 size-[15px] transition-opacity duration-150',
+                        isPinned ? 'opacity-0' : 'opacity-100',
+                      )}
+                    />
+                    <PinOff
+                      aria-hidden="true"
+                      className={cn(
+                        'col-start-1 row-start-1 size-[15px] transition-opacity duration-150',
+                        isPinned ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                  </span>
                 </ActionGlyph>
               )}
             </>
@@ -435,7 +447,7 @@ export function MessageRow({
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-md border border-mri-border2 px-2 py-0.5 font-mono text-[9px] font-bold text-mri-text2 transition-colors hover:text-mri-text"
+              className="relative rounded-md border border-mri-border2 px-2 py-0.5 font-mono text-[9px] font-bold text-mri-text2 transition-colors after:absolute after:inset-x-0 after:-inset-y-2.5 hover:text-mri-text"
             >
               {m.chat_message_retry()}
             </button>

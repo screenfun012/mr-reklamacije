@@ -91,7 +91,7 @@ export function MentionMenu({
     <div
       role="listbox"
       aria-label={m.chat_mention_menu_label()}
-      className="absolute bottom-full left-4 z-10 mb-1.5 max-h-[248px] w-[248px] overflow-auto rounded-xl border border-mri-border2 bg-mri-raised p-1.5 shadow-[0_18px_44px_rgba(0,0,0,.55)]"
+      className="mri-glass-in absolute bottom-full left-4 z-10 mb-1.5 max-h-[248px] w-[248px] overflow-auto rounded-xl border border-mri-border2 bg-mri-raised p-1.5 shadow-[0_18px_44px_rgba(0,0,0,.55)]"
     >
       {options.map((person, index) => {
         const everyone = person.id === MENTION_EVERYONE_ID

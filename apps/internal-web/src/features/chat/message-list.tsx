@@ -172,7 +172,7 @@ export function MessageList({
             atBottomRef.current = true
             setShowJump(false)
           }}
-          className="absolute inset-x-0 bottom-3 mx-auto inline-flex w-fit items-center gap-2 rounded-[20px] border border-mri-border bg-mri-raised px-3 py-1.5 font-mono text-[10.5px] font-medium text-mri-text shadow-lg transition-colors hover:border-mri-border2"
+          className="animate-in fade-in-0 slide-in-from-bottom-1 absolute inset-x-0 bottom-3 mx-auto inline-flex w-fit items-center gap-2 rounded-[20px] border border-mri-border bg-mri-raised px-3 py-1.5 font-mono text-[10.5px] font-medium text-mri-text shadow-lg transition-colors duration-150 hover:border-mri-border2"
         >
           <ArrowDown aria-hidden="true" className="size-3" />
           {m.chat_jump_to_newest()}

@@ -39,7 +39,7 @@ export function InternalTopbar({ onToggleSidebar, showSidebarToggle, user }: Int
             type="button"
             onClick={onToggleSidebar}
             aria-label={m.nav_menu()}
-            className="grid size-9 flex-none place-items-center rounded-[9px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text"
+            className="relative grid size-9 flex-none place-items-center rounded-[9px] text-mri-text2 transition-colors after:absolute after:-inset-0.5 hover:bg-mri-rowhv hover:text-mri-text"
           >
             <Menu className="size-5" aria-hidden="true" />
           </button>

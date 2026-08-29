@@ -76,7 +76,7 @@ function SubmissionAttachmentCard({
       <span className="line-clamp-2 break-all text-[12px] font-medium text-mri-text">
         {item.fileName}
       </span>
-      <span className="font-mono text-[10px] text-mri-text2">
+      <span className="font-mono text-[10px] tabular-nums text-mri-text2">
         {formatAttachmentFileSize(item.fileSizeBytes)}
       </span>
     </a>

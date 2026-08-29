@@ -64,7 +64,7 @@ export const CHAT_PANEL_BACKDROP_CLASSES =
 
 /** The back arrow that calls the sheet out. Exists only below the breakpoint. */
 export const CHAT_LIST_TOGGLE_CLASSES =
-  'grid size-7 flex-none cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text @min-[640px]/chat:hidden'
+  'relative grid size-7 flex-none cursor-pointer place-items-center rounded-[7px] text-mri-text2 transition-colors after:absolute after:-inset-1.5 hover:bg-mri-rowhv hover:text-mri-text @min-[640px]/chat:hidden'
 
 /** The claim panel: a sheet over the conversation until there is room for a third column. */
 export const CHAT_PANEL_RESPONSIVE_CLASSES =

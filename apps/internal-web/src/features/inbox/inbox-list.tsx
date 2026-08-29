@@ -23,14 +23,14 @@ export function InboxList({ page, onPageChange }: InboxListProps): React.ReactEl
 
       {totalPages > 1 ? (
         <div className="flex items-center justify-end gap-3 border-t border-mri-border pt-4">
-          <span className="font-mono text-[11px] text-mri-text2">
+          <span className="font-mono text-[11px] tabular-nums text-mri-text2">
             {m.emotive_claims_pagination_page_of({ page: data.page, totalPages })}
           </span>
           <div className="flex items-center gap-1.5">
             <InternalButton
               type="button"
               variant="outline"
-              className="size-9 w-9 p-0"
+              className="relative size-9 w-9 p-0 after:absolute after:-inset-0.5"
               disabled={data.page <= 1}
               aria-label={m.emotive_claims_pagination_previous()}
               onClick={() => onPageChange(data.page - 1)}
@@ -40,7 +40,7 @@ export function InboxList({ page, onPageChange }: InboxListProps): React.ReactEl
             <InternalButton
               type="button"
               variant="outline"
-              className="size-9 w-9 p-0"
+              className="relative size-9 w-9 p-0 after:absolute after:-inset-0.5"
               disabled={data.page >= totalPages}
               aria-label={m.emotive_claims_pagination_next()}
               onClick={() => onPageChange(data.page + 1)}

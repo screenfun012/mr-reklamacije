@@ -70,13 +70,25 @@ export function LocaleThemeControls({ compact = false }: { compact?: boolean } =
         onClick={toggleTheme}
         aria-label={nextThemeLabel}
         title={nextThemeLabel}
-        className="grid size-9 cursor-pointer place-items-center rounded-lg border border-mri-border2 bg-transparent text-mri-text2 transition-colors hover:border-mri-text2 hover:text-mri-text"
+        className="relative grid size-9 cursor-pointer place-items-center rounded-lg border border-mri-border2 bg-transparent text-mri-text2 transition-[color,border-color] after:absolute after:-inset-0.5 hover:border-mri-text2 hover:text-mri-text"
       >
-        {resolvedTheme === 'dark' ? (
-          <Sun className="size-4" aria-hidden="true" />
-        ) : (
-          <Moon className="size-4" aria-hidden="true" />
-        )}
+        {/* Both glyphs stay mounted and cross-fade with a quarter turn — a hard swap blinks. */}
+        <span className="relative grid size-4 place-items-center">
+          <Sun
+            aria-hidden="true"
+            className={cn(
+              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              resolvedTheme === 'dark' ? 'rotate-0 opacity-100' : '-rotate-90 opacity-0',
+            )}
+          />
+          <Moon
+            aria-hidden="true"
+            className={cn(
+              'col-start-1 row-start-1 size-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none',
+              resolvedTheme === 'dark' ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100',
+            )}
+          />
+        </span>
       </button>
     </div>
   )

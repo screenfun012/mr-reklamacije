@@ -43,7 +43,7 @@ function PinRow({
           type="button"
           title={m.chat_unpin()}
           onClick={onUnpin}
-          className="ml-auto grid size-5 flex-none cursor-pointer place-items-center rounded text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-bad"
+          className="relative ml-auto grid size-5 flex-none cursor-pointer place-items-center rounded text-mri-text2 transition-colors after:absolute after:-inset-2.5 hover:bg-mri-rowhv hover:text-mri-bad"
         >
           <X aria-hidden="true" className="size-3" />
           <span className="sr-only">{m.chat_unpin()}</span>

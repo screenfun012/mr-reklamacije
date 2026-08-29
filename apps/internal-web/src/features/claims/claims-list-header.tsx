@@ -47,8 +47,10 @@ export function ClaimsListHeader({
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-mri-red">
             {isCategory ? m.claims_list_eyebrow_category() : m.claims_list_eyebrow_all()}
           </p>
-          <h1 className="text-[26px] font-black tracking-[-0.02em] text-mri-text">{title}</h1>
-          <p className="text-[13px] text-mri-text2">{subtitle}</p>
+          <h1 className="text-balance text-[26px] font-black tracking-[-0.02em] text-mri-text">
+            {title}
+          </h1>
+          <p className="text-[13px] tabular-nums text-mri-text2">{subtitle}</p>
         </div>
 
         {canCreateEmotive || canCreateDomace ? (

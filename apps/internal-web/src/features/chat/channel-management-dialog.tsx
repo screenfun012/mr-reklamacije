@@ -156,7 +156,7 @@ export function ChannelManagementDialog({
                       setDraftName(item.name)
                     }}
                     className={cn(
-                      'flex min-h-14 w-full items-center gap-3 rounded-[9px] px-3 py-2 text-left transition-colors hover:bg-mri-rowhv',
+                      'flex min-h-14 w-full items-center gap-3 rounded-[9px] px-3 py-2 text-left transition-[background-color,transform] hover:bg-mri-rowhv active:scale-[0.99]',
                       item.id === activeChannelId && 'bg-[rgba(237,28,36,.11)]',
                     )}
                   >

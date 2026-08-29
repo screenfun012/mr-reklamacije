@@ -98,7 +98,7 @@ export function IntakePhotoGrid({
     <IntakePanel
       title={m.intake_card_photos()}
       action={
-        <span className="font-mono text-[11px] uppercase text-mri-text2">
+        <span className="font-mono text-[11px] uppercase tabular-nums text-mri-text2">
           {m.intake_photos_taken({ count: cells.length })}
         </span>
       }

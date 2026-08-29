@@ -80,7 +80,7 @@ export function InternalCardHeader({
     >
       <h2 className="text-[14.5px] font-extrabold text-mri-text">{title}</h2>
       {meta === undefined ? null : (
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.13em] text-mri-text2">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.13em] tabular-nums text-mri-text2">
           {meta}
         </span>
       )}

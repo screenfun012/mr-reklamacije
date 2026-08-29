@@ -66,7 +66,7 @@ export function NotificationBell(): React.ReactElement | null {
         >
           <Bell className="size-5" aria-hidden="true" />
           {unreadCount > 0 ? (
-            <span className="absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-mri-red px-1 font-mono text-[9.5px] font-bold text-white">
+            <span className="absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-mri-red px-1 font-mono text-[9.5px] font-bold tabular-nums text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           ) : null}
@@ -81,7 +81,7 @@ export function NotificationBell(): React.ReactElement | null {
               type="button"
               disabled={unreadCount === 0 || markAllRead.isPending}
               onClick={() => markAllRead.mutate()}
-              className="text-[12.5px] text-[var(--mrg-text2)] transition-colors hover:text-[var(--mrg-text)] disabled:pointer-events-none disabled:opacity-45"
+              className="relative py-2 text-[12.5px] text-[var(--mrg-text2)] transition-colors after:absolute after:inset-x-0 after:-inset-y-1 hover:text-[var(--mrg-text)] disabled:pointer-events-none disabled:opacity-45"
             >
               {m.notifications_mark_all_read()}
             </button>
@@ -89,7 +89,7 @@ export function NotificationBell(): React.ReactElement | null {
               type="button"
               disabled={items.length === 0 || deleteAll.isPending}
               onClick={() => deleteAll.mutate()}
-              className="text-[12.5px] text-[var(--mrg-text2)] transition-colors hover:text-mri-redh disabled:pointer-events-none disabled:opacity-45"
+              className="relative py-2 text-[12.5px] text-[var(--mrg-text2)] transition-colors after:absolute after:inset-x-0 after:-inset-y-1 hover:text-mri-redh disabled:pointer-events-none disabled:opacity-45"
             >
               {m.notifications_delete_all()}
             </button>
@@ -170,7 +170,7 @@ function NotificationRow({
         type="button"
         onClick={onDelete}
         aria-label={m.notifications_delete()}
-        className="mr-2 mt-[11px] grid size-7 flex-none place-items-center rounded-[7px] text-[var(--mrg-text2)] opacity-0 transition-all hover:bg-mri-redh/12 hover:text-mri-redh focus-visible:opacity-100 group-hover:opacity-100"
+        className="relative mr-2 mt-[11px] grid size-7 flex-none place-items-center rounded-[7px] text-[var(--mrg-text2)] opacity-0 transition-[opacity,background-color,color] after:absolute after:-inset-1.5 hover:bg-mri-redh/12 hover:text-mri-redh focus-visible:opacity-100 group-hover:opacity-100"
       >
         <Trash2 className="size-[15px]" aria-hidden="true" />
       </button>
@@ -211,7 +211,9 @@ function NotificationEmpty(): React.ReactElement {
         style={{ color: 'var(--mrg-text2)' }}
         aria-hidden="true"
       />
-      <p className="text-[13.5px] italic text-[var(--mrg-text2)]">{m.notifications_empty()}</p>
+      <p className="text-pretty text-[13.5px] italic text-[var(--mrg-text2)]">
+        {m.notifications_empty()}
+      </p>
     </div>
   )
 }

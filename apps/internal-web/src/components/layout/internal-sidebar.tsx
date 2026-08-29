@@ -102,7 +102,7 @@ export function InternalSidebar({
                 title={item.label()}
                 onClick={onCloseMobile}
                 className={cn(
-                  'flex h-[38px] items-center gap-[10px] rounded-[9px] border px-[11px] transition-colors duration-150',
+                  'flex h-[38px] items-center gap-[10px] rounded-[9px] border px-[11px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.99]',
                   collapsed && 'lg:justify-center lg:px-0',
                 )}
                 activeProps={{ className: SIDEBAR_LINK_ACTIVE_CLASSES }}
@@ -167,7 +167,7 @@ export function InternalSidebar({
             <Link
               to="/settings/security"
               title={m.nav_security()}
-              className="flex items-center gap-2 text-[12.5px] font-semibold text-mri-text2 transition-colors hover:text-mri-redh"
+              className="flex min-h-9 items-center gap-2 text-[12.5px] font-semibold text-mri-text2 transition-colors hover:text-mri-redh"
             >
               <Shield className="size-4 flex-none" aria-hidden="true" />
               <span className={cn(collapsed && 'lg:hidden')}>{m.nav_security()}</span>
@@ -176,7 +176,7 @@ export function InternalSidebar({
               type="button"
               onClick={onLogout}
               title={m.auth_logout()}
-              className="flex cursor-pointer items-center gap-2 text-left text-[12.5px] font-semibold text-mri-text2 transition-colors hover:text-mri-redh"
+              className="flex min-h-9 cursor-pointer items-center gap-2 text-left text-[12.5px] font-semibold text-mri-text2 transition-colors hover:text-mri-redh"
             >
               <LogOut className="size-4 flex-none" aria-hidden="true" />
               <span className={cn(collapsed && 'lg:hidden')}>{m.auth_logout()} →</span>

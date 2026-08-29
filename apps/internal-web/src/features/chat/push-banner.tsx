@@ -58,7 +58,7 @@ function PushBannerForUser({ userId }: { userId: string }): React.ReactElement |
         type="button"
         title={m.chat_push_banner_dismiss()}
         onClick={() => setDismissed(true)}
-        className="grid size-6 flex-none cursor-pointer place-items-center rounded-[6px] text-mri-text2 transition-colors hover:bg-mri-rowhv hover:text-mri-text"
+        className="relative grid size-6 flex-none cursor-pointer place-items-center rounded-[6px] text-mri-text2 transition-colors after:absolute after:-inset-2 hover:bg-mri-rowhv hover:text-mri-text"
       >
         {/* ⚠ It can be put away, and that is deliberate. A bar nobody can dismiss is a bar people
             learn to look past — and the switch in the list stays as the way back. */}

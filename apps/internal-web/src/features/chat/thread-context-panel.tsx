@@ -77,7 +77,7 @@ export function ThreadContextToggle({
       title={m.chat_context_toggle()}
       aria-label={m.chat_context_toggle()}
       className={cn(
-        'flex size-[30px] flex-none items-center justify-center rounded-lg border text-[13px] transition-colors',
+        'relative flex size-[30px] flex-none items-center justify-center rounded-lg border text-[13px] transition-colors after:absolute after:-inset-[5px]',
         open
           ? 'border-[rgba(237,28,36,.5)] bg-[rgba(237,28,36,.13)] text-mri-text'
           : 'border-mri-border2 bg-transparent text-mri-text2 hover:text-mri-text',
@@ -193,7 +193,7 @@ export function ThreadContextPanel({
           }
           params={{ id: claim.claimId }}
           search={{ tab: ClaimDetailTab.Pregled }}
-          className="mt-0.5 inline-flex h-8 items-center justify-center rounded-lg border border-mri-border2 bg-mri-raised text-[10.5px] font-bold tracking-[0.06em] text-mri-text transition-colors hover:border-mri-text2"
+          className="mt-0.5 inline-flex h-8 items-center justify-center rounded-lg border border-mri-border2 bg-mri-raised text-[10.5px] font-bold tracking-[0.06em] text-mri-text transition-[border-color,transform] hover:border-mri-text2 active:scale-[0.98]"
         >
           {m.chat_context_open_claim()}
         </Link>
@@ -237,7 +237,9 @@ function ContextAttachments({ conversationId }: { conversationId: string }): Rea
 
   return (
     <div className="flex flex-col gap-2 px-[14px] py-3">
-      <span className={EYEBROW_CLASSES}>{m.chat_context_attachments({ count: total })}</span>
+      <span className={`${EYEBROW_CLASSES} tabular-nums`}>
+        {m.chat_context_attachments({ count: total })}
+      </span>
       {/* ⚠ Three states, not one. Without these the shelf claims „0" and „nothing sent yet" while
           it is still loading — and forever, if the request fails. */}
       {shelf.isPending ? (
@@ -279,7 +281,7 @@ function ContextAttachments({ conversationId }: { conversationId: string }): Rea
             </a>
           ))}
           {hidden === 0 ? null : (
-            <span className="grid aspect-square place-items-center rounded-[7px] border border-mri-border2 bg-mri-inbg font-mono text-[9px] font-semibold text-mri-text2">
+            <span className="grid aspect-square place-items-center rounded-[7px] border border-mri-border2 bg-mri-inbg font-mono text-[9px] font-semibold tabular-nums text-mri-text2">
               {`+${hidden}`}
             </span>
           )}

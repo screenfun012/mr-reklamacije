@@ -51,7 +51,7 @@ export function IntakeKpiCards({ summary }: IntakeKpiCardsProps): ReactElement {
               <span aria-hidden="true" className={cn('size-1.5 rounded-full', accent.dot)} />
               {INTAKE_STATUS_LABELS[status]()}
             </div>
-            <div className="mt-2 font-mono text-[27px] font-bold leading-none text-mri-text">
+            <div className="mt-2 font-mono text-[27px] font-bold leading-none tabular-nums text-mri-text">
               {summary[SUMMARY_KEYS[status]]}
             </div>
           </div>
