@@ -12,7 +12,9 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A hang guard, not a performance target: a healthy run with cold turbo caches passes 15 minutes
+    # (2026-08-29 the polish pass was cancelled mid-integration at 15:17 with every test green).
+    timeout-minutes: 25
 
     env:
       DATABASE_URL: postgresql://mr:mr_dev_password@localhost:5433/mr_reklamacije
