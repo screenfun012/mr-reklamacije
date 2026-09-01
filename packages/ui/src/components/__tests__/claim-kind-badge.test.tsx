@@ -7,7 +7,7 @@ import { ClaimKindBadge } from '../claim-kind-badge.js'
 
 const KIND_LABELS_SR: Record<(typeof ClaimKind)[keyof typeof ClaimKind], string> = {
   domace: 'Domaća',
-  emotive: 'EMOTIVE',
+  emotive: 'Inostrana',
 }
 
 describe('ClaimKindBadge', () => {

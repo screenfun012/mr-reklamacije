@@ -209,7 +209,7 @@ async function renderDetail(
 }
 
 describe.each([
-  ['EMOTIVE', ClaimKind.Emotive],
+  ['INOSTRANA', ClaimKind.Emotive],
   ['DOMAĆA', ClaimKind.Domace],
 ] as const)('%s claim detail — the Razgovor tab', (_label, kind) => {
   beforeEach(() => {

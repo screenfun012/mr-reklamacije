@@ -99,7 +99,7 @@ describe('ClaimsFilters', () => {
     const kindGroup = screen.getByRole('group', { name: 'Vrsta' })
     const allSegment = within(kindGroup).getByRole('button', { name: 'Sve' })
     expect(allSegment).toHaveAttribute('aria-pressed', 'true')
-    expect(within(kindGroup).getByRole('button', { name: 'EMOTIVE' })).toHaveAttribute(
+    expect(within(kindGroup).getByRole('button', { name: 'Inostrane' })).toHaveAttribute(
       'aria-pressed',
       'false',
     )

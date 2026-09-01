@@ -38,7 +38,7 @@ export function DashboardClaimsChart({ data }: DashboardClaimsChartProps) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-[15px] font-extrabold text-mri-text">{m.dashboard_chart_title()}</h2>
         <div className="flex flex-wrap gap-[18px]">
-          <LegendChip colorClass="bg-mri-info" label="EMOTIVE" />
+          <LegendChip colorClass="bg-mri-info" label={m.dashboard_chart_emotive()} />
           <LegendChip colorClass="bg-mri-domace" label={m.dashboard_chart_domace()} />
         </div>
       </div>
@@ -66,7 +66,7 @@ export function DashboardClaimsChart({ data }: DashboardClaimsChartProps) {
             />
             <Bar
               dataKey="emotive"
-              name="EMOTIVE"
+              name={m.dashboard_chart_emotive()}
               fill="var(--color-mri-info)"
               radius={[4, 4, 0, 0]}
               maxBarSize={38}

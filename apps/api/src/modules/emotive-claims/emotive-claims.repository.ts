@@ -964,7 +964,7 @@ export class EmotiveClaimsRepository {
 
     const updated = await this.findById(id, scope)
     if (updated === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     return updated
@@ -1006,7 +1006,7 @@ export class EmotiveClaimsRepository {
 
     const restored = await this.findById(id, scope)
     if (restored === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     return restored
@@ -1049,7 +1049,7 @@ export class EmotiveClaimsRepository {
 
     const updated = await this.findById(id, scope)
     if (updated === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     return updated
@@ -1074,7 +1074,7 @@ export class EmotiveClaimsRepository {
       .where(and(eq(emotiveClaims.id, id), isNull(emotiveClaims.deletedAt)))
       .returning({ id: emotiveClaims.id })
     if (row === undefined) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
   }
 

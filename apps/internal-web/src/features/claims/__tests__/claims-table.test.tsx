@@ -164,7 +164,7 @@ describe('ClaimsTable', () => {
     expect(inTable().getByText('1234/26')).toBeInTheDocument()
     expect(inTable().getByText('SELMAN')).toBeInTheDocument()
     expect(inTable().getByText('Auto Stanić')).toBeInTheDocument()
-    expect(inTable().getByText('EMOTIVE')).toBeInTheDocument()
+    expect(inTable().getByText('Inostrana')).toBeInTheDocument()
     expect(inTable().getByText('Domaća')).toBeInTheDocument()
 
     const viewLinks = screen.getAllByRole('link', { name: 'Pregled' })

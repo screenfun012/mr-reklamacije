@@ -91,7 +91,7 @@ describe('buildReklamacijeWorkbook', () => {
     const workbook = await readWorkbook(buffer)
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
       'UKUPNO SA 21.06.2026.',
-      'EMOTIVE REKLAMACIJE',
+      'INOSTRANE REKLAMACIJE',
       'DOMACE REKLAMACIJE ',
       'REKLAMACIJE PO ZAPOSLENOM',
       'REKLAMACIJE PO FIRMAMA',
@@ -114,7 +114,7 @@ describe('buildReklamacijeWorkbook', () => {
       'GODINA',
     ])
 
-    const emotiveData = workbook.getWorksheet('EMOTIVE REKLAMACIJE')
+    const emotiveData = workbook.getWorksheet('INOSTRANE REKLAMACIJE')
     expect(emotiveData!.rowCount).toBe(2)
     expect(rowValues(emotiveData!, 2)[4]).toBe('1759/23')
     // REMARKS (column 10, index 9) is the customer the claim is for — the firm

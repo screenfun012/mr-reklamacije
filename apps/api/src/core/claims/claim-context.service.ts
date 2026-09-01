@@ -44,7 +44,7 @@ export class ClaimContextService implements ClaimContextPort {
       const scope = resolveEmotiveScope(actor)
       const claim = await this.emotiveClaims.findById(claimId, scope)
       if (claim === null) {
-        throw new NotFoundError('Emotive claim', claimId)
+        throw new NotFoundError('International claim', claimId)
       }
 
       // A claim with neither timestamp set is "Primljeno" (received) — the
@@ -55,7 +55,7 @@ export class ClaimContextService implements ClaimContextPort {
         claim.clientVisibleAt === null &&
         claim.publishedAt === null
       ) {
-        throw new NotFoundError('Emotive claim', claimId)
+        throw new NotFoundError('International claim', claimId)
       }
 
       return { outcome: claim.outcome, claimYear: claim.claimYear }

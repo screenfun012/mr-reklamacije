@@ -149,7 +149,7 @@ export class EmotiveClaimsService {
     const claim = await this.repo.findById(id, scope)
 
     if (claim === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     // A claim with neither timestamp set is "Primljeno" (received) — it still
@@ -160,7 +160,7 @@ export class EmotiveClaimsService {
       claim.clientVisibleAt === null &&
       claim.publishedAt === null
     ) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     return claim
@@ -181,7 +181,7 @@ export class EmotiveClaimsService {
     const claim = await this.repo.findById(id, scope)
 
     if (claim === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     if (
@@ -189,7 +189,7 @@ export class EmotiveClaimsService {
       claim.clientVisibleAt === null &&
       claim.publishedAt === null
     ) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     if (scope.type === 'own_customer') {
@@ -213,7 +213,7 @@ export class EmotiveClaimsService {
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     await this.validateUpdateReferences(input, before)
@@ -261,7 +261,7 @@ export class EmotiveClaimsService {
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     await this.repo.softDelete(id, auditContext.actorUserId, before)
@@ -291,7 +291,7 @@ export class EmotiveClaimsService {
     const scope = resolveListScope(actor)
     const before = await this.repo.findDeletedById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     const restored = await this.repo.restore(id, auditContext.actorUserId, before, scope)
@@ -320,7 +320,7 @@ export class EmotiveClaimsService {
     const scope = resolveListScope(actor)
     const before = await this.repo.findById(id, scope)
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     const updated = await this.repo.changeOutcome(
@@ -375,7 +375,7 @@ export class EmotiveClaimsService {
   async publish(id: string, auditContext: HttpActorContext): Promise<EmotiveClaimDetail> {
     const before = await this.repo.findById(id, { type: 'all' })
     if (before === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     // Idempotent: already published — no duplicate audit row or SSE event, still a
@@ -400,7 +400,7 @@ export class EmotiveClaimsService {
 
     const updated = await this.repo.findById(id, { type: 'all' })
     if (updated === null) {
-      throw new NotFoundError('Emotive claim', id)
+      throw new NotFoundError('International claim', id)
     }
 
     await this.chat.postSystemMessage(

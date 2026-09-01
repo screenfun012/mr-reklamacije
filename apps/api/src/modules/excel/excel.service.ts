@@ -76,7 +76,10 @@ function mapFaults(faults: readonly ClaimFaultItem[]): EmotiveExportRow['faults'
 
 function buildFileName(input: ExcelExportInput, exportedAt: Date): string {
   const datePart = exportedAt.toISOString().slice(0, 10)
-  const suffixParts: string[] = [input.scope]
+  // The scope is a wire value ('emotive'), but the file name is read by a person —
+  // it follows the displayed name of the kind, not the internal code.
+  const scopePart = input.scope === ExcelExportScope.Emotive ? 'inostrane' : input.scope
+  const suffixParts: string[] = [scopePart]
 
   if (input.claimYear !== undefined) {
     suffixParts.push(String(input.claimYear))

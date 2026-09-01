@@ -43,7 +43,7 @@ const DOMACE_HEADERS = [
   'NAPOMENA',
 ] as const
 
-const EMOTIVE_DATA_SHEET_NAME = 'EMOTIVE REKLAMACIJE'
+const EMOTIVE_DATA_SHEET_NAME = 'INOSTRANE REKLAMACIJE'
 const DOMACE_DATA_SHEET_NAME = 'DOMACE REKLAMACIJE '
 
 function addHeaderRow(sheet: ExcelJS.Worksheet, headers: readonly string[]): void {

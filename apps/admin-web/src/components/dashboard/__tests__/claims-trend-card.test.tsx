@@ -26,7 +26,7 @@ describe('ClaimsTrendCard', () => {
 
     expect(document.querySelector('[title]')).toBeNull()
     expect(screen.getAllByRole('img')).toHaveLength(3)
-    expect(screen.getByRole('img', { name: /EMOTIVE: 2/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Inostrane: 2/ })).toBeInTheDocument()
   })
 
   // Centred, the outermost hover cards would hang off the ends of the plot.

@@ -23,52 +23,52 @@ export interface PermissionLabel {
  */
 export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
   'emotive_claims.view': {
-    nameSr: 'Vidi EMOTIVE reklamacije',
-    nameEn: 'Sees EMOTIVE claims',
+    nameSr: 'Vidi inostrane reklamacije',
+    nameEn: 'Sees international claims',
     descriptionSr: 'Spisak i pojedinačnu reklamaciju, za sve partnere.',
     descriptionEn: 'The list and any single claim, for every partner.',
   },
   'emotive_claims.view_own_customer': {
-    nameSr: 'Vidi EMOTIVE reklamacije svoje firme',
-    nameEn: "Sees own firm's EMOTIVE claims",
+    nameSr: 'Vidi inostrane reklamacije svoje firme',
+    nameEn: "Sees own firm's international claims",
     descriptionSr:
       'Samo redove firme za koju je nalog vezan. Ovo drži klijent na portalu, ne čovek iz firme.',
     descriptionEn:
       'Only rows of the firm the account is linked to. This belongs to a portal client, not to staff.',
   },
   'emotive_claims.create': {
-    nameSr: 'Otvara EMOTIVE reklamaciju',
-    nameEn: 'Opens an EMOTIVE claim',
+    nameSr: 'Otvara inostranu reklamaciju',
+    nameEn: 'Opens an international claim',
     descriptionSr: '',
     descriptionEn: '',
   },
   'emotive_claims.update': {
-    nameSr: 'Menja EMOTIVE reklamaciju',
-    nameEn: 'Edits an EMOTIVE claim',
+    nameSr: 'Menja inostranu reklamaciju',
+    nameEn: 'Edits an international claim',
     descriptionSr: 'Reklamacija je izmenjiva u svakom stanju; svaka izmena ide u Istoriju.',
     descriptionEn: 'A claim stays editable in every state; every change is recorded.',
   },
   'emotive_claims.delete': {
-    nameSr: 'Briše EMOTIVE reklamaciju',
-    nameEn: 'Deletes an EMOTIVE claim',
+    nameSr: 'Briše inostranu reklamaciju',
+    nameEn: 'Deletes an international claim',
     descriptionSr: 'Meko brisanje — red ostaje i može da se vrati.',
     descriptionEn: 'A soft delete — the row stays and can be restored.',
   },
   'emotive_claims.restore': {
-    nameSr: 'Vraća obrisanu EMOTIVE reklamaciju',
-    nameEn: 'Restores a deleted EMOTIVE claim',
+    nameSr: 'Vraća obrisanu inostranu reklamaciju',
+    nameEn: 'Restores a deleted international claim',
     descriptionSr: '',
     descriptionEn: '',
   },
   'emotive_claims.change_outcome': {
-    nameSr: 'Odlučuje ishod EMOTIVE reklamacije',
-    nameEn: "Decides an EMOTIVE claim's outcome",
+    nameSr: 'Odlučuje ishod inostrane reklamacije',
+    nameEn: "Decides an international claim's outcome",
     descriptionSr: 'Prihvaćeno, odbijeno, arhivirano ili nazad u obradu.',
     descriptionEn: 'Accepted, rejected, archived, or back to pending.',
   },
   'emotive_claims.publish': {
-    nameSr: 'Objavljuje EMOTIVE reklamaciju klijentu',
-    nameEn: 'Publishes an EMOTIVE claim to the client',
+    nameSr: 'Objavljuje inostranu reklamaciju klijentu',
+    nameEn: 'Publishes an international claim to the client',
     descriptionSr: 'Do objave klijent na portalu ne vidi ni ishod ni datum završetka.',
     descriptionEn: 'Until it is published the client sees neither the outcome nor the finish date.',
   },
@@ -141,8 +141,8 @@ export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
   'attachments.change_visibility': {
     nameSr: 'Određuje da li klijent vidi prilog',
     nameEn: 'Decides whether the client sees an attachment',
-    descriptionSr: 'Važi za EMOTIVE reklamacije — samo one imaju portal.',
-    descriptionEn: 'EMOTIVE claims only — they are the ones with a portal.',
+    descriptionSr: 'Važi za inostrane reklamacije — samo one imaju portal.',
+    descriptionEn: 'International claims only — they are the ones with a portal.',
   },
   'attachments.view_client_visible': {
     nameSr: 'Vidi priloge označene kao vidljive klijentu',
@@ -337,8 +337,8 @@ export const PERMISSION_LABELS: Record<Permission, PermissionLabel> = {
     descriptionEn: 'Not built yet.',
   },
   'statistics.view_emotive': {
-    nameSr: 'Vidi statistiku EMOTIVE reklamacija',
-    nameEn: 'Sees EMOTIVE claim statistics',
+    nameSr: 'Vidi statistiku inostranih reklamacija',
+    nameEn: 'Sees international claim statistics',
     descriptionSr: '',
     descriptionEn: '',
   },

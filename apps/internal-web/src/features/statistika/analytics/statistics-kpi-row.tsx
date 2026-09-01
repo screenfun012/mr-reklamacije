@@ -32,7 +32,7 @@ export function StatisticsKpiRow({ summary }: { summary: StatisticsSummary }): R
       valueClass: 'text-mri-text',
     },
     {
-      label: 'EMOTIVE',
+      label: m.dashboard_chart_emotive(),
       value: String(emotiveTotal),
       border: 'border-mri-border',
       dot: 'bg-mri-info',

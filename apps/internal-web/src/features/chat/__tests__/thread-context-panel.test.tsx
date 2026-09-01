@@ -141,7 +141,7 @@ describe('ThreadContextPanel', () => {
 
     expect(screen.getByText(m.chat_context_claim())).toBeInTheDocument()
     expect(screen.getByText('7167/25')).toBeInTheDocument()
-    expect(screen.getByText('EMOTIVE')).toBeInTheDocument()
+    expect(screen.getByText('Inostrana')).toBeInTheDocument()
     expect(screen.getByText(m.outcome_pending())).toBeInTheDocument()
     expect(screen.getByText('Auto Stanić')).toBeInTheDocument()
     expect(

@@ -17,7 +17,8 @@ Plus statistics, Excel import/export, and a client portal. (⚠ **No OpenAI tran
 `OPENAI_*` env vars are declared in `apps/api/src/config/env.ts` and read by nothing; the feature was
 never built. Don't advertise it, and don't assume a `translation_cache` consumer.)
 
-Domain terms kept verbatim (never translate/rename): **EMOTIVE, DOMACE, UKUPNO, MR NUMBER, GRESKA, APPROVED GREEN, GODINA**.
+Domain terms kept verbatim (never translate/rename): **DOMACE, UKUPNO, MR NUMBER, GRESKA, APPROVED GREEN, GODINA**.
+**„EMOTIVE" je od 2026-09-01 SAMO interni kod, nikad prikazan tekst** (Nikolina odluka): na ekranu, u Excel-u i u nazivima dozvola piše **„Inostrana / International"**. Kodovi dozvola (`emotive_claims.*`), API putanje, tabele, enum na žici i imena tipova OSTAJU `emotive` — ne preimenovati ih. Bedž vrste čita `claims_kind_*` poruke (i `KindPill` i `ClaimKindBadge`); ukucan „EMOTIVE" u JSX-u je defekt. Posle deploja grane sa preimenovanjem treba jednom `db:seed` (imena dozvola su podaci u bazi, seed ih upsert-uje).
 
 ### Architecture — 3 isolated SPAs + 1 API
 
