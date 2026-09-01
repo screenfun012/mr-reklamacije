@@ -20,6 +20,7 @@ export const ClaimsSearchSchema = z.object({
   kind: z.enum(claimKindValues).optional(),
   outcome: z.enum(claimOutcomeValues).optional(),
   manufacturerId: z.string().uuid().optional(),
+  engineTypeId: z.string().uuid().optional(),
   categoryCode: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),
   dateFrom: z.string().regex(isoDatePattern).optional(),
@@ -52,6 +53,7 @@ export function claimsFiltersFromSearch(search: ClaimsSearch): ClaimsListFilters
     kind: search.kind,
     outcome: search.outcome,
     manufacturerId: search.manufacturerId,
+    engineTypeId: search.engineTypeId,
     // Forgotten here for four days while the select, the URL and the API each worked on their
     // own: the list silently ignored the category because this is the one step that joins them.
     categoryCode: search.categoryCode,
@@ -102,6 +104,9 @@ export function claimsSearchFromFilters(
   }
   if (filters.manufacturerId !== undefined) {
     search.manufacturerId = filters.manufacturerId
+  }
+  if (filters.engineTypeId !== undefined) {
+    search.engineTypeId = filters.engineTypeId
   }
   if (filters.categoryCode !== undefined) {
     search.categoryCode = filters.categoryCode

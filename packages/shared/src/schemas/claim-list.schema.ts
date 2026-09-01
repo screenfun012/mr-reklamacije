@@ -42,6 +42,7 @@ export const ClaimListQuerySchema = z.object({
   sourceId: z.string().uuid().optional(),
   customerId: z.string().uuid().optional(),
   manufacturerId: z.string().uuid().optional(),
+  engineTypeId: z.string().uuid().optional(),
   // By CODE, never by id (spec §4.2): this travels in the URL, so it must survive a
   // database restore and read plainly in a bookmark. An unknown code yields an empty
   // list, not an error — the repository resolves it with a semi-join.

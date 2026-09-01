@@ -281,6 +281,16 @@ describe('EngineTypes reference module', () => {
       expect(res.status).toBe(403)
     })
 
+    it('lets a read-only claims viewer read the catalog — the list filter suspends on it', async () => {
+      // Regression for the widened GET gate: a viewer holds no create/update permission,
+      // and a 403 here would take the whole claims screen down through the filter dropdown.
+      const emotiveViewer = createReferenceTestApp(container, testUser(['emotive_claims.view']))
+      expect((await emotiveViewer.request('/api/engine-types')).status).toBe(200)
+
+      const domaceViewer = createReferenceTestApp(container, testUser(['domace_claims.view']))
+      expect((await domaceViewer.request('/api/engine-types')).status).toBe(200)
+    })
+
     it('returns 403 on POST without create permission', async () => {
       const app = createReferenceTestApp(container, testUser(['emotive_claims.create']))
       const res = await app.request('/api/engine-types', {

@@ -33,6 +33,7 @@ export function hasActiveClaimsFilters(search: ClaimsSearch): boolean {
     search.kind !== undefined ||
     search.outcome !== undefined ||
     search.manufacturerId !== undefined ||
+    search.engineTypeId !== undefined ||
     search.categoryCode !== undefined ||
     search.dateFrom !== undefined ||
     search.dateTo !== undefined ||

@@ -15,7 +15,13 @@ export function registerEngineTypesRoutes(
 
   routes.get(
     '/',
+    // Claim VIEWERS read the catalog too — the list's engine-type filter needs it, and they
+    // already see engine-type codes on every claim row. Same widening the manufacturers
+    // catalog got: without it the filter dropdown takes a read-only account's whole screen
+    // down with a 403. Mutations below stay settings-gated.
     requirePermissions(
+      'emotive_claims.view',
+      'domace_claims.view',
       'emotive_claims.create',
       'emotive_claims.update',
       'domace_claims.create',

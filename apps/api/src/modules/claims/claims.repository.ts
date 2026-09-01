@@ -364,6 +364,10 @@ export class ClaimsRepository {
       conditions.push(sql`ec.manufacturer_id = ${query.manufacturerId}`)
     }
 
+    if (query.engineTypeId !== undefined) {
+      conditions.push(sql`ec.engine_type_id = ${query.engineTypeId}`)
+    }
+
     if (query.categoryCode !== undefined) {
       // Semi-join on the code, not the id (spec §4.2): the code is what travels in the URL,
       // and a code no category carries yields an empty list rather than an error.
@@ -484,6 +488,11 @@ export class ClaimsRepository {
 
     if (query.manufacturerId !== undefined) {
       conditions.push(sql`dc.manufacturer_id = ${query.manufacturerId}`)
+    }
+
+    if (query.engineTypeId !== undefined) {
+      // Both branches or neither — same rule as the category filter below.
+      conditions.push(sql`dc.engine_type_id = ${query.engineTypeId}`)
     }
 
     if (query.categoryCode !== undefined) {

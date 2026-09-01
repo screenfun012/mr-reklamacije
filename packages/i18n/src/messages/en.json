@@ -602,6 +602,8 @@
   "claims_filter_category_chip_prefix": "CATEGORY =",
   "claims_filter_category_retired_group": "Retired",
   "claims_filter_clear": "Clear filters",
+  "claims_filter_engine_type": "Engine type",
+  "claims_filter_engine_type_all": "All engine types",
   "claims_filter_kind": "Type",
   "claims_filter_kind_all": "All",
   "claims_filter_kind_domace": "Domestic",

@@ -64,5 +64,6 @@ describe('hasActiveClaimsFilters', () => {
     expect(hasActiveClaimsFilters({ ...EMPTY_SEARCH, categoryCode: 'NOVI_DELOVI' })).toBe(true)
     expect(hasActiveClaimsFilters({ ...EMPTY_SEARCH, kind: 'emotive' })).toBe(true)
     expect(hasActiveClaimsFilters({ ...EMPTY_SEARCH, manufacturerId: 'x' })).toBe(true)
+    expect(hasActiveClaimsFilters({ ...EMPTY_SEARCH, engineTypeId: 'x' })).toBe(true)
   })
 })

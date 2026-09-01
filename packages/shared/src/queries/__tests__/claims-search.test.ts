@@ -179,3 +179,40 @@ describe('the category filter, from the URL to the request', () => {
     expect(search.outcome).toBe('pending')
   })
 })
+
+describe('the engine-type filter, from the URL to the request', () => {
+  // Same chain, same reason as the category test above: search → filters is the one step
+  // where a URL-only filter can silently die while every layer around it stays green.
+  const ENGINE_TYPE_ID = 'e1111111-1111-4111-8111-111111111111'
+
+  it('carries engineTypeId from the search into the filters, the query key and the params', () => {
+    const search = ClaimsSearchSchema.parse({
+      engineTypeId: ENGINE_TYPE_ID,
+      page: 1,
+      pageSize: 10,
+    })
+
+    const filters = claimsFiltersFromSearch(search)
+    expect(filters.engineTypeId).toBe(ENGINE_TYPE_ID)
+
+    const options = claimsListOptions(filters, 1, 10)
+    expect(JSON.stringify(options.queryKey)).toContain(ENGINE_TYPE_ID)
+
+    const params = serializeEmotiveClaimsListParams({
+      ...normalizeClaimsListFilters(filters),
+      page: 1,
+      pageSize: 10,
+    })
+    expect(params).toContain(`engineTypeId=${ENGINE_TYPE_ID}`)
+  })
+
+  it('survives the round trip back into a search', () => {
+    const search = claimsSearchFromFilters(
+      { engineTypeId: ENGINE_TYPE_ID, manufacturerId: 'a1111111-1111-4111-8111-111111111111' },
+      { page: 1, pageSize: 10 },
+    )
+
+    expect(search.engineTypeId).toBe(ENGINE_TYPE_ID)
+    expect(search.manufacturerId).toBe('a1111111-1111-4111-8111-111111111111')
+  })
+})

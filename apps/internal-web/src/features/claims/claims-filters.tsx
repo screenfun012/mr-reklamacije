@@ -2,6 +2,7 @@ import {
   CLAIM_KIND_REGISTRY,
   claimCategoryCountsOptions,
   engineManufacturersReferenceOptions,
+  engineTypesReferenceOptions,
   OUTCOME_REGISTRY,
   useDebouncedValue,
   type ClaimsSearch,
@@ -53,6 +54,9 @@ export function ClaimsFilters({
   const { data: manufacturers } = useSuspenseQuery(
     engineManufacturersReferenceOptions({ activeOnly: true }),
   )
+  // The whole active catalog once, narrowed in memory by the picked manufacturer — a
+  // manufacturer-keyed query would blink the filter bar out through Suspense on every pick.
+  const { data: engineTypes } = useSuspenseQuery(engineTypesReferenceOptions({ activeOnly: true }))
   // One source for what a category is called and whether it is still live — the same answer the
   // sidebar and the list header read, so a rename cannot show up in one place and not the other.
   const { data: counts } = useSuspenseQuery(claimCategoryCountsOptions())
@@ -77,6 +81,21 @@ export function ClaimsFilters({
       })),
     [manufacturers],
   )
+
+  const engineTypeOptions = useMemo(() => {
+    // Independent of the manufacturer filter, but never contradicting it: with a
+    // manufacturer picked, only that manufacturer's types are offered.
+    const visible =
+      search.manufacturerId === undefined
+        ? engineTypes
+        : engineTypes.filter((engineType) => engineType.manufacturerId === search.manufacturerId)
+    return visible.map((engineType) => ({
+      value: engineType.id,
+      label: engineType.code,
+      // Typing "BMW" finds N47 even before any manufacturer is picked.
+      ...(engineType.manufacturerName === null ? {} : { keywords: engineType.manufacturerName }),
+    }))
+  }, [engineTypes, search.manufacturerId])
 
   const categoryOptions = useMemo(
     () =>
@@ -120,6 +139,7 @@ export function ClaimsFilters({
       kind: undefined,
       outcome: undefined,
       manufacturerId: undefined,
+      engineTypeId: undefined,
       categoryCode: undefined,
       dateFrom: undefined,
       dateTo: undefined,
@@ -222,9 +242,42 @@ export function ClaimsFilters({
           className={INTERNAL_CONTROL_CLASSES}
           aria-label={m.claims_filter_manufacturer()}
           onValueChange={(manufacturerId) => {
+            const nextManufacturerId = manufacturerId.length > 0 ? manufacturerId : undefined
+            // A type of another make cannot survive the switch — the impossible pair would
+            // return an empty list with no visible reason. Clearing the manufacturer keeps
+            // the type: the filters are independent, the type alone is still what was asked.
+            const selectedType = engineTypes.find(
+              (engineType) => engineType.id === search.engineTypeId,
+            )
+            const engineTypeSurvives =
+              search.engineTypeId === undefined ||
+              nextManufacturerId === undefined ||
+              selectedType?.manufacturerId === nextManufacturerId
             onSearchChange({
               ...search,
-              manufacturerId: manufacturerId.length > 0 ? manufacturerId : undefined,
+              manufacturerId: nextManufacturerId,
+              engineTypeId: engineTypeSurvives ? search.engineTypeId : undefined,
+              page: 1,
+            })
+          }}
+        />
+      </div>
+
+      <div className="flex min-w-[10rem] flex-1 flex-col gap-[7px] text-sm">
+        <InternalFieldLabel>{m.claims_filter_engine_type()}</InternalFieldLabel>
+        <SearchableSelect
+          value={search.engineTypeId ?? ''}
+          options={engineTypeOptions}
+          placeholder={m.claims_filter_engine_type_all()}
+          searchPlaceholder={m.field_search_placeholder()}
+          emptyOptionLabel={m.claims_filter_engine_type_all()}
+          noResultsLabel={m.field_no_results()}
+          className={INTERNAL_CONTROL_CLASSES}
+          aria-label={m.claims_filter_engine_type()}
+          onValueChange={(engineTypeId) => {
+            onSearchChange({
+              ...search,
+              engineTypeId: engineTypeId.length > 0 ? engineTypeId : undefined,
               page: 1,
             })
           }}

@@ -602,6 +602,8 @@
   "claims_filter_category_chip_prefix": "KATEGORIJA =",
   "claims_filter_category_retired_group": "Ugašene",
   "claims_filter_clear": "Obriši filtere",
+  "claims_filter_engine_type": "Tip motora",
+  "claims_filter_engine_type_all": "Svi tipovi",
   "claims_filter_kind": "Vrsta",
   "claims_filter_kind_all": "Sve",
   "claims_filter_kind_domace": "Domaće",

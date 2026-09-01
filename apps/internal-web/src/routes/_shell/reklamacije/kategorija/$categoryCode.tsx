@@ -6,6 +6,7 @@ import {
   claimsPaginationFromSearch,
   claimsSortFromSearch,
   engineManufacturersReferenceOptions,
+  engineTypesReferenceOptions,
 } from '@mr/shared'
 import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
 import type { SearchSchemaInput } from '@tanstack/react-router'
@@ -38,6 +39,7 @@ export const Route = createFileRoute('/_shell/reklamacije/kategorija/$categoryCo
       ),
       queryClient.ensureQueryData(claimCategoryCountsOptions()),
       queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
+      queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: true })),
     ])
 
     // The trail's last part is data, not a fixed word — a category the reader cannot see leaves

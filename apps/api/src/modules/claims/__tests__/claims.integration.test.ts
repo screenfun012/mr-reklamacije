@@ -82,14 +82,17 @@ describe('ClaimsService integration', () => {
       dateOfFinish?: Date
       categoryCode?: string
       customerId?: string
+      engineTypeId?: string
     } = {},
   ): Promise<string> {
-    const engineType = await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)
+    const engineTypeId =
+      options.engineTypeId ??
+      (await createTestEngineType(container, `ENG-${Date.now()}-${mrNumber}`)).id
     const created = await container.emotiveClaimsService.create(
       {
         categoryId: await getClaimCategoryIdByCode(ctx.db, options.categoryCode ?? 'REMONT_MOTORA'),
         ...(options.customerId === undefined ? {} : { customerId: options.customerId }),
-        engineTypeId: engineType.id,
+        engineTypeId,
         dateOfClaim: options.dateOfClaim ?? new Date('2026-06-15'),
         dateOfFinish: options.dateOfFinish,
         mrNumber,
@@ -109,11 +112,17 @@ describe('ClaimsService integration', () => {
   async function createDomace(
     mrNumber: string,
     customerName: string,
-    options: { dateOfClaim?: Date | null; dateOfFinish?: Date | null; categoryCode?: string } = {},
+    options: {
+      dateOfClaim?: Date | null
+      dateOfFinish?: Date | null
+      categoryCode?: string
+      engineTypeId?: string
+    } = {},
   ): Promise<string> {
     const created = await container.domaceClaimsService.create(
       {
         categoryId: await getClaimCategoryIdByCode(ctx.db, options.categoryCode ?? 'REMONT_MOTORA'),
+        ...(options.engineTypeId === undefined ? {} : { engineTypeId: options.engineTypeId }),
         mrNumber,
         customerName,
         dateOfClaim:
@@ -269,6 +278,33 @@ describe('ClaimsService integration', () => {
         'KAT-EM-MAS/26',
       ])
       expect(result.items.every((item) => item.category?.code === 'MASINSKA_OBRADA')).toBe(true)
+    })
+
+    it('filters by engine type, in both families', async () => {
+      // One claim of each family on the asked-for type, one emotive on another type. Both
+      // halves matter for the same UNION reason as the category filter above.
+      const asked = await createTestEngineType(container, `TIP-N47-${Date.now()}`)
+      const other = await createTestEngineType(container, `TIP-OM-${Date.now()}`)
+      await createEmotive('TIP-EM-DA/26', { engineTypeId: asked.id })
+      await createDomace('TIP-DO-DA/26', 'Tip domaća', { engineTypeId: asked.id })
+      // One claim of EACH family on the other type — proven by mutation: without the
+      // domace one here, a repository that forgets the DOMACE half still passes.
+      await createEmotive('TIP-EM-NE/26', { engineTypeId: other.id })
+      await createDomace('TIP-DO-NE/26', 'Tip druga', { engineTypeId: other.id })
+
+      const result = await container.claimsService.list(
+        listQuery({ engineTypeId: asked.id, search: 'TIP-' }),
+        FULL_OPERATOR,
+      )
+
+      expect(result.items.map((item) => item.mrNumber).sort()).toEqual([
+        'TIP-DO-DA/26',
+        'TIP-EM-DA/26',
+      ])
+      expect(result.items.map((item) => item.kind).sort()).toEqual([
+        ClaimKind.Domace,
+        ClaimKind.Emotive,
+      ])
     })
 
     it('returns an empty list for a code no category carries, not an error', async () => {

@@ -6,6 +6,7 @@ import {
   claimsPaginationFromSearch,
   claimsSortFromSearch,
   engineManufacturersReferenceOptions,
+  engineTypesReferenceOptions,
 } from '@mr/shared'
 import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
 import type { SearchSchemaInput } from '@tanstack/react-router'
@@ -32,6 +33,7 @@ export const Route = createFileRoute('/_shell/reklamacije/')({
       queryClient.ensureQueryData(claimsListOptions(filters, page, pageSize, sort)),
       queryClient.ensureQueryData(claimCategoryCountsOptions()),
       queryClient.ensureQueryData(engineManufacturersReferenceOptions({ activeOnly: true })),
+      queryClient.ensureQueryData(engineTypesReferenceOptions({ activeOnly: true })),
     ])
   },
   component: ReklamacijeComponent,
